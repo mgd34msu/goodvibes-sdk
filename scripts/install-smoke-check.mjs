@@ -5,29 +5,47 @@ import { join, resolve } from 'node:path';
 import {
   cleanupStage,
   collectTarballs,
+  getPublicPackageNameOverride,
   getRootVersion,
   packStage,
-  packageDirs,
   readPackage,
   run,
   stagePackages,
 } from './release-shared.mjs';
 
 const REGISTRY_MODE = process.argv.includes('--registry');
+const PUBLIC_PACKAGE_DIR = 'packages/sdk';
+const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || readPackage(PUBLIC_PACKAGE_DIR).name;
+const NODE_ENTRY = `${PUBLIC_PACKAGE_NAME}/node`;
+const WEB_ENTRY = `${PUBLIC_PACKAGE_NAME}/web`;
+const NATIVE_ENTRY = `${PUBLIC_PACKAGE_NAME}/react-native`;
+const AUTH_ENTRY = `${PUBLIC_PACKAGE_NAME}/auth`;
+const OPERATOR_ENTRY = `${PUBLIC_PACKAGE_NAME}/operator`;
+const PEER_ENTRY = `${PUBLIC_PACKAGE_NAME}/peer`;
+const DAEMON_ENTRY = `${PUBLIC_PACKAGE_NAME}/daemon`;
+const CONTRACTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/contracts`;
+const REALTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/transport-realtime`;
 
 const smokeScript = `
-const root = await import('@pellux/goodvibes-sdk');
-const nodeEntry = await import('@pellux/goodvibes-sdk/node');
-const webEntry = await import('@pellux/goodvibes-sdk/web');
-const nativeEntry = await import('@pellux/goodvibes-sdk/react-native');
-const operator = await import('@pellux/goodvibes-operator-sdk');
-const peer = await import('@pellux/goodvibes-peer-sdk');
-const daemon = await import('@pellux/goodvibes-daemon-sdk');
-const contracts = await import('@pellux/goodvibes-contracts');
-const runtimeEvents = await import('@pellux/goodvibes-transport-realtime');
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const root = await import('${PUBLIC_PACKAGE_NAME}');
+const nodeEntry = await import('${NODE_ENTRY}');
+const webEntry = await import('${WEB_ENTRY}');
+const nativeEntry = await import('${NATIVE_ENTRY}');
+const auth = await import('${AUTH_ENTRY}');
+const operator = await import('${OPERATOR_ENTRY}');
+const peer = await import('${PEER_ENTRY}');
+const daemon = await import('${DAEMON_ENTRY}');
+const contracts = await import('${CONTRACTS_ENTRY}');
+const runtimeEvents = await import('${REALTIME_ENTRY}');
 
 const sdk = nodeEntry.createNodeGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
 if (!sdk?.operator || !sdk?.peer || !sdk?.realtime) throw new Error('sdk entrypoint missing expected surfaces');
+if (typeof auth.createMemoryTokenStore !== 'function') throw new Error('auth entrypoint missing token helpers');
 if (typeof operator.createOperatorSdk !== 'function') throw new Error('operator client export missing');
 if (typeof peer.createPeerSdk !== 'function') throw new Error('peer client export missing');
 if (typeof daemon.createDaemonControlRouteHandlers !== 'function') throw new Error('daemon route export missing');
@@ -36,6 +54,14 @@ if (typeof runtimeEvents.createRemoteRuntimeEvents !== 'function') throw new Err
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');
+const packageRoot = dirname(require.resolve('${PUBLIC_PACKAGE_NAME}/package.json'));
+const nestedInternalRoot = join(packageRoot, 'node_modules', '@pellux');
+if (existsSync(nestedInternalRoot)) {
+  const leaked = readdirSync(nestedInternalRoot).filter((name) => name.startsWith('goodvibes-'));
+  if (leaked.length > 0) {
+    throw new Error('umbrella package leaked nested internal packages: ' + leaked.join(', '));
+  }
+}
 console.log('install smoke ok');
 `;
 
@@ -67,13 +93,15 @@ function installWithBun(specs) {
 
 function buildRegistrySpecs() {
   const version = getRootVersion();
-  return packageDirs.map((dir) => `${readPackage(dir).name}@${version}`);
+  return [`${PUBLIC_PACKAGE_NAME}@${version}`];
 }
 
 function buildTarballSpecs() {
-  const { tempRoot, stages } = stagePackages();
+  const { tempRoot, publicStages } = stagePackages();
   const packDestination = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-tarballs-'));
-  const packResults = stages.map((stage) => packStage(stage.stageDir, packDestination));
+  const packResults = publicStages
+    .filter((stage) => stage.dir === PUBLIC_PACKAGE_DIR)
+    .map((stage) => packStage(stage.stageDir, packDestination));
   const tarballs = collectTarballs(packResults, packDestination);
   return { tempRoot, specs: tarballs };
 }

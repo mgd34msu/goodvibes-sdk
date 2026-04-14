@@ -1,6 +1,6 @@
 # Daemon Embedding
 
-Use `@pellux/goodvibes-daemon-sdk` when you want to host GoodVibes daemon routes in another server process.
+Use `@pellux/goodvibes-sdk/daemon` when you want to host GoodVibes daemon routes in another server process.
 
 The package gives you:
 - typed route-handler contracts
@@ -15,13 +15,13 @@ The package gives you:
 import {
   createDaemonControlRouteHandlers,
   createDaemonTelemetryRouteHandlers,
-} from '@pellux/goodvibes-daemon-sdk';
+} from '@pellux/goodvibes-sdk/daemon';
 ```
 
 ## Operator/automation/session/task dispatch
 
 ```ts
-import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-daemon-sdk';
+import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
 ```
 
 ## Other route groups

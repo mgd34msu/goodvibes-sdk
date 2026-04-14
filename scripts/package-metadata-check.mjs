@@ -18,6 +18,7 @@ const packageDirs = [
   'packages/peer-sdk',
   'packages/sdk',
 ];
+const publicPackageDirs = ['packages/sdk'];
 
 const requiredStringFields = [
   'name',
@@ -52,8 +53,16 @@ for (const dir of packageDirs) {
   if (!pkg.bugs || typeof pkg.bugs.url !== 'string') {
     throw new Error(`${dir}/package.json is missing bugs metadata`);
   }
-  if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
-    throw new Error(`${dir}/package.json must publish with access=public`);
+  const isPublic = publicPackageDirs.includes(dir);
+  if (isPublic) {
+    if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
+      throw new Error(`${dir}/package.json must publish with access=public`);
+    }
+    if (Array.isArray(pkg.bundledDependencies) && pkg.bundledDependencies.length > 0) {
+      throw new Error(`${dir}/package.json must not use bundledDependencies; flatten the umbrella package instead`);
+    }
+  } else if (pkg.private !== true) {
+    throw new Error(`${dir}/package.json must be marked private because only packages/sdk is publishable`);
   }
   if (!pkg.exports || typeof pkg.exports !== 'object') {
     throw new Error(`${dir}/package.json is missing exports`);

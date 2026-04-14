@@ -1,18 +1,14 @@
 # @pellux/goodvibes-transport-core
 
-Shared client transport and event-feed primitives used by the GoodVibes SDK packages.
+Internal workspace package backing `@pellux/goodvibes-sdk/transport-core`.
 
-Install:
+Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
 
-```bash
-npm install @pellux/goodvibes-transport-core
-```
-
-Use this package only when you are composing your own transport/client abstraction.
+Use this surface only when you are composing your own transport/client abstraction.
 
 Exports include:
 - event envelope helpers
 - runtime event feed primitives
 - generic client transport helpers
 
-Most consumers should use `@pellux/goodvibes-sdk`, `@pellux/goodvibes-operator-sdk`, or `@pellux/goodvibes-peer-sdk` instead.
+Most consumers should use `@pellux/goodvibes-sdk`, `@pellux/goodvibes-sdk/operator`, or `@pellux/goodvibes-sdk/peer` instead.

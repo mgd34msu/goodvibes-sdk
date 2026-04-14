@@ -1,4 +1,4 @@
-import { createPeerSdk } from '@pellux/goodvibes-peer-sdk';
+import { createPeerSdk } from '@pellux/goodvibes-sdk/peer';
 
 const sdk = createPeerSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.18.6
+
+- Added a dedicated `@pellux/goodvibes-sdk/auth` subpath so token-store and login helpers are discoverable without reaching through the umbrella entrypoint
+- Tightened pack and install smoke checks to fail if the published SDK ever regresses into nested internal `node_modules` packages again
+- Tightened pack checks to fail if any published build output still references internal workspace package specifiers
+- Updated the public docs and package README so they describe one npm package with entrypoints instead of implying a multi-package public install model
+- Added registry-aware release plumbing so npmjs remains primary while GitHub Packages can mirror the same umbrella package shape
+
+## 0.18.5
+
+- Flattened the umbrella SDK package so the published install artifact is a single self-contained package instead of a bundle of nested internal workspace packages
+- Rewrote umbrella subpath exports to resolve to local flattened implementation files inside `@pellux/goodvibes-sdk`
+- Added raw contract JSON exports on the umbrella package for `contracts/operator-contract.json` and `contracts/peer-contract.json`
+- Removed bundled dependency usage from the public package and added metadata guards to prevent that packaging model from returning
+- Updated the build pipeline to prepare the flattened SDK package automatically after TypeScript compilation
+
+## 0.18.4
+
+- Converted the SDK release model to one public npm package: `@pellux/goodvibes-sdk`
+- Moved consumer-facing imports to subpath exports under the umbrella package instead of separate published packages
+- Marked internal workspace packages private and updated package validation to enforce that boundary
+- Fixed staged release bundling so the published umbrella tarball no longer leaks workspace symlinks or invalid `..` tar paths during packaging
+- Updated release validation, pack checks, install smoke checks, and published-version verification for the umbrella-only publish flow
+- Corrected README, getting-started, package docs, and release docs so they describe one package with subpath exports instead of multiple public npm packages
+
 ## 0.18.3
 
 - Extracted the reusable transport/event seams from `goodvibes-tui` source first, then synced them into SDK packages

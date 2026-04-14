@@ -1,11 +1,13 @@
 # @pellux/goodvibes-errors
 
-Structured GoodVibes SDK error types.
+Internal workspace package backing `@pellux/goodvibes-sdk/errors`.
 
-Install:
+Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
 
-```bash
-npm install @pellux/goodvibes-errors
+Consumer import:
+
+```ts
+import { HttpStatusError } from '@pellux/goodvibes-sdk/errors';
 ```
 
 Use this package when you need to branch on:
@@ -19,7 +21,7 @@ Use this package when you need to branch on:
 Example:
 
 ```ts
-import { HttpStatusError } from '@pellux/goodvibes-errors';
+import { HttpStatusError } from '@pellux/goodvibes-sdk/errors';
 
 try {
   // integration code

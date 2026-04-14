@@ -1,12 +1,8 @@
 # @pellux/goodvibes-transport-http
 
-HTTP, JSON, path, and SSE helpers for GoodVibes SDK clients.
+Internal workspace package backing `@pellux/goodvibes-sdk/transport-http`.
 
-Install:
-
-```bash
-npm install @pellux/goodvibes-transport-http
-```
+Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
 
 Exports include:
 - contract route invocation helpers
@@ -15,4 +11,4 @@ Exports include:
 - retry/backoff helpers
 - SSE streaming helpers
 
-Use this package when you need lower-level HTTP/SSE control or when you are building a custom GoodVibes client on top of the synced contracts.
+Use this surface when you need lower-level HTTP/SSE control or when you are building a custom GoodVibes client on top of the synced contracts.

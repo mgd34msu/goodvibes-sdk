@@ -6,7 +6,9 @@ import {
   cleanupStage,
   collectTarballs,
   inspectPackedManifest,
+  listPackedFiles,
   packStage,
+  readPackedText,
   stagePackages,
 } from './release-shared.mjs';
 
@@ -24,15 +26,53 @@ function assertNoWorkspaceRanges(manifest, label) {
   }
 }
 
-const { tempRoot, stages } = stagePackages();
+const forbiddenSpecifiers = [
+  '@pellux/goodvibes-contracts',
+  '@pellux/goodvibes-daemon-sdk',
+  '@pellux/goodvibes-errors',
+  '@pellux/goodvibes-operator-sdk',
+  '@pellux/goodvibes-peer-sdk',
+  '@pellux/goodvibes-transport-core',
+  '@pellux/goodvibes-transport-direct',
+  '@pellux/goodvibes-transport-http',
+  '@pellux/goodvibes-transport-realtime',
+];
+
+function assertFlatPackageLayout(tarball, files) {
+  const leakedEntries = files.filter((file) => file.startsWith('package/node_modules/'));
+  if (leakedEntries.length > 0) {
+    throw new Error(`${tarball} contains nested node_modules entries: ${leakedEntries.slice(0, 5).join(', ')}`);
+  }
+}
+
+function assertNoLeakedInternalImports(tarball, files) {
+  const distFiles = files.filter(
+    (file) => file.startsWith('package/dist/') && (file.endsWith('.js') || file.endsWith('.d.ts')),
+  );
+  for (const file of distFiles) {
+    const content = readPackedText(tarball, file);
+    for (const specifier of forbiddenSpecifiers) {
+      if (content.includes(specifier)) {
+        throw new Error(`${tarball} still references internal workspace specifier ${specifier} in ${file}`);
+      }
+    }
+  }
+}
+
+const { tempRoot, publicStages } = stagePackages();
 
 try {
   const packDestination = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-pack-'));
-  const packResults = stages.map((stage) => packStage(stage.stageDir, packDestination));
+  const packResults = publicStages
+    .filter((stage) => stage.dir === 'packages/sdk')
+    .map((stage) => packStage(stage.stageDir, packDestination));
   const tarballs = collectTarballs(packResults, packDestination);
   tarballs.forEach((tarball) => {
     const manifest = inspectPackedManifest(resolve(tarball));
     assertNoWorkspaceRanges(manifest, tarball);
+    const files = listPackedFiles(resolve(tarball));
+    assertFlatPackageLayout(tarball, files);
+    assertNoLeakedInternalImports(tarball, files);
   });
   console.log('pack check passed');
 } finally {

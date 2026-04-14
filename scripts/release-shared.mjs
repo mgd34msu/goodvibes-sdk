@@ -20,6 +20,10 @@ export const packageDirs = [
   'packages/sdk',
 ];
 
+export const publicPackageDirs = [
+  'packages/sdk',
+];
+
 export function getRootPackage() {
   return JSON.parse(readFileSync(resolve(SDK_ROOT, 'package.json'), 'utf8'));
 }
@@ -42,6 +46,24 @@ export function getPackageJsonPath(dir) {
 
 export function readPackage(dir) {
   return readJson(getPackageJsonPath(dir));
+}
+
+export function getPublicPackageNameOverride() {
+  const value = process.env.GOODVIBES_PUBLIC_PACKAGE_NAME?.trim();
+  return value ? value : null;
+}
+
+export function getPublishRegistryOverride() {
+  const value = process.env.GOODVIBES_PUBLISH_REGISTRY?.trim();
+  return value ? value.replace(/\/+$/, '') : null;
+}
+
+export function isPublicPackageDir(dir) {
+  return publicPackageDirs.includes(dir);
+}
+
+function shouldCopyPath(path) {
+  return !path.split('/').includes('node_modules');
 }
 
 function normalizeDependencyGroup(group, rootVersion) {
@@ -82,48 +104,84 @@ export function normalizeManifest(pkg, rootVersion = getRootVersion()) {
 
 export function stagePackages() {
   const rootVersion = getRootVersion();
+  const publicPackageNameOverride = getPublicPackageNameOverride();
   const tempRoot = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-release-'));
   const stages = [];
   for (const dir of packageDirs) {
     const sourceDir = getPackageDirectoryPath(dir);
     const stageDir = resolve(tempRoot, dir);
-    cpSync(sourceDir, stageDir, { recursive: true });
+    cpSync(sourceDir, stageDir, { recursive: true, filter: shouldCopyPath });
     const manifest = normalizeManifest(readPackage(dir), rootVersion);
+    if (dir === 'packages/sdk' && publicPackageNameOverride) {
+      manifest.name = publicPackageNameOverride;
+    }
     writeFileSync(resolve(stageDir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
     stages.push({ dir, sourceDir, stageDir, manifest });
   }
-  return { tempRoot, stages };
+  const publicStages = stages.filter((stage) => publicPackageDirs.includes(stage.dir));
+  return { tempRoot, stages, publicStages };
 }
 
 export function cleanupStage(tempRoot) {
   rmSync(tempRoot, { recursive: true, force: true });
 }
 
-export function getAuthToken() {
+function getRegistryHost(registryUrl) {
+  const normalized = (registryUrl || 'https://registry.npmjs.org').replace(/\/+$/, '');
+  return new URL(normalized).host;
+}
+
+export function getAuthToken(registryUrl = 'https://registry.npmjs.org') {
+  const host = getRegistryHost(registryUrl);
+  if (host === 'npm.pkg.github.com') {
+    return process.env.GITHUB_PACKAGES_TOKEN
+      || process.env.GH_PACKAGES_TOKEN
+      || process.env.GITHUB_TOKEN
+      || process.env.NODE_AUTH_TOKEN
+      || process.env.NPM_TOKEN
+      || null;
+  }
   return process.env.NODE_AUTH_TOKEN || process.env.NPM_TOKEN || null;
 }
 
-export function createAuthEnv(extraEnv = {}) {
+function getPackageScope(packageName) {
+  if (typeof packageName !== 'string' || !packageName.startsWith('@')) {
+    return null;
+  }
+  const slashIndex = packageName.indexOf('/');
+  return slashIndex > 1 ? packageName.slice(0, slashIndex) : null;
+}
+
+export function createAuthEnv(extraEnv = {}, options = {}) {
   const env = { ...process.env, ...extraEnv };
-  const token = getAuthToken();
+  const registry = options.registry || 'https://registry.npmjs.org';
+  const token = getAuthToken(registry);
   if (!token) {
     return env;
   }
+  const registryHost = getRegistryHost(registry);
   const userConfigPath = resolve(
     mkdtempSync(join(tmpdir(), 'goodvibes-sdk-npmrc-')),
     '.npmrc',
   );
-  writeFileSync(
-    userConfigPath,
-    `//registry.npmjs.org/:_authToken=${token}\n`,
-  );
+  const npmrcLines = [`//${registryHost}/:_authToken=${token}`];
+  const scope = getPackageScope(options.packageName);
+  if (scope && registryHost !== 'registry.npmjs.org') {
+    npmrcLines.push(`${scope}:registry=${registry}`);
+  }
+  writeFileSync(userConfigPath, `${npmrcLines.join('\n')}\n`);
   env.NODE_AUTH_TOKEN = token;
   env.NPM_CONFIG_USERCONFIG = userConfigPath;
   return env;
 }
 
 export function run(command, args, cwd, options = {}) {
-  const env = options.auth ? createAuthEnv(options.env) : { ...process.env, ...options.env };
+  const env = options.auth
+    ? createAuthEnv(options.env, {
+      registry: options.registry,
+      packageName: options.packageName,
+    })
+    : { ...process.env, ...options.env };
   return execFileSync(command, args, {
     cwd,
     env,
@@ -146,9 +204,29 @@ export function inspectPackedManifest(tarballPath) {
   return JSON.parse(
     execFileSync('tar', ['-xOf', tarballPath, 'package/package.json'], {
       encoding: 'utf8',
+      maxBuffer: 32 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'inherit'],
     }),
   );
+}
+
+export function listPackedFiles(tarballPath) {
+  return execFileSync('tar', ['-tf', tarballPath], {
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+export function readPackedText(tarballPath, entryPath) {
+  return execFileSync('tar', ['-xOf', tarballPath, entryPath], {
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
 }
 
 export function collectTarballs(packResults, packDestination) {

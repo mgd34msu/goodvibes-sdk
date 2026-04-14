@@ -1,21 +1,30 @@
-import { getRootVersion, packageDirs, readPackage, run } from './release-shared.mjs';
+import {
+  getPublicPackageNameOverride,
+  getPublishRegistryOverride,
+  getRootVersion,
+  readPackage,
+  run,
+} from './release-shared.mjs';
 
 const version = process.argv[2] || getRootVersion();
+const pkg = readPackage('packages/sdk');
+const packageName = getPublicPackageNameOverride() || pkg.name;
+const registry = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
-for (const dir of packageDirs) {
-  const pkg = readPackage(dir);
-  const publishedVersion = run(
-    'npm',
-    ['view', `${pkg.name}@${version}`, 'version'],
-    process.cwd(),
-    {
-      auth: true,
-      stdio: 'pipe',
-    },
-  ).trim();
-  if (publishedVersion !== version) {
-    throw new Error(`Expected ${pkg.name}@${version}, got ${publishedVersion || 'missing'}`);
-  }
+const publishedVersion = run(
+  'npm',
+  ['view', `${packageName}@${version}`, 'version', '--registry', registry],
+  process.cwd(),
+  {
+    auth: true,
+    registry,
+    packageName,
+    stdio: 'pipe',
+  },
+).trim();
+
+if (publishedVersion !== version) {
+  throw new Error(`Expected ${packageName}@${version} in ${registry}, got ${publishedVersion || 'missing'}`);
 }
 
-console.log(`registry verification passed for ${version}`);
+console.log(`registry verification passed for ${packageName}@${version} in ${registry}`);

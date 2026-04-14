@@ -5,7 +5,7 @@ All public client packages normalize transport failures into structured SDK erro
 ## Example
 
 ```ts
-import { HttpStatusError } from '@pellux/goodvibes-errors';
+import { HttpStatusError } from '@pellux/goodvibes-sdk/errors';
 
 try {
   await sdk.operator.accounts.snapshot();
@@ -40,7 +40,7 @@ Do not parse `message` strings when the structured fields are available.
 ## Typical handling pattern
 
 ```ts
-import { HttpStatusError } from '@pellux/goodvibes-errors';
+import { HttpStatusError } from '@pellux/goodvibes-sdk/errors';
 
 try {
   await sdk.operator.control.snapshot();

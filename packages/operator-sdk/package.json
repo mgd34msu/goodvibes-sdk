@@ -1,6 +1,7 @@
 {
   "name": "@pellux/goodvibes-operator-sdk",
-  "version": "0.18.3",
+  "private": true,
+  "version": "0.18.6",
   "description": "Contract-driven HTTP client for the GoodVibes operator and control-plane APIs.",
   "type": "module",
   "main": "./dist/index.js",

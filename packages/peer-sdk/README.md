@@ -1,15 +1,11 @@
 # @pellux/goodvibes-peer-sdk
 
-HTTP client for the GoodVibes peer and distributed-runtime APIs.
+Internal workspace package backing `@pellux/goodvibes-sdk/peer`.
 
-Install:
-
-```bash
-npm install @pellux/goodvibes-peer-sdk
-```
+Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
 
 ```ts
-import { createPeerSdk } from '@pellux/goodvibes-peer-sdk';
+import { createPeerSdk } from '@pellux/goodvibes-sdk/peer';
 
 const peer = createPeerSdk({
   baseUrl: 'http://127.0.0.1:3210',
@@ -19,4 +15,4 @@ const peer = createPeerSdk({
 const work = await peer.work.pull();
 ```
 
-Use this package for pairing, heartbeat, work pull, and work completion flows without pulling in the broader umbrella SDK.
+Use this surface for pairing, heartbeat, work pull, and work completion flows without pulling in the broader umbrella SDK.

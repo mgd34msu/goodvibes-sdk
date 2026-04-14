@@ -8,8 +8,11 @@ Install:
 npm install @pellux/goodvibes-sdk
 ```
 
+This is one package with subpath exports.
+
 Entry points:
 - `@pellux/goodvibes-sdk`
+- `@pellux/goodvibes-sdk/auth`
 - `@pellux/goodvibes-sdk/node`
 - `@pellux/goodvibes-sdk/browser`
 - `@pellux/goodvibes-sdk/web`

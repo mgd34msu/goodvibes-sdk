@@ -27,21 +27,21 @@ Android and iOS companion apps can still use the same platform contracts directl
 ## Runtime-neutral packages
 
 These are intended to be safe for Node, browser, and mobile bundlers:
-- `@pellux/goodvibes-contracts`
-- `@pellux/goodvibes-errors`
-- `@pellux/goodvibes-operator-sdk`
-- `@pellux/goodvibes-peer-sdk`
+- `@pellux/goodvibes-sdk/contracts`
+- `@pellux/goodvibes-sdk/errors`
+- `@pellux/goodvibes-sdk/operator`
+- `@pellux/goodvibes-sdk/peer`
 - `@pellux/goodvibes-sdk`
-- `@pellux/goodvibes-transport-core`
-- `@pellux/goodvibes-transport-http`
-- `@pellux/goodvibes-transport-realtime`
+- `@pellux/goodvibes-sdk/transport-core`
+- `@pellux/goodvibes-sdk/transport-http`
+- `@pellux/goodvibes-sdk/transport-realtime`
 
 Node-only helper:
-- `@pellux/goodvibes-contracts/node`
+- `@pellux/goodvibes-sdk/contracts/node`
 
 ## Version alignment
 
-Current SDK version: `0.18.3`
+Current SDK version: `0.18.6`
 
 The workspace currently tracks the product/foundation version directly. Keep SDK and `goodvibes-tui` versions aligned unless and until a separate compatibility policy is introduced.
 

@@ -1,19 +1,15 @@
 # @pellux/goodvibes-transport-direct
 
-In-process direct client transport shell for embedding GoodVibes operator and peer clients.
+Internal workspace package backing `@pellux/goodvibes-sdk/transport-direct`.
 
-Install:
+Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
 
-```bash
-npm install @pellux/goodvibes-transport-direct
-```
-
-Example:
+Consumer import:
 
 ```ts
-import { createDirectClientTransport } from '@pellux/goodvibes-transport-direct';
+import { createDirectClientTransport } from '@pellux/goodvibes-sdk/transport-direct';
 
 const transport = createDirectClientTransport(localOperator, localPeer);
 ```
 
-Use this package when operator and peer surfaces are already available in-process and you want a typed direct transport wrapper instead of HTTP.
+Use this surface when operator and peer surfaces are already available in-process and you want a typed direct transport wrapper instead of HTTP.

@@ -1,24 +1,20 @@
 # @pellux/goodvibes-transport-realtime
 
-Realtime event-domain connectors for GoodVibes SSE and WebSocket integrations.
+Internal workspace package backing `@pellux/goodvibes-sdk/transport-realtime`.
 
-Install:
+Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
 
-```bash
-npm install @pellux/goodvibes-transport-realtime
-```
-
-Example:
+Consumer import:
 
 ```ts
 import {
   createEventSourceConnector,
   createRemoteRuntimeEvents,
-} from '@pellux/goodvibes-transport-realtime';
+} from '@pellux/goodvibes-sdk/transport-realtime';
 
 const events = createRemoteRuntimeEvents(
   createEventSourceConnector('https://goodvibes.example.com', 'token', fetch),
 );
 ```
 
-Use this package when you want runtime-event subscriptions without pulling in the full umbrella SDK.
+Use this surface when you want runtime-event subscriptions without pulling in the full umbrella SDK.

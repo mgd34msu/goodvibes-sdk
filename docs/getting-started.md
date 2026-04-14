@@ -6,23 +6,26 @@
 npm install @pellux/goodvibes-sdk
 ```
 
-Or install only the surfaces you need:
+This installs one package. Import only the entrypoints you need:
 
-```bash
-npm install @pellux/goodvibes-operator-sdk @pellux/goodvibes-transport-realtime
+```ts
+import { createOperatorSdk } from '@pellux/goodvibes-sdk/operator';
+import { createRemoteRuntimeEvents } from '@pellux/goodvibes-sdk/transport-realtime';
 ```
 
-## Choose the right package
+## Choose the right entrypoint
 
 - `@pellux/goodvibes-sdk`
-  Use this unless you already know you only want a lower-level package.
-- `@pellux/goodvibes-operator-sdk`
+  Use this unless you already know you only want a narrower entrypoint.
+- `@pellux/goodvibes-sdk/auth`
+  Use this when you only need token storage helpers or auth flows layered over an existing operator client.
+- `@pellux/goodvibes-sdk/operator`
   Use this when you only need operator/control-plane APIs.
-- `@pellux/goodvibes-peer-sdk`
+- `@pellux/goodvibes-sdk/peer`
   Use this when you only need peer/distributed-runtime APIs.
-- `@pellux/goodvibes-daemon-sdk`
+- `@pellux/goodvibes-sdk/daemon`
   Use this when you are hosting reusable GoodVibes daemon routes inside another server.
-- `@pellux/goodvibes-transport-*`
+- `@pellux/goodvibes-sdk/transport-*`
   Use these only when you need low-level transport composition.
 
 ## First client
@@ -42,7 +45,7 @@ const status = await sdk.operator.control.status();
 
 ```ts
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
-import { createMemoryTokenStore } from '@pellux/goodvibes-sdk';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',

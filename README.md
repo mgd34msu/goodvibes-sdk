@@ -3,7 +3,7 @@
 TypeScript SDK workspace for GoodVibes operator, peer, transport, realtime, contract, and daemon integration surfaces.
 
 Current foundation source:
-- SDK version: `0.18.3`
+- SDK version: `0.18.6`
 - Product version: `0.18.2`
 - Operator methods: `213`
 - Operator events: `29`
@@ -23,35 +23,51 @@ This repo does **not** try to run the full GoodVibes platform on mobile devices.
 
 ## Install
 
+This is one npm package with subpath exports.
+
 ```bash
 npm install @pellux/goodvibes-sdk
 ```
 
-Or install only the lower-level packages you need:
+Alternate registry:
+- npmjs primary package: `@pellux/goodvibes-sdk`
+- GitHub Packages mirror: `@mgd34msu/goodvibes-sdk`
 
-```bash
-npm install @pellux/goodvibes-operator-sdk @pellux/goodvibes-transport-realtime
+GitHub Packages install requires scoped registry mapping:
+
+```ini
+@mgd34msu:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
-## Packages
+Then import only the subpath entrypoints you need:
 
-- `@pellux/goodvibes-contracts`
+```ts
+import { createOperatorSdk } from '@pellux/goodvibes-sdk/operator';
+import { createRemoteRuntimeEvents } from '@pellux/goodvibes-sdk/transport-realtime';
+```
+
+## Entry Points
+
+- `@pellux/goodvibes-sdk/contracts`
   Runtime-neutral contract artifacts, ids, and generated typed method/endpoint/event maps.
-- `@pellux/goodvibes-errors`
+- `@pellux/goodvibes-sdk/auth`
+  Token storage helpers plus login/current-auth flows layered over the operator client.
+- `@pellux/goodvibes-sdk/errors`
   Structured SDK, transport, and daemon error types.
-- `@pellux/goodvibes-daemon-sdk`
+- `@pellux/goodvibes-sdk/daemon`
   Embeddable daemon route contracts, handler builders, and dispatchers for server hosts.
-- `@pellux/goodvibes-transport-core`
+- `@pellux/goodvibes-sdk/transport-core`
   Shared transport/event-feed primitives.
-- `@pellux/goodvibes-transport-direct`
+- `@pellux/goodvibes-sdk/transport-direct`
   In-process direct transport shell for embedded/local integration.
-- `@pellux/goodvibes-transport-http`
+- `@pellux/goodvibes-sdk/transport-http`
   HTTP, JSON, path, auth, retry, and SSE primitives.
-- `@pellux/goodvibes-transport-realtime`
+- `@pellux/goodvibes-sdk/transport-realtime`
   Runtime-event connectors over SSE and WebSocket.
-- `@pellux/goodvibes-operator-sdk`
+- `@pellux/goodvibes-sdk/operator`
   Contract-driven operator/control-plane client.
-- `@pellux/goodvibes-peer-sdk`
+- `@pellux/goodvibes-sdk/peer`
   Contract-driven peer/distributed-runtime client.
 - `@pellux/goodvibes-sdk`
   Umbrella SDK plus runtime-specific helpers for Node, browser/web UI, React Native, and Expo.
@@ -79,10 +95,11 @@ Prerequisite: you already have a reachable GoodVibes daemon/operator endpoint. T
 
 ```ts
 import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createNodeGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
-  authToken: process.env.GOODVIBES_TOKEN ?? null,
+  tokenStore: createMemoryTokenStore(process.env.GOODVIBES_TOKEN ?? null),
 });
 
 const snapshot = await sdk.operator.control.snapshot();
@@ -174,14 +191,17 @@ The transport layers support:
 
 ## Contracts
 
-The default `@pellux/goodvibes-contracts` entry is runtime-neutral and safe for Node, browser, and mobile builds.
+The default `@pellux/goodvibes-sdk/contracts` entry is runtime-neutral and safe for Node, browser, and mobile builds.
 
 Raw JSON artifacts are still exported:
-- `@pellux/goodvibes-contracts/operator-contract.json`
-- `@pellux/goodvibes-contracts/peer-contract.json`
+- `@pellux/goodvibes-sdk/contracts/operator-contract.json`
+- `@pellux/goodvibes-sdk/contracts/peer-contract.json`
 
 Node-only artifact-path helpers are available from:
-- `@pellux/goodvibes-contracts/node`
+- `@pellux/goodvibes-sdk/contracts/node`
+
+Auth helpers are also available as a narrow subpath:
+- `@pellux/goodvibes-sdk/auth`
 
 ## Docs
 
