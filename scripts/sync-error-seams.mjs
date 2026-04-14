@@ -1,10 +1,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveTuiRoot } from './source-root.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
-const TUI_ROOT = '/home/buzzkill/Projects/goodvibes-tui';
+const TUI_ROOT = resolveTuiRoot({ required: true });
 const CHECK_ONLY = process.argv.includes('--check');
 
 function ensureDir(path) {

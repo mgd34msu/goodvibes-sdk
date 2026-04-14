@@ -2,18 +2,16 @@
 
 The SDK repo validates more than TypeScript build success.
 
-## Main Command
+## Portable Validation
 
 ```bash
 bun run validate
 ```
 
-## What It Checks
+This is the command CI runs. It does **not** require a local `goodvibes-tui` checkout.
 
-- contract sync
-- transport seam sync
-- error seam sync
-- daemon seam sync
+## Portable Checks
+
 - generated API docs sync
 - docs/examples completeness
 - TypeScript build
@@ -22,6 +20,18 @@ bun run validate
 - package metadata quality
 - SDK tests
 - package packability
+
+## Source-Sync Validation
+
+When you changed a shared seam in `goodvibes-tui`, also run:
+
+```bash
+bun run validate:source
+```
+
+This checks that the extracted SDK surfaces are still in sync with the source repo. It requires either:
+- `GOODVIBES_TUI_ROOT=/path/to/goodvibes-tui`
+- or a sibling checkout at `../goodvibes-tui`
 
 ## Why This Matters
 
@@ -37,6 +47,7 @@ The SDK is downstream of `goodvibes-tui`. Validation has to catch:
 If a shared platform seam changes:
 1. validate in `goodvibes-tui`
 2. sync the seam into this repo
-3. rerun `bun run validate`
+3. run `bun run validate:source`
+4. rerun `bun run validate`
 
 That keeps the SDK aligned with the actual platform behavior.

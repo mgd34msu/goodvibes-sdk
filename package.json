@@ -35,6 +35,7 @@
     "build": "bun x tsc -b",
     "types:check": "bun x tsc --project tsconfig.type-tests.json",
     "test": "bun test test",
+    "validate:source": "node scripts/validate-source.mjs",
     "check:browser": "node scripts/browser-compat-check.mjs",
     "check:metadata": "node scripts/package-metadata-check.mjs",
     "pack:check": "node scripts/pack-check.mjs",

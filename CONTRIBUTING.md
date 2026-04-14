@@ -43,11 +43,21 @@ Sync from `goodvibes-tui`:
 bun run sync
 ```
 
-Validate:
+Portable SDK validation:
 
 ```bash
 bun run validate
 ```
+
+Source-sync validation against `goodvibes-tui`:
+
+```bash
+bun run validate:source
+```
+
+`validate:source` requires either:
+- `GOODVIBES_TUI_ROOT=/path/to/goodvibes-tui`
+- or a sibling checkout at `../goodvibes-tui`
 
 ## Pull Request Standard
 
@@ -56,5 +66,6 @@ Before opening or merging changes:
 - update docs/examples when public behavior changes
 - keep package README files accurate
 - run `bun run validate`
+- run `bun run validate:source` when shared source-first seams changed
 
 If the change required a source-first adjustment in `goodvibes-tui`, link or describe that source change clearly.

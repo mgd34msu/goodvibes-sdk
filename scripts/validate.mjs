@@ -12,10 +12,6 @@ function run(cmd) {
   });
 }
 
-run('node scripts/sync-contract-artifacts.mjs --check');
-run('node scripts/sync-transport-seams.mjs --check');
-run('node scripts/sync-error-seams.mjs --check');
-run('node scripts/sync-daemon-seams.mjs --check');
 run('node scripts/generate-api-docs.mjs --check');
 run('node scripts/docs-completeness-check.mjs');
 run('bun run build');

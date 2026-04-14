@@ -35,15 +35,20 @@ npm install @goodvibes/operator-sdk @goodvibes/transport-realtime
 Workspace contributors should still use Bun for validation:
 
 ```bash
-bun run sync
 bun run validate
 ```
 
+When you are changing synced platform seams from `goodvibes-tui`, also run:
+
+```bash
+bun run validate:source
+```
+
+`validate:source` requires either:
+- `GOODVIBES_TUI_ROOT=/path/to/goodvibes-tui`
+- or a sibling checkout at `../goodvibes-tui`
+
 `validate` checks:
-- synced contracts
-- synced transport seams
-- synced error seams
-- synced daemon seams
 - generated API references
 - docs and examples completeness
 - TypeScript build
@@ -250,9 +255,11 @@ Node-only artifact-path helpers are available from:
 ## Source of truth
 
 The contract artifacts are synced from:
-- `/home/buzzkill/Projects/goodvibes-tui/docs/foundation-artifacts`
+- `GOODVIBES_TUI_ROOT/docs/foundation-artifacts`
+- or `../goodvibes-tui/docs/foundation-artifacts`
 
 The transport, error, and daemon seams are synced from:
-- `/home/buzzkill/Projects/goodvibes-tui/src`
+- `GOODVIBES_TUI_ROOT/src`
+- or `../goodvibes-tui/src`
 
 Shared platform seams are changed in `goodvibes-tui` first, then synced into this repo. SDK-only docs, examples, packaging, and publish automation are maintained here.

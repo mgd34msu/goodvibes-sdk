@@ -8,17 +8,19 @@ Run:
 
 ```bash
 bun run validate
+bun run validate:source
 bun run release:dry-run
 ```
 
 `validate` ensures:
-- synced source seams are up to date
 - generated API docs are up to date
 - docs/examples are complete
 - TypeScript build passes
 - type-level usage checks pass
 - tests pass
 - every package can be packed cleanly
+
+`validate:source` is the local source-sync check against `goodvibes-tui`. It is intended for contributors who are updating extracted seams, not for standalone CI environments.
 
 ## Publishing
 
