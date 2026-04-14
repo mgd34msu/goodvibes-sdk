@@ -2,6 +2,7 @@
 import type { DaemonApiRouteHandlers } from './context.js';
 import type { RuntimeEventDomain } from '@goodvibes/contracts';
 import type { AuthenticatedPrincipal } from './http-policy.js';
+import { serializableJsonResponse } from './route-helpers.js';
 
 interface GatewayMethodDescriptorLike {
   readonly dangerous?: boolean;
@@ -116,7 +117,7 @@ export function createDaemonControlRouteHandlers(
       return Response.json(snapshot);
     },
     getControlPlaneSnapshot: () => Response.json(context.controlPlaneGateway.getSnapshot()),
-    getOperatorContract: () => Response.json({ contract: context.getOperatorContract() }),
+    getOperatorContract: () => serializableJsonResponse({ contract: context.getOperatorContract() }),
     getControlPlaneWeb: () => context.controlPlaneGateway.renderWebUi(),
     getControlPlaneRecentEvents: (limit) => Response.json({ events: context.controlPlaneGateway.listRecentEvents(limit) }),
     getControlPlaneMessages: () => Response.json({ messages: context.controlPlaneGateway.listSurfaceMessages() }),
@@ -124,7 +125,7 @@ export function createDaemonControlRouteHandlers(
     getGatewayMethods: (url) => {
       const category = url.searchParams.get('category') ?? undefined;
       const source = url.searchParams.get('source');
-      return Response.json({
+      return serializableJsonResponse({
         methods: context.gatewayMethods.list({
           ...(category ? { category } : {}),
           ...(source === 'builtin' || source === 'plugin' ? { source } : {}),
@@ -135,7 +136,7 @@ export function createDaemonControlRouteHandlers(
       const category = url.searchParams.get('category') ?? undefined;
       const source = url.searchParams.get('source');
       const domain = url.searchParams.get('domain') ?? undefined;
-      return Response.json({
+      return serializableJsonResponse({
         events: context.gatewayMethods.listEvents({
           ...(category ? { category } : {}),
           ...(source === 'builtin' || source === 'plugin' ? { source } : {}),
@@ -146,7 +147,7 @@ export function createDaemonControlRouteHandlers(
     getGatewayMethod: (methodId) => {
       const method = context.gatewayMethods.get(methodId);
       return method
-        ? Response.json({ method })
+        ? serializableJsonResponse({ method })
         : Response.json({ error: 'Unknown gateway method' }, { status: 404 });
     },
     invokeGatewayMethod: async (methodId, req) => {

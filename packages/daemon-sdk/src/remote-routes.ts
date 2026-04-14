@@ -1,6 +1,7 @@
 // Synced from goodvibes-tui/src/daemon/http/remote-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { jsonErrorResponse } from './error-response.js';
+import { serializableJsonResponse } from './route-helpers.js';
 
 type JsonBody = Record<string, unknown>;
 type RemotePeerAuth = unknown;
@@ -64,7 +65,7 @@ export function createDaemonRemoteRouteHandlers(
     getRemoteWork: () => Response.json({ work: context.distributedRuntime.listWork() }),
     invokeRemotePeer: async (peerId, request) => handleInvokeRemotePeer(context, peerId, request),
     cancelRemoteWork: async (workId, request) => handleCancelRemoteWork(context, workId, request),
-    getRemoteNodeHostContract: () => Response.json({ contract: context.distributedRuntime.getNodeHostContract() }),
+    getRemoteNodeHostContract: () => serializableJsonResponse({ contract: context.distributedRuntime.getNodeHostContract() }),
   };
 }
 

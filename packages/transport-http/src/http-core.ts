@@ -73,6 +73,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function applyHeaderSource(
+  target: Record<string, string>,
+  source: HeadersInit | undefined,
+): void {
+  if (!source) return;
+  if (source instanceof Headers) {
+    source.forEach((value, key) => {
+      target[key] = value;
+    });
+    return;
+  }
+  if (Array.isArray(source)) {
+    for (const [key, value] of source) {
+      target[key] = value;
+    }
+    return;
+  }
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined) {
+      target[key] = value;
+    }
+  }
+}
+
+function mergeHeaderRecord(...sources: Array<HeadersInit | undefined>): Record<string, string> {
+  const merged: Record<string, string> = {};
+  for (const source of sources) {
+    applyHeaderSource(merged, source);
+  }
+  return merged;
+}
+
 function readErrorMessage(status: number, url: string, body: unknown): string {
   if (isRecord(body) && typeof body.error === 'string' && body.error.trim()) {
     return body.error.trim();
@@ -169,7 +201,7 @@ export function createJsonRequestInit(
     method,
     credentials: 'include',
     signal,
-    headers: mergeHeaders(
+    headers: mergeHeaderRecord(
       defaultHeaders,
       token ? { Authorization: `Bearer ${token}` } : undefined,
       body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
