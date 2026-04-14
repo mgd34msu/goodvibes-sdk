@@ -1,0 +1,41 @@
+{
+  "name": "@goodvibes/transport-direct",
+  "version": "0.18.2",
+  "description": "In-process direct client transport shell for embedding GoodVibes operator and peer clients.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mgd34msu/goodvibes-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mgd34msu/goodvibes-sdk/issues"
+  },
+  "homepage": "https://github.com/mgd34msu/goodvibes-sdk",
+  "keywords": [
+    "goodvibes",
+    "sdk",
+    "direct",
+    "transport",
+    "embedding"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@goodvibes/transport-core": "workspace:*"
+  }
+}

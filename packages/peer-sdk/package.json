@@ -1,0 +1,43 @@
+{
+  "name": "@goodvibes/peer-sdk",
+  "version": "0.18.2",
+  "description": "HTTP client for GoodVibes distributed-runtime peer APIs and work exchange flows.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mgd34msu/goodvibes-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mgd34msu/goodvibes-sdk/issues"
+  },
+  "homepage": "https://github.com/mgd34msu/goodvibes-sdk",
+  "keywords": [
+    "goodvibes",
+    "sdk",
+    "peer",
+    "distributed-runtime",
+    "client"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@goodvibes/contracts": "workspace:*",
+    "@goodvibes/errors": "workspace:*",
+    "@goodvibes/transport-http": "workspace:*"
+  }
+}

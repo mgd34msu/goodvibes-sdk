@@ -1,0 +1,45 @@
+{
+  "name": "@goodvibes/contracts",
+  "version": "0.18.2",
+  "description": "Runtime-neutral GoodVibes operator and peer contract artifacts, generated ids, and lookup helpers.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./operator-contract.json": "./artifacts/operator-contract.json",
+    "./peer-contract.json": "./artifacts/peer-contract.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "artifacts"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mgd34msu/goodvibes-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mgd34msu/goodvibes-sdk/issues"
+  },
+  "homepage": "https://github.com/mgd34msu/goodvibes-sdk",
+  "keywords": [
+    "goodvibes",
+    "sdk",
+    "contracts",
+    "operator",
+    "peer"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

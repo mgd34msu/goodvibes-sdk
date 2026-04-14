@@ -1,0 +1,39 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../contracts"
+    },
+    {
+      "path": "../errors"
+    },
+    {
+      "path": "../daemon-sdk"
+    },
+    {
+      "path": "../transport-core"
+    },
+    {
+      "path": "../transport-direct"
+    },
+    {
+      "path": "../transport-http"
+    },
+    {
+      "path": "../transport-realtime"
+    },
+    {
+      "path": "../operator-sdk"
+    },
+    {
+      "path": "../peer-sdk"
+    }
+  ]
+}

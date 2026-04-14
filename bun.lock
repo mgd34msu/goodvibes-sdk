@@ -1,0 +1,127 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "goodvibes-sdk",
+      "dependencies": {
+        "@goodvibes/contracts": "workspace:*",
+        "@goodvibes/daemon-sdk": "workspace:*",
+        "@goodvibes/operator-sdk": "workspace:*",
+        "@goodvibes/peer-sdk": "workspace:*",
+        "@goodvibes/sdk": "workspace:*",
+        "@goodvibes/transport-core": "workspace:*",
+        "@goodvibes/transport-direct": "workspace:*",
+        "@goodvibes/transport-http": "workspace:*",
+        "@goodvibes/transport-realtime": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^24.3.0",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/contracts": {
+      "name": "@goodvibes/contracts",
+      "version": "0.18.2",
+    },
+    "packages/daemon-sdk": {
+      "name": "@goodvibes/daemon-sdk",
+      "version": "0.18.2",
+      "dependencies": {
+        "@goodvibes/contracts": "workspace:*",
+        "@goodvibes/errors": "workspace:*",
+      },
+    },
+    "packages/errors": {
+      "name": "@goodvibes/errors",
+      "version": "0.18.2",
+    },
+    "packages/operator-sdk": {
+      "name": "@goodvibes/operator-sdk",
+      "version": "0.18.2",
+      "dependencies": {
+        "@goodvibes/contracts": "workspace:*",
+        "@goodvibes/errors": "workspace:*",
+        "@goodvibes/transport-http": "workspace:*",
+      },
+    },
+    "packages/peer-sdk": {
+      "name": "@goodvibes/peer-sdk",
+      "version": "0.18.2",
+      "dependencies": {
+        "@goodvibes/contracts": "workspace:*",
+        "@goodvibes/errors": "workspace:*",
+        "@goodvibes/transport-http": "workspace:*",
+      },
+    },
+    "packages/sdk": {
+      "name": "@goodvibes/sdk",
+      "version": "0.18.2",
+      "dependencies": {
+        "@goodvibes/contracts": "workspace:*",
+        "@goodvibes/daemon-sdk": "workspace:*",
+        "@goodvibes/errors": "workspace:*",
+        "@goodvibes/operator-sdk": "workspace:*",
+        "@goodvibes/peer-sdk": "workspace:*",
+        "@goodvibes/transport-core": "workspace:*",
+        "@goodvibes/transport-direct": "workspace:*",
+        "@goodvibes/transport-http": "workspace:*",
+        "@goodvibes/transport-realtime": "workspace:*",
+      },
+    },
+    "packages/transport-core": {
+      "name": "@goodvibes/transport-core",
+      "version": "0.18.2",
+    },
+    "packages/transport-direct": {
+      "name": "@goodvibes/transport-direct",
+      "version": "0.18.2",
+      "dependencies": {
+        "@goodvibes/transport-core": "workspace:*",
+      },
+    },
+    "packages/transport-http": {
+      "name": "@goodvibes/transport-http",
+      "version": "0.18.2",
+      "dependencies": {
+        "@goodvibes/errors": "workspace:*",
+      },
+    },
+    "packages/transport-realtime": {
+      "name": "@goodvibes/transport-realtime",
+      "version": "0.18.2",
+      "dependencies": {
+        "@goodvibes/contracts": "workspace:*",
+        "@goodvibes/transport-core": "workspace:*",
+        "@goodvibes/transport-http": "workspace:*",
+      },
+    },
+  },
+  "packages": {
+    "@goodvibes/contracts": ["@goodvibes/contracts@workspace:packages/contracts"],
+
+    "@goodvibes/daemon-sdk": ["@goodvibes/daemon-sdk@workspace:packages/daemon-sdk"],
+
+    "@goodvibes/errors": ["@goodvibes/errors@workspace:packages/errors"],
+
+    "@goodvibes/operator-sdk": ["@goodvibes/operator-sdk@workspace:packages/operator-sdk"],
+
+    "@goodvibes/peer-sdk": ["@goodvibes/peer-sdk@workspace:packages/peer-sdk"],
+
+    "@goodvibes/sdk": ["@goodvibes/sdk@workspace:packages/sdk"],
+
+    "@goodvibes/transport-core": ["@goodvibes/transport-core@workspace:packages/transport-core"],
+
+    "@goodvibes/transport-direct": ["@goodvibes/transport-direct@workspace:packages/transport-direct"],
+
+    "@goodvibes/transport-http": ["@goodvibes/transport-http@workspace:packages/transport-http"],
+
+    "@goodvibes/transport-realtime": ["@goodvibes/transport-realtime@workspace:packages/transport-realtime"],
+
+    "@types/node": ["@types/node@24.12.2", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-A1sre26ke7HDIuY/M23nd9gfB+nrmhtYyMINbjI1zHJxYteKR6qSMX56FsmjMcDb3SMcjJg5BiRRgOCC/yBD0g=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
+  }
+}
