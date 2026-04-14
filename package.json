@@ -1,7 +1,7 @@
 {
   "name": "goodvibes-sdk",
   "private": true,
-  "version": "0.18.7",
+  "version": "0.18.8",
   "type": "module",
   "packageManager": "bun@1.3.10",
   "description": "Cross-runtime GoodVibes SDK workspace for operator, peer, transport, contracts, and daemon integration surfaces.",

@@ -112,6 +112,39 @@ describe('daemon sdk', () => {
     });
   });
 
+  test('builds structured daemon error responses from foreign provider-style errors', async () => {
+    const response = jsonErrorResponse({
+      message: 'inceptionlabs chat request failed 401: token rejected',
+      code: 'PROVIDER_ERROR',
+      recoverable: false,
+      statusCode: 401,
+      category: 'authentication',
+      guidance: 'The provider rejected authentication. Possible causes include invalid or expired credentials, missing account/session state, account restrictions, or the wrong provider/endpoint receiving the request.',
+      source: 'provider',
+      provider: 'inceptionlabs',
+      operation: 'chat',
+      phase: 'request',
+      requestId: 'req-401',
+      providerCode: 'invalid_api_key',
+    }, { status: 400 });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: 'inceptionlabs chat request failed 401: token rejected (code=invalid_api_key, request_id=req-401)',
+      hint: 'The provider rejected authentication. Possible causes include invalid or expired credentials, missing account/session state, account restrictions, or the wrong provider/endpoint receiving the request.',
+      code: 'PROVIDER_ERROR',
+      category: 'authentication',
+      source: 'provider',
+      recoverable: false,
+      status: 401,
+      provider: 'inceptionlabs',
+      operation: 'chat',
+      phase: 'request',
+      requestId: 'req-401',
+      providerCode: 'invalid_api_key',
+    });
+  });
+
   test('exports channel, system, knowledge, and media route builders', async () => {
     const channelHandlers = createDaemonChannelRouteHandlers({
       channelPlugins: {

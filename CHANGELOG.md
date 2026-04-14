@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.8
+
+- Restored daemon error compatibility for foreign provider-style errors so `@pellux/goodvibes-sdk/daemon` preserves structured metadata when hosts pass non-SDK error classes with the same provider fields
+- Added SDK coverage that locks the TUI-facing provider error compatibility path into the published daemon surface
+
 ## 0.18.7
 
 - Restored transport compatibility on normalized HTTP errors by preserving `error.transport` metadata on SDK `HttpStatusError` instances

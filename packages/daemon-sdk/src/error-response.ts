@@ -12,6 +12,25 @@ export interface JsonErrorResponseOptions {
   readonly source?: DaemonErrorSource;
 }
 
+interface StructuredErrorLike {
+  readonly message: string;
+  readonly code?: string;
+  readonly recoverable?: boolean;
+  readonly status?: number;
+  readonly statusCode?: number;
+  readonly hint?: string;
+  readonly guidance?: string;
+  readonly source?: string;
+  readonly category?: string;
+  readonly provider?: string;
+  readonly operation?: string;
+  readonly phase?: string;
+  readonly requestId?: string;
+  readonly providerCode?: string;
+  readonly providerType?: string;
+  readonly retryAfterMs?: number;
+}
+
 const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: DaemonErrorCategory; message: (provider?: string) => string }> = [
   {
     pattern: /ECONNREFUSED/i,
@@ -155,6 +174,24 @@ function getNetworkErrorMessage(message: string, provider?: string): { category:
   return undefined;
 }
 
+function isStructuredErrorLike(error: unknown): error is StructuredErrorLike {
+  return Boolean(
+    error
+    && typeof error === 'object'
+    && typeof (error as { message?: unknown }).message === 'string'
+    && (
+      typeof (error as { code?: unknown }).code === 'string'
+      || typeof (error as { status?: unknown }).status === 'number'
+      || typeof (error as { statusCode?: unknown }).statusCode === 'number'
+      || typeof (error as { guidance?: unknown }).guidance === 'string'
+      || typeof (error as { hint?: unknown }).hint === 'string'
+      || typeof (error as { provider?: unknown }).provider === 'string'
+      || typeof (error as { source?: unknown }).source === 'string'
+      || typeof (error as { category?: unknown }).category === 'string'
+    )
+  );
+}
+
 export function buildErrorResponseBody(
   error: unknown,
   options: JsonErrorResponseOptions = {},
@@ -162,14 +199,22 @@ export function buildErrorResponseBody(
   if (isStructuredDaemonErrorBody(error)) {
     return error;
   }
-  if (error instanceof GoodVibesSdkError) {
-    const network = getNetworkErrorMessage(error.message, error.provider);
-    const category = normalizeCategory(error.category) ?? network?.category ?? inferCategory(error.message, error.status);
-    const hint = error.hint ?? inferHint(category, error.status);
-    const summary = buildSummary(network?.summary ?? error.message, {
-      requestId: error.requestId,
-      providerCode: error.providerCode,
-      phase: error.phase,
+  if (error instanceof GoodVibesSdkError || isStructuredErrorLike(error)) {
+    const status = error instanceof GoodVibesSdkError
+      ? error.status
+      : error.status ?? error.statusCode;
+    const provider = error.provider;
+    const message = error.message;
+    const providerCode = error.providerCode;
+    const phase = error.phase;
+    const requestId = error.requestId;
+    const network = getNetworkErrorMessage(message, provider);
+    const category = normalizeCategory(error.category) ?? network?.category ?? inferCategory(message, status);
+    const hint = (error instanceof GoodVibesSdkError ? error.hint : error.hint ?? error.guidance) ?? inferHint(category, status);
+    const summary = buildSummary(network?.summary ?? message, {
+      requestId,
+      providerCode,
+      phase,
     });
     return {
       error: summary,
@@ -177,13 +222,13 @@ export function buildErrorResponseBody(
       ...(error.code ? { code: error.code } : {}),
       category,
       ...(normalizeSource(error.source) ? { source: normalizeSource(error.source) } : {}),
-      recoverable: error.recoverable,
-      ...(error.status !== undefined ? { status: error.status } : {}),
-      ...(error.provider ? { provider: error.provider } : {}),
+      ...(error.recoverable !== undefined ? { recoverable: error.recoverable } : {}),
+      ...(status !== undefined ? { status } : {}),
+      ...(provider ? { provider } : {}),
       ...(error.operation ? { operation: error.operation } : {}),
-      ...(error.phase ? { phase: error.phase } : {}),
-      ...(error.requestId ? { requestId: error.requestId } : {}),
-      ...(error.providerCode ? { providerCode: error.providerCode } : {}),
+      ...(phase ? { phase } : {}),
+      ...(requestId ? { requestId } : {}),
+      ...(providerCode ? { providerCode } : {}),
       ...(error.providerType ? { providerType: error.providerType } : {}),
       ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
     };

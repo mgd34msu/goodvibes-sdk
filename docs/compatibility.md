@@ -41,7 +41,7 @@ Node-only helper:
 
 ## Version alignment
 
-Current SDK version: `0.18.7`
+Current SDK version: `0.18.8`
 
 The workspace currently tracks the product/foundation version directly. Keep SDK and `goodvibes-tui` versions aligned unless and until a separate compatibility policy is introduced.
 
