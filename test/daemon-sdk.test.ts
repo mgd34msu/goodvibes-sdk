@@ -8,6 +8,7 @@ import {
   dispatchDaemonApiRoutes,
   jsonErrorResponse,
 } from '../packages/daemon-sdk/dist/index.js';
+import { GoodVibesSdkError } from '../packages/errors/dist/index.js';
 
 describe('daemon sdk', () => {
   test('builds control route handlers from injected host services', async () => {
@@ -81,12 +82,33 @@ describe('daemon sdk', () => {
   });
 
   test('builds structured daemon error responses', async () => {
-    const response = jsonErrorResponse(new Error('boom'), { status: 503, source: 'runtime' });
-    expect(response.status).toBe(503);
+    const response = jsonErrorResponse(new GoodVibesSdkError('provider rejected auth', {
+      code: 'PROVIDER_ERROR',
+      category: 'authentication',
+      source: 'provider',
+      recoverable: false,
+      status: 401,
+      hint: 'wrong token',
+      provider: 'inceptionlabs',
+      operation: 'chat',
+      phase: 'request',
+      requestId: 'req-401',
+      providerCode: 'invalid_api_key',
+    }), { status: 400 });
+    expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
-      error: 'boom',
-      source: 'runtime',
-      status: 503,
+      error: 'provider rejected auth (phase=request, code=invalid_api_key, request_id=req-401)',
+      hint: 'wrong token',
+      code: 'PROVIDER_ERROR',
+      category: 'authentication',
+      source: 'provider',
+      recoverable: false,
+      status: 401,
+      provider: 'inceptionlabs',
+      operation: 'chat',
+      phase: 'request',
+      requestId: 'req-401',
+      providerCode: 'invalid_api_key',
     });
   });
 

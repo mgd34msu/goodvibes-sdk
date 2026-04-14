@@ -49,6 +49,16 @@ describe('transport-http', () => {
       status: 401,
       hint: 'wrong token',
       category: 'authentication',
+      transport: {
+        status: 401,
+        url: 'http://127.0.0.1:3210/api/accounts',
+        method: 'GET',
+        body: {
+          error: 'Authentication failed',
+          hint: 'wrong token',
+          category: 'authentication',
+        },
+      },
     });
   });
 

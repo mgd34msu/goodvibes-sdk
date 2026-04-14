@@ -106,12 +106,12 @@ function isTransportError(error: unknown): error is TransportFailure {
 
 export function normalizeTransportError(error: unknown): Error {
   if (isTransportError(error)) {
-    return createHttpStatusError(
+    return Object.assign(createHttpStatusError(
       error.transport.status,
       error.transport.url,
       typeof error.transport.method === 'string' ? error.transport.method : 'GET',
       error.transport.body,
-    );
+    ), { transport: error.transport });
   }
   if (error instanceof Error) {
     if (error.message === 'Fetch implementation is required' || error.message === 'Transport baseUrl is required') {
