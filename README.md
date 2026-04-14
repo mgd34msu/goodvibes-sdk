@@ -3,7 +3,7 @@
 TypeScript SDK workspace for GoodVibes operator, peer, transport, realtime, contract, and daemon integration surfaces.
 
 Current foundation source:
-- SDK version: `0.18.11`
+- SDK version: `0.18.12`
 - Product version: `0.18.2`
 - Operator methods: `213`
 - Operator events: `29`

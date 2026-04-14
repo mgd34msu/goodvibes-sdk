@@ -1,10 +1,17 @@
 # Changelog
 
+## 0.18.12
+
+- Moved the extracted platform runtime behind the umbrella package’s SDK-owned internal source boundary under `packages/sdk/src/_internal/platform` while keeping the public `platform/*` subpath exports intact
+- Added explicit SDK-internal root modules for contracts, daemon, errors, operator, peer, and transport surfaces so the relocated platform runtime no longer depends on the old source-tree depth assumptions
+- Removed the remaining TUI-specific wording from the extracted runtime, security, ACP, session, overlay, profile, and voice modules
+- Eliminated the remaining byte-for-byte TUI carryover in the extracted platform tree and revalidated the standalone SDK with clean build, tests, pack checks, tarball install smoke, and release dry-run
+
 ## 0.18.11
 
-- Removed the remaining SDK repo coupling to `goodvibes-tui`, including the old source-sync workflow and the Bun-run `.mjs` maintenance scripts
+- Removed the remaining source-repo coupling from the SDK workspace, including the old source-sync workflow and the Bun-run `.mjs` maintenance scripts
 - Finished moving the extracted platform runtime into the umbrella package’s local internal tree so the published SDK validates and installs as a standalone product
-- Replaced hardcoded `.goodvibes/tui` storage roots in the extracted platform runtime with SDK-owned `.goodvibes/sdk` paths
+- Replaced the old extracted-app storage root with the SDK-owned `.goodvibes/sdk` runtime path
 - Re-homed the leftover `runtime/ui` slices into platform-neutral runtime namespaces and renamed the old `ui-perf` domain to `surface-perf`
 - Removed the unused `panels` store domain from the extracted platform tree and revalidated the umbrella package with clean build, tests, pack checks, and tarball install smoke
 
