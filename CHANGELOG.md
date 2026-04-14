@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.10
+
+- Fixed the public `@pellux/goodvibes-sdk/transport-http` entrypoint so the low-level `requestJson` helper and `TransportJsonError` type are actually exported from the published package
+- This closes the last public export gap that blocked the TUI from replacing its local JSON transport wrapper with the SDK surface
+
+## 0.18.9
+
+- Exposed the low-level operator and peer remote-client constructors as public SDK entrypoints so host code can compose typed clients from a preconfigured transport without copying the TUI source
+- Exposed the low-level JSON request helper and transport error type from `@pellux/goodvibes-sdk/transport-http` so host code can reuse the SDK transport surface instead of carrying local fetch wrappers
+- Expanded package READMEs for the operator, peer, and transport HTTP surfaces to document the newly public low-level composition APIs
+
 ## 0.18.8
 
 - Restored daemon error compatibility for foreign provider-style errors so `@pellux/goodvibes-sdk/daemon` preserves structured metadata when hosts pass non-SDK error classes with the same provider fields

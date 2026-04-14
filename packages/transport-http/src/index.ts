@@ -17,6 +17,7 @@ export type {
   JsonObject,
   JsonValue,
   ResolvedContractRequest,
+  TransportJsonError,
 } from './http.js';
 export {
   createFetch,
@@ -25,6 +26,7 @@ export {
   createJsonRequestInit,
   normalizeTransportError,
   readJsonBody,
+  requestJson,
 } from './http.js';
 export type { ServerSentEventHandlers, ServerSentEventOptions } from './sse.js';
 export { openServerSentEventStream } from './sse.js';

@@ -20,3 +20,19 @@ const login = await operator.invoke('control.auth.login', {
 ```
 
 Use this surface when you want only the operator/control-plane surface and do not need the umbrella SDK composition layer.
+
+Advanced consumers can also build directly from a preconfigured transport and contract:
+
+```ts
+import { getOperatorContract } from '@pellux/goodvibes-sdk/contracts';
+import { createOperatorRemoteClient } from '@pellux/goodvibes-sdk/operator';
+import { createHttpTransport } from '@pellux/goodvibes-sdk/transport-http';
+
+const transport = createHttpTransport({
+  baseUrl: 'http://127.0.0.1:3210',
+  authToken: process.env.GOODVIBES_TOKEN,
+});
+
+const operator = createOperatorRemoteClient(transport, getOperatorContract());
+const status = await operator.control.status();
+```
