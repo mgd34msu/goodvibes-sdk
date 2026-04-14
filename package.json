@@ -8,7 +8,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mgd34msu/goodvibes-sdk.git"
+    "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
   },
   "bugs": {
     "url": "https://github.com/mgd34msu/goodvibes-sdk/issues"
@@ -39,6 +39,9 @@
     "check:browser": "node scripts/browser-compat-check.mjs",
     "check:metadata": "node scripts/package-metadata-check.mjs",
     "pack:check": "node scripts/pack-check.mjs",
+    "install:smoke": "node scripts/install-smoke-check.mjs",
+    "release:verify": "bun run validate && bun run release:dry-run && bun run install:smoke",
+    "release:verify:published": "node scripts/verify-published-packages.mjs && node scripts/install-smoke-check.mjs --registry",
     "validate": "node scripts/validate.mjs",
     "release:dry-run": "node scripts/publish-packages.mjs --dry-run",
     "release:publish": "node scripts/publish-packages.mjs"

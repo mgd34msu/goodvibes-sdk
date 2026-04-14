@@ -20,3 +20,4 @@ run('node scripts/browser-compat-check.mjs');
 run('node scripts/package-metadata-check.mjs');
 run('bun test test');
 run('bun run pack:check');
+run('bun run install:smoke');

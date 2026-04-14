@@ -14,3 +14,5 @@
 - Added generated operator, peer, and runtime-event API reference docs from the synced contracts
 - Added full SDK docs, per-package READMEs, and environment-specific examples for web UI, Expo, React Native, native Android, native iOS, and daemon embedding
 - Added browser/runtime-neutral compatibility checks, documentation completeness checks, and package metadata/readme validation to the SDK validation pipeline
+- Added portable release automation for npm publishing, staged pack validation, local tarball install smoke checks, and published-registry verification
+- Added a tag-driven GitHub release workflow and release/publishing documentation for the SDK release process

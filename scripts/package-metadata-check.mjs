@@ -46,6 +46,9 @@ for (const dir of packageDirs) {
   if (!pkg.repository || typeof pkg.repository.url !== 'string') {
     throw new Error(`${dir}/package.json is missing repository metadata`);
   }
+  if (!pkg.repository.url.startsWith('git+https://github.com/')) {
+    throw new Error(`${dir}/package.json repository.url must use git+https://github.com/... form`);
+  }
   if (!pkg.bugs || typeof pkg.bugs.url !== 'string') {
     throw new Error(`${dir}/package.json is missing bugs metadata`);
   }

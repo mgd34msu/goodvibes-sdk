@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Run npm publish in dry-run mode"
+        description: "Run the full release pipeline without publishing to npm"
         required: false
         default: "true"
       ref:
@@ -15,10 +15,14 @@ on:
     tags:
       - "v*"
 
+concurrency:
+  group: sdk-release-${{ github.event.inputs.ref || github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: read
       id-token: write
@@ -40,12 +44,45 @@ jobs:
         run: bun install
       - name: Validate workspace
         run: bun run validate
+      - name: Release dry run
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+        run: bun run release:dry-run
       - name: Publish packages
+        if: github.event_name == 'push'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bun run release:publish
+      - name: Verify published packages
+        if: github.event_name == 'push'
+        run: bun run release:verify:published
+
+  github-release:
+    if: github.event_name == 'push'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 0
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Extract changelog excerpt
+        id: changelog
         run: |
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            node scripts/publish-packages.mjs --dry-run
-          else
-            node scripts/publish-packages.mjs
+          VERSION="${{ steps.version.outputs.version }}"
+          EXCERPT=$(awk "/^## ${VERSION}$/,/^## /{if (/^## ${VERSION}$/) next; if (/^## /) exit; print}" CHANGELOG.md)
+          if [ -z "$EXCERPT" ]; then
+            EXCERPT="Release ${VERSION}"
           fi
+          printf '%s\n' "$EXCERPT" > /tmp/release_notes.md
+          echo "body=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.changelog.outputs.body }}

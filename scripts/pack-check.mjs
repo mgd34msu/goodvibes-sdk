@@ -1,26 +1,40 @@
-import { execSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SDK_ROOT = resolve(__dirname, '..');
+import {
+  cleanupStage,
+  collectTarballs,
+  inspectPackedManifest,
+  packStage,
+  stagePackages,
+} from './release-shared.mjs';
 
-const packageDirs = [
-  'packages/contracts',
-  'packages/errors',
-  'packages/daemon-sdk',
-  'packages/transport-core',
-  'packages/transport-direct',
-  'packages/transport-http',
-  'packages/transport-realtime',
-  'packages/operator-sdk',
-  'packages/peer-sdk',
-  'packages/sdk',
-];
+function assertNoWorkspaceRanges(manifest, label) {
+  for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
+    const group = manifest[field];
+    if (!group || typeof group !== 'object') {
+      continue;
+    }
+    for (const [name, value] of Object.entries(group)) {
+      if (typeof value === 'string' && value.startsWith('workspace:')) {
+        throw new Error(`${label} contains unresolved workspace dependency ${field}.${name}=${value}`);
+      }
+    }
+  }
+}
 
-for (const dir of packageDirs) {
-  execSync('npm pack --dry-run', {
-    cwd: resolve(SDK_ROOT, dir),
-    stdio: 'inherit',
+const { tempRoot, stages } = stagePackages();
+
+try {
+  const packDestination = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-pack-'));
+  const packResults = stages.map((stage) => packStage(stage.stageDir, packDestination));
+  const tarballs = collectTarballs(packResults, packDestination);
+  tarballs.forEach((tarball) => {
+    const manifest = inspectPackedManifest(resolve(tarball));
+    assertNoWorkspaceRanges(manifest, tarball);
   });
+  console.log('pack check passed');
+} finally {
+  cleanupStage(tempRoot);
 }
