@@ -24,6 +24,18 @@ export const publicPackageDirs = [
   'packages/sdk',
 ];
 
+const INTERNAL_PACKAGE_NAMES = new Set([
+  '@pellux/goodvibes-contracts',
+  '@pellux/goodvibes-errors',
+  '@pellux/goodvibes-daemon-sdk',
+  '@pellux/goodvibes-transport-core',
+  '@pellux/goodvibes-transport-direct',
+  '@pellux/goodvibes-transport-http',
+  '@pellux/goodvibes-transport-realtime',
+  '@pellux/goodvibes-operator-sdk',
+  '@pellux/goodvibes-peer-sdk',
+]);
+
 export function getRootPackage() {
   return JSON.parse(readFileSync(resolve(SDK_ROOT, 'package.json'), 'utf8'));
 }
@@ -79,6 +91,16 @@ function normalizeDependencyGroup(group, rootVersion) {
   return next;
 }
 
+function stripInternalDependencies(group) {
+  if (!group || typeof group !== 'object') {
+    return group;
+  }
+  const next = Object.fromEntries(
+    Object.entries(group).filter(([name]) => !INTERNAL_PACKAGE_NAMES.has(name)),
+  );
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
 function normalizeRepository(repository) {
   if (!repository || typeof repository !== 'object' || typeof repository.url !== 'string') {
     return repository;
@@ -114,6 +136,12 @@ export function stagePackages() {
     const manifest = normalizeManifest(readPackage(dir), rootVersion);
     if (dir === 'packages/sdk' && publicPackageNameOverride) {
       manifest.name = publicPackageNameOverride;
+    }
+    if (publicPackageDirs.includes(dir)) {
+      manifest.dependencies = stripInternalDependencies(manifest.dependencies);
+      manifest.devDependencies = stripInternalDependencies(manifest.devDependencies);
+      manifest.peerDependencies = stripInternalDependencies(manifest.peerDependencies);
+      manifest.optionalDependencies = stripInternalDependencies(manifest.optionalDependencies);
     }
     writeFileSync(resolve(stageDir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
     stages.push({ dir, sourceDir, stageDir, manifest });
