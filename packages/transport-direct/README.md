@@ -1,17 +1,17 @@
-# @goodvibes/transport-direct
+# @pellux/goodvibes-transport-direct
 
 In-process direct client transport shell for embedding GoodVibes operator and peer clients.
 
 Install:
 
 ```bash
-npm install @goodvibes/transport-direct
+npm install @pellux/goodvibes-transport-direct
 ```
 
 Example:
 
 ```ts
-import { createDirectClientTransport } from '@goodvibes/transport-direct';
+import { createDirectClientTransport } from '@pellux/goodvibes-transport-direct';
 
 const transport = createDirectClientTransport(localOperator, localPeer);
 ```

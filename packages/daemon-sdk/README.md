@@ -1,11 +1,11 @@
-# @goodvibes/daemon-sdk
+# @pellux/goodvibes-daemon-sdk
 
 Embeddable daemon and control-plane route contracts, dispatchers, and handler builders for GoodVibes.
 
 Install:
 
 ```bash
-npm install @goodvibes/daemon-sdk
+npm install @pellux/goodvibes-daemon-sdk
 ```
 
 Use this package to:
@@ -20,7 +20,7 @@ import {
   createDaemonControlRouteHandlers,
   createDaemonTelemetryRouteHandlers,
   dispatchDaemonApiRoutes,
-} from '@goodvibes/daemon-sdk';
+} from '@pellux/goodvibes-daemon-sdk';
 ```
 
 This package gives you reusable route modules, but your host still owns:

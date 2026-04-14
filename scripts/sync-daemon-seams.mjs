@@ -59,11 +59,11 @@ const specs = [
   ['src/daemon/http/media-route-types.ts', 'packages/daemon-sdk/src/media-route-types.ts', (content) => content],
   ['src/daemon/http/control-routes.ts', 'packages/daemon-sdk/src/control-routes.ts', (content) => content
     .replaceAll("'../../control-plane/routes/context.ts'", "'./context.js'")
-    .replaceAll("'../../types/foundation-contract.ts'", "'@goodvibes/contracts'")
+    .replaceAll("'../../types/foundation-contract.ts'", "'@pellux/goodvibes-contracts'")
     .replaceAll("'../http-policy.ts'", "'./http-policy.js'")],
   ['src/daemon/http/telemetry-routes.ts', 'packages/daemon-sdk/src/telemetry-routes.ts', (content) => content
     .replaceAll("'../../control-plane/routes/context.ts'", "'./context.js'")
-    .replaceAll("'../../types/foundation-contract.ts'", "'@goodvibes/contracts'")
+    .replaceAll("'../../types/foundation-contract.ts'", "'@pellux/goodvibes-contracts'")
     .replaceAll("'../http-policy.ts'", "'./http-policy.js'")],
   ['src/daemon/http/runtime-route-types.ts', 'packages/daemon-sdk/src/runtime-route-types.ts', (content) => content.replaceAll("'../../control-plane/routes/context.ts'", "'./context.js'")],
   ['src/daemon/http/runtime-automation-routes.ts', 'packages/daemon-sdk/src/runtime-automation-routes.ts', (content) => content

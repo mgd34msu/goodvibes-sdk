@@ -1,15 +1,15 @@
-# @goodvibes/peer-sdk
+# @pellux/goodvibes-peer-sdk
 
 HTTP client for the GoodVibes peer and distributed-runtime APIs.
 
 Install:
 
 ```bash
-npm install @goodvibes/peer-sdk
+npm install @pellux/goodvibes-peer-sdk
 ```
 
 ```ts
-import { createPeerSdk } from '@goodvibes/peer-sdk';
+import { createPeerSdk } from '@pellux/goodvibes-peer-sdk';
 
 const peer = createPeerSdk({
   baseUrl: 'http://127.0.0.1:3210',

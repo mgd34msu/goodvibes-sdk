@@ -1,6 +1,6 @@
 {
-  "name": "@goodvibes/transport-core",
-  "version": "0.18.2",
+  "name": "@pellux/goodvibes-transport-core",
+  "version": "0.18.3",
   "description": "Shared GoodVibes client transport primitives for direct, HTTP, and realtime integrations.",
   "type": "module",
   "main": "./dist/index.js",

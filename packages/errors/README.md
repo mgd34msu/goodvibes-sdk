@@ -1,11 +1,11 @@
-# @goodvibes/errors
+# @pellux/goodvibes-errors
 
 Structured GoodVibes SDK error types.
 
 Install:
 
 ```bash
-npm install @goodvibes/errors
+npm install @pellux/goodvibes-errors
 ```
 
 Use this package when you need to branch on:
@@ -19,7 +19,7 @@ Use this package when you need to branch on:
 Example:
 
 ```ts
-import { HttpStatusError } from '@goodvibes/errors';
+import { HttpStatusError } from '@pellux/goodvibes-errors';
 
 try {
   // integration code

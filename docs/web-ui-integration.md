@@ -1,9 +1,9 @@
 # Web UI Integration
 
-Use `@goodvibes/sdk/web` for web UI applications.
+Use `@pellux/goodvibes-sdk/web` for web UI applications.
 
 ```ts
-import { createWebGoodVibesSdk } from '@goodvibes/sdk/web';
+import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
 
 const sdk = createWebGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
@@ -22,9 +22,9 @@ For a browser-based web UI:
 
 ## When to use the browser entrypoint directly
 
-`@goodvibes/sdk/browser` and `@goodvibes/sdk/web` are equivalent surfaces. Use:
-- `@goodvibes/sdk/web` when your mental model is “web UI”
-- `@goodvibes/sdk/browser` when you want the generic browser label
+`@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web` are equivalent surfaces. Use:
+- `@pellux/goodvibes-sdk/web` when your mental model is “web UI”
+- `@pellux/goodvibes-sdk/browser` when you want the generic browser label
 
 ## Typical web UI pattern
 

@@ -1,7 +1,7 @@
 import {
   createDaemonControlRouteHandlers,
   createDaemonTelemetryRouteHandlers,
-} from '@goodvibes/daemon-sdk';
+} from '@pellux/goodvibes-daemon-sdk';
 
 const controlHandlers = createDaemonControlRouteHandlers({
   authToken: null,

@@ -5,7 +5,7 @@ Use realtime feeds for live UI updates and operator monitoring.
 ## Runtime events
 
 ```ts
-import { createGoodVibesSdk } from '@goodvibes/sdk';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',

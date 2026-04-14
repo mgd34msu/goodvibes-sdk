@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { createExpoGoodVibesSdk } from '@goodvibes/sdk/expo';
+import { createExpoGoodVibesSdk } from '@pellux/goodvibes-sdk/expo';
 
 export default function App() {
   useEffect(() => {

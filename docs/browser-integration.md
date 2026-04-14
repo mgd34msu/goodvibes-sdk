@@ -1,9 +1,9 @@
 # Browser Integration
 
-Use `@goodvibes/sdk/browser` for browser and web UI work.
+Use `@pellux/goodvibes-sdk/browser` for browser and web UI work.
 
 ```ts
-import { createBrowserGoodVibesSdk } from '@goodvibes/sdk/browser';
+import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 
 const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

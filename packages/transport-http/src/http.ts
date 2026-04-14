@@ -1,4 +1,4 @@
-import { ConfigurationError, ContractError, createHttpStatusError } from '@goodvibes/errors';
+import { ConfigurationError, ContractError, createHttpStatusError } from '@pellux/goodvibes-errors';
 import {
   type AuthTokenResolver,
   type HeaderResolver,

@@ -1,4 +1,4 @@
-import { createDirectClientTransport } from '@goodvibes/transport-direct';
+import { createDirectClientTransport } from '@pellux/goodvibes-transport-direct';
 
 const operator = {
   async status() {

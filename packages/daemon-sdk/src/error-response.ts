@@ -4,7 +4,7 @@ import {
   GoodVibesSdkError,
   isStructuredDaemonErrorBody,
   type StructuredDaemonErrorBody,
-} from '@goodvibes/errors';
+} from '@pellux/goodvibes-errors';
 
 export interface JsonErrorResponseOptions {
   readonly status?: number;

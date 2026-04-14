@@ -62,7 +62,7 @@ The umbrella SDK exposes an auth client plus token-store helpers:
 import {
   createGoodVibesSdk,
   createMemoryTokenStore,
-} from '@goodvibes/sdk';
+} from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
@@ -101,7 +101,7 @@ Use `createBrowserTokenStore()` when you want local-storage-backed bearer token 
 import {
   createBrowserGoodVibesSdk,
   createBrowserTokenStore,
-} from '@goodvibes/sdk/browser';
+} from '@pellux/goodvibes-sdk/browser';
 
 const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

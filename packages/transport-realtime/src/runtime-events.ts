@@ -1,7 +1,7 @@
 // Synced from goodvibes-tui/src/runtime/transports/runtime-events-client.ts
-import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '@goodvibes/contracts';
-import { resolveAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '@goodvibes/transport-http';
-import { buildUrl, normalizeBaseUrl } from '@goodvibes/transport-http';
+import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';
+import { resolveAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '@pellux/goodvibes-transport-http';
+import { buildUrl, normalizeBaseUrl } from '@pellux/goodvibes-transport-http';
 import {
   createRemoteDomainEvents,
   type DomainEventConnector,

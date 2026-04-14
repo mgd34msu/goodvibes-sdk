@@ -1,11 +1,11 @@
-# @goodvibes/transport-realtime
+# @pellux/goodvibes-transport-realtime
 
 Realtime event-domain connectors for GoodVibes SSE and WebSocket integrations.
 
 Install:
 
 ```bash
-npm install @goodvibes/transport-realtime
+npm install @pellux/goodvibes-transport-realtime
 ```
 
 Example:
@@ -14,7 +14,7 @@ Example:
 import {
   createEventSourceConnector,
   createRemoteRuntimeEvents,
-} from '@goodvibes/transport-realtime';
+} from '@pellux/goodvibes-transport-realtime';
 
 const events = createRemoteRuntimeEvents(
   createEventSourceConnector('https://goodvibes.example.com', 'token', fetch),

@@ -1,4 +1,4 @@
-import { createBrowserGoodVibesSdk } from '@goodvibes/sdk/browser';
+import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 
 const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

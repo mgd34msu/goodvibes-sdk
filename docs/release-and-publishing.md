@@ -70,23 +70,23 @@ Workflow behavior:
 
 Repository setup required for publishing:
 - GitHub Actions secret: `NPM_TOKEN`
-- npm scope/package ownership for every `@goodvibes/*` package
-- tags that match the package version, for example `v0.18.2`
+- npm scope/package ownership for every `@pellux/goodvibes-*` package
+- tags that match the package version, for example `v0.18.3`
 
 Recommended first-release sequence:
 
 ```bash
 bun run validate
 bun run release:dry-run
-git tag v0.18.2
-git push origin v0.18.2
+git tag v0.18.3
+git push origin v0.18.3
 ```
 
 Then watch the `Release` workflow and verify that:
 - the GitHub release is created
 - all packages appear on npm at the tagged version
-- `npm install @goodvibes/sdk@<version>` works
-- `bun add @goodvibes/sdk@<version>` works
+- `npm install @pellux/goodvibes-sdk@<version>` works
+- `bun add @pellux/goodvibes-sdk@<version>` works
 
 The workflow performs the npm/bun install smoke checks automatically after publish, but it is still worth confirming the user-facing install path once from a clean machine.
 

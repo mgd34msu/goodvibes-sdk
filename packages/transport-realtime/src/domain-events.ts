@@ -1,6 +1,6 @@
 // Synced from goodvibes-tui/src/runtime/transports/domain-events.ts
-import type { EventEnvelope } from '@goodvibes/transport-core';
-import { createRuntimeEventFeeds, type RuntimeEventFeed, type RuntimeEventFeeds } from '@goodvibes/transport-core';
+import type { EventEnvelope } from '@pellux/goodvibes-transport-core';
+import { createRuntimeEventFeeds, type RuntimeEventFeed, type RuntimeEventFeeds } from '@pellux/goodvibes-transport-core';
 
 type EventLike = { readonly type: string };
 

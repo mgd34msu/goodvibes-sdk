@@ -1,9 +1,9 @@
 # Expo Integration
 
-Use `@goodvibes/sdk/expo` for Expo-managed React Native apps.
+Use `@pellux/goodvibes-sdk/expo` for Expo-managed React Native apps.
 
 ```ts
-import { createExpoGoodVibesSdk } from '@goodvibes/sdk/expo';
+import { createExpoGoodVibesSdk } from '@pellux/goodvibes-sdk/expo';
 
 const sdk = createExpoGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

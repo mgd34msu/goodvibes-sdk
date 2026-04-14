@@ -1,6 +1,6 @@
 {
-  "name": "@goodvibes/contracts",
-  "version": "0.18.2",
+  "name": "@pellux/goodvibes-contracts",
+  "version": "0.18.3",
   "description": "Runtime-neutral GoodVibes operator and peer contract artifacts, generated ids, and lookup helpers.",
   "type": "module",
   "main": "./dist/index.js",

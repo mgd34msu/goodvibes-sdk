@@ -1,7 +1,7 @@
 {
   "name": "goodvibes-sdk",
   "private": true,
-  "version": "0.18.2",
+  "version": "0.18.3",
   "type": "module",
   "packageManager": "bun@1.3.10",
   "description": "Cross-runtime GoodVibes SDK workspace for operator, peer, transport, contracts, and daemon integration surfaces.",
@@ -47,15 +47,15 @@
     "release:publish": "node scripts/publish-packages.mjs"
   },
   "dependencies": {
-    "@goodvibes/contracts": "workspace:*",
-    "@goodvibes/daemon-sdk": "workspace:*",
-    "@goodvibes/operator-sdk": "workspace:*",
-    "@goodvibes/peer-sdk": "workspace:*",
-    "@goodvibes/sdk": "workspace:*",
-    "@goodvibes/transport-core": "workspace:*",
-    "@goodvibes/transport-direct": "workspace:*",
-    "@goodvibes/transport-http": "workspace:*",
-    "@goodvibes/transport-realtime": "workspace:*"
+    "@pellux/goodvibes-contracts": "workspace:*",
+    "@pellux/goodvibes-daemon-sdk": "workspace:*",
+    "@pellux/goodvibes-operator-sdk": "workspace:*",
+    "@pellux/goodvibes-peer-sdk": "workspace:*",
+    "@pellux/goodvibes-sdk": "workspace:*",
+    "@pellux/goodvibes-transport-core": "workspace:*",
+    "@pellux/goodvibes-transport-direct": "workspace:*",
+    "@pellux/goodvibes-transport-http": "workspace:*",
+    "@pellux/goodvibes-transport-realtime": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

@@ -1,14 +1,14 @@
 import type {
   OperatorMethodContract,
   OperatorMethodId,
-} from '@goodvibes/contracts';
-import { getOperatorContract } from '@goodvibes/contracts';
+} from '@pellux/goodvibes-contracts';
+import { getOperatorContract } from '@pellux/goodvibes-contracts';
 import {
   createHttpTransport,
   type HttpTransport,
   type HttpTransportOptions,
   type ServerSentEventHandlers,
-} from '@goodvibes/transport-http';
+} from '@pellux/goodvibes-transport-http';
 import {
   createOperatorRemoteClient,
   type OperatorRemoteClient,

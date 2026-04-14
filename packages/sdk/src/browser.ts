@@ -1,4 +1,4 @@
-import { ConfigurationError } from '@goodvibes/errors';
+import { ConfigurationError } from '@pellux/goodvibes-errors';
 import {
   createGoodVibesSdk,
   type GoodVibesSdkOptions,

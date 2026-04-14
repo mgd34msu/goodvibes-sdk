@@ -1,18 +1,19 @@
 # Changelog
 
-## 0.18.2
+## 0.18.3
 
 - Extracted the reusable transport/event seams from `goodvibes-tui` source first, then synced them into SDK packages
 - Synced operator and peer foundation contracts plus the canonical runtime event domain vocabulary
-- Added `@goodvibes/transport-core`, `@goodvibes/transport-direct`, and `@goodvibes/transport-realtime`
-- Moved `@goodvibes/transport-http` onto source-owned TUI HTTP path, JSON, and SSE seams instead of downstream-only implementations
-- Synced the daemon JSON error response contract from `goodvibes-tui` into `@goodvibes/errors`
+- Added `@pellux/goodvibes-transport-core`, `@pellux/goodvibes-transport-direct`, and `@pellux/goodvibes-transport-realtime`
+- Moved `@pellux/goodvibes-transport-http` onto source-owned TUI HTTP path, JSON, and SSE seams instead of downstream-only implementations
+- Synced the daemon JSON error response contract from `goodvibes-tui` into `@pellux/goodvibes-errors`
 - Added source-sync validation for transport and error seams alongside contract sync validation
 - Added realtime transport tests and umbrella exports for the extracted transport layer
-- Made `@goodvibes/contracts` runtime-neutral for browser and mobile consumers while keeping Node-only artifact path helpers on `@goodvibes/contracts/node`
-- Added composed SDK entrypoints for Node, browser, web UI, React Native, and Expo in `@goodvibes/sdk`
+- Made `@pellux/goodvibes-contracts` runtime-neutral for browser and mobile consumers while keeping Node-only artifact path helpers on `@pellux/goodvibes-contracts/node`
+- Added composed SDK entrypoints for Node, browser, web UI, React Native, and Expo in `@pellux/goodvibes-sdk`
 - Added generated operator, peer, and runtime-event API reference docs from the synced contracts
 - Added full SDK docs, per-package READMEs, and environment-specific examples for web UI, Expo, React Native, native Android, native iOS, and daemon embedding
 - Added browser/runtime-neutral compatibility checks, documentation completeness checks, and package metadata/readme validation to the SDK validation pipeline
 - Added portable release automation for npm publishing, staged pack validation, local tarball install smoke checks, and published-registry verification
 - Added a tag-driven GitHub release workflow and release/publishing documentation for the SDK release process
+- Renamed the published npm packages from the incorrect `@goodvibes/*` scope to the correct `@pellux/goodvibes-*` scope

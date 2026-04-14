@@ -1,11 +1,11 @@
-# @goodvibes/transport-http
+# @pellux/goodvibes-transport-http
 
 HTTP, JSON, path, and SSE helpers for GoodVibes SDK clients.
 
 Install:
 
 ```bash
-npm install @goodvibes/transport-http
+npm install @pellux/goodvibes-transport-http
 ```
 
 Exports include:

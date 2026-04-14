@@ -1,6 +1,6 @@
 {
-  "name": "@goodvibes/sdk",
-  "version": "0.18.2",
+  "name": "@pellux/goodvibes-sdk",
+  "version": "0.18.3",
   "description": "Umbrella GoodVibes SDK with operator, peer, daemon, transport, and runtime-specific integration layers.",
   "type": "module",
   "main": "./dist/index.js",
@@ -56,14 +56,14 @@
     "access": "public"
   },
   "dependencies": {
-    "@goodvibes/contracts": "workspace:*",
-    "@goodvibes/daemon-sdk": "workspace:*",
-    "@goodvibes/errors": "workspace:*",
-    "@goodvibes/operator-sdk": "workspace:*",
-    "@goodvibes/peer-sdk": "workspace:*",
-    "@goodvibes/transport-core": "workspace:*",
-    "@goodvibes/transport-direct": "workspace:*",
-    "@goodvibes/transport-http": "workspace:*",
-    "@goodvibes/transport-realtime": "workspace:*"
+    "@pellux/goodvibes-contracts": "workspace:*",
+    "@pellux/goodvibes-daemon-sdk": "workspace:*",
+    "@pellux/goodvibes-errors": "workspace:*",
+    "@pellux/goodvibes-operator-sdk": "workspace:*",
+    "@pellux/goodvibes-peer-sdk": "workspace:*",
+    "@pellux/goodvibes-transport-core": "workspace:*",
+    "@pellux/goodvibes-transport-direct": "workspace:*",
+    "@pellux/goodvibes-transport-http": "workspace:*",
+    "@pellux/goodvibes-transport-realtime": "workspace:*"
   }
 }

@@ -1,9 +1,9 @@
 # React Native Integration
 
-Use `@goodvibes/sdk/react-native` for Android and iOS apps.
+Use `@pellux/goodvibes-sdk/react-native` for Android and iOS apps.
 
 ```ts
-import { createReactNativeGoodVibesSdk } from '@goodvibes/sdk/react-native';
+import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
 
 const sdk = createReactNativeGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

@@ -1,4 +1,4 @@
-import { createReactNativeGoodVibesSdk } from '@goodvibes/sdk/react-native';
+import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
 
 const sdk = createReactNativeGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

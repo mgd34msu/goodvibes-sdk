@@ -3,32 +3,32 @@
 ## Install
 
 ```bash
-npm install @goodvibes/sdk
+npm install @pellux/goodvibes-sdk
 ```
 
 Or install only the surfaces you need:
 
 ```bash
-npm install @goodvibes/operator-sdk @goodvibes/transport-realtime
+npm install @pellux/goodvibes-operator-sdk @pellux/goodvibes-transport-realtime
 ```
 
 ## Choose the right package
 
-- `@goodvibes/sdk`
+- `@pellux/goodvibes-sdk`
   Use this unless you already know you only want a lower-level package.
-- `@goodvibes/operator-sdk`
+- `@pellux/goodvibes-operator-sdk`
   Use this when you only need operator/control-plane APIs.
-- `@goodvibes/peer-sdk`
+- `@pellux/goodvibes-peer-sdk`
   Use this when you only need peer/distributed-runtime APIs.
-- `@goodvibes/daemon-sdk`
+- `@pellux/goodvibes-daemon-sdk`
   Use this when you are hosting reusable GoodVibes daemon routes inside another server.
-- `@goodvibes/transport-*`
+- `@pellux/goodvibes-transport-*`
   Use these only when you need low-level transport composition.
 
 ## First client
 
 ```ts
-import { createNodeGoodVibesSdk } from '@goodvibes/sdk/node';
+import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
 
 const sdk = createNodeGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
@@ -41,8 +41,8 @@ const status = await sdk.operator.control.status();
 ## Login flow with token persistence
 
 ```ts
-import { createGoodVibesSdk } from '@goodvibes/sdk';
-import { createMemoryTokenStore } from '@goodvibes/sdk';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
@@ -72,11 +72,11 @@ Use:
 
 ## Runtime-specific entrypoints
 
-- `@goodvibes/sdk/node`
-- `@goodvibes/sdk/browser`
-- `@goodvibes/sdk/web`
-- `@goodvibes/sdk/react-native`
-- `@goodvibes/sdk/expo`
+- `@pellux/goodvibes-sdk/node`
+- `@pellux/goodvibes-sdk/browser`
+- `@pellux/goodvibes-sdk/web`
+- `@pellux/goodvibes-sdk/react-native`
+- `@pellux/goodvibes-sdk/expo`
 
 These wrap the same underlying SDK surface but set runtime-appropriate defaults for retry, reconnect, and runtime globals.
 

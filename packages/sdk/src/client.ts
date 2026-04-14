@@ -1,26 +1,26 @@
-import { ConfigurationError } from '@goodvibes/errors';
+import { ConfigurationError } from '@pellux/goodvibes-errors';
 import {
   createOperatorSdk,
   type OperatorSdk,
   type OperatorSdkOptions,
-} from '@goodvibes/operator-sdk';
+} from '@pellux/goodvibes-operator-sdk';
 import {
   createPeerSdk,
   type PeerSdk,
   type PeerSdkOptions,
-} from '@goodvibes/peer-sdk';
+} from '@pellux/goodvibes-peer-sdk';
 import type {
   AuthTokenResolver,
   HeaderResolver,
   HttpRetryPolicy,
   StreamReconnectPolicy,
-} from '@goodvibes/transport-http';
+} from '@pellux/goodvibes-transport-http';
 import {
   createEventSourceConnector,
   createRemoteRuntimeEvents,
   createWebSocketConnector,
   type RemoteRuntimeEvents,
-} from '@goodvibes/transport-realtime';
+} from '@pellux/goodvibes-transport-realtime';
 import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,

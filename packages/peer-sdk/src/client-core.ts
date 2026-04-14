@@ -1,17 +1,17 @@
 // Synced from goodvibes-tui/src/runtime/transports/peer-remote-client.ts
-import type { PeerContractManifest, PeerEndpointContract } from '@goodvibes/contracts';
+import type { PeerContractManifest, PeerEndpointContract } from '@pellux/goodvibes-contracts';
 import type {
   PeerEndpointInput,
   PeerEndpointOutput,
   PeerTypedEndpointId,
-} from '@goodvibes/contracts';
-import type { HttpTransport } from '@goodvibes/transport-http';
+} from '@pellux/goodvibes-contracts';
+import type { HttpTransport } from '@pellux/goodvibes-transport-http';
 import {
   buildContractInput,
   invokeContractRoute,
   requireContractRoute,
   type ContractInvokeOptions,
-} from '@goodvibes/transport-http';
+} from '@pellux/goodvibes-transport-http';
 
 export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {}
 

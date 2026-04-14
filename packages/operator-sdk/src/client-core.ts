@@ -1,12 +1,12 @@
 // Synced from goodvibes-tui/src/runtime/transports/operator-remote-client.ts
-import type { OperatorContractManifest, OperatorMethodContract } from '@goodvibes/contracts';
+import type { OperatorContractManifest, OperatorMethodContract } from '@pellux/goodvibes-contracts';
 import type {
   OperatorMethodInput,
   OperatorMethodOutput,
   OperatorStreamMethodId,
   OperatorTypedMethodId,
-} from '@goodvibes/contracts';
-import type { HttpTransport } from '@goodvibes/transport-http';
+} from '@pellux/goodvibes-contracts';
+import type { HttpTransport } from '@pellux/goodvibes-transport-http';
 import {
   buildContractInput,
   invokeContractRoute,
@@ -15,7 +15,7 @@ import {
   type ContractRouteDefinition,
   type ContractInvokeOptions,
   type ContractStreamOptions,
-} from '@goodvibes/transport-http';
+} from '@pellux/goodvibes-transport-http';
 
 export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions {}
 

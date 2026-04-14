@@ -7,7 +7,7 @@ The SDK exposes retry and reconnect as first-class configuration instead of leav
 All runtime-specific entrypoints can take a retry policy:
 
 ```ts
-import { createNodeGoodVibesSdk } from '@goodvibes/sdk/node';
+import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
 
 const sdk = createNodeGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',

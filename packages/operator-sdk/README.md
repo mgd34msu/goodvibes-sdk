@@ -1,15 +1,15 @@
-# @goodvibes/operator-sdk
+# @pellux/goodvibes-operator-sdk
 
 Contract-driven HTTP client for the GoodVibes operator and control-plane APIs.
 
 Install:
 
 ```bash
-npm install @goodvibes/operator-sdk
+npm install @pellux/goodvibes-operator-sdk
 ```
 
 ```ts
-import { createOperatorSdk } from '@goodvibes/operator-sdk';
+import { createOperatorSdk } from '@pellux/goodvibes-operator-sdk';
 
 const operator = createOperatorSdk({
   baseUrl: 'http://127.0.0.1:3210',

@@ -1,25 +1,25 @@
-# @goodvibes/sdk
+# @pellux/goodvibes-sdk
 
 Umbrella GoodVibes SDK with Node, browser, web UI, React Native, and Expo integration helpers.
 
 Install:
 
 ```bash
-npm install @goodvibes/sdk
+npm install @pellux/goodvibes-sdk
 ```
 
 Entry points:
-- `@goodvibes/sdk`
-- `@goodvibes/sdk/node`
-- `@goodvibes/sdk/browser`
-- `@goodvibes/sdk/web`
-- `@goodvibes/sdk/react-native`
-- `@goodvibes/sdk/expo`
+- `@pellux/goodvibes-sdk`
+- `@pellux/goodvibes-sdk/node`
+- `@pellux/goodvibes-sdk/browser`
+- `@pellux/goodvibes-sdk/web`
+- `@pellux/goodvibes-sdk/react-native`
+- `@pellux/goodvibes-sdk/expo`
 
 Example:
 
 ```ts
-import { createNodeGoodVibesSdk } from '@goodvibes/sdk/node';
+import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
 
 const sdk = createNodeGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',

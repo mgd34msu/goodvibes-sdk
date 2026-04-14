@@ -16,15 +16,15 @@ import {
 const REGISTRY_MODE = process.argv.includes('--registry');
 
 const smokeScript = `
-const root = await import('@goodvibes/sdk');
-const nodeEntry = await import('@goodvibes/sdk/node');
-const webEntry = await import('@goodvibes/sdk/web');
-const nativeEntry = await import('@goodvibes/sdk/react-native');
-const operator = await import('@goodvibes/operator-sdk');
-const peer = await import('@goodvibes/peer-sdk');
-const daemon = await import('@goodvibes/daemon-sdk');
-const contracts = await import('@goodvibes/contracts');
-const runtimeEvents = await import('@goodvibes/transport-realtime');
+const root = await import('@pellux/goodvibes-sdk');
+const nodeEntry = await import('@pellux/goodvibes-sdk/node');
+const webEntry = await import('@pellux/goodvibes-sdk/web');
+const nativeEntry = await import('@pellux/goodvibes-sdk/react-native');
+const operator = await import('@pellux/goodvibes-operator-sdk');
+const peer = await import('@pellux/goodvibes-peer-sdk');
+const daemon = await import('@pellux/goodvibes-daemon-sdk');
+const contracts = await import('@pellux/goodvibes-contracts');
+const runtimeEvents = await import('@pellux/goodvibes-transport-realtime');
 
 const sdk = nodeEntry.createNodeGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
 if (!sdk?.operator || !sdk?.peer || !sdk?.realtime) throw new Error('sdk entrypoint missing expected surfaces');

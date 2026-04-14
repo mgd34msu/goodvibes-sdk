@@ -77,23 +77,23 @@ const fileSpecs = [
   {
     source: 'src/runtime/transports/direct-client.ts',
     target: 'packages/transport-direct/src/index.ts',
-    transform: (content) => content.replace("'./client-transport.ts'", "'@goodvibes/transport-core'"),
+    transform: (content) => content.replace("'./client-transport.ts'", "'@pellux/goodvibes-transport-core'"),
   },
   {
     source: 'src/runtime/transports/domain-events.ts',
     target: 'packages/transport-realtime/src/domain-events.ts',
     transform: (content) => content
-      .replace("'../event-envelope.ts'", "'@goodvibes/transport-core'")
-      .replace("'../event-feeds.ts'", "'@goodvibes/transport-core'"),
+      .replace("'../event-envelope.ts'", "'@pellux/goodvibes-transport-core'")
+      .replace("'../event-feeds.ts'", "'@pellux/goodvibes-transport-core'"),
   },
   {
     source: 'src/runtime/transports/runtime-events-client.ts',
     target: 'packages/transport-realtime/src/runtime-events.ts',
     transform: (content) => content
       .replace("import type { RuntimeEventDomain } from '../events/index.ts';\n", '')
-      .replace("import { RUNTIME_EVENT_DOMAINS } from '../events/domain-map.ts';", "import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '@goodvibes/contracts';")
-      .replace("import { resolveAuthToken, type AuthTokenResolver } from './http-auth.ts';\n", "import { resolveAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '@goodvibes/transport-http';\n")
-      .replace("import { buildUrl, normalizeBaseUrl } from './transport-paths.ts';\n", "import { buildUrl, normalizeBaseUrl } from '@goodvibes/transport-http';\n")
+      .replace("import { RUNTIME_EVENT_DOMAINS } from '../events/domain-map.ts';", "import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';")
+      .replace("import { resolveAuthToken, type AuthTokenResolver } from './http-auth.ts';\n", "import { resolveAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '@pellux/goodvibes-transport-http';\n")
+      .replace("import { buildUrl, normalizeBaseUrl } from './transport-paths.ts';\n", "import { buildUrl, normalizeBaseUrl } from '@pellux/goodvibes-transport-http';\n")
       .replace("import { openServerSentEventStream } from './sse-stream.ts';\n", '')
       .replace("import type { StreamReconnectPolicy } from './stream-reconnect.ts';\n", '')
       .replace("'./domain-events.ts'", "'./domain-events.js'"),
@@ -134,20 +134,20 @@ const fileSpecs = [
     source: 'src/runtime/transports/operator-remote-client.ts',
     target: 'packages/operator-sdk/src/client-core.ts',
     transform: (content) => content
-      .replace("import type { OperatorContractManifest, OperatorMethodContract } from '../../types/foundation-contract.ts';\n", "import type { OperatorContractManifest, OperatorMethodContract } from '@goodvibes/contracts';\n")
-      .replace("} from '../../types/generated/foundation-client-types.ts';\n", "} from '@goodvibes/contracts';\n")
-      .replace("import type { HttpJsonTransport } from './http-json-transport.ts';\n", "import type { HttpTransport } from '@goodvibes/transport-http';\n")
-      .replace("} from './contract-http-client.ts';", "} from '@goodvibes/transport-http';")
+      .replace("import type { OperatorContractManifest, OperatorMethodContract } from '../../types/foundation-contract.ts';\n", "import type { OperatorContractManifest, OperatorMethodContract } from '@pellux/goodvibes-contracts';\n")
+      .replace("} from '../../types/generated/foundation-client-types.ts';\n", "} from '@pellux/goodvibes-contracts';\n")
+      .replace("import type { HttpJsonTransport } from './http-json-transport.ts';\n", "import type { HttpTransport } from '@pellux/goodvibes-transport-http';\n")
+      .replace("} from './contract-http-client.ts';", "} from '@pellux/goodvibes-transport-http';")
       .replace(/HttpJsonTransport/g, 'HttpTransport'),
   },
   {
     source: 'src/runtime/transports/peer-remote-client.ts',
     target: 'packages/peer-sdk/src/client-core.ts',
     transform: (content) => content
-      .replace("import type { PeerContractManifest, PeerEndpointContract } from '../../types/foundation-contract.ts';\n", "import type { PeerContractManifest, PeerEndpointContract } from '@goodvibes/contracts';\n")
-      .replace("} from '../../types/generated/foundation-client-types.ts';\n", "} from '@goodvibes/contracts';\n")
-      .replace("import type { HttpJsonTransport } from './http-json-transport.ts';\n", "import type { HttpTransport } from '@goodvibes/transport-http';\n")
-      .replace("} from './contract-http-client.ts';", "} from '@goodvibes/transport-http';")
+      .replace("import type { PeerContractManifest, PeerEndpointContract } from '../../types/foundation-contract.ts';\n", "import type { PeerContractManifest, PeerEndpointContract } from '@pellux/goodvibes-contracts';\n")
+      .replace("} from '../../types/generated/foundation-client-types.ts';\n", "} from '@pellux/goodvibes-contracts';\n")
+      .replace("import type { HttpJsonTransport } from './http-json-transport.ts';\n", "import type { HttpTransport } from '@pellux/goodvibes-transport-http';\n")
+      .replace("} from './contract-http-client.ts';", "} from '@pellux/goodvibes-transport-http';")
       .replace(/HttpJsonTransport/g, 'HttpTransport'),
   },
 ];
@@ -189,7 +189,7 @@ const staticFiles = [
   {
     target: 'packages/transport-http/src/http.ts',
     content: [
-      "import { ConfigurationError, ContractError, createHttpStatusError } from '@goodvibes/errors';",
+      "import { ConfigurationError, ContractError, createHttpStatusError } from '@pellux/goodvibes-errors';",
       "import {",
       "  type AuthTokenResolver,",
       "  type HeaderResolver,",

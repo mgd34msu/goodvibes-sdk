@@ -1,6 +1,6 @@
-import type { PeerEndpointContract, PeerEndpointId } from '@goodvibes/contracts';
-import { getPeerContract } from '@goodvibes/contracts';
-import { createHttpTransport, type HttpTransport, type HttpTransportOptions } from '@goodvibes/transport-http';
+import type { PeerEndpointContract, PeerEndpointId } from '@pellux/goodvibes-contracts';
+import { getPeerContract } from '@pellux/goodvibes-contracts';
+import { createHttpTransport, type HttpTransport, type HttpTransportOptions } from '@pellux/goodvibes-transport-http';
 import {
   createPeerRemoteClient,
   type PeerRemoteClient,

@@ -3,7 +3,7 @@ import {
   createMemoryTokenStore,
   type GoodVibesCurrentAuth,
   type GoodVibesLoginOutput,
-} from '@goodvibes/sdk';
+} from '@pellux/goodvibes-sdk';
 
 async function verifyTypedSdkSurface(): Promise<void> {
   const sdk = createGoodVibesSdk({

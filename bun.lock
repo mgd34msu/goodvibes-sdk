@@ -5,15 +5,15 @@
     "": {
       "name": "goodvibes-sdk",
       "dependencies": {
-        "@goodvibes/contracts": "workspace:*",
-        "@goodvibes/daemon-sdk": "workspace:*",
-        "@goodvibes/operator-sdk": "workspace:*",
-        "@goodvibes/peer-sdk": "workspace:*",
-        "@goodvibes/sdk": "workspace:*",
-        "@goodvibes/transport-core": "workspace:*",
-        "@goodvibes/transport-direct": "workspace:*",
-        "@goodvibes/transport-http": "workspace:*",
-        "@goodvibes/transport-realtime": "workspace:*",
+        "@pellux/goodvibes-contracts": "workspace:*",
+        "@pellux/goodvibes-daemon-sdk": "workspace:*",
+        "@pellux/goodvibes-operator-sdk": "workspace:*",
+        "@pellux/goodvibes-peer-sdk": "workspace:*",
+        "@pellux/goodvibes-sdk": "workspace:*",
+        "@pellux/goodvibes-transport-core": "workspace:*",
+        "@pellux/goodvibes-transport-direct": "workspace:*",
+        "@pellux/goodvibes-transport-http": "workspace:*",
+        "@pellux/goodvibes-transport-realtime": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.3.0",
@@ -21,102 +21,102 @@
       },
     },
     "packages/contracts": {
-      "name": "@goodvibes/contracts",
+      "name": "@pellux/goodvibes-contracts",
       "version": "0.18.2",
     },
     "packages/daemon-sdk": {
-      "name": "@goodvibes/daemon-sdk",
+      "name": "@pellux/goodvibes-daemon-sdk",
       "version": "0.18.2",
       "dependencies": {
-        "@goodvibes/contracts": "workspace:*",
-        "@goodvibes/errors": "workspace:*",
+        "@pellux/goodvibes-contracts": "workspace:*",
+        "@pellux/goodvibes-errors": "workspace:*",
       },
     },
     "packages/errors": {
-      "name": "@goodvibes/errors",
+      "name": "@pellux/goodvibes-errors",
       "version": "0.18.2",
     },
     "packages/operator-sdk": {
-      "name": "@goodvibes/operator-sdk",
+      "name": "@pellux/goodvibes-operator-sdk",
       "version": "0.18.2",
       "dependencies": {
-        "@goodvibes/contracts": "workspace:*",
-        "@goodvibes/errors": "workspace:*",
-        "@goodvibes/transport-http": "workspace:*",
+        "@pellux/goodvibes-contracts": "workspace:*",
+        "@pellux/goodvibes-errors": "workspace:*",
+        "@pellux/goodvibes-transport-http": "workspace:*",
       },
     },
     "packages/peer-sdk": {
-      "name": "@goodvibes/peer-sdk",
+      "name": "@pellux/goodvibes-peer-sdk",
       "version": "0.18.2",
       "dependencies": {
-        "@goodvibes/contracts": "workspace:*",
-        "@goodvibes/errors": "workspace:*",
-        "@goodvibes/transport-http": "workspace:*",
+        "@pellux/goodvibes-contracts": "workspace:*",
+        "@pellux/goodvibes-errors": "workspace:*",
+        "@pellux/goodvibes-transport-http": "workspace:*",
       },
     },
     "packages/sdk": {
-      "name": "@goodvibes/sdk",
+      "name": "@pellux/goodvibes-sdk",
       "version": "0.18.2",
       "dependencies": {
-        "@goodvibes/contracts": "workspace:*",
-        "@goodvibes/daemon-sdk": "workspace:*",
-        "@goodvibes/errors": "workspace:*",
-        "@goodvibes/operator-sdk": "workspace:*",
-        "@goodvibes/peer-sdk": "workspace:*",
-        "@goodvibes/transport-core": "workspace:*",
-        "@goodvibes/transport-direct": "workspace:*",
-        "@goodvibes/transport-http": "workspace:*",
-        "@goodvibes/transport-realtime": "workspace:*",
+        "@pellux/goodvibes-contracts": "workspace:*",
+        "@pellux/goodvibes-daemon-sdk": "workspace:*",
+        "@pellux/goodvibes-errors": "workspace:*",
+        "@pellux/goodvibes-operator-sdk": "workspace:*",
+        "@pellux/goodvibes-peer-sdk": "workspace:*",
+        "@pellux/goodvibes-transport-core": "workspace:*",
+        "@pellux/goodvibes-transport-direct": "workspace:*",
+        "@pellux/goodvibes-transport-http": "workspace:*",
+        "@pellux/goodvibes-transport-realtime": "workspace:*",
       },
     },
     "packages/transport-core": {
-      "name": "@goodvibes/transport-core",
+      "name": "@pellux/goodvibes-transport-core",
       "version": "0.18.2",
     },
     "packages/transport-direct": {
-      "name": "@goodvibes/transport-direct",
+      "name": "@pellux/goodvibes-transport-direct",
       "version": "0.18.2",
       "dependencies": {
-        "@goodvibes/transport-core": "workspace:*",
+        "@pellux/goodvibes-transport-core": "workspace:*",
       },
     },
     "packages/transport-http": {
-      "name": "@goodvibes/transport-http",
+      "name": "@pellux/goodvibes-transport-http",
       "version": "0.18.2",
       "dependencies": {
-        "@goodvibes/errors": "workspace:*",
+        "@pellux/goodvibes-errors": "workspace:*",
       },
     },
     "packages/transport-realtime": {
-      "name": "@goodvibes/transport-realtime",
+      "name": "@pellux/goodvibes-transport-realtime",
       "version": "0.18.2",
       "dependencies": {
-        "@goodvibes/contracts": "workspace:*",
-        "@goodvibes/transport-core": "workspace:*",
-        "@goodvibes/transport-http": "workspace:*",
+        "@pellux/goodvibes-contracts": "workspace:*",
+        "@pellux/goodvibes-transport-core": "workspace:*",
+        "@pellux/goodvibes-transport-http": "workspace:*",
       },
     },
   },
   "packages": {
-    "@goodvibes/contracts": ["@goodvibes/contracts@workspace:packages/contracts"],
+    "@pellux/goodvibes-contracts": ["@pellux/goodvibes-contracts@workspace:packages/contracts"],
 
-    "@goodvibes/daemon-sdk": ["@goodvibes/daemon-sdk@workspace:packages/daemon-sdk"],
+    "@pellux/goodvibes-daemon-sdk": ["@pellux/goodvibes-daemon-sdk@workspace:packages/daemon-sdk"],
 
-    "@goodvibes/errors": ["@goodvibes/errors@workspace:packages/errors"],
+    "@pellux/goodvibes-errors": ["@pellux/goodvibes-errors@workspace:packages/errors"],
 
-    "@goodvibes/operator-sdk": ["@goodvibes/operator-sdk@workspace:packages/operator-sdk"],
+    "@pellux/goodvibes-operator-sdk": ["@pellux/goodvibes-operator-sdk@workspace:packages/operator-sdk"],
 
-    "@goodvibes/peer-sdk": ["@goodvibes/peer-sdk@workspace:packages/peer-sdk"],
+    "@pellux/goodvibes-peer-sdk": ["@pellux/goodvibes-peer-sdk@workspace:packages/peer-sdk"],
 
-    "@goodvibes/sdk": ["@goodvibes/sdk@workspace:packages/sdk"],
+    "@pellux/goodvibes-sdk": ["@pellux/goodvibes-sdk@workspace:packages/sdk"],
 
-    "@goodvibes/transport-core": ["@goodvibes/transport-core@workspace:packages/transport-core"],
+    "@pellux/goodvibes-transport-core": ["@pellux/goodvibes-transport-core@workspace:packages/transport-core"],
 
-    "@goodvibes/transport-direct": ["@goodvibes/transport-direct@workspace:packages/transport-direct"],
+    "@pellux/goodvibes-transport-direct": ["@pellux/goodvibes-transport-direct@workspace:packages/transport-direct"],
 
-    "@goodvibes/transport-http": ["@goodvibes/transport-http@workspace:packages/transport-http"],
+    "@pellux/goodvibes-transport-http": ["@pellux/goodvibes-transport-http@workspace:packages/transport-http"],
 
-    "@goodvibes/transport-realtime": ["@goodvibes/transport-realtime@workspace:packages/transport-realtime"],
+    "@pellux/goodvibes-transport-realtime": ["@pellux/goodvibes-transport-realtime@workspace:packages/transport-realtime"],
 
     "@types/node": ["@types/node@24.12.2", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-A1sre26ke7HDIuY/M23nd9gfB+nrmhtYyMINbjI1zHJxYteKR6qSMX56FsmjMcDb3SMcjJg5BiRRgOCC/yBD0g=="],
 

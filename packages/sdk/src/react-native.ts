@@ -1,9 +1,9 @@
-import { ConfigurationError } from '@goodvibes/errors';
+import { ConfigurationError } from '@pellux/goodvibes-errors';
 import {
   createRemoteRuntimeEvents,
   createWebSocketConnector,
   type RemoteRuntimeEvents,
-} from '@goodvibes/transport-realtime';
+} from '@pellux/goodvibes-transport-realtime';
 import {
   createGoodVibesSdk,
   type GoodVibesSdkOptions,

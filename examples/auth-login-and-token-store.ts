@@ -1,7 +1,7 @@
 import {
   createGoodVibesSdk,
   createMemoryTokenStore,
-} from '@goodvibes/sdk';
+} from '@pellux/goodvibes-sdk';
 
 const tokenStore = createMemoryTokenStore();
 

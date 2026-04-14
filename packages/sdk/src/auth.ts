@@ -1,10 +1,10 @@
-import { ConfigurationError } from '@goodvibes/errors';
+import { ConfigurationError } from '@pellux/goodvibes-errors';
 import type {
   OperatorMethodInput,
   OperatorMethodOutput,
-} from '@goodvibes/contracts';
-import type { AuthTokenResolver } from '@goodvibes/transport-http';
-import type { OperatorSdk } from '@goodvibes/operator-sdk';
+} from '@pellux/goodvibes-contracts';
+import type { AuthTokenResolver } from '@pellux/goodvibes-transport-http';
+import type { OperatorSdk } from '@pellux/goodvibes-operator-sdk';
 
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
 export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;
