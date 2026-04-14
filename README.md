@@ -32,32 +32,6 @@ Or install only the lower-level packages you need:
 npm install @goodvibes/operator-sdk @goodvibes/transport-realtime
 ```
 
-Workspace contributors should still use Bun for validation:
-
-```bash
-bun run validate
-```
-
-When you are changing synced platform seams from `goodvibes-tui`, also run:
-
-```bash
-bun run validate:source
-```
-
-`validate:source` requires either:
-- `GOODVIBES_TUI_ROOT=/path/to/goodvibes-tui`
-- or a sibling checkout at `../goodvibes-tui`
-
-`validate` checks:
-- generated API references
-- docs and examples completeness
-- TypeScript build
-- type-level usage checks
-- runtime-neutral browser/mobile safety for client packages
-- package metadata completeness
-- SDK tests
-- packability of every published package
-
 ## Packages
 
 - `@goodvibes/contracts`
@@ -97,6 +71,8 @@ bun run validate:source
   Expo-flavored React Native alias.
 
 ## Quick Start
+
+Prerequisite: you already have a reachable GoodVibes daemon/operator endpoint. The SDK is a client for the platform; it does not start the platform for you.
 
 ### Node / Bun
 
@@ -247,19 +223,7 @@ Node-only artifact-path helpers are available from:
 - [Daemon embedding quickstart](./examples/daemon-fetch-handler-quickstart.ts)
 - [Direct transport quickstart](./examples/direct-transport-quickstart.ts)
 
-## Contributor Docs
+## Maintainers
 
-- [Contributing](./CONTRIBUTING.md)
-- [Security](./SECURITY.md)
-
-## Source of truth
-
-The contract artifacts are synced from:
-- `GOODVIBES_TUI_ROOT/docs/foundation-artifacts`
-- or `../goodvibes-tui/docs/foundation-artifacts`
-
-The transport, error, and daemon seams are synced from:
-- `GOODVIBES_TUI_ROOT/src`
-- or `../goodvibes-tui/src`
-
-Shared platform seams are changed in `goodvibes-tui` first, then synced into this repo. SDK-only docs, examples, packaging, and publish automation are maintained here.
+- Contributor workflow: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- Security process: [SECURITY.md](./SECURITY.md)
