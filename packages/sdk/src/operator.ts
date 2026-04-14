@@ -1,1 +1,1 @@
-export * from '@pellux/goodvibes-operator-sdk';
+export * from './_internal/operator/index.js';

@@ -1,1 +1,1 @@
-export * from '@pellux/goodvibes-peer-sdk';
+export * from './_internal/peer/index.js';

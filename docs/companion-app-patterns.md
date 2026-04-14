@@ -44,4 +44,4 @@ Use the platform this way:
 - do not model the app entirely as raw event streams with no snapshot APIs
 - do not rely on string parsing for errors
 - do not assume mobile streaming behavior matches desktop/browser behavior
-- do not carry SDK-only fixes that should actually live in `goodvibes-tui`
+- keep companion-app behavior implemented in the SDK itself, not in an external host repo

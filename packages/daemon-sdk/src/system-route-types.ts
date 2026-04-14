@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/system-route-types.ts
 import type { JsonRecord } from './route-helpers.js';
 
 export type DaemonApiClientKind =

@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/sse-stream.ts
 import { sleepWithSignal } from './backoff.js';
 import { mergeHeaders, resolveAuthToken, type AuthTokenResolver } from './auth.js';
 import {

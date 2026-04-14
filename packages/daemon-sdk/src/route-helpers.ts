@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/route-helpers.ts
 export type JsonRecord = Record<string, unknown>;
 
 export function isJsonRecord(value: unknown): value is JsonRecord {

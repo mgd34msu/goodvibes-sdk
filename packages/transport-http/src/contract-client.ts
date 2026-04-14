@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/contract-http-client.ts
 import type { HttpTransport } from './http.js';
 import { openServerSentEventStream, type ServerSentEventHandlers } from './sse-stream.js';
 

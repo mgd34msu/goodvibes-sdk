@@ -41,13 +41,13 @@ Node-only helper:
 
 ## Version alignment
 
-Current SDK version: `0.18.10`
+Current SDK version: `0.18.11`
 
-The workspace currently tracks the product/foundation version directly. Keep SDK and `goodvibes-tui` versions aligned unless and until a separate compatibility policy is introduced.
+The workspace tracks the SDK release line directly.
 
-## Source-first compatibility rule
+## Compatibility maintenance
 
-If a shared platform seam changes:
-1. update `goodvibes-tui`
-2. sync the extracted surface into `goodvibes-sdk`
+When shared behavior changes inside this repo:
+1. update the SDK source
+2. run `bun run sync` if umbrella internals need refresh
 3. rerun validation here

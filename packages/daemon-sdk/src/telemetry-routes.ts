@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/telemetry-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { buildMissingScopeBody, type AuthenticatedPrincipal } from './http-policy.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';

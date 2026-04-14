@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/client-transport.ts
 export interface ClientTransport<TKind extends string, TOperator, TPeer> {
   readonly kind: TKind;
   readonly operator: TOperator;

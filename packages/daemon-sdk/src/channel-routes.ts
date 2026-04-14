@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/channel-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { readChannelConversationKind, readChannelLifecycleAction } from './route-helpers.js';
 import type { ChannelDirectoryScope, ChannelSurface, DaemonChannelRouteContext } from './channel-route-types.js';

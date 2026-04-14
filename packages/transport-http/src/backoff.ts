@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/backoff.ts
 export interface BackoffPolicy {
   readonly maxAttempts?: number;
   readonly baseDelayMs?: number;

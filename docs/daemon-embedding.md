@@ -50,6 +50,6 @@ The SDK does not replace your server framework. You still own:
 1. Build concrete service/context adapters in your host app.
 2. Create the daemon route handlers from those adapters.
 3. Route incoming requests into the appropriate handler or dispatcher.
-4. Keep platform semantics in sync by updating from `goodvibes-tui` first, then syncing this repo.
+4. Keep platform semantics inside this repo and adapt them through your host-specific wiring.
 
 The example at [daemon-fetch-handler-quickstart.ts](../examples/daemon-fetch-handler-quickstart.ts) shows the intended shape.

@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/peer-remote-client.ts
 import type { PeerContractManifest, PeerEndpointContract } from '@pellux/goodvibes-contracts';
 import type {
   PeerEndpointInput,

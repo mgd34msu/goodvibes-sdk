@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/system-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import type { JsonRecord } from './route-helpers.js';
 import { jsonErrorResponse } from './error-response.js';

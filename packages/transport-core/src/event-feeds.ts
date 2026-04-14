@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/event-feeds.ts
 import type { EventEnvelope } from './event-envelope.js';
 
 type EventLike = { readonly type: string };

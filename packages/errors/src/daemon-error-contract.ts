@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/types/daemon-error-contract.ts
 export type DaemonErrorCategory =
   | 'authentication'
   | 'authorization'

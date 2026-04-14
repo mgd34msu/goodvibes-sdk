@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/http-retry.ts
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
 export interface HttpRetryPolicy extends BackoffPolicy {

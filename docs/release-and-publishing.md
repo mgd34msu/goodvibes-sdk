@@ -19,7 +19,6 @@ Run:
 
 ```bash
 bun run validate
-bun run validate:source
 bun run release:verify
 ```
 
@@ -32,7 +31,7 @@ bun run release:verify
 - every package can be packed cleanly
 - the staged tarballs can be installed into a clean npm consumer
 
-`validate:source` is the local source-sync check against `goodvibes-tui`. It is intended for contributors who are updating extracted seams, not for standalone CI environments.
+`bun run sync` refreshes the umbrella package internals from the workspace source before validation or release when needed.
 
 `release:verify` is the full pre-publish local rehearsal:
 - `bun run validate`
@@ -100,15 +99,15 @@ Repository setup required for publishing:
   - package name `@mgd34msu/goodvibes-sdk`
   - `.npmrc` line `@mgd34msu:registry=https://npm.pkg.github.com`
   - auth line `//npm.pkg.github.com/:_authToken=TOKEN`
-- tags that match the package version, for example `v0.18.10`
+- tags that match the package version, for example `v0.18.11`
 
 Recommended first-release sequence:
 
 ```bash
 bun run validate
 bun run release:dry-run
-git tag v0.18.10
-git push origin v0.18.10
+git tag v0.18.11
+git push origin v0.18.11
 ```
 
 Then watch the `Release` workflow and verify that:
@@ -123,4 +122,4 @@ The workflow performs the npm/bun install smoke checks automatically after publi
 
 ## Versioning Rule
 
-The SDK currently tracks the GoodVibes product/foundation version directly. If shared platform behavior changes, version the source of truth first, then sync the SDK.
+Version the SDK according to SDK changes and published behavior.

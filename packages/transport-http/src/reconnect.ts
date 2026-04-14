@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/stream-reconnect.ts
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
 export interface StreamReconnectPolicy extends BackoffPolicy {

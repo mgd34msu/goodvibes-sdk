@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/runtime-route-types.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 
 export type JsonBody = Record<string, unknown>;

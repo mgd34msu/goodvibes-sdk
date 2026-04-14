@@ -21,15 +21,7 @@ report it privately through the main GoodVibes security/reporting channel rather
 
 ## Scope Notes
 
-This repo publishes TypeScript packages. Some integration guides also cover the platform protocol for companion apps, but the platform behavior itself still originates in `goodvibes-tui`.
-
-If the issue is in:
-- contracts
-- daemon route behavior
-- auth/session semantics
-- transport/realtime protocol behavior
-
-the fix will generally need to land in `goodvibes-tui` first, then be synced here.
+This repo publishes TypeScript packages and owns its own platform/client behavior.
 
 ## Consumer Guidance
 

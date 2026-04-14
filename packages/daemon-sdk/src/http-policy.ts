@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http-policy.ts
 import { missingScopes } from './route-helpers.js';
 
 export type AuthenticatedPrincipalKind = 'user' | 'bot' | 'service' | 'token';

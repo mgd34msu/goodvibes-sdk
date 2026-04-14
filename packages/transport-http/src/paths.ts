@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/transport-paths.ts
 export interface TransportPaths {
   readonly baseUrl: string;
   readonly statusUrl: string;

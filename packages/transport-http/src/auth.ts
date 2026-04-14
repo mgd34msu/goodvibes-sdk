@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/http-auth.ts
 export type MaybePromise<T> = T | Promise<T>;
 
 export type AuthTokenResolver = () => MaybePromise<string | null | undefined>;

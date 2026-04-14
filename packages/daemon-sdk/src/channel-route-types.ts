@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/channel-route-types.ts
 import type { ChannelConversationKind, ChannelLifecycleAction, JsonRecord } from './route-helpers.js';
 
 export type ChannelSurface = string;

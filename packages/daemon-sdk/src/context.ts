@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/control-plane/routes/context.ts
 export type MaybeResponse = Response | Promise<Response>;
 
 export interface DaemonApiRouteHandlers {

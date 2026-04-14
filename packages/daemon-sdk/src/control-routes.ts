@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/control-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import type { AuthenticatedPrincipal } from './http-policy.js';

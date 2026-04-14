@@ -1,26 +1,11 @@
 # Contributing
 
-`goodvibes-sdk` is a published TypeScript SDK workspace, but the product/source of truth still lives in `goodvibes-tui`.
-
-That means contribution rules are slightly stricter than a normal standalone SDK repo.
-
-## Source-First Rule
-
-If a change affects any shared platform seam, do it in `goodvibes-tui` first, then sync it into this repo.
-
-That includes:
-- contract artifacts
-- generated ids and typed request/response maps
-- daemon route seams
-- transport seams
-- shared structured error seams
-- shared auth/session/realtime protocol behavior
-
-Do **not** fix a shared platform problem only in `goodvibes-sdk` and leave `goodvibes-tui` behind.
+`goodvibes-sdk` is a standalone TypeScript SDK workspace.
 
 ## SDK-Only Changes
 
-These are safe to implement directly in this repo:
+Implement changes directly in this repo:
+- platform/runtime internals that are part of the SDK
 - package composition
 - publish automation
 - package metadata
@@ -37,7 +22,7 @@ Install:
 bun install
 ```
 
-Sync from `goodvibes-tui`:
+Refresh the umbrella package internals:
 
 ```bash
 bun run sync
@@ -49,23 +34,10 @@ Portable SDK validation:
 bun run validate
 ```
 
-Source-sync validation against `goodvibes-tui`:
-
-```bash
-bun run validate:source
-```
-
-`validate:source` requires either:
-- `GOODVIBES_TUI_ROOT=/path/to/goodvibes-tui`
-- or a sibling checkout at `../goodvibes-tui`
-
 ## Pull Request Standard
 
 Before opening or merging changes:
-- keep synced surfaces in sync
 - update docs/examples when public behavior changes
 - keep package README files accurate
+- keep the umbrella package self-contained
 - run `bun run validate`
-- run `bun run validate:source` when shared source-first seams changed
-
-If the change required a source-first adjustment in `goodvibes-tui`, link or describe that source change clearly.

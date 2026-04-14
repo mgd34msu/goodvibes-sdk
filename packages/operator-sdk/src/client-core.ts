@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/operator-remote-client.ts
 import type { OperatorContractManifest, OperatorMethodContract } from '@pellux/goodvibes-contracts';
 import type {
   OperatorMethodInput,

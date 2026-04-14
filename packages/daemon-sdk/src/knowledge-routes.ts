@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/knowledge-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import {
   buildMissingScopeBody,

@@ -1,1 +1,1 @@
-export * from '@pellux/goodvibes-daemon-sdk';
+export * from './_internal/daemon/index.js';

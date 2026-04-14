@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/daemon/http/runtime-session-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import type {
   AutomationSurfaceKind,

@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/event-envelope.ts
 export interface EventEnvelope<TType extends string, TPayload> {
   readonly type: TType;
   readonly ts: number;

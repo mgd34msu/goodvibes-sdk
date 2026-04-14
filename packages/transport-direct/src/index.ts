@@ -1,4 +1,3 @@
-// Synced from goodvibes-tui/src/runtime/transports/direct-client.ts
 import { createClientTransport, type ClientTransport } from '@pellux/goodvibes-transport-core';
 
 export type DirectClientTransport<TOperator, TPeer> = ClientTransport<'direct', TOperator, TPeer>;

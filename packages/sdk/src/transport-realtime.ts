@@ -1,1 +1,1 @@
-export * from '@pellux/goodvibes-transport-realtime';
+export * from './_internal/transport-realtime/index.js';

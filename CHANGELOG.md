@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.11
+
+- Removed the remaining SDK repo coupling to `goodvibes-tui`, including the old source-sync workflow and the Bun-run `.mjs` maintenance scripts
+- Finished moving the extracted platform runtime into the umbrella package’s local internal tree so the published SDK validates and installs as a standalone product
+- Replaced hardcoded `.goodvibes/tui` storage roots in the extracted platform runtime with SDK-owned `.goodvibes/sdk` paths
+- Re-homed the leftover `runtime/ui` slices into platform-neutral runtime namespaces and renamed the old `ui-perf` domain to `surface-perf`
+- Removed the unused `panels` store domain from the extracted platform tree and revalidated the umbrella package with clean build, tests, pack checks, and tarball install smoke
+
 ## 0.18.10
 
 - Fixed the public `@pellux/goodvibes-sdk/transport-http` entrypoint so the low-level `requestJson` helper and `TransportJsonError` type are actually exported from the published package
@@ -28,7 +36,7 @@
 - Added explicit umbrella subpath shim modules for `contracts`, `contracts/node`, `daemon`, `errors`, `operator`, `peer`, and the `transport-*` surfaces so those entrypoints are part of the published package shape instead of relying on indirect re-export behavior
 - Tightened pack and install smoke checks to fail if the published SDK ever regresses into nested internal `node_modules` packages again
 - Tightened pack checks to fail if any published build output still references internal workspace package specifiers
-- Added `scripts/prepare-sdk-package.mjs` and updated release staging so the umbrella package is flattened and rewritten from local built outputs before pack/publish
+- Added `scripts/prepare-sdk-package.ts` and updated release staging so the umbrella package is flattened and rewritten from local built outputs before pack/publish
 - Updated the public docs, package README, examples, and release docs so they describe one npm package with entrypoints instead of implying a multi-package public install model
 - Added registry-aware release plumbing so npmjs remains primary while GitHub Packages can mirror the same umbrella package shape, including registry-specific token/config handling in the release scripts and workflow
 
@@ -51,11 +59,11 @@
 
 ## 0.18.3
 
-- Extracted the reusable transport/event seams from `goodvibes-tui` source first, then synced them into SDK packages
+- Extracted the reusable transport/event seams from the legacy platform source into SDK packages
 - Synced operator and peer foundation contracts plus the canonical runtime event domain vocabulary
 - Added `@pellux/goodvibes-transport-core`, `@pellux/goodvibes-transport-direct`, and `@pellux/goodvibes-transport-realtime`
 - Moved `@pellux/goodvibes-transport-http` onto source-owned TUI HTTP path, JSON, and SSE seams instead of downstream-only implementations
-- Synced the daemon JSON error response contract from `goodvibes-tui` into `@pellux/goodvibes-errors`
+- Moved the daemon JSON error response contract into `@pellux/goodvibes-errors`
 - Added source-sync validation for transport and error seams alongside contract sync validation
 - Added realtime transport tests and umbrella exports for the extracted transport layer
 - Made `@pellux/goodvibes-contracts` runtime-neutral for browser and mobile consumers while keeping Node-only artifact path helpers on `@pellux/goodvibes-contracts/node`
