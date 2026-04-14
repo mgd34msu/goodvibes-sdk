@@ -3,10 +3,12 @@
 ## 0.18.6
 
 - Added a dedicated `@pellux/goodvibes-sdk/auth` subpath so token-store and login helpers are discoverable without reaching through the umbrella entrypoint
+- Added explicit umbrella subpath shim modules for `contracts`, `contracts/node`, `daemon`, `errors`, `operator`, `peer`, and the `transport-*` surfaces so those entrypoints are part of the published package shape instead of relying on indirect re-export behavior
 - Tightened pack and install smoke checks to fail if the published SDK ever regresses into nested internal `node_modules` packages again
 - Tightened pack checks to fail if any published build output still references internal workspace package specifiers
-- Updated the public docs and package README so they describe one npm package with entrypoints instead of implying a multi-package public install model
-- Added registry-aware release plumbing so npmjs remains primary while GitHub Packages can mirror the same umbrella package shape
+- Added `scripts/prepare-sdk-package.mjs` and updated release staging so the umbrella package is flattened and rewritten from local built outputs before pack/publish
+- Updated the public docs, package README, examples, and release docs so they describe one npm package with entrypoints instead of implying a multi-package public install model
+- Added registry-aware release plumbing so npmjs remains primary while GitHub Packages can mirror the same umbrella package shape, including registry-specific token/config handling in the release scripts and workflow
 
 ## 0.18.5
 
