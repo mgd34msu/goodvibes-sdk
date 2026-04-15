@@ -12,4 +12,3 @@ export function buildTranscriptEventIndex(messages: readonly ConversationMessage
   const groups = groupTranscriptEvents(events);
   return { events, groups };
 }
-

@@ -1,11 +1,11 @@
 /**
  * Cache Strategy Planner — uses the helper model (or main model) to optimize
  * cache breakpoint placement for explicit-caching providers.
- * 
+ *
  * Two modes:
  *   1. Heuristic (default): Uses getDefaultStrategy() from cache-strategy.ts
  *   2. LLM-assisted: Sends context to the helper model for optimized strategy
- * 
+ *
  * The planner runs:
  *   - Once at session start (first turn)
  *   - Every N turns (configurable, default 10)
@@ -35,7 +35,7 @@ export interface PlanResult {
 
 /**
  * CachePlanner — manages cache strategy lifecycle.
- * 
+ *
  * Caches the current strategy and refreshes it based on
  * turn count and hit rate thresholds.
  */
@@ -55,7 +55,7 @@ export class CachePlanner {
 
   /**
    * Get the current cache strategy, planning a new one if needed.
-   * 
+   *
    * Triggers re-planning when:
    *   - No strategy exists yet (first call)
    *   - refreshAfterTurns threshold reached
