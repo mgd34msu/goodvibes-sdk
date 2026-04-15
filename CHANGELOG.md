@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.20
+
+- Fixed the SDK REPL Python runtime so it no longer tries to build an ephemeral virtualenv before every evaluation
+- Switched the Python REPL execution path back to the host-provided `python3` interpreter inside the selected sandbox session, which removes the hidden `ensurepip` / `venv` dependency from the published package surface
+- This closes the package-level REPL regression that still broke `goodvibes-tui` after the sandbox runtime cutover, even when the host already had a working `python3`
+
 ## 0.18.19
 
 - Fixed the public sandbox provisioning surface so hosts are no longer forced to satisfy the SDK’s private `ConfigManager` class identity just to use doctor, guest-bundle, and QEMU setup helpers

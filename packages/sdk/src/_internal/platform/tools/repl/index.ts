@@ -1,6 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { mkdtempSync, rmSync } from 'node:fs';
 import ts from 'typescript';
 import { executeSandboxCommand } from '../../runtime/sandbox/backend.js';
 import { type ConfigManagerLike } from '../../runtime/sandbox/manager.js';
@@ -126,38 +125,20 @@ async function evalTypeScript(
 function evalPython(
   expression: string,
   workspaceRoot: string,
-  surfaceRoot: string,
   configManager: ConfigManagerLike,
   sandboxSessionRegistry: SandboxSessionRegistry,
   launchPlan: SandboxLaunchPlan,
   sessionId?: string,
 ): string {
-  const replTempBase = join(workspaceRoot, '.goodvibes', surfaceRoot, 'repl-temp');
-  mkdirSync(replTempBase, { recursive: true });
-  const tempRoot = mkdtempSync(join(replTempBase, 'gv-repl-py-'));
-  const venvPath = join(tempRoot, 'venv');
-  const pythonLaunchPlan = launchPlan.backend === 'local' ? {
-    ...createLocalExecPlan(tempRoot),
-    workspaceRoot: tempRoot,
-  } : launchPlan;
-  const create = sessionId
-    ? sandboxSessionRegistry.execute(sessionId, 'python3', ['-m', 'venv', venvPath], configManager, { cwd: tempRoot })
-    : executeSandboxCommand(pythonLaunchPlan, 'python3', ['-m', 'venv', venvPath], { cwd: tempRoot });
-  if (create.status !== 0) {
-    rmSync(tempRoot, { recursive: true, force: true });
-    throw new Error(create.stderr || create.stdout || 'Failed to create ephemeral Python venv.');
-  }
-  const pythonBin = join(venvPath, 'bin', 'python');
   const run = sessionId
-    ? sandboxSessionRegistry.execute(sessionId, pythonBin, ['-I', '-S', '-c', `import json\nresult = (${expression})\nprint(json.dumps(result))`], configManager, {
-        cwd: tempRoot,
+    ? sandboxSessionRegistry.execute(sessionId, 'python3', ['-I', '-S', '-c', `import json\nresult = (${expression})\nprint(json.dumps(result))`], configManager, {
+        cwd: workspaceRoot,
         timeoutMs: 5000,
       })
-    : executeSandboxCommand(pythonLaunchPlan, pythonBin, ['-I', '-S', '-c', `import json\nresult = (${expression})\nprint(json.dumps(result))`], {
-        cwd: tempRoot,
+    : executeSandboxCommand(launchPlan, 'python3', ['-I', '-S', '-c', `import json\nresult = (${expression})\nprint(json.dumps(result))`], {
+        cwd: workspaceRoot,
         timeoutMs: 5000,
       });
-  rmSync(tempRoot, { recursive: true, force: true });
   if (run.status !== 0) {
     throw new Error((run.stderr || run.stdout || 'Python eval failed.').trim());
   }
@@ -292,7 +273,7 @@ export function createReplTool(
             rendered = await evalTypeScript(input.expression, input.bindings ?? {}, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
             break;
           case 'python':
-            rendered = evalPython(input.expression, input.workspaceRoot, surfaceRoot, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
+            rendered = evalPython(input.expression, input.workspaceRoot, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
             break;
           case 'sql':
             rendered = await evalSql(input.expression, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
