@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import {
   cleanupStage,
   collectTarballs,
+  getAuthToken,
   getPublicPackageNameOverride,
   getPublishRegistryOverride,
   getRootVersion,
@@ -77,6 +78,25 @@ function writeConsumerFiles(projectDir) {
     }, null, 2)}\n`,
   );
   writeFileSync(resolve(projectDir, 'check.mjs'), `${smokeScript.trim()}\n`);
+  if (REGISTRY_MODE) {
+    writeRegistryConfig(projectDir);
+  }
+}
+
+function writeRegistryConfig(projectDir) {
+  const token = getAuthToken(REGISTRY);
+  if (!token) {
+    return;
+  }
+  const registryHost = new URL(REGISTRY).host;
+  const scope = PUBLIC_PACKAGE_NAME.startsWith('@')
+    ? PUBLIC_PACKAGE_NAME.slice(0, PUBLIC_PACKAGE_NAME.indexOf('/'))
+    : null;
+  const lines = [`//${registryHost}/:_authToken=${token}`];
+  if (scope && registryHost !== 'registry.npmjs.org') {
+    lines.push(`${scope}:registry=${REGISTRY}`);
+  }
+  writeFileSync(resolve(projectDir, '.npmrc'), `${lines.join('\n')}\n`);
 }
 
 function installWithNpm(specs) {
