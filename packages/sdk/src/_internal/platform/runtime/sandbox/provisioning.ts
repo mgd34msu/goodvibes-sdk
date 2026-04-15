@@ -3,6 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import type { ConfigManager } from '../../config/manager.js';
 import { getSandboxConfigSnapshot } from './manager.js';
+import { requireSurfaceRoot } from '../surface-root.js';
 import { renderQemuWrapperTemplate } from '@pellux/goodvibes-sdk/platform/runtime/sandbox/qemu-wrapper-template';
 
 export interface SandboxDoctorCheck {
@@ -62,6 +63,10 @@ export interface SandboxQemuSetupManifest {
     readonly guestWorkspacePath: string;
     readonly sessionMode: string;
   };
+}
+
+export interface SandboxProvisioningOptions {
+  readonly surfaceRoot: string;
 }
 
 function existsExecutable(pathArg: string): boolean {
@@ -132,6 +137,7 @@ export function exportSandboxGuestBundle(
   manager: ConfigManager,
   workspaceRoot: string,
   pathArg: string,
+  _options: SandboxProvisioningOptions,
 ): { path: string; bundle: SandboxGuestBundle } {
   const config = getSandboxConfigSnapshot(manager);
   const targetPath = resolve(workspaceRoot, pathArg);
@@ -178,6 +184,7 @@ export function scaffoldSandboxQemuInitBundle(
   manager: ConfigManager,
   workspaceRoot: string,
   pathArg: string,
+  options: SandboxProvisioningOptions,
 ): SandboxQemuInitBundle {
   const targetDir = resolve(workspaceRoot, pathArg);
   mkdirSync(targetDir, { recursive: true });
@@ -185,7 +192,7 @@ export function scaffoldSandboxQemuInitBundle(
   const guestBundlePath = join(targetDir, 'guest-bundle.json');
   const readmePath = join(targetDir, 'README.txt');
   writeFileSync(wrapperPath, renderQemuWrapperTemplate(), { encoding: 'utf-8', mode: 0o755 });
-  exportSandboxGuestBundle(manager, workspaceRoot, guestBundlePath);
+  exportSandboxGuestBundle(manager, workspaceRoot, guestBundlePath, options);
   const config = getSandboxConfigSnapshot(manager);
   const readme = [
     'GoodVibes QEMU Sandbox Init Bundle',
@@ -214,8 +221,9 @@ export function scaffoldSandboxQemuSetupBundle(
   manager: ConfigManager,
   workspaceRoot: string,
   pathArg: string,
+  options: SandboxProvisioningOptions,
 ): SandboxQemuSetupBundle {
-  const base = scaffoldSandboxQemuInitBundle(manager, workspaceRoot, pathArg);
+  const base = scaffoldSandboxQemuInitBundle(manager, workspaceRoot, pathArg, options);
   const targetDir = base.directory;
   const config = getSandboxConfigSnapshot(manager);
   const imageDir = join(targetDir, 'images');
@@ -282,7 +290,7 @@ export function scaffoldSandboxQemuSetupBundle(
     `  Port ${config.qemuGuestPort}`,
     `  User ${config.qemuGuestUser || 'goodvibes'}`,
     '  StrictHostKeyChecking accept-new',
-    '  UserKnownHostsFile ~/.goodvibes/goodvibes/known_hosts',
+    `  UserKnownHostsFile ~/.goodvibes/${requireSurfaceRoot(options.surfaceRoot, 'Sandbox provisioning surfaceRoot')}/known_hosts`,
     '  LogLevel ERROR',
   ].join('\n');
   writeFileSync(sshConfigPath, `${sshConfig}\n`, 'utf-8');
@@ -375,8 +383,9 @@ export function bootstrapSandboxQemuSetupBundle(
   workspaceRoot: string,
   pathArg: string,
   sizeGb: number,
+  options: SandboxProvisioningOptions,
 ): SandboxQemuSetupBundle {
-  const bundle = scaffoldSandboxQemuSetupBundle(manager, workspaceRoot, pathArg);
+  const bundle = scaffoldSandboxQemuSetupBundle(manager, workspaceRoot, pathArg, options);
   createSandboxQemuImage(workspaceRoot, bundle.imagePath, sizeGb);
   applySandboxQemuSetupManifest(manager, loadSandboxQemuSetupManifest(workspaceRoot, bundle.manifestPath));
   return bundle;

@@ -3,10 +3,10 @@
  *
  * Resolution order:
  *   1. Environment variable (process.env[key])
- *   2. Project/ancestor secure stores (.goodvibes/goodvibes/secrets.enc), nearest first
- *   3. Project/ancestor plaintext stores (.goodvibes/goodvibes.secrets.json), nearest first
- *   4. User secure store (~/.goodvibes/goodvibes/secrets.enc)
- *   5. User plaintext store (~/.goodvibes/goodvibes.secrets.json)
+ *   2. Project/ancestor secure stores (.goodvibes/<surface>/secrets.enc), nearest first
+ *   3. Project/ancestor plaintext stores (.goodvibes/<surface>.secrets.json), nearest first
+ *   4. User secure store (~/.goodvibes/<surface>/secrets.enc)
+ *   5. User plaintext store (~/.goodvibes/<surface>.secrets.json)
  *   6. If a resolved value is a SecretRef, resolve through the referenced provider
  *
  * The active policy decides whether plaintext stores are eligible:
@@ -24,6 +24,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import type { ConfigManager } from './manager.js';
 import { getSecretRefSource, isSecretRefInput, resolveSecretRef } from '@pellux/goodvibes-sdk/platform/config/secret-refs';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
 
 export type SecretStorageMode = 'plaintext_allowed' | 'preferred_secure' | 'require_secure';
@@ -93,6 +94,7 @@ interface SecretStorePath {
 export interface SecretsManagerOptions {
   readonly projectRoot: string;
   readonly globalHome: string;
+  readonly surfaceRoot: string;
   readonly configManager?: Pick<ConfigManager, 'get'>;
   readonly policy?: SecretStorageMode;
   readonly secureProjectFilePath?: string;
@@ -174,9 +176,11 @@ function collectAncestorRoots(start: string): string[] {
 export class SecretsManager {
   private readonly encKey: Buffer;
   private readonly options: SecretsManagerOptions;
+  private readonly surfaceRoot: string;
 
   constructor(options: SecretsManagerOptions) {
     this.encKey = deriveEncryptionKey();
+    this.surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'SecretsManager surfaceRoot');
     this.options = {
       ...options,
       projectRoot: requireAbsoluteOwnedPath(options.projectRoot, 'projectRoot'),
@@ -395,14 +399,14 @@ export class SecretsManager {
     for (const root of collectAncestorRoots(projectRoot)) {
       ordered.push({
         source: 'project-secure',
-        path: this.options.secureProjectFilePath ?? join(root, '.goodvibes', 'goodvibes', 'secrets.enc'),
+        path: this.options.secureProjectFilePath ?? resolveSurfaceDirectory(root, this.surfaceRoot, 'secrets.enc'),
         secure: true,
         scope: 'project',
       });
       if (includePlaintext) {
         ordered.push({
           source: 'project-plaintext',
-          path: this.options.plaintextProjectFilePath ?? join(root, '.goodvibes', 'goodvibes.secrets.json'),
+          path: this.options.plaintextProjectFilePath ?? resolveSurfaceSharedFile(root, `${this.surfaceRoot}.secrets`, 'json'),
           secure: false,
           scope: 'project',
         });
@@ -411,7 +415,7 @@ export class SecretsManager {
 
     ordered.push({
       source: 'user-secure',
-      path: this.options.secureUserFilePath ?? join(userHome, '.goodvibes', 'goodvibes', 'secrets.enc'),
+      path: this.options.secureUserFilePath ?? resolveSurfaceDirectory(userHome, this.surfaceRoot, 'secrets.enc'),
       secure: true,
       scope: 'user',
     });
@@ -419,7 +423,7 @@ export class SecretsManager {
     if (includePlaintext) {
       ordered.push({
         source: 'user-plaintext',
-        path: this.options.plaintextUserFilePath ?? join(userHome, '.goodvibes', 'goodvibes.secrets.json'),
+        path: this.options.plaintextUserFilePath ?? resolveSurfaceSharedFile(userHome, `${this.surfaceRoot}.secrets`, 'json'),
         secure: false,
         scope: 'user',
       });
@@ -435,26 +439,26 @@ export class SecretsManager {
     for (const root of collectAncestorRoots(projectRoot)) {
       ordered.push({
         source: 'project-secure',
-        path: this.options.secureProjectFilePath ?? join(root, '.goodvibes', 'goodvibes', 'secrets.enc'),
+        path: this.options.secureProjectFilePath ?? resolveSurfaceDirectory(root, this.surfaceRoot, 'secrets.enc'),
         secure: true,
         scope: 'project',
       });
       ordered.push({
         source: 'project-plaintext',
-        path: this.options.plaintextProjectFilePath ?? join(root, '.goodvibes', 'goodvibes.secrets.json'),
+        path: this.options.plaintextProjectFilePath ?? resolveSurfaceSharedFile(root, `${this.surfaceRoot}.secrets`, 'json'),
         secure: false,
         scope: 'project',
       });
     }
     ordered.push({
       source: 'user-secure',
-      path: this.options.secureUserFilePath ?? join(userHome, '.goodvibes', 'goodvibes', 'secrets.enc'),
+      path: this.options.secureUserFilePath ?? resolveSurfaceDirectory(userHome, this.surfaceRoot, 'secrets.enc'),
       secure: true,
       scope: 'user',
     });
     ordered.push({
       source: 'user-plaintext',
-      path: this.options.plaintextUserFilePath ?? join(userHome, '.goodvibes', 'goodvibes.secrets.json'),
+      path: this.options.plaintextUserFilePath ?? resolveSurfaceSharedFile(userHome, `${this.surfaceRoot}.secrets`, 'json'),
       secure: false,
       scope: 'user',
     });
@@ -467,13 +471,13 @@ export class SecretsManager {
       return medium === 'secure'
         ? {
           source: 'project-secure',
-          path: this.options.secureProjectFilePath ?? join(root, '.goodvibes', 'goodvibes', 'secrets.enc'),
+          path: this.options.secureProjectFilePath ?? resolveSurfaceDirectory(root, this.surfaceRoot, 'secrets.enc'),
           secure: true,
           scope,
         }
         : {
           source: 'project-plaintext',
-          path: this.options.plaintextProjectFilePath ?? join(root, '.goodvibes', 'goodvibes.secrets.json'),
+          path: this.options.plaintextProjectFilePath ?? resolveSurfaceSharedFile(root, `${this.surfaceRoot}.secrets`, 'json'),
           secure: false,
           scope,
         };
@@ -483,13 +487,13 @@ export class SecretsManager {
     return medium === 'secure'
       ? {
         source: 'user-secure',
-        path: this.options.secureUserFilePath ?? join(userHome, '.goodvibes', 'goodvibes', 'secrets.enc'),
+        path: this.options.secureUserFilePath ?? resolveSurfaceDirectory(userHome, this.surfaceRoot, 'secrets.enc'),
         secure: true,
         scope,
       }
       : {
         source: 'user-plaintext',
-        path: this.options.plaintextUserFilePath ?? join(userHome, '.goodvibes', 'goodvibes.secrets.json'),
+        path: this.options.plaintextUserFilePath ?? resolveSurfaceSharedFile(userHome, `${this.surfaceRoot}.secrets`, 'json'),
         secure: false,
         scope,
       };

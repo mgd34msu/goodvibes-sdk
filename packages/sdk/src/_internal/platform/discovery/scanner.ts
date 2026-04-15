@@ -1,9 +1,10 @@
 import { networkInterfaces } from 'node:os';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { dirname } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { discoverContextWindows } from '../providers/context-discovery.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
+import { resolveSurfaceDirectory } from '../runtime/surface-root.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,10 +34,12 @@ export interface ScanResult {
 // Persistence
 // ---------------------------------------------------------------------------
 
-type DiscoveryRoots = Pick<ShellPathService, 'homeDirectory'>;
+type DiscoveryRoots = Pick<ShellPathService, 'homeDirectory'> & {
+  readonly surfaceRoot: string;
+};
 
 function getPersistedPath(roots: DiscoveryRoots): string {
-  return join(roots.homeDirectory, '.goodvibes', 'goodvibes', 'discovered-providers.json');
+  return resolveSurfaceDirectory(roots.homeDirectory, roots.surfaceRoot, 'discovered-providers.json');
 }
 
 interface PersistedServer extends DiscoveredServer {

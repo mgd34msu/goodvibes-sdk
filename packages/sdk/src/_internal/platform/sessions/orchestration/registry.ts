@@ -1,8 +1,8 @@
 /**
  * Multi-session Orchestration — Cross-Session Task Registry
  *
- * Wraps SessionTaskGraph with persistence to
- * `.goodvibes/goodvibes/sessions/task-graph.json` and reconnect/resume hydration.
+ * Wraps SessionTaskGraph with persistence to a host-owned task graph path
+ * and reconnect/resume hydration.
  *
  * The registry is the single authoritative source for the cross-session task
  * graph within a process. Command handlers and sync integrations receive an
@@ -11,7 +11,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { writeFile } from 'node:fs/promises';
-import { join } from 'path';
+import { dirname } from 'path';
 import { logger } from '../../utils/logger.js';
 import { SessionTaskGraph } from './graph.js';
 import type {
@@ -48,12 +48,11 @@ export class CrossSessionTaskRegistry {
   _exitHandler: (() => void) | null = null;
 
   /**
-   * @param baseDir - Project base directory.
-   *   The graph is persisted at `<baseDir>/.goodvibes/goodvibes/sessions/task-graph.json`.
+   * @param graphPath - Absolute host-owned task graph path.
    */
-  public constructor(baseDir: string) {
-    this._dir = join(baseDir, '.goodvibes', 'goodvibes', 'sessions');
-    this._graphPath = join(this._dir, 'task-graph.json');
+  public constructor(graphPath: string) {
+    this._graphPath = graphPath;
+    this._dir = dirname(graphPath);
     this._graph = new SessionTaskGraph();
     this._load();
     this._exitHandler = () => {

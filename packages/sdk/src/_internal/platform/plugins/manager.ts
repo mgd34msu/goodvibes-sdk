@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { dirname } from 'path';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import {
   discoverPlugins,
@@ -92,8 +92,10 @@ export class PluginManager {
 
   constructor(options: PluginManagerOptions) {
     this.pathOptions = options.pathOptions;
-    this.stateFilePath = options.stateFilePath
-      ?? join(options.pathOptions.homeDir, '.goodvibes', 'goodvibes', 'plugins.json');
+    if (!options.stateFilePath) {
+      throw new Error('PluginManager requires an explicit stateFilePath.');
+    }
+    this.stateFilePath = options.stateFilePath;
   }
 
   /**

@@ -14,8 +14,8 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { resolveSurfaceDirectory } from '../runtime/surface-root.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
 
 /** Identifies a specific key press with modifiers. */
@@ -111,6 +111,7 @@ export interface KeybindingsManagerOptions {
   readonly configPath?: string;
   readonly userRoot?: string;
   readonly homeDirectory?: string;
+  readonly surfaceRoot?: string;
 }
 
 function resolveKeybindingsPath(options?: KeybindingsManagerOptions): string {
@@ -121,7 +122,10 @@ function resolveKeybindingsPath(options?: KeybindingsManagerOptions): string {
   if (!userRoot) {
     throw new Error('KeybindingsManager requires configPath or an explicit userRoot/homeDirectory.');
   }
-  return join(userRoot, '.goodvibes', 'goodvibes', 'keybindings.json');
+  if (!options?.surfaceRoot) {
+    throw new Error('KeybindingsManager requires surfaceRoot when deriving a config path.');
+  }
+  return resolveSurfaceDirectory(userRoot, options.surfaceRoot, 'keybindings.json');
 }
 
 /**

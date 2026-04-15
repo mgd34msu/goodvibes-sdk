@@ -196,6 +196,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const secretsManager = new SecretsManager({
     projectRoot: workingDirectory,
     globalHome: homeDirectory,
+    surfaceRoot,
     configManager,
   });
   const subscriptionManager = new SubscriptionManager(
@@ -237,7 +238,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const profileManager = new ProfileManager(shellPaths.resolveUserPath(surfaceRoot, 'profiles'));
   const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(surfaceRoot, 'bookmarks'));
   const sessionManager = new SessionManager(workingDirectory);
-  const sessionOrchestration = new CrossSessionTaskRegistry(workingDirectory);
+  const sessionOrchestration = new CrossSessionTaskRegistry(
+    shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'),
+  );
   const hookActivityTracker = new HookActivityTracker();
   const watcherRegistry = new WatcherRegistry({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'watchers.json'),
@@ -374,7 +377,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const channelPolicy = new ChannelPolicyManager({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'channels', 'policies.json'),
   });
-  const distributedRuntime = new DistributedRuntimeManager();
+  const distributedRuntime = new DistributedRuntimeManager(
+    shellPaths.resolveProjectPath(surfaceRoot, 'remote', 'distributed-runtime.json'),
+  );
   distributedRuntime.attachRuntime({
     sessionBridge: sessionBroker,
     approvalBridge: approvalBroker,

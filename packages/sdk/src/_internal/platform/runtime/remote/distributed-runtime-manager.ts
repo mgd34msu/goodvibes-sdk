@@ -48,8 +48,6 @@ import {
   invokeDistributedPeer,
 } from './distributed-runtime-work.js';
 
-const STORE_PATH = '.goodvibes/goodvibes/remote/distributed-runtime.json';
-
 export class DistributedRuntimeManager implements DistributedRuntimeManagerState {
   readonly store: PersistentStore<DistributedRuntimeSnapshotStore>;
   readonly pairRequests = new Map<string, StoredPairRequest>();
@@ -63,8 +61,10 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   eventPublisher: ((event: string, payload: unknown) => void) | null = null;
   loaded = false;
 
-  constructor(store?: PersistentStore<DistributedRuntimeSnapshotStore>) {
-    this.store = store ?? new PersistentStore<DistributedRuntimeSnapshotStore>(STORE_PATH);
+  constructor(storeOrPath: PersistentStore<DistributedRuntimeSnapshotStore> | string) {
+    this.store = typeof storeOrPath === 'string'
+      ? new PersistentStore<DistributedRuntimeSnapshotStore>(storeOrPath)
+      : storeOrPath;
   }
 
   attachRuntime(input: {

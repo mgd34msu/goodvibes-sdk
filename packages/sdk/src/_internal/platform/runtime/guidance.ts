@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { dirname } from 'path';
 import type { ConfigManager } from '../config/manager.js';
 import type { SessionMaintenanceStatus } from './session-maintenance.js';
 import type { EcosystemRecommendation } from './ecosystem/recommendations.js';
+import { resolveSurfaceDirectory } from './surface-root.js';
 
 export type GuidanceMode = 'off' | 'minimal' | 'guided';
 export type GuidanceCategory = 'onboarding' | 'operational' | 'recovery' | 'optimization';
@@ -33,6 +34,7 @@ export interface GuidancePersistenceOptions {
   readonly guidancePath?: string;
   readonly userRoot?: string;
   readonly homeDirectory?: string;
+  readonly surfaceRoot?: string;
 }
 
 function resolveGuidancePath(options?: GuidancePersistenceOptions): string {
@@ -43,7 +45,10 @@ function resolveGuidancePath(options?: GuidancePersistenceOptions): string {
   if (!userRoot) {
     throw new Error('Guidance persistence requires guidancePath or an explicit userRoot/homeDirectory.');
   }
-  return join(userRoot, '.goodvibes', 'goodvibes', 'guidance.json');
+  if (!options?.surfaceRoot) {
+    throw new Error('Guidance persistence requires surfaceRoot when deriving guidancePath.');
+  }
+  return resolveSurfaceDirectory(userRoot, options.surfaceRoot, 'guidance.json');
 }
 
 function readDismissals(options?: GuidancePersistenceOptions): GuidanceDismissalStore {

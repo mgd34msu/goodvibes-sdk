@@ -7,6 +7,7 @@ import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import type { HookDispatcher } from '../hooks/index.js';
 import type { HookEvent } from '@pellux/goodvibes-sdk/platform/hooks/types';
 import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
+import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
@@ -21,6 +22,7 @@ interface ConfigCliOverrides {
   autoApprove?: boolean;
   systemPromptFile?: string;
   workingDir?: string;
+  surfaceRoot?: string;
 }
 
 export type ConfigOverrides = ConfigCliOverrides & (
@@ -40,6 +42,7 @@ interface ConfigRoots {
   configDir?: string;
   homeDir?: string;
   sharedConfigPath?: string;
+  surfaceRoot?: string;
 }
 
 export interface ConfigSetOptions {
@@ -80,7 +83,7 @@ function requireAbsoluteOwnedPath(path: string | undefined, name: string): strin
 }
 
 /**
- * Ensure the shared ~/.goodvibes/goodvibes.json exists (empty object if not).
+ * Ensure the shared ~/.goodvibes/<surface>.json exists (empty object if not).
  * This is reserved for future cross-app use — no TUI settings go here.
  */
 function ensureSharedConfig(sharedPath: string): void {
@@ -89,7 +92,7 @@ function ensureSharedConfig(sharedPath: string): void {
     try {
       writeFileSync(sharedPath, '{}\n', 'utf-8');
     } catch (err) {
-      logger.debug('Could not create shared goodvibes.json (non-fatal)', { error: summarizeError(err) });
+      logger.debug('Could not create shared surface config (non-fatal)', { error: summarizeError(err) });
     }
   }
 }
@@ -97,7 +100,7 @@ function ensureSharedConfig(sharedPath: string): void {
 /**
  * ConfigManager — Layered, mutable, persistent config system.
  *
- * Load order: defaults < global TUI settings < project TUI settings < CLI overrides
+ * Load order: defaults < global surface settings < project surface settings < CLI overrides
  * API keys are never persisted — loaded from env vars only.
  */
 export class ConfigManager {
@@ -115,18 +118,22 @@ export class ConfigManager {
     const homeDirectory = requireAbsoluteOwnedPath(roots.homeDir, 'homeDir') ?? null;
     const workingDirectory = requireAbsoluteOwnedPath(overrides.workingDir, 'workingDir') ?? null;
     const sharedConfigPath = requireAbsoluteOwnedPath(roots.sharedConfigPath, 'sharedConfigPath');
-    const base = configDir ?? join(homeDirectory!, '.goodvibes', 'goodvibes');
+    const surfaceRoot = roots.surfaceRoot ? requireSurfaceRoot(roots.surfaceRoot, 'ConfigManager surfaceRoot') : null;
+    if ((!configDir || workingDirectory || homeDirectory) && !surfaceRoot) {
+      throw new Error('ConfigManager surfaceRoot is required when deriving config paths from homeDir/workingDir.');
+    }
+    const base = configDir ?? resolveSurfaceDirectory(homeDirectory!, surfaceRoot!);
     this.configDir = base;
     this.configPath = join(base, 'settings.json');
     this.workingDirectory = workingDirectory;
     this.homeDirectory = homeDirectory;
     this.projectConfigPath = this.workingDirectory
-      ? join(this.workingDirectory, '.goodvibes', 'goodvibes', 'settings.json')
+      ? resolveSurfaceDirectory(this.workingDirectory, surfaceRoot!, 'settings.json')
       : null;
     this.config = cloneDefaultConfig();
 
     const ownedSharedConfigPath = sharedConfigPath ?? (
-      this.homeDirectory ? join(this.homeDirectory, '.goodvibes', 'goodvibes.json') : null
+      this.homeDirectory ? resolveSurfaceSharedFile(this.homeDirectory, surfaceRoot!) : null
     );
     if (ownedSharedConfigPath) {
       ensureSharedConfig(ownedSharedConfigPath);
@@ -281,7 +288,7 @@ export class ConfigManager {
     }
   }
 
-  /** Persist current config to project-level TUI settings file (.goodvibes/goodvibes/settings.json). */
+  /** Persist current config to the project-level surface settings file. */
   saveProject(): void {
     if (!this.projectConfigPath) {
       throw new Error('ConfigManager.saveProject requires an explicit workingDir.');

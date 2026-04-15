@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.17
+
+- Continued the SDK host-boundary cleanup by removing more baked-in `.goodvibes/goodvibes/...` storage paths from reusable platform modules
+- `ConfigManager`, `SecretsManager`, background provider/MCP discovery, the cross-session task registry, the distributed-runtime store, keybindings, guidance persistence, plugin state, and sandbox provisioning now require explicit host-owned `surfaceRoot` or storage-path input instead of silently defaulting to the canonical product root
+- Kept the canonical `goodvibes` root choice only in concrete daemon host wiring while the reusable SDK surfaces now compile and validate with the storage root pushed back to the host boundary
+
 ## 0.18.16
 
 - Removed the hardcoded `goodvibes` product-root assumption from the reusable SDK runtime/tool surfaces that the TUI is expected to consume directly

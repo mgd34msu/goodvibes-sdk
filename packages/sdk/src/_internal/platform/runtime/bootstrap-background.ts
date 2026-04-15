@@ -25,16 +25,17 @@ export interface BackgroundProviderDiscoveryOptions {
   restoreSavedModel: (providerRegistry: ProviderRegistry, savedModel: string, savedProvider: string, runtime: RuntimeSelectionState) => void;
   systemMessageRouter: HostSystemMessageSink;
   shellPaths: Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'>;
+  surfaceRoot: string;
 }
 
 export function startBackgroundProviderDiscovery(
   options: BackgroundProviderDiscoveryOptions,
 ): void {
-  const { configManager, providerRegistry, runtime, requestRender, restoreSavedModel, systemMessageRouter, shellPaths } = options;
+  const { configManager, providerRegistry, runtime, requestRender, restoreSavedModel, systemMessageRouter, shellPaths, surfaceRoot } = options;
 
   autoRegisterProviders(providerRegistry);
 
-  const persisted = loadPersistedProviders(shellPaths);
+  const persisted = loadPersistedProviders({ ...shellPaths, surfaceRoot });
   if (persisted.length > 0) {
     try {
       providerRegistry.registerDiscoveredProviders(persisted);
@@ -87,7 +88,7 @@ export function startBackgroundProviderDiscovery(
     }
 
     if (result.servers.length > 0 && removedServers.length > 0) {
-      removePersistedProviders(shellPaths, removedServers);
+      removePersistedProviders({ ...shellPaths, surfaceRoot }, removedServers);
       for (const server of removedServers) {
         systemMessageRouter.low(
           `[Scan] ${server.name} at ${server.host}:${server.port} is no longer reachable — removed`,
@@ -113,7 +114,7 @@ export function startBackgroundProviderDiscovery(
     }
 
     if (result.servers.length > 0) {
-      persistProviders(shellPaths, result.servers);
+      persistProviders({ ...shellPaths, surfaceRoot }, result.servers);
     }
 
     if (newServers.length > 0 || removedServers.length > 0) {
@@ -129,10 +130,11 @@ export interface BackgroundMcpDiscoveryOptions {
   systemMessageRouter: HostSystemMessageSink;
   requestRender: () => void;
   shellPaths: Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'>;
+  surfaceRoot: string;
 }
 
 export function scheduleBackgroundMcpDiscovery(options: BackgroundMcpDiscoveryOptions): void {
-  const { mcpRegistry, systemMessageRouter, requestRender, shellPaths } = options;
+  const { mcpRegistry, systemMessageRouter, requestRender, shellPaths, surfaceRoot } = options;
 
   mcpRegistry.connectAll(shellPaths).catch((err) => {
     logger.debug('MCP auto-connect failed (non-fatal)', { error: summarizeError(err) });
@@ -140,7 +142,7 @@ export function scheduleBackgroundMcpDiscovery(options: BackgroundMcpDiscoveryOp
 
   setTimeout(() => {
     const registeredNames = new Set(mcpRegistry.serverNames);
-    scanMcpServers(shellPaths, registeredNames).then((result) => {
+    scanMcpServers({ ...shellPaths, surfaceRoot }, registeredNames).then((result) => {
       if (result.suggestions.length === 0) return;
       for (const suggestion of result.suggestions) {
         systemMessageRouter.low(

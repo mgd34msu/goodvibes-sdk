@@ -6,7 +6,7 @@
  *
  * Scan locations (in order):
  *   1. Project .mcp/ directory — looks for mcp.json or index.js/index.ts scripts
- *   2. ~/.goodvibes/goodvibes/mcp/ — user-global MCP server definitions
+ *   2. ~/.goodvibes/<surface>/mcp/ — user-global MCP server definitions
  *   3. Locally installed npx MCP packages (node_modules/.bin/@modelcontextprotocol/*)
  *
  * Returns suggested McpServerConfig[] for servers not already in the registry.
@@ -16,6 +16,7 @@ import { join } from 'path';
 import { logger } from '../utils/logger.js';
 import type { McpServerConfig } from '../mcp/config.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
+import { requireSurfaceRoot } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 
 export interface McpDiscoveryResult {
@@ -25,7 +26,9 @@ export interface McpDiscoveryResult {
   locationsScanned: number;
 }
 
-export type McpDiscoveryRoots = Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'>;
+export type McpDiscoveryRoots = Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'> & {
+  readonly surfaceRoot: string;
+};
 
 /**
  * Well-known npx-installable MCP server package names.
@@ -126,13 +129,13 @@ function scanProjectMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): M
 }
 
 /**
- * Scan ~/.goodvibes/goodvibes/mcp/ for user-global server scripts.
+ * Scan ~/.goodvibes/<surface>/mcp/ for user-global server scripts.
  * Looks for:
  *   - <name>/index.js, <name>/server.js, etc.
  *   - <name>.js, <name>.ts standalone scripts
  */
 function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): McpServerConfig[] {
-  const mcpDir = join(roots.homeDirectory, '.goodvibes', 'goodvibes', 'mcp');
+  const mcpDir = join(roots.homeDirectory, '.goodvibes', requireSurfaceRoot(roots.surfaceRoot, 'MCP discovery surfaceRoot'), 'mcp');
   if (!existsSync(mcpDir)) return [];
 
   const suggestions: McpServerConfig[] = [];
@@ -168,7 +171,7 @@ function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>):
       }
     }
   } catch (err) {
-    logger.debug('[mcp-scanner] Failed to read ~/.goodvibes/goodvibes/mcp/', { error: summarizeError(err) });
+    logger.debug('[mcp-scanner] Failed to read surface MCP directory', { error: summarizeError(err) });
   }
 
   return suggestions;
@@ -226,7 +229,7 @@ export async function scanMcpServers(
   locationsScanned++;
   addSuggestions(scanProjectMcpDir(roots, registeredNames));
 
-  // 2. ~/.goodvibes/goodvibes/mcp/ user-global directory
+  // 2. ~/.goodvibes/<surface>/mcp/ user-global directory
   locationsScanned++;
   addSuggestions(scanGoodvibesMcpDir(roots, registeredNames));
 

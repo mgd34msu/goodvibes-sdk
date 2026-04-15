@@ -36,7 +36,7 @@ function readDaemonCliTokens(env: NodeJS.ProcessEnv): DaemonCliTokens {
 
 async function main(): Promise<void> {
   const { workingDirectory: workingDir, homeDirectory } = resolveDaemonCliOwnership();
-  const config = new ConfigManager({ workingDir, homeDir: homeDirectory });
+  const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: 'goodvibes' });
   new GlobalNetworkTransportInstaller().install(config);
   const runtimeBus = new RuntimeEventBus();
   const runtimeStore = createRuntimeStore();
