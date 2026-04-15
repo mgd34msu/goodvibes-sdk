@@ -27,7 +27,7 @@ export type AutomationScheduleDefinition =
 export type AutomationScheduleKind = AutomationScheduleDefinition['kind'];
 
 const EVERY_PATTERN = /^(\d+(?:\.\d+)?)(ms|s|m|h|d)$/;
-const CRON_HELPER_STATE_PATH = '.goodvibes/sdk/.automation-cron-helper.json';
+const CRON_HELPER_STATE_PATH = '.goodvibes/tui/.automation-cron-helper.json';
 
 export const DEFAULT_TOP_OF_HOUR_STAGGER_MS = 5 * 60 * 1_000;
 

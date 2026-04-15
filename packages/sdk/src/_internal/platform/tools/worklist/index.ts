@@ -43,7 +43,7 @@ function summarizeWorklist(record: WorklistRecord) {
 }
 
 function worklistsPath(storageRoot: string): string {
-  return join(storageRoot, '.goodvibes', 'sdk', 'worklists.json');
+  return join(storageRoot, '.goodvibes', 'tui', 'worklists.json');
 }
 
 function loadWorklists(storageRoot: string): WorklistRecord[] {

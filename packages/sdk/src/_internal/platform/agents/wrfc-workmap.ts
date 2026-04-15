@@ -22,7 +22,7 @@ export class WrfcWorkmap {
   private filePath: string;
 
   constructor(projectRoot: string, sessionId: string) {
-    this.filePath = join(projectRoot, '.goodvibes', 'sdk', 'sessions', `${sessionId}_workmap.jsonl`);
+    this.filePath = join(projectRoot, '.goodvibes', 'tui', 'sessions', `${sessionId}_workmap.jsonl`);
   }
 
   private dirCreated = false;

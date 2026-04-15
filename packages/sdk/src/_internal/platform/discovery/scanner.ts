@@ -36,7 +36,7 @@ export interface ScanResult {
 type DiscoveryRoots = Pick<ShellPathService, 'homeDirectory'>;
 
 function getPersistedPath(roots: DiscoveryRoots): string {
-  return join(roots.homeDirectory, '.goodvibes', 'sdk', 'discovered-providers.json');
+  return join(roots.homeDirectory, '.goodvibes', 'tui', 'discovered-providers.json');
 }
 
 interface PersistedServer extends DiscoveredServer {

@@ -18,7 +18,7 @@ export interface BookmarkEntry {
  * BookmarkManager - Tracks bookmarked blocks and saves block content to disk.
  *
  * Bookmarks are stored in memory for the session. Saved block content is
- * written to ~/.goodvibes/sdk/bookmarks/<timestamp>-<label>.txt.
+ * written to ~/.goodvibes/tui/bookmarks/<timestamp>-<label>.txt.
  */
 export class BookmarkManager {
   private bookmarks = new Map<string, BookmarkEntry>();

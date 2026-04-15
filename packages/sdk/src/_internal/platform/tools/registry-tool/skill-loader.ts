@@ -20,12 +20,12 @@ export interface SkillLoaderRoots {
 function getSkillDirs(roots: SkillLoaderRoots): string[] {
   const dirs = [
     join(roots.workingDirectory, '.goodvibes', 'skills'),
-    join(roots.workingDirectory, '.goodvibes', 'sdk', 'skills'),
+    join(roots.workingDirectory, '.goodvibes', 'tui', 'skills'),
   ];
   if (roots.homeDirectory) {
     dirs.push(
       join(roots.homeDirectory, '.goodvibes', 'skills'),
-      join(roots.homeDirectory, '.goodvibes', 'sdk', 'skills'),
+      join(roots.homeDirectory, '.goodvibes', 'tui', 'skills'),
     );
   }
   return dirs;

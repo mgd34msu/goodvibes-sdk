@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.13
+
+- Removed the leftover `projectSdkRoot` / `userSdkRoot` and `resolveProjectSdkPath` / `resolveUserSdkPath` naming from the public shell-path service so the SDK no longer exposes the old extracted-app compatibility surface
+- Corrected the extracted platform runtime storage roots to use the TUI product namespace under `.goodvibes/tui` instead of the invalid `.goodvibes/sdk` path
+- Revalidated the standalone SDK after the storage-root correction with clean build, tests, pack checks, install smoke, and release dry-run
+
 ## 0.18.12
 
 - Moved the extracted platform runtime behind the umbrella package’s SDK-owned internal source boundary under `packages/sdk/src/_internal/platform` while keeping the public `platform/*` subpath exports intact

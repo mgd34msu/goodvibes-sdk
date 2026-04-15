@@ -41,7 +41,7 @@ Node-only helper:
 
 ## Version alignment
 
-Current SDK version: `0.18.12`
+Current SDK version: `0.18.13`
 
 The workspace tracks the SDK release line directly.
 

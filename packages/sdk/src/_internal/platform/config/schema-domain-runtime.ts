@@ -313,7 +313,7 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     key: 'service.logPath',
     type: 'string',
     default: '',
-    description: 'File path for daemon/service logs (empty = platform default under .goodvibes/sdk/service/)',
+    description: 'File path for daemon/service logs (empty = platform default under .goodvibes/tui/service/)',
   },
   {
     key: 'network.outboundTls.mode',

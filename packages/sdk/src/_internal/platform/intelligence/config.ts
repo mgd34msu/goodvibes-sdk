@@ -2,8 +2,8 @@
  * Per-language configuration for CodeIntelligence.
  *
  * Config is loaded from (in priority order, higher overrides lower):
- *   1. .goodvibes/sdk/languages/{langId}.json  (project-level)
- *   2. ~/.goodvibes/sdk/languages/{langId}.json (user-level)
+ *   1. .goodvibes/tui/languages/{langId}.json  (project-level)
+ *   2. ~/.goodvibes/tui/languages/{langId}.json (user-level)
  *   3. Built-in defaults (this file)
  */
 import { existsSync, readFileSync } from 'fs';
@@ -118,8 +118,8 @@ function readConfigFile(filePath: string): LanguageConfig | null {
 export function loadLanguageConfigs(roots: IntelligenceRoots): Map<string, LanguageConfig> {
   const result = getDefaultConfigs();
 
-  const userDir = join(roots.homeDirectory, '.goodvibes', 'sdk', 'languages');
-  const projectDir = join(roots.workingDirectory, '.goodvibes', 'sdk', 'languages');
+  const userDir = join(roots.homeDirectory, '.goodvibes', 'tui', 'languages');
+  const projectDir = join(roots.workingDirectory, '.goodvibes', 'tui', 'languages');
 
   // Collect all known language IDs (from defaults + scan would go here).
   // For now we apply overrides only for IDs we already know about.

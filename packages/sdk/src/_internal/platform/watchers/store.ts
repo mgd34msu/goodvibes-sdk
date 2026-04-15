@@ -12,7 +12,7 @@ function sortWatchers(watchers: readonly WatcherRecord[]): WatcherRecord[] {
 }
 
 export function getWatcherStorePath(rootPath: string): string {
-  return join(rootPath, '.goodvibes', 'sdk', 'watchers.json');
+  return join(rootPath, '.goodvibes', 'tui', 'watchers.json');
 }
 
 export function resolveWatcherStorePath(storePath?: string): string {

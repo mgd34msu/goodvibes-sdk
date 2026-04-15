@@ -40,7 +40,7 @@ function summarizeTeam(team: TeamRecord) {
 }
 
 function teamsPath(storageRoot: string): string {
-  return join(storageRoot, '.goodvibes', 'sdk', 'teams.json');
+  return join(storageRoot, '.goodvibes', 'tui', 'teams.json');
 }
 
 function loadTeams(storageRoot: string): TeamRecord[] {
