@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.27
+
+- Added the reusable `@pellux/goodvibes-sdk/platform/templates/manager` surface so hosts can use the SDK-owned template manager instead of carrying a local template implementation
+- Moved template storage policy out of the reusable implementation by making the manager accept host-owned template roots while still supporting project and global template directories
+- This release unblocks the TUI cutover of session template commands onto the published SDK package instead of a local copied `templates/manager.ts`
+
 ## 0.18.26
 
 - Fixed the SDK’s baked runtime version fallback so it now syncs from the workspace package version during every build instead of drifting as a stale hardcoded literal
