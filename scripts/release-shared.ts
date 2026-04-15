@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const SDK_ROOT = resolve(__dirname, '..');
+const SDK_TEMP_ROOT = resolve(SDK_ROOT, '.tmp');
 export const packageDirs = [
   'packages/contracts',
   'packages/errors',
@@ -124,10 +124,15 @@ export function normalizeManifest(pkg, rootVersion = getRootVersion()) {
   };
 }
 
+export function createSdkTempDir(prefix) {
+  mkdirSync(SDK_TEMP_ROOT, { recursive: true });
+  return mkdtempSync(join(SDK_TEMP_ROOT, prefix));
+}
+
 export function stagePackages() {
   const rootVersion = getRootVersion();
   const publicPackageNameOverride = getPublicPackageNameOverride();
-  const tempRoot = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-release-'));
+  const tempRoot = createSdkTempDir('goodvibes-sdk-release-');
   const stages = [];
   for (const dir of packageDirs) {
     const sourceDir = getPackageDirectoryPath(dir);
@@ -189,7 +194,7 @@ export function createAuthEnv(extraEnv = {}, options = {}) {
   }
   const registryHost = getRegistryHost(registry);
   const userConfigPath = resolve(
-    mkdtempSync(join(tmpdir(), 'goodvibes-sdk-npmrc-')),
+    createSdkTempDir('goodvibes-sdk-npmrc-'),
     '.npmrc',
   );
   const npmrcLines = [`//${registryHost}/:_authToken=${token}`];

@@ -1,10 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
   cleanupStage,
   collectTarballs,
+  createSdkTempDir,
   getAuthToken,
   getPublicPackageNameOverride,
   getPublishRegistryOverride,
@@ -103,7 +103,7 @@ function writeRegistryConfig(projectDir) {
 }
 
 function installWithNpm(specs) {
-  const projectDir = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-npm-smoke-'));
+  const projectDir = createSdkTempDir('goodvibes-sdk-npm-smoke-');
   try {
     writeConsumerFiles(projectDir);
     run('npm', ['install', ...specs], projectDir, {
@@ -118,7 +118,7 @@ function installWithNpm(specs) {
 }
 
 function installWithBun(specs) {
-  const projectDir = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-bun-smoke-'));
+  const projectDir = createSdkTempDir('goodvibes-sdk-bun-smoke-');
   try {
     writeConsumerFiles(projectDir);
     run('bun', ['add', '--force', '--no-cache', ...specs], projectDir, {
@@ -139,7 +139,7 @@ function buildRegistrySpecs() {
 
 function buildTarballSpecs() {
   const { tempRoot, publicStages } = stagePackages();
-  const packDestination = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-tarballs-'));
+  const packDestination = createSdkTempDir('goodvibes-sdk-tarballs-');
   const packResults = publicStages
     .filter((stage) => stage.dir === PUBLIC_PACKAGE_DIR)
     .map((stage) => packStage(stage.stageDir, packDestination));

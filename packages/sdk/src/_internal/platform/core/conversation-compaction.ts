@@ -1,0 +1,68 @@
+import type { ProviderMessage } from '../providers/interface.js';
+import type { ProviderRegistry } from '../providers/registry.js';
+import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { compactMessages } from './context-compaction.js';
+import type { CompactionContext } from './context-compaction.js';
+import type { SessionMemoryStore } from '@pellux/goodvibes-sdk/platform/core/session-memory';
+import type { SessionLineageTracker } from '@pellux/goodvibes-sdk/platform/core/session-lineage';
+import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+
+export interface ConversationCompactionHost {
+  getMessageCount(): number;
+  getMessagesForLLM(): ProviderMessage[];
+  replaceMessagesForLLM(newMessages: ProviderMessage[]): void;
+  getSessionMemoryStore(): Pick<SessionMemoryStore, 'list'> | null;
+  getSessionLineageTracker(): Pick<SessionLineageTracker, 'addCompactionEntry'>;
+}
+
+export async function compactConversation(
+  host: ConversationCompactionHost,
+  registry: ProviderRegistry,
+  modelId: string,
+  trigger: 'auto' | 'manual' = 'manual',
+  provider?: string,
+  context?: CompactionContext,
+): Promise<void> {
+  if (host.getMessageCount() === 0) return;
+
+  try {
+    const llmMessages = host.getMessagesForLLM();
+    const compactionContext: CompactionContext = context ?? {
+      messages: llmMessages,
+      trigger,
+      extractionModelId: modelId,
+      extractionProvider: provider,
+      sessionMemories: [],
+      agents: [],
+      wrfcChains: [],
+      activePlan: null,
+      lineageEntries: [],
+      compactionCount: 0,
+      contextWindow: 0,
+    };
+    const result = await compactMessages(compactionContext, registry);
+
+    host.replaceMessagesForLLM(result.messages);
+
+    const memoriesCount = host.getSessionMemoryStore()?.list().length ?? 0;
+    const memoriesPart = memoriesCount > 0 ? `, ${memoriesCount} pinned memories` : '';
+    const saved = result.tokensBeforeEstimate - result.tokensAfterEstimate;
+    const savedKTokens = Math.round(saved / 1000);
+    host.getSessionLineageTracker().addCompactionEntry(
+      `${trigger} compact, saved ~${savedKTokens}K tokens${memoriesPart}.`,
+    );
+
+    logger.info('Conversation compacted', {
+      trigger,
+      messagesBeforeCompaction: result.event.messagesBeforeCompaction,
+      messagesAfterCompaction: result.event.messagesAfterCompaction,
+      tokensBeforeEstimate: result.tokensBeforeEstimate,
+      tokensAfterEstimate: result.tokensAfterEstimate,
+      tokensSaved: saved,
+    });
+  } catch (err: unknown) {
+    const msg = summarizeError(err);
+    logger.error('Compact failed', { error: msg });
+    throw err;
+  }
+}

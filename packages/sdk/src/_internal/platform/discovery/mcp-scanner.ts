@@ -6,7 +6,7 @@
  *
  * Scan locations (in order):
  *   1. Project .mcp/ directory — looks for mcp.json or index.js/index.ts scripts
- *   2. ~/.goodvibes/tui/mcp/ — user-global MCP server definitions
+ *   2. ~/.goodvibes/goodvibes/mcp/ — user-global MCP server definitions
  *   3. Locally installed npx MCP packages (node_modules/.bin/@modelcontextprotocol/*)
  *
  * Returns suggested McpServerConfig[] for servers not already in the registry.
@@ -126,13 +126,13 @@ function scanProjectMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): M
 }
 
 /**
- * Scan ~/.goodvibes/tui/mcp/ for user-global server scripts.
+ * Scan ~/.goodvibes/goodvibes/mcp/ for user-global server scripts.
  * Looks for:
  *   - <name>/index.js, <name>/server.js, etc.
  *   - <name>.js, <name>.ts standalone scripts
  */
 function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): McpServerConfig[] {
-  const mcpDir = join(roots.homeDirectory, '.goodvibes', 'tui', 'mcp');
+  const mcpDir = join(roots.homeDirectory, '.goodvibes', 'goodvibes', 'mcp');
   if (!existsSync(mcpDir)) return [];
 
   const suggestions: McpServerConfig[] = [];
@@ -168,7 +168,7 @@ function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>):
       }
     }
   } catch (err) {
-    logger.debug('[mcp-scanner] Failed to read ~/.goodvibes/tui/mcp/', { error: summarizeError(err) });
+    logger.debug('[mcp-scanner] Failed to read ~/.goodvibes/goodvibes/mcp/', { error: summarizeError(err) });
   }
 
   return suggestions;
@@ -226,7 +226,7 @@ export async function scanMcpServers(
   locationsScanned++;
   addSuggestions(scanProjectMcpDir(roots, registeredNames));
 
-  // 2. ~/.goodvibes/tui/mcp/ user-global directory
+  // 2. ~/.goodvibes/goodvibes/mcp/ user-global directory
   locationsScanned++;
   addSuggestions(scanGoodvibesMcpDir(roots, registeredNames));
 

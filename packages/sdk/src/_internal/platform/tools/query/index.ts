@@ -31,7 +31,7 @@ function summarizeQuery(record: QueryRecord) {
 
 export function createQueryTool(workingDirectory: string): Tool {
   const workspaceRoot = resolve(workingDirectory);
-  const queriesDir = join(workspaceRoot, '.goodvibes', 'tui');
+  const queriesDir = join(workspaceRoot, '.goodvibes', 'goodvibes');
   const queriesPath = join(queriesDir, 'queries.json');
 
   function loadQueries(): QueryRecord[] {

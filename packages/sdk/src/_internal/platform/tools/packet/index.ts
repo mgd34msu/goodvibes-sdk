@@ -35,7 +35,7 @@ function summarizePacket(record: PacketRecord) {
 
 export function createPacketTool(workingDirectory: string): Tool {
   const workspaceRoot = resolve(workingDirectory);
-  const packetsDir = join(workspaceRoot, '.goodvibes', 'tui');
+  const packetsDir = join(workspaceRoot, '.goodvibes', 'goodvibes');
   const packetsPath = join(packetsDir, 'packets.json');
 
   function loadPackets(): PacketRecord[] {

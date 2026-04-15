@@ -48,7 +48,7 @@ import {
   invokeDistributedPeer,
 } from './distributed-runtime-work.js';
 
-const STORE_PATH = '.goodvibes/tui/remote/distributed-runtime.json';
+const STORE_PATH = '.goodvibes/goodvibes/remote/distributed-runtime.json';
 
 export class DistributedRuntimeManager implements DistributedRuntimeManagerState {
   readonly store: PersistentStore<DistributedRuntimeSnapshotStore>;

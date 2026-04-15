@@ -23,11 +23,11 @@
     },
     "packages/contracts": {
       "name": "@pellux/goodvibes-contracts",
-      "version": "0.18.14",
+      "version": "0.18.15",
     },
     "packages/daemon-sdk": {
       "name": "@pellux/goodvibes-daemon-sdk",
-      "version": "0.18.14",
+      "version": "0.18.15",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -35,11 +35,11 @@
     },
     "packages/errors": {
       "name": "@pellux/goodvibes-errors",
-      "version": "0.18.14",
+      "version": "0.18.15",
     },
     "packages/operator-sdk": {
       "name": "@pellux/goodvibes-operator-sdk",
-      "version": "0.18.14",
+      "version": "0.18.15",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -48,7 +48,7 @@
     },
     "packages/peer-sdk": {
       "name": "@pellux/goodvibes-peer-sdk",
-      "version": "0.18.14",
+      "version": "0.18.15",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -57,7 +57,7 @@
     },
     "packages/sdk": {
       "name": "@pellux/goodvibes-sdk",
-      "version": "0.18.14",
+      "version": "0.18.15",
       "dependencies": {
         "@agentclientprotocol/sdk": "^0.16.1",
         "@anthropic-ai/bedrock-sdk": "^0.28.1",
@@ -88,25 +88,25 @@
     },
     "packages/transport-core": {
       "name": "@pellux/goodvibes-transport-core",
-      "version": "0.18.14",
+      "version": "0.18.15",
     },
     "packages/transport-direct": {
       "name": "@pellux/goodvibes-transport-direct",
-      "version": "0.18.14",
+      "version": "0.18.15",
       "dependencies": {
         "@pellux/goodvibes-transport-core": "workspace:*",
       },
     },
     "packages/transport-http": {
       "name": "@pellux/goodvibes-transport-http",
-      "version": "0.18.14",
+      "version": "0.18.15",
       "dependencies": {
         "@pellux/goodvibes-errors": "workspace:*",
       },
     },
     "packages/transport-realtime": {
       "name": "@pellux/goodvibes-transport-realtime",
-      "version": "0.18.14",
+      "version": "0.18.15",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-transport-core": "workspace:*",

@@ -26,7 +26,7 @@ export interface ProfileInfo {
 /**
  * ProfileManager - Save and load named SDK host config profiles.
  *
- * Profiles are stored as JSON files in ~/.goodvibes/tui/profiles/<name>.json.
+ * Profiles are stored as JSON files in ~/.goodvibes/goodvibes/profiles/<name>.json.
  * Only host-surface settings (display, provider, behavior categories) are saved;
  * permissions and API keys are never included.
  */

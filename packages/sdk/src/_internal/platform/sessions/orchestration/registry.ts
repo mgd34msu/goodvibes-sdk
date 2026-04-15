@@ -2,7 +2,7 @@
  * Multi-session Orchestration — Cross-Session Task Registry
  *
  * Wraps SessionTaskGraph with persistence to
- * `.goodvibes/tui/sessions/task-graph.json` and reconnect/resume hydration.
+ * `.goodvibes/goodvibes/sessions/task-graph.json` and reconnect/resume hydration.
  *
  * The registry is the single authoritative source for the cross-session task
  * graph within a process. Command handlers and sync integrations receive an
@@ -49,10 +49,10 @@ export class CrossSessionTaskRegistry {
 
   /**
    * @param baseDir - Project base directory.
-   *   The graph is persisted at `<baseDir>/.goodvibes/tui/sessions/task-graph.json`.
+   *   The graph is persisted at `<baseDir>/.goodvibes/goodvibes/sessions/task-graph.json`.
    */
   public constructor(baseDir: string) {
-    this._dir = join(baseDir, '.goodvibes', 'tui', 'sessions');
+    this._dir = join(baseDir, '.goodvibes', 'goodvibes', 'sessions');
     this._graphPath = join(this._dir, 'task-graph.json');
     this._graph = new SessionTaskGraph();
     this._load();

@@ -1,10 +1,9 @@
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 import {
   cleanupStage,
   collectTarballs,
+  createSdkTempDir,
   inspectPackedManifest,
   listPackedFiles,
   packStage,
@@ -62,7 +61,7 @@ function assertNoLeakedInternalImports(tarball, files) {
 const { tempRoot, publicStages } = stagePackages();
 
 try {
-  const packDestination = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-pack-'));
+  const packDestination = createSdkTempDir('goodvibes-sdk-pack-');
   const packResults = publicStages
     .filter((stage) => stage.dir === 'packages/sdk')
     .map((stage) => packStage(stage.stageDir, packDestination));
