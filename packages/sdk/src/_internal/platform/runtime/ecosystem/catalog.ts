@@ -7,6 +7,10 @@ export type EcosystemEntryKind = 'plugin' | 'skill' | 'hook-pack' | 'policy-pack
 export interface EcosystemCatalogPathOptions {
   readonly cwd: string;
   readonly homeDir: string;
+  readonly projectCatalogRoot?: string;
+  readonly userCatalogRoot?: string;
+  readonly projectInstallRoot?: string;
+  readonly userInstallRoot?: string;
 }
 
 export interface EcosystemCatalogEntry {
@@ -79,23 +83,47 @@ export interface EcosystemInstallBackup {
   readonly reason: 'update' | 'uninstall' | 'replace';
 }
 
-function catalogPath(kind: EcosystemEntryKind, cwd: string, homeDir: string, scope: 'project' | 'user'): string {
-  return scope === 'project'
-    ? join(cwd, '.goodvibes', 'ecosystem', `${kind}s.json`)
-    : join(homeDir, '.goodvibes', 'ecosystem', `${kind}s.json`);
+function resolveCatalogRoot(
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  if (scope === 'project') {
+    return options.projectCatalogRoot ?? join(options.cwd, '.goodvibes', 'ecosystem');
+  }
+  return options.userCatalogRoot ?? join(options.homeDir, '.goodvibes', 'ecosystem');
 }
 
-function catalogPaths(kind: EcosystemEntryKind, cwd: string, homeDir: string): string[] {
+function catalogPath(
+  kind: EcosystemEntryKind,
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  return join(resolveCatalogRoot(options, scope), `${kind}s.json`);
+}
+
+function catalogPaths(kind: EcosystemEntryKind, options: EcosystemCatalogPathOptions): string[] {
   return [
-    join(cwd, '.goodvibes', 'ecosystem', `${kind}s.json`),
-    join(homeDir, '.goodvibes', 'ecosystem', `${kind}s.json`),
+    catalogPath(kind, options, 'project'),
+    catalogPath(kind, options, 'user'),
   ];
 }
 
-function installedRoot(kind: EcosystemEntryKind, cwd: string, homeDir: string, scope: 'project' | 'user'): string {
-  const base = scope === 'project'
-    ? join(cwd, '.goodvibes')
-    : join(homeDir, '.goodvibes');
+function resolveInstallRoot(
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  if (scope === 'project') {
+    return options.projectInstallRoot ?? join(options.cwd, '.goodvibes');
+  }
+  return options.userInstallRoot ?? join(options.homeDir, '.goodvibes');
+}
+
+function installedRoot(
+  kind: EcosystemEntryKind,
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  const base = resolveInstallRoot(options, scope);
   switch (kind) {
     case 'plugin':
       return join(base, 'plugins');
@@ -108,31 +136,52 @@ function installedRoot(kind: EcosystemEntryKind, cwd: string, homeDir: string, s
   }
 }
 
-function installedReceiptsRoot(cwd: string, homeDir: string, scope: 'project' | 'user'): string {
-  return scope === 'project'
-    ? join(cwd, '.goodvibes', 'ecosystem', 'installed')
-    : join(homeDir, '.goodvibes', 'ecosystem', 'installed');
+function installedReceiptsRoot(
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  return join(resolveCatalogRoot(options, scope), 'installed');
 }
 
-function receiptPath(kind: EcosystemEntryKind, entryId: string, cwd: string, homeDir: string, scope: 'project' | 'user'): string {
-  const base = installedReceiptsRoot(cwd, homeDir, scope);
+function receiptPath(
+  kind: EcosystemEntryKind,
+  entryId: string,
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  const base = installedReceiptsRoot(options, scope);
   return join(base, `${kind}-${entryId}.json`);
 }
 
-function backupRoot(cwd: string, homeDir: string, scope: 'project' | 'user'): string {
-  return join(installedReceiptsRoot(cwd, homeDir, scope), 'backups');
+function backupRoot(
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  return join(installedReceiptsRoot(options, scope), 'backups');
 }
 
 function backupPrefix(kind: EcosystemEntryKind, entryId: string): string {
   return `${kind}-${entryId}`;
 }
 
-function backupMetaPath(kind: EcosystemEntryKind, entryId: string, createdAt: number, cwd: string, homeDir: string, scope: 'project' | 'user'): string {
-  return join(backupRoot(cwd, homeDir, scope), `${backupPrefix(kind, entryId)}-${createdAt}.json`);
+function backupMetaPath(
+  kind: EcosystemEntryKind,
+  entryId: string,
+  createdAt: number,
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  return join(backupRoot(options, scope), `${backupPrefix(kind, entryId)}-${createdAt}.json`);
 }
 
-function backupArchivePath(kind: EcosystemEntryKind, entryId: string, createdAt: number, cwd: string, homeDir: string, scope: 'project' | 'user'): string {
-  return join(backupRoot(cwd, homeDir, scope), `${backupPrefix(kind, entryId)}-${createdAt}`);
+function backupArchivePath(
+  kind: EcosystemEntryKind,
+  entryId: string,
+  createdAt: number,
+  options: EcosystemCatalogPathOptions,
+  scope: 'project' | 'user',
+): string {
+  return join(backupRoot(options, scope), `${backupPrefix(kind, entryId)}-${createdAt}`);
 }
 
 function loadReceipt(path: string): EcosystemInstallReceipt | null {
@@ -158,11 +207,10 @@ function loadBackup(path: string): EcosystemInstallBackup | null {
 function createBackupFromReceipt(
   receipt: EcosystemInstallReceipt,
   reason: EcosystemInstallBackup['reason'],
-  cwd: string,
-  homeDir: string,
+  options: EcosystemCatalogPathOptions,
 ): EcosystemInstallBackup {
   const createdAt = Date.now();
-  const archivedTargetPath = backupArchivePath(receipt.kind, receipt.entry.id, createdAt, cwd, homeDir, receipt.scope);
+  const archivedTargetPath = backupArchivePath(receipt.kind, receipt.entry.id, createdAt, options, receipt.scope);
   mkdirSync(dirname(archivedTargetPath), { recursive: true });
   rmSync(archivedTargetPath, { recursive: true, force: true });
   if (existsSync(receipt.targetPath)) {
@@ -181,7 +229,7 @@ function createBackupFromReceipt(
     receipt,
     reason,
   };
-  const metaPath = backupMetaPath(receipt.kind, receipt.entry.id, createdAt, cwd, homeDir, receipt.scope);
+  const metaPath = backupMetaPath(receipt.kind, receipt.entry.id, createdAt, options, receipt.scope);
   writeFileSync(metaPath, `${JSON.stringify(backup, null, 2)}\n`, 'utf-8');
   return backup;
 }
@@ -258,11 +306,10 @@ export function loadEcosystemCatalog(
   kind: EcosystemEntryKind,
   options: EcosystemCatalogPathOptions,
 ): EcosystemCatalogEntry[] {
-  const { cwd, homeDir } = options;
   const seen = new Set<string>();
   const entries: EcosystemCatalogEntry[] = [];
 
-  for (const path of catalogPaths(kind, cwd, homeDir)) {
+  for (const path of catalogPaths(kind, options)) {
     for (const entry of readCatalogFile(path)) {
       if (entry.kind !== kind) continue;
       if (seen.has(entry.id)) continue;
@@ -354,11 +401,10 @@ export function installEcosystemCatalogEntry(
   entryId: string,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user'; skipBackup?: boolean },
 ): { ok: true; receipt: EcosystemInstallReceipt } | { ok: false; error: string } {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const entry = loadEcosystemCatalog(kind, { cwd, homeDir }).find((candidate) => candidate.id === entryId);
+  const entry = loadEcosystemCatalog(kind, options).find((candidate) => candidate.id === entryId);
   if (!entry) return { ok: false, error: `Unknown curated ${kind} entry: ${entryId}` };
-  const review = reviewEcosystemCatalogEntry(entry, { cwd, homeDir });
+  const review = reviewEcosystemCatalogEntry(entry, options);
   if (review.sourceKind !== 'local-path') {
     return { ok: false, error: `Curated ${kind} entry ${entryId} is not a local path source and cannot be installed directly.` };
   }
@@ -366,12 +412,12 @@ export function installEcosystemCatalogEntry(
     return { ok: false, error: `Curated ${kind} source path does not exist: ${review.sourcePath}` };
   }
 
-  const targetPath = join(installedRoot(kind, cwd, homeDir, scope), entry.id);
-  const previousReceipt = loadReceipt(receiptPath(kind, entry.id, cwd, homeDir, scope));
+  const targetPath = join(installedRoot(kind, options, scope), entry.id);
+  const previousReceipt = loadReceipt(receiptPath(kind, entry.id, options, scope));
   if (previousReceipt && !options.skipBackup) {
-    createBackupFromReceipt(previousReceipt, 'replace', cwd, homeDir);
+    createBackupFromReceipt(previousReceipt, 'replace', options);
   }
-  mkdirSync(installedRoot(kind, cwd, homeDir, scope), { recursive: true });
+  mkdirSync(installedRoot(kind, options, scope), { recursive: true });
   rmSync(targetPath, { recursive: true, force: true });
   cpSync(review.sourcePath, targetPath, { recursive: true });
 
@@ -392,7 +438,7 @@ export function installEcosystemCatalogEntry(
       reasons: review.compatibility.reasons,
     },
   };
-  const path = receiptPath(kind, entry.id, cwd, homeDir, scope);
+  const path = receiptPath(kind, entry.id, options, scope);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(receipt, null, 2)}\n`, 'utf-8');
   return { ok: true, receipt };
@@ -403,9 +449,8 @@ export function inspectInstalledEcosystemEntry(
   entryId: string,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user' },
 ): { ok: true; receipt: EcosystemInstallReceipt } | { ok: false; error: string } {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const receipt = loadReceipt(receiptPath(kind, entryId, cwd, homeDir, scope));
+  const receipt = loadReceipt(receiptPath(kind, entryId, options, scope));
   if (!receipt) {
     return { ok: false, error: `No installed ${kind} receipt found for ${entryId} in ${scope} scope.` };
   }
@@ -417,13 +462,12 @@ export function uninstallEcosystemCatalogEntry(
   entryId: string,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user' },
 ): { ok: true; removedPath: string } | { ok: false; error: string } {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const receipt = loadReceipt(receiptPath(kind, entryId, cwd, homeDir, scope));
+  const receipt = loadReceipt(receiptPath(kind, entryId, options, scope));
   if (!receipt) return { ok: false, error: `No installed ${kind} receipt found for ${entryId} in ${scope} scope.` };
-  createBackupFromReceipt(receipt, 'uninstall', cwd, homeDir);
+  createBackupFromReceipt(receipt, 'uninstall', options);
   rmSync(receipt.targetPath, { recursive: true, force: true });
-  rmSync(receiptPath(kind, entryId, cwd, homeDir, scope), { force: true });
+  rmSync(receiptPath(kind, entryId, options, scope), { force: true });
   return { ok: true, removedPath: receipt.targetPath };
 }
 
@@ -432,15 +476,14 @@ export function updateInstalledEcosystemEntry(
   entryId: string,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user' },
 ): { ok: true; receipt: EcosystemInstallReceipt; previousReceipt: EcosystemInstallReceipt } | { ok: false; error: string } {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const previousReceipt = loadReceipt(receiptPath(kind, entryId, cwd, homeDir, scope));
+  const previousReceipt = loadReceipt(receiptPath(kind, entryId, options, scope));
   if (!previousReceipt) {
     return { ok: false, error: `No installed ${kind} receipt found for ${entryId} in ${scope} scope.` };
   }
-  createBackupFromReceipt(previousReceipt, 'update', cwd, homeDir);
+  createBackupFromReceipt(previousReceipt, 'update', options);
 
-  const installed = installEcosystemCatalogEntry(kind, entryId, { cwd, homeDir, scope, skipBackup: true });
+  const installed = installEcosystemCatalogEntry(kind, entryId, { ...options, scope, skipBackup: true });
   if (!installed.ok) return installed;
   return { ok: true, receipt: installed.receipt, previousReceipt };
 }
@@ -450,9 +493,8 @@ export function listEcosystemInstallBackups(
   entryId: string,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user' },
 ): EcosystemInstallBackup[] {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const dir = backupRoot(cwd, homeDir, scope);
+  const dir = backupRoot(options, scope);
   if (!existsSync(dir)) return [];
   const prefix = `${backupPrefix(kind, entryId)}-`;
   return readdirSync(dir)
@@ -467,9 +509,8 @@ export function rollbackInstalledEcosystemEntry(
   entryId: string,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user'; backupId?: string },
 ): { ok: true; receipt: EcosystemInstallReceipt; restoredFrom: EcosystemInstallBackup } | { ok: false; error: string } {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const backups = listEcosystemInstallBackups(kind, entryId, { cwd, homeDir, scope });
+  const backups = listEcosystemInstallBackups(kind, entryId, { ...options, scope });
   const backup = options.backupId
     ? backups.find((candidate) => candidate.id === options.backupId)
     : backups[0];
@@ -480,7 +521,7 @@ export function rollbackInstalledEcosystemEntry(
   rmSync(backup.targetPath, { recursive: true, force: true });
   cpSync(backup.archivedTargetPath, backup.targetPath, { recursive: true });
   writeFileSync(
-    receiptPath(kind, entryId, cwd, homeDir, scope),
+    receiptPath(kind, entryId, options, scope),
     `${JSON.stringify(backup.receipt, null, 2)}\n`,
     'utf-8',
   );
@@ -491,10 +532,9 @@ export function listInstalledEcosystemEntries(
   kind: EcosystemEntryKind,
   options: EcosystemCatalogPathOptions,
 ): EcosystemInstallReceipt[] {
-  const { cwd, homeDir } = options;
   const receipts = [
-    installedReceiptsRoot(cwd, homeDir, 'project'),
-    installedReceiptsRoot(cwd, homeDir, 'user'),
+    installedReceiptsRoot(options, 'project'),
+    installedReceiptsRoot(options, 'user'),
   ];
   const found: EcosystemInstallReceipt[] = [];
   for (const dir of receipts) {
@@ -512,12 +552,11 @@ export function exportEcosystemCatalogBundle(
   scope: 'project' | 'user',
   options: EcosystemCatalogPathOptions,
 ): EcosystemCatalogBundle {
-  const { cwd, homeDir } = options;
   const paths = {
-    plugin: catalogPath('plugin', cwd, homeDir, scope),
-    skill: catalogPath('skill', cwd, homeDir, scope),
-    'hook-pack': catalogPath('hook-pack', cwd, homeDir, scope),
-    'policy-pack': catalogPath('policy-pack', cwd, homeDir, scope),
+    plugin: catalogPath('plugin', options, scope),
+    skill: catalogPath('skill', options, scope),
+    'hook-pack': catalogPath('hook-pack', options, scope),
+    'policy-pack': catalogPath('policy-pack', options, scope),
   } as const;
   return {
     version: 1,
@@ -562,7 +601,7 @@ export function importEcosystemCatalogBundle(
   let imported = 0;
   for (const kind of ['plugin', 'skill', 'hook-pack', 'policy-pack'] as const) {
     if (byKind[kind].length === 0) continue;
-    const path = catalogPath(kind, options.cwd, options.homeDir, scope);
+    const path = catalogPath(kind, options, scope);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, `${JSON.stringify({ version: 1, entries: byKind[kind].sort((a, b) => a.name.localeCompare(b.name)) }, null, 2)}\n`, 'utf-8');
     pathByKind[kind] = path;
@@ -575,9 +614,8 @@ export function upsertEcosystemCatalogEntry(
   entry: EcosystemCatalogEntry,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user' },
 ): { ok: true; path: string; entry: EcosystemCatalogEntry } | { ok: false; error: string } {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const path = catalogPath(entry.kind, cwd, homeDir, scope);
+  const path = catalogPath(entry.kind, options, scope);
   const document = readCatalogDocument(path);
   const nextEntries = document.entries.filter((candidate) => candidate.id !== entry.id || candidate.kind !== entry.kind);
   nextEntries.push(entry);
@@ -592,9 +630,8 @@ export function removeEcosystemCatalogEntry(
   entryId: string,
   options: EcosystemCatalogPathOptions & { scope?: 'project' | 'user' },
 ): { ok: true; path: string } | { ok: false; error: string } {
-  const { cwd, homeDir } = options;
   const scope = options.scope ?? 'project';
-  const path = catalogPath(kind, cwd, homeDir, scope);
+  const path = catalogPath(kind, options, scope);
   const document = readCatalogDocument(path);
   const nextEntries = document.entries.filter((candidate) => candidate.id !== entryId || candidate.kind !== kind);
   if (nextEntries.length === document.entries.length) {

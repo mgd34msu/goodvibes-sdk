@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.24
+
+- Fixed the SDK ecosystem catalog/runtime layer so hosts can override catalog and receipt roots instead of being forced onto the SDK’s hardcoded `.goodvibes/ecosystem/...` layout
+- Kept installed plugin, skill, hook-pack, and policy-pack destinations on the shared `.goodvibes/plugins|skills|hooks|policies` roots while letting hosts independently place curated catalog JSON and install receipts under their own surface-specific configuration trees
+- Added an SDK regression test that locks the TUI host model in place: curated catalogs and receipts can live under `.goodvibes/tui/ecosystem/...` while installs still land under the shared `.goodvibes/...` runtime roots
+- This closes the ecosystem/storage boundary leak that still broke the TUI’s SDK-backed plugin, skills, and marketplace commands after the `0.18.23` cutover
+
 ## 0.18.23
 
 - Removed the SDK runtime network layer's remaining concrete `ConfigManager` class dependency and replaced it with host-neutral config-reader interfaces for shared path resolution, inbound TLS inspection, outbound TLS inspection, fetch wrapping, and the global network transport installer
