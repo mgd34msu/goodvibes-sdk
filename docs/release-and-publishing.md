@@ -99,15 +99,15 @@ Repository setup required for publishing:
   - package name `@mgd34msu/goodvibes-sdk`
   - `.npmrc` line `@mgd34msu:registry=https://npm.pkg.github.com`
   - auth line `//npm.pkg.github.com/:_authToken=TOKEN`
-- tags that match the package version, for example `v0.18.13`
+- tags that match the package version, for example `v0.18.14`
 
 Recommended first-release sequence:
 
 ```bash
 bun run validate
 bun run release:dry-run
-git tag v0.18.13
-git push origin v0.18.13
+git tag v0.18.14
+git push origin v0.18.14
 ```
 
 Then watch the `Release` workflow and verify that:

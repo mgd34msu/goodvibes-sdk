@@ -27,6 +27,7 @@ const PEER_ENTRY = `${PUBLIC_PACKAGE_NAME}/peer`;
 const DAEMON_ENTRY = `${PUBLIC_PACKAGE_NAME}/daemon`;
 const CONTRACTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/contracts`;
 const REALTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/transport-realtime`;
+const STATE_INSPECTOR_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/inspection/state-inspector`;
 const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
 const smokeScript = `
@@ -45,6 +46,7 @@ const peer = await import('${PEER_ENTRY}');
 const daemon = await import('${DAEMON_ENTRY}');
 const contracts = await import('${CONTRACTS_ENTRY}');
 const runtimeEvents = await import('${REALTIME_ENTRY}');
+const stateInspector = await import('${STATE_INSPECTOR_ENTRY}');
 
 const sdk = nodeEntry.createNodeGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
 if (!sdk?.operator || !sdk?.peer || !sdk?.realtime) throw new Error('sdk entrypoint missing expected surfaces');
@@ -54,6 +56,7 @@ if (typeof peer.createPeerSdk !== 'function') throw new Error('peer client expor
 if (typeof daemon.createDaemonControlRouteHandlers !== 'function') throw new Error('daemon route export missing');
 if (!contracts.OPERATOR_METHOD_IDS || !contracts.PEER_ENDPOINT_IDS) throw new Error('contracts export missing');
 if (typeof runtimeEvents.createRemoteRuntimeEvents !== 'function') throw new Error('runtime realtime export missing');
+if (typeof stateInspector.TimelineBuffer !== 'function') throw new Error('state inspector export missing');
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');

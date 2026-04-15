@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.14
+
+- Added a public umbrella export for `@pellux/goodvibes-sdk/platform/runtime/inspection/state-inspector` so hosts can import the SDK-owned state-inspector implementation without carrying local copies
+- Extended the install smoke checks to lock that state-inspector export into the published package shape so this subpath regression cannot ship again
+
 ## 0.18.13
 
 - Removed the leftover `projectSdkRoot` / `userSdkRoot` and `resolveProjectSdkPath` / `resolveUserSdkPath` naming from the public shell-path service so the SDK no longer exposes the old extracted-app compatibility surface

@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.18.13",
+  "version": "0.18.14",
   "description": "Umbrella GoodVibes SDK with operator, peer, daemon, transport, and runtime-specific integration layers.",
   "type": "module",
   "main": "./dist/index.js",
