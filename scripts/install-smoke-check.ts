@@ -121,7 +121,7 @@ function installWithBun(specs) {
   const projectDir = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-bun-smoke-'));
   try {
     writeConsumerFiles(projectDir);
-    run('bun', ['add', ...specs], projectDir, {
+    run('bun', ['add', '--force', '--no-cache', ...specs], projectDir, {
       auth: REGISTRY_MODE,
       registry: REGISTRY,
       packageName: PUBLIC_PACKAGE_NAME,
