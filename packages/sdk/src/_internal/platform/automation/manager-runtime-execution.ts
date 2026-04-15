@@ -18,6 +18,8 @@ export interface AutomationManagerExecutionContext {
   readonly configManager: ConfigManager;
   readonly routeBindings: RouteBindingManager;
   readonly sessionBroker: SharedSessionBroker;
+  readonly defaultSurfaceKind?: AutomationSessionTarget['surfaceKind'];
+  readonly defaultSurfaceId?: string;
   readonly spawnTask: (input: {
     readonly prompt: string;
     readonly modelId?: string;
@@ -58,6 +60,27 @@ interface ResolvedAutomationExecution {
   readonly target: AutomationSessionTarget;
   readonly executionIntent: AutomationRun['executionIntent'];
   readonly updatedJob?: AutomationJob;
+}
+
+function requireHostSurfaceKind(
+  context: AutomationManagerExecutionContext,
+  target: AutomationSessionTarget,
+  job: AutomationJob,
+): NonNullable<AutomationSessionTarget['surfaceKind']> {
+  const surfaceKind = target.surfaceKind ?? context.defaultSurfaceKind;
+  if (!surfaceKind) {
+    throw new Error(
+      `Automation target "${target.kind}" requires target.surfaceKind or an explicit AutomationManager defaultSurfaceKind (${job.id})`,
+    );
+  }
+  return surfaceKind;
+}
+
+function resolveHostSurfaceId(
+  context: AutomationManagerExecutionContext,
+  surfaceKind: NonNullable<AutomationSessionTarget['surfaceKind']>,
+): string {
+  return context.defaultSurfaceId ?? `surface:${surfaceKind}`;
 }
 
 export async function executeAutomationJob(
@@ -238,10 +261,11 @@ export async function resolveAutomationExecution(
   }
 
   if (target.kind === 'main') {
+    const surfaceKind = requireHostSurfaceKind(context, target, job);
     const preferredSession = target.sessionId
       ? context.sessionBroker.getSession(target.sessionId)
       : await context.sessionBroker.findPreferredSession({
-          surfaceKind: target.surfaceKind ?? 'tui',
+          surfaceKind,
         });
     if (!preferredSession && !target.createIfMissing) {
       throw new Error(`No active shared session found for main target (${job.id})`);
@@ -256,8 +280,8 @@ export async function resolveAutomationExecution(
         targetKind: 'main',
       },
       participant: {
-        surfaceKind: target.surfaceKind ?? 'tui',
-        surfaceId: `surface:${target.surfaceKind ?? 'tui'}`,
+        surfaceKind,
+        surfaceId: resolveHostSurfaceId(context, surfaceKind),
         userId: 'automation',
         displayName: `Automation: ${job.name}`,
         lastSeenAt: Date.now(),
@@ -362,10 +386,11 @@ export async function resolveAutomationExecution(
   }
 
   if (target.kind === 'current') {
+    const surfaceKind = requireHostSurfaceKind(context, target, job);
     const preferredSession = target.sessionId
       ? context.sessionBroker.getSession(target.sessionId)
       : await context.sessionBroker.findPreferredSession({
-          surfaceKind: target.surfaceKind ?? 'tui',
+          surfaceKind,
         });
     if (!preferredSession && !target.createIfMissing) {
       throw new Error(`No active shared session found for current target (${job.id})`);
@@ -378,8 +403,8 @@ export async function resolveAutomationExecution(
         targetKind: 'current',
       },
       participant: {
-        surfaceKind: target.surfaceKind ?? 'service',
-        surfaceId: `surface:${target.surfaceKind ?? 'automation'}`,
+        surfaceKind,
+        surfaceId: resolveHostSurfaceId(context, surfaceKind),
         userId: 'automation',
         displayName: `Automation: ${job.name}`,
         lastSeenAt: Date.now(),

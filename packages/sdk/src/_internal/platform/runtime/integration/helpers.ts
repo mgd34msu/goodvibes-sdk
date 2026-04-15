@@ -1,4 +1,4 @@
-import type { PanelManager } from '../../panels/panel-manager.js';
+import type { PanelManagerLike } from '../host-ui.js';
 import type { ConfigManager } from '../../config/index.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import type { SubscriptionManager } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
@@ -32,7 +32,7 @@ export interface IntegrationHelpersContext {
   readonly distributedRuntime: DistributedRuntimeManager;
   readonly remoteRunnerRegistry: RemoteRunnerRegistry;
   readonly remoteSupervisor: RemoteSupervisor;
-  readonly panelManager: PanelManager;
+  readonly panelManager: PanelManagerLike;
   readonly localUserAuthManager: UserAuthManager;
   readonly providerRegistry: ProviderRegistry;
   readonly serviceRegistry: ServiceRegistry;

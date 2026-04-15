@@ -13,7 +13,7 @@ import { AutomationDeliveryManager } from './delivery-manager.js';
 import { RouteBindingManager } from '../channels/index.js';
 import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
 import type { AutomationRun, AutomationRunContinuationMode, AutomationRunTelemetry } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import type { AutomationRunTrigger } from '@pellux/goodvibes-sdk/platform/automation/types';
+import type { AutomationRunTrigger, AutomationSurfaceKind } from '@pellux/goodvibes-sdk/platform/automation/types';
 import { SharedSessionBroker } from '../control-plane/index.js';
 import type {
   CreateAutomationJobInput,
@@ -95,6 +95,8 @@ interface AutomationManagerConfig {
   readonly configManager: ConfigManager;
   readonly routeBindings: RouteBindingManager;
   readonly sessionBroker: SharedSessionBroker;
+  readonly defaultSurfaceKind?: AutomationSurfaceKind;
+  readonly defaultSurfaceId?: string;
 }
 
 export interface AutomationHeartbeatResult {
@@ -117,6 +119,8 @@ export class AutomationManager {
   private readonly configManager: ConfigManager;
   private readonly routeBindings: RouteBindingManager;
   private readonly sessionBroker: SharedSessionBroker;
+  private readonly defaultSurfaceKind?: AutomationSurfaceKind;
+  private readonly defaultSurfaceId?: string;
   private readonly jobs = new Map<string, AutomationJob>();
   private readonly runs = new Map<string, AutomationRun>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -140,6 +144,8 @@ export class AutomationManager {
     );
     this.routeBindings = config.routeBindings;
     this.sessionBroker = config.sessionBroker;
+    this.defaultSurfaceKind = config.defaultSurfaceKind;
+    this.defaultSurfaceId = config.defaultSurfaceId;
     this.agentStatusProvider = config.agentStatusProvider;
     this.spawnTask = config.spawnTask;
     this.cancelTask = config.cancelTask;
@@ -169,6 +175,8 @@ export class AutomationManager {
       configManager: this.configManager,
       routeBindings: this.routeBindings,
       sessionBroker: this.sessionBroker,
+      defaultSurfaceKind: this.defaultSurfaceKind,
+      defaultSurfaceId: this.defaultSurfaceId,
       spawnTask: (input: SpawnAutomationTaskInput) => this.requireSpawnTask()(input),
       saveJobs: () => this.saveJobs(),
       saveRuns: () => this.saveRuns(),

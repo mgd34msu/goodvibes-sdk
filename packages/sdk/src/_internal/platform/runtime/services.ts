@@ -31,7 +31,6 @@ import { IntegrationHelperService } from './integration/helpers.js';
 import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders } from '@pellux/goodvibes-sdk/platform/voice/index';
 import { WebSearchProviderRegistry, WebSearchService } from '../web-search/index.js';
 import { MemoryEmbeddingProviderRegistry } from '../state/memory-embeddings.js';
-import { PanelManager } from '../panels/panel-manager.js';
 import { HookActivityTracker } from '@pellux/goodvibes-sdk/platform/hooks/activity';
 import { HookDispatcher, createHookWorkbench, type HookWorkbench } from '../hooks/index.js';
 import { PluginManager } from '../plugins/manager.js';
@@ -51,7 +50,6 @@ import { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-
 import { FavoritesStore } from '@pellux/goodvibes-sdk/platform/providers/favorites';
 import { BenchmarkStore } from '@pellux/goodvibes-sdk/platform/providers/model-benchmarks';
 import { ModelLimitsService } from '../providers/model-limits.js';
-import { KeybindingsManager } from '../input/keybindings.js';
 import { SessionMemoryStore } from '@pellux/goodvibes-sdk/platform/core/session-memory';
 import { SessionLineageTracker } from '@pellux/goodvibes-sdk/platform/core/session-lineage';
 import { SessionChangeTracker } from '@pellux/goodvibes-sdk/platform/sessions/change-tracker';
@@ -71,6 +69,12 @@ import { createFeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
 import { requireSurfaceRoot } from './surface-root.js';
 import {
+  createNoopKeybindingsManager,
+  createNoopPanelManager,
+  type KeybindingsManagerLike,
+  type PanelManagerLike,
+} from './host-ui.js';
+import {
   createWorkflowServices,
   type WorkflowServices,
 } from '@pellux/goodvibes-sdk/platform/tools/workflow/index';
@@ -84,6 +88,8 @@ export interface RuntimeServicesOptions {
   readonly getConversationTitle?: () => string | undefined;
   readonly workingDir: string;
   readonly homeDirectory: string;
+  readonly panelManager?: PanelManagerLike;
+  readonly keybindingsManager?: KeybindingsManagerLike;
 }
 
 export interface RuntimeServices {
@@ -95,8 +101,8 @@ export interface RuntimeServices {
   readonly runtimeBus: RuntimeEventBus;
   readonly runtimeStore: RuntimeStore;
   readonly runtimeDispatch: DomainDispatch;
-  readonly panelManager: PanelManager;
-  readonly keybindingsManager: KeybindingsManager;
+  readonly panelManager: PanelManagerLike;
+  readonly keybindingsManager: KeybindingsManagerLike;
   readonly routeBindings: RouteBindingManager;
   readonly surfaceRegistry: SurfaceRegistry;
   readonly channelPlugins: ChannelPluginRegistry;
@@ -181,10 +187,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const featureFlags = options.featureFlags ?? createFeatureFlagManager();
   const runtimeDispatch = createDomainDispatch(options.runtimeStore);
   const gatewayMethods = new GatewayMethodCatalog();
-  const panelManager = new PanelManager();
-  const keybindingsManager = new KeybindingsManager({
-    configPath: shellPaths.resolveUserPath(surfaceRoot, 'keybindings.json'),
-  });
+  const panelManager = options.panelManager ?? createNoopPanelManager();
+  const keybindingsManager = options.keybindingsManager ?? createNoopKeybindingsManager();
   const routeBindings = new RouteBindingManager({
     store: new AutomationRouteStore({ configManager }),
     runtimeStore: options.runtimeStore,
@@ -326,6 +330,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
     routeBindings,
     sessionBroker,
+    defaultSurfaceKind: surfaceRoot as import('@pellux/goodvibes-sdk/platform/automation/types').AutomationSurfaceKind,
+    defaultSurfaceId: `surface:${surfaceRoot}`,
     runtimeStore: options.runtimeStore,
     runtimeBus: options.runtimeBus,
     deliveryManager,

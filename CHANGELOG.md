@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.22
+
+- Removed the SDK’s remaining TUI-owned concrete runtime classes from the reusable platform boundary by deleting the copied command-registry, keybindings, panel-manager, and panel type implementations from the internal platform tree
+- Replaced those concrete classes with host-facing runtime interfaces and no-op defaults so plugin loading, integration helpers, and runtime service composition accept caller-supplied host UI implementations instead of constructing TUI behavior inside the SDK
+- Removed the automation runtime’s last hardcoded `tui` fallback for `main` and `current` session targets; hosts must now supply the default surface kind at the boundary, and the canonical runtime services layer injects that host policy explicitly
+- This closes the remaining SDK host-boundary leak that still let reusable runtime code silently assume the TUI product surface instead of taking that configuration from the consuming host
+
 ## 0.18.21
 
 - Removed the replay engine's remaining hardcoded `/tmp` export assumption by allowing report exports under the host's active temp root instead of a Unix-only fixed path

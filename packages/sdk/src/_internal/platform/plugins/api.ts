@@ -1,4 +1,4 @@
-import type { CommandRegistry, SlashCommand } from '../input/command-registry.js';
+import type { CommandRegistryLike, HostSlashCommand } from '../runtime/host-ui.js';
 import type { ModelDefinition, ProviderRegistry, RuntimeProviderRegistration, TokenLimits, ModelTier } from '../providers/registry.js';
 import type { LLMProvider } from '../providers/interface.js';
 import type { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
@@ -160,7 +160,7 @@ export interface PluginAPI {
 export interface PluginAPIContext {
   pluginName: string;
   runtimeBus: RuntimeEventBus;
-  commandRegistry: CommandRegistry;
+  commandRegistry: CommandRegistryLike;
   providerRegistry: ProviderRegistry;
   toolRegistry: ToolRegistry;
   gatewayMethods: GatewayMethodCatalog;
@@ -185,7 +185,7 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
     registerCommand(name, description, handler) {
       // Namespace commands to avoid collisions: "plugin-<pluginName>-<name>"
       const cmdName = `plugin-${ctx.pluginName}-${name}`;
-      const cmd: SlashCommand = {
+      const cmd: HostSlashCommand = {
         name: cmdName,
         description: `[${ctx.pluginName}] ${description}`,
         handler: async (args: string[]) => {

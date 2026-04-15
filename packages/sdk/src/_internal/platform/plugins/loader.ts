@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join, resolve, isAbsolute } from 'path';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import { createPluginAPI, type PluginAPIContext } from './api.js';
-import type { CommandRegistry } from '../input/command-registry.js';
+import type { CommandRegistryLike } from '../runtime/host-ui.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -159,7 +159,7 @@ export function discoverPlugins(options: PluginPathOptions): DiscoveredPlugin[] 
  */
 export interface PluginLoaderDeps {
   runtimeBus: RuntimeEventBus;
-  commandRegistry: CommandRegistry;
+  commandRegistry: CommandRegistryLike;
   providerRegistry: ProviderRegistry;
   toolRegistry: ToolRegistry;
   gatewayMethods: GatewayMethodCatalog;
