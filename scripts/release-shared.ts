@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withWorkspaceLock } from './workspace-lock.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -130,29 +131,31 @@ export function createSdkTempDir(prefix) {
 }
 
 export function stagePackages() {
-  const rootVersion = getRootVersion();
-  const publicPackageNameOverride = getPublicPackageNameOverride();
-  const tempRoot = createSdkTempDir('goodvibes-sdk-release-');
-  const stages = [];
-  for (const dir of packageDirs) {
-    const sourceDir = getPackageDirectoryPath(dir);
-    const stageDir = resolve(tempRoot, dir);
-    cpSync(sourceDir, stageDir, { recursive: true, filter: shouldCopyPath });
-    const manifest = normalizeManifest(readPackage(dir), rootVersion);
-    if (dir === 'packages/sdk' && publicPackageNameOverride) {
-      manifest.name = publicPackageNameOverride;
+  return withWorkspaceLock('stage packages', () => {
+    const rootVersion = getRootVersion();
+    const publicPackageNameOverride = getPublicPackageNameOverride();
+    const tempRoot = createSdkTempDir('goodvibes-sdk-release-');
+    const stages = [];
+    for (const dir of packageDirs) {
+      const sourceDir = getPackageDirectoryPath(dir);
+      const stageDir = resolve(tempRoot, dir);
+      cpSync(sourceDir, stageDir, { recursive: true, filter: shouldCopyPath });
+      const manifest = normalizeManifest(readPackage(dir), rootVersion);
+      if (dir === 'packages/sdk' && publicPackageNameOverride) {
+        manifest.name = publicPackageNameOverride;
+      }
+      if (publicPackageDirs.includes(dir)) {
+        manifest.dependencies = stripInternalDependencies(manifest.dependencies);
+        manifest.devDependencies = stripInternalDependencies(manifest.devDependencies);
+        manifest.peerDependencies = stripInternalDependencies(manifest.peerDependencies);
+        manifest.optionalDependencies = stripInternalDependencies(manifest.optionalDependencies);
+      }
+      writeFileSync(resolve(stageDir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      stages.push({ dir, sourceDir, stageDir, manifest });
     }
-    if (publicPackageDirs.includes(dir)) {
-      manifest.dependencies = stripInternalDependencies(manifest.dependencies);
-      manifest.devDependencies = stripInternalDependencies(manifest.devDependencies);
-      manifest.peerDependencies = stripInternalDependencies(manifest.peerDependencies);
-      manifest.optionalDependencies = stripInternalDependencies(manifest.optionalDependencies);
-    }
-    writeFileSync(resolve(stageDir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-    stages.push({ dir, sourceDir, stageDir, manifest });
-  }
-  const publicStages = stages.filter((stage) => publicPackageDirs.includes(stage.dir));
-  return { tempRoot, stages, publicStages };
+    const publicStages = stages.filter((stage) => publicPackageDirs.includes(stage.dir));
+    return { tempRoot, stages, publicStages };
+  });
 }
 
 export function cleanupStage(tempRoot) {

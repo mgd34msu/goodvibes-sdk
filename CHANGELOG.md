@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.26
+
+- Fixed the SDK’s baked runtime version fallback so it now syncs from the workspace package version during every build instead of drifting as a stale hardcoded literal
+- Added a regression test that locks the source fallback to the root package version so this exact mismatch cannot silently ship again
+- Removed stale static “current SDK version” lines from the docs that had already drifted out of date and were reinforcing the same bad state
+- This patch closes the remaining version-leak path that still embedded `0.18.14` inside downstream TUI binaries even after the TUI app version had moved forward
+
 ## 0.18.25
 
 - Fixed the SDK tool surface so `@ast-grep/napi` is no longer imported at module load time from the reusable `find` and `edit` support paths
