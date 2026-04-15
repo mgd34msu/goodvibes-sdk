@@ -237,7 +237,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const profileManager = new ProfileManager(shellPaths.resolveUserPath(surfaceRoot, 'profiles'));
   const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(surfaceRoot, 'bookmarks'));
-  const sessionManager = new SessionManager(workingDirectory);
+  const sessionManager = new SessionManager(workingDirectory, { surfaceRoot });
   const sessionOrchestration = new CrossSessionTaskRegistry(
     shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'),
   );
@@ -267,6 +267,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentManager,
     configManager,
     projectRoot: workingDirectory,
+    surfaceRoot,
   });
   agentManager.setWrfcController(wrfcController);
   const hookDispatcher = new HookDispatcher({ agentManager, toolLLM, projectRoot: workingDirectory }, hookActivityTracker);
@@ -396,7 +397,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   mcpRegistry.setSandboxRuntime(configManager, sandboxSessionRegistry);
   const tokenAuditor = new ApiTokenAuditor({ managed: false });
   const panelHealthMonitor = new PanelHealthMonitor();
-  const worktreeRegistry = new WorktreeRegistry(workingDirectory);
+  const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
   const webhookNotifier = new WebhookNotifier();
   const replayEngine = new DeterministicReplayEngine(workingDirectory);
   const providerOptimizer = new ProviderOptimizer(providerRegistry, providerCapabilityRegistry, false);

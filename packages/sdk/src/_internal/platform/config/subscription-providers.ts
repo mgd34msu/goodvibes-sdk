@@ -119,7 +119,7 @@ export function listAvailableSubscriptionProviders(
       oauth: service.oauth,
       tokenKey: service.tokenKey,
       providerId: provider,
-      notes: ['Configured through .goodvibes/goodvibes/services.json'],
+      notes: ['Configured through the host service registry services.json file'],
     });
   }
 

@@ -1,7 +1,7 @@
 /**
  * ServiceRegistry — named service credential resolution.
  *
- * Reads service configs from .goodvibes/goodvibes/services.json.
+ * Reads service configs from the configured services.json path.
  * Each service entry declares its authType and the SecretsManager key
  * that holds the credential.
  *

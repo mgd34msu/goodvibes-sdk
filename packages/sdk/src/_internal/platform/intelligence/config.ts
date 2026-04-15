@@ -2,8 +2,8 @@
  * Per-language configuration for CodeIntelligence.
  *
  * Config is loaded from (in priority order, higher overrides lower):
- *   1. .goodvibes/goodvibes/languages/{langId}.json  (project-level)
- *   2. ~/.goodvibes/goodvibes/languages/{langId}.json (user-level)
+ *   1. configured project languages/{langId}.json path
+ *   2. configured user languages/{langId}.json path
  *   3. Built-in defaults (this file)
  */
 import { existsSync, readFileSync } from 'fs';
@@ -24,7 +24,7 @@ export interface LanguageConfig {
   linter?: { command: string; args: string[] };
 }
 
-export type IntelligenceRoots = Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'>;
+export type IntelligenceRoots = Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'> & Partial<Pick<ShellPathService, 'resolveProjectPath' | 'resolveUserPath'>>;
 
 // ---------------------------------------------------------------------------
 // Default configurations
@@ -118,8 +118,12 @@ function readConfigFile(filePath: string): LanguageConfig | null {
 export function loadLanguageConfigs(roots: IntelligenceRoots): Map<string, LanguageConfig> {
   const result = getDefaultConfigs();
 
-  const userDir = join(roots.homeDirectory, '.goodvibes', 'goodvibes', 'languages');
-  const projectDir = join(roots.workingDirectory, '.goodvibes', 'goodvibes', 'languages');
+  const userDir = roots.resolveUserPath
+    ? roots.resolveUserPath('languages')
+    : join(roots.homeDirectory, '.goodvibes', 'languages');
+  const projectDir = roots.resolveProjectPath
+    ? roots.resolveProjectPath('languages')
+    : join(roots.workingDirectory, '.goodvibes', 'languages');
 
   // Collect all known language IDs (from defaults + scan would go here).
   // For now we apply overrides only for IDs we already know about.

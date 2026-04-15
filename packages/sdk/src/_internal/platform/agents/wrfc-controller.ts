@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentMessageBus } from './message-bus.js';
-import { type CompletionReport, type ReviewerReport } from '@pellux/goodvibes-sdk/platform/agents/completion-report';
+import { type CompletionReport, type ReviewerReport } from './completion-report.js';
 import {
   buildGateFailureTask,
   buildFixTask,
@@ -10,13 +10,13 @@ import {
   parseReviewerCompletionReport,
 } from './wrfc-reporting.js';
 import type { QualityGateResult, QueuedChain, WrfcChain, WrfcState } from './wrfc-types.js';
-import { WrfcWorkmap } from '@pellux/goodvibes-sdk/platform/agents/wrfc-workmap';
+import { WrfcWorkmap } from './wrfc-workmap.js';
 import { AgentWorktree } from './worktree.js';
-import { completePlanItemsForAgent } from '@pellux/goodvibes-sdk/platform/agents/wrfc-plan-sync';
+import { completePlanItemsForAgent } from './wrfc-plan-sync.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { AgentRecord } from '../tools/agent/index.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import type { ExecutionPlanManager } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
 import type { AgentEvent, RuntimeEventBus } from '../runtime/events/index.js';
 import {
@@ -83,6 +83,7 @@ export class WrfcController {
       readonly agentManager: AgentManagerLike;
       readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
       readonly projectRoot: string;
+      readonly surfaceRoot?: string;
       readonly createWorktree?: () => WrfcWorktreeOps;
     },
   ) {
@@ -93,7 +94,7 @@ export class WrfcController {
     this.projectRoot = deps.projectRoot;
     this.createWorktree = deps.createWorktree ?? (() => new AgentWorktree(this.projectRoot));
     this.sessionId = crypto.randomUUID().slice(0, 8);
-    this.workmap = new WrfcWorkmap(this.projectRoot, this.sessionId);
+    this.workmap = new WrfcWorkmap(this.projectRoot, this.sessionId, { surfaceRoot: deps.surfaceRoot });
     this.setupListeners();
   }
 

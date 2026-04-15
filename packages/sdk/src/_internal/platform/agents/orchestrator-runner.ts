@@ -1,10 +1,10 @@
 import { ConversationManager } from '../core/conversation.js';
-import { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
+import { ToolRegistry } from '../tools/registry.js';
 import { join } from 'node:path';
 import type { ProviderRegistry } from '../providers/registry.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { ConsecutiveErrorBreaker } from '@pellux/goodvibes-sdk/platform/core/circuit-breaker';
-import { isRateLimitOrQuotaError, isContextSizeExceededError } from '@pellux/goodvibes-sdk/platform/types/errors';
+import { logger } from '../utils/logger.js';
+import { ConsecutiveErrorBreaker } from '../core/circuit-breaker.js';
+import { isRateLimitOrQuotaError, isContextSizeExceededError } from '../types/errors.js';
 import { AgentSession } from './session.js';
 import type { ProviderOptimizer } from '../providers/optimizer.js';
 import {
@@ -14,16 +14,17 @@ import {
 } from '../core/context-compaction.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { LLMProvider, StreamDelta } from '../providers/interface.js';
-import type { ToolResult } from '@pellux/goodvibes-sdk/platform/types/tools';
-import type { ProcessManager } from '@pellux/goodvibes-sdk/platform/tools/shared/process-manager';
-import type { FeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime/feature-flags/manager';
+import type { ToolResult } from '../types/tools.js';
+import type { ProcessManager } from '../tools/shared/process-manager.js';
+import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import { summarizeToolArgs } from '@pellux/goodvibes-sdk/platform/agents/orchestrator-utils';
+import { summarizeToolArgs } from './orchestrator-utils.js';
 import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt } from './orchestrator-prompts.js';
 import type { AgentMessageBus } from './message-bus.js';
 import type { KnowledgeService } from '../knowledge/index.js';
-import type { ArchetypeLoader } from '@pellux/goodvibes-sdk/platform/agents/archetypes';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { ArchetypeLoader } from './archetypes.js';
+import { summarizeError } from '../utils/error-display.js';
+import { resolveScopedDirectory } from '../runtime/surface-root.js';
 
 const MAX_TURNS = 50;
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000];
@@ -36,6 +37,7 @@ type EmitterContext = import('../runtime/emitters/index.js').EmitterContext;
 
 export interface AgentOrchestratorRunContext {
   readonly workingDirectory: string;
+  readonly surfaceRoot?: string;
   readonly runtimeBus: RuntimeEventBus | null;
   readonly featureFlagManager: FeatureFlagManager | null;
   readonly emitterContext: (agentId: string) => EmitterContext;
@@ -383,8 +385,8 @@ export async function runAgentTask(
     record.provider = record.provider ?? activeRoute.provider.name;
 
     session = new AgentSession(record.id, modelId, record.provider ?? currentModel.provider ?? 'unknown', {
-      sessionsDir: join(context.workingDirectory, '.goodvibes', 'goodvibes', 'sessions'),
-      stateDir: join(context.workingDirectory, '.goodvibes', 'state'),
+      sessionsDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'sessions'),
+      stateDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'state'),
     });
     session.appendMessage({ type: 'session_config', template: record.template, task: record.task, tools: record.tools, model: modelId, provider: record.provider ?? 'unknown', timestamp: new Date().toISOString() });
 

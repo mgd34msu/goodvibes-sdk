@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
+import { resolveSharedDirectory } from '../runtime/surface-root.js';
 import type { WatcherRecord } from '../runtime/store/domains/watchers.js';
 
 export interface WatcherStoreSnapshot {
@@ -12,7 +13,7 @@ function sortWatchers(watchers: readonly WatcherRecord[]): WatcherRecord[] {
 }
 
 export function getWatcherStorePath(rootPath: string): string {
-  return join(rootPath, '.goodvibes', 'goodvibes', 'watchers.json');
+  return resolveSharedDirectory(rootPath, 'watchers.json');
 }
 
 export function resolveWatcherStorePath(storePath?: string): string {

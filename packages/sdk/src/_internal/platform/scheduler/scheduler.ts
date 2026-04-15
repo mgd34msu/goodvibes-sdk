@@ -397,7 +397,7 @@ function countMissedRuns(
 /**
  * TaskScheduler — cron-like task scheduler that runs inside the daemon.
  *
- * Tasks persist to disk (`.goodvibes/goodvibes/schedules.json`) and survive restarts.
+ * Tasks persist to disk through the configured scheduler store path and survive restarts.
  * Task execution requires an explicit spawnTask callback so runs stay owned by the caller.
  */
 export class TaskScheduler {

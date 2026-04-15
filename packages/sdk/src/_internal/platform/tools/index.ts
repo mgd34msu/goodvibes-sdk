@@ -22,8 +22,8 @@ import { createWorkflowServices, createWorkflowTool } from '@pellux/goodvibes-sd
 import { createRegistryTool } from '@pellux/goodvibes-sdk/platform/tools/registry-tool/index';
 import { KVState } from '@pellux/goodvibes-sdk/platform/state/kv-state';
 import { createTaskTool } from '@pellux/goodvibes-sdk/platform/tools/task/index';
-import { teamTool } from '@pellux/goodvibes-sdk/platform/tools/team/index';
-import { worklistTool } from '@pellux/goodvibes-sdk/platform/tools/worklist/index';
+import { createTeamTool } from '@pellux/goodvibes-sdk/platform/tools/team/index';
+import { createWorklistTool } from '@pellux/goodvibes-sdk/platform/tools/worklist/index';
 import { createMcpTool } from './mcp/index.js';
 import { createPacketTool } from '@pellux/goodvibes-sdk/platform/tools/packet/index';
 import { createQueryTool } from '@pellux/goodvibes-sdk/platform/tools/query/index';
@@ -173,13 +173,13 @@ export function registerAllTools(
     homeDirectory: deps.configManager.getHomeDirectory() ?? undefined,
   }));
   registry.register(createTaskTool(sessionOrchestration));
-  registry.register(teamTool);
-  registry.register(worklistTool);
+  registry.register(createTeamTool({ surfaceRoot: deps.surfaceRoot }));
+  registry.register(createWorklistTool({ surfaceRoot: deps.surfaceRoot }));
   if (mcpRegistry) {
     registry.register(createMcpTool(mcpRegistry));
   }
-  registry.register(createPacketTool(workingDirectory));
-  registry.register(createQueryTool(workingDirectory));
+  registry.register(createPacketTool({ workingDirectory, surfaceRoot: deps.surfaceRoot }));
+  registry.register(createQueryTool({ workingDirectory, surfaceRoot: deps.surfaceRoot }));
   if (remoteRunnerRegistry) {
     registry.register(createRemoteTool(remoteRunnerRegistry));
   }

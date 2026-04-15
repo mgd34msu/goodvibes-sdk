@@ -15,3 +15,17 @@ export function resolveSurfaceDirectory(baseDirectory: string, surfaceRoot: stri
 export function resolveSurfaceSharedFile(baseDirectory: string, surfaceRoot: string, extension = 'json'): string {
   return join(baseDirectory, '.goodvibes', `${requireSurfaceRoot(surfaceRoot)}.${extension}`);
 }
+
+export function resolveSharedDirectory(baseDirectory: string, ...segments: string[]): string {
+  return join(baseDirectory, '.goodvibes', ...segments);
+}
+
+export function resolveScopedDirectory(
+  baseDirectory: string,
+  surfaceRoot: string | undefined,
+  ...segments: string[]
+): string {
+  return surfaceRoot && surfaceRoot.trim().length > 0
+    ? resolveSurfaceDirectory(baseDirectory, surfaceRoot, ...segments)
+    : resolveSharedDirectory(baseDirectory, ...segments);
+}

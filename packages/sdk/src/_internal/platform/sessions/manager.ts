@@ -5,6 +5,7 @@ import type { AgentRecord } from '../tools/agent/index.js';
 import type { SessionReturnContextSummary } from '../runtime/session-return-context.js';
 import type { ConversationTitleSource } from '../core/conversation.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { resolveScopedDirectory } from '../runtime/surface-root.js';
 
 /**
  * Metadata for a saved session (the first JSONL line).
@@ -35,7 +36,7 @@ export interface SessionInfo {
 
 /**
  * SessionManager - Handles saving and loading named conversation sessions
- * as JSONL files under .goodvibes/goodvibes/sessions/.
+ * as JSONL files under the configured surface session directory.
  *
  * Format: each line is a JSON object.
  *   Line 0: { type: 'meta', ...SessionMeta }
@@ -44,8 +45,8 @@ export interface SessionInfo {
 export class SessionManager {
   private sessionsDir: string;
 
-  constructor(baseDir: string) {
-    this.sessionsDir = join(baseDir, '.goodvibes', 'goodvibes', 'sessions');
+  constructor(baseDir: string, options?: { readonly surfaceRoot?: string; readonly sessionsDir?: string }) {
+    this.sessionsDir = options?.sessionsDir ?? resolveScopedDirectory(baseDir, options?.surfaceRoot, 'sessions');
   }
 
   /**

@@ -509,7 +509,7 @@ export class ProviderRegistry {
   }
 
   /**
-   * Load custom providers from ~/.goodvibes/goodvibes/providers/ and merge them
+   * Load custom providers from the configured providers directory and merge them
    * into the live model registry. Returns any warnings collected during loading.
    * Call this after construction to populate custom providers.
    */
@@ -564,7 +564,7 @@ export class ProviderRegistry {
   }
 
   /**
-   * Start watching ~/.goodvibes/goodvibes/providers/ for file changes.
+   * Start watching the configured providers directory for file changes.
    * On change, reloads custom providers and emits typed provider runtime events.
    * Safe to call multiple times — stops the previous watcher first.
    */

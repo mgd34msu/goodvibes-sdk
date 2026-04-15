@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.18
+
+- Finished the next host-boundary cleanup pass by removing the remaining reusable SDK modules that were still deriving `.goodvibes/goodvibes/...` paths internally
+- Made the service-manager configurable from the host layer and kept the canonical `goodvibes` binary/service description only in concrete daemon composition instead of reusable SDK internals
+- Moved session/worktree/WRFC runtime state, team/worklist/packet/query tool persistence, ecosystem catalogs, registry discovery, intelligence config, and scheduler helper state onto host-configurable or shared `.goodvibes` paths, then revalidated the standalone package
+
 ## 0.18.17
 
 - Continued the SDK host-boundary cleanup by removing more baked-in `.goodvibes/goodvibes/...` storage paths from reusable platform modules

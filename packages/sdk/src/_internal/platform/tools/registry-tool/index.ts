@@ -149,12 +149,10 @@ function fuzzyFilter(items: RegistryMatch[], query: string): RegistryMatch[] {
 function getSkillDirs(roots: RegistryToolRoots): string[] {
   const dirs = [
     join(roots.workingDirectory, '.goodvibes', 'skills'),
-    join(roots.workingDirectory, '.goodvibes', 'goodvibes', 'skills'),
   ];
   if (roots.homeDirectory) {
     dirs.push(
       join(roots.homeDirectory, '.goodvibes', 'skills'),
-      join(roots.homeDirectory, '.goodvibes', 'goodvibes', 'skills'),
     );
   }
   return dirs;
@@ -163,12 +161,10 @@ function getSkillDirs(roots: RegistryToolRoots): string[] {
 function getAgentDirs(roots: RegistryToolRoots): string[] {
   const dirs = [
     join(roots.workingDirectory, '.goodvibes', 'agents'),
-    join(roots.workingDirectory, '.goodvibes', 'goodvibes', 'agents'),
   ];
   if (roots.homeDirectory) {
     dirs.push(
       join(roots.homeDirectory, '.goodvibes', 'agents'),
-      join(roots.homeDirectory, '.goodvibes', 'goodvibes', 'agents'),
     );
   }
   return dirs;

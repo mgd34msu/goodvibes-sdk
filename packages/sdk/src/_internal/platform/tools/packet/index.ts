@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Tool } from '../../types/tools.js';
+import { resolveScopedDirectory } from '../../runtime/surface-root.js';
 import { PACKET_TOOL_SCHEMA, type PacketToolInput } from './schema.js';
 
 interface PacketRecord {
@@ -33,9 +34,13 @@ function summarizePacket(record: PacketRecord) {
   };
 }
 
-export function createPacketTool(workingDirectory: string): Tool {
+export function createPacketTool(
+  options: string | { readonly workingDirectory: string; readonly surfaceRoot?: string },
+): Tool {
+  const workingDirectory = typeof options === 'string' ? options : options.workingDirectory;
+  const surfaceRoot = typeof options === 'string' ? undefined : options.surfaceRoot;
   const workspaceRoot = resolve(workingDirectory);
-  const packetsDir = join(workspaceRoot, '.goodvibes', 'goodvibes');
+  const packetsDir = resolveScopedDirectory(workspaceRoot, surfaceRoot);
   const packetsPath = join(packetsDir, 'packets.json');
 
   function loadPackets(): PacketRecord[] {

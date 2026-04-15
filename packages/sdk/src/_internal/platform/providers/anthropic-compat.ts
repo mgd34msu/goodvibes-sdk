@@ -87,7 +87,7 @@ export interface AnthropicCompatOptions {
  * Anthropic Messages API spec.
  *
  * Configured via a custom provider JSON file with `"type": "anthropic-compat"`
- * in ~/.goodvibes/goodvibes/providers/.
+ * in the configured providers directory.
  */
 export class AnthropicCompatProvider implements LLMProvider {
   readonly name: string;

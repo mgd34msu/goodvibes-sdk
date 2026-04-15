@@ -81,14 +81,14 @@ export interface EcosystemInstallBackup {
 
 function catalogPath(kind: EcosystemEntryKind, cwd: string, homeDir: string, scope: 'project' | 'user'): string {
   return scope === 'project'
-    ? join(cwd, '.goodvibes', 'goodvibes', 'ecosystem', `${kind}s.json`)
-    : join(homeDir, '.goodvibes', 'goodvibes', 'ecosystem', `${kind}s.json`);
+    ? join(cwd, '.goodvibes', 'ecosystem', `${kind}s.json`)
+    : join(homeDir, '.goodvibes', 'ecosystem', `${kind}s.json`);
 }
 
 function catalogPaths(kind: EcosystemEntryKind, cwd: string, homeDir: string): string[] {
   return [
-    join(cwd, '.goodvibes', 'goodvibes', 'ecosystem', `${kind}s.json`),
-    join(homeDir, '.goodvibes', 'goodvibes', 'ecosystem', `${kind}s.json`),
+    join(cwd, '.goodvibes', 'ecosystem', `${kind}s.json`),
+    join(homeDir, '.goodvibes', 'ecosystem', `${kind}s.json`),
   ];
 }
 
@@ -110,8 +110,8 @@ function installedRoot(kind: EcosystemEntryKind, cwd: string, homeDir: string, s
 
 function installedReceiptsRoot(cwd: string, homeDir: string, scope: 'project' | 'user'): string {
   return scope === 'project'
-    ? join(cwd, '.goodvibes', 'goodvibes', 'ecosystem', 'installed')
-    : join(homeDir, '.goodvibes', 'goodvibes', 'ecosystem', 'installed');
+    ? join(cwd, '.goodvibes', 'ecosystem', 'installed')
+    : join(homeDir, '.goodvibes', 'ecosystem', 'installed');
 }
 
 function receiptPath(kind: EcosystemEntryKind, entryId: string, cwd: string, homeDir: string, scope: 'project' | 'user'): string {

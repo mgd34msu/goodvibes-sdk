@@ -18,7 +18,7 @@ const WATCH_DEBOUNCE_MS = 300;
 
 /**
  * JSON schema for a custom provider configuration file.
- * Place a *.json file in ~/.goodvibes/goodvibes/providers/ to define a custom provider.
+ * Place a *.json file in the configured providers directory to define a custom provider.
  */
 export interface CustomProviderConfig {
   /** Unique provider identifier, e.g. 'ollama' */

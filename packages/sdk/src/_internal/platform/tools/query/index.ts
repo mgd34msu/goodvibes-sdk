@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Tool } from '../../types/tools.js';
+import { resolveScopedDirectory } from '../../runtime/surface-root.js';
 import { QUERY_TOOL_SCHEMA, type QueryToolInput } from './schema.js';
 
 interface QueryRecord {
@@ -29,9 +30,13 @@ function summarizeQuery(record: QueryRecord) {
   };
 }
 
-export function createQueryTool(workingDirectory: string): Tool {
+export function createQueryTool(
+  options: string | { readonly workingDirectory: string; readonly surfaceRoot?: string },
+): Tool {
+  const workingDirectory = typeof options === 'string' ? options : options.workingDirectory;
+  const surfaceRoot = typeof options === 'string' ? undefined : options.surfaceRoot;
   const workspaceRoot = resolve(workingDirectory);
-  const queriesDir = join(workspaceRoot, '.goodvibes', 'goodvibes');
+  const queriesDir = resolveScopedDirectory(workspaceRoot, surfaceRoot);
   const queriesPath = join(queriesDir, 'queries.json');
 
   function loadQueries(): QueryRecord[] {

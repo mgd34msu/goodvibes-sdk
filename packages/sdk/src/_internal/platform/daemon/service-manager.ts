@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } 
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync, spawn, type SpawnOptions } from 'node:child_process';
 import { ConfigManager } from '../config/manager.js';
+import { resolveScopedDirectory } from '../runtime/surface-root.js';
 
 export type ManagedServicePlatform = 'systemd' | 'launchd' | 'windows' | 'manual';
 
@@ -44,6 +45,10 @@ interface ManagedServicePaths {
 export interface ManagedServiceManagerOptions extends ManagedServicePaths {
   readonly definitionOverride?: ManagedServiceDefinition;
   readonly actionRunner?: (command: string, args: readonly string[]) => ManagedServiceActionResult;
+  readonly surfaceRoot?: string;
+  readonly binaryBaseName?: string;
+  readonly defaultServiceName?: string;
+  readonly defaultServiceDescription?: string;
 }
 
 function detectPlatform(platform: string): ManagedServicePlatform {
@@ -62,13 +67,22 @@ function detectPlatform(platform: string): ManagedServicePlatform {
   }
 }
 
-function buildDefaultDefinition(configManager: ConfigManager, workingDirectory: string): ManagedServiceDefinition {
-  const compiledBinary = resolve(workingDirectory, 'dist', process.platform === 'win32' ? 'goodvibes-windows.exe' : 'goodvibes');
+function buildDefaultDefinition(
+  configManager: ConfigManager,
+  workingDirectory: string,
+  options: Pick<ManagedServiceManagerOptions, 'binaryBaseName' | 'defaultServiceName' | 'defaultServiceDescription'>,
+): ManagedServiceDefinition {
+  const binaryBaseName = options.binaryBaseName?.trim() || 'daemon';
+  const compiledBinary = resolve(
+    workingDirectory,
+    'dist',
+    process.platform === 'win32' ? `${binaryBaseName}-windows.exe` : binaryBaseName,
+  );
   const useCompiledBinary = existsSync(compiledBinary);
-  const serviceName = String(configManager.get('service.serviceName') ?? 'goodvibes').trim() || 'goodvibes';
+  const serviceName = resolveServiceName(configManager, options.defaultServiceName);
   return {
     name: serviceName,
-    description: 'goodvibes omnichannel daemon host',
+    description: options.defaultServiceDescription?.trim() || `${serviceName} daemon host`,
     workingDirectory,
     command: useCompiledBinary ? compiledBinary : process.execPath,
     args: useCompiledBinary ? [] : ['run', resolve(workingDirectory, 'src', 'daemon', 'cli.ts')],
@@ -81,14 +95,19 @@ function buildDefaultDefinition(configManager: ConfigManager, workingDirectory: 
   };
 }
 
-function resolveServiceName(configManager: ConfigManager): string {
-  return String(configManager.get('service.serviceName') ?? 'goodvibes').trim() || 'goodvibes';
+function resolveServiceName(configManager: ConfigManager, defaultServiceName = 'daemon'): string {
+  return String(configManager.get('service.serviceName') ?? defaultServiceName).trim() || defaultServiceName;
 }
 
-function resolveLogPath(configManager: ConfigManager, platform: ManagedServicePlatform, workingDirectory: string): string {
+function resolveLogPath(
+  configManager: ConfigManager,
+  platform: ManagedServicePlatform,
+  workingDirectory: string,
+  surfaceRoot?: string,
+): string {
   const configured = String(configManager.get('service.logPath') ?? '').trim();
   if (configured) return resolve(workingDirectory, configured);
-  return join(workingDirectory, '.goodvibes', 'goodvibes', 'service', `${platform}.log`);
+  return resolveScopedDirectory(workingDirectory, surfaceRoot, 'service', `${platform}.log`);
 }
 
 function renderSystemdUnit(definition: ManagedServiceDefinition): string {
@@ -151,28 +170,33 @@ function renderWindowsCommand(definition: ManagedServiceDefinition): string {
   return `schtasks /Create /SC ONLOGON /TN "${taskName}" /TR "${commandLine}" /F`;
 }
 
-function definitionPath(platform: ManagedServicePlatform, serviceName: string, paths: ManagedServicePaths): string {
+function definitionPath(
+  platform: ManagedServicePlatform,
+  serviceName: string,
+  paths: ManagedServicePaths,
+  surfaceRoot?: string,
+): string {
   switch (platform) {
     case 'systemd':
       return join(paths.homeDirectory, '.config', 'systemd', 'user', `${serviceName}.service`);
     case 'launchd':
       return join(paths.homeDirectory, 'Library', 'LaunchAgents', `${serviceName}.plist`);
     case 'windows':
-      return join(paths.workingDirectory, '.goodvibes', 'goodvibes', 'service', 'windows-task.txt');
+      return resolveScopedDirectory(paths.workingDirectory, surfaceRoot, 'service', 'windows-task.txt');
     case 'manual':
     default:
-      return join(paths.workingDirectory, '.goodvibes', 'goodvibes', 'service', 'manual-service.txt');
+      return resolveScopedDirectory(paths.workingDirectory, surfaceRoot, 'service', 'manual-service.txt');
   }
 }
 
-function pidFilePath(platform: ManagedServicePlatform, workingDirectory: string): string {
+function pidFilePath(platform: ManagedServicePlatform, workingDirectory: string, surfaceRoot?: string): string {
   switch (platform) {
     case 'systemd':
     case 'launchd':
     case 'windows':
     case 'manual':
     default:
-      return join(workingDirectory, '.goodvibes', 'goodvibes', 'service', `${platform}.pid`);
+      return resolveScopedDirectory(workingDirectory, surfaceRoot, 'service', `${platform}.pid`);
   }
 }
 
@@ -188,7 +212,7 @@ function suggestedCommands(platform: ManagedServicePlatform, path: string, servi
       return [
         `launchctl unload ${path} || true`,
         `launchctl load ${path}`,
-        `launchctl list | grep goodvibes`,
+        `launchctl list | grep ${serviceName}`,
       ];
     case 'windows':
       return [
@@ -210,6 +234,10 @@ export class PlatformServiceManager {
   private readonly homeDirectory: string;
   private readonly definitionOverride?: ManagedServiceDefinition;
   private readonly actionRunner?: (command: string, args: readonly string[]) => ManagedServiceActionResult;
+  private readonly surfaceRoot?: string;
+  private readonly binaryBaseName?: string;
+  private readonly defaultServiceName?: string;
+  private readonly defaultServiceDescription?: string;
 
   constructor(configManager: ConfigManager, options: ManagedServiceManagerOptions) {
     this.configManager = configManager;
@@ -217,6 +245,10 @@ export class PlatformServiceManager {
     this.homeDirectory = resolve(options.homeDirectory);
     this.definitionOverride = options.definitionOverride;
     this.actionRunner = options.actionRunner;
+    this.surfaceRoot = options.surfaceRoot;
+    this.binaryBaseName = options.binaryBaseName;
+    this.defaultServiceName = options.defaultServiceName;
+    this.defaultServiceDescription = options.defaultServiceDescription;
   }
 
   private getPaths(): ManagedServicePaths {
@@ -228,10 +260,10 @@ export class PlatformServiceManager {
 
   status(): ManagedServiceStatus {
     const platform = detectPlatform(String(this.configManager.get('service.platform')));
-    const serviceName = resolveServiceName(this.configManager);
-    const path = definitionPath(platform, serviceName, this.getPaths());
+    const serviceName = resolveServiceName(this.configManager, this.defaultServiceName);
+    const path = definitionPath(platform, serviceName, this.getPaths(), this.surfaceRoot);
     const installed = existsSync(path);
-    const pidPath = pidFilePath(platform, this.workingDirectory);
+    const pidPath = pidFilePath(platform, this.workingDirectory, this.surfaceRoot);
     const pid = existsSync(pidPath) ? this.readPid(pidPath) : undefined;
     const running = pid !== undefined ? this.isPidRunning(pid) : false;
     if (!running && existsSync(pidPath)) {
@@ -245,7 +277,7 @@ export class PlatformServiceManager {
       autostart: Boolean(this.configManager.get('service.autostart')),
       running,
       ...(pid !== undefined && running ? { pid } : {}),
-      logPath: resolveLogPath(this.configManager, platform, this.workingDirectory),
+      logPath: resolveLogPath(this.configManager, platform, this.workingDirectory, this.surfaceRoot),
       commandPreview: installed ? path : [definition.command, ...definition.args].join(' '),
       contents: installed ? readFileSync(path, 'utf-8') : undefined,
       suggestedCommands: suggestedCommands(platform, path, serviceName),
@@ -255,9 +287,9 @@ export class PlatformServiceManager {
 
   install(): ManagedServiceStatus {
     const platform = detectPlatform(String(this.configManager.get('service.platform')));
-    const serviceName = resolveServiceName(this.configManager);
+    const serviceName = resolveServiceName(this.configManager, this.defaultServiceName);
     const definition = this.resolveDefinition();
-    const path = definitionPath(platform, serviceName, this.getPaths());
+    const path = definitionPath(platform, serviceName, this.getPaths(), this.surfaceRoot);
     const contents = platform === 'systemd'
       ? renderSystemdUnit(definition)
       : platform === 'launchd'
@@ -278,7 +310,7 @@ export class PlatformServiceManager {
     if (existsSync(status.path)) {
       rmSync(status.path, { force: true });
     }
-    const pidPath = pidFilePath(status.platform, this.workingDirectory);
+    const pidPath = pidFilePath(status.platform, this.workingDirectory, this.surfaceRoot);
     if (existsSync(pidPath)) {
       rmSync(pidPath, { force: true });
     }
@@ -314,7 +346,11 @@ export class PlatformServiceManager {
   }
 
   private resolveDefinition(): ManagedServiceDefinition {
-    return this.definitionOverride ?? buildDefaultDefinition(this.configManager, this.workingDirectory);
+    return this.definitionOverride ?? buildDefaultDefinition(this.configManager, this.workingDirectory, {
+      binaryBaseName: this.binaryBaseName,
+      defaultServiceName: this.defaultServiceName,
+      defaultServiceDescription: this.defaultServiceDescription,
+    });
   }
 
   private startManual(platform: ManagedServicePlatform, action: ManagedServiceStatus['lastAction'] = 'start'): ManagedServiceStatus {
@@ -326,8 +362,8 @@ export class PlatformServiceManager {
       };
     }
     const definition = this.resolveDefinition();
-    const logPath = resolveLogPath(this.configManager, platform, this.workingDirectory);
-    const pidPath = pidFilePath(platform, this.workingDirectory);
+    const logPath = resolveLogPath(this.configManager, platform, this.workingDirectory, this.surfaceRoot);
+    const pidPath = pidFilePath(platform, this.workingDirectory, this.surfaceRoot);
     mkdirSync(dirname(pidPath), { recursive: true });
     mkdirSync(dirname(logPath), { recursive: true });
     const stdoutFd = openSync(logPath, 'a');
@@ -351,7 +387,7 @@ export class PlatformServiceManager {
   }
 
   private stopManual(platform: ManagedServicePlatform): ManagedServiceStatus {
-    const pidPath = pidFilePath(platform, this.workingDirectory);
+    const pidPath = pidFilePath(platform, this.workingDirectory, this.surfaceRoot);
     const pid = existsSync(pidPath) ? this.readPid(pidPath) : undefined;
     if (pid !== undefined && this.isPidRunning(pid)) {
       try {
@@ -370,8 +406,8 @@ export class PlatformServiceManager {
   }
 
   private runPlatformAction(platform: ManagedServicePlatform, action: 'start' | 'stop' | 'restart'): ManagedServiceStatus {
-    const serviceName = resolveServiceName(this.configManager);
-    const path = definitionPath(platform, serviceName, this.getPaths());
+    const serviceName = resolveServiceName(this.configManager, this.defaultServiceName);
+    const path = definitionPath(platform, serviceName, this.getPaths(), this.surfaceRoot);
     const command = platform === 'systemd'
       ? ['systemctl', '--user', action === 'start' ? 'enable' : action, ...(action === 'start' ? ['--now'] : []), `${serviceName}.service`]
       : platform === 'launchd'

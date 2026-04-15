@@ -2,6 +2,7 @@ import { appendFileSync, mkdirSync, readFileSync, existsSync, readdirSync, statS
 import { join, dirname } from 'path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { resolveScopedDirectory } from '../runtime/surface-root.js';
 
 export interface WorkmapEntry {
   ts: string;
@@ -21,8 +22,9 @@ export interface WorkmapEntry {
 export class WrfcWorkmap {
   private filePath: string;
 
-  constructor(projectRoot: string, sessionId: string) {
-    this.filePath = join(projectRoot, '.goodvibes', 'goodvibes', 'sessions', `${sessionId}_workmap.jsonl`);
+  constructor(projectRoot: string, sessionId: string, options?: { readonly surfaceRoot?: string; readonly sessionsDir?: string }) {
+    const sessionsDir = options?.sessionsDir ?? resolveScopedDirectory(projectRoot, options?.surfaceRoot, 'sessions');
+    this.filePath = join(sessionsDir, `${sessionId}_workmap.jsonl`);
   }
 
   private dirCreated = false;

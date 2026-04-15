@@ -18,8 +18,7 @@ import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import type { SessionReturnContextSummary } from './session-return-context.js';
 import type { ConversationTitleSource } from '../core/conversation.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
-
-const SESSION_ROOT = 'goodvibes';
+import { resolveScopedDirectory } from './surface-root.js';
 
 export type SessionSnapshot = {
   messages: Array<Record<string, unknown>>;
@@ -40,6 +39,7 @@ export type SessionPersistenceOptions = {
   workingDirectory?: string;
   homeDirectory?: string;
   sessionManager?: SessionManager;
+  surfaceRoot?: string;
 };
 
 export type SessionPersistencePaths = {
@@ -74,11 +74,11 @@ function resolveSessionManager(options?: SessionPersistenceOptions): SessionMana
   if (options?.sessionManager) {
     return options.sessionManager;
   }
-  return new SessionManager(requireWorkingDirectory(options));
+  return new SessionManager(requireWorkingDirectory(options), { surfaceRoot: options?.surfaceRoot });
 }
 
 export function getUserSessionsDir(workingDirectory: string): string {
-  return join(workingDirectory, '.goodvibes', SESSION_ROOT, 'sessions');
+  return resolveScopedDirectory(workingDirectory, undefined, 'sessions');
 }
 
 export function getLastSessionPointerPath(workingDirectory: string): string {
@@ -86,7 +86,7 @@ export function getLastSessionPointerPath(workingDirectory: string): string {
 }
 
 export function getRecoveryFilePath(homeDirectory: string): string {
-  return join(homeDirectory, '.goodvibes', SESSION_ROOT, 'recovery.jsonl');
+  return resolveScopedDirectory(homeDirectory, undefined, 'recovery.jsonl');
 }
 
 export function generateUserSessionId(): string {

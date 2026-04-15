@@ -532,7 +532,7 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     key: 'tools.hooksFile',
     type: 'string',
     default: 'hooks.json',
-    description: 'Hook configuration file name (relative to .goodvibes/goodvibes/)',
+    description: 'Hook configuration file name (relative to the host .goodvibes data directory)',
   },
   {
     key: 'wrfc.scoreThreshold',

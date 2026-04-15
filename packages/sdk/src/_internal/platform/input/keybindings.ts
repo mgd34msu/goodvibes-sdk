@@ -2,7 +2,8 @@
  * KeybindingsManager — loads and merges keyboard shortcut configuration.
  *
  * Default bindings are hardcoded here. Users can override any binding by
- * creating ~/.goodvibes/goodvibes/keybindings.json.
+ * creating a surface keybindings file under ~/.goodvibes/<surface>/keybindings.json
+ * or by passing an explicit configPath.
  *
  * Config file format example:
  * {

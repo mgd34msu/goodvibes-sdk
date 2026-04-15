@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import type { Tool } from '../../types/tools.js';
+import { resolveScopedDirectory } from '../../runtime/surface-root.js';
 import { WORKLIST_TOOL_SCHEMA, type WorklistToolInput } from './schema.js';
 
 interface WorklistItem {
@@ -42,12 +43,12 @@ function summarizeWorklist(record: WorklistRecord) {
   };
 }
 
-function worklistsPath(storageRoot: string): string {
-  return join(storageRoot, '.goodvibes', 'goodvibes', 'worklists.json');
+function worklistsPath(storageRoot: string, surfaceRoot?: string): string {
+  return resolveScopedDirectory(storageRoot, surfaceRoot, 'worklists.json');
 }
 
-function loadWorklists(storageRoot: string): WorklistRecord[] {
-  const path = worklistsPath(storageRoot);
+function loadWorklists(storageRoot: string, surfaceRoot?: string): WorklistRecord[] {
+  const path = worklistsPath(storageRoot, surfaceRoot);
   if (!existsSync(path)) return [];
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf-8')) as WorklistFile;
@@ -57,115 +58,120 @@ function loadWorklists(storageRoot: string): WorklistRecord[] {
   }
 }
 
-function saveWorklists(storageRoot: string, worklists: readonly WorklistRecord[]): void {
-  const path = worklistsPath(storageRoot);
+function saveWorklists(storageRoot: string, worklists: readonly WorklistRecord[], surfaceRoot?: string): void {
+  const path = worklistsPath(storageRoot, surfaceRoot);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify({ version: 1, worklists }, null, 2) + '\n', 'utf-8');
 }
 
-export const worklistTool: Tool = {
-  definition: {
-    name: 'worklist',
-    description: 'Manage durable worklists and checklist items for execution planning and follow-up.',
-    parameters: WORKLIST_TOOL_SCHEMA as unknown as Record<string, unknown>,
-    sideEffects: ['workflow', 'state'],
-    concurrency: 'serial',
-  },
+export function createWorklistTool(options?: { readonly surfaceRoot?: string }): Tool {
+  const surfaceRoot = options?.surfaceRoot;
+  return {
+    definition: {
+      name: 'worklist',
+      description: 'Manage durable worklists and checklist items for execution planning and follow-up.',
+      parameters: WORKLIST_TOOL_SCHEMA as unknown as Record<string, unknown>,
+      sideEffects: ['workflow', 'state'],
+      concurrency: 'serial',
+    },
 
-  async execute(args: Record<string, unknown>) {
-    if (!args || typeof args !== 'object' || typeof args.mode !== 'string') {
-      return { success: false, error: 'Invalid args: mode is required.' };
-    }
-    const input = args as WorklistExecutionInput;
-    if (!input.storageRoot || input.storageRoot.trim().length === 0) {
-      return { success: false, error: 'worklist requires storageRoot.' };
-    }
-    const worklists = loadWorklists(input.storageRoot);
-    const view = input.view ?? 'summary';
-
-    if (input.mode === 'create') {
-      if (!input.worklistId || !input.title) {
-        return { success: false, error: 'create requires worklistId and title.' };
+    async execute(args: Record<string, unknown>) {
+      if (!args || typeof args !== 'object' || typeof args.mode !== 'string') {
+        return { success: false, error: 'Invalid args: mode is required.' };
       }
-      if (worklists.some((entry) => entry.id === input.worklistId)) {
-        return { success: false, error: `Worklist already exists: ${input.worklistId}` };
+      const input = args as WorklistExecutionInput;
+      if (!input.storageRoot || input.storageRoot.trim().length === 0) {
+        return { success: false, error: 'worklist requires storageRoot.' };
       }
-      const now = Date.now();
-      const record: WorklistRecord = {
-        id: input.worklistId,
-        title: input.title,
-        items: [],
-        createdAt: now,
-        updatedAt: now,
-      };
-      saveWorklists(input.storageRoot, [...worklists, record]);
-      return { success: true, output: JSON.stringify(record) };
-    }
+      const worklists = loadWorklists(input.storageRoot, surfaceRoot);
+      const view = input.view ?? 'summary';
 
-    if (input.mode === 'list') {
-      return {
-        success: true,
-        output: JSON.stringify({
-          view,
-          count: worklists.length,
-          worklists: view === 'full' ? worklists : worklists.map(summarizeWorklist),
-        }),
-      };
-    }
+      if (input.mode === 'create') {
+        if (!input.worklistId || !input.title) {
+          return { success: false, error: 'create requires worklistId and title.' };
+        }
+        if (worklists.some((entry) => entry.id === input.worklistId)) {
+          return { success: false, error: `Worklist already exists: ${input.worklistId}` };
+        }
+        const now = Date.now();
+        const record: WorklistRecord = {
+          id: input.worklistId,
+          title: input.title,
+          items: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+        saveWorklists(input.storageRoot, [...worklists, record], surfaceRoot);
+        return { success: true, output: JSON.stringify(record) };
+      }
 
-    const index = worklists.findIndex((entry) => entry.id === input.worklistId);
-    if (index < 0) {
-      return { success: false, error: `Unknown worklist: ${input.worklistId ?? '(missing)'}` };
-    }
-    const current = worklists[index]!;
+      if (input.mode === 'list') {
+        return {
+          success: true,
+          output: JSON.stringify({
+            view,
+            count: worklists.length,
+            worklists: view === 'full' ? worklists : worklists.map(summarizeWorklist),
+          }),
+        };
+      }
 
-    if (input.mode === 'show') {
-      return {
-        success: true,
-        output: JSON.stringify(view === 'full' ? current : {
-          ...summarizeWorklist(current),
-          items: current.items.map((item) => ({
-            id: item.id,
-            text: item.text,
-            status: item.status,
-            owner: item.owner,
-            priority: item.priority,
-          })),
-        }),
-      };
-    }
+      const index = worklists.findIndex((entry) => entry.id === input.worklistId);
+      if (index < 0) {
+        return { success: false, error: `Unknown worklist: ${input.worklistId ?? '(missing)'}` };
+      }
+      const current = worklists[index]!;
 
-    if (input.mode === 'add-item') {
-      if (!input.itemId || !input.text) return { success: false, error: 'add-item requires itemId and text.' };
+      if (input.mode === 'show') {
+        return {
+          success: true,
+          output: JSON.stringify(view === 'full' ? current : {
+            ...summarizeWorklist(current),
+            items: current.items.map((item) => ({
+              id: item.id,
+              text: item.text,
+              status: item.status,
+              owner: item.owner,
+              priority: item.priority,
+            })),
+          }),
+        };
+      }
+
+      if (input.mode === 'add-item') {
+        if (!input.itemId || !input.text) return { success: false, error: 'add-item requires itemId and text.' };
+        const next: WorklistRecord = {
+          ...current,
+          items: [
+            ...current.items.filter((item) => item.id !== input.itemId),
+            { id: input.itemId, text: input.text, status: 'open', priority: input.priority ?? 'medium', ...(input.owner ? { owner: input.owner } : {}) },
+          ],
+          updatedAt: Date.now(),
+        };
+        worklists[index] = next;
+        saveWorklists(input.storageRoot, worklists, surfaceRoot);
+        return { success: true, output: JSON.stringify(next) };
+      }
+
+      if (!input.itemId) return { success: false, error: `${input.mode} requires itemId.` };
+      const nextItems = current.items
+        .filter((item) => input.mode !== 'remove-item' || item.id !== input.itemId)
+        .map((item) => {
+          if (item.id !== input.itemId) return item;
+          if (input.mode === 'complete-item') return { ...item, status: 'done' as const };
+          if (input.mode === 'reopen-item') return { ...item, status: 'open' as const };
+          return item;
+        });
       const next: WorklistRecord = {
         ...current,
-        items: [
-          ...current.items.filter((item) => item.id !== input.itemId),
-          { id: input.itemId, text: input.text, status: 'open', priority: input.priority ?? 'medium', ...(input.owner ? { owner: input.owner } : {}) },
-        ],
+        items: nextItems,
         updatedAt: Date.now(),
       };
       worklists[index] = next;
-      saveWorklists(input.storageRoot, worklists);
+      saveWorklists(input.storageRoot, worklists, surfaceRoot);
       return { success: true, output: JSON.stringify(next) };
-    }
+    },
+  };
+}
 
-    if (!input.itemId) return { success: false, error: `${input.mode} requires itemId.` };
-    const nextItems = current.items
-      .filter((item) => input.mode !== 'remove-item' || item.id !== input.itemId)
-      .map((item) => {
-        if (item.id !== input.itemId) return item;
-        if (input.mode === 'complete-item') return { ...item, status: 'done' as const };
-        if (input.mode === 'reopen-item') return { ...item, status: 'open' as const };
-        return item;
-      });
-    const next: WorklistRecord = {
-      ...current,
-      items: nextItems,
-      updatedAt: Date.now(),
-    };
-    worklists[index] = next;
-    saveWorklists(input.storageRoot, worklists);
-    return { success: true, output: JSON.stringify(next) };
-  },
-};
+export const worklistTool = createWorklistTool();

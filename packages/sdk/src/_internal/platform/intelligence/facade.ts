@@ -6,7 +6,7 @@
  *   - LSP is optional; falls back to tree-sitter where possible.
  *   - Tree-sitter is optional; falls back to empty arrays/null.
  *   - On initialization, language configs are read and registered with LspService
- *     so user/project overrides in .goodvibes/goodvibes/languages/*.json take effect.
+ *     so user/project overrides in the configured languages directory take effect.
  */
 import { resolve } from 'path';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -72,7 +72,7 @@ export class CodeIntelligence {
   /**
    * Initialize all services. Call once at startup.
    * Loads language configs and registers LSP server commands with LspService
-   * so that user/project overrides in .goodvibes/goodvibes/languages/ are respected.
+   * so that user/project overrides in the configured languages directory are respected.
    */
   async initialize(): Promise<void> {
     if (!this.shellPaths) {
