@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.25
+
+- Fixed the SDK tool surface so `@ast-grep/napi` is no longer imported at module load time from the reusable `find` and `edit` support paths
+- Moved AST native binding loading behind true runtime lazy imports for structural search and `ast_pattern` edit mode, so hosts do not need the native parser just to boot the SDK or register tools
+- Updated the edit runtime to await the lazy `ast_pattern` path and keep the existing exact-edit fallback behavior when the AST runtime is unavailable
+- Added a regression test that locks the startup boundary in place by preventing top-level `@ast-grep/napi` imports from returning in the SDK’s startup-sensitive tool modules
+
 ## 0.18.24
 
 - Fixed the SDK ecosystem catalog/runtime layer so hosts can override catalog and receipt roots instead of being forced onto the SDK’s hardcoded `.goodvibes/ecosystem/...` layout

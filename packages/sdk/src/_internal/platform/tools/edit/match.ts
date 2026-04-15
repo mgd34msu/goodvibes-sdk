@@ -1,9 +1,10 @@
 import { extname } from 'node:path';
-import * as astGrep from '@ast-grep/napi';
 import { logger } from '../../utils/logger.js';
 import { CodeIntelligence } from '../../intelligence/index.js';
 import type { EditItem, OccurrenceSpec, EditResult, EditResultStatus } from './types.js';
 import { summarizeError } from '../../utils/error-display.js';
+
+type AstGrepModule = typeof import('@ast-grep/napi');
 
 export function decodeBase64(value: string): string {
   return Buffer.from(value, 'base64').toString('utf-8');
@@ -304,7 +305,14 @@ type AstGrepNode = {
 };
 type AstGrepParser = { parse: (src: string) => { root(): { findAll(pat: string): AstGrepNode[] } } };
 
-function getAstGrepLang(filePath: string): AstGrepParser | null {
+let astGrepModulePromise: Promise<AstGrepModule> | null = null;
+
+async function loadAstGrep(): Promise<AstGrepModule> {
+  astGrepModulePromise ??= import('@ast-grep/napi');
+  return astGrepModulePromise;
+}
+
+function getAstGrepLang(astGrep: AstGrepModule, filePath: string): AstGrepParser | null {
   const lang = extname(filePath).slice(1).toLowerCase();
   switch (lang) {
     case 'ts': return astGrep.ts as unknown as AstGrepParser;
@@ -390,15 +398,22 @@ export function computeAstEdit(
   }).catch(() => computeExactEdit(fileContent, item));
 }
 
-export function computeAstPatternEdit(
+export async function computeAstPatternEdit(
   fileContent: string,
   item: EditItem,
   filePath: string,
-): { newContent: string; occurrencesReplaced: number } | { error: string } {
+): Promise<{ newContent: string; occurrencesReplaced: number } | { error: string }> {
   const findStr = item.find_base64 ? decodeBase64(item.find_base64) : item.find;
   const replaceStr = item.replace_base64 ? decodeBase64(item.replace_base64) : item.replace;
 
-  const parser = getAstGrepLang(filePath);
+  let astGrep: AstGrepModule;
+  try {
+    astGrep = await loadAstGrep();
+  } catch {
+    return computeExactEdit(fileContent, item);
+  }
+
+  const parser = getAstGrepLang(astGrep, filePath);
   if (!parser) {
     return computeExactEdit(fileContent, item);
   }

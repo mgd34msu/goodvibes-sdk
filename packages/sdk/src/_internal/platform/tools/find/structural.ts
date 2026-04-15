@@ -1,9 +1,18 @@
 import { extname } from 'node:path';
-import * as astGrep from '@ast-grep/napi';
 import type { OutputOptions, StructuralQuery } from './shared.js';
 import { collectFilesForSearch, makeCountResult, makeFilesResult, makeLocationsResult, readTextFile, validateSearchPath } from './shared.js';
 
+type AstGrepModule = typeof import('@ast-grep/napi');
+
+let astGrepModulePromise: Promise<AstGrepModule> | null = null;
+
+async function loadAstGrep(): Promise<AstGrepModule> {
+  astGrepModulePromise ??= import('@ast-grep/napi');
+  return astGrepModulePromise;
+}
+
 function getAstGrepLang(
+  astGrep: AstGrepModule,
   filePath: string,
   override?: StructuralQuery['lang'],
 ): { parse: (src: string) => { root(): { findAll(pat: string): Array<{ text(): string; range(): { start: { line: number } } }> } } } | null {
@@ -34,6 +43,14 @@ export async function executeStructuralQuery(
     return { error: 'structural mode requires pattern' };
   }
 
+  let astGrep: AstGrepModule;
+  try {
+    astGrep = await loadAstGrep();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `structural mode requires @ast-grep/napi at runtime: ${message}` };
+  }
+
   const format = output.format ?? 'matches';
   const maxPerFile = output.max_per_item ?? 10;
   const maxTotal = output.max_total_matches ?? output.max_results ?? 100;
@@ -47,7 +64,7 @@ export async function executeStructuralQuery(
   outer: for (const file of files) {
     if (totalMatches >= maxTotal) break;
 
-    const parser = getAstGrepLang(file, query.lang);
+    const parser = getAstGrepLang(astGrep, file, query.lang);
     if (!parser) continue;
 
     const content = await readTextFile(file);
