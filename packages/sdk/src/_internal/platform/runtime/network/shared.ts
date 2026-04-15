@@ -1,10 +1,10 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
-import type { ConfigManager } from '../../config/manager.js';
-
 const PEM_EXTENSIONS = new Set(['.pem', '.crt', '.cer']);
 
-type NetworkRootConfig = Pick<ConfigManager, 'getControlPlaneConfigDir'>;
+export interface NetworkRootConfig {
+  getControlPlaneConfigDir(): string;
+}
 
 export function getGoodVibesRootDir(configManager: NetworkRootConfig): string {
   const configuredDir = configManager.getControlPlaneConfigDir();

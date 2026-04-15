@@ -1,5 +1,4 @@
 import { existsSync } from 'node:fs';
-import type { ConfigManager } from '../../config/manager.js';
 import { getDefaultInboundCertPaths, inspectPrivateKeyPermissions, resolvePathFromGoodVibesRoot } from './shared.js';
 
 export type InboundTlsMode = 'off' | 'proxy' | 'direct';
@@ -28,49 +27,54 @@ export interface ResolvedInboundTlsContext extends InboundTlsSnapshot {
   readonly tls?: Bun.TLSOptions;
 }
 
-function readMode(configManager: ConfigManager, surface: InboundServerSurface): InboundTlsMode {
-  return surface === 'controlPlane'
-    ? configManager.get('controlPlane.tls.mode')
-    : configManager.get('httpListener.tls.mode');
+export interface InboundTlsConfigReader {
+  get(path: string): unknown;
+  getControlPlaneConfigDir(): string;
 }
 
-function readTrustProxy(configManager: ConfigManager, surface: InboundServerSurface): boolean {
+function readMode(configManager: InboundTlsConfigReader, surface: InboundServerSurface): InboundTlsMode {
+  return (surface === 'controlPlane'
+    ? configManager.get('controlPlane.tls.mode')
+    : configManager.get('httpListener.tls.mode')) as InboundTlsMode;
+}
+
+function readTrustProxy(configManager: InboundTlsConfigReader, surface: InboundServerSurface): boolean {
   return surface === 'controlPlane'
     ? Boolean(configManager.get('controlPlane.trustProxy'))
     : Boolean(configManager.get('httpListener.trustProxy'));
 }
 
-function readHost(configManager: ConfigManager, surface: InboundServerSurface): string {
+function readHost(configManager: InboundTlsConfigReader, surface: InboundServerSurface): string {
   return String(surface === 'controlPlane'
     ? configManager.get('controlPlane.host')
     : configManager.get('httpListener.host'));
 }
 
-function readPort(configManager: ConfigManager, surface: InboundServerSurface): number {
+function readPort(configManager: InboundTlsConfigReader, surface: InboundServerSurface): number {
   return Number(surface === 'controlPlane'
     ? configManager.get('controlPlane.port')
     : configManager.get('httpListener.port'));
 }
 
-function readConfiguredCertPath(configManager: ConfigManager, surface: InboundServerSurface): string | null {
+function readConfiguredCertPath(configManager: InboundTlsConfigReader, surface: InboundServerSurface): string | null {
   return resolvePathFromGoodVibesRoot(
-    surface === 'controlPlane'
+    (surface === 'controlPlane'
       ? configManager.get('controlPlane.tls.certFile')
-      : configManager.get('httpListener.tls.certFile'),
+      : configManager.get('httpListener.tls.certFile')) as string | null | undefined,
     configManager,
   );
 }
 
-function readConfiguredKeyPath(configManager: ConfigManager, surface: InboundServerSurface): string | null {
+function readConfiguredKeyPath(configManager: InboundTlsConfigReader, surface: InboundServerSurface): string | null {
   return resolvePathFromGoodVibesRoot(
-    surface === 'controlPlane'
+    (surface === 'controlPlane'
       ? configManager.get('controlPlane.tls.keyFile')
-      : configManager.get('httpListener.tls.keyFile'),
+      : configManager.get('httpListener.tls.keyFile')) as string | null | undefined,
     configManager,
   );
 }
 
-export function inspectInboundTls(configManager: ConfigManager, surface: InboundServerSurface): InboundTlsSnapshot {
+export function inspectInboundTls(configManager: InboundTlsConfigReader, surface: InboundServerSurface): InboundTlsSnapshot {
   const mode = readMode(configManager, surface);
   const trustProxy = readTrustProxy(configManager, surface);
   const host = readHost(configManager, surface);
@@ -113,7 +117,7 @@ export function inspectInboundTls(configManager: ConfigManager, surface: Inbound
   };
 }
 
-export function resolveInboundTlsContext(configManager: ConfigManager, surface: InboundServerSurface): ResolvedInboundTlsContext {
+export function resolveInboundTlsContext(configManager: InboundTlsConfigReader, surface: InboundServerSurface): ResolvedInboundTlsContext {
   const snapshot = inspectInboundTls(configManager, surface);
   if (snapshot.mode !== 'direct') return snapshot;
   if (!snapshot.ready || !snapshot.certFile || !snapshot.keyFile) {

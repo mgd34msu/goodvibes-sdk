@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.23
+
+- Removed the SDK runtime network layer's remaining concrete `ConfigManager` class dependency and replaced it with host-neutral config-reader interfaces for shared path resolution, inbound TLS inspection, outbound TLS inspection, fetch wrapping, and the global network transport installer
+- This closes the next host-boundary leak that still prevented `goodvibes-tui` from importing the reusable SDK network surface directly without sharing the SDK's concrete config manager class identity
+
 ## 0.18.22
 
 - Removed the SDK’s remaining TUI-owned concrete runtime classes from the reusable platform boundary by deleting the copied command-registry, keybindings, panel-manager, and panel type implementations from the internal platform tree

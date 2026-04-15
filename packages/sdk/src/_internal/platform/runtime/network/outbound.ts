@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { getCACertificates } from 'node:tls';
-import type { ConfigManager } from '../../config/manager.js';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import { isLocalHostname, readPemEntriesFromDirectory, resolvePathFromGoodVibesRoot } from './shared.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
@@ -38,23 +37,34 @@ type WrappedNetworkFetch = typeof globalThis.fetch & {
   [NETWORK_FETCH_MANAGER]?: GlobalNetworkTransportInstaller;
 };
 
-function readMode(configManager: ConfigManager): OutboundTrustMode {
-  return configManager.get('network.outboundTls.mode');
+export interface OutboundTlsConfigReader {
+  get(path: string): unknown;
+  getControlPlaneConfigDir(): string;
 }
 
-function readAllowInsecureLocalhost(configManager: ConfigManager): boolean {
+function readMode(configManager: OutboundTlsConfigReader): OutboundTrustMode {
+  return configManager.get('network.outboundTls.mode') as OutboundTrustMode;
+}
+
+function readAllowInsecureLocalhost(configManager: OutboundTlsConfigReader): boolean {
   return Boolean(configManager.get('network.outboundTls.allowInsecureLocalhost'));
 }
 
-function readCustomCaFile(configManager: ConfigManager): string | null {
-  return resolvePathFromGoodVibesRoot(configManager.get('network.outboundTls.customCaFile'), configManager);
+function readCustomCaFile(configManager: OutboundTlsConfigReader): string | null {
+  return resolvePathFromGoodVibesRoot(
+    configManager.get('network.outboundTls.customCaFile') as string | null | undefined,
+    configManager,
+  );
 }
 
-function readCustomCaDir(configManager: ConfigManager): string | null {
-  return resolvePathFromGoodVibesRoot(configManager.get('network.outboundTls.customCaDir'), configManager);
+function readCustomCaDir(configManager: OutboundTlsConfigReader): string | null {
+  return resolvePathFromGoodVibesRoot(
+    configManager.get('network.outboundTls.customCaDir') as string | null | undefined,
+    configManager,
+  );
 }
 
-function loadCustomCaEntries(configManager: ConfigManager): {
+function loadCustomCaEntries(configManager: OutboundTlsConfigReader): {
   readonly entries: readonly string[];
   readonly errors: readonly string[];
   readonly customCaFile?: string;
@@ -95,7 +105,7 @@ function getBundledCaEntries(): readonly string[] {
   return getCACertificates('bundled');
 }
 
-export function inspectOutboundTls(configManager: ConfigManager): OutboundTlsSnapshot {
+export function inspectOutboundTls(configManager: OutboundTlsConfigReader): OutboundTlsSnapshot {
   const mode = readMode(configManager);
   const allowInsecureLocalhost = readAllowInsecureLocalhost(configManager);
   const custom = loadCustomCaEntries(configManager);
@@ -114,7 +124,7 @@ export function inspectOutboundTls(configManager: ConfigManager): OutboundTlsSna
   };
 }
 
-function resolveOutboundTlsContext(configManager: ConfigManager): ResolvedOutboundTlsContext {
+function resolveOutboundTlsContext(configManager: OutboundTlsConfigReader): ResolvedOutboundTlsContext {
   const snapshot = inspectOutboundTls(configManager);
   const custom = loadCustomCaEntries(configManager);
   const caEntries = snapshot.mode === 'bundled'
@@ -171,7 +181,7 @@ async function executeNetworkFetch(
   fetchImpl: typeof globalThis.fetch,
   input: RequestInfo | URL,
   init: RequestInit | undefined,
-  configManager: ConfigManager,
+  configManager: OutboundTlsConfigReader,
 ): Promise<Response> {
   const nextInit = applyOutboundTlsToFetchInit(input, init, configManager);
   const url = extractRequestUrl(input);
@@ -216,7 +226,7 @@ async function executeNetworkFetch(
 export function applyOutboundTlsToFetchInit(
   input: RequestInfo | URL,
   init: RequestInit | undefined,
-  configManager: ConfigManager,
+  configManager: OutboundTlsConfigReader,
 ): FetchInitWithTls {
   const url = extractRequestUrl(input);
   const nextInit = { ...(init ?? {}) } as FetchInitWithTls;
@@ -251,7 +261,7 @@ export function applyOutboundTlsToFetchInit(
 
 export function createNetworkFetch(
   fetchImpl: typeof globalThis.fetch,
-  configManager: ConfigManager,
+  configManager: OutboundTlsConfigReader,
 ): typeof globalThis.fetch {
   const wrapped = (async (input: RequestInfo | URL, init?: RequestInit) =>
     executeNetworkFetch(fetchImpl, input, init, configManager)) as typeof globalThis.fetch;
@@ -261,13 +271,13 @@ export function createNetworkFetch(
 
 export class GlobalNetworkTransportInstaller {
   private originalFetchRef: typeof globalThis.fetch | null = null;
-  private configManager: ConfigManager | null = null;
+  private configManager: OutboundTlsConfigReader | null = null;
 
-  setConfigManager(configManager: ConfigManager): void {
+  setConfigManager(configManager: OutboundTlsConfigReader): void {
     this.configManager = configManager;
   }
 
-  install(configManager: ConfigManager): void {
+  install(configManager: OutboundTlsConfigReader): void {
     const currentFetch = globalThis.fetch as WrappedNetworkFetch;
     if (currentFetch[NETWORK_FETCH_MANAGER]) {
       currentFetch[NETWORK_FETCH_MANAGER]!.setConfigManager(configManager);
