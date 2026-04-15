@@ -5,6 +5,7 @@ import ts from 'typescript';
 import { executeSandboxCommand } from '../../runtime/sandbox/backend.js';
 import { type ConfigManagerLike } from '../../runtime/sandbox/manager.js';
 import { SandboxSessionRegistry } from '../../runtime/sandbox/session-registry.js';
+import { requireSurfaceRoot } from '../../runtime/surface-root.js';
 import type { SandboxLaunchPlan } from '../../runtime/sandbox/types.js';
 import type { Tool } from '../../types/tools.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -25,8 +26,12 @@ type ReplExecutionInput = ReplToolInput & {
   readonly workspaceRoot?: string;
 };
 
-function resolveHistoryPath(workspaceRoot: string): string {
-  return join(workspaceRoot, '.goodvibes', 'goodvibes', 'repl-history.json');
+export interface ReplToolOptions {
+  readonly surfaceRoot: string;
+}
+
+function resolveHistoryPath(workspaceRoot: string, surfaceRoot: string): string {
+  return join(workspaceRoot, '.goodvibes', surfaceRoot, 'repl-history.json');
 }
 
 function createLocalExecPlan(workspaceRoot: string): SandboxLaunchPlan {
@@ -121,12 +126,13 @@ async function evalTypeScript(
 function evalPython(
   expression: string,
   workspaceRoot: string,
+  surfaceRoot: string,
   configManager: ConfigManagerLike,
   sandboxSessionRegistry: SandboxSessionRegistry,
   launchPlan: SandboxLaunchPlan,
   sessionId?: string,
 ): string {
-  const replTempBase = join(workspaceRoot, '.goodvibes', 'goodvibes', 'repl-temp');
+  const replTempBase = join(workspaceRoot, '.goodvibes', surfaceRoot, 'repl-temp');
   mkdirSync(replTempBase, { recursive: true });
   const tempRoot = mkdtempSync(join(replTempBase, 'gv-repl-py-'));
   const venvPath = join(tempRoot, 'venv');
@@ -241,7 +247,9 @@ process.stdout.write(JSON.stringify({
 export function createReplTool(
   configManager: ConfigManagerLike,
   sandboxSessionRegistry: SandboxSessionRegistry,
+  options: ReplToolOptions,
 ): Tool {
+  const surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'ReplTool surfaceRoot');
   return {
     definition: {
       name: 'repl',
@@ -259,7 +267,7 @@ export function createReplTool(
       if (!input.workspaceRoot || input.workspaceRoot.trim().length === 0) {
         return { success: false, error: 'repl requires workspaceRoot.' };
       }
-      const historyPath = resolveHistoryPath(input.workspaceRoot);
+      const historyPath = resolveHistoryPath(input.workspaceRoot, surfaceRoot);
       const history = loadHistory(historyPath);
       const localExecPlan = createLocalExecPlan(input.workspaceRoot);
 
@@ -284,7 +292,7 @@ export function createReplTool(
             rendered = await evalTypeScript(input.expression, input.bindings ?? {}, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
             break;
           case 'python':
-            rendered = evalPython(input.expression, input.workspaceRoot, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
+            rendered = evalPython(input.expression, input.workspaceRoot, surfaceRoot, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
             break;
           case 'sql':
             rendered = await evalSql(input.expression, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);

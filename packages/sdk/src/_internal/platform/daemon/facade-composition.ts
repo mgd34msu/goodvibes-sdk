@@ -91,6 +91,7 @@ export function resolveDaemonFacadeRuntime(
     configManager: resolvedConfigManager,
     runtimeBus: ownedRuntimeBus,
     runtimeStore: createRuntimeStore(),
+    surfaceRoot: 'goodvibes',
     getConversationTitle: () => 'goodvibes daemon',
     workingDir: ownedWorkingDir!,
     homeDirectory: ownedHomeDirectory!,

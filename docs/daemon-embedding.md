@@ -42,6 +42,7 @@ The SDK does not replace your server framework. You still own:
 - request routing
 - concrete service implementations
 - auth/session storage
+- host-specific surface/storage root decisions
 - runtime bootstrapping
 - concrete host policies like CORS, TLS, and deployment-specific auth envelopes
 

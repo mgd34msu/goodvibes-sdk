@@ -69,17 +69,17 @@ import { createShellPathService, type ShellPathService } from '@pellux/goodvibes
 import type { FeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime/feature-flags/index';
 import { createFeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime/feature-flags/index';
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
+import { requireSurfaceRoot } from './surface-root.js';
 import {
   createWorkflowServices,
   type WorkflowServices,
 } from '@pellux/goodvibes-sdk/platform/tools/workflow/index';
 
-const SURFACE_ROOT = 'goodvibes';
-
 export interface RuntimeServicesOptions {
   readonly runtimeBus: RuntimeEventBus;
   readonly runtimeStore: RuntimeStore;
   readonly configManager: ConfigManager;
+  readonly surfaceRoot: string;
   readonly featureFlags?: FeatureFlagManager;
   readonly getConversationTitle?: () => string | undefined;
   readonly workingDir: string;
@@ -172,6 +172,7 @@ export interface RuntimeServices {
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
   const workingDirectory = options.workingDir;
   const homeDirectory = options.homeDirectory;
+  const surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'RuntimeServicesOptions surfaceRoot');
   const shellPaths = createShellPathService({
     workingDirectory,
     homeDirectory,
@@ -182,7 +183,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const gatewayMethods = new GatewayMethodCatalog();
   const panelManager = new PanelManager();
   const keybindingsManager = new KeybindingsManager({
-    configPath: shellPaths.resolveUserPath(SURFACE_ROOT, 'keybindings.json'),
+    configPath: shellPaths.resolveUserPath(surfaceRoot, 'keybindings.json'),
   });
   const routeBindings = new RouteBindingManager({
     store: new AutomationRouteStore({ configManager }),
@@ -198,18 +199,18 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
   });
   const subscriptionManager = new SubscriptionManager(
-    shellPaths.resolveUserPath(SURFACE_ROOT, 'subscriptions.json'),
+    shellPaths.resolveUserPath(surfaceRoot, 'subscriptions.json'),
   );
-  const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(SURFACE_ROOT, 'services.json'), {
+  const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(surfaceRoot, 'services.json'), {
     secretsManager,
     subscriptionManager,
   });
   const providerCapabilityRegistry = new ProviderCapabilityRegistry();
   const cacheHitTracker = new CacheHitTracker();
-  const favoritesStore = new FavoritesStore({ dir: shellPaths.resolveUserPath(SURFACE_ROOT) });
-  const benchmarkStore = new BenchmarkStore({ dir: shellPaths.resolveUserPath(SURFACE_ROOT) });
+  const favoritesStore = new FavoritesStore({ dir: shellPaths.resolveUserPath(surfaceRoot) });
+  const benchmarkStore = new BenchmarkStore({ dir: shellPaths.resolveUserPath(surfaceRoot) });
   const modelLimitsService = new ModelLimitsService({
-    cachePath: shellPaths.resolveUserPath(SURFACE_ROOT, 'model-limits.json'),
+    cachePath: shellPaths.resolveUserPath(surfaceRoot, 'model-limits.json'),
   });
   const providerRegistry = new ProviderRegistry({
     configManager,
@@ -230,16 +231,16 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     providerRegistry,
   });
   const localUserAuthManager = new UserAuthManager({
-    bootstrapFilePath: shellPaths.resolveUserPath(SURFACE_ROOT, 'auth-users.json'),
-    bootstrapCredentialPath: shellPaths.resolveUserPath(SURFACE_ROOT, 'auth-bootstrap.txt'),
+    bootstrapFilePath: shellPaths.resolveUserPath(surfaceRoot, 'auth-users.json'),
+    bootstrapCredentialPath: shellPaths.resolveUserPath(surfaceRoot, 'auth-bootstrap.txt'),
   });
-  const profileManager = new ProfileManager(shellPaths.resolveUserPath(SURFACE_ROOT, 'profiles'));
-  const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(SURFACE_ROOT, 'bookmarks'));
+  const profileManager = new ProfileManager(shellPaths.resolveUserPath(surfaceRoot, 'profiles'));
+  const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(surfaceRoot, 'bookmarks'));
   const sessionManager = new SessionManager(workingDirectory);
   const sessionOrchestration = new CrossSessionTaskRegistry(workingDirectory);
   const hookActivityTracker = new HookActivityTracker();
   const watcherRegistry = new WatcherRegistry({
-    storePath: shellPaths.resolveProjectPath(SURFACE_ROOT, 'watchers.json'),
+    storePath: shellPaths.resolveProjectPath(surfaceRoot, 'watchers.json'),
   });
   watcherRegistry.attachRuntime({
     runtimeStore: options.runtimeStore,
@@ -272,10 +273,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
   });
   const approvalBroker = new ApprovalBroker({
-    storePath: shellPaths.resolveProjectPath(SURFACE_ROOT, 'control-plane', 'approvals.json'),
+    storePath: shellPaths.resolveProjectPath(surfaceRoot, 'control-plane', 'approvals.json'),
   });
   const sessionBroker = new SharedSessionBroker({
-    storePath: shellPaths.resolveProjectPath(SURFACE_ROOT, 'control-plane', 'sessions.json'),
+    storePath: shellPaths.resolveProjectPath(surfaceRoot, 'control-plane', 'sessions.json'),
     routeBindings,
     agentStatusProvider: agentManager,
     messageSender: agentMessageBus,
@@ -304,7 +305,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const artifactStore = new ArtifactStore({ configManager });
   const memoryEmbeddingRegistry = new MemoryEmbeddingProviderRegistry({ configManager });
-  const memoryDbPath = join(workingDirectory, '.goodvibes', SURFACE_ROOT, 'memory.sqlite');
+  const memoryDbPath = join(workingDirectory, '.goodvibes', surfaceRoot, 'memory.sqlite');
   const memoryStore = new MemoryStore(memoryDbPath, {
     embeddingRegistry: memoryEmbeddingRegistry,
   });
@@ -366,12 +367,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       cwd: shellPaths.workingDirectory,
       homeDir: shellPaths.homeDirectory,
     },
-    stateFilePath: shellPaths.resolveUserPath(SURFACE_ROOT, 'plugins.json'),
+    stateFilePath: shellPaths.resolveUserPath(surfaceRoot, 'plugins.json'),
   });
   const workflow = createWorkflowServices();
   hookDispatcher.setTriggerManager(workflow.triggerManager);
   const channelPolicy = new ChannelPolicyManager({
-    storePath: shellPaths.resolveProjectPath(SURFACE_ROOT, 'channels', 'policies.json'),
+    storePath: shellPaths.resolveProjectPath(surfaceRoot, 'channels', 'policies.json'),
   });
   const distributedRuntime = new DistributedRuntimeManager();
   distributedRuntime.attachRuntime({
@@ -436,6 +437,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     fileCache,
     projectIndex,
     workingDirectory,
+    surfaceRoot,
     fileUndoManager,
     modeManager,
     processManager,

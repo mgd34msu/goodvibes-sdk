@@ -71,6 +71,7 @@ export function registerAllTools(
     sessionOrchestration?: CrossSessionTaskRegistry;
     sandboxSessionRegistry?: SandboxSessionRegistry;
     workingDirectory: string;
+    surfaceRoot: string;
     archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'>;
     configManager?: ConfigManager;
     providerRegistry?: ProviderRegistry;
@@ -116,6 +117,9 @@ export function registerAllTools(
   const workingDirectory = deps?.workingDirectory;
   if (!workingDirectory) {
     throw new Error('registerAllTools requires workingDirectory');
+  }
+  if (!deps?.surfaceRoot || deps.surfaceRoot.trim().length === 0) {
+    throw new Error('registerAllTools requires surfaceRoot');
   }
   const projectIndex = deps?.projectIndex ?? new ProjectIndex(workingDirectory);
 
@@ -179,7 +183,9 @@ export function registerAllTools(
   if (remoteRunnerRegistry) {
     registry.register(createRemoteTool(remoteRunnerRegistry));
   }
-  registry.register(createReplTool(deps.configManager, deps.sandboxSessionRegistry));
+  registry.register(createReplTool(deps.configManager, deps.sandboxSessionRegistry, {
+    surfaceRoot: deps.surfaceRoot,
+  }));
   registry.register(controlTool);
   registry.register(createChannelTool(channelRegistry));
   return { fileCache, projectIndex };

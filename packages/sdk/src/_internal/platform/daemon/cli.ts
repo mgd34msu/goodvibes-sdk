@@ -44,6 +44,7 @@ async function main(): Promise<void> {
     configManager: config,
     runtimeBus,
     runtimeStore,
+    surfaceRoot: 'goodvibes',
     getConversationTitle: () => 'goodvibes daemon',
     workingDir,
     homeDirectory,

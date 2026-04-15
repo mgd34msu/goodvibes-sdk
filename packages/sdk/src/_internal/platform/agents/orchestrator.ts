@@ -45,6 +45,7 @@ type AgentOrchestratorToolDeps = {
   readonly fileCache: FileStateCache;
   readonly projectIndex: ProjectIndex;
   readonly workingDirectory: string;
+  readonly surfaceRoot: string;
   readonly fileUndoManager: import('@pellux/goodvibes-sdk/platform/state/file-undo').FileUndoManager;
   readonly modeManager: import('@pellux/goodvibes-sdk/platform/state/mode-manager').ModeManager;
   readonly processManager: import('@pellux/goodvibes-sdk/platform/tools/shared/process-manager').ProcessManager;

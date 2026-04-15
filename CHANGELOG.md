@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.16
+
+- Removed the hardcoded `goodvibes` product-root assumption from the reusable SDK runtime/tool surfaces that the TUI is expected to consume directly
+- `createRuntimeServices`, `registerAllTools`, and `createReplTool` now require host-injected `surfaceRoot` ownership instead of baking a product root into the reusable SDK layer
+- Moved the canonical `goodvibes` root choice up into the SDK’s concrete daemon host wiring so the package keeps product defaults at the host boundary rather than inside reusable platform modules
+
 ## 0.18.15
 
 - Published the completed platform extraction pass into the SDK-owned internal tree, bringing the pending ACP, adapters, agents and WRFC runtime, automation, channels, config, control-plane, daemon host, hooks, knowledge, MCP, media, runtime, state, tools, watchers, and web-search implementation modules into the canonical SDK release
