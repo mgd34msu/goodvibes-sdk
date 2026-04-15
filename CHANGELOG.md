@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.19
+
+- Fixed the public sandbox provisioning surface so hosts are no longer forced to satisfy the SDK’s private `ConfigManager` class identity just to use doctor, guest-bundle, and QEMU setup helpers
+- Replaced the concrete provisioning manager type with host-facing `ConfigManagerLike` / `WritableConfigManagerLike` interfaces, keeping the SDK reusable from package consumers that supply their own compatible config manager implementations
+- This closes the package-level typing break that blocked `goodvibes-tui` from consuming the canonical sandbox provisioning exports directly after the sandbox runtime cutover
+
 ## 0.18.18
 
 - Finished the next host-boundary cleanup pass by removing the remaining reusable SDK modules that were still deriving `.goodvibes/goodvibes/...` paths internally

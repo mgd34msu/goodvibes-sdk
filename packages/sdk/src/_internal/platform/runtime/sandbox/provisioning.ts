@@ -1,8 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import type { ConfigManager } from '../../config/manager.js';
-import { getSandboxConfigSnapshot } from './manager.js';
+import { getSandboxConfigSnapshot, type ConfigManagerLike } from './manager.js';
 import { requireSurfaceRoot } from '../surface-root.js';
 import { renderQemuWrapperTemplate } from '@pellux/goodvibes-sdk/platform/runtime/sandbox/qemu-wrapper-template';
 
@@ -69,6 +68,10 @@ export interface SandboxProvisioningOptions {
   readonly surfaceRoot: string;
 }
 
+export interface WritableConfigManagerLike extends ConfigManagerLike {
+  setDynamic(key: string, value: unknown): void;
+}
+
 function existsExecutable(pathArg: string): boolean {
   if (!pathArg) return false;
   try {
@@ -79,7 +82,7 @@ function existsExecutable(pathArg: string): boolean {
   }
 }
 
-export function buildSandboxDoctorChecks(manager: ConfigManager): SandboxDoctorCheck[] {
+export function buildSandboxDoctorChecks(manager: ConfigManagerLike): SandboxDoctorCheck[] {
   const config = getSandboxConfigSnapshot(manager);
   return [
     {
@@ -120,7 +123,7 @@ export function buildSandboxDoctorChecks(manager: ConfigManager): SandboxDoctorC
   ];
 }
 
-export function renderSandboxDoctor(manager: ConfigManager): string {
+export function renderSandboxDoctor(manager: ConfigManagerLike): string {
   const checks = buildSandboxDoctorChecks(manager);
   const failing = checks.filter((check) => !check.ok);
   return [
@@ -134,7 +137,7 @@ export function renderSandboxDoctor(manager: ConfigManager): string {
 }
 
 export function exportSandboxGuestBundle(
-  manager: ConfigManager,
+  manager: ConfigManagerLike,
   workspaceRoot: string,
   pathArg: string,
   _options: SandboxProvisioningOptions,
@@ -181,7 +184,7 @@ export function inspectSandboxGuestBundle(bundle: SandboxGuestBundle): string {
 }
 
 export function scaffoldSandboxQemuInitBundle(
-  manager: ConfigManager,
+  manager: ConfigManagerLike,
   workspaceRoot: string,
   pathArg: string,
   options: SandboxProvisioningOptions,
@@ -218,7 +221,7 @@ export function scaffoldSandboxQemuInitBundle(
 }
 
 export function scaffoldSandboxQemuSetupBundle(
-  manager: ConfigManager,
+  manager: ConfigManagerLike,
   workspaceRoot: string,
   pathArg: string,
   options: SandboxProvisioningOptions,
@@ -379,7 +382,7 @@ export function createSandboxQemuImage(
 }
 
 export function bootstrapSandboxQemuSetupBundle(
-  manager: ConfigManager,
+  manager: WritableConfigManagerLike,
   workspaceRoot: string,
   pathArg: string,
   sizeGb: number,
@@ -417,7 +420,7 @@ export function loadSandboxQemuSetupManifest(workspaceRoot: string, pathArg: str
 }
 
 export function applySandboxQemuSetupManifest(
-  manager: ConfigManager,
+  manager: WritableConfigManagerLike,
   manifest: SandboxQemuSetupManifest,
 ): void {
   manager.setDynamic('sandbox.vmBackend', manifest.recommendedSettings.backend);
