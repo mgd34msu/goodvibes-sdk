@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -6,6 +6,7 @@ import {
   cleanupStage,
   collectTarballs,
   getPublicPackageNameOverride,
+  getPublishRegistryOverride,
   getRootVersion,
   packStage,
   readPackage,
@@ -25,6 +26,7 @@ const PEER_ENTRY = `${PUBLIC_PACKAGE_NAME}/peer`;
 const DAEMON_ENTRY = `${PUBLIC_PACKAGE_NAME}/daemon`;
 const CONTRACTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/contracts`;
 const REALTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/transport-realtime`;
+const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
 const smokeScript = `
 import { existsSync, readdirSync } from 'node:fs';
@@ -79,16 +81,32 @@ function writeConsumerFiles(projectDir) {
 
 function installWithNpm(specs) {
   const projectDir = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-npm-smoke-'));
-  writeConsumerFiles(projectDir);
-  run('npm', ['install', ...specs], projectDir);
-  run('node', ['check.mjs'], projectDir);
+  try {
+    writeConsumerFiles(projectDir);
+    run('npm', ['install', ...specs], projectDir, {
+      auth: REGISTRY_MODE,
+      registry: REGISTRY,
+      packageName: PUBLIC_PACKAGE_NAME,
+    });
+    run('node', ['check.mjs'], projectDir);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 }
 
 function installWithBun(specs) {
   const projectDir = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-bun-smoke-'));
-  writeConsumerFiles(projectDir);
-  run('bun', ['add', ...specs], projectDir);
-  run('bun', ['run', 'check.mjs'], projectDir);
+  try {
+    writeConsumerFiles(projectDir);
+    run('bun', ['add', ...specs], projectDir, {
+      auth: REGISTRY_MODE,
+      registry: REGISTRY,
+      packageName: PUBLIC_PACKAGE_NAME,
+    });
+    run('bun', ['run', 'check.mjs'], projectDir);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 }
 
 function buildRegistrySpecs() {
@@ -113,10 +131,14 @@ if (REGISTRY_MODE) {
   console.log('registry install smoke passed');
 } else {
   const { tempRoot, specs } = buildTarballSpecs();
+  const packDir = specs.length > 0 ? resolve(specs[0], '..') : null;
   try {
     installWithNpm(specs);
     console.log('tarball install smoke passed');
   } finally {
     cleanupStage(tempRoot);
+    if (packDir) {
+      rmSync(packDir, { recursive: true, force: true });
+    }
   }
 }
