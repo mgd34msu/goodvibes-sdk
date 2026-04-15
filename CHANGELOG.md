@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.21
+
+- Removed the replay engine's remaining hardcoded `/tmp` export assumption by allowing report exports under the host's active temp root instead of a Unix-only fixed path
+- Updated replay command guidance to use host-neutral project-local export examples instead of baking `/tmp` into the public SDK command surface
+- This closes the downstream TUI replay regression that appeared once the test runner moved onto repo-local temp roots during the SDK cutover validation pass
+
 ## 0.18.20
 
 - Fixed the SDK REPL Python runtime so it no longer tries to build an ephemeral virtualenv before every evaluation

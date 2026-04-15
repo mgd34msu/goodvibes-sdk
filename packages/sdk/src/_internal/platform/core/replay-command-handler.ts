@@ -234,7 +234,7 @@ export function handleReplayCommand(
       if (!filePath) {
         return {
           ok: false,
-          output: 'Usage: /replay export <path>\n\nExample: /replay export /tmp/replay-report.json',
+          output: 'Usage: /replay export <path>\n\nExample: /replay export replay-report.json',
         };
       }
 

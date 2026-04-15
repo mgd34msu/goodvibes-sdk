@@ -11,7 +11,8 @@
  * initial snapshot. This isolation ensures replay never affects live state.
  */
 import { writeFile } from 'node:fs/promises';
-import { resolve, normalize } from 'node:path';
+import { tmpdir } from 'node:os';
+import { normalize, relative, resolve } from 'node:path';
 import { logger } from '../utils/logger.js';
 import type { LedgerEntry } from '../runtime/telemetry/exporters/local-ledger.js';
 import type { RuntimeStateSnapshot } from '../runtime/diagnostics/types.js';
@@ -146,7 +147,7 @@ export interface ReplayEngineSnapshot {
  * engine.step(5);         // advance five events
  * engine.seek(10);        // jump to rev 10
  * const report = engine.diff();  // compare current to recorded
- * engine.export('/tmp/replay.json');  // write report to file
+ * engine.export('replay.json');  // write report inside the project root
  * ```
  */
 export class DeterministicReplayEngine {
@@ -170,6 +171,11 @@ export class DeterministicReplayEngine {
 
   constructor(projectRoot: string) {
     this._projectRoot = resolve(projectRoot);
+  }
+
+  private _isInsideRoot(root: string, candidate: string): boolean {
+    const rel = relative(root, candidate);
+    return rel === '' || (!rel.startsWith('..') && !rel.startsWith('/'));
   }
 
   // ── Public API ─────────────────────────────────────────────────────────
@@ -408,10 +414,11 @@ export class DeterministicReplayEngine {
       return;
     }
 
-    // Path traversal guard — confine exports to the project directory or /tmp.
+    const tempRoot = resolve(tmpdir());
+    // Path traversal guard — confine exports to the project directory or the active temp root.
     const resolved = resolve(this._projectRoot, normalize(filePath));
-    if (!resolved.startsWith(this._projectRoot) && !resolved.startsWith('/tmp')) {
-      throw new Error(`Export path must be within project directory or /tmp. Got: ${resolved}`);
+    if (!this._isInsideRoot(this._projectRoot, resolved) && !this._isInsideRoot(tempRoot, resolved)) {
+      throw new Error(`Export path must be within project directory or the active temp root. Got: ${resolved}`);
     }
 
     const report = {
