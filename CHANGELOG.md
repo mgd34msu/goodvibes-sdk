@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.28
+
+- Fixed the SDK session-persistence helpers so `surfaceRoot` now flows through the last-session pointer and crash-recovery paths instead of silently falling back to the shared `.goodvibes/...` root
+- This closes the remaining TUI session-storage boundary leak that still wrote pointer and recovery files to the wrong root even when the host explicitly owned persistence under `.goodvibes/tui/...`
+
 ## 0.18.27
 
 - Added the reusable `@pellux/goodvibes-sdk/platform/templates/manager` surface so hosts can use the SDK-owned template manager instead of carrying a local template implementation

@@ -77,16 +77,16 @@ function resolveSessionManager(options?: SessionPersistenceOptions): SessionMana
   return new SessionManager(requireWorkingDirectory(options), { surfaceRoot: options?.surfaceRoot });
 }
 
-export function getUserSessionsDir(workingDirectory: string): string {
-  return resolveScopedDirectory(workingDirectory, undefined, 'sessions');
+export function getUserSessionsDir(workingDirectory: string, surfaceRoot?: string): string {
+  return resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions');
 }
 
-export function getLastSessionPointerPath(workingDirectory: string): string {
-  return join(getUserSessionsDir(workingDirectory), 'last-session.json');
+export function getLastSessionPointerPath(workingDirectory: string, surfaceRoot?: string): string {
+  return join(getUserSessionsDir(workingDirectory, surfaceRoot), 'last-session.json');
 }
 
-export function getRecoveryFilePath(homeDirectory: string): string {
-  return resolveScopedDirectory(homeDirectory, undefined, 'recovery.jsonl');
+export function getRecoveryFilePath(homeDirectory: string, surfaceRoot?: string): string {
+  return resolveScopedDirectory(homeDirectory, surfaceRoot, 'recovery.jsonl');
 }
 
 export function generateUserSessionId(): string {
@@ -132,7 +132,7 @@ export function persistConversation(
 export function writeLastSessionPointer(sessionId: string, options?: SessionPersistenceOptions): void {
   try {
     const workingDirectory = requireWorkingDirectory(options);
-    const pointerPath = getLastSessionPointerPath(workingDirectory);
+    const pointerPath = getLastSessionPointerPath(workingDirectory, options?.surfaceRoot);
     mkdirSync(dirname(pointerPath), { recursive: true });
     writeFileSync(
       pointerPath,
@@ -147,7 +147,7 @@ export function writeLastSessionPointer(sessionId: string, options?: SessionPers
 export function readLastSessionPointer(options?: SessionPersistenceOptions): string | null {
   try {
     const workingDirectory = requireWorkingDirectory(options);
-    const pointerPath = getLastSessionPointerPath(workingDirectory);
+    const pointerPath = getLastSessionPointerPath(workingDirectory, options?.surfaceRoot);
     if (!existsSync(pointerPath)) return null;
     const data = JSON.parse(readFileSync(pointerPath, 'utf-8')) as { sessionId?: unknown };
     if (typeof data.sessionId === 'string' && data.sessionId.trim()) return data.sessionId;
@@ -180,7 +180,7 @@ export function writeRecoveryFile(
   try {
     if (!snapshot.messages.length) return;
     const homeDirectory = requireHomeDirectory(options);
-    const recoveryFile = getRecoveryFilePath(homeDirectory);
+    const recoveryFile = getRecoveryFilePath(homeDirectory, options?.surfaceRoot);
     const lines: string[] = [];
     lines.push(JSON.stringify({ type: 'meta', sessionId, title, timestamp: Date.now() }));
     if (snapshot.titleSource || snapshot.returnContext) {
@@ -208,7 +208,7 @@ export function writeRecoveryFile(
 export function deleteRecoveryFile(options?: SessionPersistenceOptions): void {
   try {
     const homeDirectory = requireHomeDirectory(options);
-    unlinkSync(getRecoveryFilePath(homeDirectory));
+    unlinkSync(getRecoveryFilePath(homeDirectory, options?.surfaceRoot));
   } catch {
     // missing file is fine
   }
@@ -220,10 +220,10 @@ export function checkRecoveryFile(options?: SessionPersistenceOptions): Recovery
       workingDirectory: requireWorkingDirectory(options),
       homeDirectory: requireHomeDirectory(options),
     });
-    const recoveryFile = getRecoveryFilePath(homeDirectory);
+    const recoveryFile = getRecoveryFilePath(homeDirectory, options?.surfaceRoot);
     if (!existsSync(recoveryFile)) return null;
     const recoveryMtime = statSync(recoveryFile).mtimeMs;
-    const pointerPath = getLastSessionPointerPath(workingDirectory);
+    const pointerPath = getLastSessionPointerPath(workingDirectory, options?.surfaceRoot);
     if (existsSync(pointerPath)) {
       const lastCleanMtime = statSync(pointerPath).mtimeMs;
       if (recoveryMtime <= lastCleanMtime) return null;
@@ -254,7 +254,7 @@ export function checkRecoveryFile(options?: SessionPersistenceOptions): Recovery
 export function loadRecoveryConversation(options?: SessionPersistenceOptions): SessionSnapshot | null {
   try {
     const homeDirectory = requireHomeDirectory(options);
-    const recoveryFile = getRecoveryFilePath(homeDirectory);
+    const recoveryFile = getRecoveryFilePath(homeDirectory, options?.surfaceRoot);
     const raw = readFileSync(recoveryFile, 'utf-8');
     const lines = raw.split('\n').filter(Boolean);
     if (lines.length < 2) return { messages: [] };
