@@ -94,6 +94,12 @@ export class ConversationManager {
     return this.sessionLineageTracker;
   }
 
+  /**
+   * Returns the conversation messages formatted for the LLM provider.
+   *
+   * @returns readonly reference — do not mutate; the array is shared across
+   *   cache-hit callers until the next conversation mutation.
+   */
   public getMessagesForLLM(): ProviderMessage[] {
     if (this._cachedLLMMessages !== null && this._cachedLLMRevision === this._messagesRevision) {
       return this._cachedLLMMessages;
