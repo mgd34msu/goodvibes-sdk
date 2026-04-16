@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.40
+
+- **CI recovery**: 0.18.39 published with a corrupted `version.ts` baked fallback (`let version = "0.18.39";;` — double-quoted + duplicate semicolon). The test/version-sync.test.ts regex requires single-quote form, so validate failed and no npm publish fired. This release restores the canonical single-quote format and hardens `scripts/sync-version-fallback.ts` to tolerate either quote style plus stray semicolons so the next mis-formatted edit is self-healing on the next sync
+
 ## 0.18.39
 
 - Fixed `setModelContextCap` customModels branch missing `_invalidateModelRegistry()` call — mutating a custom model's context window was not reflected in subsequent `listModels()` calls until the next cold rebuild (I1)
