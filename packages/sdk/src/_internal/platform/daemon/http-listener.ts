@@ -9,6 +9,7 @@ import { UserAuthManager } from '@pellux/goodvibes-sdk/platform/security/user-au
 import { ConfigManager } from '../config/manager.js';
 import { extractForwardedClientIp, resolveInboundTlsContext, type ResolvedInboundTlsContext } from '../runtime/network/index.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { requirePortAvailable } from './port-check.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -122,6 +123,7 @@ export class HttpListener {
       return;
     }
 
+    await requirePortAvailable(this.port, this.host, 'HTTP listener');
     const self = this;
     this.tlsState = resolveInboundTlsContext(this.configManager, 'httpListener');
     this.server = this.serveFactory({
