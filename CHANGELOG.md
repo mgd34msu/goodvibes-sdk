@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.36
+
+- Fixed `resolveDaemonFacadeRuntime` ignoring constructor-injected `config.port` and `config.host` — the returned runtime was built solely from `configManager` values resolved through `resolveHostBinding`, so tests and embedders passing explicit port/host to `new DaemonServer({ port, host })` silently got the config defaults instead. `port` and `host` now prefer the directly-injected values and fall back to the resolved binding, matching the pattern `HttpListener` already uses
+
 ## 0.18.35
 
 - Fixed `resolveHostBinding` ignoring the configured port under `hostMode: 'local'` and `'network'` — the 0.18.34 implementation always returned the default port for the server type, which broke every test and deployment that specified a custom port while keeping the default bind mode. Port is now caller-controlled in all three modes; hostMode decides only the bind address (127.0.0.1, 0.0.0.0, or a custom host)
