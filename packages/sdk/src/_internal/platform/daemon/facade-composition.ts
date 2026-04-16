@@ -135,16 +135,23 @@ export function resolveDaemonFacadeRuntime(
     controlPlaneGateway.publishEvent(event, payload);
   });
 
+  // Host and port precedence: constructor-injected config.host/config.port win,
+  // then fall back to the hostMode-aware binding resolution from configManager.
+  // Directly-passed overrides are critical for tests (which bind random high
+  // ports) and for embedders that construct DaemonServer with explicit values.
+  const resolvedControlPlaneBinding = resolveHostBinding(
+    (resolvedConfigManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
+    String(resolvedConfigManager.get('controlPlane.host') ?? '127.0.0.1'),
+    Number(resolvedConfigManager.get('controlPlane.port') ?? 3421),
+    'controlPlane',
+  );
+
   return {
     configManager: resolvedConfigManager,
     runtimeServices,
     integrationHelpers: runtimeServices.integrationHelpers,
-    ...resolveHostBinding(
-      (resolvedConfigManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
-      String(resolvedConfigManager.get('controlPlane.host') ?? '127.0.0.1'),
-      Number(resolvedConfigManager.get('controlPlane.port') ?? 3421),
-      'controlPlane',
-    ),
+    port: config.port ?? resolvedControlPlaneBinding.port,
+    host: config.host ?? resolvedControlPlaneBinding.host,
     agentManager: config.agentManager ?? runtimeServices.agentManager,
     userAuth: config.userAuth ?? runtimeServices.localUserAuthManager,
     automationManager: runtimeServices.automationManager,
