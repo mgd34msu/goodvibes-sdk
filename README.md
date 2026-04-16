@@ -16,6 +16,7 @@ Use it when you need to:
 - consume realtime runtime events over SSE or WebSocket
 - embed reusable GoodVibes daemon route modules in another TypeScript host
 - build companion apps and web UIs against the GoodVibes platform surface
+- pair a mobile companion app using QR-code-based pairing (`platform/pairing/`)
 
 This repo does **not** try to run the full GoodVibes platform on mobile devices. Companion apps talk to the platform remotely over the same contracts the SDK uses.
 
@@ -67,6 +68,10 @@ import { createRemoteRuntimeEvents } from '@pellux/goodvibes-sdk/transport-realt
   Contract-driven operator/control-plane client.
 - `@pellux/goodvibes-sdk/peer`
   Contract-driven peer/distributed-runtime client.
+- `@pellux/goodvibes-sdk/platform/pairing`
+  QR code generation, companion token management, and connection info formatting for mobile companion app pairing.
+- `@pellux/goodvibes-sdk/platform/daemon/port-check`
+  Port-in-use checking utilities used by `DaemonServer` and `HttpListener` before binding.
 - `@pellux/goodvibes-sdk`
   Umbrella SDK plus runtime-specific helpers for Node, browser/web UI, React Native, and Expo.
 
@@ -186,6 +191,24 @@ The transport layers support:
 - SSE reconnect
 - WebSocket reconnect
 - dynamic auth token resolution for long-lived clients
+
+## Platform Configuration
+
+### tools.llmEnabled
+
+Tool LLM calls are opt-in via the `tools.llmEnabled` config key (default: `false`). When disabled, `resolveToolLLM()` returns an empty string instead of silently falling through to the main conversation model. Set it explicitly to enable a dedicated tool LLM:
+
+```ts
+// goodvibes.config.ts (host config)
+tools: {
+  llmEnabled: true,
+  // ...provider config
+}
+```
+
+### Component health monitoring
+
+The health monitoring infrastructure was generalized from Panel-specific to Component-generic in `0.18.29`. The public API uses `ComponentHealthMonitor`, `ComponentResourceContract`, and `ComponentHealthState`. The old `Panel*` names remain as deprecated aliases for backward compatibility.
 
 ## Contracts
 

@@ -14,6 +14,8 @@ export interface CompanionConnectionInfo {
   readonly username: string;
   readonly version: string;
   readonly surface: string;
+  /** Bootstrap password for companion authentication (omitted if not applicable). */
+  readonly password?: string;
 }
 
 export interface CompanionTokenRecord {
@@ -91,6 +93,7 @@ export function buildCompanionConnectionInfo(options: {
   daemonUrl: string;
   token: string;
   username?: string;
+  password?: string;
   version?: string;
   surface?: string;
 }): CompanionConnectionInfo {
@@ -98,6 +101,7 @@ export function buildCompanionConnectionInfo(options: {
     url: options.daemonUrl,
     token: options.token,
     username: options.username ?? 'admin',
+    ...(options.password !== undefined ? { password: options.password } : {}),
     version: options.version ?? '0.0.0',
     surface: options.surface ?? 'daemon',
   };
@@ -111,6 +115,7 @@ export function encodeConnectionPayload(info: CompanionConnectionInfo): string {
     url: info.url,
     token: info.token,
     username: info.username,
+    ...(info.password !== undefined ? { password: info.password } : {}),
     version: info.version,
     surface: info.surface,
   });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.33
+
+- Added comprehensive SDK documentation: architecture overview, security best practices, performance tuning, observability guide, migration guide, and companion app pairing guide
+- Added release notes for 0.18.29 through 0.18.32
+- Updated root README with pairing module, port checking, and config entries
+- Added password field to CompanionConnectionInfo for companion app auth
+
 ## 0.18.32
 
 - Added port-in-use checking to DaemonServer and HttpListener — both now verify the port is free before binding, with a clear error message instead of crashing with EADDRINUSE
