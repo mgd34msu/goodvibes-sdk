@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.35
+
+- Fixed `resolveHostBinding` ignoring the configured port under `hostMode: 'local'` and `'network'` — the 0.18.34 implementation always returned the default port for the server type, which broke every test and deployment that specified a custom port while keeping the default bind mode. Port is now caller-controlled in all three modes; hostMode decides only the bind address (127.0.0.1, 0.0.0.0, or a custom host)
+
 ## 0.18.34
 
 - Fixed asymmetric `DaemonServer` lifecycle: `stop()` now properly tears down all services started during `start()` in reverse order (C1)
