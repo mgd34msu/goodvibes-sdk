@@ -1,4 +1,5 @@
 import { AgentManager } from '../tools/agent/index.js';
+import { resolveHostBinding } from './host-resolver.js';
 import { ConfigManager } from '../config/manager.js';
 import { ServiceRegistry } from '../config/service-registry.js';
 import { UserAuthManager } from '@pellux/goodvibes-sdk/platform/security/user-auth';
@@ -103,8 +104,12 @@ export function resolveDaemonFacadeRuntime(
     runtimeStore,
     server: {
       enabled: false,
-      host: config.host ?? String(resolvedConfigManager.get('controlPlane.host') ?? '127.0.0.1'),
-      port: config.port ?? Number(resolvedConfigManager.get('controlPlane.port') ?? 3421),
+      ...resolveHostBinding(
+        (resolvedConfigManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
+        String(resolvedConfigManager.get('controlPlane.host') ?? '127.0.0.1'),
+        Number(resolvedConfigManager.get('controlPlane.port') ?? 3421),
+        'controlPlane',
+      ),
       streamingMode: (resolvedConfigManager.get('controlPlane.streamMode') as import('../control-plane/index.js').ControlPlaneStreamingMode | undefined) ?? 'sse',
     },
   });
@@ -134,8 +139,12 @@ export function resolveDaemonFacadeRuntime(
     configManager: resolvedConfigManager,
     runtimeServices,
     integrationHelpers: runtimeServices.integrationHelpers,
-    port: config.port ?? Number(resolvedConfigManager.get('controlPlane.port') ?? 3421),
-    host: config.host ?? String(resolvedConfigManager.get('controlPlane.host') ?? '127.0.0.1'),
+    ...resolveHostBinding(
+      (resolvedConfigManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
+      String(resolvedConfigManager.get('controlPlane.host') ?? '127.0.0.1'),
+      Number(resolvedConfigManager.get('controlPlane.port') ?? 3421),
+      'controlPlane',
+    ),
     agentManager: config.agentManager ?? runtimeServices.agentManager,
     userAuth: config.userAuth ?? runtimeServices.localUserAuthManager,
     automationManager: runtimeServices.automationManager,
