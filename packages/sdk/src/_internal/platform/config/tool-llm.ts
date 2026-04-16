@@ -42,6 +42,9 @@ export interface ToolLLMDeps {
  */
 export function resolveToolLLM(deps: ToolLLMDeps): ResolvedToolLLM | null {
   try {
+    const enabled = deps.configManager.get('tools.llmEnabled');
+    if (!enabled) return null;
+
     const cfgProvider = deps.configManager.get('tools.llmProvider');
     const cfgModel = deps.configManager.get('tools.llmModel');
 

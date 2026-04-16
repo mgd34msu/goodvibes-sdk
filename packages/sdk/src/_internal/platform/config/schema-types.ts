@@ -320,6 +320,7 @@ export interface GoodVibesConfig {
     httpListener: boolean;          // default: false — enable HTTP webhook listener
   };
   tools: {
+    llmEnabled: boolean;            // default: false — enable dedicated tool LLM for internal operations
     llmProvider: string;            // default: '' — provider for tool LLM calls (empty = use current)
     llmModel: string;               // default: '' — model for tool LLM calls (empty = fastest available)
     autoHeal: boolean;              // default: false — auto-fix syntax errors on write/edit
@@ -424,6 +425,7 @@ export type ConfigKey =
   | 'release.channel'
   | 'danger.daemon'
   | 'danger.httpListener'
+  | 'tools.llmEnabled'
   | 'tools.llmProvider'
   | 'tools.llmModel'
   | 'tools.autoHeal'
@@ -618,6 +620,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'release.channel' ? 'stable' | 'preview' :
   K extends 'danger.daemon' ? boolean :
   K extends 'danger.httpListener' ? boolean :
+  K extends 'tools.llmEnabled' ? boolean :
   K extends 'tools.llmProvider' ? string :
   K extends 'tools.llmModel' ? string :
   K extends 'tools.autoHeal' ? boolean :

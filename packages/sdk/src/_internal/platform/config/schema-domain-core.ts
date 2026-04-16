@@ -84,6 +84,7 @@ export const coreConfigDefaults = {
     httpListener: false,
   },
   tools: {
+    llmEnabled: false,
     llmProvider: '',
     llmModel: '',
     autoHeal: false,
@@ -502,6 +503,12 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description: 'Enable HTTP webhook listener for receiving external events',
+  },
+  {
+    key: 'tools.llmEnabled',
+    type: 'boolean',
+    default: false,
+    description: 'Enable dedicated tool LLM for internal operations (off = tools use the main conversation model only when needed)',
   },
   {
     key: 'tools.llmProvider',
