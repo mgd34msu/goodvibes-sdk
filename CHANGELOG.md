@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.39
+
+- Fixed `setModelContextCap` customModels branch missing `_invalidateModelRegistry()` call — mutating a custom model's context window was not reflected in subsequent `listModels()` calls until the next cold rebuild (I1)
+- Added unit tests for 5 cache invariants: `setModelContextCap` invalidation for both `customModels` and `discoveredModels` paths, `registerRuntimeProvider` unregister callback invalidation, ring buffer newest-first ordering for `count < cap` and `count >= cap`, `_syncScheduled` coalescing of burst `rememberEvent` calls into 1 `syncControlPlaneState` dispatch per microtask, and `getMessagesForLLM` reference identity across all 15 mutating methods (I2)
+- Replaced `recentEvents: this.recentEvents.length` in `getSnapshot()` with `recentEvents: this._recentEventsCount` — eliminates the full O(n) ring array allocation just to read `.length` (I3)
+- Fixed `lastEventAt` in `_scheduleControlPlaneSync` — was closure-captured from the first event in a synchronous burst; now stored as `this._lastEventAt` field, updated on every `rememberEvent`, read inside `setImmediate` callback to always reflect the most recent event's timestamp (I4)
+- Moved `_invalidateModelRegistry()` in `registerDiscoveredProviders` to after the provider registration loop — pre-loop invalidation was fragile (safe by accident); post-loop invalidation ensures the rebuilt registry includes all newly discovered models (I5)
+- Added JSDoc `@returns readonly reference` warning to `getMessagesForLLM` documenting the shared cache contract (I6)
+- Added dev-only `console.error` assertion in the `recentEvents` ring accessor when an `undefined` slot is encountered despite valid `_recentEventsCount` — surfaces ring buffer accounting bugs early in development while keeping the production skip path for resilience (I7)
+
 ## 0.18.38
 
 - Added `_cachedModelRegistry` + `_invalidateModelRegistry()` to `ProviderRegistry.getModelRegistry()` — cache is invalidated on every mutation (`register`, `registerRuntimeProvider`, `registerDiscoveredProviders`, `loadCustomProviders`, `updateCatalogState`, `setModelContextCap`) and returned on cache hit, eliminating repeated `buildModelRegistry` calls across 10+ call sites per turn

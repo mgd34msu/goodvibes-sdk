@@ -251,8 +251,6 @@ export class ProviderRegistry {
     }
     this.discoveredProviderNames.clear();
     this.discoveredModels = [];
-    this._invalidateModelRegistry();
-
     for (const server of servers) {
       // Skip if a non-discovered provider already holds this name
       if (this.providers.has(server.name)) continue;
@@ -288,6 +286,7 @@ export class ProviderRegistry {
         });
       }
     }
+    this._invalidateModelRegistry();
   }
 
   /** Retrieve a provider by name. Throws if not found. */
@@ -499,6 +498,7 @@ export class ProviderRegistry {
         contextWindow: cap,
         contextWindowProvenance: 'configured_cap',
       };
+      this._invalidateModelRegistry();
       return;
     }
     const discoveredIdx = this.discoveredModels.findIndex((m) => m.registryKey === registryKey || m.id === registryKey);

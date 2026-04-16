@@ -159,7 +159,12 @@ export class ControlPlaneGateway {
     for (let i = 0; i < count; i++) {
       const idx = (this._recentEventsHead - 1 - i + cap) % cap;
       const entry = this._recentEventsRing[idx];
-      if (entry) out.push(entry);
+      if (entry) {
+        out.push(entry);
+      } else if (process.env.NODE_ENV !== 'production') {
+        // Dev-only: undefined slot despite valid count — ring buffer accounting bug.
+        console.error('[ControlPlaneGateway] recentEvents: undefined slot at ring index', idx, { head: this._recentEventsHead, count: this._recentEventsCount, i });
+      }
     }
     return out;
   }
@@ -167,6 +172,7 @@ export class ControlPlaneGateway {
   private errorCount = 0;
   private lastRequestAt: number | undefined;
   private _syncScheduled = false;
+  private _lastEventAt = 0;
 
   constructor(config: ControlPlaneGatewayConfig = {}) {
     this._recentEventsRing = new Array(this._recentEventsCapacity);
@@ -221,7 +227,7 @@ export class ControlPlaneGateway {
         clients: this.clients.size,
         activeClients: active.length,
         surfaceMessages: this.recentMessages.length,
-        recentEvents: this.recentEvents.length,
+        recentEvents: this._recentEventsCount,
         requests: this.requestCount,
         errors: this.errorCount,
       },
@@ -709,7 +715,7 @@ export class ControlPlaneGateway {
     return renderControlPlaneGatewayWebUi(authTokenHint);
   }
 
-  private _scheduleControlPlaneSync(lastEventAt: number): void {
+  private _scheduleControlPlaneSync(): void {
     if (this._syncScheduled || !this.dispatch) return;
     this._syncScheduled = true;
     setImmediate(() => {
@@ -718,7 +724,7 @@ export class ControlPlaneGateway {
         requestCount: this.requestCount,
         errorCount: this.errorCount,
         lastRequestAt: this.lastRequestAt,
-        lastEventAt,
+        lastEventAt: this._lastEventAt,
       }, 'control-plane.gateway.event');
     });
   }
@@ -734,8 +740,9 @@ export class ControlPlaneGateway {
     this._recentEventsRing[this._recentEventsHead] = record;
     this._recentEventsHead = (this._recentEventsHead + 1) % this._recentEventsCapacity;
     if (this._recentEventsCount < this._recentEventsCapacity) this._recentEventsCount++;
+    this._lastEventAt = record.createdAt;
     // Debounced: coalesce N events/frame into 1 store sync.
-    this._scheduleControlPlaneSync(record.createdAt);
+    this._scheduleControlPlaneSync();
     return record;
   }
 }
