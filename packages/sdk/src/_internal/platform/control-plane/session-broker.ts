@@ -41,6 +41,11 @@ import {
 const MAX_PERSISTED_MESSAGES = 2_000;
 const MAX_CONTINUATION_MESSAGES = 16;
 
+/** Scoped input-widening for createSession — avoids `any`, points at the exact expected shape. */
+interface CreateSessionInputWithKind {
+  readonly kind?: SharedSessionRecord['kind'];
+}
+
 export class SharedSessionBroker {
   private readonly store: PersistentStore<SharedSessionStoreSnapshot>;
   private readonly routeBindings: RouteBindingManager;
@@ -54,6 +59,7 @@ export class SharedSessionBroker {
   private loaded = false;
   private _gcInterval: ReturnType<typeof setInterval> | null = null;
   private _busUnsubs: Array<() => void> = [];
+  private _busAttached = false;
 
   /** Default idle threshold for zero-message sessions (ms). */
   private readonly _idleEmptyMs: number;
@@ -90,6 +96,23 @@ export class SharedSessionBroker {
   }
 
   /**
+   * M3: Gracefully stop the broker — clears GC interval, tears down bus subscriptions,
+   * and persists state. Call from DaemonServer.stop().
+   */
+  async stop(): Promise<void> {
+    if (this._gcInterval) {
+      clearInterval(this._gcInterval);
+      this._gcInterval = null;
+    }
+    for (const u of this._busUnsubs) {
+      try { u(); } catch {}
+    }
+    this._busUnsubs = [];
+    this._busAttached = false;
+    await this.persist();
+  }
+
+  /**
    * Wire the broker to a RuntimeEventBus so agent terminal events automatically
    * reconcile session inputs and task state.
    *
@@ -104,43 +127,64 @@ export class SharedSessionBroker {
     bus: RuntimeEventBus,
     sessionResolver: (agentId: string) => string | null,
   ): () => void {
+    // m3: idempotent — second call is a no-op with a warning
+    if (this._busAttached) {
+      console.warn('[SharedSessionBroker] attachRuntimeBus called more than once — ignoring duplicate call');
+      return () => {};
+    }
+    this._busAttached = true;
     const onCompleted = bus.on<Extract<AgentEvent, { type: 'AGENT_COMPLETED' }>>(
       'AGENT_COMPLETED',
       (envelope) => {
+        // m2: runtime type guard
+        if (typeof envelope.payload?.agentId !== 'string') return;
         const sessionId = sessionResolver(envelope.payload.agentId);
         if (!sessionId) return;
-        void this.completeAgent(
+        // m1: catch to prevent unhandled rejections
+        this.completeAgent(
           sessionId,
           envelope.payload.agentId,
           envelope.payload.output ?? '',
           { status: 'completed', durationMs: envelope.payload.durationMs },
-        );
+        ).catch((err) => {
+          console.error('[SharedSessionBroker] completeAgent error on AGENT_COMPLETED', err);
+        });
       },
     );
     const onFailed = bus.on<Extract<AgentEvent, { type: 'AGENT_FAILED' }>>(
       'AGENT_FAILED',
       (envelope) => {
+        // m2: runtime type guard
+        if (typeof envelope.payload?.agentId !== 'string') return;
         const sessionId = sessionResolver(envelope.payload.agentId);
         if (!sessionId) return;
-        void this.completeAgent(
+        // m1: catch to prevent unhandled rejections
+        this.completeAgent(
           sessionId,
           envelope.payload.agentId,
           envelope.payload.error,
           { status: 'failed', durationMs: envelope.payload.durationMs },
-        );
+        ).catch((err) => {
+          console.error('[SharedSessionBroker] completeAgent error on AGENT_FAILED', err);
+        });
       },
     );
     const onCancelled = bus.on<Extract<AgentEvent, { type: 'AGENT_CANCELLED' }>>(
       'AGENT_CANCELLED',
       (envelope) => {
+        // m2: runtime type guard
+        if (typeof envelope.payload?.agentId !== 'string') return;
         const sessionId = sessionResolver(envelope.payload.agentId);
         if (!sessionId) return;
-        void this.completeAgent(
+        // m1: catch to prevent unhandled rejections
+        this.completeAgent(
           sessionId,
           envelope.payload.agentId,
           envelope.payload.reason ?? 'cancelled',
           { status: 'cancelled' },
-        );
+        ).catch((err) => {
+          console.error('[SharedSessionBroker] completeAgent error on AGENT_CANCELLED', err);
+        });
       },
     );
     this._busUnsubs.push(onCompleted, onFailed, onCancelled);
@@ -148,6 +192,7 @@ export class SharedSessionBroker {
       onCompleted();
       onFailed();
       onCancelled();
+      this._busAttached = false;
       this._busUnsubs = this._busUnsubs.filter(
         (fn) => fn !== onCompleted && fn !== onFailed && fn !== onCancelled,
       );
@@ -175,8 +220,30 @@ export class SharedSessionBroker {
       this.inputs.set(sessionId, bucket);
     }
     this.loaded = true;
+    // M2: startup reconciliation — cancel inputs stuck in spawned/delivered from a prior run
+    const restartReason = 'daemon restart — agent state unknown';
+    for (const [sessionId, bucket] of this.inputs.entries()) {
+      let changed = false;
+      for (let i = 0; i < bucket.length; i++) {
+        const entry = bucket[i];
+        if (entry.state === 'spawned' || entry.state === 'delivered') {
+          bucket[i] = { ...entry, state: 'cancelled', updatedAt: Date.now(), error: restartReason };
+          changed = true;
+        }
+      }
+      if (changed) this.refreshPendingInputCount(sessionId);
+    }
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.activeAgentId) {
+        this.sessions.set(sessionId, { ...session, activeAgentId: undefined, updatedAt: Date.now() });
+      }
+    }
+    await this.persist();
     if (!this._gcInterval) {
-      this._gcInterval = setInterval(() => { this._gcSweep(); }, 60_000);
+      // M3: .unref() so the GC interval does not keep the process alive past shutdown
+      const iv = setInterval(() => { this._gcSweep(); }, 60_000);
+      (iv as unknown as { unref?: () => void }).unref?.();
+      this._gcInterval = iv;
     }
   }
 
@@ -250,6 +317,7 @@ export class SharedSessionBroker {
     const routeIds = input.routeBinding?.id ? [input.routeBinding.id] : [];
     const session: SharedSessionRecord = {
       id: sessionId,
+      kind: (input as unknown as CreateSessionInputWithKind).kind ?? 'tui',
       title: input.title?.trim() || input.routeBinding?.title || `Session ${sessionId}`,
       status: 'active',
       createdAt: now,
@@ -282,12 +350,15 @@ export class SharedSessionBroker {
     await this.start();
     const session = this.sessions.get(sessionId);
     if (!session) return null;
+    this._touch(sessionId); // M4: uniform touch before mutation
+    const touched = this.sessions.get(sessionId)!; // re-fetch after touch
+    const now = Date.now();
     const updated: SharedSessionRecord = {
-      ...session,
+      ...touched,
       status: 'closed',
       activeAgentId: undefined,
-      updatedAt: Date.now(),
-      closedAt: Date.now(),
+      updatedAt: now,
+      closedAt: now,
     };
     this.sessions.set(sessionId, updated);
     await this.persist();
@@ -365,13 +436,16 @@ export class SharedSessionBroker {
       agentId,
       metadata,
     });
+    const now = Date.now();
     const updated: SharedSessionRecord = {
       ...(this.sessions.get(sessionId) ?? session),
       activeAgentId: (this.sessions.get(sessionId)?.activeAgentId === agentId) ? undefined : this.sessions.get(sessionId)?.activeAgentId,
       lastAgentId: agentId,
-      updatedAt: Date.now(),
+      updatedAt: now,
+      lastActivityAt: now, // M4: completeAgent explicitly updates lastActivityAt
       ...(metadata.status === 'failed' ? { lastError: body } : {}),
     };
+    this._touch(sessionId); // M4: touch after mutation
     this.sessions.set(sessionId, updated);
     const finalizedInputs = this.finalizeAgentInputs(
       sessionId,
@@ -489,6 +563,7 @@ export class SharedSessionBroker {
     input: Omit<SubmitSharedSessionMessageInput, 'metadata'>,
     binding?: AutomationRouteBinding,
   ): Promise<SharedSessionRecord> {
+    this._touch(session.id); // M4
     const existing = this.sessions.get(session.id) ?? session;
     const nextRouteIds = binding?.id
       ? [...new Set([...existing.routeIds, binding.id])]
@@ -744,6 +819,7 @@ export class SharedSessionBroker {
     routeId?: string,
     causationId?: string,
   ): SharedSessionInputRecord {
+    this._touch(sessionId); // M4
     const id = `sin-${randomUUID().slice(0, 8)}`;
     const entry: SharedSessionInputRecord = {
       id,
@@ -785,6 +861,7 @@ export class SharedSessionBroker {
     bucket[index] = updated;
     this.inputs.set(sessionId, bucket);
     this.refreshPendingInputCount(sessionId);
+    this._touch(sessionId); // M4
     return updated;
   }
 
@@ -792,12 +869,14 @@ export class SharedSessionBroker {
     const bucket = this.inputs.get(sessionId) ?? [];
     const next = bucket.find((entry) => entry.state === 'queued');
     if (!next) return null;
-    return this.updateInput(sessionId, next.id, (entry) => ({
+    const result = this.updateInput(sessionId, next.id, (entry) => ({
       ...entry,
       state: 'spawned',
       activeAgentId: agentId,
       updatedAt: Date.now(),
     }));
+    this._touch(sessionId); // M4
+    return result;
   }
 
   private finalizeAgentInputs(
@@ -808,6 +887,7 @@ export class SharedSessionBroker {
   ): SharedSessionInputRecord[] {
     const bucket = this.inputs.get(sessionId);
     if (!bucket) return [];
+    this._touch(sessionId); // M4: ensure direct callers also bump session timestamps
     let changed = false;
     const updatedInputs: SharedSessionInputRecord[] = [];
     for (let index = 0; index < bucket.length; index += 1) {
@@ -855,6 +935,14 @@ export class SharedSessionBroker {
     return claimed ? { input: claimed, agentId: spawned.agentId } : null;
   }
 
+  // M4: touch helper — bumps lastActivityAt + updatedAt on a session
+  private _touch(sessionId: string): void {
+    const s = this.sessions.get(sessionId);
+    if (!s) return;
+    const now = Date.now();
+    this.sessions.set(sessionId, { ...s, lastActivityAt: now, updatedAt: now });
+  }
+
   private refreshPendingInputCount(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
@@ -880,9 +968,11 @@ export class SharedSessionBroker {
    */
   private _gcSweep(): void {
     const now = Date.now();
+    let anyChanged = false; // m4: track changed inline, not a second O(n) scan
     for (const [sessionId, session] of this.sessions.entries()) {
       if (session.status !== 'active') continue;
       if (session.activeAgentId) continue; // live agent — leave it
+      if (session.pendingInputCount > 0) continue; // M4: never close sessions with pending inputs
       const idle = now - session.lastActivityAt;
       let reason: string | null = null;
       if (session.messageCount === 0 && idle >= this._idleEmptyMs) {
@@ -900,11 +990,8 @@ export class SharedSessionBroker {
       };
       this.sessions.set(sessionId, closed);
       this.publishUpdate('session-closed', { ...closed, reason });
+      anyChanged = true; // m4: set during loop, not a second scan
     }
-    // Persist after a sweep only when something changed.
-    const anyChanged = [...this.sessions.values()].some(
-      (s) => s.status === 'closed' && s.closedAt && now - s.closedAt < 2_000,
-    );
     if (anyChanged) {
       void this.persist();
     }

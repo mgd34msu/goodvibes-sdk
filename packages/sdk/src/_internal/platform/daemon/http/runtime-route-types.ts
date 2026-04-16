@@ -1,6 +1,7 @@
 import type { DaemonApiRouteHandlers } from '../../control-plane/routes/context.js';
 import type { DaemonRuntimeRouteContext as SdkDaemonRuntimeRouteContext, JsonBody } from '../../../daemon.js';
 import type { ExecutionIntent } from '../../runtime/execution-intents.js';
+import type { ConversationMessageEnvelope } from '../../control-plane/conversation-message.js';
 
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
@@ -194,6 +195,12 @@ export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteCon
       source: string,
     ): void;
   } | null;
+  /**
+   * Publish a conversation follow-up event scoped to a specific session.
+   * Used by Problem-2 message routing: kind='message' submits skip agent spawn
+   * and instead broadcast a ConversationMessageEnvelope to TUI surface subscribers.
+   */
+  readonly publishConversationFollowup: (sessionId: string, envelope: Omit<ConversationMessageEnvelope, 'sessionId'>) => void;
 }
 
 export type { JsonBody };

@@ -34,8 +34,17 @@ export interface SharedSessionMessage {
   readonly metadata: Record<string, unknown>;
 }
 
+/**
+ * Discriminates the session origin.
+ * - 'tui': created by the operator TUI (default for existing sessions)
+ * - 'companion-task': created via task-submit flow (agent spawn)
+ * - 'companion-chat': created via companion chat-mode API (no agent spawn; uses per-session orchestrator)
+ */
+export type SharedSessionKind = 'tui' | 'companion-task' | 'companion-chat';
+
 export interface SharedSessionRecord {
   readonly id: string;
+  readonly kind: SharedSessionKind;
   readonly title: string;
   readonly status: SharedSessionStatus;
   readonly createdAt: number;
@@ -44,7 +53,9 @@ export interface SharedSessionRecord {
   readonly closedAt?: number;
   /**
    * Epoch ms of the most recent activity on this session.
-   * Updated on every createInput, message post, bindAgent, and heartbeat.
+   * Updated on every session-level mutation (createSession, bindAgent,
+   * appendMessage, recordInput, updateInput, claimNextQueuedInput,
+   * attachParticipantAndRoute, closeSession, completeAgent).
    * Used by the idle-session GC sweep to decide when to close ghost sessions.
    */
   readonly lastActivityAt: number;

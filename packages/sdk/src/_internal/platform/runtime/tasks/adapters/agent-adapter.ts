@@ -69,6 +69,8 @@ export class AgentTaskAdapter {
   private readonly _taskToAgent = new Map<string, string>();
 
   private readonly _dispatch: DomainDispatch;
+  /** m3: idempotency guard — prevent double-wiring the bus */
+  private _busAttached = false;
 
   constructor(private readonly _store: RuntimeStore) {
     this._dispatch = createDomainDispatch(_store);
@@ -88,9 +90,17 @@ export class AgentTaskAdapter {
    * @returns An unsubscribe function that removes all three listeners.
    */
   attachRuntimeBus(bus: RuntimeEventBus): () => void {
+    // m3: idempotent — second call is a no-op with a warning
+    if (this._busAttached) {
+      console.warn('[AgentTaskAdapter] attachRuntimeBus called more than once — ignoring duplicate call');
+      return () => {};
+    }
+    this._busAttached = true;
     const onCompleted = bus.on<{ type: 'AGENT_COMPLETED'; agentId: string; taskId?: string; durationMs: number; output?: string }>(
       'AGENT_COMPLETED',
       (envelope) => {
+        // m2: runtime type guard
+        if (typeof envelope.payload?.agentId !== 'string') return;
         const taskId = this._agentToTask.get(envelope.payload.agentId);
         if (taskId === undefined) return; // not a tracked agent — no-op
         this.handleAgentStateChange(envelope.payload.agentId, 'completed');
@@ -99,6 +109,8 @@ export class AgentTaskAdapter {
     const onFailed = bus.on<{ type: 'AGENT_FAILED'; agentId: string; taskId?: string; error: string; durationMs: number }>(
       'AGENT_FAILED',
       (envelope) => {
+        // m2: runtime type guard
+        if (typeof envelope.payload?.agentId !== 'string') return;
         const taskId = this._agentToTask.get(envelope.payload.agentId);
         if (taskId === undefined) return;
         this.handleAgentStateChange(envelope.payload.agentId, 'failed');
@@ -107,6 +119,8 @@ export class AgentTaskAdapter {
     const onCancelled = bus.on<{ type: 'AGENT_CANCELLED'; agentId: string; taskId?: string; reason?: string }>(
       'AGENT_CANCELLED',
       (envelope) => {
+        // m2: runtime type guard
+        if (typeof envelope.payload?.agentId !== 'string') return;
         const taskId = this._agentToTask.get(envelope.payload.agentId);
         if (taskId === undefined) return;
         this.handleAgentStateChange(envelope.payload.agentId, 'cancelled');
@@ -116,7 +130,44 @@ export class AgentTaskAdapter {
       onCompleted();
       onFailed();
       onCancelled();
+      this._busAttached = false;
     };
+  }
+
+  /**
+   * M2: Reconcile adapter state on daemon restart.
+   *
+   * Any task in the runtime store with status 'running' at startup is marked
+   * 'aborted' (mapped to 'cancelled') with reason 'daemon-restart', since
+   * we cannot know if the backing agent is still alive.
+   *
+   * Call this from composition after attaching the bus.
+   */
+  reconcileOnRestart(): void {
+    const tasks = this._store.getState().tasks.tasks;
+    const stale: string[] = [];
+    for (const [taskId, task] of tasks.entries()) {
+      if (task.kind === 'agent' && task.status === 'running') {
+        stale.push(taskId);
+      }
+    }
+    for (const taskId of stale) {
+      this._dispatch.transitionRuntimeTask(
+        taskId,
+        'cancelled',
+        {
+          endedAt: Date.now(),
+          error: 'daemon-restart',
+        },
+        'agent-adapter-restart',
+      );
+      // Clean up reverse-lookup mappings if present
+      const agentId = this._taskToAgent.get(taskId);
+      if (agentId) {
+        this._agentToTask.delete(agentId);
+        this._taskToAgent.delete(taskId);
+      }
+    }
   }
 
   // ── Core API ────────────────────────────────────────────────────────────────
