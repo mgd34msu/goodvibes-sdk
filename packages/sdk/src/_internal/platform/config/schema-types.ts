@@ -42,6 +42,7 @@ export interface AutomationConfig {
 
 export interface ControlPlaneConfig {
   enabled: boolean;
+  hostMode: 'local' | 'network' | 'custom';
   host: string;
   port: number;
   baseUrl: string;
@@ -56,6 +57,7 @@ export interface ControlPlaneConfig {
 }
 
 export interface HttpListenerRuntimeConfig {
+  hostMode: 'local' | 'network' | 'custom';
   host: string;
   port: number;
   trustProxy: boolean;
@@ -68,6 +70,7 @@ export interface HttpListenerRuntimeConfig {
 
 export interface WebConfig {
   enabled: boolean;
+  hostMode: 'local' | 'network' | 'custom';
   host: string;
   port: number;
   publicBaseUrl: string;
@@ -449,6 +452,7 @@ export type ConfigKey =
   | 'automation.failureCooldownMs'
   | 'automation.deleteAfterRun'
   | 'controlPlane.enabled'
+  | 'controlPlane.hostMode'
   | 'controlPlane.host'
   | 'controlPlane.port'
   | 'controlPlane.baseUrl'
@@ -458,6 +462,7 @@ export type ConfigKey =
   | 'controlPlane.tls.mode'
   | 'controlPlane.tls.certFile'
   | 'controlPlane.tls.keyFile'
+  | 'httpListener.hostMode'
   | 'httpListener.host'
   | 'httpListener.port'
   | 'httpListener.trustProxy'
@@ -465,6 +470,7 @@ export type ConfigKey =
   | 'httpListener.tls.certFile'
   | 'httpListener.tls.keyFile'
   | 'web.enabled'
+  | 'web.hostMode'
   | 'web.host'
   | 'web.port'
   | 'web.publicBaseUrl'
@@ -644,6 +650,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'automation.failureCooldownMs' ? number :
   K extends 'automation.deleteAfterRun' ? boolean :
   K extends 'controlPlane.enabled' ? boolean :
+  K extends 'controlPlane.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'controlPlane.host' ? string :
   K extends 'controlPlane.port' ? number :
   K extends 'controlPlane.baseUrl' ? string :
@@ -653,6 +660,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'controlPlane.tls.mode' ? 'off' | 'proxy' | 'direct' :
   K extends 'controlPlane.tls.certFile' ? string :
   K extends 'controlPlane.tls.keyFile' ? string :
+  K extends 'httpListener.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'httpListener.host' ? string :
   K extends 'httpListener.port' ? number :
   K extends 'httpListener.trustProxy' ? boolean :
@@ -660,6 +668,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'httpListener.tls.certFile' ? string :
   K extends 'httpListener.tls.keyFile' ? string :
   K extends 'web.enabled' ? boolean :
+  K extends 'web.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'web.host' ? string :
   K extends 'web.port' ? number :
   K extends 'web.publicBaseUrl' ? string :

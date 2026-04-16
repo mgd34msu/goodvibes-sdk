@@ -12,6 +12,7 @@ export const runtimeConfigDefaults = {
   },
   controlPlane: {
     enabled: false,
+    hostMode: 'local',
     host: '127.0.0.1',
     port: 3421,
     baseUrl: 'http://127.0.0.1:3421',
@@ -25,6 +26,7 @@ export const runtimeConfigDefaults = {
     },
   },
   httpListener: {
+    hostMode: 'local',
     host: '127.0.0.1',
     port: 3422,
     trustProxy: false,
@@ -36,6 +38,7 @@ export const runtimeConfigDefaults = {
   },
   web: {
     enabled: false,
+    hostMode: 'local',
     host: '127.0.0.1',
     port: 3423,
     publicBaseUrl: 'http://127.0.0.1:3423',
@@ -123,6 +126,13 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     description: 'Enable the shared gateway/control-plane service',
   },
   {
+    key: 'controlPlane.hostMode',
+    type: 'enum',
+    default: 'local',
+    description: 'Network binding mode: local (127.0.0.1, default port), network (0.0.0.0, default port), custom (editable host and port)',
+    enumValues: ['local', 'network', 'custom'],
+  },
+  {
     key: 'controlPlane.host',
     type: 'string',
     default: '127.0.0.1',
@@ -180,6 +190,13 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     description: 'Private key PEM path for direct control-plane TLS (empty = ~/.goodvibes/certs/privkey.pem)',
   },
   {
+    key: 'httpListener.hostMode',
+    type: 'enum',
+    default: 'local',
+    description: 'Network binding mode: local (127.0.0.1, default port), network (0.0.0.0, default port), custom (editable host and port)',
+    enumValues: ['local', 'network', 'custom'],
+  },
+  {
     key: 'httpListener.host',
     type: 'string',
     default: '127.0.0.1',
@@ -222,6 +239,13 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description: 'Enable the browser-based operator surface',
+  },
+  {
+    key: 'web.hostMode',
+    type: 'enum',
+    default: 'local',
+    description: 'Network binding mode: local (127.0.0.1, default port), network (0.0.0.0, default port), custom (editable host and port)',
+    enumValues: ['local', 'network', 'custom'],
   },
   {
     key: 'web.host',
