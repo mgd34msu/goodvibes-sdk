@@ -164,7 +164,7 @@ export async function maybeAssistReturnContextSummary(
   if (!enabled) return summary;
 
   const prompt = [
-    'You are generating a terse resume summary for a terminal coding session.',
+    'You are generating a terse resume summary for a coding session.',
     'Return one sentence under 160 characters.',
     'Focus on what the operator should look at first.',
     '',

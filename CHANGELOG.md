@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.18.29
+
+- Removed terminal rendering primitives from the reusable SDK platform surface: deleted `types/grid.ts` (`Cell`, `Line`, `createEmptyLine`, `createStyledCell`) and `core/history.ts` (`InfiniteBuffer`) which were orphaned TUI-specific modules that no SDK consumer should depend on
+- Cleaned the `BlockMeta` interface in `core/conversation.ts` by removing the TUI rendering fields (`blockIndex`, `startLine`, `lineCount`, `collapseKey`) and keeping only platform-level fields (`type`, `rawContent`, `filePath`, `diffOriginal`, `diffUpdated`); surfaces extend `BlockMeta` with their own rendering coordinates
+- Removed unused `_getWidth` and `_configManager` constructor parameters from `ConversationManager` and updated the agent orchestrator runner call site to match
+- Decoupled `core/conversation-diff.ts` from the `BlockMeta` type by introducing a standalone `DiffParseResult` interface for `parseDiffForApply`, removing the unnecessary type coupling
+- Added `undo()` and `redo()` methods to the SDK's `ConversationManager` — these were previously only available in the TUI but are pure message-list operations with no rendering dependency
+- Created `config/api-keys.ts` with `getConfiguredApiKeys()` and `resolveApiKeys()` containing the canonical 30+ provider-to-environment-variable mapping and three-tier key resolution (env vars, SecretsManager, skip); extracted from the inline implementation in `config/index.ts`
+- Extended the plugin loader with `additionalDirectories` and `entryDefault` options in `PluginPathOptions`, allowing surfaces to inject surface-specific plugin search paths and entry point defaults without forking the loader
+- Generalized the health monitoring infrastructure from Panel-specific to Component-generic: renamed `PanelHealthMonitor` to `ComponentHealthMonitor`, `PanelResourceContract` to `ComponentResourceContract`, `PanelHealthState` to `ComponentHealthState`, and related types; old `Panel*` names are preserved as deprecated backward-compatible aliases
+- Updated `RuntimeServices.panelHealthMonitor` to `componentHealthMonitor: ComponentHealthMonitor` throughout the services layer, shell command services, and workspace services
+- Renamed diagnostic types from `PanelResourceEntry`/`PanelResourceSnapshot`/`PanelConfig` to `ComponentResourceEntry`/`ComponentResourceSnapshot`/`ComponentConfig` with deprecated aliases for backward compatibility
+- Removed TUI-specific store domains from the SDK's `RuntimeState`: replaced `panels: PanelDomainState` with `panels: Record<string, unknown>` so surfaces define their own panel state shape, and replaced `uiPerf: UiPerfDomainState` with `surfacePerf: SurfacePerfDomainState` using the already-existing generic replacement
+- Removed TUI-specific selectors (`selectPanels`, `selectActivePanels`, `selectFocusedPanel`) from the SDK store selectors and added `selectSurfacePerf` plus 8 missing platform domain selectors (`selectOrchestration`, `selectCommunication`, `selectAutomation`, `selectRoutes`, `selectControlPlane`, `selectDeliveries`, `selectWatchers`, `selectSurfaces`)
+- Created `runtime/service-queries.ts` as the canonical platform-named barrel for the existing `ui-service-queries.ts` query interfaces
+- Made the TUI surface config-driven in `channels/surface-registry.ts` instead of hardcoded as always-enabled; TUI now defaults to enabled via config check like every other surface, and can be explicitly disabled
+- Split `utils/clipboard.ts`: removed the terminal-specific OSC 52 `copyToClipboard()` from the SDK and added a `ClipboardWriteFunction` type so surfaces inject their own clipboard write implementation; kept platform-level `pasteFromClipboard()` and `pasteImageFromClipboard()` in the SDK
+- Removed `utils/splash-lines.ts` (ASCII art terminal banner) from the SDK platform surface
+- Replaced hardcoded TUI references in ops playbooks (`permission-deadlock.ts`: "Ink render tree" to "host render context") and session return context (`session-return-context.ts`: "terminal coding session" to "coding session")
+- Updated bookmark manager docstring to use generic terminology instead of TUI-specific "collapse key"
+- Documented platform vs surface classification in `utils/terminal-width.ts` and `utils/notify.ts` for future cleanup reference
+
 ## 0.18.28
 
 - Fixed the SDK session-persistence helpers so `surfaceRoot` now flows through the last-session pointer and crash-recovery paths instead of silently falling back to the shared `.goodvibes/...` root

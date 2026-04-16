@@ -43,12 +43,8 @@ type Message = ConversationMessageSnapshot;
 export type ConversationTitleSource = 'system' | 'user';
 
 export interface BlockMeta {
-  blockIndex: number;
   type: 'tool' | 'code' | 'diff' | 'thinking';
-  startLine: number;
-  lineCount: number;
   rawContent: string;
-  collapseKey: string;
   filePath?: string;
   diffOriginal?: string;
   diffUpdated?: string;
@@ -65,8 +61,9 @@ export class ConversationManager {
   private branches = new Map<string, Message[]>();
   private currentBranch = 'main';
   private streamingMessageIndex = -1;
+  private undoStack: Message[][] = [];
 
-  constructor(_getWidth: () => number = () => 80, _configManager?: unknown) {}
+  constructor() {}
 
   private findToolName(callId: string): string | undefined {
     for (let i = this.messages.length - 1; i >= 0; i--) {
@@ -125,6 +122,8 @@ export class ConversationManager {
       this.setSystemTitle(deriveConversationTitle(content));
     }
     this.messages.push({ role: 'user', content });
+    // Clear undo stack when new user input is added (can't redo past new input)
+    this.undoStack = [];
   }
 
   public addAssistantMessage(
@@ -148,6 +147,36 @@ export class ConversationManager {
       model: opts?.model,
       provider: opts?.provider,
     });
+  }
+
+  /**
+   * undo - Remove the last complete turn (the last user message and all subsequent
+   * non-user messages). Pushes the removed messages onto the undo stack.
+   * Returns true if a turn was removed, false if there was nothing to undo.
+   */
+  public undo(): boolean {
+    let lastUserIdx = -1;
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+      if (this.messages[i].role === 'user') {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx === -1) return false;
+    const turn = this.messages.splice(lastUserIdx);
+    this.undoStack.push(turn);
+    return true;
+  }
+
+  /**
+   * redo - Restore the most recently undone turn.
+   * Returns true if a turn was restored, false if the undo stack is empty.
+   */
+  public redo(): boolean {
+    if (this.undoStack.length === 0) return false;
+    const turn = this.undoStack.pop()!;
+    this.messages.push(...turn);
+    return true;
   }
 
   public addToolResults(results: ToolResult[]): void {
@@ -268,6 +297,7 @@ export class ConversationManager {
     this.branches.clear();
     this.currentBranch = 'main';
     this.streamingMessageIndex = -1;
+    this.undoStack = [];
   }
 
   public forkBranch(name?: string, force = false): string {

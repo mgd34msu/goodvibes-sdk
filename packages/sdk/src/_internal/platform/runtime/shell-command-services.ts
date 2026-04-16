@@ -5,7 +5,7 @@ import type { HookWorkbench } from '../hooks/workbench.js';
 import type { KnowledgeService } from '../knowledge/index.js';
 import type { PluginManager } from '../plugins/manager.js';
 import type { PolicyRuntimeState } from './permissions/policy-runtime.js';
-import type { PanelHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/panel-health-monitor';
+import type { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
 import type { ShellPathService } from '@pellux/goodvibes-sdk/platform/runtime/shell-paths';
 import type { WorktreeRegistry } from './worktree/registry.js';
 import type { SandboxSessionRegistry } from './sandbox/session-registry.js';
@@ -44,7 +44,7 @@ export interface CreateBootstrapCommandShellServicesOptions {
   readonly adaptivePlanner?: AdaptivePlanner;
   readonly sessionOrchestration?: import('./shell-command-ops.js').ShellSessionOrchestrationService;
   readonly shellPaths: ShellPathService;
-  readonly panelHealthMonitor: PanelHealthMonitor;
+  readonly componentHealthMonitor: ComponentHealthMonitor;
   readonly worktreeRegistry: WorktreeRegistry;
   readonly sandboxSessionRegistry: SandboxSessionRegistry;
   readonly readModels: import('./ui-read-models.js').UiReadModels;
@@ -78,7 +78,7 @@ export function createBootstrapCommandShellServices(
     adaptivePlanner,
     sessionOrchestration,
     shellPaths,
-    panelHealthMonitor,
+    componentHealthMonitor,
     worktreeRegistry,
     sandboxSessionRegistry,
     readModels,
@@ -103,7 +103,7 @@ export function createBootstrapCommandShellServices(
   return {
     workspace: createShellWorkspaceServices({
       shellPaths,
-      panelHealthMonitor,
+      componentHealthMonitor,
       worktreeRegistry,
       sandboxSessionRegistry,
     }),

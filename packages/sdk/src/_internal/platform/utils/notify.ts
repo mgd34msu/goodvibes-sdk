@@ -14,7 +14,10 @@ export function escapeAppleScript(s: string): string {
 }
 
 export function notifyCompletion(title: string, message: string, durationMs: number): void {
-  // Terminal bell for responses > 5s
+  // Terminal bell for responses > 5s.
+  // Surface-specific: this writes directly to stdout and is only meaningful
+  // in a terminal context. Host surfaces that manage their own output stream
+  // should inject this behaviour via a callback rather than calling it here.
   if (durationMs > 5000) {
     process.stdout.write('\x07');
   }

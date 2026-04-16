@@ -3,28 +3,18 @@ import { summarizeError } from './error-display.js';
 
 export const MIN_IMAGE_BYTES = 100;
 
+/**
+ * ClipboardWriteFunction - Type for surface-specific clipboard write implementations.
+ * Surfaces (e.g., TUI) inject their own implementation (e.g., OSC 52 for terminals).
+ */
+export type ClipboardWriteFunction = (text: string) => void;
+
 const IMAGE_MIME_TYPES: { mime: string; mediaType: string }[] = [
   { mime: 'image/png', mediaType: 'image/png' },
   { mime: 'image/jpeg', mediaType: 'image/jpeg' },
   { mime: 'image/webp', mediaType: 'image/webp' },
   { mime: 'image/gif', mediaType: 'image/gif' },
 ];
-
-/**
- * copyToClipboard - Uses OSC 52 escape sequence to copy text.
- */
-export function copyToClipboard(text: string) {
-  if (!text) return;
-  logger.info('Clipboard: Attempting to copy via OSC 52', { length: text.length });
-  try {
-    const base64 = Buffer.from(text).toString('base64');
-    const sequence = `\x1b]52;c;${base64}\x07`;
-    process.stdout.write(sequence);
-    logger.info('Clipboard: OSC 52 sequence written');
-  } catch (err: unknown) {
-    logger.error('Clipboard: OSC 52 copy failed', { error: summarizeError(err) });
-  }
-}
 
 /**
  * pasteFromClipboard - Attempts to read from system clipboard using platform tools.

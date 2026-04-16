@@ -26,20 +26,33 @@ export { PerfMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/monitor
 export type { PerfSnapshot } from '@pellux/goodvibes-sdk/platform/runtime/perf/monitor';
 export { formatReport, exitCode } from '@pellux/goodvibes-sdk/platform/runtime/perf/reporter';
 export { SloCollector, SLO_METRICS } from './slo-collector.js';
+// Generic Component* names (canonical — prefer these in new code)
+export type {
+  ComponentResourceContract,
+  ComponentHealthState,
+  ComponentThrottleStatus,
+  ComponentHealthStatus,
+} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
+export {
+  CATEGORY_CONTRACTS,
+  buildContract,
+  createInitialComponentHealthState,
+} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
+export { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
+
+// Panel* names (deprecated backward-compat aliases — kept for existing consumers)
 export type {
   PanelResourceContract,
   PanelHealthState,
   PanelThrottleStatus,
   PanelHealthStatus,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/panel-contracts';
+} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
 export {
-  CATEGORY_CONTRACTS,
-  buildContract,
   createInitialPanelHealthState,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/panel-contracts';
+} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
 export {
   PanelHealthMonitor,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/panel-health-monitor';
+} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
 
 import { PerfMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/monitor';
 import type { PerfBudget } from '@pellux/goodvibes-sdk/platform/runtime/perf/types';

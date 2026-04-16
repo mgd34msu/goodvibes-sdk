@@ -10,7 +10,6 @@ import type { SessionDomainState } from '@pellux/goodvibes-sdk/platform/runtime/
 import type { ModelDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/model';
 import type { ConversationDomainState } from './domains/conversation.js';
 import type { OverlayDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/overlays';
-import type { PanelDomainState } from './domains/panels.js';
 import type { PermissionDomainState } from './domains/permissions.js';
 import type { TaskDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
 import type { AgentDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
@@ -32,13 +31,12 @@ import type { TelemetryDomainState } from '@pellux/goodvibes-sdk/platform/runtim
 import type { GitDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/git';
 import type { DiscoveryDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/discovery';
 import type { IntelligenceDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/intelligence';
-import type { UiPerfDomainState } from './domains/ui-perf.js';
+import type { SurfacePerfDomainState } from './domains/surface-perf.js';
 
 import { createInitialSessionState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/session';
 import { createInitialModelState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/model';
 import { createInitialConversationState } from './domains/conversation.js';
 import { createInitialOverlaysState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/overlays';
-import { createInitialPanelsState } from './domains/panels.js';
 import { createInitialPermissionsState } from './domains/permissions.js';
 import { createInitialTasksState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
 import { createInitialAgentsState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
@@ -60,7 +58,7 @@ import { createInitialTelemetryState } from '@pellux/goodvibes-sdk/platform/runt
 import { createInitialGitState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/git';
 import { createInitialDiscoveryState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/discovery';
 import { createInitialIntelligenceState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/intelligence';
-import { createInitialUiPerfState } from './domains/ui-perf.js';
+import { createInitialSurfacePerfState } from './domains/surface-perf.js';
 
 /**
  * RuntimeState — the complete state shape managed by the runtime store.
@@ -73,7 +71,7 @@ export interface RuntimeState {
   model: ModelDomainState;
   conversation: ConversationDomainState;
   overlays: OverlayDomainState;
-  panels: PanelDomainState;
+  panels: Record<string, unknown>;
   permissions: PermissionDomainState;
   tasks: TaskDomainState;
   agents: AgentDomainState;
@@ -95,7 +93,7 @@ export interface RuntimeState {
   git: GitDomainState;
   discovery: DiscoveryDomainState;
   intelligence: IntelligenceDomainState;
-  uiPerf: UiPerfDomainState;
+  surfacePerf: SurfacePerfDomainState;
 }
 
 /**
@@ -110,7 +108,7 @@ export function createInitialRuntimeState(): RuntimeState {
     model: createInitialModelState(),
     conversation: createInitialConversationState(),
     overlays: createInitialOverlaysState(),
-    panels: createInitialPanelsState(),
+    panels: {},
     permissions: createInitialPermissionsState(),
     tasks: createInitialTasksState(),
     agents: createInitialAgentsState(),
@@ -132,6 +130,6 @@ export function createInitialRuntimeState(): RuntimeState {
     git: createInitialGitState(),
     discovery: createInitialDiscoveryState(),
     intelligence: createInitialIntelligenceState(),
-    uiPerf: createInitialUiPerfState(),
+    surfacePerf: createInitialSurfacePerfState(),
   };
 }
