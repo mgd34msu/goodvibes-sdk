@@ -1,10 +1,38 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.18.30",
-  "description": "Umbrella GoodVibes SDK with operator, peer, daemon, transport, and runtime-specific integration layers.",
-  "type": "module",
+  "version": "0.18.31",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
+  },
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^0.16.1",
+    "@anthropic-ai/bedrock-sdk": "^0.28.1",
+    "@anthropic-ai/sdk": "^0.82.0",
+    "@anthropic-ai/vertex-sdk": "^0.16.0",
+    "@ast-grep/napi": "^0.42.0",
+    "@aws/bedrock-token-generator": "^1.1.0",
+    "bash-language-server": "^5.6.0",
+    "fuse.js": "^7.1.0",
+    "graphql": "^16.13.2",
+    "jszip": "^3.10.1",
+    "node-edge-tts": "^1.2.10",
+    "openai": "^6.29.0",
+    "pyright": "^1.1.408",
+    "simple-git": "^3.33.0",
+    "sql.js": "^1.14.1",
+    "sqlite-vec": "^0.1.9",
+    "tree-sitter-css": "^0.25.0",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-json": "^0.24.8",
+    "tree-sitter-python": "^0.25.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "typescript-language-server": "^5.1.3",
+    "vscode-langservers-extracted": "^4.10.0",
+    "web-tree-sitter": "^0.26.7",
+    "zustand": "^5.0.12"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -82,18 +110,13 @@
     },
     "./package.json": "./package.json"
   },
-  "files": [
-    "dist"
-  ],
-  "sideEffects": false,
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
-  },
   "bugs": {
     "url": "https://github.com/mgd34msu/goodvibes-sdk/issues"
   },
+  "description": "Umbrella GoodVibes SDK with operator, peer, daemon, transport, and runtime-specific integration layers.",
+  "files": [
+    "dist"
+  ],
   "homepage": "https://github.com/mgd34msu/goodvibes-sdk",
   "keywords": [
     "goodvibes",
@@ -102,34 +125,11 @@
     "react-native",
     "control-plane"
   ],
+  "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@agentclientprotocol/sdk": "^0.16.1",
-    "@anthropic-ai/bedrock-sdk": "^0.28.1",
-    "@anthropic-ai/sdk": "^0.82.0",
-    "@anthropic-ai/vertex-sdk": "^0.16.0",
-    "@ast-grep/napi": "^0.42.0",
-    "@aws/bedrock-token-generator": "^1.1.0",
-    "bash-language-server": "^5.6.0",
-    "fuse.js": "^7.1.0",
-    "graphql": "^16.13.2",
-    "jszip": "^3.10.1",
-    "node-edge-tts": "^1.2.10",
-    "openai": "^6.29.0",
-    "pyright": "^1.1.408",
-    "simple-git": "^3.33.0",
-    "sql.js": "^1.14.1",
-    "sqlite-vec": "^0.1.9",
-    "tree-sitter-css": "^0.25.0",
-    "tree-sitter-javascript": "^0.25.0",
-    "tree-sitter-json": "^0.24.8",
-    "tree-sitter-python": "^0.25.0",
-    "tree-sitter-typescript": "^0.23.2",
-    "typescript-language-server": "^5.1.3",
-    "vscode-langservers-extracted": "^4.10.0",
-    "web-tree-sitter": "^0.26.7",
-    "zustand": "^5.0.12"
-  }
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts"
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.31
+
+- Replaced broken inline QR encoder with vendored Nayuki QR Code generator (pure TypeScript, MIT license)
+- No npm dependencies for QR generation 2014 the vendored library handles all QR versions and error correction levels correctly
+
 ## 0.18.30
 
 - Added `platform/pairing/` module with QR code generation, companion token management, and connection info formatting for mobile companion app pairing
