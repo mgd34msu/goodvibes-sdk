@@ -283,6 +283,335 @@ describe('DR1: SharedSessionBroker.attachRuntimeBus — input record reconciliat
 });
 
 // ---------------------------------------------------------------------------
+// M1 integration: wrapAgent + AGENT_COMPLETED -> task transitions to completed
+// ---------------------------------------------------------------------------
+
+describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task completed', () => {
+  test('wrapAgent then AGENT_COMPLETED transitions task to completed in store', () => {
+    const bus = new RuntimeEventBus();
+    const store = makeStore();
+    const adapter = new AgentTaskAdapter(store as any);
+    adapter.attachRuntimeBus(bus);
+
+    // Simulates what DaemonServer.trySpawnAgent does
+    const taskId = adapter.wrapAgent('ag-m1', 'Fix tests', { sessionId: 'sess-m1' });
+    adapter.handleAgentStateChange('ag-m1', 'running');
+
+    const running = store.getState().tasks.tasks.get(taskId);
+    expect(running?.status).toBe('running');
+
+    // Bus event simulates AGENT_COMPLETED arriving from the runtime event bus
+    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-m1', durationMs: 400, output: 'ok' } as any;
+    bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', payload, {
+      sessionId: 'sess-m1',
+      traceId: 'test:m1',
+      source: 'test',
+    }));
+
+    const completed = store.getState().tasks.tasks.get(taskId);
+    expect(completed?.status).toBe('completed');
+    expect(completed?.endedAt).toBeGreaterThan(0);
+  });
+
+  test('wrapAgent is idempotent — second call returns same taskId', () => {
+    const store = makeStore();
+    const adapter = new AgentTaskAdapter(store as any);
+    const id1 = adapter.wrapAgent('ag-idem', 'Task', { sessionId: 'sess-1' });
+    const id2 = adapter.wrapAgent('ag-idem', 'Task again', { sessionId: 'sess-1' });
+    expect(id1).toBe(id2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// m3: AgentTaskAdapter.attachRuntimeBus idempotency
+// ---------------------------------------------------------------------------
+
+describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
+  test('second attachRuntimeBus call is a no-op and does not double-fire events', () => {
+    const bus = new RuntimeEventBus();
+    const store = makeStore();
+    const adapter = new AgentTaskAdapter(store as any);
+    adapter.attachRuntimeBus(bus);
+    // Second call — should warn and return no-op unsub
+    const warnSpy: string[] = [];
+    const orig = console.warn;
+    console.warn = (...args: unknown[]) => { warnSpy.push(String(args[0])); };
+    const unsub2 = adapter.attachRuntimeBus(bus);
+    console.warn = orig;
+    expect(warnSpy.some((w) => w.includes('AgentTaskAdapter'))).toBe(true);
+
+    const taskId = adapter.wrapAgent('ag-idem2', 'Task', { sessionId: 'sess-x' });
+    adapter.handleAgentStateChange('ag-idem2', 'running');
+    unsub2(); // no-op unsub should not break anything
+
+    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-idem2', durationMs: 100 } as any;
+    bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', payload, {
+      sessionId: 'sess-x', traceId: 'idem2', source: 'test',
+    }));
+    // Should still complete (first subscription still active)
+    expect(store.getState().tasks.tasks.get(taskId)?.status).toBe('completed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M2: AgentTaskAdapter.reconcileOnRestart
+// ---------------------------------------------------------------------------
+
+describe('M2: AgentTaskAdapter.reconcileOnRestart — marks running tasks aborted', () => {
+  test('tasks with status running at startup are cancelled with daemon-restart error', () => {
+    const store = makeStore();
+    const adapter = new AgentTaskAdapter(store as any);
+
+    // Pre-populate: wrap two agents, transition to running, then simulate restart
+    const bus = new RuntimeEventBus();
+    adapter.attachRuntimeBus(bus);
+    const t1 = adapter.wrapAgent('ag-r1', 'Task 1', { sessionId: 'sess-1' });
+    const t2 = adapter.wrapAgent('ag-r2', 'Task 2', { sessionId: 'sess-2' });
+    adapter.handleAgentStateChange('ag-r1', 'running');
+    adapter.handleAgentStateChange('ag-r2', 'running');
+
+    expect(store.getState().tasks.tasks.get(t1)?.status).toBe('running');
+    expect(store.getState().tasks.tasks.get(t2)?.status).toBe('running');
+
+    // Simulate restart: new adapter instance inherits the same store
+    const adapterAfterRestart = new AgentTaskAdapter(store as any);
+    adapterAfterRestart.reconcileOnRestart();
+
+    expect(store.getState().tasks.tasks.get(t1)?.status).toBe('cancelled');
+    expect(store.getState().tasks.tasks.get(t1)?.error).toBe('daemon-restart');
+    expect(store.getState().tasks.tasks.get(t2)?.status).toBe('cancelled');
+  });
+
+  test('tasks not in running state are not touched by reconcileOnRestart', () => {
+    const store = makeStore();
+    const adapter = new AgentTaskAdapter(store as any);
+    const bus = new RuntimeEventBus();
+    adapter.attachRuntimeBus(bus);
+    const tQueued = adapter.wrapAgent('ag-q', 'Queued task', { sessionId: 'sess-q' });
+    // Leave it in queued state
+    expect(store.getState().tasks.tasks.get(tQueued)?.status).toBe('queued');
+
+    const adapterAfterRestart = new AgentTaskAdapter(store as any);
+    adapterAfterRestart.reconcileOnRestart();
+
+    // Queued is not 'running', so should not be touched
+    expect(store.getState().tasks.tasks.get(tQueued)?.status).toBe('queued');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M2: SharedSessionBroker startup reconciliation
+// ---------------------------------------------------------------------------
+
+describe('M2: SharedSessionBroker.start() — startup reconciliation', () => {
+  test('spawned/delivered inputs cancelled on start(), activeAgentId nulled', async () => {
+    const storeStub = makePersistentStoreStub();
+    const routeBindings = makeRouteBindingStub();
+
+    // First broker: create session, record spawned inputs, persist
+    const broker1 = new SharedSessionBroker({
+      store: storeStub,
+      routeBindings,
+      agentStatusProvider: { getStatus: () => null },
+      messageSender: { send: () => false },
+    });
+    const sess = await broker1.createSession({ title: 'Restart Test' });
+    // Inject 3 spawned inputs directly into broker internals
+    const inputs = (broker1 as any).inputs as Map<string, any[]>;
+    inputs.set(sess.id, [
+      { id: 'sin-1', sessionId: sess.id, state: 'spawned', intent: 'submit', createdAt: 1, updatedAt: 1, body: 'a', correlationId: 'c1', metadata: {}, routing: undefined },
+      { id: 'sin-2', sessionId: sess.id, state: 'delivered', intent: 'submit', createdAt: 2, updatedAt: 2, body: 'b', correlationId: 'c2', metadata: {}, routing: undefined },
+      { id: 'sin-3', sessionId: sess.id, state: 'queued', intent: 'submit', createdAt: 3, updatedAt: 3, body: 'c', correlationId: 'c3', metadata: {}, routing: undefined },
+    ]);
+    // Bind active agent
+    const sessions = (broker1 as any).sessions as Map<string, any>;
+    sessions.set(sess.id, { ...sess, activeAgentId: 'dead-agent' });
+    // Persist current state
+    await (broker1 as any).persist();
+
+    // Second broker (simulates daemon restart): loads from same persistent store
+    const broker2 = new SharedSessionBroker({
+      store: storeStub,
+      routeBindings: makeRouteBindingStub(),
+      agentStatusProvider: { getStatus: () => null },
+      messageSender: { send: () => false },
+    });
+    await broker2.start();
+
+    const inputsAfter = broker2.getInputs(sess.id, 100);
+    const sin1 = inputsAfter.find((i) => i.id === 'sin-1');
+    const sin2 = inputsAfter.find((i) => i.id === 'sin-2');
+    const sin3 = inputsAfter.find((i) => i.id === 'sin-3');
+
+    // spawned + delivered -> cancelled
+    expect(sin1?.state).toBe('cancelled');
+    expect(sin1?.error).toContain('daemon restart');
+    expect(sin2?.state).toBe('cancelled');
+    // queued stays queued
+    expect(sin3?.state).toBe('queued');
+
+    // activeAgentId should be nulled
+    const sessAfter = broker2.getSession(sess.id);
+    expect(sessAfter?.activeAgentId).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M3: SharedSessionBroker.stop()
+// ---------------------------------------------------------------------------
+
+describe('M3: SharedSessionBroker.stop() — graceful teardown', () => {
+  test('stop() clears GC interval and bus subscriptions', async () => {
+    const broker = makeBroker();
+    await broker.start();
+
+    // _gcInterval should be set after start()
+    expect((broker as any)._gcInterval).not.toBeNull();
+    expect((broker as any)._busUnsubs).toHaveLength(0); // no bus attached yet
+
+    await broker.stop();
+
+    expect((broker as any)._gcInterval).toBeNull();
+    expect((broker as any)._busUnsubs).toHaveLength(0);
+  });
+
+  test('stop() with attached bus clears _busAttached flag', async () => {
+    const bus = new RuntimeEventBus();
+    const broker = makeBroker();
+    await broker.start();
+    broker.attachRuntimeBus(bus, () => null);
+    expect((broker as any)._busAttached).toBe(true);
+
+    await broker.stop();
+    expect((broker as any)._busAttached).toBe(false);
+    expect((broker as any)._busUnsubs).toHaveLength(0);
+  });
+
+  test('attachRuntimeBus after stop() is accepted (idempotency reset)', async () => {
+    const bus = new RuntimeEventBus();
+    const broker = makeBroker();
+    await broker.start();
+    broker.attachRuntimeBus(bus, () => null);
+    await broker.stop();
+    // After stop, _busAttached is false — second attach should succeed silently
+    const warnSpy: string[] = [];
+    const orig = console.warn;
+    console.warn = (...args: unknown[]) => { warnSpy.push(String(args[0])); };
+    broker.attachRuntimeBus(bus, () => null);
+    console.warn = orig;
+    expect(warnSpy.some((w) => w.includes('SharedSessionBroker'))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// m3: SharedSessionBroker.attachRuntimeBus idempotency
+// ---------------------------------------------------------------------------
+
+describe('m3: SharedSessionBroker.attachRuntimeBus is idempotent', () => {
+  test('second call warns and returns no-op unsub', async () => {
+    const bus = new RuntimeEventBus();
+    const broker = makeBroker();
+    await broker.start();
+    broker.attachRuntimeBus(bus, () => null);
+
+    const warnSpy: string[] = [];
+    const orig = console.warn;
+    console.warn = (...args: unknown[]) => { warnSpy.push(String(args[0])); };
+    broker.attachRuntimeBus(bus, () => null);
+    console.warn = orig;
+    expect(warnSpy.some((w) => w.includes('SharedSessionBroker'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M4: _touch() + lastActivityAt coverage
+// ---------------------------------------------------------------------------
+
+describe('M4: lastActivityAt bumped at touch sites', () => {
+  test('recordInput bumps lastActivityAt', async () => {
+    const broker = makeBroker();
+    const sess = await broker.createSession({ title: 'Touch test' });
+    const before = broker.getSession(sess.id)!.lastActivityAt;
+    // Wait a tick to ensure time advances
+    await new Promise((r) => setTimeout(r, 2));
+    await broker.submitMessage({
+      sessionId: sess.id,
+      surfaceKind: 'tui',
+      surfaceId: 'tui-1',
+      body: 'hello',
+    });
+    const after = broker.getSession(sess.id)!.lastActivityAt;
+    expect(after).toBeGreaterThanOrEqual(before);
+  });
+
+  test('completeAgent bumps lastActivityAt explicitly', async () => {
+    const broker = makeBroker();
+    const sess = await broker.createSession({ title: 'Complete touch' });
+    await broker.bindAgent(sess.id, 'ag-touch');
+    const before = broker.getSession(sess.id)!.lastActivityAt;
+    await new Promise((r) => setTimeout(r, 2));
+    await broker.completeAgent(sess.id, 'ag-touch', 'result', { status: 'completed' });
+    const after = broker.getSession(sess.id)!.lastActivityAt;
+    expect(after).toBeGreaterThan(before);
+  });
+
+  test('closeSession bumps lastActivityAt', async () => {
+    const broker = makeBroker();
+    const sess = await broker.createSession({ title: 'Close touch' });
+    const before = broker.getSession(sess.id)!.lastActivityAt;
+    await new Promise((r) => setTimeout(r, 2));
+    await broker.closeSession(sess.id);
+    const after = broker.getSession(sess.id)!.lastActivityAt;
+    expect(after).toBeGreaterThan(before);
+  });
+
+  test('finalizeAgentInputs bumps lastActivityAt when called directly', async () => {
+    const broker = makeBroker();
+    const sess = await broker.createSession({ title: 'Finalize touch' });
+    // Submit a message to create an input record, then bind an agent so it enters 'spawned'
+    await broker.submitMessage({
+      sessionId: sess.id,
+      surfaceKind: 'tui',
+      surfaceId: 'tui-finalize',
+      body: 'ping',
+    });
+    await broker.bindAgent(sess.id, 'ag-finalize');
+    const before = broker.getSession(sess.id)!.lastActivityAt;
+    await new Promise((r) => setTimeout(r, 2));
+    // Call finalizeAgentInputs directly (bypasses completeAgent)
+    (broker as any).finalizeAgentInputs(sess.id, 'ag-finalize', 'completed');
+    const after = broker.getSession(sess.id)!.lastActivityAt;
+    expect(after).toBeGreaterThan(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M4: GC guard — sessions with pendingInputCount > 0 not GCd
+// ---------------------------------------------------------------------------
+
+describe('M4: GC guard — pendingInputCount > 0 prevents sweep', () => {
+  test('session with pending inputs is not closed even past idle threshold', async () => {
+    const broker = makeBroker(1, 1); // both thresholds 1ms
+    const sess = await broker.createSession({ title: 'Pending inputs' });
+
+    // Inject a pending input to make pendingInputCount > 0
+    const sessions = (broker as any).sessions as Map<string, any>;
+    sessions.set(sess.id, { ...sess, pendingInputCount: 1 });
+
+    // Backdate so idle check would normally fire
+    const backdateSession = (broker: SharedSessionBroker, sessionId: string, idleMs: number) => {
+      const s = (broker as any).sessions as Map<string, any>;
+      const session = s.get(sessionId);
+      s.set(sessionId, { ...session, lastActivityAt: Date.now() - idleMs });
+    };
+    backdateSession(broker, sess.id, 5000);
+    (broker as any)._gcSweep();
+
+    expect(broker.getSession(sess.id)?.status).toBe('active');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // DR3: SharedSessionBroker idle-session GC
 // ---------------------------------------------------------------------------
 

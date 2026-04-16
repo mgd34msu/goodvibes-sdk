@@ -52,3 +52,4 @@ export type {
 } from './approval-broker.js';
 export { ApprovalBroker } from './approval-broker.js';
 export type { ControlPlaneAuthMode, ControlPlaneAuthSnapshot } from '@pellux/goodvibes-sdk/platform/control-plane/auth-snapshot';
+export type { MessageSource, ConversationMessageEnvelope } from './conversation-message.js';

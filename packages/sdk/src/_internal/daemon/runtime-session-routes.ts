@@ -1,5 +1,6 @@
 // Synced from packages/daemon-sdk/src/runtime-session-routes.ts
 // Extracted from legacy source: src/daemon/http/runtime-session-routes.ts
+import { randomUUID } from 'node:crypto';
 import type { DaemonApiRouteHandlers } from './context.js';
 import type {
   AutomationSurfaceKind,
@@ -245,15 +246,76 @@ async function handleGetSharedSessionInputs(
 async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
+
+  // Validate kind field — only 'task' (default) and 'message' are accepted
+  const kind = body.kind === undefined ? 'task' : body.kind;
+  if (kind !== 'task' && kind !== 'message') {
+    return Response.json(
+      { error: `Invalid kind '${String(kind)}'. Accepted values: 'task' | 'message'`, code: 'INVALID_KIND' },
+      { status: 400 },
+    );
+  }
+
   const message = readSharedSessionMessageBody(body);
   if (!message) {
     return Response.json({ error: 'Missing shared session message body' }, { status: 400 });
   }
+
+  // Problem 2: kind='message' — route as companion follow-up, never spawn an agent
+  if (kind === 'message') {
+    return handleCompanionMessageRouting(context, sessionId, message, body, req);
+  }
+
   const submission = await context.sessionBroker.submitMessage(buildSharedSessionMessageInput(sessionId, body, message));
 
   return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/messages`, 'DaemonServer.handlePostSharedSessionMessage', {
     context: `shared-session:${submission.session.id}`,
   });
+}
+
+/**
+ * Problem 2: companion message routing.
+ *
+ * A companion follow-up message is injected directly into the operator's
+ * live conversation context via the control-plane event bus. No agent is
+ * spawned; the TUI operator decides whether to respond.
+ *
+ * The message is routed as a control-plane event to the operator's live
+ * conversation; no input record is created and no agent is spawned.
+ * A `conversation.followup.companion` event is published scoped to the target
+ * session's TUI-surface subscribers, carrying a ConversationMessageEnvelope.
+ */
+function handleCompanionMessageRouting(
+  context: DaemonRuntimeRouteContext,
+  sessionId: string,
+  messageText: string,
+  _body: JsonBody,
+  req: Request,
+): Response {
+  const session = context.sessionBroker.getSession(sessionId);
+  if (!session) {
+    return Response.json({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
+  }
+  if (session.status === 'closed') {
+    return Response.json({ error: 'Session is closed', code: 'SESSION_CLOSED' }, { status: 409 });
+  }
+
+  const messageId = randomUUID();
+  const timestamp = Date.now();
+
+  // Publish the follow-up event scoped to this session's TUI surface subscriber
+  context.publishConversationFollowup(sessionId, {
+    messageId,
+    body: messageText,
+    source: 'companion-followup',
+    timestamp,
+  });
+
+  return context.recordApiResponse(
+    req,
+    `/api/sessions/${sessionId}/messages`,
+    Response.json({ messageId, routedTo: 'conversation' }, { status: 202 }),
+  );
 }
 
 async function handlePostSharedSessionSteer(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {

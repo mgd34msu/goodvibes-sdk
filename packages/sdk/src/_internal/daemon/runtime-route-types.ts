@@ -1,6 +1,7 @@
 // Synced from packages/daemon-sdk/src/runtime-route-types.ts
 // Extracted from legacy source: src/daemon/http/runtime-route-types.ts
 import type { DaemonApiRouteHandlers } from './context.js';
+import type { ConversationMessageEnvelope } from '../platform/control-plane/conversation-message.js';
 
 export type JsonBody = Record<string, unknown>;
 
@@ -197,6 +198,12 @@ export interface DaemonRuntimeRouteContext {
       source: string,
     ): void;
   } | null;
+  /**
+   * Publish a conversation follow-up event scoped to a specific session.
+   * Used by Problem-2 message routing: kind='message' submits skip agent spawn
+   * and instead broadcast a ConversationMessageEnvelope to TUI surface subscribers.
+   */
+  readonly publishConversationFollowup: (sessionId: string, envelope: Omit<ConversationMessageEnvelope, 'sessionId'>) => void;
 }
 
 export type DaemonRuntimeRouteHandlerMap = Pick<

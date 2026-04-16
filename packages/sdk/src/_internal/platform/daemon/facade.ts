@@ -34,6 +34,7 @@ import type { DaemonSurfaceActionHelper } from './surface-actions.js';
 import type { DaemonTransportEventsHelper } from './transport-events.js';
 import type { DaemonHttpRouter } from './http/router.js';
 import { isSurfaceDeliveryEnabled } from './surface-policy.js';
+import { AgentTaskAdapter } from '../runtime/tasks/adapters/agent-adapter.js';
 import {
   configureDaemonSessionContinuation,
   createDaemonFacadeCollaborators,
@@ -120,6 +121,8 @@ export class DaemonServer {
   private readonly transportEventsHelper: DaemonTransportEventsHelper;
   private readonly httpRouter: DaemonHttpRouter;
   private replyPoller: ReturnType<typeof setInterval> | null = null;
+  private agentTaskAdapter: import('../runtime/tasks/adapters/agent-adapter.js').AgentTaskAdapter | null = null;
+  private agentTaskAdapterUnsub: (() => void) | null = null;
   private tlsState: ResolvedInboundTlsContext | null = null;
   private approvalBrokerUnsubscribe: (() => void) | null = null;
 
@@ -189,6 +192,13 @@ export class DaemonServer {
     this.httpRouter = collaborators.httpRouter;
     this.providerRuntime = collaborators.providerRuntime;
     this.builtinChannels = collaborators.builtinChannels;
+
+    // M1: Wire AgentTaskAdapter to the RuntimeEventBus so task records reach
+    // terminal states when their backing agent finishes.
+    this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore as any);
+    this.agentTaskAdapterUnsub = this.agentTaskAdapter.attachRuntimeBus(this.runtimeBus);
+    // M2: Mark any tasks that were 'running' at startup as aborted (daemon restart)
+    this.agentTaskAdapter.reconcileOnRestart();
 
     configureDaemonSessionContinuation({
       sessionBroker: this.sessionBroker,
@@ -388,6 +398,10 @@ export class DaemonServer {
     // when the server socket closes. We stop what we can in reverse start order.
     this.providerRuntime.stopAll();
     this.automationManager.stop();
+    // M1+M3: tear down adapter bus subscription and sessionBroker GC interval
+    this.agentTaskAdapterUnsub?.();
+    this.agentTaskAdapterUnsub = null;
+    await this.sessionBroker.stop();
 
     this.server.stop(true);
     this.server = null;
@@ -602,6 +616,10 @@ export class DaemonServer {
         : input;
       const record = this.agentManager.spawn(spawnInput);
       this.syncSpawnedAgentTask(record, sessionId);
+      // M1: Register agent with AgentTaskAdapter so bus events can transition its task
+      if (this.agentTaskAdapter) {
+        this.agentTaskAdapter.wrapAgent(record.id, record.task, { sessionId: sessionId ?? 'daemon' });
+      }
       return record;
     } catch (err) {
       const message = summarizeError(err);

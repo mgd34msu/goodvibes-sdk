@@ -60,6 +60,8 @@ import type { JsonRecord } from '../helpers.js';
 import { jsonErrorResponse } from '@pellux/goodvibes-sdk/platform/daemon/http/error-response';
 import { AppError } from '@pellux/goodvibes-sdk/platform/types/errors';
 import { VERSION } from '../../version.js';
+import type { CompanionChatManager } from '../../companion/companion-chat-manager.js';
+import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-routes.js';
 
 interface DaemonHttpRouterContext {
   readonly configManager: ConfigManager;
@@ -129,6 +131,12 @@ interface DaemonHttpRouterContext {
   ) => boolean;
   readonly syncSpawnedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord) => void;
+  /**
+   * Optional companion chat manager. When present, companion chat routes
+   * (/api/companion/chat/...) are enabled. Injected by the daemon facade
+   * when the companion feature is active.
+   */
+  readonly companionChatManager?: CompanionChatManager | null;
   readonly trySpawnAgent: (
     input: Parameters<AgentManager['spawn']>[0],
     logLabel?: string,
@@ -234,6 +242,33 @@ export class DaemonHttpRouter {
   }
 
   async dispatchApiRoutes(req: Request): Promise<Response | null> {
+    // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.
+    // Handled before the main API router so they never touch the global control-plane feed.
+    if (this.context.companionChatManager && req.url.includes('/api/companion/chat/')) {
+      const gateway = this.context.controlPlaneGateway;
+      const chatManager = this.context.companionChatManager;
+      const companionResponse = await dispatchCompanionChatRoutes(req, {
+        chatManager,
+        parseJsonBody: (request: Request) => this.parseJsonBody(request),
+        parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
+        openSessionEventStream: (request: Request, sessionId: string) => {
+          // Create a session-scoped SSE stream. Use the clientId as the isolation key.
+          const clientId = `companion-chat:${sessionId}`;
+          chatManager.registerSubscriber(sessionId, clientId);
+          return gateway.createEventStream(request, {
+            clientId,
+            // Companion chat sessions are isolated per-session via the clientId above;
+            // we reuse 'web' as the clientKind since the gateway's kind union does not
+            // yet include 'companion'. Client-side filtering uses clientId, not clientKind.
+            clientKind: 'web',
+            sessionId,
+            label: `companion-chat/${sessionId}`,
+          });
+        },
+      });
+      if (companionResponse) return companionResponse;
+    }
+
     return dispatchDaemonApiRoutes(req, {
       ...createDaemonControlRouteHandlers({
         authToken: this.context.authToken(),
@@ -380,6 +415,16 @@ export class DaemonHttpRouter {
         configManager: this.context.configManager,
         runtimeStore: this.context.runtimeStore,
         runtimeDispatch: this.context.runtimeDispatch,
+        publishConversationFollowup: (sessionId, envelope) => {
+          // Scope the event to TUI-kind clients only: non-TUI clients (web, companion
+          // app, etc.) must not receive raw operator conversation follow-ups. Using
+          // clientKind:'tui' ensures only the TUI surface receives this event.
+          this.context.controlPlaneGateway.publishEvent(
+            'conversation.followup.companion',
+            { sessionId, ...envelope },
+            { clientKind: 'tui' },
+          );
+        },
       }),
       ...createDaemonRemoteRouteHandlers({
         authToken: this.context.authToken(),

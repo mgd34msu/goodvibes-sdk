@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.18.43
+
+Coordinated release bundling two WRFC chains that both passed at 10.0/10.0:
+
+### Companion chat mode + Problem 2 message routing
+
+- **Companion chat mode**: new `/api/companion/chat/sessions` routes let a companion client (mobile app, web UI) open an isolated session with its own `ConversationManager` + per-session SSE event stream, distinct from the TUI operator's conversation. Each chat session runs its own orchestrator turn per posted message; tool calls flow through the normal registry; idle sessions GC after the configurable window. Events carry a `ConversationMessageEnvelope` with explicit `source` provenance (`companion-chat-user`, `companion-chat-assistant`).
+- **Companion message routing (Problem 2)**: existing `POST /api/sessions/:id/submit` accepts an optional `kind: 'task' | 'message'` field (default `'task'`, preserves existing behavior). With `kind: 'message'`, the daemon does NOT spawn an agent — it publishes a `conversation.followup.companion` event scoped via `{ clientKind: 'tui' }` to operator TUIs only. The TUI client appends the message to its active conversation as a system-tagged line without triggering an orchestrator turn. Documented in `docs/companion-message-routing.md`.
+- **Shared abstraction**: new `packages/sdk/src/_internal/platform/control-plane/conversation-message.ts` owns `MessageSource` (6-case union) and `ConversationMessageEnvelope` (`sessionId`, `messageId`, `body`, `source`, `timestamp`, optional `metadata`). Both chat-mode events and Problem 2 events use the identical envelope shape. Type-required on chat turn-started/turn-completed events; type-required on `DaemonRuntimeRouteContext.publishConversationFollowup` (no silent drop paths).
+- **Tests**: 45 tests across 4 files — chat routes, session isolation, lifecycle, message routing with load-bearing `clientKind` scoping test that mirrors the production gateway filter contract.
+
+### Daemon state reconciliation fix-forward (fixes v0.18.42's 4 inert majors)
+
+The v0.18.42 fix for stuck agent tasks / sessions / inputs was functionally inert in production — `attachRuntimeBus()` was never called from the default composition. This release closes that gap and adds three additional correctness items.
+
+- **M1**: `sessionBroker.attachRuntimeBus(runtimeBus, sessionResolver)` wired in `facade-composition.ts`; `AgentTaskAdapter` instantiated + `attachRuntimeBus(runtimeBus)` + `reconcileOnRestart()` called in `facade.ts`; `wrapAgent(agentId, task, {sessionId})` invoked on every `AgentManager.spawn`. Previously all three were defined but unwired.
+- **M2**: `SessionBroker.start()` reconciles pre-existing stuck `spawned`/`delivered` input records to `cancelled` with error `"daemon restart — agent state unknown"` and nulls any lingering `activeAgentId` on loaded sessions. `AgentTaskAdapter.reconcileOnRestart()` marks any runtime-store task in `running` state to `aborted` with reason `daemon-restart`.
+- **M3**: `SessionBroker` GC interval `.unref()`'d so it doesn't pin the Node event loop. New `async SessionBroker.stop()` clears the interval + invokes all `_busUnsubs` + persists state. `DaemonServer.stop()` calls `sessionBroker.stop()` + `agentTaskAdapterUnsub`.
+- **M4**: `_touch(sessionId)` helper updates `lastActivityAt` + `updatedAt` together. Called from all 7 session-mutation sites (`recordInput`, `updateInput`, `claimNextQueuedInput`, `finalizeAgentInputs`, `attachParticipantAndRoute`, `closeSession`, `completeAgent`). GC sweep guards `if (session.pendingInputCount > 0) continue;` so sessions with pending follow-ups never close prematurely.
+- **Minor m1-m4**: bus subscribers `.catch`-wrapped to prevent unhandled promise rejections; payload runtime guards (`typeof envelope.payload?.agentId === 'string'`) reject malformed events; `attachRuntimeBus` tracks `_busAttached` for idempotency; `_gcSweep` inline `changed` tracking replaces double-scan.
+- **Type-safety**: the `(input as any).kind` escape hatch in `createSession` replaced with a named scoped `CreateSessionInputWithKind` interface; `JSDoc` on `lastActivityAt` now accurately reflects the full list of mutation sites.
+- **Tests**: 29 tests in `test/daemon-state-reconciliation.test.ts` covering M1 integration (wrapAgent + bus → complete), M2 startup reconciliation (both broker and adapter paths), M3 `stop()` teardown, M4 `_touch` coverage per site + GC pending-input guard, m3 idempotency, and the new `closeSession` / `finalizeAgentInputs` touch sites.
+
+### Both chains reviewed at 10.0/10.0
+
+- Chat+P2 final review: PASS 10.0/10.0 (`wrfc_auto_1776380610288_a01b0482_c1wg`)
+- 0.18.43 fix-forward final review: PASS 10.0/10.0 (`wrfc_auto_1776380256471_a0258547_c7dd` re-review)
+
 ## 0.18.42
 
 - **δ1 — SharedSessionBroker: wire agent terminal events to input records**: Added `attachRuntimeBus(bus, sessionResolver)` to `SharedSessionBroker`. Subscribes to `AGENT_COMPLETED`, `AGENT_FAILED`, and `AGENT_CANCELLED` on the `RuntimeEventBus` and calls `completeAgent()` with the appropriate terminal status. Prior builds left `spawned` input records permanently stuck because `finalizeAgentInputs()` existed but was never triggered by bus events. Root cause of 8 stuck inputs observed at 192.168.0.61:3421
