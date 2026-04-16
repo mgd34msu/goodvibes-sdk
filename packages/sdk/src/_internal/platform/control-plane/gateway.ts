@@ -146,12 +146,30 @@ export class ControlPlaneGateway {
   private readonly liveClients = new Map<string, LiveControlPlaneClient>();
   private readonly websocketClients = new Map<string, WebSocketControlPlaneClient>();
   private readonly recentMessages: ControlPlaneSurfaceMessage[] = [];
-  private readonly recentEvents: ControlPlaneRecentEvent[] = [];
+  // Circular ring buffer for O(1) insert instead of O(n) unshift.
+  private readonly _recentEventsRing: (ControlPlaneRecentEvent | undefined)[];
+  private _recentEventsHead = 0;
+  private _recentEventsCount = 0;
+  private readonly _recentEventsCapacity = 500;
+  /** Back-compat accessor used by getSnapshot / listRecentEvents */
+  private get recentEvents(): ControlPlaneRecentEvent[] {
+    const out: ControlPlaneRecentEvent[] = [];
+    const count = this._recentEventsCount;
+    const cap = this._recentEventsCapacity;
+    for (let i = 0; i < count; i++) {
+      const idx = (this._recentEventsHead - 1 - i + cap) % cap;
+      const entry = this._recentEventsRing[idx];
+      if (entry) out.push(entry);
+    }
+    return out;
+  }
   private requestCount = 0;
   private errorCount = 0;
   private lastRequestAt: number | undefined;
+  private _syncScheduled = false;
 
   constructor(config: ControlPlaneGatewayConfig = {}) {
+    this._recentEventsRing = new Array(this._recentEventsCapacity);
     this.runtimeBus = config.runtimeBus ?? null;
     this.dispatch = config.runtimeStore ? createDomainDispatch(config.runtimeStore) : null;
     this.serverConfig = {
@@ -691,6 +709,20 @@ export class ControlPlaneGateway {
     return renderControlPlaneGatewayWebUi(authTokenHint);
   }
 
+  private _scheduleControlPlaneSync(lastEventAt: number): void {
+    if (this._syncScheduled || !this.dispatch) return;
+    this._syncScheduled = true;
+    setImmediate(() => {
+      this._syncScheduled = false;
+      this.dispatch?.syncControlPlaneState({
+        requestCount: this.requestCount,
+        errorCount: this.errorCount,
+        lastRequestAt: this.lastRequestAt,
+        lastEventAt,
+      }, 'control-plane.gateway.event');
+    });
+  }
+
   private rememberEvent(event: string, payload: unknown): ControlPlaneRecentEvent {
     const record: ControlPlaneRecentEvent = {
       id: `cpe-${randomUUID().slice(0, 8)}`,
@@ -698,16 +730,12 @@ export class ControlPlaneGateway {
       createdAt: Date.now(),
       payload,
     };
-    this.recentEvents.unshift(record);
-    if (this.recentEvents.length > 500) {
-      this.recentEvents.length = 500;
-    }
-    this.dispatch?.syncControlPlaneState({
-      requestCount: this.requestCount,
-      errorCount: this.errorCount,
-      lastRequestAt: this.lastRequestAt,
-      lastEventAt: record.createdAt,
-    }, 'control-plane.gateway.event');
+    // O(1) circular ring buffer write — no array shifting.
+    this._recentEventsRing[this._recentEventsHead] = record;
+    this._recentEventsHead = (this._recentEventsHead + 1) % this._recentEventsCapacity;
+    if (this._recentEventsCount < this._recentEventsCapacity) this._recentEventsCount++;
+    // Debounced: coalesce N events/frame into 1 store sync.
+    this._scheduleControlPlaneSync(record.createdAt);
     return record;
   }
 }

@@ -100,6 +100,8 @@ export class ProviderRegistry {
   private catalogModels: CatalogModel[] = [];
   private pricingCatalog: PricingCatalog | null = null;
   private syntheticCanonicalModels: CanonicalModel[] = [];
+  private _cachedModelRegistry: ModelDefinition[] | null = null;
+  private _modelRegistryRevision = 0;
 
   constructor(options: ProviderRegistryOptions) {
     this.configManager = options.configManager;
@@ -168,14 +170,21 @@ export class ProviderRegistry {
     this.catalogModels = [...models];
     this.pricingCatalog = { fetchedAt: Date.now(), models: this.catalogModels };
     this.syntheticCanonicalModels = buildSyntheticCanonicalModels(this.catalogModels);
+    this._invalidateModelRegistry();
   }
 
   private getSuppressedCatalogModelIds(): Set<string> {
     return new Set([...this.runtimeCatalogSuppressions.values()].flat());
   }
 
+  private _invalidateModelRegistry(): void {
+    this._cachedModelRegistry = null;
+    this._modelRegistryRevision++;
+  }
+
   private getModelRegistry(): ModelDefinition[] {
-    return buildModelRegistry({
+    if (this._cachedModelRegistry !== null) return this._cachedModelRegistry;
+    this._cachedModelRegistry = buildModelRegistry({
       customModels: this.customModels,
       runtimeModels: this.runtimeModels,
       syntheticModels: this.getSyntheticBuiltins(),
@@ -183,11 +192,13 @@ export class ProviderRegistry {
       discoveredModels: this.discoveredModels,
       suppressedCatalogIds: this.getSuppressedCatalogModelIds(),
     });
+    return this._cachedModelRegistry;
   }
 
   /** Register a provider. Overwrites any existing entry with the same name. */
   register(provider: LLMProvider): void {
     this.providers.set(provider.name, provider);
+    this._invalidateModelRegistry();
   }
 
   /**
@@ -212,6 +223,7 @@ export class ProviderRegistry {
     ];
     this.runtimeCatalogSuppressions.set(provider.name, [...new Set(suppressCatalogModels)]);
     this.capabilityRegistry.invalidate();
+    this._invalidateModelRegistry();
     return () => {
       if (!this.runtimeProviderNames.has(provider.name)) return;
       this.providers.delete(provider.name);
@@ -219,6 +231,7 @@ export class ProviderRegistry {
       this.runtimeModels = this.runtimeModels.filter((model) => model.provider !== provider.name);
       this.runtimeCatalogSuppressions.delete(provider.name);
       this.capabilityRegistry.invalidate();
+      this._invalidateModelRegistry();
     };
   }
 
@@ -238,6 +251,7 @@ export class ProviderRegistry {
     }
     this.discoveredProviderNames.clear();
     this.discoveredModels = [];
+    this._invalidateModelRegistry();
 
     for (const server of servers) {
       // Skip if a non-discovered provider already holds this name
@@ -494,6 +508,7 @@ export class ProviderRegistry {
         contextWindow: cap,
         contextWindowProvenance: 'configured_cap',
       };
+      this._invalidateModelRegistry();
       return;
     }
     logger.warn('[registry] setModelContextCap: model not found', { registryKey });
@@ -559,6 +574,7 @@ export class ProviderRegistry {
 
     // Swap custom models
     this.customModels = result.models;
+    this._invalidateModelRegistry();
 
     return { warnings: result.warnings, added, removed, updated };
   }
