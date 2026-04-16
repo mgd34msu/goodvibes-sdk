@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.32
+
+- Added port-in-use checking to DaemonServer and HttpListener — both now verify the port is free before binding, with a clear error message instead of crashing with EADDRINUSE
+- Changed default daemon port from 3000 to 3141 to avoid conflicts with common dev servers
+
 ## 0.18.31
 
 - Replaced broken inline QR encoder with vendored Nayuki QR Code generator (pure TypeScript, MIT license)
