@@ -313,6 +313,16 @@ export class Orchestrator {
       clearTimeout(this.autoSpawnTimeout);
       this.autoSpawnTimeout = null;
     }
+    // Clear the thinking-animation interval immediately on abort so the Node
+    // event loop is not kept alive by a leaked timer. stopThinking() also
+    // clears this in the finally block, but abort() can be called from
+    // outside the turn loop (e.g. user keypress during startup) where
+    // stopThinking() may never be reached.
+    if (this.animInterval !== null) {
+      clearInterval(this.animInterval);
+      this.animInterval = null;
+    }
+    this.isThinking = false;
   }
 
   /**

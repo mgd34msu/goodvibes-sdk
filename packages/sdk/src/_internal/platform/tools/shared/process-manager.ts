@@ -18,6 +18,20 @@ export interface BackgroundProcess {
   stderr: string[];
   exitCode: number | null;
   done: boolean;
+  /**
+   * Timestamp (ms since epoch) when SIGKILL was scheduled after a timeout.
+   * Null if the process completed normally or SIGKILL was never scheduled.
+   */
+  killDeadline: number | null;
+}
+
+// ─── SpawnOptions ─────────────────────────────────────────────────────────────
+
+export interface SpawnOptions {
+  /** Abort the process if it hasn't completed within this many ms. Default: 60000. */
+  timeout_ms?: number;
+  /** Grace period (ms) between SIGTERM and SIGKILL after timeout. Default: 5000. */
+  sigterm_grace_ms?: number;
 }
 
 // ─── ExecCommandResult subset (for command handler return values) ─────────────
@@ -49,13 +63,24 @@ export class ProcessManager {
 
   /**
    * Spawn a background process and start collecting its output.
-   * Returns a BgCommandResult with the process_id and pid.
+   *
+   * @param cmd  Shell command to run via /bin/sh -c.
+   * @param cwd  Working directory (undefined = inherit).
+   * @param env  Extra env vars merged with the current process env.
+   * @param opts Timeout and SIGKILL grace configuration.
+   *
+   * @returns A BgCommandResult with the process_id and pid, or rejects if
+   *          the binary is missing (ENOENT) or exec permission is denied (EACCES).
    */
-  spawn(
+  async spawn(
     cmd: string,
     cwd: string | undefined,
     env: Record<string, string> | undefined,
-  ): BgCommandResult {
+    opts?: SpawnOptions,
+  ): Promise<BgCommandResult> {
+    const timeoutMs = opts?.timeout_ms ?? 60_000;
+    const sigtermGraceMs = opts?.sigterm_grace_ms ?? 5_000;
+
     const id = this.newId();
     const entry: BackgroundProcess = {
       id,
@@ -66,6 +91,7 @@ export class ProcessManager {
       stderr: [],
       exitCode: null,
       done: false,
+      killDeadline: null,
     };
     this._processes.set(id, entry);
 
@@ -74,21 +100,30 @@ export class ProcessManager {
     ) as Record<string, string>;
     const mergedEnv = { ...cleanEnv, ...env };
 
-    const proc = Bun.spawn(['/bin/sh', '-c', cmd], {
-      cwd,
-      env: mergedEnv,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    let proc: ReturnType<typeof Bun.spawn>;
+    try {
+      proc = Bun.spawn(['/bin/sh', '-c', cmd], {
+        cwd,
+        env: mergedEnv,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+    } catch (spawnErr: unknown) {
+      // Surface ENOENT / EACCES immediately — callers should not retry these
+      this._processes.delete(id);
+      throw spawnErr;
+    }
 
     entry.pid = proc.pid;
     this._procs.set(id, proc);
 
-    // Async collection — fire and forget, stored in entry
-    void (async () => {
+    // Async collection with timeout escalation — SIGTERM then SIGKILL
+    // Cast stdout/stderr to ReadableStream — Bun guarantees these are ReadableStream
+    // when stdout/stderr is set to 'pipe', but the return type is a union.
+    const collectionPromise = (async () => {
       const [stdoutText, stderrText] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
+        new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
+        new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
       ]);
       entry.stdout.push(stdoutText);
       entry.stderr.push(stderrText);
@@ -96,6 +131,31 @@ export class ProcessManager {
       entry.done = true;
       this._procs.delete(id);
     })();
+
+    // Timeout watchdog: SIGTERM → wait grace → SIGKILL
+    const timeoutHandle = setTimeout(async () => {
+      if (entry.done) return;
+      try { proc.kill('SIGTERM'); } catch { /* already exited */ }
+      entry.killDeadline = Date.now() + sigtermGraceMs;
+      await new Promise<void>((r) => setTimeout(r, sigtermGraceMs));
+      if (!entry.done) {
+        try { proc.kill('SIGKILL'); } catch { /* already exited */ }
+      }
+    }, timeoutMs);
+
+    // Reject the spawn promise if the process errors immediately (ENOENT/EACCES
+    // on the child process level) — the outer try/catch handles Bun.spawn throws;
+    // this handles async failures surfaced via proc.exited rejecting.
+    void collectionPromise.catch(() => {
+      clearTimeout(timeoutHandle);
+      entry.done = true;
+      this._procs.delete(id);
+    });
+
+    // Clear the timeout watchdog once the process completes naturally
+    void collectionPromise.then(() => {
+      clearTimeout(timeoutHandle);
+    });
 
     return {
       cmd,
