@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.37
+
+- Added `sharedDaemonToken` and `sharedHttpListenerToken` options to `startHostServices` factories. Surfaces that issue companion-pairing bearer tokens (e.g. TUI QR pairing) now thread the token through to `daemon.enable(...)` so scanned QR credentials actually authenticate. Previously the embedded daemon was started with no shared token and rejected every request carrying the token it advertised
+- Added bootstrap credential drift detection to `UserAuthManager` constructor. When `auth-bootstrap.txt` has been manually edited so its plaintext password no longer verifies against the hash in `auth-users.json`, a warning is now logged instead of silently rejecting /login forever. The bootstrap file is output-only — rotate passwords via `UserAuthManager.rotatePassword()` to keep both files in sync
+
 ## 0.18.36
 
 - Fixed `resolveDaemonFacadeRuntime` ignoring constructor-injected `config.port` and `config.host` — the returned runtime was built solely from `configManager` values resolved through `resolveHostBinding`, so tests and embedders passing explicit port/host to `new DaemonServer({ port, host })` silently got the config defaults instead. `port` and `host` now prefer the directly-injected values and fall back to the resolved binding, matching the pattern `HttpListener` already uses

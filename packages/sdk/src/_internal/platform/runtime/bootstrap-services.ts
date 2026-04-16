@@ -34,6 +34,20 @@ interface ServiceFactories {
   startupTimeoutMs?: number;
   probeDaemonPortInUse?: (host: string, port: number) => Promise<boolean>;
   probeHttpListenerPortInUse?: (host: string, port: number) => Promise<boolean>;
+  /**
+   * Shared bearer token the daemon should accept on inbound HTTP requests.
+   * When set, `daemon.enable()` registers this token and requests carrying
+   * `Authorization: Bearer <token>` authenticate without a login session.
+   * Surfaces that generate companion-app pairing tokens should pass the token
+   * here so the embedded daemon accepts scanned QR credentials.
+   */
+  sharedDaemonToken?: string;
+  /**
+   * Shared bearer token for the HTTP listener (webhook-style surfaces).
+   * Independent from `sharedDaemonToken`; different surfaces may issue
+   * different tokens, or both may share the same bearer.
+   */
+  sharedHttpListenerToken?: string;
 }
 
 export interface HostServicesHandle {
@@ -135,7 +149,7 @@ export async function startHostServices(
       });
     } else {
       daemonServer = createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
-      daemonServer.enable({ daemon: true });
+      daemonServer.enable({ daemon: true }, factories.sharedDaemonToken);
       try {
         const service = daemonServer;
         const result = await startWithTimeout('Daemon server', () => service.start(), startupTimeoutMs, () => service.stop());
@@ -162,7 +176,7 @@ export async function startHostServices(
       });
     } else {
       httpListener = createHttpListener(hookDispatcher, sharedUserAuth, runtimeServices.configManager);
-      httpListener.enable({ httpListener: true });
+      httpListener.enable({ httpListener: true }, factories.sharedHttpListenerToken);
       try {
         const service = httpListener;
         const result = await startWithTimeout('HTTP listener', () => service.start(), startupTimeoutMs, () => service.stop());

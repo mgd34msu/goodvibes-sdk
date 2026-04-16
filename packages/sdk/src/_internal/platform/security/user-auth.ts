@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { logger } from '../utils/logger.js';
 
 export interface AuthUser {
   username: string;
@@ -142,6 +143,65 @@ function loadOrBootstrapUsers(filePath: string, credentialPath: string): AuthUse
   return users;
 }
 
+interface BootstrapCredentialRecord {
+  readonly username: string;
+  readonly password: string;
+}
+
+function readBootstrapCredentialFile(filePath: string): BootstrapCredentialRecord | null {
+  try {
+    if (!existsSync(filePath)) return null;
+    const raw = readFileSync(filePath, 'utf-8');
+    let username: string | undefined;
+    let password: string | undefined;
+    for (const rawLine of raw.split('\n')) {
+      const line = rawLine.trim();
+      if (line.startsWith('username=')) username = line.slice('username='.length);
+      else if (line.startsWith('password=')) password = line.slice('password='.length);
+    }
+    if (!username || !password) return null;
+    return { username, password };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detects when the bootstrap credential file has drifted from the persisted
+ * user store — typically after someone manually edits `auth-bootstrap.txt`
+ * without rotating the password through the UserAuthManager. The daemon's
+ * /login route will reject the edited password because the hash in
+ * `auth-users.json` no longer matches. Left silent, this wastes hours of
+ * debugging; loudly warning is cheap.
+ */
+function detectBootstrapCredentialDrift(
+  users: AuthUser[],
+  credentialPath: string,
+  userStorePath: string,
+): void {
+  const credential = readBootstrapCredentialFile(credentialPath);
+  if (!credential) return;
+  const storedUser = users.find((user) => user.username === credential.username);
+  if (!storedUser) {
+    logger.warn(
+      'Bootstrap credential file references a user not present in the auth store; /login with this username will fail',
+      { credentialPath, userStorePath, username: credential.username },
+    );
+    return;
+  }
+  if (!verifyPassword(credential.password, storedUser.passwordHash)) {
+    logger.warn(
+      'Bootstrap credential file password does not match the stored hash; /login with this password will fail. Rotate the password via UserAuthManager.rotatePassword() or regenerate the credential by deleting both files so they are re-created in sync.',
+      {
+        credentialPath,
+        userStorePath,
+        username: credential.username,
+        hint: 'Manual edits to auth-bootstrap.txt do not update auth-users.json. The bootstrap file is an output, not an input.',
+      },
+    );
+  }
+}
+
 export class UserAuthManager {
   private users = new Map<string, AuthUser>();
   private sessions = new Map<string, AuthSession>();
@@ -161,6 +221,13 @@ export class UserAuthManager {
 
     for (const user of seedUsers) {
       this.users.set(user.username, user);
+    }
+
+    // Only run drift detection when we own the file-backed store — test
+    // configs that pass explicit `users` opt out of filesystem bootstrap and
+    // should not trigger spurious warnings.
+    if (this.persistUsers) {
+      detectBootstrapCredentialDrift(seedUsers, this.bootstrapCredentialPath, this.userStorePath);
     }
   }
 
