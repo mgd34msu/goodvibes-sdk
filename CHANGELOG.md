@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.42
+
+- **δ1 — SharedSessionBroker: wire agent terminal events to input records**: Added `attachRuntimeBus(bus, sessionResolver)` to `SharedSessionBroker`. Subscribes to `AGENT_COMPLETED`, `AGENT_FAILED`, and `AGENT_CANCELLED` on the `RuntimeEventBus` and calls `completeAgent()` with the appropriate terminal status. Prior builds left `spawned` input records permanently stuck because `finalizeAgentInputs()` existed but was never triggered by bus events. Root cause of 8 stuck inputs observed at 192.168.0.61:3421
+- **δ2 — AgentTaskAdapter: wire agent terminal events to task registry**: Added `attachRuntimeBus(bus)` to `AgentTaskAdapter`. Subscribes to the same three agent terminal events and calls `handleAgentStateChange()` with the mapped state (`completed`/`failed`/`cancelled`). Prior builds left task records permanently in `running` because `handleAgentStateChange()` existed but was never wired to bus events. Root cause of 8 agent tasks stuck in `running` at 192.168.0.61:3421
+- **δ3 — SharedSessionBroker: lastActivityAt field + idle-session GC sweep**: Added `lastActivityAt: number` to `SharedSessionRecord`, updated on `createSession`, `bindAgent`, and `appendMessage`. Added `_gcSweep()` (runs every 60s via `setInterval` started on first `start()` call) that closes idle sessions with no active agent: empty-ghost policy (messageCount=0, idle >= `idleEmptyMs` default 10min) marks session `closed` with reason `idle-empty`; long-idle policy (has messages, idle >= `idleLongMs` default 24h) marks with reason `idle-long`. Fixes 9 ghost sessions (messageCount=0) and 10 perpetually-active sessions observed at 192.168.0.61:3421
+
 ## 0.18.41
 
 - **γ1 — exec retry: full jitter + retryable classification**: `computeRetryDelay` now uses full jitter (`Math.random() * min(base * 2^attempt, maxDelay)`) to avoid thundering-herd on flaky dependencies. `runWithRetry` classifies errors before retrying — terminal errors (ENOENT, EACCES, `command not found`, `Permission denied`, syntax errors, `No such file or directory`) stop the retry loop immediately. Network-class errors (ECONNRESET, ENOTFOUND, ETIMEDOUT), lock/busy (EBUSY, ECONNREFUSED), and OOM (ENOMEM) retry per the `retry.on` allowlist. Added `max_delay_ms` and `on` fields to `ExecRetry` schema and interface. Exported `isRetryableExecResult` for testability

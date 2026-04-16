@@ -11,6 +11,7 @@ import { createDomainDispatch } from '../../store/index.js';
 import type { RuntimeStore, DomainDispatch } from '../../store/index.js';
 import type { RuntimeTask } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
 import type { AgentLifecycleState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
+import type { RuntimeEventBus } from '../../events/index.js';
 
 /** Owner context for an agent task. */
 export interface AgentOwner {
@@ -71,6 +72,51 @@ export class AgentTaskAdapter {
 
   constructor(private readonly _store: RuntimeStore) {
     this._dispatch = createDomainDispatch(_store);
+  }
+
+  // ── Runtime bus wiring ──────────────────────────────────────────────────────
+
+  /**
+   * Subscribe to AGENT_COMPLETED / AGENT_FAILED / AGENT_CANCELLED events on the
+   * RuntimeEventBus and propagate them into the task registry.
+   *
+   * This is the authoritative wire that ensures task records reach terminal state
+   * once their backing agent finishes — without it, tasks stay stuck in 'running'
+   * indefinitely (the bug observed in daemon state at 192.168.0.61:3421).
+   *
+   * @param bus - The active RuntimeEventBus instance.
+   * @returns An unsubscribe function that removes all three listeners.
+   */
+  attachRuntimeBus(bus: RuntimeEventBus): () => void {
+    const onCompleted = bus.on<{ type: 'AGENT_COMPLETED'; agentId: string; taskId?: string; durationMs: number; output?: string }>(
+      'AGENT_COMPLETED',
+      (envelope) => {
+        const taskId = this._agentToTask.get(envelope.payload.agentId);
+        if (taskId === undefined) return; // not a tracked agent — no-op
+        this.handleAgentStateChange(envelope.payload.agentId, 'completed');
+      },
+    );
+    const onFailed = bus.on<{ type: 'AGENT_FAILED'; agentId: string; taskId?: string; error: string; durationMs: number }>(
+      'AGENT_FAILED',
+      (envelope) => {
+        const taskId = this._agentToTask.get(envelope.payload.agentId);
+        if (taskId === undefined) return;
+        this.handleAgentStateChange(envelope.payload.agentId, 'failed');
+      },
+    );
+    const onCancelled = bus.on<{ type: 'AGENT_CANCELLED'; agentId: string; taskId?: string; reason?: string }>(
+      'AGENT_CANCELLED',
+      (envelope) => {
+        const taskId = this._agentToTask.get(envelope.payload.agentId);
+        if (taskId === undefined) return;
+        this.handleAgentStateChange(envelope.payload.agentId, 'cancelled');
+      },
+    );
+    return () => {
+      onCompleted();
+      onFailed();
+      onCancelled();
+    };
   }
 
   // ── Core API ────────────────────────────────────────────────────────────────

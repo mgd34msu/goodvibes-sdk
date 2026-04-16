@@ -42,6 +42,12 @@ export interface SharedSessionRecord {
   readonly updatedAt: number;
   readonly lastMessageAt?: number;
   readonly closedAt?: number;
+  /**
+   * Epoch ms of the most recent activity on this session.
+   * Updated on every createInput, message post, bindAgent, and heartbeat.
+   * Used by the idle-session GC sweep to decide when to close ghost sessions.
+   */
+  readonly lastActivityAt: number;
   readonly messageCount: number;
   readonly pendingInputCount: number;
   readonly routeIds: readonly string[];
