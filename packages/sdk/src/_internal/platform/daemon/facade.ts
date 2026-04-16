@@ -54,6 +54,8 @@ import {
 } from './helpers.js';
 import type { DaemonConfig, DaemonDangerConfig, PendingSurfaceReply } from './types.js';
 import { requirePortAvailable } from './port-check.js';
+import { resolveHostBinding } from './host-resolver.js';
+import { createHostModeRestartWatcher } from './host-mode-watcher.js';
 
 interface UpgradeCapableServer {
   upgrade(req: Request, options?: { data?: unknown }): boolean;
@@ -125,6 +127,14 @@ export class DaemonServer {
   private agentTaskAdapterUnsub: (() => void) | null = null;
   private tlsState: ResolvedInboundTlsContext | null = null;
   private approvalBrokerUnsubscribe: (() => void) | null = null;
+  /** Unsubscribe from controlPlane config key watchers; cleared on stop(). */
+  private _configWatchUnsub: (() => void) | null = null;
+  /** True while a config-driven restart is in progress — prevents re-entrancy. */
+  private _restarting = false;
+  /** Awaitable promise for the active restart cycle; null when idle. */
+  private _restartingPromise: Promise<void> | null = null;
+  /** True if a config change arrived while _restarting was set; triggers a second cycle. */
+  private _restartDirty = false;
 
   constructor(private config: DaemonConfig = {}, _configManager?: ConfigManager) {
     const resolved = resolveDaemonFacadeRuntime(config, _configManager);
@@ -278,7 +288,10 @@ export class DaemonServer {
     });
 
     const self = this;
-    await requirePortAvailable(this.port, this.host, 'daemon');
+    // Skip real OS port check when a mock serveFactory is injected (test-only path).
+    if (this.serveFactory === Bun.serve) {
+      await requirePortAvailable(this.port, this.host, 'daemon');
+    }
     this.transportEventsHelper.emitTransportInitializing();
     try {
       this.tlsState = resolveInboundTlsContext(this.configManager, 'controlPlane');
@@ -341,6 +354,7 @@ export class DaemonServer {
         this.watcherRegistry.startWatcher('daemon-heartbeat');
       }
       this.controlPlaneGateway.setServerState({ enabled: true, host: this.host, port: this.port });
+      this._attachControlPlaneConfigWatcher();
       this.transportEventsHelper.emitTransportConnected();
       logger.info('DaemonServer started', {
         port: this.port,
@@ -379,8 +393,27 @@ export class DaemonServer {
    * against a 10-second timeout so a hung service cannot block the full
    * shutdown sequence (C1 fix).
    */
+  /**
+   * Wait for any in-progress config-driven restart to settle.
+   * Callers that change config mid-flight and need to know when the server
+   * has rebounded should await this before inspecting state.
+   */
+  async waitForRestart(): Promise<void> {
+    // Loop to handle dirty-flag chained restarts: each cycle may spawn another.
+    while (this._restartingPromise) await this._restartingPromise;
+  }
+
   async stop(): Promise<void> {
     if (this.server === null) return;
+
+    // Tear down config watcher only on intentional stop, not mid-restart.
+    // During a restart cycle (_restarting=true) the watcher must stay active so
+    // config changes that arrive between stop() and the subsequent start() can be
+    // captured by the dirty flag.
+    if (!this._restarting) {
+      this._configWatchUnsub?.();
+      this._configWatchUnsub = null;
+    }
 
     // Synchronous pre-stop teardown
     this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped');
@@ -409,6 +442,66 @@ export class DaemonServer {
     this.controlPlaneGateway.setServerState({ enabled: this.enabled, host: this.host, port: this.port });
     this.transportEventsHelper.emitTransportDisconnected('Daemon server stopped', false);
     logger.info('DaemonServer stopped');
+  }
+
+  /**
+   * Subscribe to controlPlane binding keys and restart the server on change.
+   * Called once from start() after the server is up. Clears itself on stop().
+   */
+  private _attachControlPlaneConfigWatcher(): void {
+    if (this._configWatchUnsub) return; // idempotent
+
+    const restart = (): void => {
+      if (this._restarting) {
+        // A change arrived mid-restart — queue a second cycle via dirty flag.
+        // Check _restarting BEFORE isRunning: stop() runs synchronously inside the
+        // restart IIFE, so isRunning may be false even while a restart is in progress.
+        this._restartDirty = true;
+        return;
+      }
+      if (!this.isRunning) return;
+      this._restarting = true;
+      this._restartingPromise = (async () => {
+        try {
+          logger.info('DaemonServer: controlPlane binding changed, restarting daemon server…');
+          await this.stop();
+          // Re-resolve host/port from updated config
+          const newBinding = resolveHostBinding(
+            (this.configManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
+            String(this.configManager.get('controlPlane.host') ?? '127.0.0.1'),
+            Number(this.configManager.get('controlPlane.port') ?? 3421),
+            'controlPlane',
+          );
+          this.host = newBinding.host;
+          this.port = newBinding.port;
+          await this.start();
+        } catch (err) {
+          logger.error('DaemonServer: restart after config change failed', { error: summarizeError(err) });
+        } finally {
+          this._restarting = false;
+          // If a config change arrived while we were restarting, kick off a second
+          // cycle BEFORE nulling _restartingPromise so waitForRestart() chains correctly.
+          if (this._restartDirty) {
+            this._restartDirty = false;
+            restart(); // sets this._restartingPromise to the new cycle
+          } else {
+            this._restartingPromise = null;
+          }
+        }
+      })();
+    };
+
+    // getIsRunning must also return true while a restart cycle is in progress
+    // (_restarting=true) so that config changes arriving mid-restart reach the
+    // dirty-flag path inside `restart`. When the server is intentionally stopped
+    // (not mid-restart) isRunning and _restarting are both false.
+    const watcher = createHostModeRestartWatcher({
+      configManager: this.configManager,
+      keys: ['controlPlane.hostMode', 'controlPlane.host', 'controlPlane.port'],
+      onRestart: restart,
+      getIsRunning: () => this.isRunning || this._restarting,
+    });
+    this._configWatchUnsub = () => watcher.unsubscribe();
   }
 
   /**
