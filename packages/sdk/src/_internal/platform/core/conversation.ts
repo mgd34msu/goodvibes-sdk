@@ -62,6 +62,9 @@ export class ConversationManager {
   private currentBranch = 'main';
   private streamingMessageIndex = -1;
   private undoStack: Message[][] = [];
+  private _messagesRevision = 0;
+  private _cachedLLMMessages: ProviderMessage[] | null = null;
+  private _cachedLLMRevision = -1;
 
   constructor() {}
 
@@ -92,6 +95,9 @@ export class ConversationManager {
   }
 
   public getMessagesForLLM(): ProviderMessage[] {
+    if (this._cachedLLMMessages !== null && this._cachedLLMRevision === this._messagesRevision) {
+      return this._cachedLLMMessages;
+    }
     const result: ProviderMessage[] = [];
     for (const message of this.messages) {
       if (message.role === 'system') continue;
@@ -114,6 +120,8 @@ export class ConversationManager {
         ...(message.toolName ? { name: message.toolName } : {}),
       });
     }
+    this._cachedLLMMessages = result;
+    this._cachedLLMRevision = this._messagesRevision;
     return result;
   }
 
@@ -124,6 +132,7 @@ export class ConversationManager {
     this.messages.push({ role: 'user', content });
     // Clear undo stack when new user input is added (can't redo past new input)
     this.undoStack = [];
+    this._messagesRevision++;
   }
 
   public addAssistantMessage(
@@ -147,6 +156,7 @@ export class ConversationManager {
       model: opts?.model,
       provider: opts?.provider,
     });
+    this._messagesRevision++;
   }
 
   /**
@@ -165,6 +175,7 @@ export class ConversationManager {
     if (lastUserIdx === -1) return false;
     const turn = this.messages.splice(lastUserIdx);
     this.undoStack.push(turn);
+    this._messagesRevision++;
     return true;
   }
 
@@ -176,6 +187,7 @@ export class ConversationManager {
     if (this.undoStack.length === 0) return false;
     const turn = this.undoStack.pop()!;
     this.messages.push(...turn);
+    this._messagesRevision++;
     return true;
   }
 
@@ -192,10 +204,12 @@ export class ConversationManager {
         ...(toolName ? { toolName } : {}),
       });
     }
+    this._messagesRevision++;
   }
 
   public addSystemMessage(content: string): void {
     this.messages.push({ role: 'system', content });
+    this._messagesRevision++;
   }
 
   public getLastUserMessage(): string | null {
@@ -215,6 +229,7 @@ export class ConversationManager {
   public removeMessagesAfter(count: number): void {
     if (count < this.messages.length) {
       this.messages.length = count;
+      this._messagesRevision++;
     }
   }
 
@@ -222,6 +237,7 @@ export class ConversationManager {
     for (let i = this.messages.length - 1; i >= 0; i--) {
       if (this.messages[i].role === 'user') {
         (this.messages[i] as { cancelled?: boolean }).cancelled = true;
+        this._messagesRevision++;
         return;
       }
     }
@@ -230,6 +246,7 @@ export class ConversationManager {
   public startStreamingBlock(): void {
     this.messages.push({ role: 'assistant', content: '' });
     this.streamingMessageIndex = this.messages.length - 1;
+    this._messagesRevision++;
   }
 
   public updateStreamingBlock(content: string): void {
@@ -237,6 +254,7 @@ export class ConversationManager {
     const message = this.messages[this.streamingMessageIndex];
     if (message?.role === 'assistant') {
       message.content = content;
+      this._messagesRevision++;
     }
   }
 
@@ -245,6 +263,7 @@ export class ConversationManager {
       this.messages.splice(this.streamingMessageIndex, 1);
     }
     this.streamingMessageIndex = -1;
+    this._messagesRevision++;
   }
 
   public getMessageSnapshot(): ConversationMessageSnapshot[] {
@@ -259,6 +278,7 @@ export class ConversationManager {
     const systemMessages = this.messages.filter((message) => message.role === 'system');
     this.messages = [...systemMessages, ...messagesToInternal(newMessages)];
     this.streamingMessageIndex = -1;
+    this._messagesRevision++;
   }
 
   public async compact(
@@ -298,6 +318,7 @@ export class ConversationManager {
     this.currentBranch = 'main';
     this.streamingMessageIndex = -1;
     this.undoStack = [];
+    this._messagesRevision++;
   }
 
   public forkBranch(name?: string, force = false): string {
@@ -328,6 +349,7 @@ export class ConversationManager {
     this.messages = cloneMessages(stored);
     this.currentBranch = name;
     this.streamingMessageIndex = -1;
+    this._messagesRevision++;
     return true;
   }
 
@@ -338,6 +360,7 @@ export class ConversationManager {
     const toAppend = stored.slice(commonLength);
     if (toAppend.length === 0) return true;
     this.messages.push(...cloneMessages(toAppend));
+    this._messagesRevision++;
     return true;
   }
 
@@ -371,6 +394,7 @@ export class ConversationManager {
     this.branches = restoreBranchMap(data.branches);
     this.currentBranch = data.currentBranch ?? 'main';
     this.streamingMessageIndex = -1;
+    this._messagesRevision++;
   }
 }
 

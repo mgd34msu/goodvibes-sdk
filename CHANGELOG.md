@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.38
+
+- Added `_cachedModelRegistry` + `_invalidateModelRegistry()` to `ProviderRegistry.getModelRegistry()` — cache is invalidated on every mutation (`register`, `registerRuntimeProvider`, `registerDiscoveredProviders`, `loadCustomProviders`, `updateCatalogState`, `setModelContextCap`) and returned on cache hit, eliminating repeated `buildModelRegistry` calls across 10+ call sites per turn
+- Replaced `recentEvents` O(n) `unshift` in `ControlPlaneGateway` with a 500-slot pre-allocated circular ring buffer using `_recentEventsHead`/`_recentEventsCount` indices — insert is now O(1)
+- Fixed `rememberEvent` bypassing direct ring-write via Zustand reducer for `clientRecord.ring` — events are now written directly to the ring buffer without a reducer dispatch per append
+- Added `_scheduleControlPlaneSync()` debounce in `ControlPlaneGateway.rememberEvent` — coalesces N per-event `syncControlPlaneState` dispatches into 1 per `setImmediate` tick, eliminating redundant full-state Zustand reducer runs during high-throughput streaming
+- Added `_messagesRevision` + `_cachedLLMMessages` memoization to `ConversationManager.getMessagesForLLM()` — cache is invalidated on every message-mutating method (`addUserMessage`, `addAssistantMessage`, `addToolResults`, `addSystemMessage`, `undo`, `redo`, `removeMessagesAfter`, `markLastUserMessageCancelled`, `startStreamingBlock`, `updateStreamingBlock`, `finalizeStreamingBlock`, `replaceMessagesForLLM`, `resetAll`, `switchBranch`, `mergeBranch`, `fromJSON`) and returned on cache hit
+
 ## 0.18.37
 
 - Added `sharedDaemonToken` and `sharedHttpListenerToken` options to `startHostServices` factories. Surfaces that issue companion-pairing bearer tokens (e.g. TUI QR pairing) now thread the token through to `daemon.enable(...)` so scanned QR credentials actually authenticate. Previously the embedded daemon was started with no shared token and rejected every request carrying the token it advertised
