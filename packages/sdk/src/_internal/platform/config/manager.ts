@@ -49,6 +49,12 @@ export interface ConfigSetOptions {
   bypassManagedLock?: boolean;
 }
 
+/** Callback invoked when a watched config key changes. */
+export type ConfigChangeCallback<K extends ConfigKey> = (newValue: ConfigValue<K>, oldValue: ConfigValue<K>) => void;
+
+/** Unsubscribe handle returned by ConfigManager.subscribe(). */
+export type ConfigUnsubscribe = () => void;
+
 const DEFAULT_CONFIG_SNAPSHOT = structuredClone(DEFAULT_CONFIG) as GoodVibesConfig;
 const PERMISSION_TOOL_KEYS = new Set(Object.keys(DEFAULT_CONFIG.permissions.tools));
 
@@ -111,6 +117,7 @@ export class ConfigManager {
   private readonly workingDirectory: string | null;
   private readonly homeDirectory: string | null;
   private hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null;
+  private readonly _listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
 
   constructor(overrides: ConfigOverrides) {
     const roots = overrides as ConfigRoots;
@@ -222,7 +229,34 @@ export class ConfigManager {
     const previousValue = parent[field];
     parent[field] = value;
     this.save();
+    this.notifyListeners(key, previousValue, value);
     this.emitConfigHook(key, previousValue, value);
+  }
+
+  /**
+   * Subscribe to changes on a specific config key.
+   * Returns an unsubscribe function. Safe to call multiple times.
+   */
+  subscribe<K extends ConfigKey>(key: K, cb: ConfigChangeCallback<K>): ConfigUnsubscribe {
+    if (!this._listeners.has(key)) {
+      this._listeners.set(key, new Set());
+    }
+    // Cast via unknown -> (n: unknown, o: unknown) => void to avoid deeply-recursive ConfigValue<K> comparison
+    // that exceeds TypeScript's stack depth limit on the 100-entry conditional type.
+    const wrapped = (newVal: unknown, oldVal: unknown) => (cb as (n: unknown, o: unknown) => void)(newVal, oldVal);
+    this._listeners.get(key)!.add(wrapped);
+    return () => {
+      this._listeners.get(key)?.delete(wrapped);
+    };
+  }
+
+  /** Notify synchronous subscribers of a key change. */
+  private notifyListeners(key: ConfigKey, oldValue: unknown, newValue: unknown): void {
+    const set = this._listeners.get(key);
+    if (!set) return;
+    for (const cb of set) {
+      try { cb(newValue, oldValue); } catch { /* listener errors must not abort set() */ }
+    }
   }
 
   /**
