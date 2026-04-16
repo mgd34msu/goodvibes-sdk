@@ -1,6 +1,10 @@
-import type { BlockMeta } from './conversation.js';
+export interface DiffParseResult {
+  filePath?: string;
+  diffOriginal?: string;
+  diffUpdated?: string;
+}
 
-export function parseDiffForApply(diffText: string): Pick<BlockMeta, 'filePath' | 'diffOriginal' | 'diffUpdated'> {
+export function parseDiffForApply(diffText: string): DiffParseResult {
   const lines = diffText.split('\n');
   let filePath: string | undefined;
 

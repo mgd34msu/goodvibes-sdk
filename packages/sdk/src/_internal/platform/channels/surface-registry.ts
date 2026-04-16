@@ -34,7 +34,7 @@ export class SurfaceRegistry {
     const configuredAt = now();
     const pluginDescriptors = this.pluginRegistry?.listDescriptors() ?? [];
     const enabledForSurface = (surface: string): boolean => {
-      if (surface === 'tui') return true;
+      if (surface === 'tui') return (this.configManager.getCategory('surfaces') as Record<string, { enabled?: boolean } | undefined>).tui?.enabled !== false;
       if (surface === 'web') return Boolean(this.configManager.get('web.enabled') || this.configManager.get('controlPlane.enabled'));
       if (surface === 'slack') return Boolean(this.configManager.get('surfaces.slack.enabled'));
       if (surface === 'discord') return Boolean(this.configManager.get('surfaces.discord.enabled'));
@@ -89,8 +89,8 @@ export class SurfaceRegistry {
         id: 'surface:tui',
         kind: 'tui',
         label: 'Terminal UI',
-        enabled: true,
-        state: 'healthy',
+        enabled: enabledForSurface('tui'),
+        state: enabledForSurface('tui') ? 'healthy' : 'disabled',
         configuredAt,
         lastSeenAt: configuredAt,
         capabilities: ['ingress', 'egress', 'session_binding'],

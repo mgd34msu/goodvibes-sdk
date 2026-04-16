@@ -1,11 +1,11 @@
-import type { PanelHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/panel-health-monitor';
+import type { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
 import type { SandboxSessionRegistry } from './sandbox/session-registry.js';
 import type { ShellPathService } from '@pellux/goodvibes-sdk/platform/runtime/shell-paths';
 import type { WorktreeRegistry } from './worktree/registry.js';
 
 export interface CommandWorkspaceShellServices {
   readonly shellPaths?: ShellPathService;
-  readonly panelHealthMonitor?: PanelHealthMonitor;
+  readonly componentHealthMonitor?: ComponentHealthMonitor;
   readonly worktreeRegistry?: WorktreeRegistry;
   readonly sandboxSessionRegistry?: SandboxSessionRegistry;
 }
@@ -17,14 +17,14 @@ export function createShellWorkspaceServices(
 ): CommandWorkspaceShellServices {
   const {
     shellPaths,
-    panelHealthMonitor,
+    componentHealthMonitor,
     worktreeRegistry,
     sandboxSessionRegistry,
   } = options;
 
   return {
     shellPaths,
-    panelHealthMonitor,
+    componentHealthMonitor,
     worktreeRegistry,
     sandboxSessionRegistry,
   };

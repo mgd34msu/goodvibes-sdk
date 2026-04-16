@@ -13,10 +13,17 @@ import type { SessionDomainState } from '@pellux/goodvibes-sdk/platform/runtime/
 import type { ModelDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/model';
 import type { ConversationDomainState, TurnState } from '../domains/conversation.js';
 import type { OverlayDomainState, OverlayId } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/overlays';
-import type { PanelDomainState, PanelState } from '../domains/panels.js';
 import type { PermissionDomainState, PermissionMode } from '../domains/permissions.js';
 import type { TaskDomainState, RuntimeTask, TaskKind } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
 import type { AgentDomainState, RuntimeAgent } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
+import type { OrchestrationDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/orchestration';
+import type { CommunicationDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/communication';
+import type { AutomationDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/automation';
+import type { RoutesDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/routes';
+import type { ControlPlaneDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/control-plane';
+import type { DeliveryDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/deliveries';
+import type { WatcherDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/watchers';
+import type { SurfaceDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/surfaces';
 import type { ProviderHealthDomainState, CompositeHealthStatus } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/provider-health';
 import type { McpDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/mcp';
 import type { PluginDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/plugins';
@@ -27,7 +34,7 @@ import type { TelemetryDomainState } from '@pellux/goodvibes-sdk/platform/runtim
 import type { GitDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/git';
 import type { DiscoveryDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/discovery';
 import type { IntelligenceDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/intelligence';
-import type { UiPerfDomainState } from '../domains/ui-perf.js';
+import type { SurfacePerfDomainState } from '../domains/surface-perf.js';
 
 // ---------------------------------------------------------------------------
 // Primary domain selectors (one per domain)
@@ -51,11 +58,6 @@ export function selectConversation(state: RuntimeState): ConversationDomainState
 /** Select the full overlays domain slice. */
 export function selectOverlays(state: RuntimeState): OverlayDomainState {
   return state.overlays;
-}
-
-/** Select the full panels domain slice. */
-export function selectPanels(state: RuntimeState): PanelDomainState {
-  return state.panels;
 }
 
 /** Select the full permissions domain slice. */
@@ -123,9 +125,49 @@ export function selectIntelligence(state: RuntimeState): IntelligenceDomainState
   return state.intelligence;
 }
 
-/** Select the full UI performance domain slice. */
-export function selectUiPerf(state: RuntimeState): UiPerfDomainState {
-  return state.uiPerf;
+/** Select the full orchestration domain slice. */
+export function selectOrchestration(state: RuntimeState): OrchestrationDomainState {
+  return state.orchestration;
+}
+
+/** Select the full communication domain slice. */
+export function selectCommunication(state: RuntimeState): CommunicationDomainState {
+  return state.communication;
+}
+
+/** Select the full automation domain slice. */
+export function selectAutomation(state: RuntimeState): AutomationDomainState {
+  return state.automation;
+}
+
+/** Select the full routes domain slice. */
+export function selectRoutes(state: RuntimeState): RoutesDomainState {
+  return state.routes;
+}
+
+/** Select the full control plane domain slice. */
+export function selectControlPlane(state: RuntimeState): ControlPlaneDomainState {
+  return state.controlPlane;
+}
+
+/** Select the full deliveries domain slice. */
+export function selectDeliveries(state: RuntimeState): DeliveryDomainState {
+  return state.deliveries;
+}
+
+/** Select the full watchers domain slice. */
+export function selectWatchers(state: RuntimeState): WatcherDomainState {
+  return state.watchers;
+}
+
+/** Select the full surfaces domain slice. */
+export function selectSurfaces(state: RuntimeState): SurfaceDomainState {
+  return state.surfaces;
+}
+
+/** Select the full surface performance domain slice. */
+export function selectSurfacePerf(state: RuntimeState): SurfacePerfDomainState {
+  return state.surfacePerf;
 }
 
 // ---------------------------------------------------------------------------
@@ -264,26 +306,6 @@ export function selectSystemHealth(state: RuntimeState): CompositeSystemHealth {
  */
 export function selectPermissionMode(state: RuntimeState): PermissionMode {
   return state.permissions.mode;
-}
-
-/**
- * Returns all panels that are currently open.
- */
-export function selectActivePanels(state: RuntimeState): PanelState[] {
-  const result: PanelState[] = [];
-  for (const panel of state.panels.panels.values()) {
-    if (panel.open) {
-      result.push(panel);
-    }
-  }
-  return result;
-}
-
-/**
- * Returns the panel currently holding focus.
- */
-export function selectFocusedPanel(state: RuntimeState): PanelState | undefined {
-  return state.panels.panels.get(state.panels.focusedPanelId);
 }
 
 /**

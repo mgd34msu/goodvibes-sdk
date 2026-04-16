@@ -324,19 +324,25 @@ export interface HealthDashboardData {
 // ── Panel config ─────────────────────────────────────────────────────────────
 
 /**
- * Configuration for a single diagnostic panel data provider.
+ * Configuration for a single diagnostic component data provider.
  */
-export interface PanelConfig {
+export interface ComponentConfig {
   /** Maximum number of entries retained in the buffer. */
   readonly bufferLimit: number;
 }
 
+/** @deprecated Use ComponentConfig instead. */
+export type PanelConfig = ComponentConfig;
+
 /**
- * Default panel configuration used when none is provided.
+ * Default component configuration used when none is provided.
  */
-export const DEFAULT_PANEL_CONFIG: PanelConfig = {
+export const DEFAULT_COMPONENT_CONFIG: ComponentConfig = {
   bufferLimit: DEFAULT_BUFFER_LIMIT,
 };
+
+/** @deprecated Use DEFAULT_COMPONENT_CONFIG instead. */
+export const DEFAULT_PANEL_CONFIG: ComponentConfig = DEFAULT_COMPONENT_CONFIG;
 
 // ── Tool Contract entries ────────────────────────────────────────────────────
 
@@ -489,14 +495,19 @@ export interface IntegrationDeliveryDiagnostics {
 
 // ── Panel resource diagnostics ───────────────────────────────────────────────
 
-import type { PanelThrottleStatus, PanelHealthStatus } from '../perf/panel-contracts.js';
+import type { ComponentThrottleStatus, ComponentHealthStatus } from '../perf/component-contracts.js';
+
+/** @deprecated Use ComponentThrottleStatus. Kept for PanelResourceEntry field typing. */
+type PanelThrottleStatus = ComponentThrottleStatus;
+/** @deprecated Use ComponentHealthStatus. Kept for PanelResourceEntry field typing. */
+type PanelHealthStatus = ComponentHealthStatus;
 
 /**
- * Diagnostic snapshot for a single panel's resource usage and health.
+ * Diagnostic snapshot for a single component's resource usage and health.
  */
-export interface PanelResourceEntry {
-  /** Panel id. */
-  readonly panelId: string;
+export interface ComponentResourceEntry {
+  /** Component id. */
+  readonly componentId: string;
   /** Current throttle status. */
   readonly throttleStatus: PanelThrottleStatus;
   /** Current health status. */
@@ -521,12 +532,15 @@ export interface PanelResourceEntry {
   readonly nextAllowedAt: number;
 }
 
+/** @deprecated Use ComponentResourceEntry instead. */
+export type PanelResourceEntry = ComponentResourceEntry;
+
 /**
- * Full snapshot of panel resource health for the diagnostics panel.
+ * Full snapshot of component resource health for the diagnostics panel.
  */
-export interface PanelResourceSnapshot {
-  /** All tracked panel entries, sorted: overloaded > warning > healthy. */
-  readonly panels: readonly PanelResourceEntry[];
+export interface ComponentResourceSnapshot {
+  /** All tracked component entries, sorted: overloaded > warning > healthy. */
+  readonly panels: readonly ComponentResourceEntry[];
   /** Count of panels currently in 'overloaded' health status. */
   readonly overloadedCount: number;
   /** Count of panels currently in 'warning' health status. */
@@ -538,6 +552,9 @@ export interface PanelResourceSnapshot {
   /** Epoch ms when this snapshot was captured. */
   readonly capturedAt: number;
 }
+
+/** @deprecated Use ComponentResourceSnapshot instead. */
+export type PanelResourceSnapshot = ComponentResourceSnapshot;
 
 // ── Token audit diagnostics ──────────────────────────────────────────────────
 

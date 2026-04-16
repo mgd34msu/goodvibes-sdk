@@ -1,6 +1,20 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
+ * Platform/surface classification for exports in this module:
+ *
+ * PLATFORM (safe for all surfaces):
+ *   - getDisplayWidth — Unicode display-width calculation. Used by any surface
+ *     that needs to measure text for layout purposes.
+ *
+ * SURFACE (terminal/TUI-specific):
+ *   - center, truncateDisplay, padDisplayEnd, fitDisplay — Terminal column
+ *     layout helpers that operate in cell widths. Not useful outside a terminal.
+ *   - wrapText — Word-wrapping to a fixed column width.
+ *   - interpolateColor — RGB hex interpolation for ANSI colour gradients.
+ */
+
+/**
  * Calculates the visual width of a string in the terminal.
  * Handles CJK characters, emoji (including ZWJ sequences), and
  * variation selectors correctly as double-width.

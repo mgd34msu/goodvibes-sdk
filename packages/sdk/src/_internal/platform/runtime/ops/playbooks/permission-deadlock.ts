@@ -56,7 +56,7 @@ export const permissionDeadlockPlaybook: Playbook = {
           passed: false,
           summary: 'UI responsiveness requires live render context.',
           severity: 'warning',
-          context: { hint: 'Check Ink render tree for active PermissionPrompt component' },
+          context: { hint: 'Check host render context for active PermissionPrompt component' },
         })),
     },
   ],
@@ -117,7 +117,7 @@ export const permissionDeadlockPlaybook: Playbook = {
     },
   ],
   escalationCriteria: [
-    'Permission UI is rendering but unresponsive to keyboard input (Ink render stall)',
+    'Permission UI is rendering but unresponsive to keyboard input (Host render stall)',
     'Adding allow rules does not unblock the pending request',
     'Multiple concurrent permission deadlocks across different turns',
     'Policy engine itself is throwing on evaluation',

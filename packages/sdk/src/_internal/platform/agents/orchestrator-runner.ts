@@ -396,7 +396,7 @@ export async function runAgentTask(
       ? estimateTokens(JSON.stringify(toolDefinitions))
       : 0;
 
-    conversation = new ConversationManager(() => 80);
+    conversation = new ConversationManager();
     conversation.addUserMessage(record.task);
 
     let systemPrompt = buildOrchestratorSystemPrompt(record, undefined, context);

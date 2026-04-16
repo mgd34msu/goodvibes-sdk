@@ -8,8 +8,8 @@
  * configurable; callers can also request an immediate snapshot via
  * getSnapshot().
  */
-import type { PanelHealthMonitor } from '../../perf/panel-health-monitor.js';
-import type { PanelResourceEntry, PanelResourceSnapshot } from '../types.js';
+import type { ComponentHealthMonitor } from '../../perf/component-health-monitor.js';
+import type { ComponentResourceEntry, ComponentResourceSnapshot } from '../types.js';
 
 /** Default poll interval in milliseconds. */
 const DEFAULT_POLL_INTERVAL_MS = 500;
@@ -29,12 +29,12 @@ const HEALTH_ORDER: Record<string, number> = {
  */
 export class PanelResourcesPanel {
   private readonly _pollIntervalMs: number;
-  private readonly _monitor: PanelHealthMonitor;
-  private _current: PanelResourceSnapshot;
+  private readonly _monitor: ComponentHealthMonitor;
+  private _current: ComponentResourceSnapshot;
   private _timerId: ReturnType<typeof setInterval> | null = null;
   private readonly _subscribers = new Set<() => void>();
 
-  constructor(monitor: PanelHealthMonitor, pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS) {
+  constructor(monitor: ComponentHealthMonitor, pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS) {
     this._monitor = monitor;
     this._pollIntervalMs = pollIntervalMs;
     this._current = this._buildSnapshot(Date.now());
@@ -65,14 +65,14 @@ export class PanelResourcesPanel {
   /**
    * Return the most recent panel resource snapshot.
    */
-  getSnapshot(): PanelResourceSnapshot {
+  getSnapshot(): ComponentResourceSnapshot {
     return this._current;
   }
 
   /**
    * Force an immediate snapshot refresh and return it.
    */
-  refresh(now: number = Date.now()): PanelResourceSnapshot {
+  refresh(now: number = Date.now()): ComponentResourceSnapshot {
     this._current = this._buildSnapshot(now);
     return this._current;
   }
@@ -98,13 +98,13 @@ export class PanelResourcesPanel {
   // Private
   // ---------------------------------------------------------------------------
 
-  private _buildSnapshot(capturedAt: number): PanelResourceSnapshot {
+  private _buildSnapshot(capturedAt: number): ComponentResourceSnapshot {
     const healthStates = this._monitor.getAllHealth();
 
-    const panels: PanelResourceEntry[] = healthStates.map((h) => {
-      const contract = this._monitor.getContract(h.panelId);
+    const panels: ComponentResourceEntry[] = healthStates.map((h) => {
+      const contract = this._monitor.getContract(h.componentId);
       return {
-        panelId: h.panelId,
+        componentId: h.componentId,
         throttleStatus: h.throttleStatus,
         healthStatus: h.healthStatus,
         renderP95Ms: h.renderP95Ms,
@@ -122,7 +122,7 @@ export class PanelResourcesPanel {
     // Sort: overloaded first, then warning, then healthy; alphabetical within tier
     panels.sort((a, b) => {
       const diff = (HEALTH_ORDER[a.healthStatus] ?? 2) - (HEALTH_ORDER[b.healthStatus] ?? 2);
-      return diff !== 0 ? diff : a.panelId.localeCompare(b.panelId);
+      return diff !== 0 ? diff : a.componentId.localeCompare(b.componentId);
     });
 
     const overloadedCount = panels.filter((p) => p.healthStatus === 'overloaded').length;

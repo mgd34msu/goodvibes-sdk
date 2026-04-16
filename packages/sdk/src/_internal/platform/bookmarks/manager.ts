@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
  * BookmarkEntry - Metadata for a saved bookmark.
  */
 export interface BookmarkEntry {
-  /** Stable collapse key identifying the block (e.g. 'msg_3_code_1'). */
+  /** Stable key identifying the block (e.g. 'msg_3_code_1'). */
   key: string;
   /** Human-readable label (block type + short excerpt). */
   label: string;

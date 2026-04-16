@@ -220,3 +220,8 @@ export type {
   UiPerfDomainState,
 } from './ui-perf.js';
 export { createInitialUiPerfState } from './ui-perf.js';
+
+export type {
+  SurfacePerfDomainState,
+} from './surface-perf.js';
+export { createInitialSurfacePerfState } from './surface-perf.js';
