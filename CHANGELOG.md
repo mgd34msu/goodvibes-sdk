@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.30
+
+- Added `platform/pairing/` module with QR code generation, companion token management, and connection info formatting for mobile companion app pairing
+- QR generator shells out to `qrencode` CLI when available, falls back to built-in encoder for versions 1-10
+- Companion tokens persist to `.goodvibes/<surface>/companion-token.json` with create/regenerate/invalidate lifecycle
+- Connection info formatter produces human-readable daemon startup blocks with embedded QR codes
+- Added `tools.llmEnabled` config key (default: `false`) so tool LLM is explicitly opt-in, matching `helper.enabled` behavior
+- `resolveToolLLM()` now checks `tools.llmEnabled` before any provider resolution — when disabled, tool LLM calls return empty string instead of silently using the main conversation model
+
 ## 0.18.29
 
 - Removed terminal rendering primitives from the reusable SDK platform surface: deleted `types/grid.ts` (`Cell`, `Line`, `createEmptyLine`, `createStyledCell`) and `core/history.ts` (`InfiniteBuffer`) which were orphaned TUI-specific modules that no SDK consumer should depend on
