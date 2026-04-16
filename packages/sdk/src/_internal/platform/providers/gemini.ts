@@ -11,6 +11,7 @@ import { REASONING_BUDGET_MAP } from './interface.js';
 import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
 import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { fetchWithTimeout } from '@pellux/goodvibes-sdk/platform/utils/fetch-with-timeout';
 import {
   toGeminiFunctionDeclarations,
   toGeminiContents,
@@ -117,7 +118,7 @@ export class GeminiProvider implements LLMProvider {
     // Delete old cache if hash changed (fire-and-forget)
     if (this.cachedContentName && this.cachedContentHash !== hash) {
       const oldName = this.cachedContentName;
-      fetch(`${GEMINI_API_BASE}/${oldName}`, {
+      fetchWithTimeout(`${GEMINI_API_BASE}/${oldName}`, {
         method: 'DELETE',
         headers: { 'x-goog-api-key': this.apiKey },
       }).catch(err => logger.warn('[Gemini] Failed to delete old cache', { error: summarizeError(err) }));
@@ -138,7 +139,7 @@ export class GeminiProvider implements LLMProvider {
         cacheBody['tools'] = [{ functionDeclarations: toGeminiFunctionDeclarations(tools) }];
       }
 
-      const res = await fetch(`${GEMINI_API_BASE}/cachedContents`, {
+      const res = await fetchWithTimeout(`${GEMINI_API_BASE}/cachedContents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

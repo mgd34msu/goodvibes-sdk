@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.34
+
+- Fixed asymmetric `DaemonServer` lifecycle: `stop()` now properly tears down all services started during `start()` in reverse order (C1)
+- Fixed `RuntimeEventBus.emit` iterating a mutable Set — listeners are snapshotted before dispatch to prevent skipped handlers during concurrent subscribe/unsubscribe (C3)
+- Fixed `SessionManager.writeFileSync` non-atomic write — session state is now written via tmp-file + fsync + rename, preventing corruption on crash (C4)
+- Fixed `HttpListener` `RateLimiter` Map growing unbounded — added TTL eviction, LRU cap of 10,000 entries, periodic 60-second sweep, and a `stop()` method to clear the sweep interval (C5)
+- Added `fetchWithTimeout` utility with 30-second default timeout and `AbortSignal.any()` caller-signal merging; applied to all non-streaming outbound `fetch` calls in `github.ts`, `ntfy.ts`, `slack.ts`, the Slack adapter, and `gemini.ts` (C6)
+
 ## 0.18.33
 
 - Added comprehensive SDK documentation: architecture overview, security best practices, performance tuning, observability guide, migration guide, and companion app pairing guide

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { logger } from '../utils/logger.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -275,7 +276,7 @@ export class GitHubIntegration {
     data: Record<string, unknown>,
     token: string,
   ): Promise<void> {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

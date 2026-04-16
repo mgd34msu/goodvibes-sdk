@@ -2,6 +2,7 @@ import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import { SlackIntegration } from '../../integrations/index.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { fetchWithTimeout } from '@pellux/goodvibes-sdk/platform/utils/fetch-with-timeout';
 
 export async function handleSlackSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
   const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
@@ -133,7 +134,7 @@ export async function handleSlackSurfacePayload(
         });
         if (submission.mode === 'continued-live') {
           if (responseUrl) {
-            await fetch(responseUrl, {
+            await fetchWithTimeout(responseUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -155,7 +156,7 @@ export async function handleSlackSurfacePayload(
           const message = payload.error ?? 'Agent spawn failed';
           logger.error('handleSlackSurfaceWebhook: spawn failed', { error: message });
           if (responseUrl) {
-            await fetch(responseUrl, {
+            await fetchWithTimeout(responseUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -174,7 +175,7 @@ export async function handleSlackSurfacePayload(
           sessionId: submission.session.id,
         });
         if (responseUrl) {
-          await fetch(responseUrl, {
+          await fetchWithTimeout(responseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
