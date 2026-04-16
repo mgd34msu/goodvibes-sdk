@@ -52,6 +52,7 @@ import {
   readStringList,
 } from './helpers.js';
 import type { DaemonConfig, DaemonDangerConfig, PendingSurfaceReply } from './types.js';
+import { requirePortAvailable } from './port-check.js';
 
 interface UpgradeCapableServer {
   upgrade(req: Request, options?: { data?: unknown }): boolean;
@@ -267,6 +268,7 @@ export class DaemonServer {
     });
 
     const self = this;
+    await requirePortAvailable(this.port, this.host, 'daemon');
     this.transportEventsHelper.emitTransportInitializing();
     try {
       this.tlsState = resolveInboundTlsContext(this.configManager, 'controlPlane');
