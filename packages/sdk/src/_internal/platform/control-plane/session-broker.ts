@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { PersistentStore } from '@pellux/goodvibes-sdk/platform/state/persistent-store';
+import type { RuntimeEventBus } from '../runtime/events/index.js';
+import type { AgentEvent } from '../runtime/events/agents.js';
 import { RouteBindingManager } from '../channels/index.js';
 import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
 import type { AutomationSurfaceKind } from '@pellux/goodvibes-sdk/platform/automation/types';
@@ -50,13 +52,26 @@ export class SharedSessionBroker {
   private eventPublisher: SharedSessionEventPublisher | null = null;
   private continuationRunner: SharedSessionContinuationRunner | null = null;
   private loaded = false;
+  private _gcInterval: ReturnType<typeof setInterval> | null = null;
+  private _busUnsubs: Array<() => void> = [];
 
+  /** Default idle threshold for zero-message sessions (ms). */
+  private readonly _idleEmptyMs: number;
+  /** Default idle threshold for sessions with content (ms). */
+  private readonly _idleLongMs: number;
+
+  /**
+   * @param config.idleEmptyMs - Idle timeout for empty (0-message) sessions (default: 10 minutes).
+   * @param config.idleLongMs  - Idle timeout for sessions with content (default: 24 hours).
+   */
   constructor(config: {
     readonly store?: PersistentStore<SharedSessionStoreSnapshot>;
     readonly storePath?: string;
     readonly routeBindings: RouteBindingManager;
     readonly agentStatusProvider: SharedSessionAgentStatusProvider;
     readonly messageSender: SharedSessionMessageSender;
+    readonly idleEmptyMs?: number;
+    readonly idleLongMs?: number;
   }) {
     if (!config.store && !config.storePath) {
       throw new Error('SharedSessionBroker requires an explicit store or storePath.');
@@ -66,10 +81,77 @@ export class SharedSessionBroker {
     this.routeBindings = config.routeBindings;
     this.agentStatusProvider = config.agentStatusProvider;
     this.messageSender = config.messageSender;
+    this._idleEmptyMs = config.idleEmptyMs ?? 10 * 60 * 1000;  // 10 min
+    this._idleLongMs  = config.idleLongMs  ?? 24 * 60 * 60 * 1000; // 24 h
   }
 
   setEventPublisher(publisher: SharedSessionEventPublisher | null): void {
     this.eventPublisher = publisher;
+  }
+
+  /**
+   * Wire the broker to a RuntimeEventBus so agent terminal events automatically
+   * reconcile session inputs and task state.
+   *
+   * Call once after both the broker and the bus are constructed. Returns an
+   * unsubscribe function that tears down the subscriptions.
+   *
+   * @param bus - The active RuntimeEventBus.
+   * @param sessionResolver - Maps agentId → sessionId for the active session.
+   *   Return `null` when the agent is not associated with a shared session.
+   */
+  attachRuntimeBus(
+    bus: RuntimeEventBus,
+    sessionResolver: (agentId: string) => string | null,
+  ): () => void {
+    const onCompleted = bus.on<Extract<AgentEvent, { type: 'AGENT_COMPLETED' }>>(
+      'AGENT_COMPLETED',
+      (envelope) => {
+        const sessionId = sessionResolver(envelope.payload.agentId);
+        if (!sessionId) return;
+        void this.completeAgent(
+          sessionId,
+          envelope.payload.agentId,
+          envelope.payload.output ?? '',
+          { status: 'completed', durationMs: envelope.payload.durationMs },
+        );
+      },
+    );
+    const onFailed = bus.on<Extract<AgentEvent, { type: 'AGENT_FAILED' }>>(
+      'AGENT_FAILED',
+      (envelope) => {
+        const sessionId = sessionResolver(envelope.payload.agentId);
+        if (!sessionId) return;
+        void this.completeAgent(
+          sessionId,
+          envelope.payload.agentId,
+          envelope.payload.error,
+          { status: 'failed', durationMs: envelope.payload.durationMs },
+        );
+      },
+    );
+    const onCancelled = bus.on<Extract<AgentEvent, { type: 'AGENT_CANCELLED' }>>(
+      'AGENT_CANCELLED',
+      (envelope) => {
+        const sessionId = sessionResolver(envelope.payload.agentId);
+        if (!sessionId) return;
+        void this.completeAgent(
+          sessionId,
+          envelope.payload.agentId,
+          envelope.payload.reason ?? 'cancelled',
+          { status: 'cancelled' },
+        );
+      },
+    );
+    this._busUnsubs.push(onCompleted, onFailed, onCancelled);
+    return () => {
+      onCompleted();
+      onFailed();
+      onCancelled();
+      this._busUnsubs = this._busUnsubs.filter(
+        (fn) => fn !== onCompleted && fn !== onFailed && fn !== onCancelled,
+      );
+    };
   }
 
   setContinuationRunner(runner: SharedSessionContinuationRunner | null): void {
@@ -93,6 +175,9 @@ export class SharedSessionBroker {
       this.inputs.set(sessionId, bucket);
     }
     this.loaded = true;
+    if (!this._gcInterval) {
+      this._gcInterval = setInterval(() => { this._gcSweep(); }, 60_000);
+    }
   }
 
   listSessions(limit = 100): SharedSessionRecord[] {
@@ -171,6 +256,7 @@ export class SharedSessionBroker {
       updatedAt: now,
       lastMessageAt: undefined,
       closedAt: undefined,
+      lastActivityAt: now,
       messageCount: 0,
       pendingInputCount: 0,
       routeIds,
@@ -234,6 +320,7 @@ export class SharedSessionBroker {
       activeAgentId: agentId,
       lastAgentId: agentId,
       updatedAt: Date.now(),
+      lastActivityAt: Date.now(),
     };
     this.sessions.set(sessionId, updated);
     const claimed = this.claimNextQueuedInput(sessionId, agentId);
@@ -385,6 +472,7 @@ export class SharedSessionBroker {
         messageCount: bucket.length,
         lastMessageAt: message.createdAt,
         updatedAt: message.createdAt,
+        lastActivityAt: message.createdAt,
       };
       this.sessions.set(sessionId, updated);
     }
@@ -776,5 +864,49 @@ export class SharedSessionBroker {
       pendingInputCount,
       updatedAt: Date.now(),
     });
+  }
+
+  /**
+   * Periodic idle-session GC sweep.
+   *
+   * Policy:
+   * - Sessions with messageCount === 0 AND no active agent AND idle longer than
+   *   `_idleEmptyMs` (default 10min) are closed with reason `idle-empty`.
+   * - Sessions with messageCount > 0 AND no active agent AND idle longer than
+   *   `_idleLongMs` (default 24h) are closed with reason `idle-long`.
+   *
+   * "Idle" is measured from `lastActivityAt` (updated on createInput/bindAgent/
+   * appendMessage). Sessions with an active agent are never GC'd.
+   */
+  private _gcSweep(): void {
+    const now = Date.now();
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.status !== 'active') continue;
+      if (session.activeAgentId) continue; // live agent — leave it
+      const idle = now - session.lastActivityAt;
+      let reason: string | null = null;
+      if (session.messageCount === 0 && idle >= this._idleEmptyMs) {
+        reason = 'idle-empty';
+      } else if (session.messageCount > 0 && idle >= this._idleLongMs) {
+        reason = 'idle-long';
+      }
+      if (!reason) continue;
+      const closed: SharedSessionRecord = {
+        ...session,
+        status: 'closed',
+        activeAgentId: undefined,
+        updatedAt: now,
+        closedAt: now,
+      };
+      this.sessions.set(sessionId, closed);
+      this.publishUpdate('session-closed', { ...closed, reason });
+    }
+    // Persist after a sweep only when something changed.
+    const anyChanged = [...this.sessions.values()].some(
+      (s) => s.status === 'closed' && s.closedAt && now - s.closedAt < 2_000,
+    );
+    if (anyChanged) {
+      void this.persist();
+    }
   }
 }
