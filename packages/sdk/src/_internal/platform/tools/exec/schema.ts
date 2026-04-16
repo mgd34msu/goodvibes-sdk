@@ -74,10 +74,20 @@ export const EXEC_TOOL_SCHEMA = {
                 minimum: 0,
                 description: 'Base delay between retries in ms. Default: 1000.',
               },
+              max_delay_ms: {
+                type: 'integer',
+                minimum: 0,
+                description: 'Max jitter cap for exponential backoff in ms. Default: 30000.',
+              },
               backoff: {
                 type: 'string',
                 enum: ['fixed', 'exponential'],
                 description: 'Backoff strategy. Default: exponential.',
+              },
+              on: {
+                type: 'array',
+                items: { type: 'string', enum: ['network', 'lock', 'busy', 'oom'] },
+                description: 'Error categories to retry on. Default: ["network", "lock", "busy"].',
               },
             },
           },
@@ -213,7 +223,11 @@ export interface ExecExpect {
 export interface ExecRetry {
   max?: number;
   delay_ms?: number;
+  /** Max jitter cap for exponential backoff. Default: 30000. */
+  max_delay_ms?: number;
   backoff?: 'fixed' | 'exponential';
+  /** Error categories to retry on. Default: ['network', 'lock', 'busy']. */
+  on?: ReadonlyArray<'network' | 'lock' | 'busy' | 'oom'>;
 }
 
 export interface ExecUntil {

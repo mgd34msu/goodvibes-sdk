@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.41
+
+- **γ1 — exec retry: full jitter + retryable classification**: `computeRetryDelay` now uses full jitter (`Math.random() * min(base * 2^attempt, maxDelay)`) to avoid thundering-herd on flaky dependencies. `runWithRetry` classifies errors before retrying — terminal errors (ENOENT, EACCES, `command not found`, `Permission denied`, syntax errors, `No such file or directory`) stop the retry loop immediately. Network-class errors (ECONNRESET, ENOTFOUND, ETIMEDOUT), lock/busy (EBUSY, ECONNREFUSED), and OOM (ENOMEM) retry per the `retry.on` allowlist. Added `max_delay_ms` and `on` fields to `ExecRetry` schema and interface. Exported `isRetryableExecResult` for testability
+- **γ2 — ProcessManager.spawn: timeout + SIGKILL deadline + error surfacing**: `spawn()` is now `async` and accepts a `SpawnOptions` argument with `timeout_ms` (default 60000) and `sigterm_grace_ms` (default 5000). A timeout watchdog sends SIGTERM, waits the grace window, then SIGKILL. `killDeadline` is set on the process entry when SIGKILL is scheduled, distinguishing timeout-kill from user-abort in logs. ENOENT/EACCES from `Bun.spawn` are now surfaced as promise rejections instead of being silently swallowed
+- **γ3 — Orchestrator.abort() clears animInterval**: `abort()` now immediately calls `clearInterval(this.animInterval)` and sets `animInterval = null`, preventing the thinking-animation timer from keeping the Node event loop alive after a mid-turn abort. Adds `isThinking = false` to the abort path so the UI state is consistent regardless of whether `stopThinking()` is reached in the `finally` block
+
 ## 0.18.40
 
 - **CI recovery**: 0.18.39 published with a corrupted `version.ts` baked fallback (`let version = "0.18.39";;` — double-quoted + duplicate semicolon). The test/version-sync.test.ts regex requires single-quote form, so validate failed and no npm publish fired. This release restores the canonical single-quote format and hardens `scripts/sync-version-fallback.ts` to tolerate either quote style plus stray semicolons so the next mis-formatted edit is self-healing on the next sync

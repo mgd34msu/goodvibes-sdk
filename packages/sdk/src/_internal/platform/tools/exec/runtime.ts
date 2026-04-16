@@ -67,9 +67,16 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function computeRetryDelay(attempt: number, delayMs: number, backoff: 'fixed' | 'exponential'): number {
+function computeRetryDelay(
+  attempt: number,
+  delayMs: number,
+  backoff: 'fixed' | 'exponential',
+  maxDelayMs: number = 30_000,
+): number {
   if (backoff === 'fixed') return delayMs;
-  return delayMs * Math.pow(2, attempt);
+  // Full jitter: random in [0, min(base * 2^attempt, maxDelay)] — avoids thundering herd
+  const cap = Math.min(delayMs * Math.pow(2, attempt), maxDelayMs);
+  return Math.random() * cap;
 }
 
 function buildCleanEnv(): Record<string, string> {
@@ -130,12 +137,12 @@ function initProgressFile(cmdStr: string, workingDirectory: string): { path: str
 import { copyFileSync, renameSync, unlinkSync, rmSync, cpSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { summarizeError } from '../../utils/error-display.js';
 
-function spawnBackground(
+async function spawnBackground(
   processManager: ProcessManager,
   cmd: string,
   cwd: string | undefined,
   env: Record<string, string> | undefined,
-): ExecCommandResult {
+): Promise<ExecCommandResult> {
   return processManager.spawn(cmd, cwd, env);
 }
 
@@ -408,6 +415,65 @@ async function runUntil(
   };
 }
 
+/**
+ * Classify whether a failed exec result is retryable.
+ *
+ * Retryable: network errors (ECONNRESET, ENOTFOUND, ETIMEDOUT), lock/busy
+ * (EBUSY, ENOMEM, ECONNREFUSED), HTTP-gateway-style exit codes (124=timeout,
+ * 28=curl timeout). Terminal: permission denied (EACCES), missing binary
+ * (ENOENT), syntax errors.
+ *
+ * @param result - The failed command result.
+ * @param allowed - Optional allowlist of error category strings.
+ */
+export function isRetryableExecResult(
+  result: ExecCommandResult,
+  allowed?: ReadonlyArray<'network' | 'lock' | 'busy' | 'oom'>,
+): boolean {
+  // Timed-out commands are never auto-retried — callers must decide
+  if (result.timed_out) return false;
+
+  const combined = `${result.stdout}\n${result.stderr}`;
+
+  // Terminal errors — always skip retry
+  const TERMINAL_PATTERNS = [
+    /ENOENT/,           // missing binary / file
+    /EACCES/,           // permission denied
+    /Permission denied/, // shell-level perm error
+    /command not found/, // bash: command not found
+    /syntax error/i,    // shell syntax
+    /No such file or directory/,
+  ];
+  for (const pat of TERMINAL_PATTERNS) {
+    if (pat.test(combined)) return false;
+  }
+
+  // Map error categories to patterns
+  const CATEGORY_PATTERNS: Record<string, RegExp[]> = {
+    network: [/ECONNRESET/, /ENOTFOUND/, /ETIMEDOUT/, /EHOSTUNREACH/, /ENETUNREACH/],
+    lock:    [/ECONNREFUSED/, /EAGAIN/],
+    busy:    [/EBUSY/, /Resource temporarily unavailable/],
+    oom:     [/ENOMEM/, /Cannot allocate memory/, /Out of memory/],
+  };
+
+  const effectiveAllowed = allowed ?? ['network', 'lock', 'busy'];
+
+  for (const category of effectiveAllowed) {
+    const patterns = CATEGORY_PATTERNS[category] ?? [];
+    for (const pat of patterns) {
+      if (pat.test(combined)) return true;
+    }
+  }
+
+  // Exit code 124 = timeout via `timeout` command; 75 = tempfail (sysexits.h)
+  const retryableExitCodes = [124, 75];
+  if (result.exit_code !== null && retryableExitCodes.includes(result.exit_code)) {
+    return effectiveAllowed.includes('network') || effectiveAllowed.includes('busy');
+  }
+
+  return false;
+}
+
 async function runWithRetry(
   processManager: ProcessManager,
   overflowHandler: OverflowHandler,
@@ -423,7 +489,9 @@ async function runWithRetry(
 
   const maxRetries = Math.min(cmdInput.retry.max ?? 3, 10);
   const delayMs = cmdInput.retry.delay_ms ?? 1000;
+  const maxDelayMs = cmdInput.retry.max_delay_ms ?? 30_000;
   const backoff = cmdInput.retry.backoff ?? 'exponential';
+  const retryOn = cmdInput.retry.on;
   let lastResult: ExecCommandResult | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -432,7 +500,13 @@ async function runWithRetry(
       return { ...lastResult, retries: attempt };
     }
     if (attempt < maxRetries) {
-      const delay = computeRetryDelay(attempt, delayMs, backoff);
+      // Classify error: if we can determine it's terminal, stop immediately
+      if (!isRetryableExecResult(lastResult, retryOn)) {
+        logger.debug('exec: terminal error — not retrying', { cmd: cmdStr, attempt, stderr: lastResult.stderr.slice(0, 200) });
+        return { ...lastResult, retries: attempt };
+      }
+      const delay = computeRetryDelay(attempt, delayMs, backoff, maxDelayMs);
+      logger.debug('exec: retrying after jittered delay', { cmd: cmdStr, attempt, delay: Math.round(delay) });
       await sleep(delay);
     }
   }
