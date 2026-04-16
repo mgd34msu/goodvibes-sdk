@@ -149,33 +149,34 @@ export class RuntimeEventBus {
     domain: RuntimeEventDomain,
     envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>
   ): void {
-    // Dispatch to per-type listeners
+    // Snapshot both sets before iterating so that subscribe/unsubscribe calls
+    // triggered by a handler do not mutate the live Set mid-iteration (C3 fix).
     const typeSet = this._listeners.get(envelope.type);
-    if (typeSet) {
-      for (const handler of typeSet) {
-        try {
-          handler(envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
-        } catch (err) {
-          logger.error('[RuntimeEventBus] listener error', {
-            eventType: envelope.type,
-            error: summarizeError(err),
-          });
-        }
+    const typeHandlers = typeSet ? Array.from(typeSet) : [];
+    const domainSet = this._domainListeners.get(domain);
+    const domainHandlers = domainSet ? Array.from(domainSet) : [];
+
+    // Dispatch to per-type listeners
+    for (const handler of typeHandlers) {
+      try {
+        handler(envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+      } catch (err) {
+        logger.error('[RuntimeEventBus] listener error', {
+          eventType: envelope.type,
+          error: summarizeError(err),
+        });
       }
     }
     // Dispatch to per-domain listeners
-    const domainSet = this._domainListeners.get(domain);
-    if (domainSet) {
-      for (const handler of domainSet) {
-        try {
-          handler(envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
-        } catch (err) {
-          logger.error('[RuntimeEventBus] domain listener error', {
-            domain,
-            eventType: envelope.type,
-            error: summarizeError(err),
-          });
-        }
+    for (const handler of domainHandlers) {
+      try {
+        handler(envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+      } catch (err) {
+        logger.error('[RuntimeEventBus] domain listener error', {
+          domain,
+          eventType: envelope.type,
+          error: summarizeError(err),
+        });
       }
     }
   }

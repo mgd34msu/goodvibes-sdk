@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -177,7 +178,7 @@ export class SlackIntegration {
       code: options.code,
     });
     if (options.redirectUri) body.set('redirect_uri', options.redirectUri);
-    const res = await fetch('https://slack.com/api/oauth.v2.access', {
+    const res = await fetchWithTimeout('https://slack.com/api/oauth.v2.access', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -358,7 +359,7 @@ export class SlackIntegration {
       throw new Error(`SlackIntegration: token is required for ${method}`);
     }
     const body = new URLSearchParams(params);
-    const res = await fetch(`https://slack.com/api/${method}`, {
+    const res = await fetchWithTimeout(`https://slack.com/api/${method}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -389,7 +390,7 @@ export class SlackIntegration {
     if (blocks && blocks.length > 0) {
       payload.blocks = blocks;
     }
-    const res = await fetch('https://slack.com/api/chat.postMessage', {
+    const res = await fetchWithTimeout('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -420,7 +421,7 @@ export class SlackIntegration {
     if (blocks && blocks.length > 0) {
       payload.blocks = blocks;
     }
-    const res = await fetch(target, {
+    const res = await fetchWithTimeout(target, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

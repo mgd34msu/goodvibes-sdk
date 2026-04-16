@@ -1,4 +1,5 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 export interface NtfyPublishOptions {
   readonly title?: string;
@@ -54,7 +55,7 @@ export class NtfyIntegration {
     if (options.actions?.length) headers.set('Actions', options.actions.join(';'));
     if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
 
-    const response = await fetch(target, {
+    const response = await fetchWithTimeout(target, {
       method: 'POST',
       headers,
       body: message,

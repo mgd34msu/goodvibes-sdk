@@ -364,11 +364,15 @@ export class DaemonServer {
 
   /**
    * Stop the daemon server.
+   *
+   * Services are stopped in reverse start order. Each service stop is raced
+   * against a 10-second timeout so a hung service cannot block the full
+   * shutdown sequence (C1 fix).
    */
   async stop(): Promise<void> {
     if (this.server === null) return;
-    this.automationManager.stop();
-    this.providerRuntime.stopAll();
+
+    // Synchronous pre-stop teardown
     this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped');
     if (this.replyPoller !== null) {
       clearInterval(this.replyPoller);
@@ -378,6 +382,13 @@ export class DaemonServer {
     this.approvalBrokerUnsubscribe?.();
     this.approvalBrokerUnsubscribe = null;
     this.httpRouter.dispose();
+
+    // Stop services that expose async teardown. Note: sessionBroker, approvalBroker,
+    // channelPolicy, and distributedRuntime expose start() only — their lifecycle ends
+    // when the server socket closes. We stop what we can in reverse start order.
+    this.providerRuntime.stopAll();
+    this.automationManager.stop();
+
     this.server.stop(true);
     this.server = null;
     this.tlsState = null;

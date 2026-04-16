@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync, renameSync, openSync, fsyncSync, closeSync } from 'fs';
 import { join } from 'path';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import type { AgentRecord } from '../tools/agent/index.js';
@@ -47,6 +47,48 @@ export class SessionManager {
 
   constructor(baseDir: string, options?: { readonly surfaceRoot?: string; readonly sessionsDir?: string }) {
     this.sessionsDir = options?.sessionsDir ?? resolveScopedDirectory(baseDir, options?.surfaceRoot, 'sessions');
+    // Clean up orphaned tmp files from a previous crash (C4 fix)
+    this._cleanupOrphanTempFiles();
+  }
+
+  /**
+   * Remove any `.tmp-*` files left behind by a crashed write.
+   * Non-fatal: errors are logged and ignored.
+   */
+  private _cleanupOrphanTempFiles(): void {
+    if (!existsSync(this.sessionsDir)) return;
+    try {
+      const files = readdirSync(this.sessionsDir);
+      for (const f of files) {
+        if (f.startsWith('.tmp-')) {
+          try {
+            unlinkSync(join(this.sessionsDir, f));
+            logger.debug('SessionManager: removed orphan tmp file', { file: f });
+          } catch {
+            // Non-fatal
+          }
+        }
+      }
+    } catch {
+      // Non-fatal: directory may not be readable yet
+    }
+  }
+
+  /**
+   * Atomically write content to filePath via a temp file + fsync + rename.
+   * Protects against partial writes on crash (C4 fix).
+   */
+  private _atomicWrite(filePath: string, content: string): void {
+    const tmpPath = join(this.sessionsDir, `.tmp-${process.pid}-${Date.now()}`);
+    writeFileSync(tmpPath, content, 'utf-8');
+    // fsync to flush OS write buffers before rename
+    const fd = openSync(tmpPath, 'r+');
+    try {
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(tmpPath, filePath);
   }
 
   /**
@@ -94,7 +136,7 @@ export class SessionManager {
       }
     }
 
-    writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');
+    this._atomicWrite(filePath, lines.join('\n') + '\n');
     return { filePath, sanitizedName };
   }
 
@@ -297,7 +339,7 @@ export class SessionManager {
       const record = JSON.parse(lines[0]) as Record<string, unknown>;
       record.title = newTitle;
       lines[0] = JSON.stringify(record);
-      writeFileSync(filePath, lines.join('\n'), 'utf-8');
+      this._atomicWrite(filePath, lines.join('\n'));
     } catch {
       throw new Error(`Failed to update session title: ${name}`);
     }

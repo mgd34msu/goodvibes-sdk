@@ -10,6 +10,7 @@ import { ConfigManager } from '../config/manager.js';
 import { extractForwardedClientIp, resolveInboundTlsContext, type ResolvedInboundTlsContext } from '../runtime/network/index.js';
 import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
 import { requirePortAvailable } from './port-check.js';
+import { resolveHostBinding } from './host-resolver.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,11 +38,24 @@ interface HttpDangerConfig {
 // ---------------------------------------------------------------------------
 
 const RATE_WINDOW_MS = 60_000;
+/** Entries older than this are eligible for TTL eviction. Default: 10 minutes. */
+const RATE_TTL_MS = 10 * 60_000;
+/** Maximum number of IP entries kept in the limiter at any time (LRU eviction). */
+const RATE_MAX_ENTRIES = 10_000;
+/** How often the background sweep runs to evict expired entries (ms). */
+const RATE_SWEEP_INTERVAL_MS = 60_000;
 
 class RateLimiter {
+  /** hits[ip] = sorted ascending array of request timestamps within the window */
   private counts = new Map<string, number[]>();
+  /** Insertion-order LRU: tracks which IP was most recently active */
+  private accessOrder: string[] = [];
+  private sweepInterval: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private limit: number) {}
+  constructor(private limit: number) {
+    // Periodic sweep to evict entries whose TTL has expired (C5 fix)
+    this.sweepInterval = setInterval(() => this._sweep(), RATE_SWEEP_INTERVAL_MS);
+  }
 
   /** Returns true if the request is allowed, false if rate-limited. */
   check(ip: string): boolean {
@@ -50,7 +64,40 @@ class RateLimiter {
     const hits = (this.counts.get(ip) ?? []).filter((t) => t > windowStart);
     hits.push(now);
     this.counts.set(ip, hits);
+
+    // Maintain LRU access order
+    const idx = this.accessOrder.indexOf(ip);
+    if (idx !== -1) this.accessOrder.splice(idx, 1);
+    this.accessOrder.push(ip);
+
+    // Evict oldest entry when cap is exceeded
+    if (this.accessOrder.length > RATE_MAX_ENTRIES) {
+      const evict = this.accessOrder.shift()!;
+      this.counts.delete(evict);
+    }
+
     return hits.length <= this.limit;
+  }
+
+  /** Stop the background sweep interval. Call this when the listener stops. */
+  stop(): void {
+    if (this.sweepInterval !== null) {
+      clearInterval(this.sweepInterval);
+      this.sweepInterval = null;
+    }
+  }
+
+  /** Evict entries whose last-seen timestamp is older than RATE_TTL_MS. */
+  private _sweep(): void {
+    const cutoff = Date.now() - RATE_TTL_MS;
+    for (const [ip, hits] of this.counts) {
+      // If the most recent hit is older than TTL, the entry is stale
+      if (hits.length === 0 || hits[hits.length - 1] < cutoff) {
+        this.counts.delete(ip);
+        const idx = this.accessOrder.indexOf(ip);
+        if (idx !== -1) this.accessOrder.splice(idx, 1);
+      }
+    }
   }
 }
 
@@ -83,8 +130,14 @@ export class HttpListener {
 
   constructor(private config: HttpListenerConfig) {
     this.configManager = config.configManager;
-    this.port = config.port ?? Number(this.configManager.get('httpListener.port') ?? 3422);
-    this.host = config.host ?? String(this.configManager.get('httpListener.host') ?? '127.0.0.1');
+    const resolvedHttpBinding = resolveHostBinding(
+      (this.configManager.get('httpListener.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
+      String(this.configManager.get('httpListener.host') ?? '127.0.0.1'),
+      Number(this.configManager.get('httpListener.port') ?? 3422),
+      'httpListener',
+    );
+    this.port = config.port ?? resolvedHttpBinding.port;
+    this.host = config.host ?? resolvedHttpBinding.host;
     this.allowedOrigins = config.allowedOrigins ?? [];
     this.hookDispatcher = config.hookDispatcher ?? null;
     this.userAuth = config.userAuth;
@@ -149,6 +202,8 @@ export class HttpListener {
    */
   async stop(): Promise<void> {
     if (this.server === null) return;
+    // Stop rate limiter sweep interval before tearing down (C5 fix)
+    this.rateLimiter.stop();
     this.server.stop(true);
     this.server = null;
     this.tlsState = null;
