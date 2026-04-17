@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.18.51
+
+**CRITICAL (React Native bundling fix)**: Removed `OAuthClient` from unconditional auth barrel; Web Crypto adapter (`crypto-adapter.ts`) now fully replaces the deleted `node:crypto` fallback (`crypto-adapter.node.ts`). Node consumers that need `OAuthClient` must import from `@pellux/goodvibes-sdk/oauth`. The orphaned node adapter file is deleted — Node >= 19 has `globalThis.crypto` natively; Node 18 is EOL.
+
+**BREAKING (TypeScript + runtime)**: The following functions changed from sync to async: `OAuthClient.beginAuthorization`, `beginOpenAICodexLogin`, `SubscriptionManager.beginOAuthLogin`. All callers must `await` the result. TUI consumers on `goodvibes-tui` < v0.18.27 must upgrade concurrently (8 call sites affected).
+
+**Minor**: `decodeJwtPayload` now throws a descriptive `Error` if `atob` is not available at runtime (incompatible runtime detection), rather than silently returning `null` for all failures. The existing `try/catch` still returns `null` for malformed JWTs.
+
+**CI hardening**: `test/rn-bundle-node-imports.test.ts` now fails with `expect(existsSync(filePath)).toBe(true)` when the dist bundle is absent, preventing silent CI passes on builds that skipped the build step.
+
+**Minimum Node engine raised to 19** (`engines: { node: >=19 }` added to `packages/sdk/package.json`).
+
+## 0.18.50
+
+Five concurrent WRFC chains bundled, all passing 10.0/10.0. Biggest breaking surface change since the 0.18.29 boundary separation.
+
+- **Unified error hierarchy with tagged kind (Tier 4 #1)**: New `SDKErrorKind` union (`auth | config | contract | network | not-found | rate-limit | server | validation | unknown`). `GoodVibesSdkError` carries a typed `kind` discriminant derived from `category` at construction. Legacy `HttpStatusError` / `ConfigurationError` / `ContractError` preserved as deprecated subclasses so `instanceof` still works.
+- **Orchestrator options-object constructor (Tier 4 #3) — BREAKING**: `Orchestrator` constructor changed from 11 positional args to a single `OrchestratorOptions` object. Required fields validated; optional fields carry defaults via destructuring. All in-tree callsites (production + tests) migrated in the same wave.
+- **Auth client split (Tier 4 #6)**: Extracted `TokenStore`, `SessionManager`, `OAuthClient`, and `PermissionResolver` as focused classes under `_internal/platform/auth/`. `GoodVibesAuthClient` facade preserved; aggregated token methods marked `@deprecated`. No runtime behavior change for existing consumers.
+- **realtime.forSession(sessionId) helper (R2.1)**: Standalone export on the realtime transport layer. Takes `(events, sessionId)` and returns a pre-filtered `DomainEvents` view where every `on`/`onEnvelope` callback fires only for events matching the session. Re-exported from all 5 runtime entry-points.
+- **DX wave 2 — @see JSDoc (R6.1)**: Top-level `GoodVibesSdk` namespaces, the `createGoodVibesSdk` factory, and auth-related option fields carry `@see` pointers (absolute GitHub URLs) to the relevant docs.
+
+## 0.18.49
+
+Five concurrent WRFC chains shipped bundled, all passing 10.0/10.0. Addresses the highest-leverage findings from the end-to-end DX deep-dive audit.
+
+- **Transport error class** (DX audit's top leverage point): `createTransportError` / `createNetworkTransportError` now throw `HttpStatusError` so `error instanceof HttpStatusError` works as documented. Category payload shape finalized with `statusCode`, `method`, `url`, `requestId` fields.
+- **JSDoc coverage wave 1**: All public transport types, operator client methods, and peer client methods now carry structured JSDoc with `@param`, `@returns`, `@throws`, and `@example` annotations.
+- **Docs and examples**: New `docs/transport-errors.md` guide; runnable code examples added to `docs/examples/`.
+- **Remaining DX audit items**: `AuthTokenInput` type alias exported from `transport-http`; `listModels()` return type tightened to `readonly Provider[]`.
+
+## 0.18.48
+
+Hot-patch fixing a production 404 on `POST /api/companion/chat/sessions`.
+
+- **Root cause**: `DaemonHttpRouter` gates companion chat routes on `companionChatManager` being present in its context. The handler code shipped in 0.18.43, but `facade-composition.ts` never constructed or injected a `CompanionChatManager`. The route guard was always falsy, producing 404 for all external companion-chat consumers.
+- **Fix**: `facade-composition.ts` now constructs `CompanionChatManager` and passes it through the daemon context. Route guard becomes truthy. No API contract changes.
+
+## 0.18.47
+
+`stopReason` on `ChatResponse` normalized to a fixed `ChatStopReason` union (`completed | max_tokens | tool_call | stop_sequence | content_filter | error | unknown`). Previous raw provider value preserved at `providerStopReason?: string`. New `normalizeAuthToken()` helper exported from `@pellux/goodvibes-sdk/transport-http` normalizes `string | object | function` auth-token inputs into a canonical resolver. See `docs/releases/0.18.47.md`.
+
+## 0.18.46
+
+CI build fix for `RuntimeEventRecord` variance. `createEventSourceConnector` and `createWebSocketConnector` in `transport-realtime/runtime-events.ts` return types widened to resolve TS2322 variance errors that only surfaced under `tsc -b` project references (not `tsc --noEmit`). No API changes.
+
+## 0.18.45
+
+`ProviderRegistry` canonical accessors (`has()`, `require()`, `tryGet()`) added. `get()` deprecated in favor of `require()`. `RuntimeEventRecord` is now a fully typed discriminated union — consumers narrow events by switching on `event.type` instead of casting `event.payload`. See `docs/releases/0.18.45.md`.
+
+## 0.18.44
+
+`ConfigManager.subscribe(key, cb)` keyed listener API added. New `daemon/host-mode-watcher.ts` (`createHostModeRestartWatcher`) watches `controlPlane.hostMode/host/port` and `httpListener.hostMode/host/port` and transparently restarts the affected server on config changes, without a full daemon bounce. See `docs/releases/0.18.44.md`.
+
 ## 0.18.43
 
 Coordinated release bundling two WRFC chains that both passed at 10.0/10.0:

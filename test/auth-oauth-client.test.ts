@@ -12,54 +12,54 @@ const BASE_CONFIG: OAuthProviderConfig = {
 
 describe('OAuthClient', () => {
   describe('beginAuthorization', () => {
-    test('returns a valid authorization URL', () => {
+    test('returns a valid authorization URL', async () => {
       const client = new OAuthClient(BASE_CONFIG);
-      const result = client.beginAuthorization();
+      const result = await client.beginAuthorization();
       expect(result.authorizationUrl).toMatch(/^https:\/\/auth\.example\.com\/authorize/);
     });
 
-    test('authorization URL contains client_id', () => {
+    test('authorization URL contains client_id', async () => {
       const client = new OAuthClient(BASE_CONFIG);
-      const result = client.beginAuthorization();
+      const result = await client.beginAuthorization();
       const url = new URL(result.authorizationUrl);
       expect(url.searchParams.get('client_id')).toBe('test-client-id');
     });
 
-    test('authorization URL contains scopes', () => {
+    test('authorization URL contains scopes', async () => {
       const client = new OAuthClient(BASE_CONFIG);
-      const result = client.beginAuthorization();
+      const result = await client.beginAuthorization();
       const url = new URL(result.authorizationUrl);
       expect(url.searchParams.get('scope')).toBe('openid profile');
     });
 
-    test('includes PKCE code_challenge by default', () => {
+    test('includes PKCE code_challenge by default', async () => {
       const client = new OAuthClient(BASE_CONFIG);
-      const result = client.beginAuthorization();
+      const result = await client.beginAuthorization();
       const url = new URL(result.authorizationUrl);
       expect(url.searchParams.get('code_challenge')).toBeTruthy();
       expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     });
 
-    test('returns state and verifier for the callback phase', () => {
+    test('returns state and verifier for the callback phase', async () => {
       const client = new OAuthClient(BASE_CONFIG);
-      const result = client.beginAuthorization();
+      const result = await client.beginAuthorization();
       expect(typeof result.state).toBe('string');
       expect(result.state.length).toBeGreaterThan(0);
       expect(typeof result.verifier).toBe('string');
       expect(result.verifier.length).toBeGreaterThan(0);
     });
 
-    test('accepts explicit state and verifier overrides', () => {
+    test('accepts explicit state and verifier overrides', async () => {
       const client = new OAuthClient(BASE_CONFIG);
-      const result = client.beginAuthorization({ state: 'fixed-state', verifier: 'fixed-verifier' });
+      const result = await client.beginAuthorization({ state: 'fixed-state', verifier: 'fixed-verifier' });
       expect(result.state).toBe('fixed-state');
       expect(result.verifier).toBe('fixed-verifier');
     });
 
-    test('generates unique state on each call', () => {
+    test('generates unique state on each call', async () => {
       const client = new OAuthClient(BASE_CONFIG);
-      const r1 = client.beginAuthorization();
-      const r2 = client.beginAuthorization();
+      const r1 = await client.beginAuthorization();
+      const r2 = await client.beginAuthorization();
       expect(r1.state).not.toBe(r2.state);
     });
   });

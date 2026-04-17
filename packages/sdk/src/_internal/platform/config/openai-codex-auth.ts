@@ -25,8 +25,8 @@ export interface OpenAICodexTokenResult {
   readonly scopes?: readonly string[];
 }
 
-export function beginOpenAICodexLogin(): OpenAICodexLoginStart {
-  const started = buildOAuthAuthorizationStart({
+export async function beginOpenAICodexLogin(): Promise<OpenAICodexLoginStart> {
+  const started = await buildOAuthAuthorizationStart({
     authUrl: OPENAI_CODEX_AUTHORIZE_URL,
     tokenUrl: OPENAI_CODEX_TOKEN_URL,
     clientId: OPENAI_CODEX_CLIENT_ID,

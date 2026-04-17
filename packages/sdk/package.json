@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.18.50",
+  "version": "0.18.51",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
@@ -51,6 +51,10 @@
     "./auth": {
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.js"
+    },
+    "./oauth": {
+      "types": "./dist/oauth.d.ts",
+      "import": "./dist/oauth.js"
     },
     "./errors": {
       "types": "./dist/errors.d.ts",
@@ -128,6 +132,9 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=19"
   },
   "sideEffects": false,
   "type": "module",
