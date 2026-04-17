@@ -32,6 +32,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.19.3] - 2026-04-17
+
+Error taxonomy enforcement on the public surface.
+
+### Breaking
+
+- **Public SDK functions now throw typed `GoodVibesSdkError` instead of raw `Error`** (Wave S-β): consumers can now discriminate errors by `err.kind` / `err.category` / `err.source` fields rather than string-matching `err.message`. The error types are unchanged — only the concrete throw sites are now typed. Code that catches and inspects SDK errors may gain new structured fields; code that catches without inspection continues to work unchanged.
+- Converted 7 raw throw sites on the canonical public surface:
+  - `packages/daemon-sdk/src/knowledge-routes.ts` (4 schedule validation throws → `GoodVibesSdkError` with `category: 'bad_request'`, `source: 'contract'`, which maps to kind `validation`).
+  - `packages/transport-http/src/contract-client.ts` (1 unknown-route throw → `category: 'contract'`, kind `contract`).
+  - `packages/transport-http/src/paths.ts` (1 missing-baseUrl throw → `ConfigurationError` with code `SDK_TRANSPORT_BASE_URL_REQUIRED`, kind `config`).
+  - `packages/operator-sdk/src/client-core.ts` (1 no-HTTP-binding throw → `category: 'contract'`, kind `contract`).
+
+### Added
+
+- **`throw-guard` CI job** (Wave S-β): `.github/workflows/ci.yml` gains a ripgrep-based gate that fails the build if any of the following patterns appear in public source (`packages/**/src/**` excluding `_internal/`, `errors/`, tests): `throw new Error(`, `throw Error(`, `throw {`, `throw '`, `throw "`. Enforced on push/PR to `main`. Prevents regression of the typed-error contract.
+- **`docs/error-kinds.md`** (Wave S-β): one section per `SDKErrorKind` value documenting when it fires, what remediation consumers should attempt, and whether it's retryable.
+- **`docs/error-handling.md` extended** (Wave S-β): typed-discrimination consumer pattern with a TUI-style `switch (err.kind)` example.
+
+### Migration
+
+- Consumers catching SDK errors can now use `if (err instanceof GoodVibesSdkError) switch (err.kind) { ... }` to handle specific error categories. See `docs/error-handling.md` for the canonical pattern.
+- If your code was catching specific error messages via string match, verify the corresponding `err.kind` / `err.category` gives you the same discriminator. Message strings may change; kinds will not (post-1.0).
+
+---
+
 ## [0.19.2] - 2026-04-17
 
 Mirror drift cleanup. No consumer-facing API changes.

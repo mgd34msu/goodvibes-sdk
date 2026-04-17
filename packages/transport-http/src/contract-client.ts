@@ -1,3 +1,4 @@
+import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { HttpTransport } from './http.js';
 import { openServerSentEventStream, type ServerSentEventHandlers } from './sse-stream.js';
 
@@ -37,7 +38,7 @@ export function requireContractRoute<TRoute extends ContractRouteLike>(
 ): TRoute {
   const route = routes.find((candidate) => candidate.id === routeId);
   if (!route) {
-    throw new Error(`Unknown ${kind} "${routeId}"`);
+    throw new GoodVibesSdkError(`Unknown ${kind} "${routeId}"`, { category: 'contract', source: 'contract', recoverable: false });
   }
   return route;
 }
