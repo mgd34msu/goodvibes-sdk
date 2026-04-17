@@ -1,5 +1,4 @@
 // Synced from packages/transport-direct/src/index.ts
-// Extracted from legacy source: src/runtime/transports/direct-client.ts
 import { createClientTransport, type ClientTransport } from '../transport-core/index.js';
 
 export type DirectClientTransport<TOperator, TPeer> = ClientTransport<'direct', TOperator, TPeer>;

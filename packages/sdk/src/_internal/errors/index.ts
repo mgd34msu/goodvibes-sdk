@@ -239,8 +239,8 @@ export class ContractError extends GoodVibesSdkError {
  * Thrown when the daemon returns a non-2xx HTTP status code.
  *
  * The `category` field is inferred from the status code:
- * - `401` → `'authentication'`  `402` → `'billing'`  `403` → `'authorization'`
- * - `404` → `'not_found'`  `408` → `'timeout'`  `429` → `'rate_limit'`
+ * - `401` → `'authentication'`  `402` → `'billing'`  `403` → `'authorization'`
+ * - `404` → `'not_found'`  `408` → `'timeout'`  `429` → `'rate_limit'`
  * - `5xx` → `'service'`
  *
  * Use `recoverable` to decide whether to retry, and `retryAfterMs` for

@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/runtime-routes.ts
-// Extracted from legacy source: src/daemon/http/runtime-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { createDaemonRuntimeAutomationRouteHandlers } from './runtime-automation-routes.js';
 import { createDaemonRuntimeSessionRouteHandlers } from './runtime-session-routes.js';

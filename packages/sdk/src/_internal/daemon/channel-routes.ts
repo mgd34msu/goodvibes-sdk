@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/channel-routes.ts
-// Extracted from legacy source: src/daemon/http/channel-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { readChannelConversationKind, readChannelLifecycleAction } from './route-helpers.js';
 import type { ChannelDirectoryScope, ChannelSurface, DaemonChannelRouteContext } from './channel-route-types.js';

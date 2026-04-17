@@ -1,33 +1,55 @@
-# Security
+# Security Policy
+
+## Supported Versions
+
+| Version | Supported |
+|---------|-----------|
+| 0.19.x (latest) | :white_check_mark: |
+| < 0.19.0 | :x: |
+
+## Reporting a Vulnerability
+
+**Please do not file public GitHub issues for security vulnerabilities.**
+
+Report security issues privately via the main GoodVibes security channel:
+
+- **Email**: mgd34msu@gmail.com (subject: `[SECURITY] goodvibes-sdk <brief description>`)
+- **GitHub private vulnerability reporting**: Use the [Security tab](https://github.com/mgd34msu/goodvibes-sdk/security/advisories/new) on this repository
+
+Include:
+- A description of the vulnerability
+- Steps to reproduce
+- Potential impact assessment
+- Any suggested mitigations (optional)
+
+## Response SLA
+
+| Severity | Initial Response | Fix Target |
+|----------|-----------------|------------|
+| Critical (CVSS 9.0+) | 24 hours | 7 days |
+| High (CVSS 7.0–8.9) | 48 hours | 14 days |
+| Medium (CVSS 4.0–6.9) | 5 business days | 30 days |
+| Low (CVSS < 4.0) | 10 business days | Best effort |
+
+Reporters will be notified when the vulnerability is confirmed, when a fix is staged, and when a release ships.
+
+## Scope
 
 Security-sensitive areas in this SDK include:
-- bearer-token handling
-- session login flows
-- token persistence adapters
-- realtime event streams
-- daemon route embedding
-- structured error propagation
 
-## Reporting
-
-If you find a security issue in:
-- the GoodVibes protocol
-- the daemon route helpers
-- auth/session behavior
-- token persistence guidance
-- retry/reconnect behavior that could leak data
-
-report it privately through the main GoodVibes security/reporting channel rather than filing a public issue with exploit details.
-
-## Scope Notes
-
-This repo publishes TypeScript packages and owns its own platform/client behavior.
+- Bearer-token handling
+- Session login flows
+- Token persistence adapters
+- Realtime event streams
+- Daemon route embedding
+- Structured error propagation
 
 ## Consumer Guidance
 
 When building with this SDK:
-- prefer bearer tokens for service-to-service and mobile companion clients
-- use secure storage for persisted tokens
-- avoid logging raw credentials or bearer tokens
-- treat structured error fields as telemetry/debug metadata, not something to expose directly to end users without review
-- validate CORS and cookie/session assumptions explicitly when using browser session auth
+
+- Prefer bearer tokens for service-to-service and mobile companion clients
+- Use secure storage for persisted tokens
+- Avoid logging raw credentials or bearer tokens
+- Treat structured error fields as telemetry/debug metadata — do not expose directly to end users without review
+- Validate CORS and cookie/session assumptions explicitly when using browser session auth

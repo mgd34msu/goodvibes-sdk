@@ -1,7 +1,6 @@
 // Synced from packages/daemon-sdk/src/runtime-session-routes.ts
-// Extracted from legacy source: src/daemon/http/runtime-session-routes.ts
-import { randomUUID } from 'node:crypto';
 import type { DaemonApiRouteHandlers } from './context.js';
+import { randomUUID } from 'node:crypto';
 import type {
   AutomationSurfaceKind,
   DaemonRuntimeRouteContext,

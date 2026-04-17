@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/system-route-types.ts
-// Extracted from legacy source: src/daemon/http/system-route-types.ts
 import type { JsonRecord } from './route-helpers.js';
 
 export type DaemonApiClientKind =

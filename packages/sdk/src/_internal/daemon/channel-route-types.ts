@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/channel-route-types.ts
-// Extracted from legacy source: src/daemon/http/channel-route-types.ts
 import type { ChannelConversationKind, ChannelLifecycleAction, JsonRecord } from './route-helpers.js';
 
 export type ChannelSurface = string;

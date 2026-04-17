@@ -1,5 +1,20 @@
 import type { DaemonApiRouteHandlers } from './context.js';
 
+/**
+ * Stable envelope shape for conversation-message-related events published
+ * through the control-plane gateway. Used by companion follow-up routing
+ * (kind='message') to broadcast messages to TUI surface subscribers without
+ * spawning an agent.
+ */
+export interface ConversationMessageEnvelope {
+  readonly messageId: string;
+  readonly body: string;
+  readonly source: string;
+  readonly timestamp: number;
+  /** Optional metadata (tool info, model id, etc.) */
+  readonly metadata?: Readonly<Record<string, unknown>>;
+}
+
 export type JsonBody = Record<string, unknown>;
 
 export type AutomationSurfaceKind = string;
@@ -195,6 +210,12 @@ export interface DaemonRuntimeRouteContext {
       source: string,
     ): void;
   } | null;
+  /**
+   * Publish a conversation follow-up event scoped to a specific session.
+   * Used by Problem-2 message routing: kind='message' submits skip agent spawn
+   * and instead broadcast a ConversationMessageEnvelope to TUI surface subscribers.
+   */
+  readonly publishConversationFollowup: (sessionId: string, envelope: Omit<ConversationMessageEnvelope, 'sessionId'>) => void;
 }
 
 export type DaemonRuntimeRouteHandlerMap = Pick<

@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/operator.ts
-// Extracted from legacy source: src/control-plane/routes/operator.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 
 export async function dispatchOperatorRoutes(

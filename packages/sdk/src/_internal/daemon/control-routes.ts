@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/control-routes.ts
-// Extracted from legacy source: src/daemon/http/control-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import type { RuntimeEventDomain } from '../contracts/index.js';
 import type { AuthenticatedPrincipal } from './http-policy.js';

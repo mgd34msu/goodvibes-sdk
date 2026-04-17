@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/tasks.ts
-// Extracted from legacy source: src/control-plane/routes/tasks.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 
 export async function dispatchTaskRoutes(

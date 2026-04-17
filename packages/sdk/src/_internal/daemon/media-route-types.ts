@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/media-route-types.ts
-// Extracted from legacy source: src/daemon/http/media-route-types.ts
 export type ArtifactKind = string;
 export type FetchExtractMode = string;
 export type MediaArtifact = Record<string, unknown>;

@@ -18,7 +18,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
 const TARGET_ROOT = resolve(SDK_ROOT, 'packages/sdk/src/_internal');
 const CHECK_ONLY = process.argv.includes('--check');
-const SCOPE_ARG = process.argv.find((a) => a.startsWith('--scope='))?.slice('--scope='.length) ?? null;
+const SCOPE_RAW = process.argv.find((a) => a.startsWith('--scope='))?.slice('--scope='.length) ?? null;
+
+// Safety gate: refuse to run without --scope unless --scope=all is explicitly provided
+if (!CHECK_ONLY && SCOPE_RAW === null) {
+  console.error(
+    'sync: refusing to run without --scope.\n' +
+    'Example: bun run sync --scope=transport-core\n' +
+    'Use --scope=all only if you absolutely mean it (nukes the entire mirror tree).',
+  );
+  process.exit(1);
+}
+
+const SCOPE_ALL = SCOPE_RAW === 'all';
+if (!CHECK_ONLY && SCOPE_ALL) {
+  console.warn('sync: WARNING — --scope=all will delete and regenerate the entire mirror tree. Proceeding.');
+}
+
+// Support comma-separated scopes: --scope=daemon,errors,operator
+const SCOPE_LIST: string[] | null = SCOPE_ALL || SCOPE_RAW === null
+  ? null
+  : SCOPE_RAW.split(',').map((s) => s.trim()).filter(Boolean);
 
 const PACKAGE_SPECS = [
   {
@@ -146,6 +166,11 @@ function removeStaleFiles(validTargetPaths, scopeDir = null) {
   if (!statSafe(walkRoot)?.isDirectory()) return stale;
 
   for (const filePath of walk(walkRoot)) {
+    // Never delete barrel .ts files at the _internal/ root level — they are not
+    // managed by the sync script and are maintained manually.
+    if (scopeDir === null && filePath.endsWith('.ts') && resolve(filePath, '..') === TARGET_ROOT) {
+      continue;
+    }
     if (!validTargetPaths.has(filePath)) {
       stale.push(filePath);
     }
@@ -162,13 +187,20 @@ function removeStaleFiles(validTargetPaths, scopeDir = null) {
   return stale;
 }
 
-const activeSpecs = SCOPE_ARG
-  ? PACKAGE_SPECS.filter((s) => s.targetDir.endsWith(`/${SCOPE_ARG}`))
-  : PACKAGE_SPECS;
+// Valid scope names (derived from targetDir basenames)
+const VALID_SCOPES = ['contracts', 'errors', 'daemon', 'transport-core', 'transport-direct', 'transport-http', 'transport-realtime', 'operator', 'peer'];
 
-if (SCOPE_ARG && activeSpecs.length === 0) {
-  console.error(`Unknown scope: ${SCOPE_ARG}`);
-  process.exit(1);
+let activeSpecs = PACKAGE_SPECS;
+if (SCOPE_LIST !== null) {
+  // Validate all requested scopes before running any
+  const unknownScopes = SCOPE_LIST.filter((s) => !VALID_SCOPES.includes(s));
+  if (unknownScopes.length > 0) {
+    console.error(`sync: unknown scope(s): ${unknownScopes.join(', ')}`);
+    console.error(`Valid scopes: ${VALID_SCOPES.join(', ')}`);
+    console.error('Use --scope=all to sync everything.');
+    process.exit(1);
+  }
+  activeSpecs = PACKAGE_SPECS.filter((s) => SCOPE_LIST.some((sc) => s.targetDir.endsWith(`/${sc}`)));
 }
 
 const sourceFiles = [];
@@ -206,8 +238,15 @@ for (const artifact of artifactFiles) {
   changed = syncArtifactFile(artifact.filePath, artifact.targetDir, artifact.artifactsDir) || changed;
 }
 
-const scopeTargetDir = SCOPE_ARG ? activeSpecs[0]?.targetDir ?? null : null;
-const stale = removeStaleFiles(validTargetPaths, scopeTargetDir);
+// For multi-scope, remove stale files from each scoped targetDir independently
+const stale: string[] = [];
+if (SCOPE_LIST !== null && !SCOPE_ALL) {
+  for (const spec of activeSpecs) {
+    stale.push(...removeStaleFiles(validTargetPaths, spec.targetDir));
+  }
+} else {
+  stale.push(...removeStaleFiles(validTargetPaths, null));
+}
 if (stale.length > 0) {
   changed = true;
 }

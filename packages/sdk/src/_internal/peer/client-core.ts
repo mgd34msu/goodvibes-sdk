@@ -1,5 +1,4 @@
 // Synced from packages/peer-sdk/src/client-core.ts
-// Extracted from legacy source: src/runtime/transports/peer-remote-client.ts
 import type { PeerContractManifest, PeerEndpointContract } from '../contracts/index.js';
 import type {
   PeerEndpointInput,

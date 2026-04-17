@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/media-routes.ts
-// Extracted from legacy source: src/daemon/http/media-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { resolvePrivateHostFetchOptions } from './http-policy.js';
 import { jsonErrorResponse } from './error-response.js';

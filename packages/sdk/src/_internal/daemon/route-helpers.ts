@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/route-helpers.ts
-// Extracted from legacy source: src/daemon/http/route-helpers.ts
 export type JsonRecord = Record<string, unknown>;
 
 export function isJsonRecord(value: unknown): value is JsonRecord {

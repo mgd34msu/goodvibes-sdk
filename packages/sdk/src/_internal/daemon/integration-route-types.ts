@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/integration-route-types.ts
-// Extracted from legacy source: src/daemon/http/integration-route-types.ts
 import type { JsonRecord } from './route-helpers.js';
 
 export type RuntimeEventDomain = string;

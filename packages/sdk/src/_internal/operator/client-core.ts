@@ -1,5 +1,5 @@
 // Synced from packages/operator-sdk/src/client-core.ts
-// Extracted from legacy source: src/runtime/transports/operator-remote-client.ts
+import { GoodVibesSdkError } from '../errors/index.js';
 import type { OperatorContractManifest, OperatorMethodContract } from '../contracts/index.js';
 import type {
   OperatorMethodInput,
@@ -171,7 +171,7 @@ function requireMethodRoute(
 ): ContractRouteDefinition {
   const method = requireMethod(contract, methodId);
   if (!method.http) {
-    throw new Error(`Operator method "${methodId}" does not expose an HTTP binding`);
+    throw new GoodVibesSdkError(`Operator method "${methodId}" does not expose an HTTP binding`, { category: 'contract', source: 'contract', recoverable: false });
   }
   return method.http;
 }
