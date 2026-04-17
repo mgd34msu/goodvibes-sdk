@@ -17,6 +17,7 @@ import type {
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
 import { toOpenAITools } from './tool-formats.js';
 import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { mapOllamaStopReason } from './stop-reason-maps.js';
 
 type NativeFetch = (
   input: RequestInfo | URL,
@@ -259,9 +260,7 @@ export class OllamaProvider implements LLMProvider {
       }
     });
 
-    const stopReason: ChatResponse['stopReason'] = finalToolCalls.length > 0 || /tool/i.test(doneReason)
-      ? 'tool_use'
-      : (/length|max_tokens/i.test(doneReason) ? 'max_tokens' : 'end');
+    const stopReason = mapOllamaStopReason(doneReason, finalToolCalls.length > 0);
 
     return {
       content: responseText,
@@ -271,6 +270,7 @@ export class OllamaProvider implements LLMProvider {
         outputTokens,
       },
       stopReason,
+      ...(doneReason ? { providerStopReason: doneReason } : {}),
     };
   }
 }

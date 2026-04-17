@@ -14,6 +14,7 @@ import type {
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
+import { mapLlamaCppStopReason } from './stop-reason-maps.js';
 import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
 import {
   extractTextToolCalls,
@@ -218,10 +219,9 @@ export class LlamaCppProvider implements LLMProvider {
       params.onDelta?.({ content: responseText });
     }
 
-    const stopReason: ChatResponse['stopReason'] = finalToolCalls.length > 0 || choice?.finish_reason === 'tool_calls'
-      ? 'tool_use'
-      : (choice?.finish_reason === 'length' ? 'max_tokens' : 'end');
+    const stopReason = mapLlamaCppStopReason(choice?.finish_reason, finalToolCalls.length > 0);
 
+    const rawStopReason = choice?.finish_reason ?? undefined;
     return {
       content: responseText,
       toolCalls: finalToolCalls,
@@ -233,6 +233,7 @@ export class LlamaCppProvider implements LLMProvider {
           : {}),
       },
       stopReason,
+      ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
     };
   }
 }

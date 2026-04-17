@@ -171,16 +171,6 @@ export function mapNativeReasoningEffort(
   }
 }
 
-export function mapResponsesStopReason(
-  status: string | undefined,
-  toolCalls: ToolCall[],
-): ChatResponse['stopReason'] {
-  if (toolCalls.length > 0 && status === 'completed') return 'tool_use';
-  if (status === 'incomplete') return 'max_tokens';
-  if (status === 'failed' || status === 'cancelled') return 'error';
-  return 'end';
-}
-
 export function extractNativeMessageText(output: NativeChatOutputItem[] | undefined): string {
   if (!Array.isArray(output)) return '';
   return output

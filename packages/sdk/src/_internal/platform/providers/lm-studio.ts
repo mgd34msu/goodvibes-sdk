@@ -27,7 +27,6 @@ import {
   type LMStudioResponsesStream,
   makeTranscriptKey,
   mapNativeReasoningEffort,
-  mapResponsesStopReason,
   type NativeChatContext,
   type NativeChatResult,
   type NativeFetch,
@@ -38,6 +37,7 @@ import {
   toNativeChatInput,
   toRecord,
 } from './lm-studio-helpers.js';
+import { mapLmStudioStopReason } from './stop-reason-maps.js';
 
 export interface LMStudioProviderOptions extends OpenAICompatOptions {
   nativeFetch?: NativeFetch;
@@ -316,7 +316,9 @@ export class LMStudioProvider implements LLMProvider {
         inputTokens,
         outputTokens,
       },
-      stopReason: 'end',
+      // LM Studio native chat API does not expose a finish_reason/status field;
+      // no providerStopReason is available on this code path.
+      stopReason: 'completed',
     };
   }
 
@@ -472,7 +474,8 @@ export class LMStudioProvider implements LLMProvider {
         outputTokens,
         ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
       },
-      stopReason: mapResponsesStopReason(status, resolvedToolCalls),
+      stopReason: mapLmStudioStopReason(status, resolvedToolCalls.length > 0),
+      ...(status !== 'completed' ? { providerStopReason: status } : {}),
     };
 
     if (reasoningSummary) {
