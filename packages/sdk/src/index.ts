@@ -3,6 +3,7 @@ export type {
   GoodVibesSdk,
   GoodVibesRealtimeOptions,
   GoodVibesSdkOptions,
+  RuntimeEventRecord,
 } from './client.js';
 export { createGoodVibesSdk } from './client.js';
 export type {

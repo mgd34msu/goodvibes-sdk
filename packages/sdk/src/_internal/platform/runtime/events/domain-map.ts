@@ -146,3 +146,14 @@ export type DomainEventMap = {
   surfaces: SurfaceEvent;
   knowledge: KnowledgeEvent;
 };
+
+/**
+ * Legacy alias for `AnyRuntimeEvent` used by transport-layer generics.
+ *
+ * Historically the transport layer used `{ readonly type: string }` as a loose
+ * catch-all bound. This alias replaces that with the fully-typed discriminated
+ * union so TypeScript narrows `payload` automatically on `type` match.
+ *
+ * @deprecated Prefer `AnyRuntimeEvent` for new code.
+ */
+export type RuntimeEventRecord = AnyRuntimeEvent;

@@ -290,20 +290,14 @@ export const AUTO_REGISTER_CATALOG: AutoRegisterEntry[] = [
 
 /**
  * Check whether a provider ID is already registered in the provider registry.
- * Uses try/catch since ProviderRegistry.get() throws on missing providers.
  *
  * @internal Exported for testing.
  */
 export function isProviderRegistered(
-  providerRegistry: Pick<ProviderRegistry, 'get'>,
+  providerRegistry: Pick<ProviderRegistry, 'has'>,
   providerId: string,
 ): boolean {
-  try {
-    providerRegistry.get(providerId);
-    return true;
-  } catch {
-    return false;
-  }
+  return providerRegistry.has(providerId);
 }
 
 /**
@@ -375,7 +369,7 @@ export function createProviderFromEntry(entry: AutoRegisterEntry, apiKey: string
  * // }
  */
 export function autoRegisterProviders(
-  providerRegistry: Pick<ProviderRegistry, 'get' | 'register'>,
+  providerRegistry: Pick<ProviderRegistry, 'has' | 'register'>,
   catalog: AutoRegisterEntry[] = AUTO_REGISTER_CATALOG,
 ): string[] {
   const registered: string[] = [];

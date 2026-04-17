@@ -16,7 +16,7 @@ export { createEventEnvelope } from './event-envelope.js';
 export type { EventEnvelope, EventEnvelopeContext } from './event-envelope.js';
 export type { RuntimeEventEnvelope, EnvelopeContext } from './events/envelope.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from './events/domain-map.js';
-export type { AnyRuntimeEvent, RuntimeEventDomain } from './events/domain-map.js';
+export type { AnyRuntimeEvent, RuntimeEventDomain, RuntimeEventRecord } from './events/domain-map.js';
 export { createRuntimeEventFeed, createRuntimeEventFeeds } from './event-feeds.js';
 export type { RuntimeEventFeed, RuntimeEventFeeds } from './event-feeds.js';
 

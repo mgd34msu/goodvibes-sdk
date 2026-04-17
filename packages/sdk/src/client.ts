@@ -21,6 +21,7 @@ import {
   createWebSocketConnector,
   type RemoteRuntimeEvents,
 } from './_internal/transport-realtime/index.js';
+import type { AnyRuntimeEvent } from './_internal/platform/runtime/events/index.js';
 import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
@@ -28,9 +29,24 @@ import {
   type GoodVibesTokenStore,
 } from './auth.js';
 
-export interface RuntimeEventRecord {
-  readonly type: string;
-}
+/**
+ * Discriminated union of all runtime events emitted by the GoodVibes daemon.
+ *
+ * TypeScript narrows the full event shape (including all payload fields) when
+ * matching on the `type` discriminant — no `as` casts required.
+ *
+ * Each domain's events are accessible via the per-domain feed:
+ * ```ts
+ * sdk.realtime.viaSse().then(events => {
+ *   events.agents.on('AGENT_SPAWNING', (payload) => {
+ *     console.log(payload.agentId, payload.task); // fully typed
+ *   });
+ * });
+ * ```
+ *
+ * @see AnyRuntimeEvent for the full discriminated union type.
+ */
+export type RuntimeEventRecord = AnyRuntimeEvent;
 
 export interface GoodVibesSdkOptions {
   readonly baseUrl: string;
