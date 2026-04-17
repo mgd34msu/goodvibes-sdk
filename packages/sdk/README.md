@@ -1,6 +1,6 @@
 # @pellux/goodvibes-sdk
 
-Umbrella GoodVibes SDK with Node, browser, web UI, React Native, and Expo integration helpers.
+TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.
 
 > **What this SDK is:** a client for the GoodVibes daemon. Not a direct provider SDK.
 > See [Getting Started](../../docs/getting-started.md) for the full walkthrough.
@@ -11,13 +11,13 @@ Install:
 npm install @pellux/goodvibes-sdk
 ```
 
-Quick example (Node / Bun):
+Quick example (Bun):
 
 ```ts
-import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
-const sdk = createNodeGoodVibesSdk({
+const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
   tokenStore: createMemoryTokenStore(process.env.GOODVIBES_TOKEN ?? null),
 });
@@ -28,7 +28,6 @@ console.log(await sdk.operator.control.snapshot());
 Entry points:
 - `@pellux/goodvibes-sdk`
 - `@pellux/goodvibes-sdk/auth`
-- `@pellux/goodvibes-sdk/node`
 - `@pellux/goodvibes-sdk/browser`
 - `@pellux/goodvibes-sdk/web`
 - `@pellux/goodvibes-sdk/react-native`

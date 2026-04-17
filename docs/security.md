@@ -1,5 +1,7 @@
 # GoodVibes SDK — Security Best Practices
 
+> **Surface scope:** This document describes the security model for the **full surface (Bun runtime)**. Companion consumers (React Native, browser, Hermes) operate through the subset of the security stack exposed via `./react-native`, `./browser`, and related companion-surface barrels. See [Runtime Surfaces](./surfaces.md) for the full surface breakdown.
+
 This guide covers the security model of the GoodVibes daemon and SDK. It is intended for operators embedding the daemon, developers building surfaces, and anyone configuring authentication for production deployments.
 
 For vulnerability reporting, see [`SECURITY.md`](../SECURITY.md) at the repo root.

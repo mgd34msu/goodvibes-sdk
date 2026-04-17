@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.19.3",
+  "version": "0.19.6",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
@@ -52,10 +52,6 @@
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.js"
     },
-    "./oauth": {
-      "types": "./dist/oauth.d.ts",
-      "import": "./dist/oauth.js"
-    },
     "./errors": {
       "types": "./dist/errors.d.ts",
       "import": "./dist/errors.js"
@@ -96,10 +92,6 @@
       "types": "./dist/web.d.ts",
       "import": "./dist/web.js"
     },
-    "./node": {
-      "types": "./dist/node.d.ts",
-      "import": "./dist/node.js"
-    },
     "./react-native": {
       "types": "./dist/react-native.d.ts",
       "import": "./dist/react-native.js"
@@ -117,7 +109,7 @@
   "bugs": {
     "url": "https://github.com/mgd34msu/goodvibes-sdk/issues"
   },
-  "description": "Umbrella GoodVibes SDK with operator, peer, daemon, transport, and runtime-specific integration layers.",
+  "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "files": [
     "dist"
   ],
@@ -134,7 +126,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=19"
+    "bun": ">=1.0.0"
   },
   "sideEffects": false,
   "type": "module",

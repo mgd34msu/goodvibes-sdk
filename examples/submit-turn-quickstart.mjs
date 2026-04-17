@@ -9,10 +9,10 @@
  * Run: node examples/submit-turn-quickstart.mjs
  */
 
-import { createNodeGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk/node';
+import { createGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
 
-// 1. Construct the SDK (Node defaults: HTTP retry + SSE reconnect baked in).
-const sdk = createNodeGoodVibesSdk({
+// 1. Construct the SDK.
+const sdk = createGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
   authToken: process.env.GOODVIBES_TOKEN ?? undefined,
 });

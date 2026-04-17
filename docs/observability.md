@@ -535,6 +535,131 @@ const forensics = diag.forensics.getAll();
 
 ---
 
+## SDKObserver — Pluggable Telemetry Hooks
+
+The `SDKObserver` interface lets you attach custom telemetry without reaching into `_internal/`. All methods are optional; the SDK works identically whether an observer is provided or not.
+
+### Interface
+
+```ts
+import type { SDKObserver } from '@pellux/goodvibes-sdk';
+
+export interface SDKObserver {
+  /** Called for every event dispatched through the RuntimeEventBus. */
+  onEvent?(event: AnyRuntimeEvent): void;
+
+  /** Called when the SDK catches and is about to rethrow a GoodVibesSdkError. */
+  onError?(err: GoodVibesSdkError): void;
+
+  /** Called at HTTP/SSE/WS transport boundaries. */
+  onTransportActivity?(activity: {
+    readonly direction: 'send' | 'recv';
+    readonly url: string;
+    readonly status?: number;
+    readonly durationMs?: number;
+    readonly kind?: 'http' | 'sse' | 'ws';
+  }): void;
+
+  /** Called when auth state transitions (login, logout, refresh, expire, revoke). */
+  onAuthTransition?(transition: {
+    readonly from: 'anonymous' | 'session' | 'token';
+    readonly to: 'anonymous' | 'session' | 'token';
+    readonly reason: 'login' | 'logout' | 'refresh' | 'expire' | 'revoke';
+  }): void;
+}
+```
+
+### Registering an observer
+
+Pass an observer as the fourth argument to `createGoodVibesAuthClient`:
+
+```ts
+import {
+  createGoodVibesAuthClient,
+  createMemoryTokenStore,
+  createConsoleObserver,
+} from '@pellux/goodvibes-sdk';
+
+const auth = createGoodVibesAuthClient(
+  operatorSdk,
+  createMemoryTokenStore(),
+  undefined, // getAuthToken resolver
+  createConsoleObserver({ level: 'debug' }),
+);
+```
+
+### Error swallowing guarantee
+
+Every observer call site is wrapped in:
+
+```ts
+try {
+  observer.onX?.(...);
+} catch {
+  // Observer errors must not propagate into SDK logic.
+  // Observers are passive listeners; they have no authority to break flows.
+}
+```
+
+An observer that throws will never disrupt the SDK. This is the hard correctness invariant for the observer contract.
+
+### Console adapter
+
+`createConsoleObserver` is the built-in development adapter. It logs auth transitions and errors at `info` level, and transport activity + runtime events at `debug` level.
+
+```ts
+import { createConsoleObserver } from '@pellux/goodvibes-sdk';
+
+const observer = createConsoleObserver({ level: 'debug' });
+```
+
+Output example:
+```
+[sdk:observer] auth transition anonymous → token (login)
+[sdk:observer] transport recv http https://daemon.example.com/api/control-plane/auth/login status=200 142ms
+```
+
+### OpenTelemetry adapter
+
+`createOpenTelemetryObserver` accepts a pre-configured OTel `Tracer` and `Meter`. There is no hard dependency on `@opentelemetry/*` — the adapter accepts structurally-compatible interfaces so consumers bring their own.
+
+```ts
+import { trace, metrics } from '@opentelemetry/api';
+import { createOpenTelemetryObserver } from '@pellux/goodvibes-sdk';
+
+const observer = createOpenTelemetryObserver(
+  trace.getTracer('goodvibes-sdk'),
+  metrics.getMeter('goodvibes-sdk'),
+);
+```
+
+Metrics emitted:
+
+| Metric | Type | Description |
+|---|---|---|
+| `sdk.auth.transitions` | Counter | Auth state transitions, tagged with `from`, `to`, `reason` |
+| `sdk.errors` | Counter | SDK errors, tagged with `kind` and `category` |
+| `sdk.transport.duration_ms` | Histogram | HTTP transport call duration (recv only), tagged with `kind` and `status` |
+
+Spans emitted:
+
+| Span | When |
+|---|---|
+| `sdk.auth.transition` | On each auth state transition |
+| `sdk.error` | On each `GoodVibesSdkError` |
+
+### Wire-up status (S-θ)
+
+| Seam | Status |
+|---|---|
+| `createGoodVibesAuthClient` — `onAuthTransition` on login | Wired |
+| `createGoodVibesAuthClient` — `onAuthTransition` on logout (clearToken) | Wired |
+| `RuntimeEventBus.emit` — `onEvent` | Deferred to S-θ.2 |
+| `OperatorSdk` / `PeerSdk` transport — `onTransportActivity` | Deferred to S-θ.2 |
+| Error rethrow sites — `onError` | Deferred to S-θ.2 |
+
+---
+
 ## Related
 
 - [Performance and Tuning](./performance.md)

@@ -33,6 +33,8 @@ bun run release:verify
 
 `bun run sync` refreshes the umbrella package internals from the workspace source before validation or release when needed.
 
+> **Runtime note**: The SDK targets Bun (full surface) and Hermes/browser (companion surface). Node.js is not a supported consumer runtime — `engines.node` and the `./node` exports entry were removed in 0.19.6. See `docs/surfaces.md`.
+
 `release:verify` is the full pre-publish local rehearsal:
 - `bun run validate`
 - `bun run release:dry-run`
@@ -172,6 +174,51 @@ Before bumping the version and running `bun run release:publish`, add the CHANGE
 4. Run `bun run changelog:check` to confirm.
 
 Long-form per-release notes remain in `docs/releases/<version>.md` — the CHANGELOG entry is the machine-verifiable summary.
+
+## Version Consistency
+
+All `package.json` files in the monorepo workspace must carry the same version. The single source of truth is the **root `package.json`** — the `version` field there is what `version-consistency-check.ts` validates against all `packages/*/package.json` files.
+
+> `packages/sdk/package.json` drives the published artifact version (read by `publish-packages.ts` for the changelog gate), and must match the root. Both are bumped together.
+
+When bumping versions, all of the following files must be updated to the same version in a single commit:
+- `package.json` (root)
+- `packages/contracts/package.json`
+- `packages/daemon-sdk/package.json`
+- `packages/errors/package.json`
+- `packages/operator-sdk/package.json`
+- `packages/peer-sdk/package.json`
+- `packages/sdk/package.json`
+- `packages/transport-core/package.json`
+- `packages/transport-direct/package.json`
+- `packages/transport-http/package.json`
+- `packages/transport-realtime/package.json`
+
+### Check command
+
+```bash
+bun run version:check
+```
+
+This reads the version from root `package.json` and checks every `packages/*/package.json` against it. Exit 0 when all match; exit 1 with a divergence report when any differ.
+
+The check runs automatically in CI via the `version-consistency` job on every push/PR to `main`.
+
+## CI Gates
+
+| Job | Command | Purpose |
+|-----|---------|----------|
+| `validate` | `bun run validate` | Full workspace validation: docs, TypeScript build, type-level checks, tests, pack, install smoke |
+| `mirror-drift` | `bun run sync:check` | Ensures transport-http mirror parity — catches body divergence between source and mirror |
+| `platform-matrix` | `bun run build && bun test test` / `bun run test:rn` | Runs test suite on bun and rn-bundle platforms |
+| `throw-guard` | inline rg scan | Prevents raw throws from shipping in public SDK source |
+| `changelog-check` | `bun run changelog:check` | Blocks releases when CHANGELOG.md is missing a section for the current version |
+| `version-consistency` | `bun run version:check` | Ensures all workspace package.json files carry the same version |
+| `types-check` | `bun run types:check` | Compiles type-level usage tests to catch public API type regressions |
+
+### Root cause of the 0.19.6 divergence
+
+Prior per-wave bumps (0.19.3 through 0.19.6) touched only `packages/sdk/package.json`. The publish script reads the SDK version for the changelog gate but does not propagate it to sibling packages — each package publishes its own `manifest.version` from `stagePackages()`. With no CI gate in place, the divergence went undetected across multiple waves.
 
 ## Mirror Drift Guard
 

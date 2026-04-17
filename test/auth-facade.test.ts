@@ -11,10 +11,7 @@ import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
 } from '../packages/sdk/src/auth.js';
-// OAuthClient was moved to the /oauth subpath (node-only) to keep auth.ts node:-free for RN/browser.
-import { OAuthClient } from '../packages/sdk/src/oauth.js';
 import type { ControlPlaneAuthSnapshot } from '../packages/sdk/src/_internal/platform/control-plane/auth-snapshot.js';
-import type { OAuthProviderConfig } from '../packages/sdk/src/_internal/platform/config/subscriptions.js';
 import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
 
 function makeRawStore(initial: string | null = null) {
@@ -36,13 +33,6 @@ function makeOperator(token = 'facade-token') {
     },
   } as unknown as OperatorSdk;
 }
-
-const OAUTH_CONFIG: OAuthProviderConfig = {
-  clientId: 'facade-client-id',
-  authUrl: 'https://auth.example.com/authorize',
-  tokenUrl: 'https://auth.example.com/token',
-  redirectUri: 'http://localhost:4000/callback',
-};
 
 describe('auth facade — backward-compatible GoodVibesAuthClient', () => {
   test('createGoodVibesAuthClient login persists token', async () => {
@@ -89,12 +79,6 @@ describe('auth facade — new split classes are re-exported', () => {
     const ts = new TokenStore(makeRawStore());
     const sm = new SessionManager(makeOperator(), ts);
     expect(sm.writable).toBe(true);
-  });
-
-  test('OAuthClient is accessible from oauth subpath', async () => {
-    const client = new OAuthClient(OAUTH_CONFIG);
-    const start = await client.beginAuthorization();
-    expect(start.authorizationUrl).toContain('auth.example.com');
   });
 
   test('PermissionResolver is accessible from auth module', () => {

@@ -1,5 +1,7 @@
 # Retries and Reconnect
 
+This applies to both full-surface (Bun) and companion-surface (Hermes/browser) consumers unless otherwise noted.
+
 The SDK exposes retry and reconnect as first-class configuration instead of leaving them to ad hoc wrapper code.
 
 ## HTTP Retry
@@ -7,9 +9,9 @@ The SDK exposes retry and reconnect as first-class configuration instead of leav
 All runtime-specific entrypoints can take a retry policy:
 
 ```ts
-import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
-const sdk = createNodeGoodVibesSdk({
+const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
   authToken: process.env.GOODVIBES_TOKEN ?? null,
   retry: {
@@ -73,7 +75,7 @@ That lets reconnects use fresh credentials instead of a stale startup token.
 
 ## Recommended Defaults
 
-- Node/Bun service:
+- Bun full-surface service:
   retry reads, SSE reconnect enabled
 - Browser web UI:
   retry reads, SSE reconnect enabled

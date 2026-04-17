@@ -1,10 +1,13 @@
 /**
- * Release gate: assert that the React Native and Expo dist bundles do not
- * transitively pull in any `node:*` imports.
+ * Release gate: assert that companion entry point dist bundles do not
+ * transitively pull in any `node:*` imports or `Bun.*` API calls.
  *
  * Metro and similar RN bundlers cannot handle `node:` protocol imports and
- * will hard-fail during release bundling. This test catches regressions
- * before they reach CI.
+ * will hard-fail during release bundling. `Bun.*` API calls indicate the
+ * agentic (Bun-only) surface has leaked into a companion bundle — this is a
+ * hard architectural violation and must block release.
+ *
+ * This test catches regressions before they reach CI.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -16,44 +19,50 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_DIST = resolve(__dirname, '../packages/sdk/dist');
 
 /**
- * Entrypoints that must be free of `node:*` imports in the built output.
- * These are the files Metro / Expo's bundler will trace from.
+ * Companion entry points that must be free of `node:*` imports and `Bun.*`
+ * calls in the built output. These are the files Metro / Expo's bundler and
+ * browser bundlers will trace from.
  */
-const RN_ENTRIES = [
+const COMPANION_ENTRIES = [
   'react-native.js',
   'expo.js',
-  // The /auth subpath is also consumed by RN consumers for token helpers.
+  'browser.js',
+  'web.js',
+  // The /auth subpath is also consumed by RN/browser consumers for token helpers.
   'auth.js',
 ];
 
 /**
- * Patterns that must NOT appear in RN-safe dist files.
+ * Patterns that must NOT appear in companion dist files.
+ * - node: imports fail Metro bundling hard.
+ * - Bun.* calls indicate a Bun-only API leaked into the companion surface.
  */
-const DISALLOWED = [
-  /from ['"]node:/,
-  /require\(['"]node:/,
+const DISALLOWED: { pattern: RegExp; label: string }[] = [
+  { pattern: /from ['"]node:/, label: 'node: import' },
+  { pattern: /require\(['"]node:/, label: 'node: require' },
+  { pattern: /\bBun\.\w+/, label: 'Bun.* API call (Bun-only surface leak)' },
 ];
 
-describe('RN bundle: no node: imports', () => {
-  for (const entry of RN_ENTRIES) {
-    test(`dist/${entry} contains no node: imports`, () => {
-      const filePath = resolve(SDK_DIST, entry);
-      let content: string;
-      const fileExists = existsSync(filePath);
-      expect(fileExists).toBe(true); // Fail loudly if dist not built
-      if (!fileExists) return;
-      try {
-        content = readFileSync(filePath, 'utf8');
-      } catch {
-        return;
-      }
-      for (const pattern of DISALLOWED) {
+describe('Companion bundle guard: no node: imports or Bun.* calls', () => {
+  for (const entry of COMPANION_ENTRIES) {
+    for (const { pattern, label } of DISALLOWED) {
+      test(`dist/${entry} contains no ${label}`, () => {
+        const filePath = resolve(SDK_DIST, entry);
+        const fileExists = existsSync(filePath);
+        expect(fileExists).toBe(true); // Fail loudly if dist not built
+        if (!fileExists) return;
+        let content: string;
+        try {
+          content = readFileSync(filePath, 'utf8');
+        } catch {
+          return;
+        }
         const match = content.match(pattern);
         expect(
           match,
-          `${entry} contains a disallowed node: import: ${match?.[0] ?? ''}`,
+          `${entry} contains a disallowed ${label}: ${match?.[0] ?? ''}`,
         ).toBeNull();
-      }
-    });
+      });
+    }
   }
 });

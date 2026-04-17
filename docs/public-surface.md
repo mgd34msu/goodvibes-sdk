@@ -1,5 +1,7 @@
 # Public Surface — @pellux/goodvibes-sdk
 
+> **Runtime surfaces**: See [`docs/surfaces.md`](./surfaces.md) for the full/companion surface split, supported runtimes, and CI enforcement details.
+
 This document lists every stable subpath exported by `@pellux/goodvibes-sdk`. Consumers should only import from paths listed here. Importing from `_internal/**` directly is not supported and will break on any release.
 
 ## Stability levels
@@ -32,12 +34,6 @@ Authentication client, token stores, and auth types. Exports `createGoodVibesAut
 
 Stability contract: public method signatures are stable. Internal token format may change between major versions.
 
-### `./oauth` — `@pellux/goodvibes-sdk/oauth`
-
-**Status:** stable
-
-OAuth flow types and client helpers.
-
 ### `./contracts` — `@pellux/goodvibes-sdk/contracts`
 
 **Status:** stable
@@ -48,7 +44,7 @@ ACP operator/peer contract types, runtime event domains, and method IDs. Used by
 
 **Status:** stable
 
-Node.js-specific contract extensions (e.g., file-based artifact types).
+Contract extensions for file-based artifact types. Used on the full (Bun) surface.
 
 ### `./contracts/operator-contract.json` — `@pellux/goodvibes-sdk/contracts/operator-contract.json`
 
@@ -72,13 +68,13 @@ Daemon HTTP API types, route helpers, and server bootstrap utilities.
 
 **Status:** stable
 
-Operator ACP client. Use `createOperatorClient` to connect to a running daemon.
+Operator ACP client. Use `createOperatorSdk` to connect to a running daemon.
 
 ### `./peer` — `@pellux/goodvibes-sdk/peer`
 
 **Status:** stable
 
-Peer ACP client. Use `createPeerClient` for peer-to-peer connections.
+Peer ACP client. Use `createPeerSdk` for peer-to-peer connections.
 
 ### `./errors` — `@pellux/goodvibes-sdk/errors`
 
@@ -114,19 +110,13 @@ SSE/WebSocket realtime transport implementation.
 
 **Status:** stable
 
-Browser-optimized SDK entry. Tree-shakes Node.js-specific code.
+Browser-optimized SDK entry. Browser-safe entry with browser-appropriate reconnect/retry defaults.
 
 ### `./web` — `@pellux/goodvibes-sdk/web`
 
 **Status:** stable
 
 Web (browser + service workers) SDK entry.
-
-### `./node` — `@pellux/goodvibes-sdk/node`
-
-**Status:** stable
-
-Node.js SDK entry with full filesystem and native module support.
 
 ### `./react-native` — `@pellux/goodvibes-sdk/react-native`
 

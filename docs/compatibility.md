@@ -1,51 +1,65 @@
 # Compatibility
 
-## Runtime support
+## Supported Runtimes
 
-Current SDK assumptions:
+See [Runtime Surfaces](./surfaces.md) for the full two-tier model.
+
+| Runtime | Surface | Notes |
+|---|---|---|
+| **Bun ≥1.0** | Full + Companion | TUI, daemons, CLI apps, and all companion entry points |
+| **Hermes (React Native / Expo)** | Companion only | iOS and Android companion apps via `/react-native` and `/expo` |
+| **Modern browsers** | Companion only | Browser and web UI apps via `/browser` and `/web` |
+
+## Node.js is NOT Supported
+
+Node.js is not in the consumer list. The `engines.node` field and the `./node` exports entry have been removed as of 0.19.6. The published surface does not advertise Node support. If you need Node support, open an issue.
+
+If you encounter a reference to `createNodeGoodVibesSdk` or `@pellux/goodvibes-sdk/node` in older documentation or examples, those are stale. Use `createGoodVibesSdk` from the root entry (`@pellux/goodvibes-sdk`) on Bun instead.
+
+## Runtime Requirements
+
+All surfaces:
 - ESM package consumers
 - `fetch` support for HTTP clients
 - `WebSocket` support for WebSocket realtime clients
 
-Recommended runtimes:
-- Node 18+
-- Bun 1.3+
-- modern browsers with `fetch`, `ReadableStream`, and `WebSocket`
-- React Native / Expo with runtime `fetch` and `WebSocket`
-- native Android/iOS clients using the documented HTTP and WebSocket contracts
+Full surface (Bun only) additionally requires:
+- `Bun.spawn`, `Bun.file`, `Bun.Glob`, `Bun.which`, `Bun.CryptoHasher`, `Bun.Transpiler`, `Bun.serve`
 
-## SDK scope
+Attempting to import the full surface in Hermes, a browser, or any non-Bun runtime will fail at runtime.
 
-This is a TypeScript SDK. The published packages target:
-- Node/Bun
-- browser/web UI
-- React Native
-- Expo
+## Companion Bundle Guard
 
-Android and iOS companion apps can still use the same platform contracts directly, but Kotlin/Swift package SDKs are outside this repository’s current scope.
+CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
 
-## Runtime-neutral packages
+This is the enforcement mechanism for the companion surface guarantee.
 
-These are intended to be safe for Node, browser, and mobile bundlers:
+## Runtime-Neutral Entry Points
+
+These entry points work on Hermes, browser, and Bun, and bundle cleanly with Metro, Vite, webpack, and esbuild:
+
 - `@pellux/goodvibes-sdk/contracts`
 - `@pellux/goodvibes-sdk/errors`
 - `@pellux/goodvibes-sdk/operator`
 - `@pellux/goodvibes-sdk/peer`
-- `@pellux/goodvibes-sdk`
+- `@pellux/goodvibes-sdk/auth`
 - `@pellux/goodvibes-sdk/transport-core`
 - `@pellux/goodvibes-sdk/transport-http`
 - `@pellux/goodvibes-sdk/transport-realtime`
+- `@pellux/goodvibes-sdk/browser`
+- `@pellux/goodvibes-sdk/web`
+- `@pellux/goodvibes-sdk/react-native`
+- `@pellux/goodvibes-sdk/expo`
 
-Node-only helper:
-- `@pellux/goodvibes-sdk/contracts/node`
+Note: `@pellux/goodvibes-sdk/contracts/node` exports filesystem path helpers for locating JSON contract artifacts on disk. It is a build/tooling convenience only, not a runtime surface, and is not safe for mobile or browser bundlers.
 
-## Version alignment
+## Version Alignment
 
-The workspace tracks the SDK release line directly.
+The workspace tracks the SDK release line directly. See [CHANGELOG.md](../CHANGELOG.md) for release history.
 
-## Compatibility maintenance
+## Compatibility Maintenance
 
 When shared behavior changes inside this repo:
-1. update the SDK source
-2. run `bun run sync` if umbrella internals need refresh
-3. rerun validation here
+1. Update the SDK source.
+2. Run `bun run sync` if umbrella internals need refresh.
+3. Rerun validation: `bun test`.

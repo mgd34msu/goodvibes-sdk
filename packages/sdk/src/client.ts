@@ -128,8 +128,8 @@ export interface GoodVibesSdkOptions {
 
   /**
    * HTTP retry policy for transient failures (408, 429, 5xx).
-   * Runtime-specific factories (e.g. `createNodeGoodVibesSdk`) apply
-   * sensible defaults; pass this to override.
+   * Runtime-specific factories (e.g. `createBrowserGoodVibesSdk`,
+   * `createReactNativeGoodVibesSdk`) apply sensible defaults; pass this to override.
    */
   readonly retry?: HttpRetryPolicy;
 
@@ -166,9 +166,9 @@ export interface GoodVibesRealtimeOptions {
  * manually guarding every callback with `if (e.sessionId !== mine) return`.
  *
  * @example
- * import { createNodeGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
+ * import { createGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
  *
- * const sdk = createNodeGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
+ * const sdk = createGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
  * const session = await sdk.operator.sessions.create({ title: 'demo' });
  * const sessionId = session.session.id;
  *
@@ -275,8 +275,7 @@ function createClientOptions<T extends OperatorSdkOptions | PeerSdkOptions>(
  *
  * This is the runtime-agnostic constructor. For environments with sensible
  * defaults already configured, prefer the platform-specific wrappers:
- * `createNodeGoodVibesSdk`, `createBrowserGoodVibesSdk`,
- * `createReactNativeGoodVibesSdk`.
+ * `createBrowserGoodVibesSdk`, `createReactNativeGoodVibesSdk`.
  *
  * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/getting-started.md
  *

@@ -1,6 +1,10 @@
 # Web UI Integration
 
-Use `@pellux/goodvibes-sdk/web` for web UI applications.
+This is the **companion surface** for web UI applications (browser runtime). See [Runtime Surfaces](./surfaces.md).
+
+Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
+
+Use `@pellux/goodvibes-sdk/web` for web UI applications. The `/web` entry point is an alias for `/browser` — they expose the same companion surface.
 
 ```ts
 import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
@@ -23,8 +27,10 @@ For a browser-based web UI:
 ## When to use the browser entrypoint directly
 
 `@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web` are equivalent surfaces. Use:
-- `@pellux/goodvibes-sdk/web` when your mental model is “web UI”
+- `@pellux/goodvibes-sdk/web` when your mental model is "web UI"
 - `@pellux/goodvibes-sdk/browser` when you want the generic browser label
+
+See [public-surface.md](./public-surface.md) for the full entry-point reference.
 
 ## Typical web UI pattern
 
@@ -32,3 +38,44 @@ For a browser-based web UI:
 2. Subscribe to runtime events or telemetry streams.
 3. Refresh affected read models when key events arrive.
 4. Keep mutation calls on HTTP even when realtime is enabled.
+
+## Error handling
+
+All SDK errors extend `GoodVibesSdkError`. See [Error Kinds](./error-kinds.md) for the full taxonomy.
+
+```ts
+import { GoodVibesSdkError } from '@pellux/goodvibes-sdk/errors';
+
+try {
+  await sdk.operator.control.snapshot();
+} catch (err) {
+  if (err instanceof GoodVibesSdkError) {
+    switch (err.kind) {
+      case 'auth':
+        // session expired — redirect to login or refresh token
+        break;
+      case 'network':
+        // transport failure — reconnect SSE/WS or retry
+        break;
+      case 'server':
+        // daemon returned 5xx — log and degrade gracefully
+        break;
+      default:
+        throw err;
+    }
+  }
+}
+```
+
+## Observability
+
+`SDKObserver` and `createConsoleObserver` work from web UI contexts exactly like from the full surface. They are imported from `@pellux/goodvibes-sdk` root, which is companion-safe. See [Observability](./observability.md) for the full observer API.
+
+```ts
+import { createConsoleObserver } from '@pellux/goodvibes-sdk';
+
+const sdk = createWebGoodVibesSdk({
+  baseUrl: 'https://goodvibes.example.com',
+  observer: createConsoleObserver(),
+});
+```

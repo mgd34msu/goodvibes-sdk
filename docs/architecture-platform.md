@@ -1,5 +1,9 @@
 # Platform Layer Architecture
 
+> **Internal source map:** This document describes the internal source layout under `packages/sdk/src/_internal/platform/`. It is an orientation guide for contributors navigating the codebase — **not** a consumer import reference.
+>
+> Consumers access these modules via `./platform/*` barrel exports as documented in [Public Surface Reference](./public-surface.md). See [Runtime Surfaces](./surfaces.md) for the distinction between the full surface (Bun) and companion surfaces (Hermes/browser/React Native).
+
 This document maps every top-level directory under `packages/sdk/src/_internal/platform/`. Each directory is a bounded subsystem with a single responsibility. Use this as an orientation guide when navigating the codebase.
 
 > **Note:** `packages/sdk/src/_internal/` also contains non-platform directories (`contracts/`, `transport-*/`) that are covered in [architecture.md](./architecture.md). This document focuses solely on the `platform/` subtree.
@@ -122,7 +126,7 @@ Some files in `_internal/` are **synced copies** of upstream sources in `package
 
 ### When sync drift matters
 
-The sync script is **not wired into CI** by default. Drift between an upstream package and its synced copy is tolerated under the existing precedent (see the 0.18.46 release note on `transport-realtime/runtime-events.ts`). If you edit a synced file directly, re-running `sync:internal` will revert your change — manually re-apply after sync if the upstream package cannot be updated.
+Drift between an upstream package and its synced copy is tolerated under the existing precedent (see the 0.18.46 release note on `transport-realtime/runtime-events.ts`). If you edit a synced file directly, re-running `sync:internal` will revert your change — manually re-apply after sync if the upstream package cannot be updated.
 
 ---
 

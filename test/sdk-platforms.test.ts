@@ -3,7 +3,6 @@ import {
   createBrowserGoodVibesSdk,
   createExpoGoodVibesSdk,
   createGoodVibesSdk,
-  createNodeGoodVibesSdk,
   createReactNativeGoodVibesSdk,
   createWebGoodVibesSdk,
 } from '../packages/sdk/dist/index.js';
@@ -69,16 +68,6 @@ describe('sdk platform integrations', () => {
       configurable: true,
       value: previousLocation,
     });
-  });
-
-  test('node entry aliases the generic composed sdk', () => {
-    const sdk = createNodeGoodVibesSdk({
-      baseUrl: 'http://127.0.0.1:3210',
-      fetch: fetchStub as typeof fetch,
-    });
-
-    expect(typeof sdk.operator.control.snapshot).toBe('function');
-    expect(typeof sdk.realtime.viaSse).toBe('function');
   });
 
   test('react native entry exposes websocket-first realtime helpers', () => {

@@ -1,6 +1,6 @@
-import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
-const sdk = createNodeGoodVibesSdk({
+const sdk = createGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
   authToken: process.env.GOODVIBES_TOKEN ?? null,
   retry: {
