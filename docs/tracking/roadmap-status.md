@@ -1,8 +1,8 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.19.2
-**Current score**: 8.5 / 10
+**Current version**: 0.19.3
+**Current score**: 9.0 / 10
 **Last updated**: 2026-04-17
 
 ---
@@ -12,7 +12,7 @@
 | Wave | Name | Target | Status | Score effect | Shipped in | Notes |
 |------|------|--------|--------|--------------|------------|-------|
 | S-α | Stabilize the public surface | 0.19.0 | **shipped** | 7.0 → 7.5 | 0.19.0 `d5e2f04` | TUI F-arch-04 now unblocked |
-| S-β | Error taxonomy enforcement | 0.19.1 | not-started | 7.5 → 8.0 | — | Depends on S-α |
+| S-β | Error taxonomy enforcement | 0.19.3 | **shipped** | 8.5 → 9.0 | 0.19.3 `62a9756` | 7 throws converted; `throw-guard` CI gate catches all raw-throw variants. |
 | S-γ | Mirror-drift guard | 0.19.0 | **shipped** | 8.0 → 8.3 | 0.19.0 `d5e2f04` (S-γ scripts from `2ed2853`) | Follow-up WRFC needed to run `bun run sync` for 8 tracked drifts before CI goes green on main. |
 | S-δ | Per-release migration notes | 0.19.1 | **shipped** | 8.3 → 8.5 | 0.19.1 `d5b99e0` | Changelog gate live, CI job `changelog-check` armed. |
 | S-ε | Multi-platform test matrix | 0.19.1 | **shipped (partial)** | 8.5 → 8.5 | 0.19.1 `d5b99e0` | 4 dimensions wired (Bun + bun-on-nodeN + RN). Real Node/Browser/Workers deferred to S-ε.2. Partial — score effect withheld until full delivery. |
@@ -66,6 +66,14 @@ Bundled two infra waves into `d5b99e0`.
 **Cross-chain mishap**: an engineer ran `git checkout -- packages/sdk/src/` during verification cleanup, which wiped another in-flight chain's uncommitted work. This kept happening tonight. Standing rule reinforced in WRFC prompts: **engineers must never `git checkout` or `git stash` to clean up during verification**; if the tree is polluted, stop and escalate.
 
 **Persistent "pre-existing" phrasing violations**: four separate engineers used the banned phrase tonight across different waves. The standing rule is in memory, but enforcement has to continue at the reviewer layer.
+
+### 2026-04-17 — S-β shipped, 0.19.3 released, score 8.5 → 9.0
+
+7 raw throws on the canonical public surface converted to typed `GoodVibesSdkError`. Added `throw-guard` CI job + `docs/error-kinds.md` + `docs/error-handling.md` consumer pattern.
+
+**Initial review 7.5/10 — major defect caught**: the `throw-guard` job's ripgrep glob pattern `*/src/**` matched zero files under `packages/` (ripgrep treats single-star prefix literally). The guard was a silent no-op that would never fail CI — any raw throw could have been reintroduced unnoticed. Fix pass (10.0/10): corrected to `**/src/**` across 6 glob occurrences, extended patterns to cover all 5 raw-throw variants (`throw new Error(`, `throw Error(`, `throw {`, `throw '`, `throw "`). Reviewer independently smoke-tested: planted throws in public source caught, planted throws in `_internal/` correctly excluded.
+
+This is the only wave tonight where the reviewer caught a defect that would have shipped as a zero-coverage regression gate. Good illustration of why the 10.0 bar matters more than the engineer's self-reported pass.
 
 ### 2026-04-17 — S-γ-cleanup shipped, 0.19.2 released
 
