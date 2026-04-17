@@ -1,6 +1,7 @@
 // Synced from packages/transport-realtime/src/runtime-events.ts
 // Extracted from legacy source: src/runtime/transports/runtime-events-client.ts
 import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../contracts/index.js';
+import type { AnyRuntimeEvent } from '../platform/runtime/events/index.js';
 import { resolveAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '../transport-http/index.js';
 import { buildUrl, normalizeBaseUrl } from '../transport-http/index.js';
 import {
@@ -68,7 +69,7 @@ export function createEventSourceConnector(
   token: AuthTokenSource,
   fetchImpl: typeof fetch,
   options: RuntimeEventConnectorOptions = {},
-): DomainEventConnector<RuntimeEventDomain, RuntimeEventRecord> {
+): DomainEventConnector<RuntimeEventDomain, AnyRuntimeEvent> {
   const handleError = options.onError ?? (options.reconnect?.enabled ? (() => {}) : undefined);
   return async (domain, onEnvelope) => {
     const url = buildEventSourceUrl(baseUrl, domain);
@@ -76,7 +77,7 @@ export function createEventSourceConnector(
       onEvent: (eventName, payload) => {
         if (eventName !== domain) return;
         if (!payload || typeof payload !== 'object') return;
-        onEnvelope(payload as SerializedRuntimeEnvelope);
+        onEnvelope(payload as SerializedRuntimeEnvelope<AnyRuntimeEvent>);
       },
       onError: handleError,
     }, {
@@ -92,7 +93,7 @@ export function createWebSocketConnector(
   token: AuthTokenSource,
   WebSocketImpl: typeof WebSocket,
   options: RuntimeEventConnectorOptions = {},
-): DomainEventConnector<RuntimeEventDomain, RuntimeEventRecord> {
+): DomainEventConnector<RuntimeEventDomain, AnyRuntimeEvent> {
   return async (domain, onEnvelope) => {
     const url = buildWebSocketUrl(baseUrl, [domain]);
     const reconnect = options.reconnect;
@@ -143,7 +144,7 @@ export function createWebSocketConnector(
       try {
         const frame = JSON.parse(event.data) as { type?: string; event?: string; payload?: unknown };
         if (frame.type === 'event' && frame.event === domain && frame.payload && typeof frame.payload === 'object') {
-          onEnvelope(frame.payload as SerializedRuntimeEnvelope);
+          onEnvelope(frame.payload as SerializedRuntimeEnvelope<AnyRuntimeEvent>);
         }
       } catch {
         // Ignore malformed frames.
