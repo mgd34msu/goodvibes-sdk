@@ -31,7 +31,7 @@ export type { CompactionEvent, CompactionEventType } from '@pellux/goodvibes-sdk
 export type { UIEvent, UIEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/ui';
 export type { OpsEvent, OpsEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/ops';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from './domain-map.js';
-export type { AnyRuntimeEvent, RuntimeEventPayload, RuntimeEventDomain, DomainEventMap } from './domain-map.js';
+export type { AnyRuntimeEvent, RuntimeEventPayload, RuntimeEventDomain, DomainEventMap, RuntimeEventRecord } from './domain-map.js';
 export type { AutomationEvent, AutomationEventType, AutomationScheduleKind, AutomationExecutionMode, AutomationRunOutcome } from '@pellux/goodvibes-sdk/platform/runtime/events/automation';
 export { AUTOMATION_SCHEDULE_KINDS, AUTOMATION_RUN_OUTCOMES } from '@pellux/goodvibes-sdk/platform/runtime/events/automation';
 export type { RouteEvent, RouteEventType, RouteSurfaceKind, RouteTargetKind } from '@pellux/goodvibes-sdk/platform/runtime/events/routes';

@@ -154,7 +154,11 @@ export interface ProviderApiRegistry {
   findAlternativeModel(currentModelId: string): ModelDefinition | null;
   getCostFromCatalog(modelId: string): { input: number; output: number };
   getCatalogModelDefinitions(): readonly MinimalModelDefinition[];
+  has(id: string): boolean;
+  /** @deprecated Use {@link require} for throwing lookup or {@link tryGet} for nullable. */
   get(name: string): LLMProvider;
+  require(id: string): LLMProvider;
+  tryGet(name: string): LLMProvider | undefined;
   getCurrentModel(): ModelDefinition;
   getContextWindowForModel(modelDef: ModelDefinition): number;
   getForModel(modelId: string, provider?: string): LLMProvider;

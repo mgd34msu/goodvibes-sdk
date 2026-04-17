@@ -1,4 +1,5 @@
 import type { LLMProvider, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
+import { ProviderNotFoundError } from './provider-not-found-error.js';
 import { join } from 'node:path';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import {
@@ -132,7 +133,7 @@ export class ProviderRegistry {
       apiKey,
       {
         cacheHitTracker: this.cacheHitTracker,
-        resolveProvider: (providerName) => this.get(providerName),
+        resolveProvider: (providerName) => this.require(providerName),
         getCatalogModels: () => this.syntheticCanonicalModels,
         getBenchmarks: (modelId) => this.benchmarkStore.getBenchmarks(modelId),
         githubCopilotTokenCachePath: getGitHubCopilotTokenCachePath(this.getPersistenceRoot()),
@@ -289,16 +290,80 @@ export class ProviderRegistry {
     this._invalidateModelRegistry();
   }
 
-  /** Retrieve a provider by name. Throws if not found. */
+  /**
+   * Returns `true` if a provider with the given name (or its catalog alias) is registered.
+   *
+   * @param id - Provider name as registered (e.g. `'anthropic'`, `'openai'`).
+   */
+  has(id: string): boolean {
+    if (this.providers.has(id)) return true;
+    const aliased = CATALOG_PROVIDER_NAME_ALIASES[id];
+    return aliased !== undefined && this.providers.has(aliased);
+  }
+
+  /**
+   * Retrieve a provider by name, applying subscription route aliasing.
+   * Throws a {@link ProviderNotFoundError} if no provider with that name is registered.
+   *
+   * @deprecated Use {@link require} for the canonical throwing lookup, or
+   * {@link tryGet} for a safe nullable lookup.
+   *
+   * @param name - Provider name as registered (e.g. `'anthropic'`, `'openai'`).
+   * @throws {ProviderNotFoundError} When no matching provider is registered.
+   */
   get(name: string): LLMProvider {
+    return this.require(name);
+  }
+
+  /**
+   * Retrieve a provider by name, applying subscription route aliasing.
+   * Throws a {@link ProviderNotFoundError} if no provider with that name is registered.
+   *
+   * The error message includes the list of all currently registered provider IDs
+   * to aid discoverability.
+   *
+   * @param id - Provider name as registered (e.g. `'anthropic'`, `'openai'`).
+   * @throws {ProviderNotFoundError} When no matching provider is registered.
+   */
+  require(id: string): LLMProvider {
+    const provider = this.tryGet(id);
+    if (provider) return provider;
+    const available = [...this.providers.keys()].sort();
+    throw new ProviderNotFoundError(id, available);
+  }
+
+  /**
+   * Retrieve a provider by name, applying subscription route aliasing.
+   * Returns `undefined` if no provider with that name (or its catalog alias) is registered.
+   *
+   * Prefer {@link require} when you know the provider must exist and want a clear
+   * error when it does not.
+   *
+   * @param name - Provider name as registered (e.g. `'anthropic'`, `'openai'`).
+   */
+  tryGet(name: string): LLMProvider | undefined {
     if (name === 'openai' && this.subscriptionManager.get('openai')) {
       const subscriber = this.providers.get('openai-subscriber');
       if (subscriber) return subscriber;
     }
-    return this.getRegistered(name);
+    const p = this.providers.get(name);
+    if (p) return p;
+    // Check alias map — catalog may use a different name than the registered provider
+    const aliased = CATALOG_PROVIDER_NAME_ALIASES[name];
+    if (aliased) {
+      const pa = this.providers.get(aliased);
+      if (pa) return pa;
+    }
+    return undefined;
   }
 
-  /** Retrieve the directly-registered provider without subscription route aliasing. */
+  /**
+   * Retrieve the directly-registered provider without subscription route aliasing.
+   * Throws if no provider with that name (or its catalog alias) is registered.
+   *
+   * Note: Unlike {@link require}, this method does NOT apply subscription route aliasing
+   * (e.g. the openai-subscriber redirect). Prefer {@link require} for general use.
+   */
   getRegistered(name: string): LLMProvider {
     const p = this.providers.get(name);
     if (p) return p;
@@ -308,7 +373,7 @@ export class ProviderRegistry {
       const pa = this.providers.get(aliased);
       if (pa) return pa;
     }
-    throw new Error(`Provider '${name}' is not registered.`);
+    throw new ProviderNotFoundError(name, [...this.providers.keys()].sort());
   }
 
   async describeRuntime(name: string): Promise<ProviderRuntimeMetadata | null> {
@@ -333,7 +398,7 @@ export class ProviderRegistry {
       if (provider) throw new Error(`No model '${modelId}' for provider '${provider}' in registry.`);
       throw new Error(`No model '${modelId}' in registry.`);
     }
-    return this.get(def.provider);
+    return this.require(def.provider);
   }
 
   /** All registered model definitions. */
@@ -684,12 +749,7 @@ export class ProviderRegistry {
     const { providerId: fallbackProviderId, resolvedModelId: fallbackModelId } = splitModelRegistryKey(modelId);
     const providerId = def?.provider ?? fallbackProviderId;
     const resolvedModelId = def?.id ?? fallbackModelId;
-    let provider: LLMProvider | undefined;
-    try {
-      provider = this.get(providerId);
-    } catch {
-      // Provider not registered yet — proceed without self-declared capabilities
-    }
+    const provider: LLMProvider | undefined = this.tryGet(providerId);
     return { providerId, resolvedModelId, provider };
   }
 

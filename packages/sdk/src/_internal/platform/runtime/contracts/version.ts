@@ -21,7 +21,7 @@ export const SCHEMA_VERSIONS = {
   /** Top-level RuntimeState snapshot schema. */
   runtimeState: { major: 1, minor: 0, patch: 0 } as const satisfies SchemaVersion,
   /** RuntimeEventEnvelope schema for event persistence and replay. */
-  eventEnvelope: { major: 1, minor: 0, patch: 0 } as const satisfies SchemaVersion,
+  eventEnvelope: { major: 1, minor: 1, patch: 0 } as const satisfies SchemaVersion,
   /** Session persistence format (messages + meta). */
   session: { major: 1, minor: 0, patch: 0 } as const satisfies SchemaVersion,
   /** Plugin manifest and capability descriptor schema. */
