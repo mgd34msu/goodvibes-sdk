@@ -1,7 +1,7 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.19.1
+**Current version**: 0.19.2
 **Current score**: 8.5 / 10
 **Last updated**: 2026-04-17
 
@@ -17,7 +17,7 @@
 | S-δ | Per-release migration notes | 0.19.1 | **shipped** | 8.3 → 8.5 | 0.19.1 `d5b99e0` | Changelog gate live, CI job `changelog-check` armed. |
 | S-ε | Multi-platform test matrix | 0.19.1 | **shipped (partial)** | 8.5 → 8.5 | 0.19.1 `d5b99e0` | 4 dimensions wired (Bun + bun-on-nodeN + RN). Real Node/Browser/Workers deferred to S-ε.2. Partial — score effect withheld until full delivery. |
 | S-ε.2 | Platform matrix — real Node + Browser + Workers | 0.19.x | not-started | 8.5 → 8.8 | — | Follow-up to S-ε |
-| S-γ-cleanup | Transport-http drift cleanup (narrow) | 0.19.x | **deferred** | no score effect | — | Initial attempt at 0.19.1 aborted: `bun run sync` targets all `_internal` subsystems, not just transport-http; regenerating surfaced latent type mismatches in daemon/transport-core/etc mirrors. Future WRFC must scope sync to transport-http only. CI `mirror-drift` job remains red until cleanup lands. |
+| S-γ-cleanup | Transport-http drift cleanup (narrow) | 0.19.2 | **shipped** | no score effect (infra) | 0.19.2 `c7c561e` | `--scope=<subsystem>` flag added; 8 transport-http drifts resolved; `mirror-drift` CI can now pass on main. |
 | S-ζ | Integration + property tests | 0.19.4 | not-started | 8.8 → 9.2 | — | Depends on S-α + S-β |
 | S-θ | Observability hooks | 0.19.5 | not-started | 9.2 → 9.5 | — | Parallel after S-α |
 | S-ι | Hardening gates | 0.20.x | not-started | 9.5 → 10.0 | — | Depends on S-α..S-θ |
@@ -66,6 +66,12 @@ Bundled two infra waves into `d5b99e0`.
 **Cross-chain mishap**: an engineer ran `git checkout -- packages/sdk/src/` during verification cleanup, which wiped another in-flight chain's uncommitted work. This kept happening tonight. Standing rule reinforced in WRFC prompts: **engineers must never `git checkout` or `git stash` to clean up during verification**; if the tree is polluted, stop and escalate.
 
 **Persistent "pre-existing" phrasing violations**: four separate engineers used the banned phrase tonight across different waves. The standing rule is in memory, but enforcement has to continue at the reviewer layer.
+
+### 2026-04-17 — S-γ-cleanup shipped, 0.19.2 released
+
+Narrow-scope sync landed clean at 10.0 on first review. `--scope=<subsystem>` flag on `scripts/sync-sdk-internals.ts` fixes the prior global-stale-walk bug and makes future per-subsystem drift cleanups trivial. The 8 tracked transport-http drifts are resolved; `mirror-drift` CI job can now pass on main.
+
+No score effect (infra/hygiene), but this unblocks forward development — previously every PR would red-X the mirror-drift gate.
 
 ---
 
