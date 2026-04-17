@@ -8,13 +8,15 @@ import type { OperatorSdk } from './_internal/operator/index.js';
 
 // Re-export focused responsibility classes for consumers who prefer
 // narrower, single-concern APIs over the combined GoodVibesAuthClient facade.
+// NOTE: OAuthClient is intentionally NOT re-exported here. It depends on
+// node:crypto and is not safe in React Native / browser bundles.
+// Use @pellux/goodvibes-sdk/oauth for Node.js consumers who need OAuthClient.
 export {
-  OAuthClient,
   PermissionResolver,
   SessionManager,
   TokenStore,
 } from './_internal/platform/auth/index.js';
-export type { OAuthStartState, OAuthTokenPayload } from './_internal/platform/auth/index.js';
+export type { OAuthStartState, OAuthTokenPayload } from './_internal/platform/auth/oauth-types.js';
 
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
 export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;

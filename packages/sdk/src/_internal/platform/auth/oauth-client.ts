@@ -13,12 +13,8 @@ import {
   exchangeOAuthAuthorizationCode,
   refreshOAuthAccessToken,
 } from '../runtime/auth/oauth-core.js';
-import type {
-  OAuthStartState,
-  OAuthTokenPayload,
-} from '../runtime/auth/oauth-core.js';
-
-export type { OAuthStartState, OAuthTokenPayload };
+export type { OAuthStartState, OAuthTokenPayload } from './oauth-types.js';
+import type { OAuthStartState, OAuthTokenPayload } from './oauth-types.js';
 
 export class OAuthClient {
   readonly #config: OAuthProviderConfig;
@@ -31,11 +27,11 @@ export class OAuthClient {
    * Build the authorization URL and PKCE state needed to start an OAuth flow.
    * Redirect the user's browser to `result.authorizationUrl`.
    */
-  beginAuthorization(input?: {
+  async beginAuthorization(input?: {
     readonly state?: string;
     readonly verifier?: string;
     readonly redirectUri?: string;
-  }): OAuthStartState {
+  }): Promise<OAuthStartState> {
     return buildOAuthAuthorizationStart(this.#config, input);
   }
 

@@ -5,13 +5,14 @@
  */
 import { describe, expect, test } from 'bun:test';
 import {
-  OAuthClient,
   PermissionResolver,
   SessionManager,
   TokenStore,
   createGoodVibesAuthClient,
   createMemoryTokenStore,
 } from '../packages/sdk/src/auth.js';
+// OAuthClient was moved to the /oauth subpath (node-only) to keep auth.ts node:-free for RN/browser.
+import { OAuthClient } from '../packages/sdk/src/oauth.js';
 import type { ControlPlaneAuthSnapshot } from '../packages/sdk/src/_internal/platform/control-plane/auth-snapshot.js';
 import type { OAuthProviderConfig } from '../packages/sdk/src/_internal/platform/config/subscriptions.js';
 import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
@@ -90,9 +91,9 @@ describe('auth facade — new split classes are re-exported', () => {
     expect(sm.writable).toBe(true);
   });
 
-  test('OAuthClient is accessible from auth module', () => {
+  test('OAuthClient is accessible from oauth subpath', async () => {
     const client = new OAuthClient(OAUTH_CONFIG);
-    const start = client.beginAuthorization();
+    const start = await client.beginAuthorization();
     expect(start.authorizationUrl).toContain('auth.example.com');
   });
 

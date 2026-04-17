@@ -121,7 +121,7 @@ export class SubscriptionManager {
     return active.accessToken;
   }
 
-  public beginOAuthLogin(provider: string, config: OAuthProviderConfig): { authorizationUrl: string; pending: PendingSubscriptionLogin } {
+  public async beginOAuthLogin(provider: string, config: OAuthProviderConfig): Promise<{ authorizationUrl: string; pending: PendingSubscriptionLogin }> {
     const store = this.read();
     const state = createOAuthState();
     const verifier = createPkceVerifier();
@@ -133,7 +133,7 @@ export class SubscriptionManager {
       redirectUri,
       createdAt: Date.now(),
     };
-    const started = buildOAuthAuthorizationStart(config, { state, verifier, redirectUri });
+    const started = await buildOAuthAuthorizationStart(config, { state, verifier, redirectUri });
     store.pending[provider] = pending;
     this.write(store);
     return {

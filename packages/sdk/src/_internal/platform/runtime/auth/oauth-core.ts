@@ -1,31 +1,19 @@
-import { createHash, randomBytes } from 'node:crypto';
 import type { OAuthProviderConfig } from '../../config/subscriptions.js';
+import { createSha256Hash, randomBytesBase64url } from './crypto-adapter.js';
 
-export interface OAuthStartState {
-  readonly authorizationUrl: string;
-  readonly state: string;
-  readonly verifier: string;
-  readonly redirectUri: string;
-}
-
-export interface OAuthTokenPayload {
-  readonly accessToken: string;
-  readonly refreshToken?: string;
-  readonly tokenType: string;
-  readonly expiresAt?: number;
-  readonly scopes?: readonly string[];
-}
+import type { OAuthStartState, OAuthTokenPayload } from '../../auth/oauth-types.js';
+export type { OAuthStartState, OAuthTokenPayload } from '../../auth/oauth-types.js';
 
 export function createOAuthState(bytes = 24): string {
-  return randomBytes(bytes).toString('base64url');
+  return randomBytesBase64url(bytes);
 }
 
 export function createPkceVerifier(bytes = 32): string {
-  return randomBytes(bytes).toString('base64url');
+  return randomBytesBase64url(bytes);
 }
 
-export function createPkceChallenge(verifier: string): string {
-  return createHash('sha256').update(verifier).digest('base64url');
+export async function createPkceChallenge(verifier: string): Promise<string> {
+  return createSha256Hash(verifier);
 }
 
 export function parseOAuthScopes(raw: unknown): readonly string[] | undefined {
@@ -34,14 +22,14 @@ export function parseOAuthScopes(raw: unknown): readonly string[] | undefined {
   return scopes.length > 0 ? scopes : undefined;
 }
 
-export function buildOAuthAuthorizationStart(
+export async function buildOAuthAuthorizationStart(
   config: OAuthProviderConfig,
   input?: {
     readonly state?: string;
     readonly verifier?: string;
     readonly redirectUri?: string;
   },
-): OAuthStartState {
+): Promise<OAuthStartState> {
   const state = input?.state ?? createOAuthState();
   const verifier = input?.verifier ?? createPkceVerifier();
   const redirectUri = input?.redirectUri ?? config.redirectUri;
@@ -57,7 +45,7 @@ export function buildOAuthAuthorizationStart(
     url.searchParams.set('audience', config.audience);
   }
   if (config.usePkce ?? true) {
-    url.searchParams.set('code_challenge', createPkceChallenge(verifier));
+    url.searchParams.set('code_challenge', await createPkceChallenge(verifier));
     url.searchParams.set('code_challenge_method', 'S256');
   }
   for (const [key, value] of Object.entries(config.authParams ?? {})) {
@@ -157,10 +145,15 @@ export async function refreshOAuthAccessToken(
 }
 
 export function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  if (typeof atob !== 'function') {
+    throw new Error('decodeJwtPayload requires a global atob(); available in browsers, RN Hermes, and Node >= 16');
+  }
   const parts = token.split('.');
   if (parts.length < 2) return null;
   try {
-    return JSON.parse(Buffer.from(parts[1]!, 'base64url').toString('utf-8')) as Record<string, unknown>;
+    // atob is universally available (browsers, React Native, modern Node)
+    const base64 = (parts[1]!).replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64)) as Record<string, unknown>;
   } catch {
     return null;
   }
