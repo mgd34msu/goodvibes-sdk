@@ -33,6 +33,7 @@ import type { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
 import type { DaemonSurfaceActionHelper } from './surface-actions.js';
 import type { DaemonTransportEventsHelper } from './transport-events.js';
 import type { DaemonHttpRouter } from './http/router.js';
+import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import { isSurfaceDeliveryEnabled } from './surface-policy.js';
 import { AgentTaskAdapter } from '../runtime/tasks/adapters/agent-adapter.js';
 import {
@@ -123,6 +124,7 @@ export class DaemonServer {
   private readonly transportEventsHelper: DaemonTransportEventsHelper;
   private readonly httpRouter: DaemonHttpRouter;
   private replyPoller: ReturnType<typeof setInterval> | null = null;
+  private readonly companionChatManager: CompanionChatManager;
   private agentTaskAdapter: import('../runtime/tasks/adapters/agent-adapter.js').AgentTaskAdapter | null = null;
   private agentTaskAdapterUnsub: (() => void) | null = null;
   private tlsState: ResolvedInboundTlsContext | null = null;
@@ -171,6 +173,7 @@ export class DaemonServer {
     this.serviceRegistry = resolved.serviceRegistry;
     this.serveFactory = resolved.serveFactory;
     this.githubWebhookSecret = resolved.githubWebhookSecret;
+    this.companionChatManager = resolved.companionChatManager;
 
     const collaborators = createDaemonFacadeCollaborators({
       runtime: resolved,
@@ -425,6 +428,7 @@ export class DaemonServer {
     this.approvalBrokerUnsubscribe?.();
     this.approvalBrokerUnsubscribe = null;
     this.httpRouter.dispose();
+    this.companionChatManager.dispose();
 
     // Stop services that expose async teardown. Note: sessionBroker, approvalBroker,
     // channelPolicy, and distributedRuntime expose start() only — their lifecycle ends
