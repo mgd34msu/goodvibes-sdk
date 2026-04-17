@@ -27,6 +27,7 @@
   "scripts": {
     "sync": "bun run sync:internal",
     "sync:internal": "bun scripts/sync-sdk-internals.ts",
+    "changelog:check": "bun scripts/check-changelog.ts",
     "sync:check": "bun scripts/sync-check.ts",
     "sync:version": "bun scripts/sync-version-fallback.ts",
     "docs:generate": "bun scripts/generate-api-docs.ts",
@@ -35,6 +36,8 @@
     "build": "bun scripts/build.ts",
     "types:check": "bun x tsc --project tsconfig.type-tests.json",
     "test": "bun test test",
+    "test:ci": "bun run build && bun test test",
+    "test:rn": "bun run build && bun test test/rn-bundle-node-imports.test.ts",
     "check:browser": "bun scripts/browser-compat-check.ts",
     "check:metadata": "bun scripts/package-metadata-check.ts",
     "pack:check": "bun scripts/pack-check.ts",
