@@ -294,3 +294,212 @@ After completing the steps above, verify the following:
 **Tool LLM (if used)**
 - Tool-internal LLM operations (semantic diff, commit messages) work when `tools.llmEnabled: true` is set.
 - They silently degrade (return empty string) when the config key is absent — verify no hard failures in that path.
+
+---
+
+## ProviderRegistry canonical accessors (0.18.45) {#providerregistry-canonical-accessors-01845}
+
+### Why this changed
+
+`get()` was the only accessor on `ProviderRegistry`, but its throwing behavior was implicit. Callers that wanted to check existence first had to catch or do a separate lookup. Three explicit accessors make intent unambiguous at every call site.
+
+### Before
+
+```ts
+// Existence check — awkward, forces try/catch
+let provider: Provider | undefined;
+try {
+  provider = registry.get('my-provider');
+} catch {
+  provider = undefined;
+}
+
+// Guaranteed access — same as above
+const provider = registry.get('my-provider'); // throws ProviderNotFoundError if absent
+```
+
+### After
+
+```ts
+// Existence check
+if (registry.has('my-provider')) {
+  // ...
+}
+
+// Guaranteed access (throwing)
+const provider = registry.require('my-provider'); // throws ProviderNotFoundError if absent
+
+// Safe nullable access
+const provider = registry.tryGet('my-provider'); // returns Provider | undefined
+
+// get() still works but is @deprecated — migrate to require() at your own pace
+const provider = registry.get('my-provider'); // @deprecated
+```
+
+### Automated migration
+
+No automated migration. Callers of `get()` continue to compile — the method is deprecated, not removed. Migrate to `require()` (identical throwing semantics) or `tryGet()` (nullable) when you touch those call sites.
+
+---
+
+## RuntimeEventRecord discriminated union (0.18.45 / 0.18.46) {#runtimeeventrecord-discriminated-union-01845--01846}
+
+### Why this changed
+
+Previously `RuntimeEventRecord` was a wide structural type and consumers narrowed `event.payload` with casts (`event.payload as AgentCompletedPayload`). The cast was necessary because the type system had no way to connect `event.type` to the payload shape. The discriminated union eliminates the cast: after a `switch (event.type)`, TypeScript knows the exact payload type.
+
+### Before
+
+```ts
+bus.subscribe((event: RuntimeEventRecord) => {
+  if (event.type === 'agent.completed') {
+    const payload = event.payload as AgentCompletedPayload; // cast required
+    handleCompletion(payload.agentId, payload.exitCode);
+  }
+});
+```
+
+### After
+
+```ts
+bus.subscribe((event: RuntimeEventRecord) => {
+  switch (event.type) {
+    case 'agent.completed':
+      // event.payload is AgentCompletedPayload — no cast needed
+      handleCompletion(event.payload.agentId, event.payload.exitCode);
+      break;
+    case 'session.closed':
+      // event.payload is SessionClosedPayload — no cast needed
+      handleClose(event.payload.sessionId, event.payload.reason);
+      break;
+  }
+});
+```
+
+`RuntimeEventRecord` now aliases `AnyRuntimeEvent`. Code that references `RuntimeEventRecord` as a type annotation continues to compile. The 0.18.46 patch fixed a CI-only variance issue in the union definition under `--strict --exactOptionalPropertyTypes`; no further consumer changes needed.
+
+### Automated migration
+
+No automated migration. Existing `event.payload as X` casts remain valid TypeScript — they produce no error. Removing them after adding a `switch` on `event.type` is a quality-of-life improvement, not a requirement.
+
+---
+
+## `ChatResponse.stopReason` canonical vocab (0.18.47) {#chatresponsestopreason-canonical-vocab-01847}
+
+### Why this changed
+
+Each provider leaked its own stop-reason strings into `ChatResponse.stopReason` (`'end_turn'` from Anthropic, `'stop'` from OpenAI, `'STOP'` from Gemini, etc.). Consumer `switch` statements had to enumerate provider-specific strings and broke silently when a new provider was added. The canonical vocab lets consumers branch once and cover all providers correctly.
+
+### Before
+
+```ts
+// Had to enumerate every provider's strings
+switch (response.stopReason) {
+  case 'end_turn':      // Anthropic
+  case 'stop':          // OpenAI
+  case 'STOP':          // Gemini
+  case 'endoftext':     // some open-weight models
+    handleNormalEnd();
+    break;
+  case 'max_tokens':
+  case 'length':        // OpenAI alternative
+    handleTruncated();
+    break;
+  // easy to miss new providers
+}
+```
+
+### After
+
+```ts
+// Single canonical switch covers all providers
+switch (response.stopReason) {
+  case 'completed':
+    handleNormalEnd();
+    break;
+  case 'max_tokens':
+    handleTruncated();
+    break;
+  case 'tool_call':
+    handleToolCall();
+    break;
+  case 'stop_sequence':
+    handleStopSequence();
+    break;
+  case 'content_filter':
+    handleFiltered();
+    break;
+  case 'error':
+  case 'unknown':
+    handleUnexpected();
+    break;
+}
+
+// Raw provider value still available if needed
+console.log(response.providerStopReason); // e.g. 'end_turn', 'stop', 'STOP'
+```
+
+### Automated migration
+
+No automated migration. TypeScript will surface a type error on any `case` branch that uses a value not present in `ChatStopReason` — those errors are the migration checklist. Replace each with the corresponding canonical value from the table below:
+
+| Provider string | Canonical value |
+| --- | --- |
+| `end_turn`, `stop`, `STOP`, `endoftext` | `completed` |
+| `max_tokens`, `length`, `MAX_TOKENS` | `max_tokens` |
+| `tool_use`, `tool_calls`, `TOOL` | `tool_call` |
+| `stop_sequence` | `stop_sequence` |
+| `content_filter`, `SAFETY` | `content_filter` |
+
+---
+
+## authToken normalization (0.18.47) {#authtoken-normalization-01847}
+
+### Why this changed
+
+Consumers that accept auth tokens from multiple sources (env var string, config object, async factory function) were each writing their own resolution logic. The helper centralizes that pattern so the behavior is consistent and tested in one place.
+
+### Before
+
+```ts
+// Ad hoc resolution — repeated across multiple surfaces
+async function resolveToken(
+  token: string | (() => string | Promise<string>) | { token: string } | undefined
+): Promise<string | undefined> {
+  if (!token) return undefined;
+  if (typeof token === 'string') return token;
+  if (typeof token === 'function') return token();
+  return token.token;
+}
+```
+
+### After
+
+```ts
+import { normalizeAuthToken } from '@pellux/goodvibes-sdk/transport-http';
+
+// normalizeAuthToken returns an AuthTokenResolver — it normalizes the input,
+// it does not resolve the token itself. Invoke the resolver to get the value.
+const resolver = normalizeAuthToken(token); // returns AuthTokenResolver
+const resolved = await resolver();          // resolves string | null | undefined
+```
+
+The full signature:
+
+```ts
+export type AuthTokenResolver = () => MaybePromise<string | null | undefined>;
+export type AuthTokenInput =
+  | string
+  | { readonly token: string }
+  | AuthTokenResolver
+  | (() => string | null | undefined | Promise<string | null | undefined>)
+  | undefined;
+
+export function normalizeAuthToken(input: AuthTokenInput): AuthTokenResolver;
+```
+
+Consumers that already pass the right shape to their provider do not need to adopt the helper. It is opt-in for those who want the canonical resolver. No breaking change — this is a new export only.
+
+### Automated migration
+
+None required. Existing token-resolution code continues to work. Adopting `normalizeAuthToken()` is a voluntary refactor.

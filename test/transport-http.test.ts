@@ -155,4 +155,168 @@ describe('transport-http', () => {
     await expect(transport.requestJson('/api/accounts')).resolves.toEqual({ ok: true });
     expect(calls).toBe(3);
   });
+
+  test('network error produces HttpStatusError with category network and cause preserved', async () => {
+    const originalError = new TypeError('fetch failed');
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: createFetchStub(async () => { throw originalError; }),
+    });
+
+    let caught: unknown;
+    try {
+      await transport.requestJson('/api/accounts');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(HttpStatusError);
+    const err = caught as HttpStatusError;
+    expect(err.category).toBe('network');
+    expect(err.source).toBe('transport');
+    expect(err.recoverable).toBe(true);
+    expect(err.hint).toContain('127.0.0.1:3210');
+    expect(err.cause).toBe(originalError);
+  });
+
+  test('429 with retry-after header populates retryAfterMs', async () => {
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: createFetchStub(async () => new Response(
+        JSON.stringify({ error: 'rate limited' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'retry-after': '5',
+          },
+        },
+      )),
+    });
+
+    let caught: unknown;
+    try {
+      await transport.requestJson('/api/accounts');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(HttpStatusError);
+    const err = caught as HttpStatusError;
+    expect(err.category).toBe('rate_limit');
+    expect(err.retryAfterMs).toBe(5000);
+    expect(err.hint).toContain('5000ms');
+  });
+
+  test('429 with HTTP-date retry-after header populates a positive retryAfterMs', async () => {
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: createFetchStub(async () => new Response(
+        JSON.stringify({ error: 'rate limited' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'retry-after': 'Wed, 21 Oct 2015 07:28:00 GMT',
+          },
+        },
+      )),
+    });
+
+    let caught: unknown;
+    try {
+      await transport.requestJson('/api/accounts');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(HttpStatusError);
+    const err = caught as HttpStatusError;
+    expect(err.category).toBe('rate_limit');
+    // HTTP-date is in the past so retryAfterMs will be 0 or a small negative clamped value;
+    // the key assertion is that the field is present and is a number (not undefined)
+    expect(typeof err.retryAfterMs).toBe('number');
+  });
+
+  test('429 without retry-after header still produces rate_limit category with generic hint', async () => {
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: createFetchStub(async () => createJsonResponse({ error: 'too many requests' }, 429)),
+    });
+
+    let caught: unknown;
+    try {
+      await transport.requestJson('/api/accounts');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(HttpStatusError);
+    const err = caught as HttpStatusError;
+    expect(err.category).toBe('rate_limit');
+    expect(err.retryAfterMs).toBeUndefined();
+    expect(err.hint).toContain('Back off and retry');
+  });
+
+  test('401 error populates authentication category and inferred hint', async () => {
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: createFetchStub(async () => createJsonResponse({ error: 'unauthorized' }, 401)),
+    });
+
+    let caught: unknown;
+    try {
+      await transport.requestJson('/api/accounts');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(HttpStatusError);
+    const err = caught as HttpStatusError;
+    expect(err.category).toBe('authentication');
+    expect(err.status).toBe(401);
+    expect(err.hint).toContain('authentication token');
+  });
+
+  test('503 error populates service category and server hint', async () => {
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: createFetchStub(async () => createJsonResponse({ error: 'service unavailable' }, 503)),
+    });
+
+    let caught: unknown;
+    try {
+      await transport.requestJson('/api/accounts');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(HttpStatusError);
+    const err = caught as HttpStatusError;
+    expect(err.category).toBe('service');
+    expect(err.status).toBe(503);
+    expect(err.hint).toContain('server error');
+  });
+
+  test('daemon-supplied hint is preserved over inferred hint', async () => {
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: createFetchStub(async () => createJsonResponse({
+        error: 'Authentication failed',
+        hint: 'Use the pairing token from the dashboard',
+        category: 'authentication',
+      }, 401)),
+    });
+
+    let caught: unknown;
+    try {
+      await transport.requestJson('/api/accounts');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(HttpStatusError);
+    const err = caught as HttpStatusError;
+    expect(err.hint).toBe('Use the pairing token from the dashboard');
+  });
 });

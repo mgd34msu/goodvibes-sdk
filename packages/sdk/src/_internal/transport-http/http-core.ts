@@ -53,6 +53,8 @@ export interface TransportJsonError {
   readonly body: unknown;
   readonly url: string;
   readonly method: string;
+  readonly retryAfterMs?: number;
+  readonly cause?: unknown;
 }
 
 export interface HttpJsonTransport {
@@ -121,6 +123,7 @@ function createTransportError(
   url: string,
   method: string,
   body: unknown,
+  retryAfterMs?: number,
 ): Error & { readonly transport: TransportJsonError } {
   return Object.assign(new Error(readErrorMessage(status, url, body)), {
     transport: {
@@ -128,10 +131,18 @@ function createTransportError(
       body,
       url,
       method,
+      ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
     },
   });
 }
 
+/**
+ * Creates a transport error representing a network-level failure (no HTTP response received).
+ *
+ * Note: `Error.cause` (set via `Object.assign`) is the authoritative standard-compliant
+ * cause field. The inner `transport.cause` mirrors it for callers that inspect the raw
+ * transport payload — treat `Error.cause` as the source of truth.
+ */
 function createNetworkTransportError(
   error: unknown,
   url: string,
@@ -147,6 +158,7 @@ function createNetworkTransportError(
       body: { error: message },
       url,
       method,
+      cause: error,
     },
   });
 }
@@ -222,6 +234,23 @@ export function createFetch(fetchImpl?: typeof fetch, fallbackFetch?: typeof fet
   return resolved.bind(globalThis);
 }
 
+function parseRetryAfterMs(headers: Headers): number | undefined {
+  const retryAfter = headers.get('retry-after');
+  if (!retryAfter) return undefined;
+  // Numeric seconds
+  const seconds = Number(retryAfter);
+  if (!Number.isNaN(seconds) && seconds >= 0) {
+    return Math.ceil(seconds * 1000);
+  }
+  // HTTP-date
+  const date = new Date(retryAfter);
+  if (!Number.isNaN(date.getTime())) {
+    const ms = date.getTime() - Date.now();
+    return ms > 0 ? ms : 0;
+  }
+  return undefined;
+}
+
 export async function readJsonBody(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text.trim()) return null;
@@ -245,7 +274,8 @@ export async function requestJson<T>(
   }
   const body = await readJsonBody(response);
   if (!response.ok) {
-    throw createTransportError(response.status, url, init.method ?? 'GET', body);
+    const retryAfterMs = parseRetryAfterMs(response.headers);
+    throw createTransportError(response.status, url, init.method ?? 'GET', body, retryAfterMs);
   }
   return body as T;
 }

@@ -13,6 +13,7 @@
 - [Realtime and telemetry](./realtime-and-telemetry.md)
 - [Retries and reconnect](./retries-and-reconnect.md)
 - [Companion app patterns](./companion-app-patterns.md)
+- [Companion message routing](./companion-message-routing.md)
 - [Companion app pairing](./pairing.md)
 - [Browser integration](./browser-integration.md)
 - [Web UI integration](./web-ui-integration.md)
@@ -20,6 +21,11 @@
 - [Expo integration](./expo-integration.md)
 - [Android integration](./android-integration.md)
 - [iOS integration](./ios-integration.md)
+
+## Architecture and Security
+
+- [Architecture](./architecture.md)
+- [Security](./security.md)
 
 ## Server and Host Embedding
 
