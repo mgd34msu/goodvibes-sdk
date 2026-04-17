@@ -1,7 +1,5 @@
 // Synced from packages/transport-realtime/src/runtime-events.ts
-// Extracted from legacy source: src/runtime/transports/runtime-events-client.ts
 import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../contracts/index.js';
-import type { AnyRuntimeEvent } from '../platform/runtime/events/index.js';
 import {
   normalizeAuthToken,
   type AuthTokenResolver,
@@ -11,6 +9,7 @@ import {
   getStreamReconnectDelay,
 } from '../transport-http/index.js';
 import { buildUrl, normalizeBaseUrl } from '../transport-http/index.js';
+import { invokeTransportObserver, type TransportObserver } from '../transport-core/index.js';
 import {
   createRemoteDomainEvents,
   type DomainEventConnector,
@@ -57,6 +56,7 @@ export { forSession as forSessionRuntime } from './domain-events.js';
 export interface RuntimeEventConnectorOptions {
   readonly reconnect?: StreamReconnectPolicy;
   readonly onError?: (error: unknown) => void;
+  readonly observer?: TransportObserver;
 }
 
 type AuthTokenSource = string | null | undefined | AuthTokenResolver;
@@ -98,23 +98,37 @@ export function buildWebSocketUrl(
   return url.toString();
 }
 
-export function createEventSourceConnector(
+export function createEventSourceConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
   baseUrl: string,
   token: AuthTokenSource,
   fetchImpl: typeof fetch,
   options: RuntimeEventConnectorOptions = {},
-): DomainEventConnector<RuntimeEventDomain, AnyRuntimeEvent> {
+): DomainEventConnector<RuntimeEventDomain, TEvent> {
+  const { observer } = options;
   const handleError = options.onError ?? (options.reconnect?.enabled ? (() => {}) : undefined);
   return async (domain, onEnvelope) => {
     const url = buildEventSourceUrl(baseUrl, domain);
     const getAuthToken = normalizeAuthToken(token ?? undefined);
+    // Notify observer of outbound SSE connection attempt.
+    invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'sse' }));
     return await openServerSentEventStream(fetchImpl, url, {
       onEvent: (eventName, payload) => {
         if (eventName !== domain) return;
         if (!payload || typeof payload !== 'object') return;
-        onEnvelope(payload as SerializedRuntimeEnvelope<AnyRuntimeEvent>);
+        const envelope = payload as SerializedRuntimeEnvelope<TEvent>;
+        onEnvelope(envelope);
+        // Notify observer of inbound event.
+        invokeTransportObserver(() => {
+          observer?.onTransportActivity?.({ direction: 'recv', url, kind: 'sse' });
+          if (envelope.payload) {
+            (observer as { onEvent?: (e: unknown) => void } | undefined)?.onEvent?.(envelope.payload);
+          }
+        });
       },
-      onError: handleError,
+      onError: (err) => {
+        invokeTransportObserver(() => observer?.onError?.(err instanceof Error ? err : new Error(String(err))));
+        handleError?.(err);
+      },
     }, {
       reconnect: options.reconnect,
       getAuthToken,
@@ -122,12 +136,13 @@ export function createEventSourceConnector(
   };
 }
 
-export function createWebSocketConnector(
+export function createWebSocketConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
   baseUrl: string,
   token: AuthTokenSource,
   WebSocketImpl: typeof WebSocket,
   options: RuntimeEventConnectorOptions = {},
-): DomainEventConnector<RuntimeEventDomain, AnyRuntimeEvent> {
+): DomainEventConnector<RuntimeEventDomain, TEvent> {
+  const { observer } = options;
   return async (domain, onEnvelope) => {
     const url = buildWebSocketUrl(baseUrl, [domain]);
     const reconnect = options.reconnect;
@@ -179,6 +194,8 @@ export function createWebSocketConnector(
     const onOpen = async () => {
       const authToken = (await normalizeAuthToken(token ?? undefined)()) ?? null;
       if (!authToken || !socket) return;
+      // Notify observer of outbound WS connection.
+      invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
       // Send auth frame first, then drain any messages buffered during resolution.
       socket.send(JSON.stringify({
         type: 'auth',
@@ -198,7 +215,15 @@ export function createWebSocketConnector(
             hasReceivedMessage = true;
             reconnectAttempt = 0;
           }
-          onEnvelope(frame.payload as SerializedRuntimeEnvelope<AnyRuntimeEvent>);
+          const wsPayload = frame.payload as SerializedRuntimeEnvelope<TEvent>;
+          onEnvelope(wsPayload);
+          // Notify observer of inbound WS event.
+          invokeTransportObserver(() => {
+            observer?.onTransportActivity?.({ direction: 'recv', url, kind: 'ws' });
+            if (wsPayload.payload) {
+              (observer as { onEvent?: (e: unknown) => void } | undefined)?.onEvent?.(wsPayload.payload);
+            }
+          });
         }
       } catch {
         // Ignore malformed frames.
@@ -212,6 +237,7 @@ export function createWebSocketConnector(
     };
 
     const onError = (event: Event) => {
+      invokeTransportObserver(() => observer?.onError?.(event instanceof Error ? event : new Error(String(event))));
       options.onError?.(event);
     };
 

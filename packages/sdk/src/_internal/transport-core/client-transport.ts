@@ -1,5 +1,4 @@
 // Synced from packages/transport-core/src/client-transport.ts
-// Extracted from legacy source: src/runtime/transports/client-transport.ts
 export interface ClientTransport<TKind extends string, TOperator, TPeer> {
   readonly kind: TKind;
   readonly operator: TOperator;

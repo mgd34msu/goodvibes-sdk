@@ -1,5 +1,4 @@
 // Synced from packages/transport-core/src/event-feeds.ts
-// Extracted from legacy source: src/runtime/event-feeds.ts
 import type { EventEnvelope } from './event-envelope.js';
 
 type EventLike = { readonly type: string };

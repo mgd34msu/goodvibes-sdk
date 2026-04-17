@@ -1,5 +1,4 @@
 // Synced from packages/transport-realtime/src/domain-events.ts
-// Extracted from legacy source: src/runtime/transports/domain-events.ts
 import type { EventEnvelope } from '../transport-core/index.js';
 import { createRuntimeEventFeeds, type RuntimeEventFeed, type RuntimeEventFeeds } from '../transport-core/index.js';
 

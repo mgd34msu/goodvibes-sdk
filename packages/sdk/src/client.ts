@@ -29,6 +29,7 @@ import {
   type GoodVibesAuthClient,
   type GoodVibesTokenStore,
 } from './auth.js';
+import type { SDKObserver } from './observer/index.js';
 
 /**
  * Discriminated union of all runtime events emitted by the GoodVibes daemon.
@@ -144,6 +145,18 @@ export interface GoodVibesSdkOptions {
    * reconnect policies, error callback).
    */
   readonly realtime?: GoodVibesRealtimeOptions;
+
+  /**
+   * Optional observer for SDK-level observability hooks.
+   *
+   * Pass a `SDKObserver` implementation (or one of the built-in adapters
+   * like `createConsoleObserver` / `createOpenTelemetryObserver`) to receive
+   * callbacks for auth transitions, transport activity, events, and errors.
+   *
+   * All observer methods are wrapped in a silent try/catch — observer
+   * exceptions never propagate into SDK logic.
+   */
+  readonly observer?: SDKObserver;
 }
 
 /**
@@ -312,28 +325,32 @@ export function createGoodVibesSdk(
     tokenStore: tokenStore ?? undefined,
   }));
 
+  const { observer } = options;
+
   return {
     operator,
     peer,
-    auth: createGoodVibesAuthClient(operator, tokenStore, getAuthToken),
+    auth: createGoodVibesAuthClient(operator, tokenStore, getAuthToken, observer),
     realtime: {
       viaSse(): RemoteRuntimeEvents<RuntimeEventRecord> {
         return createRemoteRuntimeEvents(
-          createEventSourceConnector(baseUrl, tokenResolver, fetchImpl(), {
+          createEventSourceConnector<AnyRuntimeEvent>(baseUrl, tokenResolver, fetchImpl(), {
             reconnect: options.realtime?.sseReconnect,
             onError: options.realtime?.onError,
+            observer,
           }),
         );
       },
       viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<RuntimeEventRecord> {
         return createRemoteRuntimeEvents(
-          createWebSocketConnector(
+          createWebSocketConnector<AnyRuntimeEvent>(
             baseUrl,
             tokenResolver,
             requireWebSocketImplementation(webSocketImpl ?? options.WebSocketImpl),
             {
               reconnect: options.realtime?.webSocketReconnect,
               onError: options.realtime?.onError,
+              observer,
             },
           ),
         );

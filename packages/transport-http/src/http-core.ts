@@ -9,6 +9,7 @@ import {
   type HttpRetryPolicy,
 } from './retry.js';
 import { buildUrl, createTransportPaths, type TransportPaths } from './paths.js';
+import { invokeTransportObserver, type TransportObserver } from '@pellux/goodvibes-transport-core';
 
 export type { HttpRetryPolicy } from './retry.js';
 
@@ -31,6 +32,7 @@ export interface HttpJsonTransportOptions {
   readonly headers?: HeadersInit;
   readonly getHeaders?: HeaderResolver;
   readonly retry?: HttpRetryPolicy;
+  readonly observer?: TransportObserver;
 }
 
 export interface HttpJsonRequestOptions {
@@ -301,6 +303,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
   const defaultHeaders = options.headers;
   const retryPolicy = options.retry;
   const paths = createTransportPaths(baseUrl);
+  const observer = options.observer;
 
   const requestJsonForTransport = async <T>(pathOrUrl: string, requestOptions: HttpJsonRequestOptions = {}): Promise<T> => {
     const url = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
@@ -314,8 +317,11 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
       attempt += 1;
       const token = (await getAuthToken()) ?? null;
       const headers = await resolveHeaders(defaultHeaders, options.getHeaders);
+      // Notify observer before dispatching the request.
+      invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'http' }));
+      const sendAt = Date.now();
       try {
-        return await requestJson<T>(
+        const result = await requestJson<T>(
           fetchImpl,
           url,
           createJsonRequestInit(
@@ -326,7 +332,17 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
             requestOptions.signal,
           ),
         );
+        // Notify observer after a successful response.
+        invokeTransportObserver(() => observer?.onTransportActivity?.({
+          direction: 'recv',
+          url,
+          kind: 'http',
+          durationMs: Date.now() - sendAt,
+        }));
+        return result;
       } catch (error) {
+        // Notify observer of the transport error before deciding to retry or rethrow.
+        invokeTransportObserver(() => observer?.onError?.(error instanceof Error ? error : new Error(String(error))));
         const status = typeof error === 'object' && error !== null && 'transport' in error
           ? (error as { readonly transport?: { readonly status?: unknown } }).transport?.status
           : undefined;
