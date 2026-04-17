@@ -14,8 +14,10 @@ import {
 import {
   createConsoleObserver,
   createOpenTelemetryObserver,
+  invokeObserver,
   type SDKObserver,
   type AuthTransitionInfo,
+  type TransportActivityInfo,
 } from '../packages/sdk/src/observer/index.js';
 import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
 
@@ -119,6 +121,61 @@ describe('SDKObserver — auth wire-up', () => {
     );
     const result = await auth.login({ username: 'alice', password: 'secret' });
     expect(result.token).toBe('tok_test');
+  });
+});
+
+describe('SDKObserver — TransportObserver callbacks', () => {
+  test('invokeObserver fires onTransportActivity send+recv', () => {
+    const activities: TransportActivityInfo[] = [];
+    const observer: SDKObserver = {
+      onTransportActivity(a) { activities.push(a); },
+    };
+
+    invokeObserver(() => observer.onTransportActivity?.({ direction: 'send', url: 'http://localhost/api', kind: 'http' }));
+    invokeObserver(() => observer.onTransportActivity?.({ direction: 'recv', url: 'http://localhost/api', kind: 'http', durationMs: 42 }));
+
+    expect(activities).toHaveLength(2);
+    expect(activities[0].direction).toBe('send');
+    expect(activities[1].direction).toBe('recv');
+    expect(activities[1].durationMs).toBe(42);
+  });
+
+  test('invokeObserver swallows onTransportActivity errors', () => {
+    const observer: SDKObserver = {
+      onTransportActivity(_a) { throw new Error('transport observer broken'); },
+    };
+    expect(() =>
+      invokeObserver(() => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'http' }))
+    ).not.toThrow();
+  });
+
+  test('invokeObserver swallows onError errors', () => {
+    const observer: SDKObserver = {
+      onError(_e) { throw new Error('error observer broken'); },
+    };
+    expect(() =>
+      invokeObserver(() => (observer as { onError?: (e: Error) => void }).onError?.(new Error('sdk error')))
+    ).not.toThrow();
+  });
+
+  test('invokeObserver swallows onEvent errors', () => {
+    const observer: SDKObserver = {
+      onEvent(_e) { throw new Error('event observer broken'); },
+    };
+    expect(() =>
+      invokeObserver(() => (observer as { onEvent?: (e: unknown) => void }).onEvent?.({ type: 'UNKNOWN' }))
+    ).not.toThrow();
+  });
+
+  test('onTransportActivity sse and ws kind values accepted', () => {
+    const activities: TransportActivityInfo[] = [];
+    const observer: SDKObserver = {
+      onTransportActivity(a) { activities.push(a); },
+    };
+    invokeObserver(() => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'sse' }));
+    invokeObserver(() => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'ws' }));
+    expect(activities[0].kind).toBe('sse');
+    expect(activities[1].kind).toBe('ws');
   });
 });
 

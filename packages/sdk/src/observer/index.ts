@@ -21,6 +21,7 @@ const SPAN_STATUS_ERROR = 2 as const; // OpenTelemetry SpanStatusCode.ERROR
 
 import type { GoodVibesSdkError } from '../_internal/errors/index.js';
 import type { AnyRuntimeEvent } from '../_internal/platform/runtime/events/domain-map.js';
+import type { TransportObserver, TransportActivityInfo } from '../_internal/transport-core/index.js';
 
 export type { AnyRuntimeEvent };
 
@@ -38,15 +39,10 @@ export type AuthStateKind = 'anonymous' | 'session' | 'token';
 export type AuthTransitionReason = 'login' | 'logout' | 'refresh' | 'expire' | 'revoke';
 
 /**
- * Transport activity metadata surfaced to the observer.
+ * Re-export TransportActivityInfo from transport-core so SDK consumers
+ * don't need to import from an internal package.
  */
-export interface TransportActivityInfo {
-  readonly direction: 'send' | 'recv';
-  readonly url: string;
-  readonly status?: number;
-  readonly durationMs?: number;
-  readonly kind?: 'http' | 'sse' | 'ws';
-}
+export type { TransportActivityInfo } from '../_internal/transport-core/index.js';
 
 /**
  * Auth transition metadata surfaced to the observer.
@@ -64,15 +60,13 @@ export interface AuthTransitionInfo {
  * Every call site is wrapped in `try { observer.onX?.(...) } catch (e) {}`
  * — observer errors are swallowed and never propagate into SDK logic.
  */
-export interface SDKObserver {
+export interface SDKObserver extends TransportObserver {
   /**
-   * Called for every event dispatched through the RuntimeEventBus.
-   * Receives the fully-typed event payload.
+   * Called for every event dispatched through the realtime transport
+   * (SSE or WebSocket). Receives the fully-typed runtime event payload.
    *
-   * **Status (as of 0.19.5):** not yet invoked. The observer interface declares
-   * this method, but no SDK code currently fires it. Scheduled for a later
-   * wave. Observers can safely register implementations — they will begin
-   * firing automatically when the wire-up lands.
+   * Wired as of 0.19.7 — fires on every envelope dispatched through
+   * `createEventSourceConnector` and `createWebSocketConnector`.
    */
   onEvent?(event: AnyRuntimeEvent): void;
 
@@ -80,21 +74,18 @@ export interface SDKObserver {
    * Called when the SDK catches and is about to rethrow a GoodVibesSdkError.
    * The error is still rethrown; this is notification only.
    *
-   * **Status (as of 0.19.5):** not yet invoked. The observer interface declares
-   * this method, but no SDK code currently fires it. Scheduled for a later
-   * wave. Observers can safely register implementations — they will begin
-   * firing automatically when the wire-up lands.
+   * Wired as of 0.19.7 — fires at every `GoodVibesSdkError` throw site in
+   * the transport and auth layers before the error propagates to the caller.
    */
   onError?(err: GoodVibesSdkError): void;
 
   /**
-   * Called at HTTP/SSE/WS transport boundaries (send before request,
-   * recv after response with status + duration).
+   * Called at HTTP/SSE/WebSocket transport boundaries.
+   * - `'send'` fires before the request is dispatched.
+   * - `'recv'` fires after a response is received (with status + duration).
    *
-   * **Status (as of 0.19.5):** not yet invoked. The observer interface declares
-   * this method, but no SDK code currently fires it. Scheduled for a later
-   * wave. Observers can safely register implementations — they will begin
-   * firing automatically when the wire-up lands.
+   * Wired as of 0.19.7 — fires in `transport-http` request/response boundary
+   * and in realtime connect/message boundaries.
    */
   onTransportActivity?(activity: TransportActivityInfo): void;
 

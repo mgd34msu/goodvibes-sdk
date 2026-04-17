@@ -1,5 +1,4 @@
 // Synced from packages/transport-core/src/event-envelope.ts
-// Extracted from legacy source: src/runtime/event-envelope.ts
 export interface EventEnvelope<TType extends string, TPayload> {
   readonly type: TType;
   readonly ts: number;
