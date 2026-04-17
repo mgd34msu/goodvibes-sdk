@@ -1,8 +1,8 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.19.0
-**Current score**: 8.3 / 10
+**Current version**: 0.19.1
+**Current score**: 8.5 / 10
 **Last updated**: 2026-04-17
 
 ---
@@ -14,8 +14,10 @@
 | S-α | Stabilize the public surface | 0.19.0 | **shipped** | 7.0 → 7.5 | 0.19.0 `d5e2f04` | TUI F-arch-04 now unblocked |
 | S-β | Error taxonomy enforcement | 0.19.1 | not-started | 7.5 → 8.0 | — | Depends on S-α |
 | S-γ | Mirror-drift guard | 0.19.0 | **shipped** | 8.0 → 8.3 | 0.19.0 `d5e2f04` (S-γ scripts from `2ed2853`) | Follow-up WRFC needed to run `bun run sync` for 8 tracked drifts before CI goes green on main. |
-| S-δ | Per-release migration notes | 0.19.2 | not-started | 8.3 → 8.5 | — | Parallel with S-γ |
-| S-ε | Multi-platform test matrix | 0.19.3 | not-started | 8.5 → 8.8 | — | Parallel after S-α |
+| S-δ | Per-release migration notes | 0.19.1 | **shipped** | 8.3 → 8.5 | 0.19.1 `d5b99e0` | Changelog gate live, CI job `changelog-check` armed. |
+| S-ε | Multi-platform test matrix | 0.19.1 | **shipped (partial)** | 8.5 → 8.5 | 0.19.1 `d5b99e0` | 4 dimensions wired (Bun + bun-on-nodeN + RN). Real Node/Browser/Workers deferred to S-ε.2. Partial — score effect withheld until full delivery. |
+| S-ε.2 | Platform matrix — real Node + Browser + Workers | 0.19.x | not-started | 8.5 → 8.8 | — | Follow-up to S-ε |
+| S-γ-cleanup | Transport-http drift cleanup (narrow) | 0.19.x | **deferred** | no score effect | — | Initial attempt at 0.19.1 aborted: `bun run sync` targets all `_internal` subsystems, not just transport-http; regenerating surfaced latent type mismatches in daemon/transport-core/etc mirrors. Future WRFC must scope sync to transport-http only. CI `mirror-drift` job remains red until cleanup lands. |
 | S-ζ | Integration + property tests | 0.19.4 | not-started | 8.8 → 9.2 | — | Depends on S-α + S-β |
 | S-θ | Observability hooks | 0.19.5 | not-started | 9.2 → 9.5 | — | Parallel after S-α |
 | S-ι | Hardening gates | 0.20.x | not-started | 9.5 → 10.0 | — | Depends on S-α..S-θ |
@@ -50,6 +52,20 @@ Initial review 9.4/10 (circular `_internal` self-imports through the public `pla
 **Important recovery**: the fix engineer's `git checkout` revert of a first-pass bad import rewrite accidentally wiped the `packages/sdk/package.json` exports-map change. The orchestrator caught this pre-commit and re-applied the change manually before cutting 0.19.0; otherwise the whole S-α intent (close the `_internal` leak) would have shipped as a no-op. Lesson for future waves: engineers who revert working trees must re-verify the full S-α invariant in their completion report, not just their specific section.
 
 Bundled S-γ into the same 0.19.0 cut (S-γ's 3 scripts were already committed at `2ed2853`; the release is `d5e2f04`). TUI's F-arch-04 is now unblocked; the mirror-drift CI job is armed and will fail on main until the drift-cleanup follow-up WRFC runs `bun run sync`.
+
+### 2026-04-17 — S-δ + S-ε shipped (partial), 0.19.1 released, score 8.3 → 8.5
+
+Bundled two infra waves into `d5b99e0`.
+
+**S-δ** — shipped clean at 10.0 on first review. Changelog gate live: `bun run changelog:check` + inline check in `publish-packages.ts` + CI `changelog-check` job. Future releases cannot publish without a matching `## [X.Y.Z]` section in `CHANGELOG.md`. This ends the "SDK bump → surprise consumer test burn" pattern that ate ~17 TUI tests after 0.18.50.
+
+**S-ε** — reviewed at 9.0 with a Major on "Node dimensions are theater" (engineer used `bun test` in all 4 dimensions; `node-20` / `node-22` names implied Node-as-runtime but tests ran under Bun with Node merely installed on PATH). Orchestrator applied the reviewer's recommended "relabel path" pre-commit: renamed dimensions to `bun-on-node20` / `bun-on-node22`, consolidated redundant scripts. Shipped at 10.0 on the relabeled (honest) scope — which is a PARTIAL delivery of the original S-ε goal. Real Node/Browser/Workers deferred to S-ε.2. **Score effect withheld** until full multi-platform delivery lands.
+
+**Drift cleanup (planned for 0.19.1)** — deferred. The initial attempt ran `bun run sync` which regenerates all `_internal` subsystem mirrors (daemon, transport-core, transport-direct, transport-realtime, operator, peer), not just transport-http. The broader sync surfaced latent type mismatches in non-transport-http canonicals vs their barrel consumers, breaking `bun run build`. Orchestrator reverted all drift-cleanup changes pre-commit. A narrower follow-up WRFC must scope `sync` to transport-http only before the `mirror-drift` CI job can pass on main.
+
+**Cross-chain mishap**: an engineer ran `git checkout -- packages/sdk/src/` during verification cleanup, which wiped another in-flight chain's uncommitted work. This kept happening tonight. Standing rule reinforced in WRFC prompts: **engineers must never `git checkout` or `git stash` to clean up during verification**; if the tree is polluted, stop and escalate.
+
+**Persistent "pre-existing" phrasing violations**: four separate engineers used the banned phrase tonight across different waves. The standing rule is in memory, but enforcement has to continue at the reviewer layer.
 
 ---
 
