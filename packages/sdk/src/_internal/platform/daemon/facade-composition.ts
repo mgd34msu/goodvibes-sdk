@@ -30,11 +30,98 @@ import { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
 import { DaemonSurfaceActionHelper } from './surface-actions.js';
 import { DaemonTransportEventsHelper } from './transport-events.js';
 import { DaemonHttpRouter } from './http/router.js';
+import { CompanionChatManager } from '../companion/companion-chat-manager.js';
+import type { CompanionLLMProvider, CompanionProviderChunk } from '../companion/companion-chat-manager.js';
+import type { ProviderRegistry } from '../providers/registry.js';
 import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
 import type { DaemonConfig, PendingSurfaceReply } from './types.js';
 import type { ResolvedInboundTlsContext } from '../runtime/network/index.js';
 
 type JsonBody = Record<string, unknown>;
+
+/**
+ * Creates the CompanionLLMProvider adapter that bridges the daemon's
+ * ProviderRegistry (chat-based) to the queue-driven async-generator interface
+ * expected by CompanionChatManager.
+ *
+ * Extracted for testability: the adapter can be unit-tested in isolation
+ * without constructing a full daemon facade.
+ *
+ * Error handling:
+ * - If no provider is configured or the model is unavailable, the adapter
+ *   immediately yields `{ type: 'error', error: 'No provider available ...' }`
+ *   and returns. This is a graceful degradation — the companion chat session
+ *   receives a structured error rather than an unhandled exception.
+ * - If the underlying provider.chat() rejects mid-stream, the error is
+ *   caught in the `.catch()` handler and surfaced as a final
+ *   `{ type: 'error', error: <message> }` chunk after all buffered deltas
+ *   have been yielded. The generator never throws; callers always receive
+ *   a terminal chunk.
+ */
+export function createCompanionProviderAdapter(providerRegistry: ProviderRegistry): CompanionLLMProvider {
+  return {
+    async *chatStream(messages, options): AsyncIterable<CompanionProviderChunk> {
+      let provider: import('../providers/interface.js').LLMProvider;
+      try {
+        provider = options.model
+          ? providerRegistry.getForModel(options.model, options.provider ?? undefined)
+          : providerRegistry.getForModel(providerRegistry.getCurrentModel().id);
+      } catch {
+        // No provider is configured or the requested model/provider is unavailable.
+        // Yield a structured error so the companion session receives feedback
+        // rather than hanging or crashing.
+        yield { type: 'error' as const, error: 'No provider available for companion chat' };
+        return;
+      }
+      // Queue-based streaming bridge: onDelta pushes into a queue consumed by the generator.
+      const queue: CompanionProviderChunk[] = [];
+      let resolve: (() => void) | null = null;
+      let done = false;
+      let streamError: string | undefined;
+      const push = (chunk: CompanionProviderChunk): void => {
+        queue.push(chunk);
+        resolve?.();
+        resolve = null;
+      };
+      const chatPromise = provider.chat({
+        model: options.model ?? providerRegistry.getCurrentModel().id,
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        systemPrompt: options.systemPrompt ?? undefined,
+        signal: options.abortSignal,
+        onDelta(delta) {
+          if (delta.content) push({ type: 'text_delta', delta: delta.content });
+        },
+      }).then((resp) => {
+        if (resp.toolCalls?.length) {
+          for (const tc of resp.toolCalls) {
+            push({ type: 'tool_call', toolCallId: tc.id, toolName: tc.name, toolInput: tc.arguments });
+          }
+        }
+      }).catch((err: unknown) => {
+        // Mid-stream error: capture message so it can be yielded as a terminal chunk.
+        streamError = err instanceof Error ? err.message : String(err);
+      }).finally(() => {
+        done = true;
+        resolve?.();
+        resolve = null;
+      });
+      while (!done || queue.length > 0) {
+        if (queue.length === 0) {
+          await new Promise<void>((r) => { resolve = r; });
+        }
+        while (queue.length > 0) {
+          yield queue.shift()!;
+        }
+      }
+      await chatPromise;
+      if (streamError) {
+        yield { type: 'error' as const, error: streamError };
+      } else {
+        yield { type: 'done' as const };
+      }
+    },
+  };
+}
 
 export interface ResolvedDaemonFacadeRuntime {
   readonly configManager: ConfigManager;
@@ -70,6 +157,7 @@ export interface ResolvedDaemonFacadeRuntime {
   readonly serviceRegistry: ServiceRegistry;
   readonly serveFactory: typeof Bun.serve;
   readonly githubWebhookSecret: string | null;
+  readonly companionChatManager: CompanionChatManager;
 }
 
 export function resolveDaemonFacadeRuntime(
@@ -136,6 +224,11 @@ export function resolveDaemonFacadeRuntime(
     deliveryManager: runtimeServices.deliveryManager,
   });
   runtimeServices.deliveryManager.setControlPlaneGateway(controlPlaneGateway);
+
+  const companionChatManager = new CompanionChatManager({
+    eventPublisher: controlPlaneGateway,
+    provider: createCompanionProviderAdapter(runtimeServices.providerRegistry),
+  });
   runtimeServices.approvalBroker.setPublisher(controlPlaneGateway);
   runtimeServices.sessionBroker.setEventPublisher((event, payload) => {
     controlPlaneGateway.publishEvent(event, payload);
@@ -193,6 +286,7 @@ export function resolveDaemonFacadeRuntime(
     serviceRegistry: runtimeServices.serviceRegistry,
     serveFactory: config.serveFactory ?? Bun.serve,
     githubWebhookSecret: config.githubWebhookSecret ?? process.env.GITHUB_WEBHOOK_SECRET ?? null,
+    companionChatManager,
   };
 }
 
@@ -351,6 +445,7 @@ export function createDaemonFacadeCollaborators(
     syncSpawnedAgentTask: options.syncSpawnedAgentTask,
     syncFinishedAgentTask: options.syncFinishedAgentTask,
     trySpawnAgent: options.trySpawnAgent,
+    companionChatManager: runtime.companionChatManager,
   });
   const providerRuntime = new ChannelProviderRuntimeManager({
     configManager: runtime.configManager,
