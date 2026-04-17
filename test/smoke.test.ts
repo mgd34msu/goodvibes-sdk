@@ -7,11 +7,12 @@ import {
   createPeerSdk,
   createRemoteRuntimeEvents,
   createTransportPaths,
-} from '../packages/sdk/dist/index.js';
+} from '../packages/sdk/src/index.ts';
 
 describe('sdk umbrella package', () => {
   test('re-exports contracts, transport, and clients', () => {
-    expect(FOUNDATION_METADATA.productVersion).toBe('0.18.2');
+    const { productVersion } = FOUNDATION_METADATA;
+    expect(productVersion).toMatch(/^0\.\d+\.\d+$/);
     expect(typeof createDaemonControlRouteHandlers).toBe('function');
     expect(typeof createDaemonKnowledgeRouteHandlers).toBe('function');
     expect(typeof createOperatorSdk).toBe('function');

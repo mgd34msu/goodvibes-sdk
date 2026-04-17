@@ -11,8 +11,7 @@ import {
   type RuntimeEventRecord,
 } from './client.js';
 
-export interface ReactNativeGoodVibesSdkOptions
-  extends Omit<GoodVibesSdkOptions, 'WebSocketImpl'> {
+export interface ReactNativeGoodVibesSdkOptions extends GoodVibesSdkOptions {
   readonly WebSocketImpl?: typeof WebSocket;
 }
 
@@ -75,12 +74,6 @@ export function createReactNativeGoodVibesSdk(
       maxDelayMs: 2_000,
     },
     realtime: {
-      sseReconnect: {
-        enabled: true,
-        baseDelayMs: 500,
-        maxDelayMs: 5_000,
-        ...(options.realtime?.sseReconnect ?? {}),
-      },
       webSocketReconnect: {
         enabled: true,
         baseDelayMs: 500,

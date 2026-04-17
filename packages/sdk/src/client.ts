@@ -253,7 +253,9 @@ function requireWebSocketImplementation(webSocketImpl?: typeof WebSocket): typeo
   return resolved;
 }
 
-function createOperatorOptions(options: GoodVibesSdkOptions): OperatorSdkOptions {
+function createClientOptions<T extends OperatorSdkOptions | PeerSdkOptions>(
+  options: GoodVibesSdkOptions,
+): T {
   const getAuthToken = options.tokenStore
     ? () => options.tokenStore!.getToken()
     : options.getAuthToken;
@@ -265,22 +267,7 @@ function createOperatorOptions(options: GoodVibesSdkOptions): OperatorSdkOptions
     ...(options.headers ? { headers: options.headers } : {}),
     ...(options.getHeaders ? { getHeaders: options.getHeaders } : {}),
     ...(options.retry ? { retry: options.retry } : {}),
-  };
-}
-
-function createPeerOptions(options: GoodVibesSdkOptions): PeerSdkOptions {
-  const getAuthToken = options.tokenStore
-    ? () => options.tokenStore!.getToken()
-    : options.getAuthToken;
-  return {
-    baseUrl: requireBaseUrl(options.baseUrl),
-    authToken: options.authToken ?? null,
-    ...(getAuthToken ? { getAuthToken } : {}),
-    ...(options.fetch ? { fetch: options.fetch } : {}),
-    ...(options.headers ? { headers: options.headers } : {}),
-    ...(options.getHeaders ? { getHeaders: options.getHeaders } : {}),
-    ...(options.retry ? { retry: options.retry } : {}),
-  };
+  } as T;
 }
 
 /**
@@ -317,11 +304,11 @@ export function createGoodVibesSdk(
   // Single normalized resolver used by realtime connectors.
   const tokenResolver = normalizeAuthToken(getAuthToken ?? options.authToken ?? undefined);
   const fetchImpl = () => requireFetchImplementation(options.fetch);
-  const operator = createOperatorSdk(createOperatorOptions({
+  const operator = createOperatorSdk(createClientOptions<OperatorSdkOptions>({
     ...options,
     tokenStore: tokenStore ?? undefined,
   }));
-  const peer = createPeerSdk(createPeerOptions({
+  const peer = createPeerSdk(createClientOptions<PeerSdkOptions>({
     ...options,
     tokenStore: tokenStore ?? undefined,
   }));
