@@ -18,6 +18,8 @@ export interface WebGoodVibesSdkOptions extends BrowserGoodVibesSdkOptions {}
  * const events = sdk.realtime.viaSse();
  * events.agents.on('AGENT_SPAWNING', ({ agentId }) => console.log(agentId));
  */
+export { forSession } from './transport-realtime.js';
+
 export function createWebGoodVibesSdk(options: WebGoodVibesSdkOptions = {}): GoodVibesSdk {
   return createBrowserGoodVibesSdk(options);
 }

@@ -167,3 +167,81 @@ export function createRemoteDomainEvents<
     (domain) => createRemoteDomainEventFeed(domain, connect),
   );
 }
+
+/**
+ * Wraps an existing {@link RuntimeEventFeed} and returns a filtered feed whose
+ * callbacks only fire for envelopes whose `sessionId` matches the given value.
+ *
+ * Unsubscribe handles returned by `on` / `onEnvelope` on the filtered feed
+ * correctly remove the underlying listener from the original feed.
+ */
+function createFilteredFeed<TEvent extends EventLike>(
+  feed: RuntimeEventFeed<TEvent>,
+  sessionId: string,
+): RuntimeEventFeed<TEvent> {
+  return {
+    on<TType extends TEvent['type']>(
+      type: TType,
+      listener: (payload: Extract<TEvent, { type: TType }>) => void,
+    ): () => void {
+      return feed.onEnvelope(type, (envelope) => {
+        if (envelope.sessionId !== sessionId) return;
+        listener(envelope.payload as Extract<TEvent, { type: TType }>);
+      });
+    },
+    onEnvelope<TType extends TEvent['type']>(
+      type: TType,
+      listener: (envelope: EventEnvelope<TType, Extract<TEvent, { type: TType }>>) => void,
+    ): () => void {
+      return feed.onEnvelope(type, (envelope) => {
+        if (envelope.sessionId !== sessionId) return;
+        listener(envelope as EventEnvelope<TType, Extract<TEvent, { type: TType }>>);
+      });
+    },
+  };
+}
+
+/**
+ * Returns a filtered view of the given domain events object where every
+ * callback only fires for events whose envelope `sessionId` equals the
+ * supplied value.
+ *
+ * All domain feeds and the `domain()` accessor are pre-filtered. The
+ * `domains` list is preserved unchanged.
+ *
+ * Unsubscribe handles returned by the filtered feeds propagate correctly
+ * to the underlying connection.
+ *
+ * @example
+ * const events = sdk.realtime.viaSse();
+ * // Without forSession — manual filter:
+ * events.turn.onEnvelope('STREAM_DELTA', (e) => {
+ *   if (e.sessionId !== mySessionId) return;
+ *   process.stdout.write(e.payload.content);
+ * });
+ *
+ * // With forSession — no filter needed:
+ * const sessionEvents = forSession(events, mySessionId);
+ * sessionEvents.turn.onEnvelope('STREAM_DELTA', (e) => {
+ *   process.stdout.write(e.payload.content);
+ * });
+ */
+export function forSession<
+  TDomain extends string,
+  TEvent extends EventLike = EventLike,
+>(
+  events: DomainEvents<TDomain, TEvent>,
+  sessionId: string,
+): DomainEvents<TDomain, TEvent> {
+  const filteredFeeds = {} as Record<TDomain, RuntimeEventFeed<TEvent>>;
+  for (const domain of events.domains) {
+    filteredFeeds[domain] = createFilteredFeed(events[domain], sessionId);
+  }
+  return Object.freeze({
+    ...filteredFeeds,
+    domains: events.domains,
+    domain(d: TDomain): RuntimeEventFeed<TEvent> {
+      return filteredFeeds[d];
+    },
+  }) as DomainEvents<TDomain, TEvent>;
+}

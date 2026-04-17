@@ -62,6 +62,8 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
  * const events = sdk.realtime.runtime();
  * events.agents.on('AGENT_SPAWNING', ({ agentId }) => console.log(agentId));
  */
+export { forSession } from './transport-realtime.js';
+
 export function createReactNativeGoodVibesSdk(
   options: ReactNativeGoodVibesSdkOptions,
 ): ReactNativeGoodVibesSdk {

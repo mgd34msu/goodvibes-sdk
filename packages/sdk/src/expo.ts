@@ -20,6 +20,8 @@ export interface ExpoGoodVibesSdkOptions extends ReactNativeGoodVibesSdkOptions 
  *   authToken: await SecureStore.getItemAsync('gv-token'),
  * });
  */
+export { forSession } from './transport-realtime.js';
+
 export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactNativeGoodVibesSdk {
   return createReactNativeGoodVibesSdk(options);
 }

@@ -15,6 +15,61 @@ export type ErrorCategory = DaemonErrorCategory | 'contract';
 
 export type ErrorSource = DaemonErrorSource | 'contract';
 
+/**
+ * Tagged union discriminant for all SDK errors. Use this for exhaustive
+ * switch/if-else handling instead of `instanceof` chains.
+ *
+ * @example
+ * if (error instanceof GoodVibesSdkError) {
+ *   if (error.kind === 'rate-limit') {
+ *     await delay(error.retryAfterMs ?? 1000);
+ *   } else if (error.kind === 'auth') {
+ *     // refresh credentials
+ *   }
+ * }
+ */
+export type SDKErrorKind =
+  | 'auth'
+  | 'config'
+  | 'contract'
+  | 'network'
+  | 'not-found'
+  | 'rate-limit'
+  | 'server'
+  | 'validation'
+  | 'unknown';
+
+function inferKind(category: ErrorCategory): SDKErrorKind {
+  switch (category) {
+    case 'authentication':
+    case 'authorization':
+    case 'billing':
+    case 'permission':
+      return 'auth';
+    case 'config':
+      return 'config';
+    case 'contract':
+      return 'contract';
+    case 'network':
+    case 'timeout':
+      return 'network';
+    case 'not_found':
+      return 'not-found';
+    case 'rate_limit':
+      return 'rate-limit';
+    case 'protocol':
+    case 'service':
+    case 'internal':
+      return 'server';
+    case 'bad_request':
+      return 'validation';
+    case 'tool':
+    case 'unknown':
+    default:
+      return 'unknown';
+  }
+}
+
 export interface GoodVibesSdkErrorOptions {
   readonly code?: string;
   readonly category?: ErrorCategory;
@@ -72,6 +127,7 @@ function inferCategory(status?: number): ErrorCategory {
  * ```
  */
 export class GoodVibesSdkError extends Error {
+  public readonly kind: SDKErrorKind;
   public readonly code?: string;
   public readonly category: ErrorCategory;
   public readonly source: ErrorSource;
@@ -94,6 +150,7 @@ export class GoodVibesSdkError extends Error {
     this.name = this.constructor.name;
     this.code = options.code;
     this.category = options.category ?? inferCategory(options.status);
+    this.kind = inferKind(this.category);
     this.source = options.source ?? 'unknown';
     this.recoverable = options.recoverable ?? (options.status !== undefined && RETRYABLE_STATUS_CODES.includes(options.status));
     this.status = options.status;
@@ -116,7 +173,10 @@ export class GoodVibesSdkError extends Error {
  * implementation available, or calling a mutation on a read-only auth resolver).
  *
  * Always non-recoverable (`recoverable: false`).
- * Category: `'config'`.
+ * Category: `'config'`. Kind: `'config'`.
+ *
+ * @deprecated Use `error.kind === 'config'` instead of `instanceof ConfigurationError`.
+ * This class is preserved for backward compatibility and still throws normally.
  *
  * @example
  * import { ConfigurationError } from '@pellux/goodvibes-sdk';
@@ -146,7 +206,10 @@ export class ConfigurationError extends GoodVibesSdkError {
  * (unexpected shape, missing required fields, etc.).
  *
  * Always non-recoverable (`recoverable: false`).
- * Category: `'contract'`.
+ * Category: `'contract'`. Kind: `'contract'`.
+ *
+ * @deprecated Use `error.kind === 'contract'` instead of `instanceof ContractError`.
+ * This class is preserved for backward compatibility and still throws normally.
  *
  * @example
  * import { ContractError } from '@pellux/goodvibes-sdk';
@@ -182,6 +245,10 @@ export class ContractError extends GoodVibesSdkError {
  *
  * Use `recoverable` to decide whether to retry, and `retryAfterMs` for
  * the backoff hint on rate-limit responses.
+ *
+ * @deprecated Use `error.kind` instead of `instanceof HttpStatusError`.
+ * For example: `error.kind === 'rate-limit'`, `error.kind === 'auth'`, `error.kind === 'server'`.
+ * This class is preserved for backward compatibility and still throws normally.
  *
  * @example
  * import { HttpStatusError } from '@pellux/goodvibes-sdk';

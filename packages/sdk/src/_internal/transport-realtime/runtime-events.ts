@@ -19,6 +19,34 @@ export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = Runtim
 export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord> =
   DomainEvents<RuntimeEventDomain, TEvent>;
 
+/**
+ * Returns a filtered view of a {@link RemoteRuntimeEvents} object where every
+ * callback only fires for events whose envelope `sessionId` equals the given
+ * session identifier.
+ *
+ * This is a convenience wrapper around {@link forSession} scoped to the
+ * canonical runtime-event domains. Use it instead of manually checking
+ * `e.sessionId` in every callback.
+ *
+ * @example
+ * const events = sdk.realtime.viaSse();
+ * const session = await sdk.operator.sessions.create({ title: 'demo' });
+ * const sessionId = session.session.id;
+ *
+ * // Before forSession — repeated manual guard:
+ * events.turn.onEnvelope('STREAM_DELTA', (e) => {
+ *   if (e.sessionId !== sessionId) return;
+ *   process.stdout.write(e.payload.content);
+ * });
+ *
+ * // After forSession — clean, session-scoped subscription:
+ * const sessionEvents = forSessionRuntime(events, sessionId);
+ * sessionEvents.turn.onEnvelope('STREAM_DELTA', (e) => {
+ *   process.stdout.write(e.payload.content);
+ * });
+ */
+export { forSession as forSessionRuntime } from './domain-events.js';
+
 export interface RuntimeEventConnectorOptions {
   readonly reconnect?: StreamReconnectPolicy;
   readonly onError?: (error: unknown) => void;

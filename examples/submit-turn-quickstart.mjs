@@ -9,7 +9,7 @@
  * Run: node examples/submit-turn-quickstart.mjs
  */
 
-import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
+import { createNodeGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk/node';
 
 // 1. Construct the SDK (Node defaults: HTTP retry + SSE reconnect baked in).
 const sdk = createNodeGoodVibesSdk({
@@ -25,22 +25,25 @@ console.log(`[session] created: ${sessionId}`);
 // 3. Subscribe to turn events BEFORE submitting so no deltas are missed.
 //    viaSse() returns per-domain feeds. The 'turn' domain carries STREAM_DELTA,
 //    TURN_COMPLETED, TURN_ERROR, and TURN_CANCEL events.
-//    onEnvelope() provides the full SSE envelope (including sessionId) so you can
-//    filter to just this session when multiple sessions share one SSE connection.
+//
+//    forSession() returns a pre-filtered view of the events object — every
+//    callback only fires for events belonging to the given session. This
+//    removes the need to manually guard each handler with
+//    `if (e.sessionId !== sessionId) return`.
 const events = sdk.realtime.viaSse();
+const sessionEvents = forSession(events, sessionId);
 
 const turnDone = new Promise((resolve) => {
-  // Print each incremental token chunk. e.payload.accumulated = full text so far.
-  const unsubDelta = events.turn.onEnvelope('STREAM_DELTA', (e) => {
-    if (e.sessionId !== sessionId) return;
+  // Print each incremental token chunk. e.payload.content = incremental token chunk.
+  const unsubDelta = sessionEvents.turn.onEnvelope('STREAM_DELTA', (e) => {
     process.stdout.write(e.payload.content);
   });
 
   // Resolve and clean up on any terminal event (completed / error / cancelled).
   const finish = (label, detail = '') => { unsubDelta(); process.stdout.write('\n'); console.log(`[turn] ${label}${detail}`); resolve(); };
-  events.turn.onEnvelope('TURN_COMPLETED', (e) => { if (e.sessionId === sessionId) finish('completed', ` (${e.payload.stopReason})`); });
-  events.turn.onEnvelope('TURN_ERROR',     (e) => { if (e.sessionId === sessionId) finish('error', `: ${e.payload.error}`); });
-  events.turn.onEnvelope('TURN_CANCEL',    (e) => { if (e.sessionId === sessionId) finish('cancelled'); });
+  sessionEvents.turn.onEnvelope('TURN_COMPLETED', (e) => { finish('completed', ` (${e.payload.stopReason})`); });
+  sessionEvents.turn.onEnvelope('TURN_ERROR',     (e) => { finish('error', `: ${e.payload.error}`); });
+  sessionEvents.turn.onEnvelope('TURN_CANCEL',    () => { finish('cancelled'); });
 });
 
 // 4. Submit the user message. The SDK streams assistant deltas via the SSE

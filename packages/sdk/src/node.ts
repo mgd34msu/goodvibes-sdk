@@ -28,6 +28,8 @@ export interface NodeGoodVibesSdkOptions extends GoodVibesSdkOptions {}
  * const session = await sdk.operator.sessions.create({ name: 'my-session' });
  * console.log(session.id);
  */
+export { forSession } from './transport-realtime.js';
+
 export function createNodeGoodVibesSdk(
   options: NodeGoodVibesSdkOptions,
 ): GoodVibesSdk {

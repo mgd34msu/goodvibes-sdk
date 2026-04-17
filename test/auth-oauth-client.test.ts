@@ -1,0 +1,94 @@
+import { describe, expect, test } from 'bun:test';
+import { OAuthClient } from '../packages/sdk/src/_internal/platform/auth/oauth-client.js';
+import type { OAuthProviderConfig } from '../packages/sdk/src/_internal/platform/config/subscriptions.js';
+
+const BASE_CONFIG: OAuthProviderConfig = {
+  clientId: 'test-client-id',
+  authUrl: 'https://auth.example.com/authorize',
+  tokenUrl: 'https://auth.example.com/token',
+  redirectUri: 'http://localhost:4000/callback',
+  scopes: ['openid', 'profile'],
+};
+
+describe('OAuthClient', () => {
+  describe('beginAuthorization', () => {
+    test('returns a valid authorization URL', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      const result = client.beginAuthorization();
+      expect(result.authorizationUrl).toMatch(/^https:\/\/auth\.example\.com\/authorize/);
+    });
+
+    test('authorization URL contains client_id', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      const result = client.beginAuthorization();
+      const url = new URL(result.authorizationUrl);
+      expect(url.searchParams.get('client_id')).toBe('test-client-id');
+    });
+
+    test('authorization URL contains scopes', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      const result = client.beginAuthorization();
+      const url = new URL(result.authorizationUrl);
+      expect(url.searchParams.get('scope')).toBe('openid profile');
+    });
+
+    test('includes PKCE code_challenge by default', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      const result = client.beginAuthorization();
+      const url = new URL(result.authorizationUrl);
+      expect(url.searchParams.get('code_challenge')).toBeTruthy();
+      expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+    });
+
+    test('returns state and verifier for the callback phase', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      const result = client.beginAuthorization();
+      expect(typeof result.state).toBe('string');
+      expect(result.state.length).toBeGreaterThan(0);
+      expect(typeof result.verifier).toBe('string');
+      expect(result.verifier.length).toBeGreaterThan(0);
+    });
+
+    test('accepts explicit state and verifier overrides', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      const result = client.beginAuthorization({ state: 'fixed-state', verifier: 'fixed-verifier' });
+      expect(result.state).toBe('fixed-state');
+      expect(result.verifier).toBe('fixed-verifier');
+    });
+
+    test('generates unique state on each call', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      const r1 = client.beginAuthorization();
+      const r2 = client.beginAuthorization();
+      expect(r1.state).not.toBe(r2.state);
+    });
+  });
+
+  describe('decodeJwtPayload', () => {
+    test('decodes a well-formed JWT payload', () => {
+      const payload = { sub: '123', name: 'Alice' };
+      const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+      const jwt = `header.${encoded}.sig`;
+      const client = new OAuthClient(BASE_CONFIG);
+      const decoded = client.decodeJwtPayload(jwt);
+      expect(decoded).toMatchObject(payload);
+    });
+
+    test('returns null for a non-JWT string', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      expect(client.decodeJwtPayload('not-a-jwt')).toBeNull();
+    });
+
+    test('returns null for malformed base64 in payload segment', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      expect(client.decodeJwtPayload('header.!!!invalid!!!.sig')).toBeNull();
+    });
+  });
+
+  describe('config accessor', () => {
+    test('exposes the config passed at construction', () => {
+      const client = new OAuthClient(BASE_CONFIG);
+      expect(client.config).toBe(BASE_CONFIG);
+    });
+  });
+});
