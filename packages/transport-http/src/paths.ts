@@ -1,3 +1,5 @@
+import { ConfigurationError } from '@pellux/goodvibes-errors';
+
 export interface TransportPaths {
   readonly baseUrl: string;
   readonly statusUrl: string;
@@ -30,7 +32,7 @@ export interface TransportPaths {
 export function normalizeBaseUrl(baseUrl: string): string {
   const normalized = baseUrl.trim();
   if (!normalized) {
-    throw new Error('Transport baseUrl is required');
+    throw new ConfigurationError('Transport baseUrl is required', { code: 'SDK_TRANSPORT_BASE_URL_REQUIRED' });
   }
   return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
 }

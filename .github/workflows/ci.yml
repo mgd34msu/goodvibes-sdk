@@ -79,6 +79,51 @@ jobs:
       - name: Run test suite (${{ matrix.platform }})
         run: ${{ matrix.test-cmd }}
 
+  throw-guard:
+    name: Raw throw guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Check for raw throws in public source
+        run: |
+          set -euo pipefail
+          # Scan canonical package source (exclude _internal mirror, errors package, tests)
+          if rg --type ts \
+               -l \
+               -e 'throw new Error\(' \
+               -e 'throw Error\(' \
+               -e 'throw \{' \
+               -e "throw '" \
+               -e 'throw "' \
+               packages \
+               --glob '**/src/**' \
+               --glob '!**/_internal/**' \
+               --glob '!**/errors/**' \
+               --glob '!**/*.test.ts' \
+               --glob '!**/tests/**' \
+               --glob '!**/__tests__/**' \
+               2>/dev/null | grep -q .; then
+            echo "ERROR: Raw throw found in public SDK source." >&2
+            rg --type ts \
+               -n \
+               -e 'throw new Error\(' \
+               -e 'throw Error\(' \
+               -e 'throw \{' \
+               -e "throw '" \
+               -e 'throw "' \
+               packages \
+               --glob '**/src/**' \
+               --glob '!**/_internal/**' \
+               --glob '!**/errors/**' \
+               --glob '!**/*.test.ts' \
+               --glob '!**/tests/**' \
+               --glob '!**/__tests__/**' >&2 || true
+            exit 1
+          fi
+          echo "throw-guard: no raw throws found in public source."
+
   changelog-check:
     name: Changelog gate
     runs-on: ubuntu-latest

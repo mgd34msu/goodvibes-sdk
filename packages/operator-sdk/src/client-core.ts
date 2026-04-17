@@ -1,3 +1,4 @@
+import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { OperatorContractManifest, OperatorMethodContract } from '@pellux/goodvibes-contracts';
 import type {
   OperatorMethodInput,
@@ -169,7 +170,7 @@ function requireMethodRoute(
 ): ContractRouteDefinition {
   const method = requireMethod(contract, methodId);
   if (!method.http) {
-    throw new Error(`Operator method "${methodId}" does not expose an HTTP binding`);
+    throw new GoodVibesSdkError(`Operator method "${methodId}" does not expose an HTTP binding`, { category: 'contract', source: 'contract', recoverable: false });
   }
   return method.http;
 }
