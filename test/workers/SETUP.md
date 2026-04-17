@@ -26,6 +26,8 @@ bun install
 
 Miniflare 4 ships workerd binaries. On first install it downloads the platform binary. Expect ~50–100 MB added to `node_modules`.
 
+**CI caching**: Cache the `node_modules` directory in CI (standard `actions/cache` step on `node_modules`). This caches the workerd binary alongside npm packages. No separate binary cache is needed — `node_modules` alone is sufficient.
+
 ---
 
 ## 2. Scripts entry to add
@@ -75,7 +77,7 @@ Full proposed diff context:
             test-cmd: bun run test:workers
 ```
 
-**Note**: Miniflare downloads workerd binaries during `bun install`. CI needs internet access during the install step (already the case). No additional caching needed beyond `node_modules`.
+**Note**: Miniflare downloads workerd binaries during `bun install`. CI needs internet access during the install step (already the case). Cache `node_modules` in CI — this is sufficient to avoid re-downloading the workerd binary on every run.
 
 ---
 
@@ -121,14 +123,18 @@ Key constructor options used:
 - `scriptPath` — path to the Worker entry `.mjs` file. **Must be inside `modulesRoot`** for static imports to resolve correctly. The test runner stages `worker.mjs` into `packages/sdk/dist/` at startup and removes it after.
 - `modulesRoot` — base directory for module resolution (set to `packages/sdk/dist`). Static imports in the worker resolve relative to `scriptPath`, which must live under `modulesRoot`.
 - `modulesRules` — **required** to treat `.js` files as ESModule. Without this, Miniflare defaults to CommonJS parsing for `.js` files, which fails on `import`/`export` syntax. Add: `[{ type: 'ESModule', include: ['**/*.js', '**/*.mjs'] }]`
-- `compatibilityDate` — Workers runtime compatibility date
+- `compatibilityDate` — Workers runtime compatibility date. **Policy**: bump quarterly; pick a date within the last calendar quarter (e.g. `'2026-04-01'` for Q1 2026).
 
 **Module staging pattern** (required due to Miniflare resolution):
+
+We write the worker entry to a tmp directory OUTSIDE `dist/` (e.g. `.test-tmp/workers-harness/`) and set `modulesRoot` to `packages/sdk/dist`. This eliminates the dist-race foot-gun: concurrent builds that clean/rewrite `dist/` cannot clobber the staged file.
+
 ```ts
-// In beforeAll: copy worker.mjs into SDK_DIST
-writeFileSync(WORKER_IN_DIST, readFileSync(WORKER_SOURCE, 'utf8'), 'utf8');
-// In afterAll: clean up
-unlinkSync(WORKER_IN_DIST);
+// In beforeAll: create tmp dir and stage worker entry
+mkdirSync(TMP_DIR, { recursive: true });
+writeFileSync(WORKER_IN_TMP, readFileSync(WORKER_SOURCE, 'utf8'), 'utf8');
+// In afterAll: clean up tmp dir
+rmSync(TMP_DIR, { recursive: true, force: true });
 ```
 
 Dispatching requests:
@@ -153,7 +159,8 @@ The Worker script uses ES module format (`export default { async fetch() {} }`).
 |-------|--------|
 | `/smoke` | SDK import + factory call |
 | `/auth` | Auth token storage round-trip |
-| `/transport` | HTTP transport with mock fetch |
+| `/transport-success` | HTTP transport — success path (mock returns real-shape JSON for `GET /api/sessions`) |
+| `/transport-error` | HTTP transport — error path (mock returns 5xx, asserts typed `'server'` kind) |
 | `/errors` | Error taxonomy import + instantiation |
 | `/crypto` | `crypto.subtle` + `crypto.randomUUID` |
 | `/globals` | Audit of Workers global availability |

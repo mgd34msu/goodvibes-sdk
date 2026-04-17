@@ -10,9 +10,10 @@
  * and zero Bun.* API calls, matching the Workers runtime constraint exactly.
  *
  * Module resolution: Miniflare resolves static imports relative to the
- * scriptPath location. We copy worker.mjs into packages/sdk/dist/ so that
- * `import './web.js'` resolves to `dist/web.js`. The copied file is removed
- * in afterAll().
+ * worker script location. We copy worker.mjs into a tmp directory outside
+ * dist/ to avoid racing with concurrent builds, and point modulesRoot at
+ * packages/sdk/dist/ so that `import './web.js'` resolves correctly.
+ * The tmp directory is cleaned up in afterAll().
  *
  * Run:
  *   bun run build && bun test test/workers/workers.test.ts
@@ -22,36 +23,65 @@
  */
 
 import { resolve, dirname } from 'node:path';
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { Miniflare } from 'miniflare';
 
+// n-2: fileURLToPath alias — __dirname here is a local const, NOT the Node.js
+// global __dirname (which is unavailable in ESM). Named explicitly to reduce
+// confusion when reading this file alongside CJS code.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_DIST = resolve(__dirname, '../../packages/sdk/dist');
 const WORKER_SOURCE = resolve(__dirname, 'worker.mjs');
-// Worker entry lives inside SDK_DIST so Miniflare resolves imports from there.
-const WORKER_IN_DIST = resolve(SDK_DIST, '_workers-test-entry.mjs');
+
+// m-5: Write to a tmp dir OUTSIDE dist/ to eliminate the dist-race foot-gun.
+// Concurrent builds that clean/rewrite dist/ cannot clobber the staged file.
+const TMP_DIR = resolve(__dirname, '../../.test-tmp/workers-harness');
+const WORKER_IN_TMP = resolve(TMP_DIR, '_workers-test-entry.mjs');
 
 let mf: Miniflare;
 
 beforeAll(async () => {
-  // Stage the worker script inside SDK_DIST so Miniflare resolves
-  // `import './web.js'` relative to the dist directory.
-  writeFileSync(WORKER_IN_DIST, readFileSync(WORKER_SOURCE, 'utf8'), 'utf8');
+  // m-5: Stage a full snapshot of SDK_DIST in a tmp dir OUTSIDE dist/ to
+  // eliminate the dist-race foot-gun. modulesRoot points to TMP_DIR so all
+  // static imports (including subdirs like _internal/) resolve from a stable
+  // location that concurrent builds cannot race against.
+  if (existsSync(TMP_DIR)) {
+    rmSync(TMP_DIR, { recursive: true, force: true });
+  }
+  // Recursively copy SDK_DIST into TMP_DIR preserving directory structure.
+  function copyDir(src: string, dest: string): void {
+    mkdirSync(dest, { recursive: true });
+    for (const entry of readdirSync(src, { withFileTypes: true })) {
+      const srcPath = resolve(src, entry.name);
+      const destPath = resolve(dest, entry.name);
+      if (entry.isDirectory()) {
+        copyDir(srcPath, destPath);
+      } else {
+        copyFileSync(srcPath, destPath);
+      }
+    }
+  }
+  copyDir(SDK_DIST, TMP_DIR);
+  // Stage the worker entry script into TMP_DIR.
+  writeFileSync(WORKER_IN_TMP, readFileSync(WORKER_SOURCE, 'utf8'), 'utf8');
 
   mf = new Miniflare({
     modules: true,
-    scriptPath: WORKER_IN_DIST,
-    modulesRoot: SDK_DIST,
+    scriptPath: WORKER_IN_TMP,
+    // modulesRoot points to TMP_DIR — a stable snapshot of SDK_DIST files
+    // that concurrent builds cannot race against.
+    modulesRoot: TMP_DIR,
     // Treat all .js/.mjs files in the dist directory as ES modules.
     // Without this, Miniflare defaults to CommonJS parsing for .js files,
     // but our dist is pure ESM (type: module in package.json).
     modulesRules: [
       { type: 'ESModule', include: ['**/*.js', '**/*.mjs'] },
     ],
-    // compatibilityDate enables latest Workers runtime features
-    compatibilityDate: '2024-09-23',
+    // m-6: compatibilityDate — bump quarterly; pick a date within the last
+    // calendar quarter. Updated from '2024-09-23' to '2026-04-01'.
+    compatibilityDate: '2026-04-01',
   });
   // Wait for Miniflare to be ready
   await mf.ready;
@@ -59,9 +89,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await mf?.dispose();
-  // Clean up staged worker file
-  if (existsSync(WORKER_IN_DIST)) {
-    unlinkSync(WORKER_IN_DIST);
+  // Clean up staged worker file and tmp dir
+  if (existsSync(TMP_DIR)) {
+    rmSync(TMP_DIR, { recursive: true, force: true });
   }
 });
 
@@ -102,31 +132,49 @@ describe('Workers harness: auth flow', () => {
 // ─── Transport HTTP ───────────────────────────────────────────────────────────
 
 describe('Workers harness: transport-http round-trip', () => {
-  test('HTTP transport completes a round-trip with mocked fetch', async () => {
-    const res = await mf.dispatchFetch('http://workers.test/transport');
+  // M-1 (success path): mock returns real-shape JSON for GET /api/sessions.
+  // Asserts that result is non-null and contains expected fields, proving the
+  // transport completed the full HTTP round-trip successfully — not just that
+  // it didn't crash.
+  test('success path — mock returns real-shape JSON, result is populated', async () => {
+    const res = await mf.dispatchFetch('http://workers.test/transport-success');
     expect(res.status).toBe(200);
 
     const body = await res.json() as Record<string, unknown>;
     expect(body.ok).toBe(true);
-    expect(body.transportRoundTripCompleted).toBe(true);
+    // result must be non-null: mock matched the real SDK route (GET /api/sessions)
+    expect(body.result).not.toBeNull();
+    // Verify real-shape fields from sessions.list output schema
+    const result = body.result as Record<string, unknown>;
+    expect(result).toHaveProperty('totals');
+    expect(result).toHaveProperty('sessions');
+    // No error on the success path
+    expect(body.kind).toBeNull();
+    expect(body.ctor).toBeNull();
   }, 10_000);
 
-  test('transport errors do not crash the worker (typed or untyped)', async () => {
-    const res = await mf.dispatchFetch('http://workers.test/transport');
-    // The key assertion: the worker did NOT crash (500) — any error was caught
-    // and returned as a structured JSON payload. This proves the SDK's error
-    // boundary works under the Workers runtime.
+  // M-1 (error path): mock returns 5xx. Asserts errorKind === 'server' (exact
+  // literal, not regex) — proving SDK error taxonomy works under Workers runtime.
+  // m-2: kind and ctor are returned as SEPARATE fields to avoid conflating
+  // typed SDKErrorKind values with raw constructor names.
+  test('error path — mock returns 5xx, errorKind is typed \'server\'', async () => {
+    const res = await mf.dispatchFetch('http://workers.test/transport-error');
+    // Worker must not crash (status 200 = error was caught and returned as JSON)
     expect(res.status).toBe(200);
 
     const body = await res.json() as Record<string, unknown>;
     expect(body.ok).toBe(true);
-    expect(body.transportRoundTripCompleted).toBe(true);
-    // errorKind may be a typed SDK kind (e.g. 'not-found', 'network') or
-    // a constructor name if the error was not fully wrapped. Either way,
-    // the worker must have caught it and returned a valid JSON response.
-    if (body.errorKind !== null) {
-      expect(typeof body.errorKind).toBe('string');
-    }
+    // result is null because the call threw
+    expect(body.result).toBeNull();
+
+    // m-2: assert 'kind' is a typed SDKErrorKind, not a constructor name
+    const validKinds = ['auth', 'config', 'contract', 'network', 'not-found', 'rate-limit', 'server', 'validation', 'unknown'];
+    expect(body.kind).toBe('server'); // 500 maps to category 'service' -> kind 'server'
+    expect(validKinds).toContain(body.kind as string);
+
+    // m-2: assert 'ctor' is a string (the constructor name of the thrown error)
+    expect(typeof body.ctor).toBe('string');
+    expect((body.ctor as string).length).toBeGreaterThan(0);
   }, 10_000);
 });
 
@@ -140,8 +188,11 @@ describe('Workers harness: error taxonomy', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(body.ok).toBe(true);
     expect(body.sdkErrorWorks).toBe(true);
+    // m-4: errorClassNames contains only actual Error subclasses
     const names = body.errorClassNames as string[];
     expect(names.length).toBeGreaterThan(0);
+    // Sentinel: GoodVibesSdkError must be present (it IS an Error subclass)
+    expect(names).toContain('GoodVibesSdkError');
   }, 10_000);
 });
 
@@ -180,18 +231,17 @@ describe('Workers harness: globals audit', () => {
     expect(globals.setTimeout).toBe(true);
   }, 10_000);
 
+  // m-1: Assert the ACTUAL observed value, not just typeof.
+  // Miniflare simulates EventSource; production Cloudflare Workers does NOT.
+  // TODO: Wrangler-based re-run would flip this to false — tracked as Wave 4 follow-up.
   test('EventSource availability (Miniflare injects it, real Workers does not)', async () => {
     const res = await mf.dispatchFetch('http://workers.test/globals');
     const body = await res.json() as Record<string, unknown>;
     const globals = body.globals as Record<string, boolean>;
 
-    // FINDING: Miniflare simulates EventSource in its local runtime, but the
-    // real Cloudflare Workers production runtime does NOT expose EventSource.
-    // See FINDINGS.md section 1 for details.
-    // We assert the reported value here; real-runtime behaviour is documented.
-    // In Miniflare: globals.EventSource === true (simulation)
-    // In production Workers: EventSource is undefined
-    expect(typeof globals.EventSource).toBe('boolean'); // present either way
+    // Miniflare simulates EventSource; production Cloudflare Workers does NOT.
+    // TODO: Wrangler-based re-run would flip this to false — tracked as Wave 4 follow-up.
+    expect(globals.EventSource).toBe(true);
   }, 10_000);
 
   test('location is NOT available (must pass explicit baseUrl)', async () => {
