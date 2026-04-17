@@ -48,6 +48,7 @@ jobs:
         platform:
           - bun
           - rn-bundle
+          - workers
         include:
           - platform: bun
             node-version: "22"
@@ -55,6 +56,9 @@ jobs:
           - platform: rn-bundle
             node-version: "22"
             test-cmd: bun run build && bun run test:rn
+          - platform: workers
+            node-version: "22"
+            test-cmd: bun run test:workers
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd

@@ -4,7 +4,7 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 
 ## Status
 
-- **Current released version**: `0.19.6` (published to npm, `latest` tag)
+- **Current released version**: `0.19.6` (published to npm, `latest` tag); `0.19.7` pending publish (Wave 4 + Track C)
 - **Current score**: 9.0 / 10
 - **Eligibility**: NOT eligible for 1.0.0 — pending all waves below
 
@@ -21,7 +21,7 @@ We deliberately skip `1.0.0-rc.X` prerelease syntax to avoid `package.json` pinn
 
 ---
 
-## Wave 1 — S-θ.2 observer seams (target: 0.19.7)
+## Wave 1 — S-θ.2 observer seams (target: 0.19.8, engineer-complete, review pending)
 
 Wire the three remaining `SDKObserver` callbacks.
 
@@ -31,7 +31,7 @@ Wire the three remaining `SDKObserver` callbacks.
 - [ ] `onError` wired at every `SDKError` throw site in transport/auth layers
 - [ ] `onTransportActivity` wired in `transport-http` + `transport-realtime`
 - [ ] All observer calls wrapped in `invokeObserver(…)` so exceptions don't surface
-- [ ] OpenTelemetry observer tested end-to-end (real OTEL collector)
+- [ ] OpenTelemetry observer tested end-to-end (in-memory collector mock)
 - [ ] `test/sdk-observer.test.ts` extended with the three new callbacks
 
 ## Wave 2 — Browser real-runtime (target: 0.19.8)
@@ -49,12 +49,13 @@ Wire the three remaining `SDKObserver` callbacks.
 - [ ] New CI matrix dimension `hermes`
 - [ ] Any Hermes shims land in `sdk/src/_internal/platform/*` following existing runtime-conditional pattern
 
-## Wave 4 — Workers real-runtime (target: 0.19.10)
+## Wave 4 — Workers real-runtime (target: 0.19.7, landed)
 
-- [ ] `test/workers/` harness using Miniflare
-- [ ] First attempt: `/web` entry under Miniflare. If clean, reuse.
-- [ ] If Workers-specific adaptation needed: new `sdk/src/workers.ts` entry + `./workers` subpath export + bundle guard row
-- [ ] New CI matrix dimension `workers`
+- [x] `test/workers/` harness using Miniflare
+- [x] First attempt: `/web` entry under Miniflare. If clean, reuse.
+- [x] Decision: `./web` is sufficient — no `./workers` subpath needed. `dist/web.js` has zero `node:` and zero `Bun.*`.
+- [x] New CI matrix dimension `workers`
+- [ ] Follow-up: run harness against real Wrangler (stricter than Miniflare simulation) — tracked as a MIN item
 
 ## Wave 5 — Package hygiene + supply chain (target: 0.19.11)
 
@@ -62,14 +63,16 @@ Wire the three remaining `SDKObserver` callbacks.
 - [ ] `publint` CI gate
 - [ ] `npm publish --provenance` wired via GitHub Actions OIDC
 - [ ] Signed git tags (`git tag -s`) on every release tag
-- [ ] `SECURITY.md` at repo root with reporting policy and response SLA
+- [x] `SECURITY.md` at repo root with reporting policy and response SLA
 - [ ] **SBOM generation** (CycloneDX JSON via `@cyclonedx/cyclonedx-npm`) attached to every GitHub release and the npm tarball; new CI job `sbom-check`
 
 ## Wave 6 — Policy & UX (target: 0.19.12)
 
-- [ ] `docs/semver-policy.md` — explicit definition of what counts as a breaking change
+- [x] `docs/semver-policy.md` — explicit definition of what counts as a breaking change
 - [ ] Error-message quality audit — every `SDKError` throw site graded and rewritten where lacking
 - [ ] Timeout / retry / backoff defaults audit across transport-http, transport-realtime, auth refresh
+- [ ] Public-surface TODO cleanup: fold `packages/sdk/src/platform/runtime/transports/http.ts` into `daemon-http-client` once consumers stop importing `transports/http` directly
+- [ ] Public-surface TODO cleanup: wire producer API + bound queue size in `packages/transport-realtime/src/runtime-events.ts:143` (unbounded queue is a prod-hang risk; resync mirror scoped after fix)
 - [ ] Any finding documented in CHANGELOG as a fix
 
 ## Wave 7 — Verification + Zod runtime validation (target: 0.19.13)
@@ -86,6 +89,9 @@ Wire the three remaining `SDKObserver` callbacks.
 - [ ] Flake detection CI gate (N-run stability check)
 - [ ] Public API surface snapshot via `@microsoft/api-extractor` or equivalent
 - [ ] Snapshot gate fails on unintended public surface changes
+- [ ] Internal TODO cleanup (companion): session persistence, rate-limiting, ToolRegistry DI for tool-call execution (3 TODOs in `packages/sdk/src/_internal/platform/companion/companion-chat-manager.ts` + 1 in `companion-chat-types.ts`)
+- [ ] Replace `@ts-ignore` suppressions with real `sql.js` type declarations (`packages/sdk/src/_internal/platform/state/sqlite-store.ts:82`, `state/db.ts:76`) — add minimal `.d.ts` shim for the API surface actually used
+- [ ] **New CI gate `no-todo-markers`**: fail the build if `\b(TODO|FIXME|XXX|HACK|STUB)\b` appears in any source file outside `_internal/**`, `**/vendor/**`, `**/generated/**`, and `**/*.test.ts`. Prevents TODO drift in public-surface code post-1.0.0.
 
 ## Wave 9 — Soak period (target: 0.21.0)
 
@@ -98,7 +104,7 @@ Wire the three remaining `SDKObserver` callbacks.
 - [ ] **Owner explicit sign-off** (required regardless of gate state)
 - [ ] All gates above green on main
 - [ ] All CI dimensions passing: `bun`, `rn-bundle`, `browser`, `hermes`, `workers`
-- [ ] All new CI jobs passing: `are-the-types-wrong`, `publint`, `sbom-check`, `bundle-budget`, `api-surface-snapshot`, `flake-watch`, `examples-smoke`
+- [ ] All new CI jobs passing: `are-the-types-wrong`, `publint`, `sbom-check`, `bundle-budget`, `api-surface-snapshot`, `flake-watch`, `examples-smoke`, `no-todo-markers`
 - [ ] npm publish as `1.0.0` with `--provenance` and signed tag
 
 ---
