@@ -123,3 +123,33 @@ The workflow performs the npm/bun install smoke checks automatically after publi
 ## Versioning Rule
 
 Version the SDK according to SDK changes and published behavior.
+
+## Mirror Drift Guard
+
+`packages/transport-http/src/**` is mirrored byte-for-byte into `packages/sdk/src/_internal/transport-http/**`. The sync script (`bun run sync`) applies two allowed transforms per file: a leading `// Synced from …` header comment, and import-path rewrites (package specifiers rewritten to relative paths, `.ts` → `.js` extensions).
+
+The drift guard catches any body divergence beyond those two transforms:
+
+```bash
+bun run sync:check
+```
+
+This runs on every PR via the `mirror-drift` CI job in `.github/workflows/ci.yml`. A non-zero exit prints the drifted file(s) and the first diverging line.
+
+If the check fails, regenerate the mirror and re-check:
+
+```bash
+bun run sync
+bun run sync:check
+```
+
+### Optional pre-commit hook
+
+To catch drift locally before push, add the following to `.git/hooks/pre-commit` (create it if absent, and make it executable with `chmod +x .git/hooks/pre-commit`):
+
+```bash
+#!/usr/bin/env bash
+bun run sync:check
+```
+
+The hook is opt-in and not installed automatically. Omit it if you prefer to rely solely on the CI gate.

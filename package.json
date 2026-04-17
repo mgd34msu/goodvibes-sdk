@@ -27,6 +27,7 @@
   "scripts": {
     "sync": "bun run sync:internal",
     "sync:internal": "bun scripts/sync-sdk-internals.ts",
+    "sync:check": "bun scripts/sync-check.ts",
     "sync:version": "bun scripts/sync-version-fallback.ts",
     "docs:generate": "bun scripts/generate-api-docs.ts",
     "docs:check": "bun scripts/generate-api-docs.ts --check && bun scripts/docs-completeness-check.ts",
