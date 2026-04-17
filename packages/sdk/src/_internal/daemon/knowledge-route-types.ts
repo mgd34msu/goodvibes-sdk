@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/knowledge-route-types.ts
-// Extracted from legacy source: src/daemon/http/knowledge-route-types.ts
 export type AutomationScheduleDefinition = unknown;
 export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue';
 export type KnowledgeUsageKind = string;

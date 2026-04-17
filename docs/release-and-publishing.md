@@ -249,3 +249,82 @@ bun run sync:check
 ```
 
 The hook is opt-in and not installed automatically. Omit it if you prefer to rely solely on the CI gate.
+
+## Signed Git Tags
+
+All release tags **MUST** be signed with the repo owner's GPG key. Unsigned tags will not be accepted as valid release artifacts.
+
+### Prerequisites
+
+Ensure your GPG key is configured in git:
+
+```bash
+git config user.signingkey <your-gpg-key-id>
+git config commit.gpgsign true   # optional but recommended
+```
+
+To list available keys:
+
+```bash
+gpg --list-secret-keys --keyid-format=long
+```
+
+### Creating a release tag
+
+Use the `release:tag` script to create a signed tag automatically:
+
+```bash
+bun run release:tag
+```
+
+This script:
+- Reads the current SDK version from `packages/sdk/package.json`
+- Verifies the working tree is clean
+- Verifies the tag does not already exist
+- Runs `git tag -s v<version> -m 'release <version>'`
+
+To create and push in one step:
+
+```bash
+bun run release:tag -- --push
+```
+
+Pushing a `v*` tag triggers the Release workflow which:
+1. Verifies the tag matches `packages/sdk/package.json` version
+2. Generates the SBOM
+3. Publishes to npm with `--provenance`
+4. Publishes the GitHub Packages mirror
+5. Creates a GitHub release with the SBOM attached
+
+### Manual tag creation
+
+```bash
+git tag -s v<version> -m 'release <version>'
+git push origin v<version>
+```
+
+**Do not use unsigned tags** (`git tag v<version>`) — the release checklist requires GPG-signed tags on all production releases.
+
+## SBOM (Software Bill of Materials)
+
+Every release ships a CycloneDX 1.x JSON SBOM covering all dependencies:
+
+- `sbom.cdx.json` is generated via `bun run sbom:generate`
+- It ships inside the npm tarball (listed in `packages/sdk/package.json` `files`)
+- It is attached as a GitHub release artifact
+
+To regenerate locally:
+
+```bash
+bun run sbom:generate
+```
+
+The `sbom-check` CI job validates that the SBOM is non-empty and structurally valid on every push/PR.
+
+## npm Provenance
+
+When publishing from GitHub Actions (`release:publish:ci`), npm provenance attestation is generated automatically via GitHub's OIDC token. This links the published package to the specific workflow run and commit.
+
+The `publish-npm` job in `release.yml` has `permissions: { id-token: write }` and calls `bun run release:publish:ci` which passes `--provenance` to `npm publish`.
+
+Local publishes (`bun run release:publish`) do not include provenance — this is expected.

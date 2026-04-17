@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/http-policy.ts
-// Extracted from legacy source: src/daemon/http-policy.ts
 import { missingScopes } from './route-helpers.js';
 
 export type AuthenticatedPrincipalKind = 'user' | 'bot' | 'service' | 'token';

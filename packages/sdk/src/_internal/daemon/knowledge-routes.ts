@@ -1,10 +1,10 @@
 // Synced from packages/daemon-sdk/src/knowledge-routes.ts
-// Extracted from legacy source: src/daemon/http/knowledge-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import {
   buildMissingScopeBody,
   resolvePrivateHostFetchOptions,
 } from './http-policy.js';
+import { GoodVibesSdkError } from '../errors/index.js';
 import { jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
 import type {
   AutomationScheduleDefinition,
@@ -251,10 +251,10 @@ function readKnowledgeSchedule(
             typeof schedule.anchorAt === 'number' ? schedule.anchorAt : undefined,
           );
         }
-        throw new Error('Every schedule requires intervalMs or interval.');
+        throw new GoodVibesSdkError('Every schedule requires intervalMs or interval.', { category: 'bad_request', source: 'contract', recoverable: false });
       case 'cron':
         if (typeof schedule.expression !== 'string' || !schedule.expression.trim()) {
-          throw new Error('Cron schedule requires expression.');
+          throw new GoodVibesSdkError('Cron schedule requires expression.', { category: 'bad_request', source: 'contract', recoverable: false });
         }
         return context.normalizeCronSchedule(
           schedule.expression,
@@ -262,10 +262,10 @@ function readKnowledgeSchedule(
           schedule.staggerMs,
         );
       case 'at':
-        if (typeof schedule.at !== 'number') throw new Error('At schedule requires at.');
+        if (typeof schedule.at !== 'number') throw new GoodVibesSdkError('At schedule requires at.', { category: 'bad_request', source: 'contract', recoverable: false });
         return context.normalizeAtSchedule(schedule.at);
       default:
-        throw new Error('Schedule kind must be at, every, or cron.');
+        throw new GoodVibesSdkError('Schedule kind must be at, every, or cron.', { category: 'bad_request', source: 'contract', recoverable: false });
     }
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });

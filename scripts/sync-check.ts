@@ -1,16 +1,22 @@
 /**
- * sync-check.ts — Mirror drift guard for transport-http → sdk/_internal/transport-http.
+ * sync-check.ts — Mirror drift guard for ALL canonical packages → sdk/_internal mirrors.
  *
- * For every canonical file in packages/transport-http/src/**‌/*.ts, this script
- * locates the corresponding mirror under packages/sdk/src/_internal/transport-http/,
+ * For every canonical file in each canonical package src directory, this script
+ * locates the corresponding mirror under packages/sdk/src/_internal/<subsystem>/,
  * applies the same import rewrites the sync script applies (package specifiers +
  * .ts→.js extension normalization), strips the "Synced from" header comment block
  * from the mirror, then diffs the normalized texts. Any divergence causes the
  * process to exit 1 with a report identifying the drifted files and the first
  * diverging line.
  *
+ * Covers all subsystems:
+ *   contracts, errors, daemon, transport-core, transport-direct,
+ *   transport-http, transport-realtime, operator, peer
+ *
  * Usage:
  *   bun scripts/sync-check.ts
+ *   bun scripts/sync-check.ts --scope=daemon
+ *   bun scripts/sync-check.ts --scope=daemon,errors
  *
  * Exit codes:
  *   0 — all mirror files are in sync
@@ -27,8 +33,79 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
-const CANONICAL_DIR = resolve(SDK_ROOT, 'packages/transport-http/src');
-const MIRROR_DIR = resolve(SDK_ROOT, 'packages/sdk/src/_internal/transport-http');
+const INTERNAL_ROOT = resolve(SDK_ROOT, 'packages/sdk/src/_internal');
+
+interface SubsystemSpec {
+  name: string;
+  canonicalDir: string;
+  mirrorDir: string;
+}
+
+const ALL_SUBSYSTEMS: SubsystemSpec[] = [
+  {
+    name: 'contracts',
+    canonicalDir: resolve(SDK_ROOT, 'packages/contracts/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'contracts'),
+  },
+  {
+    name: 'errors',
+    canonicalDir: resolve(SDK_ROOT, 'packages/errors/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'errors'),
+  },
+  {
+    name: 'daemon',
+    canonicalDir: resolve(SDK_ROOT, 'packages/daemon-sdk/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'daemon'),
+  },
+  {
+    name: 'transport-core',
+    canonicalDir: resolve(SDK_ROOT, 'packages/transport-core/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'transport-core'),
+  },
+  {
+    name: 'transport-direct',
+    canonicalDir: resolve(SDK_ROOT, 'packages/transport-direct/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'transport-direct'),
+  },
+  {
+    name: 'transport-http',
+    canonicalDir: resolve(SDK_ROOT, 'packages/transport-http/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'transport-http'),
+  },
+  {
+    name: 'transport-realtime',
+    canonicalDir: resolve(SDK_ROOT, 'packages/transport-realtime/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'transport-realtime'),
+  },
+  {
+    name: 'operator',
+    canonicalDir: resolve(SDK_ROOT, 'packages/operator-sdk/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'operator'),
+  },
+  {
+    name: 'peer',
+    canonicalDir: resolve(SDK_ROOT, 'packages/peer-sdk/src'),
+    mirrorDir: resolve(INTERNAL_ROOT, 'peer'),
+  },
+];
+
+// Optional scope filter: --scope=daemon or --scope=daemon,errors
+const SCOPE_ARG = process.argv.find((a) => a.startsWith('--scope='))?.slice('--scope='.length) ?? null;
+const SCOPE_LIST = SCOPE_ARG ? SCOPE_ARG.split(',').map((s) => s.trim()).filter(Boolean) : null;
+
+const VALID_SCOPES = ALL_SUBSYSTEMS.map((s) => s.name);
+if (SCOPE_LIST) {
+  const unknown = SCOPE_LIST.filter((s) => !VALID_SCOPES.includes(s));
+  if (unknown.length > 0) {
+    console.error(`sync:check: unknown scope(s): ${unknown.join(', ')}`);
+    console.error(`Valid scopes: ${VALID_SCOPES.join(', ')}`);
+    process.exit(1);
+  }
+}
+
+const activeSubsystems = SCOPE_LIST
+  ? ALL_SUBSYSTEMS.filter((s) => SCOPE_LIST.includes(s.name))
+  : ALL_SUBSYSTEMS;
 
 /** Apply the same transforms the sync script applies to produce the expected mirror content. */
 function normalizeCanonical(content: string, mirrorPath: string): string {
@@ -39,13 +116,13 @@ function normalizeCanonical(content: string, mirrorPath: string): string {
  * Strip the exact banner that withHeader() in sync-sdk-internals.ts emits.
  *
  * withHeader() writes exactly:
- *   - Non-shebang: "// Synced from <label>\n" as the first line.
- *   - Shebang:     shebang line, then "// Synced from <label>\n" immediately after.
+ *   - Non-shebang: "// Synced from <label>
+" as the first line.
+ *   - Shebang:     shebang line, then "// Synced from <label>
+" immediately after.
  *
  * Only that single specific line is stripped. Any other leading comment text
  * is NOT removed — it is compared directly against the canonical content.
- * Files with non-matching banners (e.g. old "// Extracted from" headers)
- * will show up as drift, which is correct: fix them by running `bun run sync`.
  */
 function stripMirrorBanner(content: string): string {
   const lines = content.split('\n');
@@ -82,6 +159,7 @@ function walk(dir: string): string[] {
 // ── Drift detection ──────────────────────────────────────────────────────────
 
 interface DriftResult {
+  subsystem: string;
   canonicalPath: string;
   mirrorPath: string;
   missingMirror?: boolean;
@@ -91,15 +169,15 @@ interface DriftResult {
   mirrorLine?: string;
 }
 
-function checkFile(canonicalPath: string): DriftResult | null {
-  const rel = relative(CANONICAL_DIR, canonicalPath).replaceAll('\\', '/');
-  const mirrorPath = resolve(MIRROR_DIR, rel);
+function checkFile(canonicalPath: string, canonicalDir: string, mirrorDir: string, subsystem: string): DriftResult | null {
+  const rel = relative(canonicalDir, canonicalPath).replaceAll('\\', '/');
+  const mirrorPath = resolve(mirrorDir, rel);
 
   let mirrorContent: string;
   try {
     mirrorContent = readFileSync(mirrorPath, 'utf8');
   } catch {
-    return { canonicalPath, mirrorPath, missingMirror: true };
+    return { subsystem, canonicalPath, mirrorPath, missingMirror: true };
   }
 
   const canonicalRaw = readFileSync(canonicalPath, 'utf8');
@@ -112,14 +190,13 @@ function checkFile(canonicalPath: string): DriftResult | null {
   const canonLines = normalizedCanonical.split('\n');
   const mirrorLines = normalizedMirror.split('\n');
   const limit = Math.max(canonLines.length, mirrorLines.length);
-  let firstDivergingLine = -1;
   for (let i = 0; i < limit; i++) {
     if (canonLines[i] !== mirrorLines[i]) {
-      firstDivergingLine = i + 1;
       return {
+        subsystem,
         canonicalPath,
         mirrorPath,
-        firstDivergingLine,
+        firstDivergingLine: i + 1,
         canonicalLine: canonLines[i] ?? '(end of file)',
         mirrorLine: mirrorLines[i] ?? '(end of file)',
       };
@@ -128,6 +205,7 @@ function checkFile(canonicalPath: string): DriftResult | null {
 
   // Lengths differ but lines up to the shorter match.
   return {
+    subsystem,
     canonicalPath,
     mirrorPath,
     firstDivergingLine: Math.min(canonLines.length, mirrorLines.length) + 1,
@@ -138,51 +216,61 @@ function checkFile(canonicalPath: string): DriftResult | null {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-const canonicalFiles = walk(CANONICAL_DIR);
-const canonicalSet = new Set(
-  canonicalFiles.map((p) => relative(CANONICAL_DIR, p).replaceAll('\\', '/')),
-);
 const drifted: DriftResult[] = [];
 
-// Forward check: every canonical file has a valid, in-sync mirror.
-for (const canonicalPath of canonicalFiles) {
-  const result = checkFile(canonicalPath);
-  if (result) drifted.push(result);
-}
+for (const subsystem of activeSubsystems) {
+  const { name, canonicalDir, mirrorDir } = subsystem;
 
-// Reverse check: every mirror file has a corresponding canonical source.
-// Mirrors without a canonical counterpart are stale and must be removed
-// by running `bun run sync`.
-if (existsSync(MIRROR_DIR)) {
-  for (const mirrorPath of walk(MIRROR_DIR)) {
-    const rel = relative(MIRROR_DIR, mirrorPath).replaceAll('\\', '/');
-    if (!canonicalSet.has(rel)) {
-      const canonicalPath = resolve(CANONICAL_DIR, rel);
-      drifted.push({ canonicalPath, mirrorPath, staleFile: true });
+  if (!existsSync(canonicalDir)) {
+    console.warn(`sync:check: canonical dir not found, skipping ${name}: ${canonicalDir}`);
+    continue;
+  }
+
+  const canonicalFiles = walk(canonicalDir);
+  const canonicalSet = new Set(
+    canonicalFiles.map((p) => relative(canonicalDir, p).replaceAll('\\', '/')),
+  );
+
+  // Forward check: every canonical file has a valid, in-sync mirror.
+  for (const canonicalPath of canonicalFiles) {
+    const result = checkFile(canonicalPath, canonicalDir, mirrorDir, name);
+    if (result) drifted.push(result);
+  }
+
+  // Reverse check: every mirror file has a corresponding canonical source.
+  if (existsSync(mirrorDir)) {
+    for (const mirrorPath of walk(mirrorDir)) {
+      const rel = relative(mirrorDir, mirrorPath).replaceAll('\\', '/');
+      if (!canonicalSet.has(rel)) {
+        const canonicalPath = resolve(canonicalDir, rel);
+        drifted.push({ subsystem: name, canonicalPath, mirrorPath, staleFile: true });
+      }
     }
   }
 }
 
 if (drifted.length === 0) {
-  console.log('sync:check passed — transport-http mirror is in sync');
+  const scopeLabel = SCOPE_LIST ? ` (${SCOPE_LIST.join(', ')})` : ' (all subsystems)';
+  console.log(`sync:check passed — all mirrors in sync${scopeLabel}`);
   process.exit(0);
 }
 
-console.error(`sync:check FAILED — ${drifted.length} file(s) have drifted:\n`);
+console.error(`sync:check FAILED — ${drifted.length} file(s) have drifted:
+`);
 
 for (const d of drifted) {
   const canonRel = relative(SDK_ROOT, d.canonicalPath);
   const mirrorRel = relative(SDK_ROOT, d.mirrorPath);
   if (d.staleFile) {
-    console.error(`  STALE MIRROR (no canonical source)`);
+    console.error(`  [${d.subsystem}] STALE MIRROR (no canonical source)`);
     console.error(`    mirror    : ${mirrorRel}`);
     console.error(`    expected  : ${canonRel}`);
   } else if (d.missingMirror) {
-    console.error(`  MISSING MIRROR`);
+    console.error(`  [${d.subsystem}] MISSING MIRROR`);
     console.error(`    canonical : ${canonRel}`);
     console.error(`    expected  : ${mirrorRel}`);
   } else {
-    console.error(`  DRIFT DETECTED`);
+    console.error(`  [${d.subsystem}] DRIFT DETECTED`);
     console.error(`    canonical : ${canonRel}`);
     console.error(`    mirror    : ${mirrorRel}`);
     console.error(`    first diff: line ${d.firstDivergingLine}`);
@@ -192,5 +280,5 @@ for (const d of drifted) {
   console.error();
 }
 
-console.error('Run `bun run sync` to regenerate the mirror, then re-run `bun run sync:check`.');
+console.error('Run `bun run sync --scope=<subsystem>` to regenerate the affected mirror(s), then re-run `bun run sync:check`.');
 process.exit(1);

@@ -1,5 +1,4 @@
 // Synced from packages/errors/src/daemon-error-contract.ts
-// Extracted from legacy source: src/types/daemon-error-contract.ts
 export type DaemonErrorCategory =
   | 'authentication'
   | 'authorization'

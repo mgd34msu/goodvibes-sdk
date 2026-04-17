@@ -48,9 +48,9 @@
     "release:dry-run": "bun scripts/publish-packages.ts --dry-run",
     "release:publish": "bun scripts/publish-packages.ts",
     "version:check": "bun scripts/version-consistency-check.ts",
-    "types:resolution-check": "bun run release:dry-run && attw --pack packages/sdk",
+    "types:resolution-check": "bun run release:dry-run && bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm",
     "publint:check": "publint packages/sdk",
-    "sbom:generate": "npx cyclonedx-npm --output-format JSON --output-file sbom.cdx.json --package-lock-only",
+    "sbom:generate": "bun scripts/sbom-generate.ts",
     "release:tag": "bun scripts/create-release-tag.ts",
     "release:publish:ci": "bun scripts/publish-packages.ts --provenance"
   },

@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/context.ts
-// Extracted from legacy source: src/control-plane/routes/context.ts
 export type MaybeResponse = Response | Promise<Response>;
 
 export interface DaemonApiRouteHandlers {

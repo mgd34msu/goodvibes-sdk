@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/integration-routes.ts
-// Extracted from legacy source: src/daemon/http/integration-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { jsonErrorResponse } from './error-response.js';
 import type { DaemonIntegrationRouteContext, IntegrationHelperServiceLike, RuntimeEventDomain } from './integration-route-types.js';

@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/api-router.ts
-// Extracted from legacy source: src/control-plane/routes/api-router.ts
 import { dispatchAutomationRoutes } from './automation.js';
 import { dispatchOperatorRoutes } from './operator.js';
 import { dispatchRemoteRoutes } from './remote.js';

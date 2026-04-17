@@ -1,5 +1,4 @@
 // Synced from packages/daemon-sdk/src/telemetry-routes.ts
-// Extracted from legacy source: src/daemon/http/telemetry-routes.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 import { buildMissingScopeBody, type AuthenticatedPrincipal } from './http-policy.js';
 import type { RuntimeEventDomain } from '../contracts/index.js';

@@ -59,12 +59,12 @@ Wire the three remaining `SDKObserver` callbacks.
 
 ## Wave 5 — Package hygiene + supply chain (target: 0.19.11)
 
-- [ ] `@arethetypeswrong/cli` CI gate (validates `exports` map type resolution across `node16` + `bundler`)
-- [ ] `publint` CI gate
-- [ ] `npm publish --provenance` wired via GitHub Actions OIDC
-- [ ] Signed git tags (`git tag -s`) on every release tag
+- [x] `@arethetypeswrong/cli` CI gate (validates `exports` map type resolution across `node16` + `bundler`)
+- [x] `publint` CI gate
+- [x] `npm publish --provenance` wired via GitHub Actions OIDC
+- [x] Signed git tags (`git tag -s`) on every release tag
 - [x] `SECURITY.md` at repo root with reporting policy and response SLA
-- [ ] **SBOM generation** (CycloneDX JSON via `@cyclonedx/cyclonedx-npm`) attached to every GitHub release and the npm tarball; new CI job `sbom-check`
+- [x] **SBOM generation** (CycloneDX JSON via `@cyclonedx/cyclonedx-npm`) attached to every GitHub release and the npm tarball; new CI job `sbom-check`
 
 ## Wave 6 — Policy & UX (target: 0.19.12)
 
