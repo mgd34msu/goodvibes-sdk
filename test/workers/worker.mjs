@@ -30,8 +30,10 @@ export default {
           return handleSmoke();
         case '/auth':
           return handleAuth();
-        case '/transport':
-          return handleTransport();
+        case '/transport-success':
+          return handleTransportSuccess();
+        case '/transport-error':
+          return handleTransportError();
         case '/errors':
           return handleErrors();
         case '/crypto':
@@ -65,9 +67,10 @@ function handleSmoke() {
     authToken: 'test-token',
   });
 
-  const hasOperator = typeof sdk.operator === 'object';
-  const hasAuth = typeof sdk.auth === 'object';
-  const hasRealtime = typeof sdk.realtime === 'object';
+  // n-1 guard: typeof x === 'object' returns true for null — check x != null first
+  const hasOperator = sdk.operator != null && typeof sdk.operator === 'object';
+  const hasAuth = sdk.auth != null && typeof sdk.auth === 'object';
+  const hasRealtime = sdk.realtime != null && typeof sdk.realtime === 'object';
 
   return json({
     ok: true,
@@ -98,7 +101,7 @@ async function handleAuth() {
 }
 
 /**
- * /transport — HTTP transport round-trip with mocked fetch.
+ * /transport-success — HTTP transport round-trip with mocked fetch (success path).
  *
  * Workers concern: setTimeout used in backoff retry is request-scoped.
  * For this test we do NOT retry (maxAttempts: 1) to avoid any
@@ -106,13 +109,33 @@ async function handleAuth() {
  * timers across request boundaries would break — documented in FINDINGS.md.
  *
  * fetch is native in Workers — no polyfill needed.
+ *
+ * Route: sdk.operator.sessions.list() sends GET /api/sessions.
+ * The mock returns a real-shape JSON response so result is populated.
  */
-async function handleTransport() {
-  // Mock fetch that simulates daemon response
-  const mockPayload = { agents: [{ id: 'agent-001', status: 'idle' }] };
+async function handleTransportSuccess() {
+  // Real-shape mock payload matching sessions.list output schema.
+  const mockPayload = {
+    totals: { sessions: 1, active: 1, closed: 0 },
+    sessions: [{
+      id: 'session-001',
+      title: 'Test Session',
+      status: 'active',
+      createdAt: 1700000000000,
+      updatedAt: 1700000000000,
+      messageCount: 0,
+      pendingInputCount: 0,
+      routeIds: [],
+      surfaceKinds: [],
+      participants: [],
+      metadata: {},
+    }],
+  };
+
+  // Mock fetch matching the real SDK route: GET /api/sessions
   const mockFetch = async (input, init) => {
     const url = typeof input === 'string' ? input : input.url;
-    if (url.includes('/api/agents')) {
+    if (url.includes('/api/sessions')) {
       return new Response(JSON.stringify(mockPayload), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -128,23 +151,67 @@ async function handleTransport() {
     retry: { maxAttempts: 1 }, // no retries: avoid cross-request timer issues
   });
 
-  // Exercise operator.agents.list() which goes through transport-http
-  let result;
-  let errorKind = null;
+  // sdk.operator.sessions.list() — GET /api/sessions
+  let result = null;
+  let kind = null;
+  let ctor = null;
   try {
-    result = await sdk.operator.agents.list();
+    result = await sdk.operator.sessions.list();
   } catch (err) {
-    // Expected: operator.agents.list() may not map to /api/agents exactly.
-    // We capture the error kind to assert it's a typed SDK error, not a
-    // raw runtime crash — this proves the transport-http error taxonomy works.
-    errorKind = err?.kind ?? err?.constructor?.name ?? 'unknown';
+    kind = err?.kind ?? null;
+    ctor = err?.constructor?.name ?? null;
   }
 
   return json({
     ok: true,
-    transportRoundTripCompleted: true,
-    result: result ?? null,
-    errorKind,
+    result,
+    kind,
+    ctor,
+  });
+}
+
+/**
+ * /transport-error — HTTP transport with 5xx response (error path).
+ *
+ * Mock returns a 500 to verify the SDK's error taxonomy surfaces
+ * a typed 'server' error kind rather than a raw runtime crash.
+ */
+async function handleTransportError() {
+  // Mock fetch that always returns a 5xx to trigger typed error
+  const mockFetch = async (input, init) => {
+    return new Response(
+      JSON.stringify({ error: 'Internal Server Error', code: 'MOCK_500' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  };
+
+  const sdk = createWebGoodVibesSdk({
+    baseUrl: 'http://mock-daemon.internal',
+    authToken: 'test-token',
+    fetch: mockFetch,
+    retry: { maxAttempts: 1 }, // no retries
+  });
+
+  let result = null;
+  let kind = null;
+  let ctor = null;
+  try {
+    result = await sdk.operator.sessions.list();
+  } catch (err) {
+    // Return kind and ctor as separate fields to avoid conflating
+    // typed SDKErrorKind values with raw constructor names.
+    kind = err?.kind ?? null;
+    ctor = err?.constructor?.name ?? null;
+  }
+
+  return json({
+    ok: true,
+    result,
+    kind,
+    ctor,
   });
 }
 
@@ -155,9 +222,11 @@ async function handleTransport() {
  * The SDK error classes use no node: or Bun.* APIs.
  */
 function handleErrors() {
-  const errorClassNames = Object.keys(SdkErrors).filter(
-    (k) => typeof SdkErrors[k] === 'function',
-  );
+  // Only include actual Error subclasses — not plain functions or non-Error exports.
+  const errorClassNames = Object.keys(SdkErrors).filter((k) => {
+    const v = SdkErrors[k];
+    return typeof v === 'function' && v.prototype instanceof Error;
+  });
 
   let sdkErrorWorks = false;
   if (SdkErrors.GoodVibesSdkError) {
@@ -223,7 +292,7 @@ function handleGlobals() {
       cryptoRandomUUID: typeof crypto?.randomUUID === 'function',
       // NOT available in Workers (server-upgrade only, no client WS)
       WebSocket: typeof WebSocket !== 'undefined',
-      // NOT available in Workers
+      // NOT available in production Workers (Miniflare simulates it)
       EventSource: typeof EventSource !== 'undefined',
       // NOT available in Workers (no DOM)
       location: typeof globalThis.location !== 'undefined',
