@@ -1,9 +1,12 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   cleanupStage,
   getAuthToken,
   getPublishRegistryOverride,
   run,
   stagePackages,
+  SDK_ROOT,
 } from './release-shared.ts';
 
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -33,6 +36,41 @@ function isPublished(name, version) {
 if (!DRY_RUN && !getAuthToken(REGISTRY)) {
   throw new Error(`No publish token available for ${REGISTRY}.`);
 }
+
+// Changelog gate: must have a CHANGELOG.md section for the version being published.
+// Runs before any staging so the failure is fast and clear.
+(function checkChangelog() {
+  const changelogPath = resolve(SDK_ROOT, 'CHANGELOG.md');
+  const sdkPkgPath = resolve(SDK_ROOT, 'packages/sdk/package.json');
+
+  if (!existsSync(changelogPath)) {
+    throw new Error(
+      `[publish] RELEASE BLOCKED: CHANGELOG.md not found at ${changelogPath}.\n` +
+      `  Create it with a ## [X.Y.Z] section matching the SDK version before publishing.`,
+    );
+  }
+
+  const sdkPkg = JSON.parse(readFileSync(sdkPkgPath, 'utf8'));
+  const version: string = sdkPkg.version;
+  const changelog = readFileSync(changelogPath, 'utf8');
+  const headerPattern = new RegExp(`^##\\s*\\[${version.replace(/\./g, '\\.')}\\]`, 'm');
+
+  if (!headerPattern.test(changelog)) {
+    throw new Error(
+      `[publish] RELEASE BLOCKED: CHANGELOG.md is missing a section for v${version}.\n\n` +
+      `  Add a section before publishing:\n\n` +
+      `    ## [${version}] - YYYY-MM-DD\n` +
+      `    ### Breaking\n` +
+      `    ### Added\n` +
+      `    ### Fixed\n` +
+      `    ### Migration\n\n` +
+      `  Run: bun run changelog:check\n` +
+      `  See: docs/release-and-publishing.md`,
+    );
+  }
+
+  console.log(`[publish] changelog-check OK — CHANGELOG.md contains section for v${version}`);
+})();
 
 const { tempRoot, publicStages } = stagePackages();
 

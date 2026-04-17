@@ -124,6 +124,55 @@ The workflow performs the npm/bun install smoke checks automatically after publi
 
 Version the SDK according to SDK changes and published behavior.
 
+## Changelog Gate
+
+Every release of `@pellux/goodvibes-sdk` **must** have a `## [X.Y.Z]` section in `CHANGELOG.md` at the repo root. The publish script and CI enforce this as a hard blocking condition.
+
+### Format
+
+Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions:
+
+```markdown
+## [0.19.0] - 2026-04-17
+
+### Breaking
+- ...
+
+### Added
+- ...
+
+### Fixed
+- ...
+
+### Migration
+- ...
+```
+
+All four sub-sections (`Breaking`, `Added`, `Fixed`, `Migration`) are required. Use `- none` under any section that has no content for the release.
+
+### Check command
+
+```bash
+bun run changelog:check
+```
+
+This reads the version from `packages/sdk/package.json` and greps `CHANGELOG.md` for a matching `## [X.Y.Z]` header. Exit 0 when found; exit 1 with a descriptive error when missing.
+
+The check runs automatically:
+- In CI via the `changelog-check` job on every push/PR to `main`.
+- In the publish script (`scripts/publish-packages.ts`) before any staging or npm publish call.
+
+### Adding an entry
+
+Before bumping the version and running `bun run release:publish`, add the CHANGELOG section:
+
+1. Open `CHANGELOG.md`.
+2. Add a new `## [NEW_VERSION] - YYYY-MM-DD` section at the top of the version list.
+3. Fill in `Breaking`, `Added`, `Fixed`, `Migration`. Use `- none` for empty sections.
+4. Run `bun run changelog:check` to confirm.
+
+Long-form per-release notes remain in `docs/releases/<version>.md` — the CHANGELOG entry is the machine-verifiable summary.
+
 ## Mirror Drift Guard
 
 `packages/transport-http/src/**` is mirrored byte-for-byte into `packages/sdk/src/_internal/transport-http/**`. The sync script (`bun run sync`) applies two allowed transforms per file: a leading `// Synced from …` header comment, and import-path rewrites (package specifiers rewritten to relative paths, `.ts` → `.js` extensions).
