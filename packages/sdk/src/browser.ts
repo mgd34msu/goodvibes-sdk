@@ -23,6 +23,29 @@ function resolveBrowserBaseUrl(baseUrl?: string): string {
   );
 }
 
+/**
+ * Create a GoodVibes SDK instance for browser environments.
+ *
+ * Differences from `createGoodVibesSdk`:
+ * - `baseUrl` defaults to `location.origin` when omitted.
+ * - HTTP retry and realtime reconnect are pre-configured with
+ *   browser-appropriate defaults.
+ * - Relies on the native browser `fetch` and `WebSocket` globals; pass
+ *   `options.fetch` / `options.WebSocketImpl` to override.
+ *
+ * `createWebGoodVibesSdk` is an alias for this function — use whichever name
+ * reads more naturally in your project.
+ *
+ * @example
+ * // Example only: baseUrl defaults to location.origin in a real browser app.
+ * import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
+ *
+ * const sdk = createBrowserGoodVibesSdk({
+ *   authToken: sessionStorage.getItem('gv-token') ?? undefined,
+ * });
+ *
+ * const agents = await sdk.operator.agents.list();
+ */
 export function createBrowserGoodVibesSdk(
   options: BrowserGoodVibesSdkOptions = {},
 ): GoodVibesSdk {

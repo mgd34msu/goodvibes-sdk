@@ -44,6 +44,19 @@ function requireStorage(storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeI
   return resolved;
 }
 
+/**
+ * Create a simple in-memory token store.
+ *
+ * The token is held in a closure variable — it does not survive page
+ * refreshes or process restarts. Suitable for server-side scripts and tests.
+ *
+ * @example
+ * import { createMemoryTokenStore } from '@pellux/goodvibes-sdk';
+ *
+ * const store = createMemoryTokenStore('initial-token');
+ * const sdk = createGoodVibesSdk({ baseUrl: '...', tokenStore: store });
+ * await sdk.auth.clearToken(); // clears only in-memory
+ */
 export function createMemoryTokenStore(initialToken: string | null = null): GoodVibesTokenStore {
   let token = initialToken;
   return {
@@ -59,6 +72,21 @@ export function createMemoryTokenStore(initialToken: string | null = null): Good
   };
 }
 
+/**
+ * Create a token store backed by `localStorage` (or a custom `Storage`).
+ *
+ * The token is persisted across page refreshes under the key
+ * `'goodvibes.token'` (overridable via `options.key`).
+ * Pass `options.storage` to use `sessionStorage` or a custom adapter.
+ *
+ * @example
+ * import { createBrowserTokenStore, createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
+ *
+ * const tokenStore = createBrowserTokenStore({ storage: sessionStorage });
+ * const sdk = createBrowserGoodVibesSdk({ tokenStore });
+ * await sdk.auth.login({ username: 'alice', password: 's3cr3t' });
+ * // token is now stored in sessionStorage
+ */
 export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}): GoodVibesTokenStore {
   const storage = requireStorage(options.storage);
   const key = options.key?.trim() || 'goodvibes.token';
@@ -102,6 +130,27 @@ function assertWritableTokenStore(tokenStore: GoodVibesTokenStore | null): GoodV
   return tokenStore;
 }
 
+/**
+ * Create the auth client attached to an SDK instance.
+ *
+ * Normally called internally by `createGoodVibesSdk`. Access the result via
+ * `sdk.auth`.
+ *
+ * @example
+ * import { createGoodVibesSdk, createBrowserTokenStore } from '@pellux/goodvibes-sdk';
+ *
+ * const sdk = createGoodVibesSdk({
+ *   baseUrl: 'https://daemon.example.com',
+ *   tokenStore: createBrowserTokenStore(),
+ * });
+ *
+ * // Login and persist the token automatically:
+ * const { token } = await sdk.auth.login({ username: 'alice', password: 's3cr3t' });
+ * console.log('logged in, token stored:', token.slice(0, 8) + '...');
+ *
+ * // Later: clear the session
+ * await sdk.auth.clearToken();
+ */
 export function createGoodVibesAuthClient(
   operator: OperatorSdk,
   tokenStore: GoodVibesTokenStore | null,

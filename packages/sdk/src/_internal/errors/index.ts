@@ -48,6 +48,29 @@ function inferCategory(status?: number): ErrorCategory {
   return 'unknown';
 }
 
+/**
+ * Base error class for all errors thrown by the GoodVibes SDK.
+ *
+ * Every error carries a structured `category` and `source` that allow
+ * callers to handle specific failure modes without string-matching messages.
+ *
+ * ### Narrowing pattern
+ * ```ts
+ * import { GoodVibesSdkError, HttpStatusError, ConfigurationError } from '@pellux/goodvibes-sdk';
+ *
+ * try {
+ *   await sdk.operator.agents.list();
+ * } catch (err) {
+ *   if (err instanceof HttpStatusError && err.category === 'rate_limit') {
+ *     // Back off and retry after err.retryAfterMs
+ *   } else if (err instanceof ConfigurationError) {
+ *     // Invalid SDK setup — not recoverable
+ *   } else if (err instanceof GoodVibesSdkError) {
+ *     console.error(err.category, err.hint);
+ *   }
+ * }
+ * ```
+ */
 export class GoodVibesSdkError extends Error {
   public readonly code?: string;
   public readonly category: ErrorCategory;
@@ -88,6 +111,24 @@ export class GoodVibesSdkError extends Error {
   }
 }
 
+/**
+ * Thrown when the SDK is misconfigured (e.g. missing `baseUrl`, no fetch
+ * implementation available, or calling a mutation on a read-only auth resolver).
+ *
+ * Always non-recoverable (`recoverable: false`).
+ * Category: `'config'`.
+ *
+ * @example
+ * import { ConfigurationError } from '@pellux/goodvibes-sdk';
+ *
+ * try {
+ *   await sdk.auth.setToken('x');
+ * } catch (err) {
+ *   if (err instanceof ConfigurationError) {
+ *     // SDK was constructed with getAuthToken — token mutation not supported
+ *   }
+ * }
+ */
 export class ConfigurationError extends GoodVibesSdkError {
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     super(message, {
@@ -100,6 +141,25 @@ export class ConfigurationError extends GoodVibesSdkError {
   }
 }
 
+/**
+ * Thrown when a response from the daemon violates the expected contract
+ * (unexpected shape, missing required fields, etc.).
+ *
+ * Always non-recoverable (`recoverable: false`).
+ * Category: `'contract'`.
+ *
+ * @example
+ * import { ContractError } from '@pellux/goodvibes-sdk';
+ *
+ * try {
+ *   const result = await sdk.operator.agents.get({ id: agentId });
+ * } catch (err) {
+ *   if (err instanceof ContractError) {
+ *     // Daemon returned an unexpected shape — SDK version mismatch?
+ *     console.error('Contract violation:', err.message);
+ *   }
+ * }
+ */
 export class ContractError extends GoodVibesSdkError {
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     super(message, {
@@ -112,6 +172,32 @@ export class ContractError extends GoodVibesSdkError {
   }
 }
 
+/**
+ * Thrown when the daemon returns a non-2xx HTTP status code.
+ *
+ * The `category` field is inferred from the status code:
+ * - `401` → `'authentication'`  `402` → `'billing'`  `403` → `'authorization'`
+ * - `404` → `'not_found'`  `408` → `'timeout'`  `429` → `'rate_limit'`
+ * - `5xx` → `'service'`
+ *
+ * Use `recoverable` to decide whether to retry, and `retryAfterMs` for
+ * the backoff hint on rate-limit responses.
+ *
+ * @example
+ * import { HttpStatusError } from '@pellux/goodvibes-sdk';
+ *
+ * try {
+ *   await sdk.operator.agents.list();
+ * } catch (err) {
+ *   if (err instanceof HttpStatusError) {
+ *     if (err.category === 'rate_limit') {
+ *       await delay(err.retryAfterMs ?? 1000);
+ *     } else if (!err.recoverable) {
+ *       throw err; // Surface non-retryable errors immediately
+ *     }
+ *   }
+ * }
+ */
 export class HttpStatusError extends GoodVibesSdkError {
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     super(message, {

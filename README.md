@@ -1,5 +1,10 @@
 # GoodVibes SDK
 
+> **What this SDK is:** `@pellux/goodvibes-sdk` is a client SDK for the GoodVibes daemon.
+> It does **not** call Anthropic, OpenAI, Gemini, or any other AI provider directly — the daemon
+> orchestrates those on your behalf. If you need to call a provider directly, use their official
+> SDK instead. If you don't have a daemon yet, see [Daemon embedding](./docs/daemon-embedding.md).
+
 TypeScript SDK workspace for GoodVibes operator, peer, transport, realtime, contract, and daemon integration surfaces.
 
 Current foundation source:
@@ -92,9 +97,7 @@ import { createRemoteRuntimeEvents } from '@pellux/goodvibes-sdk/transport-realt
 
 ## Quick Start
 
-Prerequisite: you already have a reachable GoodVibes daemon/operator endpoint. The SDK is a client for the platform; it does not start the platform for you.
-
-### Node / Bun
+Prerequisite: a reachable GoodVibes daemon/operator endpoint. The SDK is a client for the platform; it does not start the platform for you.
 
 ```ts
 import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
@@ -105,61 +108,10 @@ const sdk = createNodeGoodVibesSdk({
   tokenStore: createMemoryTokenStore(process.env.GOODVIBES_TOKEN ?? null),
 });
 
-const snapshot = await sdk.operator.control.snapshot();
-console.log(snapshot);
+console.log(await sdk.operator.control.snapshot());
 ```
 
-Login and token persistence:
-
-```ts
-const login = await sdk.auth.login({
-  username: 'alice',
-  password: 'secret',
-});
-
-console.log(login.token);
-console.log(await sdk.auth.current());
-```
-
-### Browser web UI
-
-```ts
-import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
-
-const sdk = createWebGoodVibesSdk({
-  baseUrl: 'https://goodvibes.example.com',
-});
-
-const unsubscribe = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (event) => {
-  console.log(event);
-});
-```
-
-### React Native
-
-```ts
-import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
-
-const sdk = createReactNativeGoodVibesSdk({
-  baseUrl: 'https://goodvibes.example.com',
-  authToken: token,
-});
-
-const unsubscribe = sdk.realtime.runtime().agents.on('AGENT_COMPLETED', (event) => {
-  console.log(event);
-});
-```
-
-### Expo
-
-```ts
-import { createExpoGoodVibesSdk } from '@pellux/goodvibes-sdk/expo';
-
-const sdk = createExpoGoodVibesSdk({
-  baseUrl: 'https://goodvibes.example.com',
-  authToken: token,
-});
-```
+For the full walkthrough — login flows, token persistence, browser, React Native, Expo, and realtime transports — see **[Getting Started](./docs/getting-started.md)**.
 
 ## Auth and Realtime Guidance
 
@@ -251,6 +203,7 @@ Auth helpers are also available as a narrow subpath:
 
 ## Examples
 
+- [Submit turn quickstart](./examples/submit-turn-quickstart.mjs) — create session, submit message, stream tokens to stdout
 - [Node operator quickstart](./examples/operator-http-quickstart.mjs)
 - [Peer quickstart](./examples/peer-http-quickstart.mjs)
 - [Realtime quickstart](./examples/realtime-events-quickstart.mjs)

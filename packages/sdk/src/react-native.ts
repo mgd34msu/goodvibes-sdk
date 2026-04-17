@@ -36,6 +36,32 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
   return resolved;
 }
 
+/**
+ * Create a GoodVibes SDK instance for React Native.
+ *
+ * Key differences from the browser factory:
+ * - Realtime is WebSocket-only (`realtime.runtime()` / `realtime.viaWebSocket()`).
+ *   SSE is not available in React Native.
+ * - Requires a `WebSocket` implementation (e.g. the global provided by the
+ *   React Native runtime or the `react-native` package). Pass
+ *   `options.WebSocketImpl` when the global is not available.
+ * - Returns `ReactNativeGoodVibesSdk` (extends `GoodVibesSdk` with a
+ *   React-Native-specific `realtime` namespace).
+ *
+ * `createExpoGoodVibesSdk` is an alias for this function.
+ *
+ * @example
+ * // Example only: replace baseUrl and authToken with your own values.
+ * import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
+ *
+ * const sdk = createReactNativeGoodVibesSdk({
+ *   baseUrl: 'https://daemon.example.com',
+ *   authToken: await SecureStore.getItemAsync('token'),
+ * });
+ *
+ * const events = sdk.realtime.runtime();
+ * events.agents.on('AGENT_SPAWNING', ({ agentId }) => console.log(agentId));
+ */
 export function createReactNativeGoodVibesSdk(
   options: ReactNativeGoodVibesSdkOptions,
 ): ReactNativeGoodVibesSdk {

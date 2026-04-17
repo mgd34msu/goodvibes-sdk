@@ -1,5 +1,5 @@
 // Synced from packages/transport-http/src/http.ts
-import { ConfigurationError, ContractError, createHttpStatusError } from '../errors/index.js';
+import { ConfigurationError, ContractError, HttpStatusError, createHttpStatusError } from '../errors/index.js';
 import {
   type AuthTokenResolver,
   type HeaderResolver,
@@ -95,6 +95,8 @@ type TransportFailure = {
     readonly url: string;
     readonly body: unknown;
     readonly method?: string;
+    readonly retryAfterMs?: number;
+    readonly cause?: unknown;
   };
 };
 
@@ -109,14 +111,64 @@ function isTransportError(error: unknown): error is TransportFailure {
   );
 }
 
+function inferTransportHint(
+  status: number,
+  url: string,
+  retryAfterMs?: number,
+): string | undefined {
+  if (status === 0) return `Transport could not reach ${url}. Verify the baseUrl is reachable.`;
+  if (status === 401) return 'Check your authentication token or credentials.';
+  if (status === 403) return 'Valid credentials but insufficient permissions for this operation.';
+  if (status === 404) return 'The requested resource was not found.';
+  if (status === 408) return 'The request timed out. Consider retrying.';
+  if (status === 429) {
+    return retryAfterMs !== undefined
+      ? `Rate limit exceeded. Retry after ${retryAfterMs}ms.`
+      : 'Rate limit exceeded. Back off and retry.';
+  }
+  if (status >= 500) return 'Remote server error. The service may be temporarily unavailable.';
+  return undefined;
+}
+
 export function normalizeTransportError(error: unknown): Error {
   if (isTransportError(error)) {
-    return Object.assign(createHttpStatusError(
-      error.transport.status,
-      error.transport.url,
-      typeof error.transport.method === 'string' ? error.transport.method : 'GET',
-      error.transport.body,
-    ), { transport: error.transport });
+    const { status, url, body, method, retryAfterMs, cause } = error.transport;
+    const resolvedMethod = typeof method === 'string' ? method : 'GET';
+    const hint = inferTransportHint(status, url, retryAfterMs);
+
+    if (status === 0) {
+      // Network-level failure: no HTTP response received
+      const networkError = new HttpStatusError(
+        error instanceof Error ? error.message : `Transport could not reach ${url}`,
+        {
+          status: undefined,
+          url,
+          method: resolvedMethod,
+          body,
+          category: 'network',
+          source: 'transport',
+          recoverable: true,
+          hint,
+          ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+        },
+      );
+      if (cause !== undefined) {
+        Object.defineProperty(networkError, 'cause', { value: cause, writable: true, configurable: true });
+      }
+      return Object.assign(networkError, { transport: error.transport });
+    }
+
+    const baseError = createHttpStatusError(status, url, resolvedMethod, body);
+    // Only apply inferred hint if the daemon body didn't supply one already
+    const effectiveHint = baseError.hint ?? hint;
+    return Object.assign(
+      baseError,
+      {
+        transport: error.transport,
+        ...(effectiveHint !== undefined ? { hint: effectiveHint } : {}),
+        ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+      },
+    );
   }
   if (error instanceof Error) {
     if (error.message === 'Fetch implementation is required' || error.message === 'Transport baseUrl is required') {
