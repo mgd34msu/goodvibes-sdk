@@ -6,6 +6,16 @@ import type {
 import type { AuthTokenResolver } from './_internal/transport-http/index.js';
 import type { OperatorSdk } from './_internal/operator/index.js';
 
+// Re-export focused responsibility classes for consumers who prefer
+// narrower, single-concern APIs over the combined GoodVibesAuthClient facade.
+export {
+  OAuthClient,
+  PermissionResolver,
+  SessionManager,
+  TokenStore,
+} from './_internal/platform/auth/index.js';
+export type { OAuthStartState, OAuthTokenPayload } from './_internal/platform/auth/index.js';
+
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
 export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;
 export type GoodVibesLoginOutput = OperatorMethodOutput<'control.auth.login'>;
@@ -25,12 +35,38 @@ export interface GoodVibesAuthLoginOptions {
   readonly persistToken?: boolean;
 }
 
+/**
+ * The combined auth client attached to an SDK instance.
+ *
+ * This interface aggregates token storage and session management behind a
+ * single object for convenience. For focused single-responsibility access,
+ * use the split classes exported from this module:
+ * - Token persistence: `TokenStore`
+ * - Login / session lifecycle: `SessionManager`
+ * - OAuth 2.0 flows: `OAuthClient`
+ * - Role / scope checks: `PermissionResolver`
+ */
 export interface GoodVibesAuthClient {
   readonly writable: boolean;
   current(): Promise<GoodVibesCurrentAuth>;
   login(input: GoodVibesLoginInput, options?: GoodVibesAuthLoginOptions): Promise<GoodVibesLoginOutput>;
+  /**
+   * @deprecated Prefer `TokenStore.getToken()` for direct token access.
+   * `GoodVibesAuthClient.getToken()` remains supported and delegates to the
+   * same underlying store.
+   */
   getToken(): Promise<string | null>;
+  /**
+   * @deprecated Prefer `TokenStore.setToken()` for direct token mutation.
+   * `GoodVibesAuthClient.setToken()` remains supported and delegates to the
+   * same underlying store.
+   */
   setToken(token: string | null): Promise<void>;
+  /**
+   * @deprecated Prefer `TokenStore.clearToken()` for direct token mutation.
+   * `GoodVibesAuthClient.clearToken()` remains supported and delegates to the
+   * same underlying store.
+   */
   clearToken(): Promise<void>;
 }
 

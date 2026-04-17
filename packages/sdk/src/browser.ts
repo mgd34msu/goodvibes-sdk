@@ -46,6 +46,8 @@ function resolveBrowserBaseUrl(baseUrl?: string): string {
  *
  * const agents = await sdk.operator.agents.list();
  */
+export { forSession } from './transport-realtime.js';
+
 export function createBrowserGoodVibesSdk(
   options: BrowserGoodVibesSdkOptions = {},
 ): GoodVibesSdk {

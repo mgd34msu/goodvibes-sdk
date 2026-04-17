@@ -76,6 +76,8 @@ export interface GoodVibesSdkOptions {
    *
    * Lowest-precedence auth option — ignored when `tokenStore` or `getAuthToken`
    * is also provided.
+   *
+   * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
    */
   readonly authToken?: string | null;
 
@@ -88,6 +90,8 @@ export interface GoodVibesSdkOptions {
    * `setToken` / `clearToken` throws a `ConfigurationError`.
    *
    * Takes precedence over `authToken`; ignored when `tokenStore` is provided.
+   *
+   * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
    */
   readonly getAuthToken?: AuthTokenResolver;
 
@@ -99,6 +103,8 @@ export interface GoodVibesSdkOptions {
    * Highest-precedence auth option — overrides both `getAuthToken` and
    * `authToken`. Use `createBrowserTokenStore()` (localStorage) or
    * `createMemoryTokenStore()` for common cases.
+   *
+   * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
    */
   readonly tokenStore?: GoodVibesTokenStore;
 
@@ -152,6 +158,26 @@ export interface GoodVibesRealtimeOptions {
 /**
  * Realtime event subscriptions for the GoodVibes daemon.
  * Choose SSE for read-only event streams or WebSocket for bidirectional use.
+ *
+ * ### Filtering by session
+ *
+ * When multiple sessions share one SSE/WebSocket connection, use
+ * `forSession(events, sessionId)` to get a pre-filtered view instead of
+ * manually guarding every callback with `if (e.sessionId !== mine) return`.
+ *
+ * @example
+ * import { createNodeGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
+ *
+ * const sdk = createNodeGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
+ * const session = await sdk.operator.sessions.create({ title: 'demo' });
+ * const sessionId = session.session.id;
+ *
+ * const events = sdk.realtime.viaSse();
+ * const sessionEvents = forSession(events, sessionId);
+ *
+ * sessionEvents.turn.onEnvelope('STREAM_DELTA', (e) => {
+ *   process.stdout.write(e.payload.content); // only fires for this session
+ * });
  */
 export interface GoodVibesRealtime {
   viaSse(): RemoteRuntimeEvents<RuntimeEventRecord>;
@@ -171,9 +197,31 @@ export interface GoodVibesRealtime {
  * - **`auth`** — login, logout, and token management helpers.
  */
 export interface GoodVibesSdk {
+  /**
+   * Full control-plane API: daemon admin, agent management, session lifecycle,
+   * config. Requires an operator-level auth token.
+   *
+   * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/reference-operator.md
+   */
   readonly operator: OperatorSdk;
+  /**
+   * Peer-to-peer and collaboration APIs: pairing, channels, shared sessions.
+   * May be used with peer-scoped tokens.
+   *
+   * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/reference-peer.md
+   */
   readonly peer: PeerSdk;
+  /**
+   * Login, logout, and token management helpers.
+   *
+   * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
+   */
   readonly auth: GoodVibesAuthClient;
+  /**
+   * Subscribe to live daemon events via SSE or WebSocket.
+   *
+   * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/realtime-and-telemetry.md
+   */
   readonly realtime: GoodVibesRealtime;
 }
 
@@ -242,6 +290,8 @@ function createPeerOptions(options: GoodVibesSdkOptions): PeerSdkOptions {
  * defaults already configured, prefer the platform-specific wrappers:
  * `createNodeGoodVibesSdk`, `createBrowserGoodVibesSdk`,
  * `createReactNativeGoodVibesSdk`.
+ *
+ * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/getting-started.md
  *
  * @example
  * // Example only: replace baseUrl and authToken with your own values.

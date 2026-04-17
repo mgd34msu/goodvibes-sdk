@@ -78,6 +78,54 @@ interface LowPrioritySystemMessageSink {
 }
 
 /**
+ * Options for constructing an {@link Orchestrator}.
+ *
+ * @example
+ * ```ts
+ * const orchestrator = new Orchestrator({
+ *   conversation,
+ *   getViewportHeight: () => window.innerHeight,
+ *   scrollToEnd: (vHeight) => scrollContainer.scrollTo({ top: vHeight }),
+ *   toolRegistry,
+ *   permissionManager,
+ *   getSystemPrompt: () => mySystemPrompt,
+ *   hookDispatcher,
+ *   flagManager,
+ *   requestRender: () => renderFn(),
+ *   runtimeBus,
+ *   services: { agentManager, wrfcController },
+ * });
+ * ```
+ */
+export interface OrchestratorOptions {
+  /** Manages the conversation message history. */
+  conversation: ConversationManager;
+  /** Returns the current viewport height in rows/px for scrolling calculations. */
+  getViewportHeight: () => number;
+  /** Scrolls the UI to the given viewport height after a turn. */
+  scrollToEnd: (vHeight: number) => void;
+  /** Registry of all available tools. */
+  toolRegistry: ToolRegistry;
+  /** Manages tool-use permission grants and denials. */
+  permissionManager: PermissionManager;
+  /** Returns the current system prompt text. Defaults to `() => ''`. */
+  getSystemPrompt?: () => string;
+  /** Optional hook dispatcher for lifecycle events. */
+  hookDispatcher?: HookDispatcherLike | null;
+  /** Optional feature flag manager. */
+  flagManager?: FeatureFlagManager | null;
+  /** Optional render request callback, called after state changes requiring a redraw. */
+  requestRender?: (() => void) | null;
+  /** Optional runtime event bus for cross-system event propagation. */
+  runtimeBus?: RuntimeEventBus | null;
+  /** Required runtime service dependencies. */
+  services: {
+    readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
+    readonly wrfcController: Pick<WrfcController, 'listChains'>;
+  };
+}
+
+/**
  * Orchestrator - Manages LLM turn lifecycle with full tool-use loop.
  * Supports multi-turn agent loops: call LLM -> execute tools -> send results -> repeat.
  */
@@ -167,22 +215,55 @@ export class Orchestrator {
   private systemMessageRouter: LowPrioritySystemMessageSink | null = null;
   private readonly followUpRuntime: OrchestratorFollowUpRuntime;
 
-  constructor(
-    private conversation: ConversationManager,
-    private getViewportHeight: () => number,
-    private scrollToEnd: (vHeight: number) => void,
-    private toolRegistry: ToolRegistry,
-    private permissionManager: PermissionManager,
-    private getSystemPrompt: () => string = () => '',
-    private hookDispatcher: HookDispatcherLike | null = null,
-    flagManager: FeatureFlagManager | null = null,
-    requestRender: (() => void) | null = null,
-    runtimeBus: RuntimeEventBus | null = null,
-    services: {
-      readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
-      readonly wrfcController: Pick<WrfcController, 'listChains'>;
-    },
-  ) {
+  private conversation: ConversationManager;
+  private getViewportHeight: () => number;
+  private scrollToEnd: (vHeight: number) => void;
+  private toolRegistry: ToolRegistry;
+  private permissionManager: PermissionManager;
+  private getSystemPrompt: () => string;
+  private hookDispatcher: HookDispatcherLike | null;
+
+  /**
+   * Construct an Orchestrator using a named-options object.
+   *
+   * @example
+   * ```ts
+   * const orchestrator = new Orchestrator({
+   *   conversation,
+   *   getViewportHeight: () => terminalRows,
+   *   scrollToEnd: (vHeight) => ui.scrollToEnd(vHeight),
+   *   toolRegistry,
+   *   permissionManager,
+   *   getSystemPrompt: () => systemPrompt,
+   *   hookDispatcher,
+   *   flagManager,
+   *   requestRender: () => render(),
+   *   runtimeBus,
+   *   services: { agentManager, wrfcController },
+   * });
+   * ```
+   */
+  constructor(options: OrchestratorOptions) {
+    const {
+      conversation,
+      getViewportHeight,
+      scrollToEnd,
+      toolRegistry,
+      permissionManager,
+      getSystemPrompt = () => '',
+      hookDispatcher = null,
+      flagManager = null,
+      requestRender = null,
+      runtimeBus = null,
+      services,
+    } = options;
+    this.conversation = conversation;
+    this.getViewportHeight = getViewportHeight;
+    this.scrollToEnd = scrollToEnd;
+    this.toolRegistry = toolRegistry;
+    this.permissionManager = permissionManager;
+    this.getSystemPrompt = getSystemPrompt;
+    this.hookDispatcher = hookDispatcher;
     this.replayQueue = new EventReplayQueue();
     this.detachReplay = runtimeBus
       ? EventReplayQueue.attachToRuntimeBus(runtimeBus, this.replayQueue)

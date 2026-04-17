@@ -1,0 +1,61 @@
+/**
+ * SessionManager — Focused responsibility: session lifecycle.
+ *
+ * Manages the login/logout lifecycle and ties token persistence to login
+ * results. Decoupled from transport and token storage implementations.
+ */
+
+import type { OperatorSdk } from '../../operator/index.js';
+import type {
+  GoodVibesAuthLoginOptions,
+  GoodVibesCurrentAuth,
+  GoodVibesLoginInput,
+  GoodVibesLoginOutput,
+} from '../../../auth.js';
+import { TokenStore } from './token-store.js';
+
+export class SessionManager {
+  readonly #operator: OperatorSdk;
+  readonly #tokenStore: TokenStore | null;
+
+  constructor(operator: OperatorSdk, tokenStore: TokenStore | null) {
+    this.#operator = operator;
+    this.#tokenStore = tokenStore;
+  }
+
+  /**
+   * Return the current auth state from the daemon control plane.
+   * Does not require a writable token store.
+   */
+  async current(): Promise<GoodVibesCurrentAuth> {
+    return this.#operator.control.auth.current();
+  }
+
+  /**
+   * Perform a login and, when `persistToken` is not false, automatically
+   * persist the returned token into the configured token store.
+   */
+  async login(
+    input: GoodVibesLoginInput,
+    options: GoodVibesAuthLoginOptions = {},
+  ): Promise<GoodVibesLoginOutput> {
+    const result = await this.#operator.control.auth.login(input);
+    if ((options.persistToken ?? true) && this.#tokenStore) {
+      await this.#tokenStore.setToken(result.token);
+    }
+    return result;
+  }
+
+  /**
+   * Whether this session manager has a writable token store.
+   * Read-only instances (using a raw `getAuthToken` resolver) return false.
+   */
+  get writable(): boolean {
+    return this.#tokenStore !== null;
+  }
+
+  /** Access the underlying TokenStore (null when using a read-only resolver). */
+  get tokenStore(): TokenStore | null {
+    return this.#tokenStore;
+  }
+}
