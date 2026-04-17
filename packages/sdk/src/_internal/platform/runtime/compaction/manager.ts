@@ -12,9 +12,9 @@
  * - Expose the resume repair pipeline
  */
 
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../../utils/logger.js';
 import type { RuntimeEventBus } from '../events/index.js';
-import type { FeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime/feature-flags/manager';
+import type { FeatureFlagManager } from '../feature-flags/manager.js';
 import type { EmitterContext } from '../emitters/index.js';
 import {
   applyTransition,
@@ -55,7 +55,7 @@ import {
 import { computeQualityScore, escalateStrategy, LOW_QUALITY_THRESHOLD } from './quality-score.js';
 import type { CompactionQualityScore } from './quality-score.js';
 import type { ProviderMessage } from '../../providers/interface.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
 // Manager options

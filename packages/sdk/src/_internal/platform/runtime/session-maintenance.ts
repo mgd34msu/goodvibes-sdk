@@ -1,5 +1,5 @@
 import type { ConfigManager } from '../config/manager.js';
-import type { SessionDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/session';
+import type { SessionDomainState } from './store/domains/session.js';
 
 export type GuidanceMode = 'off' | 'minimal' | 'guided';
 export type SessionMaintenanceLevel =

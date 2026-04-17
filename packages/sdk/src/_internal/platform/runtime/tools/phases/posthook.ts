@@ -1,7 +1,7 @@
-import type { Tool, ToolCall } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { Tool, ToolCall } from '../../../types/tools.js';
 import type { ToolRuntimeContext } from '../context.js';
-import type { PhaseResult, ToolExecutionRecord } from '@pellux/goodvibes-sdk/platform/runtime/tools/types';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { PhaseResult, ToolExecutionRecord } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 /**
  * posthook — Phase 6 of the tool execution pipeline.

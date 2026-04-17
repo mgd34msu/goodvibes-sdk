@@ -13,13 +13,13 @@ import type {
   SessionNotification,
   RequestPermissionRequest,
   RequestPermissionResponse,
-} from '@pellux/goodvibes-sdk/platform/acp/protocol';
-import type { SubagentInfo, SubagentResult, SubagentTask } from '@pellux/goodvibes-sdk/platform/acp/protocol';
+} from './protocol.js';
+import type { SubagentInfo, SubagentResult, SubagentTask } from './protocol.js';
 import type { PermissionCategory } from '../permissions/manager.js';
 import type { PermissionRequestHandler } from '../permissions/prompt.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { analyzePermissionRequest } from '@pellux/goodvibes-sdk/platform/permissions/analysis';
-import { AcpError } from '@pellux/goodvibes-sdk/platform/types/errors';
+import { logger } from '../utils/logger.js';
+import { analyzePermissionRequest } from '../permissions/analysis.js';
+import { AcpError } from '../types/errors.js';
 import { VERSION } from '../version.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {
@@ -35,8 +35,8 @@ import {
   emitTransportTerminalFailure,
 } from '../runtime/emitters/index.js';
 import type { HookDispatcher } from '../hooks/index.js';
-import type { HookCategory, HookEventPath, HookPhase } from '@pellux/goodvibes-sdk/platform/hooks/types';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { HookCategory, HookEventPath, HookPhase } from '../hooks/types.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /** Shape of an agent_message_chunk session update that carries text content. */
 interface MessageChunkUpdate {

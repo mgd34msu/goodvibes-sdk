@@ -1,19 +1,19 @@
-import { PersistentStore } from '@pellux/goodvibes-sdk/platform/state/persistent-store';
+import { PersistentStore } from '../state/persistent-store.js';
 import { ConfigManager } from '../config/manager.js';
 import { createDomainDispatch } from '../runtime/store/index.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { AgentManager } from '../tools/agent/index.js';
 import { AgentMessageBus } from '../agents/message-bus.js';
-import { migrateLegacySchedules, type LegacySchedulerSnapshot } from '@pellux/goodvibes-sdk/platform/automation/migration';
-import { AutomationJobStore } from '@pellux/goodvibes-sdk/platform/automation/store/jobs';
-import { AutomationRunStore } from '@pellux/goodvibes-sdk/platform/automation/store/runs';
-import { resolveAutomationStorePath } from '@pellux/goodvibes-sdk/platform/automation/store/paths';
+import { migrateLegacySchedules, type LegacySchedulerSnapshot } from './migration.js';
+import { AutomationJobStore } from './store/jobs.js';
+import { AutomationRunStore } from './store/runs.js';
+import { resolveAutomationStorePath } from './store/paths.js';
 import { AutomationDeliveryManager } from './delivery-manager.js';
 import { RouteBindingManager } from '../channels/index.js';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRun, AutomationRunContinuationMode, AutomationRunTelemetry } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import type { AutomationRunTrigger, AutomationSurfaceKind } from '@pellux/goodvibes-sdk/platform/automation/types';
+import type { AutomationJob } from './jobs.js';
+import type { AutomationRun, AutomationRunContinuationMode, AutomationRunTelemetry } from './runs.js';
+import type { AutomationRunTrigger, AutomationSurfaceKind } from './types.js';
 import { SharedSessionBroker } from '../control-plane/index.js';
 import type {
   CreateAutomationJobInput,
@@ -68,7 +68,7 @@ import {
   syncAutomationRuntimeSnapshot,
 } from './manager-runtime-sync.js';
 import { reconcileAutomationActiveRuns } from './manager-runtime-reconcile.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import {
   createAutomationJobRecord,
   toggleAutomationJobEnabled,

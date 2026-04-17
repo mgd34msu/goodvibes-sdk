@@ -14,10 +14,10 @@ import {
 import { dirname, join } from 'path';
 
 import { SessionManager, type SessionMeta } from '../sessions/manager.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type { SessionReturnContextSummary } from './session-return-context.js';
 import type { ConversationTitleSource } from '../core/conversation.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from './surface-root.js';
 
 export type SessionSnapshot = {

@@ -1,10 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync, renameSync, openSync, fsyncSync, closeSync } from 'fs';
 import { join } from 'path';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { SessionReturnContextSummary } from '../runtime/session-return-context.js';
 import type { ConversationTitleSource } from '../core/conversation.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
 
 /**

@@ -1,8 +1,8 @@
 import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
-import type { HookEvent } from '@pellux/goodvibes-sdk/platform/hooks/types';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { HookEvent } from '../hooks/types.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /**
  * GitService — Wraps simple-git with hook emission on all mutating operations.

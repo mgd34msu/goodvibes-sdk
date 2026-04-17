@@ -1,6 +1,6 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { BenchmarkEntry } from '@pellux/goodvibes-sdk/platform/providers/model-benchmarks';
-import { compositeScore } from '@pellux/goodvibes-sdk/platform/providers/model-benchmarks';
+import { logger } from '../utils/logger.js';
+import type { BenchmarkEntry } from './model-benchmarks.js';
+import { compositeScore } from './model-benchmarks.js';
 import type { CatalogModel } from './model-catalog.js';
 import type { SyntheticBackend, CanonicalModel, SyntheticTier } from './synthetic.js';
 

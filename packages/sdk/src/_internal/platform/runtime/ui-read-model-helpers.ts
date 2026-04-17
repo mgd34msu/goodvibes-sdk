@@ -1,5 +1,5 @@
 import type { RuntimeServices } from './services.js';
-import type { UiReadModel } from '@pellux/goodvibes-sdk/platform/runtime/ui-read-models-base';
+import type { UiReadModel } from './ui-read-models-base.js';
 
 export function combineSubscriptions(...teardowns: Array<() => void>): () => void {
   return () => {

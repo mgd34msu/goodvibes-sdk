@@ -1,12 +1,12 @@
-import type { AdaptivePlanner } from '@pellux/goodvibes-sdk/platform/core/adaptive-planner';
+import type { AdaptivePlanner } from '../core/adaptive-planner.js';
 import type { ForensicsRegistry } from './forensics/index.js';
 import type { IntegrationHelperService } from './integration/helpers.js';
 import type { HookWorkbench } from '../hooks/workbench.js';
 import type { KnowledgeService } from '../knowledge/index.js';
 import type { PluginManager } from '../plugins/manager.js';
 import type { PolicyRuntimeState } from './permissions/policy-runtime.js';
-import type { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
-import type { ShellPathService } from '@pellux/goodvibes-sdk/platform/runtime/shell-paths';
+import type { ComponentHealthMonitor } from './perf/component-health-monitor.js';
+import type { ShellPathService } from './shell-paths.js';
 import type { WorktreeRegistry } from './worktree/registry.js';
 import type { SandboxSessionRegistry } from './sandbox/session-registry.js';
 import { createShellExtensionServices, type CommandExtensionShellServices } from './shell-command-extensions.js';

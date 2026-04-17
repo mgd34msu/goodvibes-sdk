@@ -2,8 +2,8 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { simpleGit } from 'simple-git';
 import { GitService } from '../git/service.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 
 /**

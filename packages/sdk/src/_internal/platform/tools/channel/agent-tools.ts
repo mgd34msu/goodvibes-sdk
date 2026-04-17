@@ -1,5 +1,5 @@
 import { ChannelPluginRegistry } from '../../channels/index.js';
-import type { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
+import type { ToolRegistry } from '../registry.js';
 
 export function registerChannelAgentTools(
   registry: ToolRegistry,

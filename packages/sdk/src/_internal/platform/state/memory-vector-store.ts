@@ -9,8 +9,8 @@ import {
   embedMemoryText,
   normalizeMemoryEmbeddingVector,
 } from './memory-embeddings.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 // Keep this in sync with DEFAULT_MEMORY_EMBEDDING_DIMS in memory-embeddings.ts.
 // Duplicating the literal here avoids an initialization cycle when state/index.ts

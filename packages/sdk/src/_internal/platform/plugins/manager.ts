@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import {
   discoverPlugins,
   getPluginDirectories,
@@ -19,7 +19,7 @@ import {
 import { PluginQuarantineEngine, type QuarantineRecord } from '../runtime/plugins/quarantine.js';
 import { isHighRiskCapability, resolveCapabilityManifest } from '../runtime/plugins/manifest.js';
 import type { PluginCapability, PluginManifestV2 } from '../runtime/plugins/types.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 /**
  * PluginState — Persisted state for all plugins.

@@ -3,5 +3,5 @@ export type {
   SubagentResult,
   SubagentTask,
   SubagentStatus,
-} from '@pellux/goodvibes-sdk/platform/acp/protocol';
+} from './protocol.js';
 export { AcpManager } from './manager.js';

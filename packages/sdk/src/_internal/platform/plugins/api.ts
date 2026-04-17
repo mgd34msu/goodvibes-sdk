@@ -1,8 +1,8 @@
 import type { CommandRegistryLike, HostSlashCommand } from '../runtime/host-ui.js';
 import type { ModelDefinition, ProviderRegistry, RuntimeProviderRegistration, TokenLimits, ModelTier } from '../providers/registry.js';
 import type { LLMProvider } from '../providers/interface.js';
-import type { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
-import type { ToolDefinition } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { ToolRegistry } from '../tools/registry.js';
+import type { ToolDefinition } from '../types/tools.js';
 import type { RuntimeEventBus, AnyRuntimeEvent, RuntimeEventPayload } from '../runtime/events/index.js';
 import type { GatewayMethodCatalog, GatewayMethodDescriptor, GatewayMethodHandler } from '../control-plane/index.js';
 import {
@@ -11,11 +11,11 @@ import {
 } from '../channels/index.js';
 import type { ChannelDeliveryRouter, ChannelPluginRegistry } from '../channels/index.js';
 import type { MemoryEmbeddingProvider, MemoryEmbeddingProviderRegistry } from '../state/index.js';
-import type { VoiceProvider, VoiceProviderRegistry } from '@pellux/goodvibes-sdk/platform/voice/index';
+import type { VoiceProvider, VoiceProviderRegistry } from '../voice/index.js';
 import type { MediaProvider, MediaProviderRegistry } from '../media/index.js';
 import type { WebSearchProvider, WebSearchProviderRegistry } from '../web-search/index.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /**
  * PluginProviderConfig — minimal config for registering a custom LLM provider

@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import type { ToolCall, ToolDefinition } from '@pellux/goodvibes-sdk/platform/types/tools';
-import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { ProviderError } from '../types/errors.js';
+import type { ToolCall, ToolDefinition } from '../types/tools.js';
+import { summarizeError, toProviderError } from '../utils/error-display.js';
 import type {
   ChatRequest,
   ChatResponse,

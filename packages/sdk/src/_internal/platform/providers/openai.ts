@@ -11,8 +11,8 @@ import type {
 } from './interface.js';
 
 import { mapOpenAIStopReason } from './stop-reason-maps.js';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
+import { ProviderError } from '../types/errors.js';
+import { withRetry } from '../utils/retry.js';
 import {
   toOpenAITools,
   toOpenAIMessages,
@@ -20,9 +20,9 @@ import {
   extractTextToolCalls,
 } from './tool-formats.js';
 import type { OpenAIToolCall } from './tool-formats.js';
-import type { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
-import { extractOpenAIStreamTextDelta } from '@pellux/goodvibes-sdk/platform/providers/openai-stream-delta';
-import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { CacheHitTracker } from './cache-strategy.js';
+import { extractOpenAIStreamTextDelta } from './openai-stream-delta.js';
+import { summarizeError, toProviderError } from '../utils/error-display.js';
 
 const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},

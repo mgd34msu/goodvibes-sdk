@@ -1,21 +1,21 @@
 import { readFileSync, statSync } from 'fs';
 import { dirname } from 'path';
-import type { HookDefinition, HookChain, HookEvent, HookResult } from '@pellux/goodvibes-sdk/platform/hooks/types';
-import { matchesEventPath, matchesMatcher } from '@pellux/goodvibes-sdk/platform/hooks/matcher';
-import { getHookPointContract } from '@pellux/goodvibes-sdk/platform/hooks/contracts';
-import { HookActivityTracker } from '@pellux/goodvibes-sdk/platform/hooks/activity';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { HooksConfig } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookDefinition, HookChain, HookEvent, HookResult } from './types.js';
+import { matchesEventPath, matchesMatcher } from './matcher.js';
+import { getHookPointContract } from './contracts.js';
+import { HookActivityTracker } from './activity.js';
+import { logger } from '../utils/logger.js';
+import type { HooksConfig } from './types.js';
 import type { AgentManager } from '../tools/agent/index.js';
 import type { ToolLLM } from '../config/tool-llm.js';
-import * as commandRunner from '@pellux/goodvibes-sdk/platform/hooks/runners/command';
+import * as commandRunner from './runners/command.js';
 import * as promptRunner from './runners/prompt.js';
 import * as agentRunner from './runners/agent.js';
-import * as httpRunner from '@pellux/goodvibes-sdk/platform/hooks/runners/http';
-import * as tsRunner from '@pellux/goodvibes-sdk/platform/hooks/runners/typescript';
-import { fireTriggers } from '@pellux/goodvibes-sdk/platform/workflow/trigger-executor';
-import type { TriggerManagerLike } from '@pellux/goodvibes-sdk/platform/workflow/trigger-executor';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import * as httpRunner from './runners/http.js';
+import * as tsRunner from './runners/typescript.js';
+import { fireTriggers } from '../workflow/trigger-executor.js';
+import type { TriggerManagerLike } from '../workflow/trigger-executor.js';
+import { summarizeError } from '../utils/error-display.js';
 
 type HookRunnerDeps = {
   readonly agentManager?: Pick<AgentManager, 'spawn' | 'getStatus' | 'cancel'>;

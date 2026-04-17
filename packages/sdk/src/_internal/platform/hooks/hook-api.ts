@@ -1,5 +1,5 @@
-import type { HookPointContract } from '@pellux/goodvibes-sdk/platform/hooks/contracts';
-import type { HookChain, HookDefinition, HookType } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookPointContract } from './contracts.js';
+import type { HookChain, HookDefinition, HookType } from './types.js';
 import type {
   HookAuthoringAction,
   HookConfigInspection,

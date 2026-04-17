@@ -1,19 +1,19 @@
 import { ConfigManager } from '../config/manager.js';
 import type { AgentRecord } from '../tools/agent/index.js';
-import type { ExecutionIntent } from '@pellux/goodvibes-sdk/platform/runtime/execution-intents';
-import type { AutomationDeliveryPolicy } from '@pellux/goodvibes-sdk/platform/automation/delivery';
-import type { AutomationFailurePolicy } from '@pellux/goodvibes-sdk/platform/automation/failures';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRun, AutomationRunTelemetry } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import type { AutomationExecutionPolicy, AutomationExternalContentSource, AutomationSessionTarget, AutomationWakeMode } from '@pellux/goodvibes-sdk/platform/automation/session-targets';
-import type { AutomationSourceRecord } from '@pellux/goodvibes-sdk/platform/automation/sources';
+import type { ExecutionIntent } from '../runtime/execution-intents.js';
+import type { AutomationDeliveryPolicy } from './delivery.js';
+import type { AutomationFailurePolicy } from './failures.js';
+import type { AutomationJob } from './jobs.js';
+import type { AutomationRun, AutomationRunTelemetry } from './runs.js';
+import type { AutomationExecutionPolicy, AutomationExternalContentSource, AutomationSessionTarget, AutomationWakeMode } from './session-targets.js';
+import type { AutomationSourceRecord } from './sources.js';
 import type {
   AutomationExecutionIntent,
   AutomationExecutionMode,
   AutomationExecutionTargetKind,
   ProviderModelRoutingPolicy,
-} from '@pellux/goodvibes-sdk/platform/automation/types';
-import { getNextAutomationOccurrence } from '@pellux/goodvibes-sdk/platform/automation/schedules';
+} from './types.js';
+import { getNextAutomationOccurrence } from './schedules.js';
 
 export interface CreateAutomationJobInput {
   readonly name: string;

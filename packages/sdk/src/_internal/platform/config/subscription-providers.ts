@@ -1,4 +1,4 @@
-import type { OAuthProviderConfig } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
+import type { OAuthProviderConfig } from './subscriptions.js';
 import type { ServiceConfig } from './service-registry.js';
 
 export interface BuiltinSubscriptionProvider {

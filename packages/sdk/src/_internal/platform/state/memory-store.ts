@@ -9,7 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { SQLiteStore } from '@pellux/goodvibes-sdk/platform/state/sqlite-store';
+import { SQLiteStore } from './sqlite-store.js';
 import {
   SqliteVecMemoryIndex,
   type MemoryVectorStats,
@@ -20,8 +20,8 @@ import {
   MemoryEmbeddingProviderRegistry,
   type MemoryEmbeddingDoctorReport,
 } from './memory-embeddings.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import {
   clampConfidence,
   createSchema,

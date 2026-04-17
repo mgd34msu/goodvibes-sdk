@@ -1,21 +1,21 @@
 import { getConfigSnapshot, isAutoApproveEnabled } from '../config/index.js';
-import type { PermissionAction, PermissionsToolConfig } from '@pellux/goodvibes-sdk/platform/config/schema';
+import type { PermissionAction, PermissionsToolConfig } from '../config/schema.js';
 import type { PermissionRequestHandler } from './prompt.js';
-import { analyzePermissionRequest } from '@pellux/goodvibes-sdk/platform/permissions/analysis';
+import { analyzePermissionRequest } from './analysis.js';
 import type { PolicyRuntimeState } from '../runtime/permissions/policy-runtime.js';
-import { LayeredPolicyEvaluator } from '@pellux/goodvibes-sdk/platform/runtime/permissions/evaluator';
-import type { PermissionDecision as LayeredPermissionDecision } from '@pellux/goodvibes-sdk/platform/runtime/permissions/types';
+import { LayeredPolicyEvaluator } from '../runtime/permissions/evaluator.js';
+import type { PermissionDecision as LayeredPermissionDecision } from '../runtime/permissions/types.js';
 import type { HookDispatcher } from '../hooks/index.js';
-import type { HookCategory, HookEventPath, HookPhase } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookCategory, HookEventPath, HookPhase } from '../hooks/types.js';
 import type { ConfigManager } from '../config/manager.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import type {
   PermissionCategory,
   PermissionCheckResult,
   PermissionDecisionReasonCode,
   PermissionDecisionSource,
-} from '@pellux/goodvibes-sdk/platform/permissions/types';
-export type { PermissionMode } from '@pellux/goodvibes-sdk/platform/config/schema';
+} from './types.js';
+export type { PermissionMode } from '../config/schema.js';
 export type {
   PermissionCategory,
   PermissionRiskLevel,
@@ -23,7 +23,7 @@ export type {
   PermissionDecisionReasonCode,
   PermissionRequestAnalysis,
   PermissionCheckResult,
-} from '@pellux/goodvibes-sdk/platform/permissions/types';
+} from './types.js';
 
 type PermissionConfigSnapshot = ReturnType<typeof getConfigSnapshot>;
 

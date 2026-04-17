@@ -7,12 +7,12 @@ export {
   createRemoteUiRuntimeEvents,
   createWebSocketConnector,
 } from './remote-events.js';
-export type { TransportPaths } from '@pellux/goodvibes-sdk/platform/runtime/transports/transport-paths';
-export { buildUrl, createTransportPaths, normalizeBaseUrl } from '@pellux/goodvibes-sdk/platform/runtime/transports/transport-paths';
-export type { BackoffPolicy, ResolvedBackoffPolicy } from '@pellux/goodvibes-sdk/platform/runtime/transports/backoff';
-export { computeBackoffDelay, normalizeBackoffPolicy, sleepWithSignal } from '@pellux/goodvibes-sdk/platform/runtime/transports/backoff';
-export type { AuthTokenResolver, HeaderResolver, MaybePromise } from '@pellux/goodvibes-sdk/platform/runtime/transports/http-auth';
-export { mergeHeaders, resolveAuthToken, resolveHeaders } from '@pellux/goodvibes-sdk/platform/runtime/transports/http-auth';
+export type { TransportPaths } from './transport-paths.js';
+export { buildUrl, createTransportPaths, normalizeBaseUrl } from './transport-paths.js';
+export type { BackoffPolicy, ResolvedBackoffPolicy } from './backoff.js';
+export { computeBackoffDelay, normalizeBackoffPolicy, sleepWithSignal } from './backoff.js';
+export type { AuthTokenResolver, HeaderResolver, MaybePromise } from './http-auth.js';
+export { mergeHeaders, resolveAuthToken, resolveHeaders } from './http-auth.js';
 export type {
   HttpJsonRequestOptions,
   HttpRetryPolicy,
@@ -22,7 +22,7 @@ export type {
   JsonValue,
   ResolvedContractRequest,
   TransportJsonError,
-} from '@pellux/goodvibes-sdk/platform/runtime/transports/http-json-transport';
+} from './http-json-transport.js';
 export {
   createFetch,
   createHttpJsonTransport,
@@ -30,10 +30,10 @@ export {
   createJsonRequestInit,
   readJsonBody,
   requestJson,
-} from '@pellux/goodvibes-sdk/platform/runtime/transports/http-json-transport';
-export type { ResolvedHttpRetryPolicy } from '@pellux/goodvibes-sdk/platform/runtime/transports/http-retry';
-export { DEFAULT_HTTP_RETRY_POLICY, getHttpRetryDelay, isRetryableHttpStatus, isRetryableNetworkError, normalizeHttpRetryPolicy, resolveHttpRetryPolicy } from '@pellux/goodvibes-sdk/platform/runtime/transports/http-retry';
-export type { ServerSentEventHandlers, ServerSentEventOptions } from '@pellux/goodvibes-sdk/platform/runtime/transports/sse-stream';
-export { isAbortError, openServerSentEventStream } from '@pellux/goodvibes-sdk/platform/runtime/transports/sse-stream';
-export type { StreamReconnectPolicy, ResolvedStreamReconnectPolicy } from '@pellux/goodvibes-sdk/platform/runtime/transports/stream-reconnect';
-export { DEFAULT_STREAM_RECONNECT_POLICY, getStreamReconnectDelay, normalizeStreamReconnectPolicy } from '@pellux/goodvibes-sdk/platform/runtime/transports/stream-reconnect';
+} from './http-json-transport.js';
+export type { ResolvedHttpRetryPolicy } from './http-retry.js';
+export { DEFAULT_HTTP_RETRY_POLICY, getHttpRetryDelay, isRetryableHttpStatus, isRetryableNetworkError, normalizeHttpRetryPolicy, resolveHttpRetryPolicy } from './http-retry.js';
+export type { ServerSentEventHandlers, ServerSentEventOptions } from './sse-stream.js';
+export { isAbortError, openServerSentEventStream } from './sse-stream.js';
+export type { StreamReconnectPolicy, ResolvedStreamReconnectPolicy } from './stream-reconnect.js';
+export { DEFAULT_STREAM_RECONNECT_POLICY, getStreamReconnectDelay, normalizeStreamReconnectPolicy } from './stream-reconnect.js';

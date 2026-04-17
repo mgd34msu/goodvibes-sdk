@@ -1,7 +1,7 @@
-import type { Tool } from '@pellux/goodvibes-sdk/platform/types/tools';
-import type { McpDecisionRecord } from '@pellux/goodvibes-sdk/platform/runtime/mcp/types';
+import type { Tool } from '../../types/tools.js';
+import type { McpDecisionRecord } from '../../runtime/mcp/types.js';
 import type { McpRegistry } from '../../mcp/registry.js';
-import { MCP_TOOL_SCHEMA, type McpToolInput } from '@pellux/goodvibes-sdk/platform/tools/mcp/schema';
+import { MCP_TOOL_SCHEMA, type McpToolInput } from './schema.js';
 
 type McpServerSecurity = ReturnType<McpRegistry['listServerSecurity']>[number];
 

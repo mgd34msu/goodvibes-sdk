@@ -1,7 +1,7 @@
-import type { Tool, ToolCall, ToolResult } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { Tool, ToolCall, ToolResult } from '../../../types/tools.js';
 import type { ToolRuntimeContext } from '../context.js';
-import type { ExecutorConfig, PhaseResult, ToolExecutionRecord } from '@pellux/goodvibes-sdk/platform/runtime/tools/types';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { ExecutorConfig, PhaseResult, ToolExecutionRecord } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 /** Default per-call execution timeout (30 seconds). */
 const DEFAULT_EXECUTE_TIMEOUT_MS = 30_000;

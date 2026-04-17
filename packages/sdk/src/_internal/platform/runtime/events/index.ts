@@ -6,45 +6,45 @@
  * import { RuntimeEventBus, createEventEnvelope } from '../runtime/events/index.js';
  * ```
  */
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { RuntimeEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import { logger } from '../../utils/logger.js';
+import type { RuntimeEventEnvelope } from './envelope.js';
 import type { AnyRuntimeEvent, RuntimeEventDomain, DomainEventMap } from './domain-map.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 
-export type { RuntimeEventEnvelope, EnvelopeContext } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
-export { createEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
-export type { SessionEvent, SessionEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/session';
+export type { RuntimeEventEnvelope, EnvelopeContext } from './envelope.js';
+export { createEventEnvelope } from './envelope.js';
+export type { SessionEvent, SessionEventType } from './session.js';
 export type { TurnEvent, TurnEventType } from './turn.js';
-export type { ProviderEvent, ProviderEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/providers';
-export type { ToolEvent, ToolEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/tools';
-export type { TaskEvent, TaskEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/tasks';
-export type { AgentEvent, AgentEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/agents';
+export type { ProviderEvent, ProviderEventType } from './providers.js';
+export type { ToolEvent, ToolEventType } from './tools.js';
+export type { TaskEvent, TaskEventType } from './tasks.js';
+export type { AgentEvent, AgentEventType } from './agents.js';
 export type { WorkflowEvent, WorkflowEventType } from './workflows.js';
-export type { OrchestrationEvent, OrchestrationEventType, OrchestrationTaskContract } from '@pellux/goodvibes-sdk/platform/runtime/events/orchestration';
-export type { CommunicationEvent, CommunicationEventType, CommunicationKind, CommunicationScope } from '@pellux/goodvibes-sdk/platform/runtime/events/communication';
-export type { PlannerEvent, PlannerEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/planner';
-export type { PermissionEvent, PermissionEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/permissions';
-export type { PluginEvent, PluginEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/plugins';
-export type { McpEvent, McpEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/mcp';
-export type { TransportEvent, TransportEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/transport';
-export type { CompactionEvent, CompactionEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/compaction';
-export type { UIEvent, UIEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/ui';
-export type { OpsEvent, OpsEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/ops';
+export type { OrchestrationEvent, OrchestrationEventType, OrchestrationTaskContract } from './orchestration.js';
+export type { CommunicationEvent, CommunicationEventType, CommunicationKind, CommunicationScope } from './communication.js';
+export type { PlannerEvent, PlannerEventType } from './planner.js';
+export type { PermissionEvent, PermissionEventType } from './permissions.js';
+export type { PluginEvent, PluginEventType } from './plugins.js';
+export type { McpEvent, McpEventType } from './mcp.js';
+export type { TransportEvent, TransportEventType } from './transport.js';
+export type { CompactionEvent, CompactionEventType } from './compaction.js';
+export type { UIEvent, UIEventType } from './ui.js';
+export type { OpsEvent, OpsEventType } from './ops.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from './domain-map.js';
 export type { AnyRuntimeEvent, RuntimeEventPayload, RuntimeEventDomain, DomainEventMap, RuntimeEventRecord } from './domain-map.js';
-export type { AutomationEvent, AutomationEventType, AutomationScheduleKind, AutomationExecutionMode, AutomationRunOutcome } from '@pellux/goodvibes-sdk/platform/runtime/events/automation';
-export { AUTOMATION_SCHEDULE_KINDS, AUTOMATION_RUN_OUTCOMES } from '@pellux/goodvibes-sdk/platform/runtime/events/automation';
-export type { RouteEvent, RouteEventType, RouteSurfaceKind, RouteTargetKind } from '@pellux/goodvibes-sdk/platform/runtime/events/routes';
-export { ROUTE_SURFACE_KINDS, ROUTE_TARGET_KINDS } from '@pellux/goodvibes-sdk/platform/runtime/events/routes';
-export type { ControlPlaneEvent, ControlPlaneEventType, ControlPlaneClientKind, ControlPlaneTransportKind, ControlPlanePrincipalKind } from '@pellux/goodvibes-sdk/platform/runtime/events/control-plane';
-export { CONTROL_PLANE_CLIENT_KINDS, CONTROL_PLANE_TRANSPORT_KINDS, CONTROL_PLANE_PRINCIPAL_KINDS } from '@pellux/goodvibes-sdk/platform/runtime/events/control-plane';
-export type { DeliveryEvent, DeliveryEventType, DeliveryKind } from '@pellux/goodvibes-sdk/platform/runtime/events/deliveries';
-export { DELIVERY_KINDS } from '@pellux/goodvibes-sdk/platform/runtime/events/deliveries';
-export type { WatcherEvent, WatcherEventType, WatcherSourceKind } from '@pellux/goodvibes-sdk/platform/runtime/events/watchers';
-export { WATCHER_SOURCE_KINDS } from '@pellux/goodvibes-sdk/platform/runtime/events/watchers';
-export type { SurfaceEvent, SurfaceEventType, SurfaceKind } from '@pellux/goodvibes-sdk/platform/runtime/events/surfaces';
-export { SURFACE_KINDS } from '@pellux/goodvibes-sdk/platform/runtime/events/surfaces';
-export type { KnowledgeEvent, KnowledgeEventType } from '@pellux/goodvibes-sdk/platform/runtime/events/knowledge';
+export type { AutomationEvent, AutomationEventType, AutomationScheduleKind, AutomationExecutionMode, AutomationRunOutcome } from './automation.js';
+export { AUTOMATION_SCHEDULE_KINDS, AUTOMATION_RUN_OUTCOMES } from './automation.js';
+export type { RouteEvent, RouteEventType, RouteSurfaceKind, RouteTargetKind } from './routes.js';
+export { ROUTE_SURFACE_KINDS, ROUTE_TARGET_KINDS } from './routes.js';
+export type { ControlPlaneEvent, ControlPlaneEventType, ControlPlaneClientKind, ControlPlaneTransportKind, ControlPlanePrincipalKind } from './control-plane.js';
+export { CONTROL_PLANE_CLIENT_KINDS, CONTROL_PLANE_TRANSPORT_KINDS, CONTROL_PLANE_PRINCIPAL_KINDS } from './control-plane.js';
+export type { DeliveryEvent, DeliveryEventType, DeliveryKind } from './deliveries.js';
+export { DELIVERY_KINDS } from './deliveries.js';
+export type { WatcherEvent, WatcherEventType, WatcherSourceKind } from './watchers.js';
+export { WATCHER_SOURCE_KINDS } from './watchers.js';
+export type { SurfaceEvent, SurfaceEventType, SurfaceKind } from './surfaces.js';
+export { SURFACE_KINDS } from './surfaces.js';
+export type { KnowledgeEvent, KnowledgeEventType } from './knowledge.js';
 
 /** Listener callback receiving a fully-formed envelope. */
 export type EnvelopeListener<T extends AnyRuntimeEvent = AnyRuntimeEvent> = (

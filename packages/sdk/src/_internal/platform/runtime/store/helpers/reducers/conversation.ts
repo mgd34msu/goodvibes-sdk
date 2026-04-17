@@ -1,5 +1,5 @@
 import type { TurnEvent } from '../../../events/turn.js';
-import type { ToolEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/tools';
+import type { ToolEvent } from '../../../events/tools.js';
 import type { ConversationDomainState, ActiveToolCall, ToolExecutionState } from '../../domains/conversation.js';
 import { canStartNewTurn, formatPartialToolPreview, isCurrentTurnEvent, isTerminalTurnState, now, resetStreamState, updateDomainMetadata } from './shared.js';
 

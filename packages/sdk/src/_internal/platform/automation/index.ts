@@ -8,7 +8,7 @@ export type {
   AutomationExecutionKind,
   AutomationDeliveryKind,
   AutomationEntityBase,
-} from '@pellux/goodvibes-sdk/platform/automation/types';
+} from './types.js';
 
 export type {
   AutomationAtSchedule,
@@ -16,7 +16,7 @@ export type {
   AutomationCronSchedule,
   AutomationScheduleDefinition,
   AutomationScheduleKind,
-} from '@pellux/goodvibes-sdk/platform/automation/schedules';
+} from './schedules.js';
 export {
   DEFAULT_TOP_OF_HOUR_STAGGER_MS,
   parseEveryInterval,
@@ -32,7 +32,7 @@ export {
   normalizeCronSchedule,
   getNextAutomationOccurrence,
   isAutomationDue,
-} from '@pellux/goodvibes-sdk/platform/automation/schedules';
+} from './schedules.js';
 
 export type {
   AutomationExecutionPolicy,
@@ -42,27 +42,27 @@ export type {
   AutomationWakeMode,
   AutomationExternalContentSource,
   AutomationExternalContentSourceKind,
-} from '@pellux/goodvibes-sdk/platform/automation/session-targets';
-export type { AutomationDeliveryMode, AutomationDeliveryTarget, AutomationDeliveryPolicy, AutomationDeliveryAttempt } from '@pellux/goodvibes-sdk/platform/automation/delivery';
-export type { AutomationFailureAction, AutomationRetryStrategy, AutomationRetryPolicy, AutomationFailurePolicy, AutomationFailureRecord } from '@pellux/goodvibes-sdk/platform/automation/failures';
-export type { AutomationSourceRecord, AutomationSourceSnapshot } from '@pellux/goodvibes-sdk/platform/automation/sources';
-export type { AutomationRouteBinding, AutomationRouteResolution } from '@pellux/goodvibes-sdk/platform/automation/routes';
-export type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
+} from './session-targets.js';
+export type { AutomationDeliveryMode, AutomationDeliveryTarget, AutomationDeliveryPolicy, AutomationDeliveryAttempt } from './delivery.js';
+export type { AutomationFailureAction, AutomationRetryStrategy, AutomationRetryPolicy, AutomationFailurePolicy, AutomationFailureRecord } from './failures.js';
+export type { AutomationSourceRecord, AutomationSourceSnapshot } from './sources.js';
+export type { AutomationRouteBinding, AutomationRouteResolution } from './routes.js';
+export type { AutomationJob } from './jobs.js';
 export type {
   AutomationRun,
   AutomationRunSummary,
   AutomationRunTelemetry,
   AutomationRunUsageSummary,
-} from '@pellux/goodvibes-sdk/platform/automation/runs';
+} from './runs.js';
 
-export type { LegacySchedulerSnapshot } from '@pellux/goodvibes-sdk/platform/automation/migration';
-export { migrateLegacySchedules } from '@pellux/goodvibes-sdk/platform/automation/migration';
+export type { LegacySchedulerSnapshot } from './migration.js';
+export { migrateLegacySchedules } from './migration.js';
 export { AutomationDeliveryManager } from './delivery-manager.js';
 export { AutomationService } from './service.js';
-export { AutomationJobStore } from '@pellux/goodvibes-sdk/platform/automation/store/jobs';
-export { AutomationRunStore } from '@pellux/goodvibes-sdk/platform/automation/store/runs';
-export { AutomationRouteStore } from '@pellux/goodvibes-sdk/platform/automation/store/routes';
-export { AutomationSourceStore } from '@pellux/goodvibes-sdk/platform/automation/store/sources';
+export { AutomationJobStore } from './store/jobs.js';
+export { AutomationRunStore } from './store/runs.js';
+export { AutomationRouteStore } from './store/routes.js';
+export { AutomationSourceStore } from './store/sources.js';
 export type {
   AutomationHeartbeatResult,
   AutomationHeartbeatWake,

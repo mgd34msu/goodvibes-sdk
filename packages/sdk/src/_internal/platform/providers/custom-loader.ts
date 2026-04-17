@@ -7,11 +7,11 @@ import { OpenAICompatProvider } from './openai-compat.js';
 import { AnthropicCompatProvider } from './anthropic-compat.js';
 import type { LLMProvider } from './interface.js';
 import type { ModelDefinition } from './registry.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import {
   LocalContextIngestionService,
   resolveContextWindow,
-} from '@pellux/goodvibes-sdk/platform/providers/local-context-ingestion';
+} from './local-context-ingestion.js';
 
 /** Debounce delay for file watcher (ms). */
 const WATCH_DEBOUNCE_MS = 300;

@@ -18,22 +18,22 @@ export type {
   CascadeResult,
   EvaluateResult,
   CascadeAppliedEvent,
-} from '@pellux/goodvibes-sdk/platform/runtime/health/types';
-export { createCascadeAppliedEvent } from '@pellux/goodvibes-sdk/platform/runtime/health/types';
+} from './types.js';
+export { createCascadeAppliedEvent } from './types.js';
 
-export { RuntimeHealthAggregator } from '@pellux/goodvibes-sdk/platform/runtime/health/aggregator';
-export { CascadeEngine } from '@pellux/goodvibes-sdk/platform/runtime/health/cascade-engine';
-export { CASCADE_RULES } from '@pellux/goodvibes-sdk/platform/runtime/health/cascade-rules';
+export { RuntimeHealthAggregator } from './aggregator.js';
+export { CascadeEngine } from './cascade-engine.js';
+export { CASCADE_RULES } from './cascade-rules.js';
 export { HealthStoreWiring } from './wiring.js';
 export { handleCascadeEffect } from './effect-handlers.js';
 export type { EffectHandlerContext } from './effect-handlers.js';
-export { CascadeTimer, deriveCascadeSeverity } from '@pellux/goodvibes-sdk/platform/runtime/health/cascade-timing';
-export type { CascadeSeverity, TimedCascadeResult, TimedEvaluateResult } from '@pellux/goodvibes-sdk/platform/runtime/health/cascade-timing';
-export { CASCADE_PLAYBOOK_MAP, ALL_CASCADE_RULE_IDS } from '@pellux/goodvibes-sdk/platform/runtime/health/cascade-playbook-map';
+export { CascadeTimer, deriveCascadeSeverity } from './cascade-timing.js';
+export type { CascadeSeverity, TimedCascadeResult, TimedEvaluateResult } from './cascade-timing.js';
+export { CASCADE_PLAYBOOK_MAP, ALL_CASCADE_RULE_IDS } from './cascade-playbook-map.js';
 
-import { RuntimeHealthAggregator } from '@pellux/goodvibes-sdk/platform/runtime/health/aggregator';
-import { CascadeEngine } from '@pellux/goodvibes-sdk/platform/runtime/health/cascade-engine';
-import { CASCADE_RULES } from '@pellux/goodvibes-sdk/platform/runtime/health/cascade-rules';
+import { RuntimeHealthAggregator } from './aggregator.js';
+import { CascadeEngine } from './cascade-engine.js';
+import { CASCADE_RULES } from './cascade-rules.js';
 import { HealthStoreWiring } from './wiring.js';
 
 /**

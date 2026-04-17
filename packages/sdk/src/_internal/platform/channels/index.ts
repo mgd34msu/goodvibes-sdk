@@ -53,13 +53,13 @@ export type {
   ChannelRenderPolicy,
   ChannelRenderRequest,
   ChannelRenderResult,
-} from '@pellux/goodvibes-sdk/platform/channels/types';
+} from './types.js';
 export type { UpsertRouteBindingInput } from './route-manager.js';
 export { RouteBindingManager } from './route-manager.js';
 export { SurfaceRegistry } from './surface-registry.js';
 export type { ChannelPlugin } from './plugin-registry.js';
 export { ChannelPluginRegistry } from './plugin-registry.js';
-export { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels/policy-manager';
+export { ChannelPolicyManager } from './policy-manager.js';
 export { BuiltinChannelRuntime } from './builtin-runtime.js';
 export { ChannelReplyPipeline, normalizeChannelRenderEventFromRuntime } from './reply-pipeline.js';
 export { ChannelProviderRuntimeManager } from './provider-runtime.js';

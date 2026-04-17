@@ -1,8 +1,8 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type { AutomationDeliveryManager } from './delivery-manager.js';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRun } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { AutomationJob } from './jobs.js';
+import type { AutomationRun } from './runs.js';
+import { summarizeError } from '../utils/error-display.js';
 
 interface AutomationFailureFollowUpContext {
   readonly jobs: Map<string, AutomationJob>;

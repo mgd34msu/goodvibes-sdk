@@ -1,7 +1,7 @@
 /**
  * Workflow emitters — typed emission wrappers for WRFC workflow events.
  */
-import { createEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { WrfcState } from '../../agents/wrfc-types.js';
 import type { EmitterContext } from './index.js';

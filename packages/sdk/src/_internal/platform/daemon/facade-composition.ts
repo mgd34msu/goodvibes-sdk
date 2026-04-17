@@ -2,7 +2,7 @@ import { AgentManager } from '../tools/agent/index.js';
 import { resolveHostBinding } from './host-resolver.js';
 import { ConfigManager } from '../config/manager.js';
 import { ServiceRegistry } from '../config/service-registry.js';
-import { UserAuthManager } from '@pellux/goodvibes-sdk/platform/security/user-auth';
+import { UserAuthManager } from '../security/user-auth.js';
 import {
   AutomationDeliveryManager,
   AutomationManager,

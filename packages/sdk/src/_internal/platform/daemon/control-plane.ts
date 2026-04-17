@@ -1,23 +1,23 @@
 import type { AgentManager } from '../tools/agent/index.js';
-import type { UserAuthManager } from '@pellux/goodvibes-sdk/platform/security/user-auth';
+import type { UserAuthManager } from '../security/user-auth.js';
 import {
   authenticateOperatorRequest,
   authenticateOperatorToken,
   extractOperatorAuthToken,
   isOperatorAdmin,
-} from '@pellux/goodvibes-sdk/platform/security/http-auth';
+} from '../security/http-auth.js';
 import type { ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
 import type { GatewayMethodCatalog, GatewayMethodDescriptor } from '../control-plane/index.js';
 import type { RuntimeEventDomain } from '../runtime/events/index.js';
 import type { DistributedRuntimeManager } from '../runtime/remote/index.js';
 import { extractForwardedClientIp } from '../runtime/network/index.js';
 import { resolveGatewayPathTemplate } from './helpers.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import {
   buildMissingScopeBody,
   resolveAuthenticatedPrincipal,
   type AuthenticatedPrincipal,
-} from '@pellux/goodvibes-sdk/platform/daemon/http-policy';
+} from './http-policy.js';
 
 export interface ControlPlaneWebSocketData {
   readonly channel: 'control-plane';

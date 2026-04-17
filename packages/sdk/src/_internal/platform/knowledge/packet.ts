@@ -1,4 +1,4 @@
-import type { KnowledgeStore } from '@pellux/goodvibes-sdk/platform/knowledge/store';
+import type { KnowledgeStore } from './store.js';
 import type {
   KnowledgePacket,
   KnowledgePacketDetail,
@@ -7,7 +7,7 @@ import type {
   KnowledgeSourceRecord,
   KnowledgeNodeRecord,
   KnowledgeUsageRecord,
-} from '@pellux/goodvibes-sdk/platform/knowledge/types';
+} from './types.js';
 import { emitKnowledgePacketBuilt } from '../runtime/emitters/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {

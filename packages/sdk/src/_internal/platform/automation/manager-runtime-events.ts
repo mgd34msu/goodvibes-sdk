@@ -11,8 +11,8 @@ import {
   emitAutomationRunQueued,
   emitAutomationRunStarted,
 } from '../runtime/emitters/index.js';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRun } from '@pellux/goodvibes-sdk/platform/automation/runs';
+import type { AutomationJob } from './jobs.js';
+import type { AutomationRun } from './runs.js';
 
 function automationEmitterContext(traceId: string, sessionId?: string): EmitterContext {
   return {

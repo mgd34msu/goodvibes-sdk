@@ -14,7 +14,7 @@ import {
   toJobMode,
   toPacketDetail,
   toProjectionKind,
-} from '@pellux/goodvibes-sdk/platform/knowledge/graphql-schema';
+} from './graphql-schema.js';
 
 export interface KnowledgeGraphqlAccessProfile {
   readonly operation: 'query' | 'mutation';

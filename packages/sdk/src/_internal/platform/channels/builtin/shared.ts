@@ -1,12 +1,12 @@
 import type { GenericWebhookAdapterContext, SurfaceAdapterContext } from '../../adapters/index.js';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
+import type { AutomationRouteBinding } from '../../automation/routes.js';
 import type { ConfigManager } from '../../config/manager.js';
-import type { SurfacesConfig } from '@pellux/goodvibes-sdk/platform/config/schema';
+import type { SurfacesConfig } from '../../config/schema.js';
 import type { SecretsManager } from '../../config/secrets.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import type { SharedApprovalRecord } from '../../control-plane/index.js';
 import type { ChannelDeliveryRouter } from '../delivery-router.js';
-import type { ChannelPolicyManager } from '@pellux/goodvibes-sdk/platform/channels/policy-manager';
+import type { ChannelPolicyManager } from '../policy-manager.js';
 import type { ChannelPluginRegistry } from '../plugin-registry.js';
 import type { ChannelProviderRuntimeManager } from '../provider-runtime.js';
 import type { RouteBindingManager } from '../route-manager.js';

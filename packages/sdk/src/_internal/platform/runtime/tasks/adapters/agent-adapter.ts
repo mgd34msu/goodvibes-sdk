@@ -9,8 +9,8 @@
 import { randomUUID } from 'node:crypto';
 import { createDomainDispatch } from '../../store/index.js';
 import type { RuntimeStore, DomainDispatch } from '../../store/index.js';
-import type { RuntimeTask } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-import type { AgentLifecycleState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
+import type { RuntimeTask } from '../../store/domains/tasks.js';
+import type { AgentLifecycleState } from '../../store/domains/agents.js';
 import type { RuntimeEventBus } from '../../events/index.js';
 
 /** Owner context for an agent task. */

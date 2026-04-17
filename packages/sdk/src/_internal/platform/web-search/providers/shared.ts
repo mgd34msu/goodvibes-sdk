@@ -1,8 +1,8 @@
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import { executeFetchInput, type FetchOutput, type FetchUrlResult } from '../../tools/fetch/index.js';
-import type { FetchAuthInput, FetchInput, FetchUrlInput } from '@pellux/goodvibes-sdk/platform/tools/fetch/schema';
-import type { WebSearchEvidence, WebSearchProviderDescriptor, WebSearchResult } from '@pellux/goodvibes-sdk/platform/web-search/types';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { FetchAuthInput, FetchInput, FetchUrlInput } from '../../tools/fetch/schema.js';
+import type { WebSearchEvidence, WebSearchProviderDescriptor, WebSearchResult } from '../types.js';
+import { summarizeError } from '../../utils/error-display.js';
 
 type EnvMap = Record<string, string | undefined>;
 type FetchExecutor = (input: FetchInput) => Promise<FetchOutput>;

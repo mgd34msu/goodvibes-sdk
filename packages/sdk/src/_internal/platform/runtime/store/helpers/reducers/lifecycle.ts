@@ -1,21 +1,21 @@
-import type { CompactionEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/compaction';
-import type { PermissionEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/permissions';
-import type { TaskEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/tasks';
-import type { AgentEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/agents';
-import type { OrchestrationEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/orchestration';
-import type { SessionDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/session';
+import type { CompactionEvent } from '../../../events/compaction.js';
+import type { PermissionEvent } from '../../../events/permissions.js';
+import type { TaskEvent } from '../../../events/tasks.js';
+import type { AgentEvent } from '../../../events/agents.js';
+import type { OrchestrationEvent } from '../../../events/orchestration.js';
+import type { SessionDomainState } from '../../domains/session.js';
 import type {
   PermissionDomainState,
   PermissionDecisionMachineState,
   PermissionDecision,
 } from '../../domains/permissions.js';
-import type { TaskDomainState, RuntimeTask, TaskLifecycleState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-import type { AgentDomainState, RuntimeAgent, AgentLifecycleState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
+import type { TaskDomainState, RuntimeTask, TaskLifecycleState } from '../../domains/tasks.js';
+import type { AgentDomainState, RuntimeAgent, AgentLifecycleState } from '../../domains/agents.js';
 import type {
   OrchestrationDomainState,
   OrchestrationGraphRecord,
   OrchestrationNodeRecord,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/orchestration';
+} from '../../domains/orchestration.js';
 import type { PermissionCategory } from '../../../../permissions/manager.js';
 import { now, uniq, updateDomainMetadata } from './shared.js';
 

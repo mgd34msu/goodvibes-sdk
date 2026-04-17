@@ -11,18 +11,18 @@ import type {
 import { REASONING_BUDGET_MAP } from './interface.js';
 
 import { mapGeminiStopReason } from './stop-reason-maps.js';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { fetchWithTimeout } from '@pellux/goodvibes-sdk/platform/utils/fetch-with-timeout';
+import { ProviderError } from '../types/errors.js';
+import { withRetry } from '../utils/retry.js';
+import { logger } from '../utils/logger.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import {
   toGeminiFunctionDeclarations,
   toGeminiContents,
   fromGeminiParts,
 } from './tool-formats.js';
 import type { GeminiPart } from './tool-formats.js';
-import type { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
-import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { CacheHitTracker } from './cache-strategy.js';
+import { summarizeError, toProviderError } from '../utils/error-display.js';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_CACHE_TTL_SECONDS = 3600;

@@ -5,11 +5,11 @@
  * manifest and transition models used by the PluginLifecycleManager.
  */
 
-import type { PluginLifecycleState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/plugins';
+import type { PluginLifecycleState } from '../store/domains/plugins.js';
 import type { PluginManifest } from '../../plugins/loader.js';
 
 // Re-export so consumers only need to import from this module.
-export type { PluginLifecycleState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/plugins';
+export type { PluginLifecycleState } from '../store/domains/plugins.js';
 
 // ── Capability manifest ───────────────────────────────────────────────────────
 

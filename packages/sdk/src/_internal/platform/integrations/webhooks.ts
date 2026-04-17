@@ -1,4 +1,4 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/events/index.js';
 
 // ---------------------------------------------------------------------------

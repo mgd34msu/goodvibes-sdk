@@ -10,10 +10,10 @@
  * production code paths that gate CI.
  */
 
-import type { EvalScenario, EvalRawResult, EvalResult, EvalSuiteResult, EvalGateResult, EvalBaseline, RegressionEntry } from '@pellux/goodvibes-sdk/platform/runtime/eval/types';
-import { scoreScenario } from '@pellux/goodvibes-sdk/platform/runtime/eval/scorecard';
+import type { EvalScenario, EvalRawResult, EvalResult, EvalSuiteResult, EvalGateResult, EvalBaseline, RegressionEntry } from './types.js';
+import { scoreScenario } from './scorecard.js';
 import { createPerfMonitor } from '../perf/index.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 
 // ── EvalRunner ────────────────────────────────────────────────────────────────
 

@@ -10,12 +10,12 @@
  * Returns a human-readable result string to display in the conversation.
  */
 
-import { AdaptivePlanner, VALID_STRATEGIES } from '@pellux/goodvibes-sdk/platform/core/adaptive-planner';
-import type { ExecutionStrategy } from '@pellux/goodvibes-sdk/platform/core/adaptive-planner';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { AdaptivePlanner, VALID_STRATEGIES } from './adaptive-planner.js';
+import type { ExecutionStrategy } from './adaptive-planner.js';
+import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitPlanStrategyOverridden } from '../runtime/emitters/index.js';
-import type { AdaptivePlanner as AdaptivePlannerType } from '@pellux/goodvibes-sdk/platform/core/adaptive-planner';
+import type { AdaptivePlanner as AdaptivePlannerType } from './adaptive-planner.js';
 
 export interface PlanCommandResult {
   /** Human-readable output to show the user. */

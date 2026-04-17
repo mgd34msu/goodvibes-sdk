@@ -2,10 +2,10 @@
  * Surface emitters — typed wrappers for SurfaceEvent domain.
  */
 
-import { createEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
-import type { RuntimeEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import { createEventEnvelope } from '../events/envelope.js';
+import type { RuntimeEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
-import type { SurfaceEvent, SurfaceKind } from '@pellux/goodvibes-sdk/platform/runtime/events/surfaces';
+import type { SurfaceEvent, SurfaceKind } from '../events/surfaces.js';
 import type { EmitterContext } from './index.js';
 
 function surfaceEvent<T extends SurfaceEvent['type']>(

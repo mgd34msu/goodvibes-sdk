@@ -1,10 +1,10 @@
 import type { RuntimeServices } from './services.js';
-import type { RuntimeTask } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-import type { RuntimeAgent } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
-import type { SessionDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/session';
+import type { RuntimeTask } from './store/domains/tasks.js';
+import type { RuntimeAgent } from './store/domains/agents.js';
+import type { SessionDomainState } from './store/domains/session.js';
 import type { TurnState } from './store/domains/conversation.js';
 import { createStoreBackedReadModel, listProviderIds } from './ui-read-model-helpers.js';
-import type { UiReadModel } from '@pellux/goodvibes-sdk/platform/runtime/ui-read-models-base';
+import type { UiReadModel } from './ui-read-models-base.js';
 
 export interface UiProvidersSnapshot {
   readonly providerIds: readonly string[];

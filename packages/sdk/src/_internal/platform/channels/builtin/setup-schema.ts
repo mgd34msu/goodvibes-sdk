@@ -3,7 +3,7 @@ import type {
   ChannelSetupFieldDescriptor,
   ChannelSetupSchema,
   ChannelSurface,
-} from '@pellux/goodvibes-sdk/platform/channels/types';
+} from '../types.js';
 import {
   CHANNEL_SETUP_VERSION,
   DEFAULT_SECRET_BACKENDS,

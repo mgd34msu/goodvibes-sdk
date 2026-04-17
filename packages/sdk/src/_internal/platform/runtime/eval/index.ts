@@ -27,12 +27,12 @@ export type {
   DimensionScore,
   RegressionEntry,
   BaselineSuiteSummary,
-} from '@pellux/goodvibes-sdk/platform/runtime/eval/types';
+} from './types.js';
 
 export { EvalRunner } from './runner.js';
 export type { EvalRunnerOptions } from './runner.js';
 
-export { scoreScenario, formatScorecard, DIMENSION_FLOOR } from '@pellux/goodvibes-sdk/platform/runtime/eval/scorecard';
+export { scoreScenario, formatScorecard, DIMENSION_FLOOR } from './scorecard.js';
 
 export { BUILTIN_SUITES, ALL_SCENARIOS } from './suites.js';
 
@@ -43,6 +43,6 @@ export {
   writeBaseline,
   loadBaseline,
   formatBaselineComparison,
-} from '@pellux/goodvibes-sdk/platform/runtime/eval/baseline';
+} from './baseline.js';
 
-export { formatSuiteResult, formatGateResult } from '@pellux/goodvibes-sdk/platform/runtime/eval/format';
+export { formatSuiteResult, formatGateResult } from './format.js';

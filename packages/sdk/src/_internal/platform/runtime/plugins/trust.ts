@@ -12,7 +12,7 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../../utils/logger.js';
 import type { PluginCapability } from './types.js';
 import { isHighRiskCapability } from './manifest.js';
 

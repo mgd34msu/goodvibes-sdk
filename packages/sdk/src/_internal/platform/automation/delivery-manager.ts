@@ -1,23 +1,23 @@
 import { randomUUID } from 'node:crypto';
-import type { ArtifactReference, ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import type { ArtifactReference, ArtifactStore } from '../artifacts/index.js';
 import { ChannelDeliveryRouter, RouteBindingManager } from '../channels/index.js';
 import { ServiceRegistry } from '../config/service-registry.js';
 import { createDomainDispatch } from '../runtime/store/index.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import type { RouteSurfaceKind } from '@pellux/goodvibes-sdk/platform/runtime/events/routes';
+import type { RouteSurfaceKind } from '../runtime/events/routes.js';
 import {
   emitDeliveryFailed,
   emitDeliveryQueued,
   emitDeliveryStarted,
   emitDeliverySucceeded,
 } from '../runtime/emitters/index.js';
-import type { AutomationDeliveryAttempt, AutomationDeliveryTarget } from '@pellux/goodvibes-sdk/platform/automation/delivery';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
-import type { AutomationRun } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import { classifyDeliveryError } from '@pellux/goodvibes-sdk/platform/integrations/delivery';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { AutomationDeliveryAttempt, AutomationDeliveryTarget } from './delivery.js';
+import type { AutomationJob } from './jobs.js';
+import type { AutomationRouteBinding } from './routes.js';
+import type { AutomationRun } from './runs.js';
+import { classifyDeliveryError } from '../integrations/delivery.js';
+import { summarizeError } from '../utils/error-display.js';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,4 +1,4 @@
-export { SlackIntegration, SlackSocketModeClient } from '@pellux/goodvibes-sdk/platform/integrations/slack';
+export { SlackIntegration, SlackSocketModeClient } from './slack.js';
 export type {
   SlackAuthTestResult,
   SlackConversationRecord,
@@ -14,8 +14,8 @@ export type {
   SlackSocketModeEnvelope,
   SlackSocketModeClientOptions,
   SlackUserRecord,
-} from '@pellux/goodvibes-sdk/platform/integrations/slack';
-export { DiscordGatewayClient, DiscordGatewayIntent, DiscordGatewayOpcode, DiscordIntegration } from '@pellux/goodvibes-sdk/platform/integrations/discord';
+} from './slack.js';
+export { DiscordGatewayClient, DiscordGatewayIntent, DiscordGatewayOpcode, DiscordIntegration } from './discord.js';
 export type {
   DiscordApplicationCommand,
   DiscordApplicationCommandOption,
@@ -24,13 +24,13 @@ export type {
   DiscordGatewayDispatch,
   DiscordInteraction,
   DiscordOAuthAuthorizeOptions,
-} from '@pellux/goodvibes-sdk/platform/integrations/discord';
-export { DiscordInteractionType, DiscordInteractionResponseType } from '@pellux/goodvibes-sdk/platform/integrations/discord';
+} from './discord.js';
+export { DiscordInteractionType, DiscordInteractionResponseType } from './discord.js';
 export { Notifier } from './notifier.js';
-export { GitHubIntegration } from '@pellux/goodvibes-sdk/platform/integrations/github';
-export type { GitHubWebhookEvent } from '@pellux/goodvibes-sdk/platform/integrations/github';
-export { DeliveryQueue, DeliveryError, classifyDeliveryError, snapshotQueueStatus } from '@pellux/goodvibes-sdk/platform/integrations/delivery';
-export { NtfyIntegration } from '@pellux/goodvibes-sdk/platform/integrations/ntfy';
+export { GitHubIntegration } from './github.js';
+export type { GitHubWebhookEvent } from './github.js';
+export { DeliveryQueue, DeliveryError, classifyDeliveryError, snapshotQueueStatus } from './delivery.js';
+export { NtfyIntegration } from './ntfy.js';
 export type {
   DeliveryOutcome,
   DeliveryFailureClass,
@@ -38,5 +38,5 @@ export type {
   DeliveryMetrics,
   DeliveryQueueConfig,
   IntegrationQueueStatus,
-} from '@pellux/goodvibes-sdk/platform/integrations/delivery';
-export type { NtfyMessage, NtfyPublishOptions, NtfySubscribeOptions, NtfyWebSocketOptions } from '@pellux/goodvibes-sdk/platform/integrations/ntfy';
+} from './delivery.js';
+export type { NtfyMessage, NtfyPublishOptions, NtfySubscribeOptions, NtfyWebSocketOptions } from './ntfy.js';

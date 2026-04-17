@@ -1,7 +1,7 @@
 import type { DomainDispatch } from '../runtime/store/index.js';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRun } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import type { AutomationSourceRecord } from '@pellux/goodvibes-sdk/platform/automation/sources';
+import type { AutomationJob } from './jobs.js';
+import type { AutomationRun } from './runs.js';
+import type { AutomationSourceRecord } from './sources.js';
 
 export function collectAutomationSources(
   jobs: Iterable<AutomationJob>,

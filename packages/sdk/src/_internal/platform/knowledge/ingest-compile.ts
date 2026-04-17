@@ -3,8 +3,8 @@ import {
   emitKnowledgeExtractionCompleted,
   emitKnowledgeExtractionFailed,
 } from '../runtime/emitters/index.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
-import { extractKnowledgeArtifact } from '@pellux/goodvibes-sdk/platform/knowledge/extractors';
+import { summarizeError } from '../utils/error-display.js';
+import { extractKnowledgeArtifact } from './extractors.js';
 import {
   canonicalizeUri,
   extractTaggedValues,
@@ -19,7 +19,7 @@ import type {
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
   KnowledgeSourceType,
-} from '@pellux/goodvibes-sdk/platform/knowledge/types';
+} from './types.js';
 
 export async function finalizeKnowledgeIngestedSource(
   context: KnowledgeIngestContext,

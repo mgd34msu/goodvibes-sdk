@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import {
   type AutomationScheduleDefinition,
-} from '@pellux/goodvibes-sdk/platform/automation/schedules';
-import { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+} from '../automation/schedules.js';
+import { ArtifactStore } from '../artifacts/index.js';
 import type { MemoryRegistry } from '../state/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import { createDefaultKnowledgeConnectorRegistry, KnowledgeConnectorRegistry } from '@pellux/goodvibes-sdk/platform/knowledge/connectors';
-import { KnowledgeProjectionService } from '@pellux/goodvibes-sdk/platform/knowledge/projections';
-import { KnowledgeStore } from '@pellux/goodvibes-sdk/platform/knowledge/store';
+import { createDefaultKnowledgeConnectorRegistry, KnowledgeConnectorRegistry } from './connectors.js';
+import { KnowledgeProjectionService } from './projections.js';
+import { KnowledgeStore } from './store.js';
 import type {
   KnowledgeBatchIngestResult,
   KnowledgeBookmarkSeed,
@@ -35,7 +35,7 @@ import type {
   KnowledgeSourceType,
   KnowledgeStatus,
   KnowledgeUsageRecord,
-} from '@pellux/goodvibes-sdk/platform/knowledge/types';
+} from './types.js';
 import {
   buildKnowledgePacket,
   buildKnowledgePacketSync,
@@ -72,7 +72,7 @@ import {
   emitKnowledgeProjectionMaterialized,
   emitKnowledgeProjectionRendered,
 } from '../runtime/emitters/index.js';
-import { extractKnowledgeArtifact } from '@pellux/goodvibes-sdk/platform/knowledge/extractors';
+import { extractKnowledgeArtifact } from './extractors.js';
 import {
   canonicalizeUri as internalCanonicalizeUri,
   DEFAULT_PACKET_BUDGET as internalDefaultPacketBudget,

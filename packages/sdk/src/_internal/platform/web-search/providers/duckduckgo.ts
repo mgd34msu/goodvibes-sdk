@@ -1,5 +1,5 @@
 import { executeFetchInput, type FetchOutput } from '../../tools/fetch/index.js';
-import type { FetchInput } from '@pellux/goodvibes-sdk/platform/tools/fetch/schema';
+import type { FetchInput } from '../../tools/fetch/schema.js';
 import type {
   WebSearchInstantAnswer,
   WebSearchProvider,
@@ -9,7 +9,7 @@ import type {
   WebSearchResult,
   WebSearchSafeSearch,
   WebSearchTimeRange,
-} from '@pellux/goodvibes-sdk/platform/web-search/types';
+} from '../types.js';
 
 type FetchExecutor = (input: FetchInput) => Promise<FetchOutput>;
 

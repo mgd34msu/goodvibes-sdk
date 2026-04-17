@@ -1,6 +1,6 @@
-import type { Tool, ToolCall } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { Tool, ToolCall } from '../../../types/tools.js';
 import type { ToolRuntimeContext } from '../context.js';
-import type { BudgetExceedReason, PhaseResult, ToolExecutionPhase, ToolExecutionRecord } from '@pellux/goodvibes-sdk/platform/runtime/tools/types';
+import type { BudgetExceedReason, PhaseResult, ToolExecutionPhase, ToolExecutionRecord } from '../types.js';
 
 /**
  * budget — Budget enforcement phase for the tool execution pipeline.

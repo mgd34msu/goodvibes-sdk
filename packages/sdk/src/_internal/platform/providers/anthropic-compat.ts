@@ -7,17 +7,17 @@ import type {
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { REASONING_BUDGET_MAP } from './interface.js';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
+import { ProviderError } from '../types/errors.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { withRetry } from '../utils/retry.js';
+import { logger } from '../utils/logger.js';
 import {
   toAnthropicTools,
   toAnthropicMessages,
   fromAnthropicContent,
 } from './tool-formats.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
-import { toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { toProviderError } from '../utils/error-display.js';
 
 const ANTHROPIC_API_VERSION = '2023-06-01';
 

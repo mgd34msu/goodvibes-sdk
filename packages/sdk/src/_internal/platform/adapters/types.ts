@@ -1,7 +1,7 @@
 import type { AgentManager } from '../tools/agent/index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
-import type { AutomationSurfaceKind } from '@pellux/goodvibes-sdk/platform/automation/types';
+import type { AutomationRouteBinding } from '../automation/routes.js';
+import type { AutomationSurfaceKind } from '../automation/types.js';
 import type { ChannelConversationKind, ChannelPolicyDecision, RouteBindingManager } from '../channels/index.js';
 import type { SharedSessionBroker } from '../control-plane/index.js';
 import type { ServiceRegistry } from '../config/service-registry.js';

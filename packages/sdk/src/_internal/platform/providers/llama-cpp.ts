@@ -1,6 +1,6 @@
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import type { ToolCall } from '@pellux/goodvibes-sdk/platform/types/tools';
+import { withRetry } from '../utils/retry.js';
+import { ProviderError } from '../types/errors.js';
+import type { ToolCall } from '../types/tools.js';
 import type { ProviderCapability } from './capabilities.js';
 import type {
   ChatRequest,
@@ -15,7 +15,7 @@ import type {
 } from './interface.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
 import { mapLlamaCppStopReason } from './stop-reason-maps.js';
-import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError, toProviderError } from '../utils/error-display.js';
 import {
   extractTextToolCalls,
   fromOpenAIToolCalls,

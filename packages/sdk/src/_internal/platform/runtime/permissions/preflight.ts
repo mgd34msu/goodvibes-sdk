@@ -1,6 +1,6 @@
 import type { GoodVibesConfig, DeepReadonly } from '../../config/index.js';
-import type { PolicyLintFinding } from '@pellux/goodvibes-sdk/platform/runtime/permissions/lint';
-import type { McpServerRole, McpTrustMode } from '@pellux/goodvibes-sdk/platform/runtime/mcp/types';
+import type { PolicyLintFinding } from './lint.js';
+import type { McpServerRole, McpTrustMode } from '../mcp/types.js';
 
 export type PolicyPreflightStatus = 'pass' | 'warn' | 'block';
 

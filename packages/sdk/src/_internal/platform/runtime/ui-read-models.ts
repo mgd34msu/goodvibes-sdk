@@ -1,4 +1,4 @@
-export type { UiReadModel } from '@pellux/goodvibes-sdk/platform/runtime/ui-read-models-base';
+export type { UiReadModel } from './ui-read-models-base.js';
 export type {
   UiCoreReadModels,
   UiProvidersSnapshot,

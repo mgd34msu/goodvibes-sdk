@@ -1,6 +1,6 @@
-import type { AcpConnection } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/acp';
+import type { AcpConnection } from './store/domains/acp.js';
 import type { RuntimeStore } from './store/index.js';
-import type { DistributedRuntimeManager } from '@pellux/goodvibes-sdk/platform/runtime/remote/distributed-runtime-manager';
+import type { DistributedRuntimeManager } from './remote/distributed-runtime-manager.js';
 import type {
   DistributedNodeHostContract,
   DistributedPeerAuth,
@@ -15,10 +15,10 @@ import type {
   RemoteExecutionArtifact,
   RemoteRunnerContract,
   RemoteRunnerPool,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/types';
+} from './remote/types.js';
 import type { RemoteRunnerRegistry } from './remote/runner-registry.js';
 import type { RemoteSupervisor, RemoteSupervisorSnapshot } from './remote/supervisor.js';
-import type { RemoteSessionStateSnapshot } from '@pellux/goodvibes-sdk/platform/runtime/remote/session-state';
+import type { RemoteSessionStateSnapshot } from './remote/session-state.js';
 
 export interface PeerClientDependencies {
   readonly runtimeStore: RuntimeStore;

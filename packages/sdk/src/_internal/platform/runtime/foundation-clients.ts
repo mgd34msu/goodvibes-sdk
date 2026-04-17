@@ -16,7 +16,7 @@ import { createRuntimeKnowledgeApi } from './runtime-knowledge-api.js';
 import { createRuntimeMcpApi } from './runtime-mcp-api.js';
 import { createRuntimeOpsApi } from './runtime-ops-api.js';
 import { createRuntimeProviderApi } from './runtime-provider-api.js';
-import type { TaskManager } from '@pellux/goodvibes-sdk/platform/runtime/tasks/types';
+import type { TaskManager } from './tasks/types.js';
 import { createDirectTransportFromServices, type DirectTransport } from './transports/direct.js';
 import type { UiTasksSnapshot } from './ui-read-models.js';
 

@@ -1,7 +1,7 @@
-import type { Tool, ToolCall, ToolResult } from '@pellux/goodvibes-sdk/platform/types/tools';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import type { Tool, ToolCall, ToolResult } from '../../types/tools.js';
+import { logger } from '../../utils/logger.js';
 import type { ToolRuntimeContext } from './context.js';
-import type { ExecutorConfig, PhaseResult, ToolExecutionPhase, ToolExecutionRecord } from '@pellux/goodvibes-sdk/platform/runtime/tools/types';
+import type { ExecutorConfig, PhaseResult, ToolExecutionPhase, ToolExecutionRecord } from './types.js';
 import {
   emitBudgetExceededCost,
   emitBudgetExceededMs,

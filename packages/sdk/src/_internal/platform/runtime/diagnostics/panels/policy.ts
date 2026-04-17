@@ -9,15 +9,15 @@
  * call `recordTrendEntry()` periodically if a divergence panel is attached.
  */
 
-import type { PolicyBundleVersion, PolicyDiffResult } from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-registry';
-import { PolicyRegistry } from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-registry';
-import type { DivergenceDashboardSnapshot } from '@pellux/goodvibes-sdk/platform/runtime/permissions/divergence-dashboard';
-import type { DivergencePanel } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/panels/divergence';
-import type { PanelConfig } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
-import { DEFAULT_PANEL_CONFIG } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
+import type { PolicyBundleVersion, PolicyDiffResult } from '../../permissions/policy-registry.js';
+import { PolicyRegistry } from '../../permissions/policy-registry.js';
+import type { DivergenceDashboardSnapshot } from '../../permissions/divergence-dashboard.js';
+import type { DivergencePanel } from './divergence.js';
+import type { PanelConfig } from '../types.js';
+import { DEFAULT_PANEL_CONFIG } from '../types.js';
 import type { PermissionAuditEntry } from '../../permissions/policy-runtime.js';
-import type { PolicyLintFinding } from '@pellux/goodvibes-sdk/platform/runtime/permissions/lint';
-import type { PolicySimulationSummary } from '@pellux/goodvibes-sdk/platform/runtime/permissions/simulation-scenarios';
+import type { PolicyLintFinding } from '../../permissions/lint.js';
+import type { PolicySimulationSummary } from '../../permissions/simulation-scenarios.js';
 import type { PolicyPreflightReview } from '../../permissions/preflight.js';
 
 /**

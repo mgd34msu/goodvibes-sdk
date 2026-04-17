@@ -2,11 +2,11 @@
  * Delivery emitters — typed wrappers for DeliveryEvent domain.
  */
 
-import { createEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
-import type { RuntimeEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import { createEventEnvelope } from '../events/envelope.js';
+import type { RuntimeEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
-import type { DeliveryEvent, DeliveryKind } from '@pellux/goodvibes-sdk/platform/runtime/events/deliveries';
-import type { RouteSurfaceKind } from '@pellux/goodvibes-sdk/platform/runtime/events/routes';
+import type { DeliveryEvent, DeliveryKind } from '../events/deliveries.js';
+import type { RouteSurfaceKind } from '../events/routes.js';
 import type { EmitterContext } from './index.js';
 
 function deliveryEvent<T extends DeliveryEvent['type']>(

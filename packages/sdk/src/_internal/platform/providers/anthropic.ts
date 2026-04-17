@@ -1,19 +1,19 @@
 import type { LLMProvider, ChatRequest, ChatResponse, ChatStopReason, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
 import { REASONING_BUDGET_MAP } from './interface.js';
-import { getCacheCapability } from '@pellux/goodvibes-sdk/platform/providers/cache-capability';
+import { getCacheCapability } from './cache-capability.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
-import { getDefaultStrategy } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
-import type { CacheContext, CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { getDefaultStrategy } from './cache-strategy.js';
+import type { CacheContext, CacheHitTracker } from './cache-strategy.js';
+import { ProviderError } from '../types/errors.js';
+import { withRetry } from '../utils/retry.js';
+import { logger } from '../utils/logger.js';
 import {
   toAnthropicTools,
   toAnthropicMessages,
   fromAnthropicContent,
 } from './tool-formats.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
-import { toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { toProviderError } from '../utils/error-display.js';
 
 const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 const ANTHROPIC_API_VERSION = '2023-06-01';

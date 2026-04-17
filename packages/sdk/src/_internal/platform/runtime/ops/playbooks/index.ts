@@ -2,9 +2,9 @@
  * Barrel export for operational playbooks.
  */
 export { stuckTurnPlaybook } from './stuck-turn.js';
-export { reconnectFailurePlaybook } from '@pellux/goodvibes-sdk/platform/runtime/ops/playbooks/reconnect-failure';
-export { permissionDeadlockPlaybook } from '@pellux/goodvibes-sdk/platform/runtime/ops/playbooks/permission-deadlock';
-export { pluginDegradationPlaybook } from '@pellux/goodvibes-sdk/platform/runtime/ops/playbooks/plugin-degradation';
-export { exportRecoveryPlaybook } from '@pellux/goodvibes-sdk/platform/runtime/ops/playbooks/export-recovery';
+export { reconnectFailurePlaybook } from './reconnect-failure.js';
+export { permissionDeadlockPlaybook } from './permission-deadlock.js';
+export { pluginDegradationPlaybook } from './plugin-degradation.js';
+export { exportRecoveryPlaybook } from './export-recovery.js';
 export { sessionUnrecoverablePlaybook } from './session-unrecoverable.js';
-export { compactionFailurePlaybook } from '@pellux/goodvibes-sdk/platform/runtime/ops/playbooks/compaction-failure';
+export { compactionFailurePlaybook } from './compaction-failure.js';

@@ -1,32 +1,32 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { relative } from 'node:path';
-import type { Tool, ToolDefinition } from '@pellux/goodvibes-sdk/platform/types/tools';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { SessionChangeTracker } from '@pellux/goodvibes-sdk/platform/sessions/change-tracker';
-import { FileUndoManager } from '@pellux/goodvibes-sdk/platform/state/file-undo';
-import { FileStateCache, unifiedDiff } from '@pellux/goodvibes-sdk/platform/state/file-cache';
+import type { Tool, ToolDefinition } from '../../types/tools.js';
+import { logger } from '../../utils/logger.js';
+import type { SessionChangeTracker } from '../../sessions/change-tracker.js';
+import { FileUndoManager } from '../../state/file-undo.js';
+import { FileStateCache, unifiedDiff } from '../../state/file-cache.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { ToolLLM } from '../../config/tool-llm.js';
-import { resolveAndValidatePath } from '@pellux/goodvibes-sdk/platform/utils/path-safety';
-import { editSchema } from '@pellux/goodvibes-sdk/platform/tools/edit/schema';
+import { resolveAndValidatePath } from '../../utils/path-safety.js';
+import { editSchema } from './schema.js';
 import { AutoHealer } from '../shared/auto-heal.js';
-import { ImportGraph } from '@pellux/goodvibes-sdk/platform/intelligence/index';
+import { ImportGraph } from '../../intelligence/index.js';
 import {
   buildFailedEditResult,
   classifyEditFailure,
   computeAstEdit,
   computeAstPatternEdit,
   computeSingleEdit,
-} from '@pellux/goodvibes-sdk/platform/tools/edit/match';
+} from './match.js';
 import type {
   EditInput,
   EditItem,
   EditResult,
   EditResultStatus,
   ValidatorName,
-} from '@pellux/goodvibes-sdk/platform/tools/edit/types';
-import { executeNotebookEdit } from '@pellux/goodvibes-sdk/platform/tools/edit/notebook';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+} from './types.js';
+import { executeNotebookEdit } from './notebook.js';
+import { summarizeError } from '../../utils/error-display.js';
 
 const DIFF_TRUNCATE_THRESHOLD = 5000;
 const DIFF_PREVIEW_LENGTH = 500;

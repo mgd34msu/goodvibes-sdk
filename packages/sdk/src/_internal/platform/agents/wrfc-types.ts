@@ -1,4 +1,4 @@
-import type { CompletionReport, ReviewerReport } from '@pellux/goodvibes-sdk/platform/agents/completion-report';
+import type { CompletionReport, ReviewerReport } from './completion-report.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 
 /** Queued chain waiting to start. */

@@ -155,7 +155,7 @@ async function evalSql(
   const payload = JSON.stringify({ expression });
   const script = `
 import { Database } from 'bun:sqlite';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 const payload = JSON.parse(process.env.GV_REPL_PAYLOAD ?? '{}');
 const db = new Database(':memory:');
 db.exec("CREATE TABLE sandbox_eval (id INTEGER PRIMARY KEY, value TEXT);");

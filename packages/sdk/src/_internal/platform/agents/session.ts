@@ -1,9 +1,9 @@
 import { appendFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { ConversationManager } from '../core/conversation.js';
-import { KVState } from '@pellux/goodvibes-sdk/platform/state/kv-state';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { KVState } from '../state/kv-state.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 export interface AgentSessionPaths {
   readonly sessionsDir: string;

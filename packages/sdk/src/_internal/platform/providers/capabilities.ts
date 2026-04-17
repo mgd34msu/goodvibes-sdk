@@ -5,7 +5,7 @@
  * Routing choices are fully explainable from capability records.
  */
 
-import { getCacheCapability, type CacheType } from '@pellux/goodvibes-sdk/platform/providers/cache-capability';
+import { getCacheCapability, type CacheType } from './cache-capability.js';
 import type { LLMProvider } from './interface.js';
 
 // ---------------------------------------------------------------------------

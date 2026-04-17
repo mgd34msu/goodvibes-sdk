@@ -18,8 +18,8 @@ import { join, extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { ConfigManager } from '../../config/manager.js';
 import type { ToolLLM } from '../../config/tool-llm.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../../utils/logger.js';
+import { summarizeError } from '../../utils/error-display.js';
 
 /** Result of an auto-heal attempt. */
 export interface HealResult {

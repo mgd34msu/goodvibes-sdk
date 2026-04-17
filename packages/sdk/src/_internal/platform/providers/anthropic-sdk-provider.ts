@@ -15,10 +15,10 @@ import {
   toAnthropicMessages,
   toAnthropicTools,
 } from './tool-formats.js';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
+import { ProviderError } from '../types/errors.js';
+import { withRetry } from '../utils/retry.js';
 import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
-import { toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { toProviderError } from '../utils/error-display.js';
 
 const DEFAULT_MAX_OUTPUT = 8192;
 

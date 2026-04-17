@@ -1,18 +1,18 @@
 import type { ConversationManager } from './conversation.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { ModelDefinition, ProviderRegistry } from '../providers/registry.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import { estimateConversationTokens, COMPACTION_BUFFER_TOKENS, SMALL_WINDOW_THRESHOLD, compactSmallWindow, shouldAutoCompact } from './context-compaction.js';
 import type { CompactionContext } from './context-compaction.js';
-import type { SessionMemoryStore } from '@pellux/goodvibes-sdk/platform/core/session-memory';
-import type { SessionLineageTracker } from '@pellux/goodvibes-sdk/platform/core/session-lineage';
+import type { SessionMemoryStore } from './session-memory.js';
+import type { SessionLineageTracker } from './session-lineage.js';
 import type { AgentManager } from '../tools/agent/index.js';
 import type { WrfcController } from '../agents/wrfc-controller.js';
-import type { ExecutionPlanManager } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
+import type { ExecutionPlanManager } from './execution-plan.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitOpsContextWarning } from '../runtime/emitters/index.js';
-import type { HookEvent, HookResult } from '@pellux/goodvibes-sdk/platform/hooks/types';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { HookEvent, HookResult } from '../hooks/types.js';
+import { summarizeError } from '../utils/error-display.js';
 
 type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;

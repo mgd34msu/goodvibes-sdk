@@ -2,10 +2,10 @@
  * Control-plane emitters — typed wrappers for ControlPlaneEvent domain.
  */
 
-import { createEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
-import type { RuntimeEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import { createEventEnvelope } from '../events/envelope.js';
+import type { RuntimeEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
-import type { ControlPlaneClientKind, ControlPlaneEvent, ControlPlanePrincipalKind, ControlPlaneTransportKind } from '@pellux/goodvibes-sdk/platform/runtime/events/control-plane';
+import type { ControlPlaneClientKind, ControlPlaneEvent, ControlPlanePrincipalKind, ControlPlaneTransportKind } from '../events/control-plane.js';
 import type { EmitterContext } from './index.js';
 
 function controlPlaneEvent<T extends ControlPlaneEvent['type']>(

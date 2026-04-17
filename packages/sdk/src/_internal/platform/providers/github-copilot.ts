@@ -3,9 +3,9 @@ import { dirname, join } from 'node:path';
 import type { ChatRequest, ChatResponse, LLMProvider, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
 import { OpenAICompatProvider } from './openai-compat.js';
 import { AnthropicCompatProvider } from './anthropic-compat.js';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
+import { ProviderError } from '../types/errors.js';
 import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
-import { toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { toProviderError } from '../utils/error-display.js';
 
 const COPILOT_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
 const DEFAULT_COPILOT_API_BASE_URL = 'https://api.individual.githubcopilot.com';

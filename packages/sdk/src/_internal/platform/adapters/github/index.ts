@@ -1,5 +1,5 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { GitHubIntegration } from '@pellux/goodvibes-sdk/platform/integrations/github';
+import { logger } from '../../utils/logger.js';
+import { GitHubIntegration } from '../../integrations/github.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import type { TrySpawnAgentFn } from '../types.js';
 

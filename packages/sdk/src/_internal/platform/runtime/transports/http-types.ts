@@ -27,7 +27,7 @@ import type {
   DistributedPeerTokenRecord,
   DistributedRuntimePairRequest,
   DistributedWorkPriority,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/distributed-runtime-types';
+} from '../remote/distributed-runtime-types.js';
 import type { UiControlPlaneSnapshot, UiLocalAuthSnapshot, UiSessionSnapshot, UiTasksSnapshot } from '../ui-read-models.js';
 import type { UiRuntimeEvents } from '../ui-events.js';
 import type { TransportPaths } from './shared.js';

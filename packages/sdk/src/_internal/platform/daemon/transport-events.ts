@@ -7,7 +7,7 @@ import {
   type EmitterContext,
 } from '../runtime/emitters/index.js';
 import type { HookDispatcher } from '../hooks/index.js';
-import type { HookCategory, HookEventPath, HookPhase } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookCategory, HookEventPath, HookPhase } from '../hooks/types.js';
 import type { ResolvedInboundTlsContext } from '../runtime/network/index.js';
 
 interface DaemonTransportEventsContext {

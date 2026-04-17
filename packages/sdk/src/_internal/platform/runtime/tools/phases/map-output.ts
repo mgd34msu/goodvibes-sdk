@@ -1,11 +1,11 @@
-import type { Tool, ToolCall } from '@pellux/goodvibes-sdk/platform/types/tools';
-import { repairToolCall } from '@pellux/goodvibes-sdk/platform/tools/auto-repair';
+import type { Tool, ToolCall } from '../../../types/tools.js';
+import { repairToolCall } from '../../../tools/auto-repair.js';
 import type { ToolRuntimeContext } from '../context.js';
-import type { PhaseResult, ToolExecutionRecord } from '@pellux/goodvibes-sdk/platform/runtime/tools/types';
-import type { PhasedTool } from '@pellux/goodvibes-sdk/platform/runtime/tools/adapter';
-import type { ToolClass } from '@pellux/goodvibes-sdk/platform/runtime/tools/output-policy';
-import { applyOutputPolicy, getPolicy } from '@pellux/goodvibes-sdk/platform/runtime/tools/output-policy';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { PhaseResult, ToolExecutionRecord } from '../types.js';
+import type { PhasedTool } from '../adapter.js';
+import type { ToolClass } from '../output-policy.js';
+import { applyOutputPolicy, getPolicy } from '../output-policy.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 /**
  * mapOutput — Phase 5 of the tool execution pipeline.

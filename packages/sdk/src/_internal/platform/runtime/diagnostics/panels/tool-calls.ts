@@ -10,7 +10,7 @@
  */
 import type { RuntimeEventBus, EnvelopeListener } from '../../events/index.js';
 import type { AnyRuntimeEvent } from '../../events/domain-map.js';
-import type { RuntimeEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import type { RuntimeEventEnvelope } from '../../events/envelope.js';
 import {
   type ToolCallEntry,
   type ToolCallPhase,
@@ -19,7 +19,7 @@ import {
   DEFAULT_PANEL_CONFIG,
   applyFilter,
   appendBounded,
-} from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
+} from '../types.js';
 
 /** Internal mutable tool call record used while the call is in progress. */
 interface MutableToolCallRecord {

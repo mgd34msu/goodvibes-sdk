@@ -1,4 +1,4 @@
-import type { PermissionCategory, PermissionRequestAnalysis } from '@pellux/goodvibes-sdk/platform/permissions/types';
+import type { PermissionCategory, PermissionRequestAnalysis } from './types.js';
 
 export interface PermissionPromptRequest {
   callId: string;

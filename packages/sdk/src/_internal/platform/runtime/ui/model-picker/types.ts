@@ -4,7 +4,7 @@
  * Purely data-oriented — no rendering logic. These types are produced by
  * ModelPickerDataProvider and consumed by renderers/components.
  */
-import type { ProviderStatus } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/provider-health';
+import type { ProviderStatus } from '../../store/domains/provider-health.js';
 
 // Re-export for convenience
 export type { ProviderStatus };

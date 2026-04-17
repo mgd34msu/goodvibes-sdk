@@ -9,8 +9,8 @@
 import { randomUUID } from 'node:crypto';
 import { createDomainDispatch } from '../../store/index.js';
 import type { RuntimeStore, DomainDispatch } from '../../store/index.js';
-import type { RuntimeTask } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-import type { SubagentStatus } from '@pellux/goodvibes-sdk/platform/acp/protocol';
+import type { RuntimeTask } from '../../store/domains/tasks.js';
+import type { SubagentStatus } from '../../../acp/protocol.js';
 import type { AcpManager } from '../../../acp/manager.js';
 
 /**

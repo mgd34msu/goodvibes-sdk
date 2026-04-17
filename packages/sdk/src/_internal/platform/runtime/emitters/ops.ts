@@ -4,10 +4,10 @@
  * Every intervention emits both a specific action event AND an OPS_AUDIT
  * entry with the reason code, as required by the Operator Control Plane spec.
  */
-import { createEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { EmitterContext } from './index.js';
-import type { OpsInterventionReason } from '@pellux/goodvibes-sdk/platform/runtime/events/ops';
+import type { OpsInterventionReason } from '../events/ops.js';
 
 /** Emit OPS_CONTEXT_WARNING when context usage crosses a warning threshold. */
 export function emitOpsContextWarning(

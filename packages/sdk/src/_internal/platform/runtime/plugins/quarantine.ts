@@ -15,7 +15,7 @@
  *   - The caller is responsible for reloading the plugin after lifting.
  */
 
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../../utils/logger.js';
 import type { PluginCapability, PluginCapabilityManifest } from './types.js';
 import { isHighRiskCapability } from './manifest.js';
 

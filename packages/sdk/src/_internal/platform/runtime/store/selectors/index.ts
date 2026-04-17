@@ -9,31 +9,31 @@
  */
 
 import type { RuntimeState } from '../state.js';
-import type { SessionDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/session';
-import type { ModelDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/model';
+import type { SessionDomainState } from '../domains/session.js';
+import type { ModelDomainState } from '../domains/model.js';
 import type { ConversationDomainState, TurnState } from '../domains/conversation.js';
-import type { OverlayDomainState, OverlayId } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/overlays';
+import type { OverlayDomainState, OverlayId } from '../domains/overlays.js';
 import type { PermissionDomainState, PermissionMode } from '../domains/permissions.js';
-import type { TaskDomainState, RuntimeTask, TaskKind } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-import type { AgentDomainState, RuntimeAgent } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
-import type { OrchestrationDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/orchestration';
-import type { CommunicationDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/communication';
-import type { AutomationDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/automation';
-import type { RoutesDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/routes';
-import type { ControlPlaneDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/control-plane';
-import type { DeliveryDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/deliveries';
-import type { WatcherDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/watchers';
-import type { SurfaceDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/surfaces';
-import type { ProviderHealthDomainState, CompositeHealthStatus } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/provider-health';
-import type { McpDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/mcp';
-import type { PluginDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/plugins';
-import type { DaemonDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/daemon';
-import type { AcpDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/acp';
-import type { IntegrationDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/integrations';
-import type { TelemetryDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/telemetry';
-import type { GitDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/git';
-import type { DiscoveryDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/discovery';
-import type { IntelligenceDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/intelligence';
+import type { TaskDomainState, RuntimeTask, TaskKind } from '../domains/tasks.js';
+import type { AgentDomainState, RuntimeAgent } from '../domains/agents.js';
+import type { OrchestrationDomainState } from '../domains/orchestration.js';
+import type { CommunicationDomainState } from '../domains/communication.js';
+import type { AutomationDomainState } from '../domains/automation.js';
+import type { RoutesDomainState } from '../domains/routes.js';
+import type { ControlPlaneDomainState } from '../domains/control-plane.js';
+import type { DeliveryDomainState } from '../domains/deliveries.js';
+import type { WatcherDomainState } from '../domains/watchers.js';
+import type { SurfaceDomainState } from '../domains/surfaces.js';
+import type { ProviderHealthDomainState, CompositeHealthStatus } from '../domains/provider-health.js';
+import type { McpDomainState } from '../domains/mcp.js';
+import type { PluginDomainState } from '../domains/plugins.js';
+import type { DaemonDomainState } from '../domains/daemon.js';
+import type { AcpDomainState } from '../domains/acp.js';
+import type { IntegrationDomainState } from '../domains/integrations.js';
+import type { TelemetryDomainState } from '../domains/telemetry.js';
+import type { GitDomainState } from '../domains/git.js';
+import type { DiscoveryDomainState } from '../domains/discovery.js';
+import type { IntelligenceDomainState } from '../domains/intelligence.js';
 import type { SurfacePerfDomainState } from '../domains/surface-perf.js';
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ConfigManager } from '../config/manager.js';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
+import type { AutomationJob } from './jobs.js';
 import type { CreateAutomationJobInput, UpdateAutomationJobInput } from './manager-runtime-helpers.js';
 import {
   buildDefaultDelivery,

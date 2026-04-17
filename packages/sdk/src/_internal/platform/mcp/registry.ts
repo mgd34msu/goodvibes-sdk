@@ -7,17 +7,17 @@
  *
  * Tool namespace: mcp:<server-name>:<tool-name>
  */
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { loadMcpConfig } from '@pellux/goodvibes-sdk/platform/mcp/config';
+import { logger } from '../utils/logger.js';
+import { loadMcpConfig } from './config.js';
 import { McpClient } from './client.js';
 import type { McpProcessSpec } from './client.js';
 import type { McpToolInfo, McpToolSchema } from './client.js';
-import type { McpServerConfig } from '@pellux/goodvibes-sdk/platform/mcp/config';
+import type { McpServerConfig } from './config.js';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
-import type { HookEvent } from '@pellux/goodvibes-sdk/platform/hooks/types';
-import { McpPermissionManager } from '@pellux/goodvibes-sdk/platform/runtime/mcp/permissions';
-import { McpSchemaFreshnessTracker } from '@pellux/goodvibes-sdk/platform/runtime/mcp/schema-freshness';
-import type { McpDecisionRecord, QuarantineReason, SchemaFreshness } from '@pellux/goodvibes-sdk/platform/runtime/mcp/types';
+import type { HookEvent } from '../hooks/types.js';
+import { McpPermissionManager } from '../runtime/mcp/permissions.js';
+import { McpSchemaFreshnessTracker } from '../runtime/mcp/schema-freshness.js';
+import type { McpDecisionRecord, QuarantineReason, SchemaFreshness } from '../runtime/mcp/types.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {
   emitMcpConfigured,
@@ -26,13 +26,13 @@ import {
   emitMcpSchemaQuarantined,
 } from '../runtime/emitters/mcp.js';
 import type { ConfigManager } from '../config/manager.js';
-import type { McpConfigRoots } from '@pellux/goodvibes-sdk/platform/mcp/config';
+import type { McpConfigRoots } from './config.js';
 import { getSandboxConfigSnapshot } from '../runtime/sandbox/manager.js';
 import {
   type SandboxSessionRegistry,
 } from '../runtime/sandbox/session-registry.js';
 import { resolveSandboxCommandPlan } from '../runtime/sandbox/backend.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 function compactEnv(env: NodeJS.ProcessEnv | Record<string, string>): Record<string, string> {
   return Object.fromEntries(

@@ -1,6 +1,6 @@
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
+import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { SharedApprovalRecord } from '../control-plane/index.js';
-import type { Tool } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { Tool } from '../types/tools.js';
 import type {
   ChannelAdapterDescriptor,
   ChannelAllowlistEditInput,
@@ -29,7 +29,7 @@ import type {
   ChannelSurface,
   ChannelTargetResolveOptions,
   ChannelToolDescriptor,
-} from '@pellux/goodvibes-sdk/platform/channels/types';
+} from './types.js';
 
 export interface ChannelPlugin {
   readonly id: string;

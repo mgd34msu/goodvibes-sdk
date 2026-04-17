@@ -7,16 +7,16 @@ import {
   readChannelLifecycleAction,
   scopeMatches,
   type JsonRecord,
-} from '@pellux/goodvibes-sdk/platform/daemon/http/route-helpers';
+} from './http/route-helpers.js';
 
-export type { ChannelConversationKind, ChannelLifecycleAction, JsonRecord } from '@pellux/goodvibes-sdk/platform/daemon/http/route-helpers';
+export type { ChannelConversationKind, ChannelLifecycleAction, JsonRecord } from './http/route-helpers.js';
 export {
   isJsonRecord,
   missingScopes,
   readChannelConversationKind,
   readChannelLifecycleAction,
   scopeMatches,
-} from '@pellux/goodvibes-sdk/platform/daemon/http/route-helpers';
+} from './http/route-helpers.js';
 
 export function readStringList(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
