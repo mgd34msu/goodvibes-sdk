@@ -1,5 +1,4 @@
 // Synced from packages/transport-http/src/retry.ts
-// Extracted from legacy source: src/runtime/transports/http-retry.ts
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
 export interface HttpRetryPolicy extends BackoffPolicy {

@@ -1,5 +1,4 @@
 // Synced from packages/transport-http/src/reconnect.ts
-// Extracted from legacy source: src/runtime/transports/stream-reconnect.ts
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
 export interface StreamReconnectPolicy extends BackoffPolicy {

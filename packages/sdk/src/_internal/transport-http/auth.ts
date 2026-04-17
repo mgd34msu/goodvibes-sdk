@@ -1,5 +1,4 @@
 // Synced from packages/transport-http/src/auth.ts
-// Extracted from legacy source: src/runtime/transports/http-auth.ts
 export type MaybePromise<T> = T | Promise<T>;
 
 export type AuthTokenResolver = () => MaybePromise<string | null | undefined>;

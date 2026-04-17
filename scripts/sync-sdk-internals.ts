@@ -18,6 +18,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
 const TARGET_ROOT = resolve(SDK_ROOT, 'packages/sdk/src/_internal');
 const CHECK_ONLY = process.argv.includes('--check');
+const SCOPE_ARG = process.argv.find((a) => a.startsWith('--scope='))?.slice('--scope='.length) ?? null;
 
 const PACKAGE_SPECS = [
   {
@@ -139,11 +140,12 @@ function syncArtifactFile(sourcePath, targetDir, artifactsDir) {
   return true;
 }
 
-function removeStaleFiles(validTargetPaths) {
+function removeStaleFiles(validTargetPaths, scopeDir = null) {
   const stale = [];
-  if (!statSafe(TARGET_ROOT)?.isDirectory()) return stale;
+  const walkRoot = scopeDir ?? TARGET_ROOT;
+  if (!statSafe(walkRoot)?.isDirectory()) return stale;
 
-  for (const filePath of walk(TARGET_ROOT)) {
+  for (const filePath of walk(walkRoot)) {
     if (!validTargetPaths.has(filePath)) {
       stale.push(filePath);
     }
@@ -160,10 +162,19 @@ function removeStaleFiles(validTargetPaths) {
   return stale;
 }
 
+const activeSpecs = SCOPE_ARG
+  ? PACKAGE_SPECS.filter((s) => s.targetDir.endsWith(`/${SCOPE_ARG}`))
+  : PACKAGE_SPECS;
+
+if (SCOPE_ARG && activeSpecs.length === 0) {
+  console.error(`Unknown scope: ${SCOPE_ARG}`);
+  process.exit(1);
+}
+
 const sourceFiles = [];
 const artifactFiles = [];
 
-for (const spec of PACKAGE_SPECS) {
+for (const spec of activeSpecs) {
   for (const filePath of walk(spec.sourceDir)) {
     if (filePath.endsWith('.ts')) {
       sourceFiles.push({ filePath, sourceDir: spec.sourceDir, targetDir: spec.targetDir });
@@ -195,7 +206,8 @@ for (const artifact of artifactFiles) {
   changed = syncArtifactFile(artifact.filePath, artifact.targetDir, artifact.artifactsDir) || changed;
 }
 
-const stale = removeStaleFiles(validTargetPaths);
+const scopeTargetDir = SCOPE_ARG ? activeSpecs[0]?.targetDir ?? null : null;
+const stale = removeStaleFiles(validTargetPaths, scopeTargetDir);
 if (stale.length > 0) {
   changed = true;
 }
