@@ -52,7 +52,7 @@ jobs:
         include:
           - platform: bun
             node-version: "22"
-            test-cmd: bun run build && bun test test
+            test-cmd: bun run build && bun run test
           - platform: rn-bundle
             node-version: "22"
             test-cmd: bun run build && bun run test:rn
@@ -167,3 +167,99 @@ jobs:
         run: bun run build
       - name: Check public type signatures
         run: bun run types:check
+
+  types-resolution-check:
+    name: Are the types wrong? (exports map resolution)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.3.10"
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: bun install
+      - name: Build SDK
+        run: bun run build
+      - name: Run are-the-types-wrong check
+        run: bun run types:resolution-check
+
+  publint-check:
+    name: publint (package.json hygiene)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.3.10"
+      - name: Install dependencies
+        run: bun install
+      - name: Build SDK
+        run: bun run build
+      - name: Run publint
+        run: bun run publint:check
+
+  sbom-check:
+    name: SBOM generation + validation (CycloneDX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.3.10"
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: bun install
+      - name: Generate SBOM
+        run: bun run sbom:generate
+      - name: Assert SBOM is non-empty
+        run: |
+          set -euo pipefail
+          if [ ! -f sbom.cdx.json ]; then
+            echo "ERROR: sbom.cdx.json was not generated." >&2
+            exit 1
+          fi
+          SIZE=$(wc -c < sbom.cdx.json)
+          if [ "$SIZE" -lt 100 ]; then
+            echo "ERROR: sbom.cdx.json is suspiciously small (${SIZE} bytes)." >&2
+            exit 1
+          fi
+          echo "sbom-check: sbom.cdx.json is ${SIZE} bytes — OK"
+      - name: Validate SBOM schema (CycloneDX)
+        run: |
+          set -euo pipefail
+          # Validate that the SBOM has required CycloneDX 1.x top-level fields
+          node -e "
+            const sbom = JSON.parse(require('fs').readFileSync('sbom.cdx.json', 'utf8'));
+            if (!sbom.bomFormat || sbom.bomFormat !== 'CycloneDX') {
+              console.error('ERROR: bomFormat is not CycloneDX'); process.exit(1);
+            }
+            if (!sbom.specVersion) {
+              console.error('ERROR: specVersion missing'); process.exit(1);
+            }
+            if (!sbom.components || !Array.isArray(sbom.components)) {
+              console.error('ERROR: components array missing'); process.exit(1);
+            }
+            console.log('SBOM schema OK — specVersion:', sbom.specVersion, 'components:', sbom.components.length);
+          "
+      - name: Upload SBOM as CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cdx-json
+          path: sbom.cdx.json
+          retention-days: 30
