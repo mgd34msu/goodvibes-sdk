@@ -8,6 +8,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.19.7] - 2026-04-17
+
+**Wave 4 Cloudflare Workers real-runtime verification + Track C policy docs.**
+
+### Added
+
+- **Cloudflare Workers real-runtime test harness** (`test/workers/`). Uses Miniflare 4 programmatic API to execute `@pellux/goodvibes-sdk/web` under the workerd V8 isolate. 9 tests across 6 endpoints (smoke, auth, transport, errors, crypto, globals). Passes locally.
+- **`workers` CI matrix dimension** in `.github/workflows/ci.yml` under the `platform-matrix` job. Runs `bun run test:workers` alongside existing `bun` and `rn-bundle` dimensions.
+- **`test:workers` script** in root `package.json`: `bun run build && bun test test/workers/workers.test.ts`.
+- **`miniflare` dev dependency** pinned at `^4.20260415.0`.
+- **`SECURITY.md`** (repo root): responsible-disclosure policy with reporting contact, GPG fingerprint placeholder, response SLA table, CVSS-based fix timelines, in/out-of-scope tables, 90-day coordinated disclosure, hall-of-fame credit terms. GitHub-supported format so it surfaces in the repo Security tab.
+- **`docs/semver-policy.md`**: explicit definition of what counts as a breaking change post-1.0.0. Covers major/minor/patch triggers, what's out of scope (`_internal/`, `dist/` paths, `err.message`, subclass identity), deprecation process, TypeScript compatibility policy, enforcement via CHANGELOG gate.
+- **Road-to-1.0 tracking additions**: new checklist items for Wave 6 (public-surface TODO cleanup: `transports/http.ts` fold + `runtime-events.ts:143` producer API queue bounding) and Wave 8 (companion chat internal TODOs, `sql.js` type shim to replace `@ts-ignore`, new `no-todo-markers` CI gate). Prevents TODO drift in public-surface source post-1.0.0.
+
+### Changed
+
+- **`docs/tracking/road-to-1.0.md`** updated with Wave 4 (landed) + Wave 5 `SECURITY.md` + Wave 6 `semver-policy.md` checkbox ticks.
+
+### Findings (Workers runtime gap analysis)
+
+Documented in `test/workers/FINDINGS.md`:
+- `EventSource` absent in production Workers (Miniflare 4 simulates it — test accounts for the simulation)
+- Outbound `new WebSocket()` absent (server-upgrade only)
+- `location.origin` absent — `baseUrl` must be explicit (already surfaced via `ConfigurationError`)
+- `setTimeout` is request-scoped — retry backoff is safe for bounded `maxAttempts`
+- `crypto.subtle` + `crypto.randomUUID` present — future crypto paths need no shims
+- `process`, `Buffer`, `fs` absent — matches browser; `./web` entry already compatible
+
+### Decision
+
+**`./web` entry is sufficient for Workers.** `dist/web.js` has zero `node:` imports, zero `Bun.*` API calls, and no client-WebSocket / EventSource usage. A dedicated `./workers` subpath export is **NOT** required. This decision is architecturally preferred — one fewer public surface to maintain.
+
+### Known gaps (follow-ups)
+
+- Harness runs under Miniflare only; running against real Wrangler runtime for stricter validation is tracked as a Wave 4 follow-up.
+- Transport-round-trip test does not yet exercise a successful response path (only error-recovery) because the mock endpoint doesn't match an actual SDK control-plane route. Tracked as a Wave 6 follow-up.
+
+### Not in this release
+
+- **Wave 1** (observer seams): engineer-complete but review pending; will ship as 0.19.8.
+- **Wave 2** (browser harness): failed review at 3.0/10; awaiting fix wave.
+- **Wave 3** (Hermes harness): failed review at 8.8/10; awaiting fix wave.
+
+---
+
 ## [0.19.6] - 2026-04-17
 
 **Honest runtime posture + full documentation sweep + type-test relocation.** The biggest single release of the 0.19.x series. Breaking cleanup of previously-advertised Node support, comprehensive rewrite of consumer-facing documentation, monorepo version unification, and a new compile-time type-assertion gate.
