@@ -1,5 +1,5 @@
 import type { KnowledgeService } from './service.js';
-import type { ArtifactFetchMode } from '@pellux/goodvibes-sdk/platform/artifacts/types';
+import type { ArtifactFetchMode } from '../artifacts/types.js';
 import {
   buildKnowledgeInjectionPrompt,
   selectKnowledgeForTask,
@@ -19,7 +19,7 @@ import type {
 } from '../state/memory-store.js';
 import type { MemoryVectorStats } from '../state/memory-vector-store.js';
 import type { MemoryRegistry } from '../state/memory-registry.js';
-export type { ArtifactFetchMode } from '@pellux/goodvibes-sdk/platform/artifacts/types';
+export type { ArtifactFetchMode } from '../artifacts/types.js';
 export type {
   KnowledgeInjection,
 } from '../state/knowledge-injection.js';

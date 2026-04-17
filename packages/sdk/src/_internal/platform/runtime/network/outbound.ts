@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { getCACertificates } from 'node:tls';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../../utils/logger.js';
 import { isLocalHostname, readPemEntriesFromDirectory, resolvePathFromGoodVibesRoot } from './shared.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 
 export type OutboundTrustMode = 'bundled' | 'bundled+custom' | 'custom';
 

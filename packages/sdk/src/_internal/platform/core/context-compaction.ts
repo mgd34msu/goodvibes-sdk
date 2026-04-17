@@ -25,7 +25,7 @@
 
 import type { ProviderMessage, ContentPart, LLMProvider } from '../providers/interface.js';
 import type { ProviderRegistry } from '../providers/registry.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type {
   CompactionSection,
   CompactionContext,
@@ -34,7 +34,7 @@ import type {
   CompactionConfig,
 } from './compaction-types.js';
 import { DEFAULT_COMPACTION_CONFIG, estimateTokens } from './compaction-types.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import {
   buildHandoffHeader,
   buildSessionMemories,

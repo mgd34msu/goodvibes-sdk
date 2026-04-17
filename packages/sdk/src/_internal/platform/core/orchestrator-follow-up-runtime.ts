@@ -1,12 +1,12 @@
 import type { ConversationManager } from './conversation.js';
 import type { ModelDefinition, ProviderRegistry } from '../providers/registry.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import {
   buildConversationFollowUpPrompt,
   normalizeConversationFollowUpItems,
   type ConversationFollowUpItem,
-} from '@pellux/goodvibes-sdk/platform/core/conversation-follow-ups';
+} from './conversation-follow-ups.js';
 import { normalizeUsage } from './orchestrator-runtime.js';
 
 const FOLLOW_UP_DEDUP_TTL_MS = 60_000;

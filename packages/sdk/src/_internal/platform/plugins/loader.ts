@@ -1,18 +1,18 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join, resolve, isAbsolute } from 'path';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import { createPluginAPI, type PluginAPIContext } from './api.js';
 import type { CommandRegistryLike } from '../runtime/host-ui.js';
 import type { ProviderRegistry } from '../providers/registry.js';
-import type { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
+import type { ToolRegistry } from '../tools/registry.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { GatewayMethodCatalog } from '../control-plane/index.js';
 import type { ChannelDeliveryRouter, ChannelPluginRegistry } from '../channels/index.js';
 import type { MemoryEmbeddingProviderRegistry } from '../state/index.js';
-import type { VoiceProviderRegistry } from '@pellux/goodvibes-sdk/platform/voice/index';
+import type { VoiceProviderRegistry } from '../voice/index.js';
 import type { MediaProviderRegistry } from '../media/index.js';
 import type { WebSearchProviderRegistry } from '../web-search/index.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 export interface PluginPathOptions {
   readonly cwd: string;

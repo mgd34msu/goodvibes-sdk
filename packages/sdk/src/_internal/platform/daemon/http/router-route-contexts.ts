@@ -1,21 +1,21 @@
 import type { ConfigManager } from '../../config/manager.js';
 import type { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../../channels/index.js';
 import type { KnowledgeGraphqlService, KnowledgeService } from '../../knowledge/index.js';
-import type { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import type { ArtifactStore } from '../../artifacts/index.js';
 import type { MediaProviderRegistry } from '../../media/index.js';
 import type { MultimodalService } from '../../multimodal/index.js';
-import type { VoiceService } from '@pellux/goodvibes-sdk/platform/voice/index';
+import type { VoiceService } from '../../voice/index.js';
 import type { WebSearchService } from '../../web-search/index.js';
 import type { IntegrationHelperService } from '../../runtime/integration/helpers.js';
 import type { ApprovalBroker } from '../../control-plane/index.js';
 import type { PlatformServiceManager } from '../service-manager.js';
 import type { JsonRecord } from '../helpers.js';
 import type { WatcherRegistry } from '../../watchers/index.js';
-import type { DaemonChannelRouteContext } from '@pellux/goodvibes-sdk/platform/daemon/http/channel-route-types';
-import type { DaemonIntegrationRouteContext } from '@pellux/goodvibes-sdk/platform/daemon/http/integration-route-types';
-import type { DaemonKnowledgeRouteContext } from '@pellux/goodvibes-sdk/platform/daemon/http/knowledge-route-types';
-import type { DaemonMediaRouteContext } from '@pellux/goodvibes-sdk/platform/daemon/http/media-route-types';
-import type { DaemonSystemRouteContext, WatcherRecord } from '@pellux/goodvibes-sdk/platform/daemon/http/system-route-types';
+import type { DaemonChannelRouteContext } from './channel-route-types.js';
+import type { DaemonIntegrationRouteContext } from './integration-route-types.js';
+import type { DaemonKnowledgeRouteContext } from './knowledge-route-types.js';
+import type { DaemonMediaRouteContext } from './media-route-types.js';
+import type { DaemonSystemRouteContext, WatcherRecord } from './system-route-types.js';
 
 export function buildChannelRouteContext(input: {
   readonly channelPlugins: ChannelPluginRegistry;

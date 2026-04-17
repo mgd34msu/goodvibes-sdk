@@ -1,9 +1,9 @@
 import { buildMcpAttackPathReview } from './mcp/index.js';
-import type { McpDecisionRecord, McpSecuritySnapshot } from '@pellux/goodvibes-sdk/platform/runtime/mcp/types';
+import type { McpDecisionRecord, McpSecuritySnapshot } from './mcp/types.js';
 import type { RuntimeServices } from './services.js';
-import type { UiReadModel } from '@pellux/goodvibes-sdk/platform/runtime/ui-read-models-base';
+import type { UiReadModel } from './ui-read-models-base.js';
 import { combineSubscriptions } from './ui-read-model-helpers.js';
-import type { SecurityPanelSnapshot } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/panels/security';
+import type { SecurityPanelSnapshot } from './diagnostics/panels/security.js';
 import type { PluginStatus } from '../plugins/manager.js';
 
 export interface UiMcpServerSnapshot {

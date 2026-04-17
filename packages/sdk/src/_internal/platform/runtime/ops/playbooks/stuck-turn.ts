@@ -4,8 +4,8 @@
  * Diagnoses and resolves turns or tasks that have stopped progressing.
  * Common causes: LLM timeout, tool deadlock, event loop stall.
  */
-import type { Playbook, DiagnosticCheckResult } from '@pellux/goodvibes-sdk/platform/runtime/ops/types';
-import { safeCheck } from '@pellux/goodvibes-sdk/platform/runtime/ops/safe-check';
+import type { Playbook, DiagnosticCheckResult } from '../types.js';
+import { safeCheck } from '../safe-check.js';
 import type { OpsRuntimeContextState } from '../runtime-context.js';
 
 export function createStuckTurnPlaybook(

@@ -4,8 +4,8 @@
  * Handles the scenario where session recovery has been exhausted and the
  * runtime has emitted SESSION_UNRECOVERABLE — triggering a full-system cascade.
  */
-import type { Playbook, DiagnosticCheckResult } from '@pellux/goodvibes-sdk/platform/runtime/ops/types';
-import { safeCheck } from '@pellux/goodvibes-sdk/platform/runtime/ops/safe-check';
+import type { Playbook, DiagnosticCheckResult } from '../types.js';
+import { safeCheck } from '../safe-check.js';
 import { existsSync } from 'fs';
 import { readRecoveryFileMetadata } from '../runtime-context.js';
 import type { OpsRuntimeContextState } from '../runtime-context.js';

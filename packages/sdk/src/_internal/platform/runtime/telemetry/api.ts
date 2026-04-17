@@ -1,6 +1,6 @@
 import { VERSION } from '../../version.js';
-import { normalizeError, type NormalizedError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
-import type { ErrorSource } from '@pellux/goodvibes-sdk/platform/types/errors';
+import { normalizeError, type NormalizedError } from '../../utils/error-display.js';
+import type { ErrorSource } from '../../types/errors.js';
 import type {
   AnyRuntimeEvent,
   RuntimeEventBus,
@@ -8,7 +8,7 @@ import type {
   RuntimeEventEnvelope,
 } from '../events/index.js';
 import type { RuntimeStore } from '../store/index.js';
-import type { TelemetryDomainState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/telemetry';
+import type { TelemetryDomainState } from '../store/domains/telemetry.js';
 import type {
   AttributeValue,
   ReadableSpan,
@@ -16,8 +16,8 @@ import type {
   SpanEvent,
   SpanKind,
   SpanStatus,
-} from '@pellux/goodvibes-sdk/platform/runtime/telemetry/types';
-import { SpanKind as SpanKinds, SpanStatusCode } from '@pellux/goodvibes-sdk/platform/runtime/telemetry/types';
+} from './types.js';
+import { SpanKind as SpanKinds, SpanStatusCode } from './types.js';
 import {
   ALL_DOMAINS,
   appendBounded,

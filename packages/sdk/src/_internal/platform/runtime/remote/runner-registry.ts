@@ -4,8 +4,8 @@ import { dirname, join, resolve } from 'node:path';
 import type { AgentManager } from '../../tools/agent/index.js';
 import type { AgentRecord } from '../../tools/agent/manager.js';
 import type { RuntimeStore } from '../store/index.js';
-import type { AcpConnection } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/acp';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import type { AcpConnection } from '../store/domains/acp.js';
+import { logger } from '../../utils/logger.js';
 import type {
   RemoteExecutionArtifact,
   RemoteRunnerContract,
@@ -13,9 +13,9 @@ import type {
   RemoteRunnerEvidenceSummary,
   RemoteRunnerPool,
   RemoteSessionBundle,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/types';
-import type { RuntimeTask } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+} from './types.js';
+import type { RuntimeTask } from '../store/domains/tasks.js';
+import { summarizeError } from '../../utils/error-display.js';
 
 const DEFAULT_ARTIFACT_DIR = '.goodvibes/remote-artifacts';
 const DEFAULT_SESSION_BUNDLE_DIR = '.goodvibes/remote-sessions';

@@ -6,11 +6,11 @@ import type { SharedSessionBroker } from '../control-plane/index.js';
 import type { ChannelPluginRegistry, ChannelReplyPipeline, RouteBindingManager } from '../channels/index.js';
 import type { ChannelSurface } from '../channels/index.js';
 import { SlackIntegration, DiscordIntegration, NtfyIntegration } from '../integrations/index.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { validatePublicWebhookUrl } from '@pellux/goodvibes-sdk/platform/utils/url-safety';
+import { logger } from '../utils/logger.js';
+import { validatePublicWebhookUrl } from '../utils/url-safety.js';
 import type { SharedApprovalRecord } from '../control-plane/index.js';
 import type { PendingSurfaceReply } from './types.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 type DeliverySurface =
   | 'slack'

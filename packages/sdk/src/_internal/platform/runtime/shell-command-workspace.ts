@@ -1,6 +1,6 @@
-import type { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
+import type { ComponentHealthMonitor } from './perf/component-health-monitor.js';
 import type { SandboxSessionRegistry } from './sandbox/session-registry.js';
-import type { ShellPathService } from '@pellux/goodvibes-sdk/platform/runtime/shell-paths';
+import type { ShellPathService } from './shell-paths.js';
 import type { WorktreeRegistry } from './worktree/registry.js';
 
 export interface CommandWorkspaceShellServices {

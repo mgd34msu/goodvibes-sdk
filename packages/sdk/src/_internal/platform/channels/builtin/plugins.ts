@@ -14,7 +14,7 @@ import {
   handleTelegramSurfaceWebhook,
   handleWhatsAppSurfaceWebhook,
 } from '../../adapters/index.js';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
+import type { AutomationRouteBinding } from '../../automation/routes.js';
 import type { SharedApprovalRecord } from '../../control-plane/index.js';
 import type { ProviderRuntimeSurface } from '../provider-runtime.js';
 import type {
@@ -25,7 +25,7 @@ import type {
   ChannelOperatorActionDescriptor,
   ChannelSurface,
   ChannelToolDescriptor,
-} from '@pellux/goodvibes-sdk/platform/channels/types';
+} from '../types.js';
 import type { ChannelPlugin } from '../plugin-registry.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './shared.js';
 

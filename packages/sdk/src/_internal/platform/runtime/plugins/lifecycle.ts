@@ -13,7 +13,7 @@
  *                    disabled → loading (re-enable)
  */
 
-import type { PluginLifecycleState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/plugins';
+import type { PluginLifecycleState } from '../store/domains/plugins.js';
 import type { TransitionResult } from './types.js';
 
 /**

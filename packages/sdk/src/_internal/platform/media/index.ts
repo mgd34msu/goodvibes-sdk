@@ -1,6 +1,6 @@
 export {
   MediaProviderRegistry,
-} from '@pellux/goodvibes-sdk/platform/media/provider-registry';
+} from './provider-registry.js';
 export { ensureBuiltinMediaProviders } from './builtin-providers.js';
 export type {
   MediaAnalysisRequest,
@@ -15,4 +15,4 @@ export type {
   MediaProviderStatus,
   MediaTransformRequest,
   MediaTransformResult,
-} from '@pellux/goodvibes-sdk/platform/media/provider-registry';
+} from './provider-registry.js';

@@ -3,13 +3,13 @@ import type {
   SharedApprovalRecord,
   SharedSessionRecord,
 } from '../../control-plane/index.js';
-import type { ControlPlaneClientRecord } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/control-plane';
+import type { ControlPlaneClientRecord } from '../store/domains/control-plane.js';
 import type { TelemetryFilter, TelemetryRecord } from '../telemetry/api.js';
 import type { UiControlPlaneSnapshot } from '../ui-read-models.js';
-import type { TransportPaths } from '@pellux/goodvibes-sdk/platform/runtime/transports/transport-paths';
-import { buildUrl } from '@pellux/goodvibes-sdk/platform/runtime/transports/transport-paths';
-import { createJsonInit, requestJson } from '@pellux/goodvibes-sdk/platform/runtime/transports/http-json-transport';
-import { openServerSentEventStream } from '@pellux/goodvibes-sdk/platform/runtime/transports/sse-stream';
+import type { TransportPaths } from './transport-paths.js';
+import { buildUrl } from './transport-paths.js';
+import { createJsonInit, requestJson } from './http-json-transport.js';
+import { openServerSentEventStream } from './sse-stream.js';
 import type {
   HttpSessionEnsureInput,
   HttpSessionMessageInput,

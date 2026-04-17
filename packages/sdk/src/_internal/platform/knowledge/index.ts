@@ -1,5 +1,5 @@
-export { KnowledgeConnectorRegistry, createDefaultKnowledgeConnectorRegistry } from '@pellux/goodvibes-sdk/platform/knowledge/connectors';
-export { extractKnowledgeArtifact } from '@pellux/goodvibes-sdk/platform/knowledge/extractors';
+export { KnowledgeConnectorRegistry, createDefaultKnowledgeConnectorRegistry } from './connectors.js';
+export { extractKnowledgeArtifact } from './extractors.js';
 export { KnowledgeGraphqlService, getKnowledgeGraphqlSchemaText, inspectKnowledgeGraphqlAccess } from './graphql.js';
 export type { KnowledgeGraphqlAccessProfile, KnowledgeGraphqlExecuteInput } from './graphql.js';
 export { createKnowledgeApi } from './knowledge-api.js';
@@ -13,8 +13,8 @@ export {
   resolveKnowledgeDbPathFromControlPlaneDir,
   stabilizeKnowledgeText,
   uniqKnowledgeValues,
-} from '@pellux/goodvibes-sdk/platform/knowledge/persistence';
-export type { KnowledgeStoreSnapshot, KnowledgeStoreReadView } from '@pellux/goodvibes-sdk/platform/knowledge/persistence';
+} from './persistence.js';
+export type { KnowledgeStoreSnapshot, KnowledgeStoreReadView } from './persistence.js';
 export type {
   KnowledgeApi,
   KnowledgeApiArtifactIngestInput,
@@ -26,8 +26,8 @@ export type {
   KnowledgeInjectionTrustTier,
   KnowledgeInjectionUseAs,
 } from './knowledge-api.js';
-export { KnowledgeProjectionService } from '@pellux/goodvibes-sdk/platform/knowledge/projections';
-export { KnowledgeStore } from '@pellux/goodvibes-sdk/platform/knowledge/store';
+export { KnowledgeProjectionService } from './projections.js';
+export { KnowledgeStore } from './store.js';
 export { KnowledgeService, buildCuratedKnowledgePromptSync } from './service.js';
 export type {
   KnowledgeBatchIngestResult,
@@ -57,4 +57,4 @@ export type {
   KnowledgeSourceRecord,
   KnowledgeStatus,
   KnowledgeUsageRecord,
-} from '@pellux/goodvibes-sdk/platform/knowledge/types';
+} from './types.js';

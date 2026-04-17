@@ -1,11 +1,11 @@
-import { PolicyRegistry } from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-registry';
-import { DivergencePanel } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/panels/divergence';
+import { PolicyRegistry } from './policy-registry.js';
+import { DivergencePanel } from '../diagnostics/panels/divergence.js';
 import type { PolicyPanelSnapshot } from '../diagnostics/panels/policy.js';
 import { PolicyPanel as PolicyDiagnosticsPanel } from '../diagnostics/panels/policy.js';
-import type { DivergenceDashboard } from '@pellux/goodvibes-sdk/platform/runtime/permissions/divergence-dashboard';
-import type { PermissionCheckResult } from '@pellux/goodvibes-sdk/platform/permissions/types';
-import { lintPolicyConfig } from '@pellux/goodvibes-sdk/platform/runtime/permissions/lint';
-import type { PolicySimulationSummary } from '@pellux/goodvibes-sdk/platform/runtime/permissions/simulation-scenarios';
+import type { DivergenceDashboard } from './divergence-dashboard.js';
+import type { PermissionCheckResult } from '../../permissions/types.js';
+import { lintPolicyConfig } from './lint.js';
+import type { PolicySimulationSummary } from './simulation-scenarios.js';
 import type { PolicyPreflightReview } from './preflight.js';
 
 const MAX_PERMISSION_AUDIT = 100;

@@ -10,8 +10,8 @@ import type {
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import type { ProviderCapability } from './capabilities.js';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
+import { ProviderError } from '../types/errors.js';
+import { withRetry } from '../utils/retry.js';
 import {
   toOpenAITools,
   toOpenAIMessages,
@@ -19,12 +19,12 @@ import {
   extractTextToolCalls,
 } from './tool-formats.js';
 import type { OpenAIToolCall } from './tool-formats.js';
-import { getCacheCapability } from '@pellux/goodvibes-sdk/platform/providers/cache-capability';
-import type { ProviderCacheCapability } from '@pellux/goodvibes-sdk/platform/providers/cache-capability';
-import type { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
-import { extractOpenAIStreamTextDelta } from '@pellux/goodvibes-sdk/platform/providers/openai-stream-delta';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { getCacheCapability } from './cache-capability.js';
+import type { ProviderCacheCapability } from './cache-capability.js';
+import type { CacheHitTracker } from './cache-strategy.js';
+import { extractOpenAIStreamTextDelta } from './openai-stream-delta.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError, toProviderError } from '../utils/error-display.js';
 
 import { mapOpenAIStopReason } from './stop-reason-maps.js';
 

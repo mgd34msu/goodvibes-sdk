@@ -7,7 +7,7 @@
  * emitters: (bus, ctx, data) → void.
  */
 
-import { createEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { EmitterContext } from './index.js';
 

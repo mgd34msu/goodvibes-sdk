@@ -1,4 +1,4 @@
-import type { Tool } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { Tool } from '../../types/tools.js';
 import type { ChannelPluginRegistry } from '../../channels/index.js';
 import type { ChannelAccountLifecycleAction, ChannelConversationKind } from '../../channels/index.js';
 

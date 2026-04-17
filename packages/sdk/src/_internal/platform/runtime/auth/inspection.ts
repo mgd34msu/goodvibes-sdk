@@ -1,6 +1,6 @@
 import { SecretsManager } from '../../config/secrets.js';
 import { ServiceRegistry } from '../../config/service-registry.js';
-import { SubscriptionManager, type ProviderSubscription } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
+import { SubscriptionManager, type ProviderSubscription } from '../../config/subscriptions.js';
 import { getSubscriptionProviderConfig } from '../../config/subscription-providers.js';
 
 export type AuthInspectionFreshness = 'healthy' | 'expiring' | 'expired' | 'pending' | 'available' | 'unconfigured';

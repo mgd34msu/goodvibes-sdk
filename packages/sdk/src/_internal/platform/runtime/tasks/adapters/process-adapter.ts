@@ -14,8 +14,8 @@
 import { randomUUID } from 'node:crypto';
 import { createDomainDispatch } from '../../store/index.js';
 import type { RuntimeStore, DomainDispatch } from '../../store/index.js';
-import type { RuntimeTask } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-import { ProcessManager } from '@pellux/goodvibes-sdk/platform/tools/shared/process-manager';
+import type { RuntimeTask } from '../../store/domains/tasks.js';
+import { ProcessManager } from '../../../tools/shared/process-manager.js';
 
 /** Owner context supplied when wrapping a process. */
 export interface ProcessOwner {

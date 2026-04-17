@@ -1,9 +1,9 @@
 import type { ProviderMessage, ContentPart } from '../providers/interface.js';
-import type { ToolCall, ToolResult } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { ToolCall, ToolResult } from '../types/tools.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { CompactionContext } from './context-compaction.js';
-import type { SessionMemoryStore } from '@pellux/goodvibes-sdk/platform/core/session-memory';
-import type { SessionLineageTracker } from '@pellux/goodvibes-sdk/platform/core/session-lineage';
+import type { SessionMemoryStore } from './session-memory.js';
+import type { SessionLineageTracker } from './session-lineage.js';
 import { buildTranscriptEventIndex } from './transcript-events/index.js';
 import { compactConversation } from './conversation-compaction.js';
 import {

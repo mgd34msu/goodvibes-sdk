@@ -1,5 +1,5 @@
 import type { RegisteredTool } from './registry.js';
-import type { McpDecisionRecord, McpServerRole, McpTrustMode, QuarantineReason, SchemaFreshness } from '@pellux/goodvibes-sdk/platform/runtime/mcp/types';
+import type { McpDecisionRecord, McpServerRole, McpTrustMode, QuarantineReason, SchemaFreshness } from '../runtime/mcp/types.js';
 
 export interface McpServerRecord {
   readonly name: string;

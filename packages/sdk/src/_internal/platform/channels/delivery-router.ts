@@ -1,4 +1,4 @@
-import { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import { ArtifactStore } from '../artifacts/index.js';
 import { ConfigManager } from '../config/manager.js';
 import { ServiceRegistry } from '../config/service-registry.js';
 import type { ControlPlaneGateway } from '../control-plane/gateway.js';

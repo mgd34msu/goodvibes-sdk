@@ -2,8 +2,8 @@ import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { GitService } from '../../git/service.js';
 import type { ToolLLM } from '../../config/tool-llm.js';
-import type { AnalyzeInput, SemanticDiffSummary } from '@pellux/goodvibes-sdk/platform/tools/analyze/types';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { AnalyzeInput, SemanticDiffSummary } from './types.js';
+import { summarizeError } from '../../utils/error-display.js';
 import {
   isBreakingUpgrade,
   loadDependencyVersions,
@@ -12,7 +12,7 @@ import {
   readJsonFile,
   truncateDiffAtBoundary,
   validateGitRefs,
-} from '@pellux/goodvibes-sdk/platform/tools/analyze/shared';
+} from './shared.js';
 
 function parseSemanticDiffResponse(
   llmResponse: string | null,

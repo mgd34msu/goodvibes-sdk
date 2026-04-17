@@ -17,7 +17,7 @@ import type { ConfigManager } from '../config/manager.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
-import type { ExecutionPlanManager } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
+import type { ExecutionPlanManager } from '../core/execution-plan.js';
 import type { AgentEvent, RuntimeEventBus } from '../runtime/events/index.js';
 import {
   emitWorkflowChainFailed,

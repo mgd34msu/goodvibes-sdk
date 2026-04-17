@@ -1,7 +1,7 @@
 import type {
   WebSearchProvider,
   WebSearchProviderDescriptor,
-} from '@pellux/goodvibes-sdk/platform/web-search/types';
+} from './types.js';
 import { createBraveSearchProvider } from './providers/brave.js';
 import { createDuckDuckGoProvider } from './providers/duckduckgo.js';
 import { createExaSearchProvider } from './providers/exa.js';

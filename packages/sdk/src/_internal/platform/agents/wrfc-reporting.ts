@@ -1,7 +1,7 @@
-import type { CompletionReport, EngineerReport, ReviewerReport } from '@pellux/goodvibes-sdk/platform/agents/completion-report';
-import { parseCompletionReport } from '@pellux/goodvibes-sdk/platform/agents/completion-report';
+import type { CompletionReport, EngineerReport, ReviewerReport } from './completion-report.js';
+import { parseCompletionReport } from './completion-report.js';
 import type { QualityGateResult } from './wrfc-types.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 
 const REVIEW_BRIEF_ITEM_LIMIT = 6;
 const REVIEW_BRIEF_FILE_LIMIT = 8;

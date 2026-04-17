@@ -1,5 +1,5 @@
 import { createHttpTransport } from './daemon-http-client.js';
-import { createClientTransport } from '@pellux/goodvibes-sdk/platform/runtime/transports/client-transport';
+import { createClientTransport } from './client-transport.js';
 import type { HttpTransportOptions, HttpTransportPeerClient, HttpTransportOperatorClient, HttpTransportSnapshot } from './http-types.js';
 import { createWebSocketConnector } from './shared.js';
 import { createRemoteUiRuntimeEvents } from './ui-runtime-events.js';

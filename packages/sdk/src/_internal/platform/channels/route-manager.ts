@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { createDomainDispatch } from '../runtime/store/index.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import type { RouteSurfaceKind } from '@pellux/goodvibes-sdk/platform/runtime/events/routes';
+import type { RouteSurfaceKind } from '../runtime/events/routes.js';
 import {
   emitRouteBindingCreated,
   emitRouteBindingFailed,
@@ -10,9 +10,9 @@ import {
   emitRouteBindingUpdated,
   emitRouteReplyTargetCaptured,
 } from '../runtime/emitters/index.js';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
-import type { AutomationSurfaceKind } from '@pellux/goodvibes-sdk/platform/automation/types';
-import { AutomationRouteStore } from '@pellux/goodvibes-sdk/platform/automation/store/routes';
+import type { AutomationRouteBinding } from '../automation/routes.js';
+import type { AutomationSurfaceKind } from '../automation/types.js';
+import { AutomationRouteStore } from '../automation/store/routes.js';
 
 export interface UpsertRouteBindingInput {
   readonly id?: string;

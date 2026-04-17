@@ -1,12 +1,12 @@
 import { existsSync, statSync, watch, watchFile, unwatchFile, type Stats } from 'fs';
 import type { FSWatcher } from 'fs';
 import { join, resolve } from 'path';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { FileStateCache } from '@pellux/goodvibes-sdk/platform/state/file-cache';
-import type { ProjectIndex } from '@pellux/goodvibes-sdk/platform/state/project-index';
+import { logger } from '../utils/logger.js';
+import type { FileStateCache } from './file-cache.js';
+import type { ProjectIndex } from './project-index.js';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
-import type { HookEvent } from '@pellux/goodvibes-sdk/platform/hooks/types';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { HookEvent } from '../hooks/types.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /**
  * Default paths to watch relative to project root.

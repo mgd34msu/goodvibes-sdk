@@ -10,7 +10,7 @@
  */
 
 import type { ConfigManager } from '../config/manager.js';
-import type { ConfigKey } from '@pellux/goodvibes-sdk/platform/config/schema';
+import type { ConfigKey } from '../config/schema.js';
 
 export interface HostModeWatcherOptions {
   /** The ConfigManager to subscribe on. */

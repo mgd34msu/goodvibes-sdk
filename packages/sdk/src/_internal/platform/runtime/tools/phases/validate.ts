@@ -1,6 +1,6 @@
-import type { Tool, ToolCall } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { Tool, ToolCall } from '../../../types/tools.js';
 import type { ToolRuntimeContext } from '../context.js';
-import type { PhaseResult, ToolExecutionRecord } from '@pellux/goodvibes-sdk/platform/runtime/tools/types';
+import type { PhaseResult, ToolExecutionRecord } from '../types.js';
 
 /**
  * validate — Phase 1 of the tool execution pipeline.

@@ -1,8 +1,8 @@
-import type { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import type { ArtifactStore } from '../artifacts/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import type { KnowledgeConnectorRegistry } from '@pellux/goodvibes-sdk/platform/knowledge/connectors';
-import type { KnowledgeConnector, KnowledgeIssueRecord } from '@pellux/goodvibes-sdk/platform/knowledge/types';
-import type { KnowledgeStore } from '@pellux/goodvibes-sdk/platform/knowledge/store';
+import type { KnowledgeConnectorRegistry } from './connectors.js';
+import type { KnowledgeConnector, KnowledgeIssueRecord } from './types.js';
+import type { KnowledgeStore } from './store.js';
 
 export interface KnowledgeIngestContext {
   readonly store: KnowledgeStore;

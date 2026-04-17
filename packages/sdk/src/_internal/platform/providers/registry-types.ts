@@ -2,11 +2,11 @@ import type { LLMProvider, ProviderRuntimeMetadataDeps } from './interface.js';
 import type { ProviderCapabilityRegistry } from './capabilities.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import type { SubscriptionManager } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
-import type { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
-import type { FeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime/feature-flags/index';
-import type { FavoritesStore } from '@pellux/goodvibes-sdk/platform/providers/favorites';
-import type { BenchmarkStore } from '@pellux/goodvibes-sdk/platform/providers/model-benchmarks';
+import type { SubscriptionManager } from '../config/subscriptions.js';
+import type { CacheHitTracker } from './cache-strategy.js';
+import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
+import type { FavoritesStore } from './favorites.js';
+import type { BenchmarkStore } from './model-benchmarks.js';
 import type { ModelLimitsService } from './model-limits.js';
 
 /** Model capability tier — controls system prompt verbosity. */

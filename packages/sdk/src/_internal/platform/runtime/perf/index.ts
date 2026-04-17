@@ -19,12 +19,12 @@ export type {
   BudgetViolation,
   PerfReport,
   PerfUnit,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/types';
+} from './types.js';
 
-export { DEFAULT_BUDGETS } from '@pellux/goodvibes-sdk/platform/runtime/perf/budgets';
-export { PerfMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/monitor';
-export type { PerfSnapshot } from '@pellux/goodvibes-sdk/platform/runtime/perf/monitor';
-export { formatReport, exitCode } from '@pellux/goodvibes-sdk/platform/runtime/perf/reporter';
+export { DEFAULT_BUDGETS } from './budgets.js';
+export { PerfMonitor } from './monitor.js';
+export type { PerfSnapshot } from './monitor.js';
+export { formatReport, exitCode } from './reporter.js';
 export { SloCollector, SLO_METRICS } from './slo-collector.js';
 // Generic Component* names (canonical — prefer these in new code)
 export type {
@@ -32,13 +32,13 @@ export type {
   ComponentHealthState,
   ComponentThrottleStatus,
   ComponentHealthStatus,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
+} from './component-contracts.js';
 export {
   CATEGORY_CONTRACTS,
   buildContract,
   createInitialComponentHealthState,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
-export { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
+} from './component-contracts.js';
+export { ComponentHealthMonitor } from './component-health-monitor.js';
 
 // Panel* names (deprecated backward-compat aliases — kept for existing consumers)
 export type {
@@ -46,17 +46,17 @@ export type {
   PanelHealthState,
   PanelThrottleStatus,
   PanelHealthStatus,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
+} from './component-contracts.js';
 export {
   createInitialPanelHealthState,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-contracts';
+} from './component-contracts.js';
 export {
   PanelHealthMonitor,
-} from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
+} from './component-health-monitor.js';
 
-import { PerfMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/monitor';
-import type { PerfBudget } from '@pellux/goodvibes-sdk/platform/runtime/perf/types';
-import { DEFAULT_BUDGETS } from '@pellux/goodvibes-sdk/platform/runtime/perf/budgets';
+import { PerfMonitor } from './monitor.js';
+import type { PerfBudget } from './types.js';
+import { DEFAULT_BUDGETS } from './budgets.js';
 
 /**
  * Factory function that creates a PerfMonitor with the default budgets.

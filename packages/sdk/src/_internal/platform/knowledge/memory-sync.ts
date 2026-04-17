@@ -1,5 +1,5 @@
 import type { MemoryRecord, MemoryRegistry } from '../state/index.js';
-import type { KnowledgeStore } from '@pellux/goodvibes-sdk/platform/knowledge/store';
+import type { KnowledgeStore } from './store.js';
 import { slugify } from './internal.js';
 
 export async function syncKnowledgeMemoryNodes(

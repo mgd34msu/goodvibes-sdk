@@ -4,7 +4,7 @@ export type {
   ControlPlaneServerConfig,
   ControlPlaneClientDescriptor,
   ControlPlaneEventSubscription,
-} from '@pellux/goodvibes-sdk/platform/control-plane/types';
+} from './types.js';
 export type { ControlPlaneGatewayConfig, ControlPlaneEventStreamOptions, ControlPlaneRecentEvent } from './gateway.js';
 export { ControlPlaneGateway } from './gateway.js';
 export {
@@ -32,7 +32,7 @@ export type {
   SharedSessionSubmission,
   SteerSharedSessionMessageInput,
   SubmitSharedSessionMessageInput,
-} from '@pellux/goodvibes-sdk/platform/control-plane/session-types';
+} from './session-types.js';
 export type {
   SharedSessionCompletion,
   SharedSessionContinuationRequest,
@@ -42,7 +42,7 @@ export type {
   SharedSessionInputRecord,
   SharedSessionInputState,
   SharedSessionRoutingIntent,
-} from '@pellux/goodvibes-sdk/platform/control-plane/session-intents';
+} from './session-intents.js';
 export { SharedSessionBroker } from './session-broker.js';
 export type {
   SharedApprovalRecord,
@@ -51,5 +51,5 @@ export type {
   RequestSharedApprovalInput,
 } from './approval-broker.js';
 export { ApprovalBroker } from './approval-broker.js';
-export type { ControlPlaneAuthMode, ControlPlaneAuthSnapshot } from '@pellux/goodvibes-sdk/platform/control-plane/auth-snapshot';
+export type { ControlPlaneAuthMode, ControlPlaneAuthSnapshot } from './auth-snapshot.js';
 export type { MessageSource, ConversationMessageEnvelope } from './conversation-message.js';

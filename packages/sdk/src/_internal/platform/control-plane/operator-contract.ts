@@ -14,9 +14,9 @@ import {
   CONTROL_AUTH_LOGIN_REQUEST_SCHEMA,
   CONTROL_AUTH_LOGIN_RESPONSE_SCHEMA,
 } from './operator-contract-schemas.js';
-import type { OperatorContractManifest } from '@pellux/goodvibes-sdk/platform/types/foundation-contract';
+import type { OperatorContractManifest } from '../types/foundation-contract.js';
 import { VERSION } from '../version.js';
-import { OPERATOR_SESSION_COOKIE_NAME } from '@pellux/goodvibes-sdk/platform/security/http-auth';
+import { OPERATOR_SESSION_COOKIE_NAME } from '../security/http-auth.js';
 
 const OPERATOR_CONTRACT_VERSION = 1;
 const OPERATOR_WS_PATH = '/api/control-plane/ws';
@@ -28,7 +28,7 @@ const OPERATOR_AUTH_CURRENT_ALIAS_PATHS = ['/api/control-plane/whoami'];
 const PEER_CONTRACT_PATH = '/api/remote/node-host/contract';
 const PEER_CONTRACT_ALIAS_PATHS = ['/api/remote/device/contract'];
 
-export type { OperatorContractManifest } from '@pellux/goodvibes-sdk/platform/types/foundation-contract';
+export type { OperatorContractManifest } from '../types/foundation-contract.js';
 
 interface OperatorSchemaCoverage {
   readonly methods: number;

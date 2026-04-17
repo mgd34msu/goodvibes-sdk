@@ -4,11 +4,11 @@
  * Delegates entirely to the existing `createWriteTool` implementation and adds
  * the PhasedTool metadata required by the phased executor.
  */
-import { asPhasedTool } from '@pellux/goodvibes-sdk/platform/runtime/tools/adapter';
+import { asPhasedTool } from '../../runtime/tools/adapter.js';
 import { createWriteTool } from './index.js';
-import type { FileStateCache } from '@pellux/goodvibes-sdk/platform/state/file-cache';
-import type { ProjectIndex } from '@pellux/goodvibes-sdk/platform/state/project-index';
-import type { FileUndoManager } from '@pellux/goodvibes-sdk/platform/state/file-undo';
+import type { FileStateCache } from '../../state/file-cache.js';
+import type { ProjectIndex } from '../../state/project-index.js';
+import type { FileUndoManager } from '../../state/file-undo.js';
 
 // ---------------------------------------------------------------------------
 // Deps type

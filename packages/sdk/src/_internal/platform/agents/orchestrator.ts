@@ -1,18 +1,18 @@
-import { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
+import { ToolRegistry } from '../tools/registry.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import { registerAllTools } from '../tools/index.js';
 import { registerChannelAgentTools } from '../tools/channel/agent-tools.js';
 import { AgentMessageBus } from './message-bus.js';
 import type { ChannelPluginRegistry } from '../channels/index.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
-import { FileStateCache } from '@pellux/goodvibes-sdk/platform/state/file-cache';
-import { ProjectIndex } from '@pellux/goodvibes-sdk/platform/state/project-index';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
+import { FileStateCache } from '../state/file-cache.js';
+import { ProjectIndex } from '../state/project-index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { ToolLLM } from '../config/tool-llm.js';
 import type { LLMProvider } from '../providers/interface.js';
-import type { FeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime/feature-flags/manager';
+import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {
   emitAgentCancelled,
@@ -28,7 +28,7 @@ import {
 } from '../runtime/emitters/index.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { runAgentTask, type AgentOrchestratorRunContext } from './orchestrator-runner.js';
-export { summarizeToolArgs } from '@pellux/goodvibes-sdk/platform/agents/orchestrator-utils';
+export { summarizeToolArgs } from './orchestrator-utils.js';
 
 type AgentProviderRoutingPolicy = NonNullable<AgentRecord['routing']>;
 type ResolvedAgentProviderRouting = {

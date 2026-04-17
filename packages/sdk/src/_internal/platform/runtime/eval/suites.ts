@@ -8,9 +8,9 @@
  * baseline key for regression detection.
  */
 
-import type { EvalScenario, EvalRawResult } from '@pellux/goodvibes-sdk/platform/runtime/eval/types';
+import type { EvalScenario, EvalRawResult } from './types.js';
 import { createPerfMonitor } from '../perf/index.js';
-import { createInitialSurfacePerfState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/surface-perf';
+import { createInitialSurfacePerfState } from '../store/domains/surface-perf.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

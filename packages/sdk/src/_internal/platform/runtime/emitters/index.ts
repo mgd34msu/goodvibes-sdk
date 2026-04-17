@@ -14,7 +14,7 @@
  * emitTurnSubmitted(bus, ctx, { turnId: '...', prompt: 'Hello' });
  * ```
  */
-import type { EnvelopeContext } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import type { EnvelopeContext } from '../events/envelope.js';
 
 /**
  * Emitter context passed to all emission wrapper functions.

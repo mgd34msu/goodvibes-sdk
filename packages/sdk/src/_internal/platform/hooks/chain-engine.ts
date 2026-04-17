@@ -1,8 +1,8 @@
-import type { HookChain, HookEvent, HookResult, ChainStep } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookChain, HookEvent, HookResult, ChainStep } from './types.js';
 import type { HookDispatcher } from './dispatcher.js';
-import { matchesEventPath } from '@pellux/goodvibes-sdk/platform/hooks/matcher';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { matchesEventPath } from './matcher.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /** Parse a duration string like "30s" or "5m" into milliseconds */
 function parseDuration(s: string): number {

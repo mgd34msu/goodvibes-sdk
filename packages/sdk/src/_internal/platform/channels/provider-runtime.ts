@@ -16,8 +16,8 @@ import {
   handleNtfySurfacePayload,
   handleSlackSurfacePayload,
 } from '../adapters/index.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 export type ProviderRuntimeSurface = 'slack' | 'discord' | 'ntfy';
 

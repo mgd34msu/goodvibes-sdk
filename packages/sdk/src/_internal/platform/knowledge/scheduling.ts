@@ -1,9 +1,9 @@
-import { getNextAutomationOccurrence, normalizeCronSchedule, normalizeEverySchedule, type AutomationScheduleDefinition } from '@pellux/goodvibes-sdk/platform/automation/schedules';
-import type { KnowledgeStore } from '@pellux/goodvibes-sdk/platform/knowledge/store';
-import type { KnowledgeJobMode, KnowledgeJobRecord, KnowledgeJobRunRecord, KnowledgeScheduleRecord } from '@pellux/goodvibes-sdk/platform/knowledge/types';
+import { getNextAutomationOccurrence, normalizeCronSchedule, normalizeEverySchedule, type AutomationScheduleDefinition } from '../automation/schedules.js';
+import type { KnowledgeStore } from './store.js';
+import type { KnowledgeJobMode, KnowledgeJobRecord, KnowledgeJobRunRecord, KnowledgeScheduleRecord } from './types.js';
 import { emitKnowledgeJobCompleted, emitKnowledgeJobFailed, emitKnowledgeJobQueued, emitKnowledgeJobStarted } from '../runtime/emitters/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 export interface KnowledgeSchedulingContext {
   readonly store: KnowledgeStore;

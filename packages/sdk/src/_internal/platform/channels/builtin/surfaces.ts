@@ -1,5 +1,5 @@
 import type { ProviderRuntimeSurface } from '../provider-runtime.js';
-import type { ChannelSurface } from '@pellux/goodvibes-sdk/platform/channels/types';
+import type { ChannelSurface } from '../types.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './shared.js';
 
 export function asProviderRuntimeSurface(surface: ChannelSurface): ProviderRuntimeSurface | null {

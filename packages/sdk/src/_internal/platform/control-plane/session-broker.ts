@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { PersistentStore } from '@pellux/goodvibes-sdk/platform/state/persistent-store';
+import { PersistentStore } from '../state/persistent-store.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { AgentEvent } from '../runtime/events/agents.js';
 import { RouteBindingManager } from '../channels/index.js';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
-import type { AutomationSurfaceKind } from '@pellux/goodvibes-sdk/platform/automation/types';
+import type { AutomationRouteBinding } from '../automation/routes.js';
+import type { AutomationSurfaceKind } from '../automation/types.js';
 import type {
   SharedSessionCompletion,
   SharedSessionContinuationRunner,
   SharedSessionInputIntent,
   SharedSessionInputRecord,
-} from '@pellux/goodvibes-sdk/platform/control-plane/session-intents';
+} from './session-intents.js';
 import type {
   FindSharedSessionOptions,
   SharedSessionMessage,
@@ -20,14 +20,14 @@ import type {
   SharedSessionSubmission,
   SteerSharedSessionMessageInput,
   SubmitSharedSessionMessageInput,
-} from '@pellux/goodvibes-sdk/platform/control-plane/session-types';
+} from './session-types.js';
 import {
   dedupeSessionSurfaceKinds,
   type SharedSessionAgentStatusProvider,
   type SharedSessionEventPublisher,
   type SharedSessionMessageSender,
   type SharedSessionStoreSnapshot,
-} from '@pellux/goodvibes-sdk/platform/control-plane/session-broker-internals';
+} from './session-broker-internals.js';
 import {
   countPendingSessionInputs,
   createSessionBrokerSnapshot,
@@ -36,7 +36,7 @@ import {
   sortMessages,
   sortSessions,
   upsertSessionParticipant,
-} from '@pellux/goodvibes-sdk/platform/control-plane/session-broker-state';
+} from './session-broker-state.js';
 
 const MAX_PERSISTED_MESSAGES = 2_000;
 const MAX_CONTINUATION_MESSAGES = 16;

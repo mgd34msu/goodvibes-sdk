@@ -1,9 +1,9 @@
-import { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import { ArtifactStore } from '../../artifacts/index.js';
 import { ConfigManager } from '../../config/manager.js';
 import { ServiceRegistry } from '../../config/service-registry.js';
 import { ControlPlaneGateway } from '../../control-plane/gateway.js';
 import { DiscordIntegration, NtfyIntegration, SlackIntegration } from '../../integrations/index.js';
-import { validatePublicWebhookUrl } from '@pellux/goodvibes-sdk/platform/utils/url-safety';
+import { validatePublicWebhookUrl } from '../../utils/url-safety.js';
 import type { ChannelDeliveryStrategy } from './types.js';
 import {
   appendAttachmentSummary,

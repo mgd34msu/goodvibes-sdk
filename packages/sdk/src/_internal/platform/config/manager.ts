@@ -1,14 +1,14 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname, isAbsolute, join, resolve } from 'path';
-import type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting } from '@pellux/goodvibes-sdk/platform/config/schema';
-import { DEFAULT_CONFIG, CONFIG_SCHEMA } from '@pellux/goodvibes-sdk/platform/config/schema';
-import { ConfigError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting } from './schema.js';
+import { DEFAULT_CONFIG, CONFIG_SCHEMA } from './schema.js';
+import { ConfigError } from '../types/errors.js';
+import { logger } from '../utils/logger.js';
 import type { HookDispatcher } from '../hooks/index.js';
-import type { HookEvent } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookEvent } from '../hooks/types.js';
 import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {

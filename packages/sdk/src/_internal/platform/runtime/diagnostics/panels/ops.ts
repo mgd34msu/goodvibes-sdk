@@ -9,10 +9,10 @@
  * (state machine allows it), satisfying requirement: "No illegal action appears in UI".
  */
 import type { RuntimeEventEnvelope } from '../../events/index.js';
-import type { PanelConfig } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
-import { DEFAULT_PANEL_CONFIG, appendBounded, applyFilter } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
-import type { DiagnosticFilter } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
-import type { OpsInterventionReason, OpsEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/ops';
+import type { PanelConfig } from '../types.js';
+import { DEFAULT_PANEL_CONFIG, appendBounded, applyFilter } from '../types.js';
+import type { DiagnosticFilter } from '../types.js';
+import type { OpsInterventionReason, OpsEvent } from '../../events/ops.js';
 import type { UiEventFeed } from '../../ui-events.js';
 
 // ---------------------------------------------------------------------------

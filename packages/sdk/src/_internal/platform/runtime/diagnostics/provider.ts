@@ -21,7 +21,7 @@
  * ```
  */
 import type { RuntimeEventBus } from '../events/index.js';
-import type { RuntimeHealthAggregator } from '@pellux/goodvibes-sdk/platform/runtime/health/aggregator';
+import type { RuntimeHealthAggregator } from '../health/aggregator.js';
 import type {
   ToolCallEntry,
   AgentEntry,
@@ -32,15 +32,15 @@ import type {
   DiagnosticFilter,
   PanelConfig,
   ToolContractEntry,
-} from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
+} from './types.js';
 import { ToolCallsPanel } from './panels/tool-calls.js';
 import { AgentsPanel } from './panels/agents.js';
 import { TasksPanel } from './panels/tasks.js';
 import { EventsPanel } from './panels/events.js';
-import { StateInspectorPanel, type InspectableDomain } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/panels/state-inspector';
+import { StateInspectorPanel, type InspectableDomain } from './panels/state-inspector.js';
 import { HealthPanel } from './panels/health.js';
-import { ToolContractsPanel } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/panels/tool-contracts';
-import type { ContractVerificationResult } from '@pellux/goodvibes-sdk/platform/runtime/tools/contract-verifier';
+import { ToolContractsPanel } from './panels/tool-contracts.js';
+import type { ContractVerificationResult } from '../tools/contract-verifier.js';
 
 /** Configuration for creating a DiagnosticsProvider. */
 export interface DiagnosticsProviderConfig {

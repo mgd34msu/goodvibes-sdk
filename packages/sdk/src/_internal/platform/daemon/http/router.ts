@@ -1,8 +1,8 @@
 import type { ConfigManager } from '../../config/manager.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
-import { isValidConfigKey } from '@pellux/goodvibes-sdk/platform/config/schema';
-import type { UserAuthManager } from '@pellux/goodvibes-sdk/platform/security/user-auth';
-import { buildOperatorSessionCookie, OPERATOR_SESSION_COOKIE_NAME } from '@pellux/goodvibes-sdk/platform/security/http-auth';
+import { isValidConfigKey } from '../../config/schema.js';
+import type { UserAuthManager } from '../../security/user-auth.js';
+import { buildOperatorSessionCookie, OPERATOR_SESSION_COOKIE_NAME } from '../../security/http-auth.js';
 import type { AgentManager } from '../../tools/agent/index.js';
 import { normalizeAtSchedule, normalizeCronSchedule, normalizeEverySchedule, type AutomationManager } from '../../automation/index.js';
 import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../../control-plane/index.js';
@@ -19,9 +19,9 @@ import type { WatcherRegistry } from '../../watchers/index.js';
 import type { DistributedPeerAuth, DistributedRuntimeManager } from '../../runtime/remote/index.js';
 import type { KnowledgeGraphqlService, KnowledgeService } from '../../knowledge/index.js';
 import { inspectKnowledgeGraphqlAccess } from '../../knowledge/index.js';
-import type { VoiceService } from '@pellux/goodvibes-sdk/platform/voice/index';
+import type { VoiceService } from '../../voice/index.js';
 import type { WebSearchService } from '../../web-search/index.js';
-import type { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import type { ArtifactStore } from '../../artifacts/index.js';
 import type { MediaProviderRegistry } from '../../media/index.js';
 import type { MultimodalService } from '../../multimodal/index.js';
 import type { IntegrationHelperService } from '../../runtime/integration/helpers.js';
@@ -30,10 +30,10 @@ import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import { TelemetryApiService } from '../../runtime/telemetry/api.js';
 import { inspectInboundTls, inspectOutboundTls } from '../../runtime/network/index.js';
 import type { MemoryEmbeddingProviderRegistry, MemoryRegistry } from '../../state/index.js';
-import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/platform/control-plane/routes/index';
+import { dispatchDaemonApiRoutes } from '../../control-plane/routes/index.js';
 import { handleGitHubAutomationWebhook, handleSlackSurfaceWebhook, handleDiscordSurfaceWebhook, handleNtfySurfaceWebhook, handleGenericWebhookSurface } from '../../adapters/index.js';
-import { createDaemonKnowledgeRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/knowledge-routes';
-import { createDaemonMediaRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/media-routes';
+import { createDaemonKnowledgeRouteHandlers } from './knowledge-routes.js';
+import { createDaemonMediaRouteHandlers } from './media-routes.js';
 import {
   createDaemonRemoteRouteHandlers,
   handleRemotePairRequest,
@@ -41,13 +41,13 @@ import {
   handleRemotePeerHeartbeat,
   handleRemotePeerWorkPull,
   handleRemotePeerWorkComplete,
-} from '@pellux/goodvibes-sdk/platform/daemon/http/remote-routes';
-import { createDaemonRuntimeRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/runtime-routes';
-import { createDaemonControlRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/control-routes';
-import { createDaemonIntegrationRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/integration-routes';
-import { createDaemonTelemetryRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/telemetry-routes';
-import { createDaemonChannelRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/channel-routes';
-import { createDaemonSystemRouteHandlers } from '@pellux/goodvibes-sdk/platform/daemon/http/system-routes';
+} from './remote-routes.js';
+import { createDaemonRuntimeRouteHandlers } from './runtime-routes.js';
+import { createDaemonControlRouteHandlers } from './control-routes.js';
+import { createDaemonIntegrationRouteHandlers } from './integration-routes.js';
+import { createDaemonTelemetryRouteHandlers } from './telemetry-routes.js';
+import { createDaemonChannelRouteHandlers } from './channel-routes.js';
+import { createDaemonSystemRouteHandlers } from './system-routes.js';
 import {
   buildChannelRouteContext,
   buildKnowledgeRouteContext,
@@ -57,8 +57,8 @@ import {
 import type { GenericWebhookAdapterContext, SurfaceAdapterContext } from '../../adapters/index.js';
 import type { PlatformServiceManager } from '../service-manager.js';
 import type { JsonRecord } from '../helpers.js';
-import { jsonErrorResponse } from '@pellux/goodvibes-sdk/platform/daemon/http/error-response';
-import { AppError } from '@pellux/goodvibes-sdk/platform/types/errors';
+import { jsonErrorResponse } from './error-response.js';
+import { AppError } from '../../types/errors.js';
 import { VERSION } from '../../version.js';
 import type { CompanionChatManager } from '../../companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-routes.js';

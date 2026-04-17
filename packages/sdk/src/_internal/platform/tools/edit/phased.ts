@@ -4,10 +4,10 @@
  * Delegates entirely to the existing `createEditTool` implementation and adds
  * the PhasedTool metadata required by the phased executor.
  */
-import { asPhasedTool } from '@pellux/goodvibes-sdk/platform/runtime/tools/adapter';
+import { asPhasedTool } from '../../runtime/tools/adapter.js';
 import { createEditTool } from './index.js';
 import type { EditToolOptions } from './index.js';
-import type { FileStateCache } from '@pellux/goodvibes-sdk/platform/state/file-cache';
+import type { FileStateCache } from '../../state/file-cache.js';
 
 // ---------------------------------------------------------------------------
 // Factory

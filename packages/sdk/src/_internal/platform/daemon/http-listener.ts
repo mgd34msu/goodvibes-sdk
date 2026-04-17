@@ -1,14 +1,14 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import { HookDispatcher } from '../hooks/dispatcher.js';
-import type { HookEvent } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookEvent } from '../hooks/types.js';
 import {
   authenticateOperatorRequest,
   buildOperatorSessionCookie,
-} from '@pellux/goodvibes-sdk/platform/security/http-auth';
-import { UserAuthManager } from '@pellux/goodvibes-sdk/platform/security/user-auth';
+} from '../security/http-auth.js';
+import { UserAuthManager } from '../security/user-auth.js';
 import { ConfigManager } from '../config/manager.js';
 import { extractForwardedClientIp, resolveInboundTlsContext, type ResolvedInboundTlsContext } from '../runtime/network/index.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import { requirePortAvailable } from './port-check.js';
 import { resolveHostBinding } from './host-resolver.js';
 import { createHostModeRestartWatcher } from './host-mode-watcher.js';

@@ -1,13 +1,13 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import type { CommunicationKind, CommunicationScope } from '@pellux/goodvibes-sdk/platform/runtime/events/communication';
+import type { CommunicationKind, CommunicationScope } from '../runtime/events/communication.js';
 import { emitCommunicationBlocked, emitCommunicationDelivered, emitCommunicationSent } from '../runtime/emitters/index.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import {
   communicationRoleForTemplate,
   evaluateCommunicationRoute,
   type AgentCommunicationMetadata,
-} from '@pellux/goodvibes-sdk/platform/agents/communication-policy';
+} from './communication-policy.js';
 
 export interface AgentMessage {
   id: string;

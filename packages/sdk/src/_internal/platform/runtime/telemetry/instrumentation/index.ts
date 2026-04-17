@@ -17,9 +17,9 @@
  * detach();
  * ```
  */
-import type { RuntimeTracer } from '@pellux/goodvibes-sdk/platform/runtime/telemetry/tracer';
+import type { RuntimeTracer } from '../tracer.js';
 import type { RuntimeEventBus } from '../../events/index.js';
-import type { CascadeAppliedEvent } from '@pellux/goodvibes-sdk/platform/runtime/health/types';
+import type { CascadeAppliedEvent } from '../../health/types.js';
 import { DomainBridge } from './domain-bridge.js';
 
 export { DomainBridge } from './domain-bridge.js';

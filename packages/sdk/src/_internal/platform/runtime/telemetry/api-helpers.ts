@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { VERSION } from '../../version.js';
-import type { ErrorSource } from '@pellux/goodvibes-sdk/platform/types/errors';
-import type { NormalizedError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
-import { redactStructuredData } from '@pellux/goodvibes-sdk/platform/utils/redaction';
+import type { ErrorSource } from '../../types/errors.js';
+import type { NormalizedError } from '../../utils/error-display.js';
+import { redactStructuredData } from '../../utils/redaction.js';
 import type {
   AnyRuntimeEvent,
   RuntimeEventDomain,
@@ -13,7 +13,7 @@ import type {
   AttributeValue,
   ReadableSpan,
   SpanAttributes,
-} from '@pellux/goodvibes-sdk/platform/runtime/telemetry/types';
+} from './types.js';
 import type {
   TelemetryAggregates,
   TelemetryFilter,

@@ -13,10 +13,10 @@
  * - The bridge is opt-in: calling `attach()` wires it; `detach()` unwires.
  */
 import type { RuntimeEventBus } from '../../events/index.js';
-import type { RuntimeTracer } from '@pellux/goodvibes-sdk/platform/runtime/telemetry/tracer';
-import type { Span } from '@pellux/goodvibes-sdk/platform/runtime/telemetry/types';
-import type { CascadeAppliedEvent } from '@pellux/goodvibes-sdk/platform/runtime/health/types';
-import { recordHealthCascadeSpan } from '@pellux/goodvibes-sdk/platform/runtime/telemetry/spans/health';
+import type { RuntimeTracer } from '../tracer.js';
+import type { Span } from '../types.js';
+import type { CascadeAppliedEvent } from '../../health/types.js';
+import { recordHealthCascadeSpan } from '../spans/health.js';
 import { attachAgentDomain, attachCompactionDomain, attachPermissionDomain, attachSessionDomain } from './domain-bridge-agent-session.js';
 import { attachPluginDomain, attachMcpDomain } from './domain-bridge-plugin-mcp.js';
 import { type DomainBridgeHelpers, type SpanMap } from './domain-bridge-shared.js';

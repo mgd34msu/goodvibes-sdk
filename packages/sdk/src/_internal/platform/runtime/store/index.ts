@@ -8,16 +8,16 @@
 import { createStore } from 'zustand/vanilla';
 import type { StoreApi } from 'zustand';
 import type { TurnEvent } from '../events/turn.js';
-import type { ToolEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/tools';
-import type { PermissionEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/permissions';
-import type { TaskEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/tasks';
-import type { AgentEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/agents';
-import type { OrchestrationEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/orchestration';
-import type { CommunicationEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/communication';
-import type { PluginEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/plugins';
-import type { McpEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/mcp';
-import type { TransportEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/transport';
-import type { CompactionEvent } from '@pellux/goodvibes-sdk/platform/runtime/events/compaction';
+import type { ToolEvent } from '../events/tools.js';
+import type { PermissionEvent } from '../events/permissions.js';
+import type { TaskEvent } from '../events/tasks.js';
+import type { AgentEvent } from '../events/agents.js';
+import type { OrchestrationEvent } from '../events/orchestration.js';
+import type { CommunicationEvent } from '../events/communication.js';
+import type { PluginEvent } from '../events/plugins.js';
+import type { McpEvent } from '../events/mcp.js';
+import type { TransportEvent } from '../events/transport.js';
+import type { CompactionEvent } from '../events/compaction.js';
 import type {
   SessionDomainState,
   ConversationDomainState,
@@ -48,12 +48,12 @@ import type {
   SurfaceDomainState,
   SurfaceRecord,
 } from './domains/index.js';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRun } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import type { AutomationSourceRecord } from '@pellux/goodvibes-sdk/platform/automation/sources';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
-import type { AutomationSurfaceKind } from '@pellux/goodvibes-sdk/platform/automation/types';
-import type { AutomationDeliveryAttempt } from '@pellux/goodvibes-sdk/platform/automation/delivery';
+import type { AutomationJob } from '../../automation/jobs.js';
+import type { AutomationRun } from '../../automation/runs.js';
+import type { AutomationSourceRecord } from '../../automation/sources.js';
+import type { AutomationRouteBinding } from '../../automation/routes.js';
+import type { AutomationSurfaceKind } from '../../automation/types.js';
+import type { AutomationDeliveryAttempt } from '../../automation/delivery.js';
 import { createInitialRuntimeState } from './state.js';
 import type { RuntimeState } from './state.js';
 import {

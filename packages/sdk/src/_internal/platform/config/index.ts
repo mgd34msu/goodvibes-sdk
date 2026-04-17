@@ -8,15 +8,15 @@
 
 export { ConfigManager } from './manager.js';
 export type { DeepReadonly } from './manager.js';
-export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, PermissionMode, PermissionAction, PermissionsToolConfig, NotificationsConfig } from '@pellux/goodvibes-sdk/platform/config/schema';
-export { DEFAULT_CONFIG, CONFIG_SCHEMA } from '@pellux/goodvibes-sdk/platform/config/schema';
-export { ConfigError } from '@pellux/goodvibes-sdk/platform/types/errors';
+export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, PermissionMode, PermissionAction, PermissionsToolConfig, NotificationsConfig } from './schema.js';
+export { DEFAULT_CONFIG, CONFIG_SCHEMA } from './schema.js';
+export { ConfigError } from '../types/errors.js';
 
 import { readFileSync } from 'fs';
 import { ConfigManager } from './manager.js';
-import type { GoodVibesConfig } from '@pellux/goodvibes-sdk/platform/config/schema';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { GoodVibesConfig } from './schema.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 export function getConfigSnapshot(configManager: Pick<ConfigManager, 'getRaw'>): Readonly<GoodVibesConfig> {
   return configManager.getRaw();

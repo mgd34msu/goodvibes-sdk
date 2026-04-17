@@ -17,7 +17,7 @@ export type {
   ForensicsBundle,
   ForensicsReplayEvidence,
   ForensicsEvidenceSummary,
-} from '@pellux/goodvibes-sdk/platform/runtime/forensics/types';
-export { classifyFailure, summariseFailure } from '@pellux/goodvibes-sdk/platform/runtime/forensics/classifier';
-export { ForensicsRegistry, DEFAULT_REGISTRY_LIMIT } from '@pellux/goodvibes-sdk/platform/runtime/forensics/registry';
+} from './types.js';
+export { classifyFailure, summariseFailure } from './classifier.js';
+export { ForensicsRegistry, DEFAULT_REGISTRY_LIMIT } from './registry.js';
 export { ForensicsCollector } from './collector.js';

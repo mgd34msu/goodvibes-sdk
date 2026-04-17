@@ -1,16 +1,16 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { KVState } from '@pellux/goodvibes-sdk/platform/state/kv-state';
-import { ProjectIndex } from '@pellux/goodvibes-sdk/platform/state/project-index';
-import { ModeManager } from '@pellux/goodvibes-sdk/platform/state/mode-manager';
+import { KVState } from '../../state/kv-state.js';
+import { ProjectIndex } from '../../state/project-index.js';
+import { ModeManager } from '../../state/mode-manager.js';
 import { HookDispatcher } from '../../hooks/dispatcher.js';
-import { TelemetryDB } from '@pellux/goodvibes-sdk/platform/state/telemetry';
-import type { TelemetryFilter } from '@pellux/goodvibes-sdk/platform/state/telemetry';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { Tool, ToolDefinition } from '@pellux/goodvibes-sdk/platform/types/tools';
-import { STATE_TOOL_SCHEMA } from '@pellux/goodvibes-sdk/platform/tools/state/schema';
-import type { StateInput } from '@pellux/goodvibes-sdk/platform/tools/state/schema';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { TelemetryDB } from '../../state/telemetry.js';
+import type { TelemetryFilter } from '../../state/telemetry.js';
+import { logger } from '../../utils/logger.js';
+import type { Tool, ToolDefinition } from '../../types/tools.js';
+import { STATE_TOOL_SCHEMA } from './schema.js';
+import type { StateInput } from './schema.js';
+import { summarizeError } from '../../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

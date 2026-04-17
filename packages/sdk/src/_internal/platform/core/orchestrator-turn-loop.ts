@@ -1,16 +1,16 @@
 import type { ConversationManager } from './conversation.js';
-import type { ExecutionPlan } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
-import { ConsecutiveErrorBreaker } from '@pellux/goodvibes-sdk/platform/core/circuit-breaker';
-import type { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
+import type { ExecutionPlan } from './execution-plan.js';
+import { ConsecutiveErrorBreaker } from './circuit-breaker.js';
+import type { CacheHitTracker } from '../providers/cache-strategy.js';
 import type { ConfigManager } from '../config/manager.js';
 import { estimateConversationTokens, estimateTokens } from './context-compaction.js';
-import { ProviderError, isNonTransientProviderFailure } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { formatProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { ProviderError, isNonTransientProviderFailure } from '../types/errors.js';
+import { formatProviderError } from '../utils/error-display.js';
 import type { ProviderRegistry } from '../providers/registry.js';
-import type { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
-import type { ToolCall, ToolResult } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { ToolRegistry } from '../tools/registry.js';
+import type { ToolCall, ToolResult } from '../types/tools.js';
 import type { ContentPart, LLMProvider, StreamDelta } from '../providers/interface.js';
-import type { HookEvent, HookResult } from '@pellux/goodvibes-sdk/platform/hooks/types';
+import type { HookEvent, HookResult } from '../hooks/types.js';
 import {
   emitOpsCacheMetrics,
   emitOpsHelperUsage,
@@ -25,10 +25,10 @@ import {
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { HelperModel } from '../config/helper-model.js';
 import type { ModelDefinition } from '../providers/registry.js';
-import type { FavoritesStore } from '@pellux/goodvibes-sdk/platform/providers/favorites';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import type { FavoritesStore } from '../providers/favorites.js';
+import { logger } from '../utils/logger.js';
 import type { AgentManager } from '../tools/agent/index.js';
-import type { ExecutionPlanManager } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
+import type { ExecutionPlanManager } from './execution-plan.js';
 import {
   emitMalformedToolUseWarning,
   handleFinalResponseOutcome,

@@ -12,7 +12,7 @@
  */
 
 import type { RuntimeEventBus, RuntimeEventEnvelope, AnyRuntimeEvent } from '../events/index.js';
-import type { PerfMetric } from '@pellux/goodvibes-sdk/platform/runtime/perf/types';
+import type { PerfMetric } from './types.js';
 
 /** Metric key constants for each SLO measurement. */
 export const SLO_METRICS = {

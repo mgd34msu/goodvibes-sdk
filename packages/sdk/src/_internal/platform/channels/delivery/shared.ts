@@ -1,4 +1,4 @@
-import { ArtifactStore, type ArtifactAttachment, type ArtifactReference } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import { ArtifactStore, type ArtifactAttachment, type ArtifactReference } from '../../artifacts/index.js';
 import { ConfigManager } from '../../config/manager.js';
 import { ServiceRegistry } from '../../config/service-registry.js';
 import type {

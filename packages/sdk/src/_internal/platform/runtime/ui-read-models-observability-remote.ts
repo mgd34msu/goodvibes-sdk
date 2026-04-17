@@ -1,8 +1,8 @@
 import type { RuntimeServices } from './services.js';
-import type { UiReadModel } from '@pellux/goodvibes-sdk/platform/runtime/ui-read-models-base';
+import type { UiReadModel } from './ui-read-models-base.js';
 import { createStoreBackedReadModel } from './ui-read-model-helpers.js';
 import type { RemoteSupervisorSnapshot } from './remote/supervisor.js';
-import type { DistributedPendingWork, DistributedPeerRecord, DistributedRuntimePairRequest } from '@pellux/goodvibes-sdk/platform/runtime/remote/distributed-runtime-types';
+import type { DistributedPendingWork, DistributedPeerRecord, DistributedRuntimePairRequest } from './remote/distributed-runtime-types.js';
 
 export interface UiRemoteSnapshot {
   readonly daemon: {

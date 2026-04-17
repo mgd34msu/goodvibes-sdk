@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createDomainDispatch } from '../runtime/store/index.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { RuntimeEventBus, RuntimeEventDomain, RuntimeEventEnvelope, AnyRuntimeEvent } from '../runtime/events/index.js';
-import type { ControlPlaneClientRecord } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/control-plane';
+import type { ControlPlaneClientRecord } from '../runtime/store/domains/control-plane.js';
 import {
   emitControlPlaneAuthGranted,
   emitControlPlaneClientConnected,
@@ -10,12 +10,12 @@ import {
   emitControlPlaneSubscriptionCreated,
   emitControlPlaneSubscriptionDropped,
 } from '../runtime/emitters/index.js';
-import { renderControlPlaneGatewayWebUi } from '@pellux/goodvibes-sdk/platform/control-plane/gateway-web-ui';
+import { renderControlPlaneGatewayWebUi } from './gateway-web-ui.js';
 import type {
   ControlPlaneClientDescriptor,
   ControlPlaneServerConfig,
   ControlPlaneSurfaceMessage,
-} from '@pellux/goodvibes-sdk/platform/control-plane/types';
+} from './types.js';
 
 const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
   'session',

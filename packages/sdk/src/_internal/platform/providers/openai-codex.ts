@@ -7,13 +7,13 @@ import type {
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
-import type { ToolCall, ToolDefinition } from '@pellux/goodvibes-sdk/platform/types/tools';
-import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
+import type { ToolCall, ToolDefinition } from '../types/tools.js';
+import { ProviderError } from '../types/errors.js';
+import { withRetry } from '../utils/retry.js';
 import { resolveSubscriptionAccessToken } from '../config/subscription-auth.js';
 import { arch, platform, release } from 'node:os';
-import type { SubscriptionManager } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
-import { toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import type { SubscriptionManager } from '../config/subscriptions.js';
+import { toProviderError } from '../utils/error-display.js';
 import { mapCodexStopReason } from './stop-reason-maps.js';
 
 const OPENAI_CODEX_BASE_URL = 'https://chatgpt.com/backend-api';

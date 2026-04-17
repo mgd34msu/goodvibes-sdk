@@ -7,8 +7,8 @@ export type {
   SessionStatus,
   SessionLineageEntry,
   SessionDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/session';
-export { createInitialSessionState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/session';
+} from './session.js';
+export { createInitialSessionState } from './session.js';
 
 export type {
   ReasoningEffort,
@@ -16,8 +16,8 @@ export type {
   ModelTokenLimits,
   FallbackChainEntry,
   ModelDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/model';
-export { createInitialModelState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/model';
+} from './model.js';
+export { createInitialModelState } from './model.js';
 
 export type {
   TurnState,
@@ -33,8 +33,8 @@ export type {
   OverlayId,
   OverlayInstance,
   OverlayDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/overlays';
-export { createInitialOverlaysState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/overlays';
+} from './overlays.js';
+export { createInitialOverlaysState } from './overlays.js';
 
 export type {
   PanelId,
@@ -61,8 +61,8 @@ export type {
   TaskRetryPolicy,
   RuntimeTask,
   TaskDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
-export { createInitialTasksState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
+} from './tasks.js';
+export { createInitialTasksState } from './tasks.js';
 
 export type {
   AgentLifecycleState,
@@ -70,8 +70,8 @@ export type {
   AgentWrfcRef,
   RuntimeAgent,
   AgentDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
-export { createInitialAgentsState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/agents';
+} from './agents.js';
+export { createInitialAgentsState } from './agents.js';
 
 export type {
   OrchestrationMode,
@@ -81,14 +81,14 @@ export type {
   OrchestrationNodeRecord,
   OrchestrationGraphRecord,
   OrchestrationDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/orchestration';
-export { createInitialOrchestrationState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/orchestration';
+} from './orchestration.js';
+export { createInitialOrchestrationState } from './orchestration.js';
 
 export type {
   RuntimeCommunicationRecord,
   CommunicationDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/communication';
-export { createInitialCommunicationState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/communication';
+} from './communication.js';
+export { createInitialCommunicationState } from './communication.js';
 
 export type {
   ProviderStatus,
@@ -97,41 +97,41 @@ export type {
   ProviderCacheMetrics,
   ProviderHealthRecord,
   ProviderHealthDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/provider-health';
-export { createInitialProviderHealthState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/provider-health';
+} from './provider-health.js';
+export { createInitialProviderHealthState } from './provider-health.js';
 
 export type {
   McpServerLifecycleState,
   McpRegisteredTool,
   McpServerRecord,
   McpDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/mcp';
-export { createInitialMcpState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/mcp';
+} from './mcp.js';
+export { createInitialMcpState } from './mcp.js';
 
 export type {
   PluginLifecycleState,
   RuntimePlugin,
   PluginDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/plugins';
-export { createInitialPluginsState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/plugins';
+} from './plugins.js';
+export { createInitialPluginsState } from './plugins.js';
 
 export type {
   DaemonTransportState,
   DaemonProcessInfo,
   DaemonJob,
   DaemonDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/daemon';
-export { createInitialDaemonState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/daemon';
+} from './daemon.js';
+export { createInitialDaemonState } from './daemon.js';
 
 export type {
   AutomationDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/automation';
-export { createInitialAutomationState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/automation';
+} from './automation.js';
+export { createInitialAutomationState } from './automation.js';
 
 export type {
   RoutesDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/routes';
-export { createInitialRoutesState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/routes';
+} from './routes.js';
+export { createInitialRoutesState } from './routes.js';
 
 export type {
   ControlPlaneClientKind,
@@ -139,14 +139,14 @@ export type {
   ControlPlaneConnectionState,
   ControlPlaneClientRecord,
   ControlPlaneDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/control-plane';
-export { createInitialControlPlaneState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/control-plane';
+} from './control-plane.js';
+export { createInitialControlPlaneState } from './control-plane.js';
 
 export type {
   DeliveryLifecycleState,
   DeliveryDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/deliveries';
-export { createInitialDeliveryState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/deliveries';
+} from './deliveries.js';
+export { createInitialDeliveryState } from './deliveries.js';
 
 export type {
   WatcherKind,
@@ -154,38 +154,38 @@ export type {
   WatcherSourceStatus,
   WatcherRecord,
   WatcherDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/watchers';
-export { createInitialWatcherState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/watchers';
+} from './watchers.js';
+export { createInitialWatcherState } from './watchers.js';
 
 export type {
   SurfaceConnectionState,
   SurfaceRecord,
   SurfaceDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/surfaces';
-export { createInitialSurfaceState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/surfaces';
+} from './surfaces.js';
+export { createInitialSurfaceState } from './surfaces.js';
 
 export type {
   AcpTransportState,
   AcpConnection,
   AcpDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/acp';
-export { createInitialAcpState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/acp';
+} from './acp.js';
+export { createInitialAcpState } from './acp.js';
 
 export type {
   IntegrationStatus,
   IntegrationCategory,
   IntegrationRecord,
   IntegrationDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/integrations';
-export { createInitialIntegrationsState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/integrations';
+} from './integrations.js';
+export { createInitialIntegrationsState } from './integrations.js';
 
 export type {
   TelemetryEventRecord,
   SessionMetrics,
   TraceContext,
   TelemetryDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/telemetry';
-export { createInitialTelemetryState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/telemetry';
+} from './telemetry.js';
+export { createInitialTelemetryState } from './telemetry.js';
 
 export type {
   GitFileStatus,
@@ -193,16 +193,16 @@ export type {
   GitCommitSummary,
   GitBranchInfo,
   GitDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/git';
-export { createInitialGitState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/git';
+} from './git.js';
+export { createInitialGitState } from './git.js';
 
 export type {
   IndexStatus,
   LanguageServerRecord,
   FileWatcherStatus,
   DiscoveryDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/discovery';
-export { createInitialDiscoveryState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/discovery';
+} from './discovery.js';
+export { createInitialDiscoveryState } from './discovery.js';
 
 export type {
   IntelligenceFeatureStatus,
@@ -210,8 +210,8 @@ export type {
   WorkspaceSymbol,
   IntelligenceHoverState,
   IntelligenceDomainState,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/domains/intelligence';
-export { createInitialIntelligenceState } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/intelligence';
+} from './intelligence.js';
+export { createInitialIntelligenceState } from './intelligence.js';
 
 export type {
   RenderBudgetStatus,

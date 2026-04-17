@@ -1,7 +1,7 @@
-import { ToolError, PermissionError } from '@pellux/goodvibes-sdk/platform/types/errors';
-import type { HookEvent, HookEventPath, HookResult } from '@pellux/goodvibes-sdk/platform/hooks/types';
-import type { ToolCall, ToolResult } from '@pellux/goodvibes-sdk/platform/types/tools';
-import type { ToolRegistry } from '@pellux/goodvibes-sdk/platform/tools/registry';
+import { ToolError, PermissionError } from '../types/errors.js';
+import type { HookEvent, HookEventPath, HookResult } from '../hooks/types.js';
+import type { ToolCall, ToolResult } from '../types/tools.js';
+import type { ToolRegistry } from '../tools/registry.js';
 import type { PermissionManager } from '../permissions/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {
@@ -16,15 +16,15 @@ import {
   emitToolReceived,
   emitToolSucceeded,
 } from '../runtime/emitters/index.js';
-import { buildSyntheticResult, detectUnresolvedToolCalls, type ReconciliationReason } from '@pellux/goodvibes-sdk/platform/core/tool-reconciliation';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { buildSyntheticResult, detectUnresolvedToolCalls, type ReconciliationReason } from './tool-reconciliation.js';
+import { logger } from '../utils/logger.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { AgentManager } from '../tools/agent/index.js';
-import type { AgentInput } from '@pellux/goodvibes-sdk/platform/tools/agent/schema';
-import type { ExecutionPlan, ExecutionPlanManager, PlanItem } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
+import type { AgentInput } from '../tools/agent/schema.js';
+import type { ExecutionPlan, ExecutionPlanManager, PlanItem } from './execution-plan.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import { evaluateOrchestrationSpawn } from '../runtime/orchestration/spawn-policy.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;

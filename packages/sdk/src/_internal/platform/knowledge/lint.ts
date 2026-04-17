@@ -1,5 +1,5 @@
-import type { KnowledgeStore } from '@pellux/goodvibes-sdk/platform/knowledge/store';
-import type { KnowledgeIssueRecord, KnowledgeSourceRecord } from '@pellux/goodvibes-sdk/platform/knowledge/types';
+import type { KnowledgeStore } from './store.js';
+import type { KnowledgeIssueRecord, KnowledgeSourceRecord } from './types.js';
 import { emitKnowledgeLintCompleted } from '../runtime/emitters/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { isSourcePastRefreshWindow, LINT_NAMESPACE } from './internal.js';

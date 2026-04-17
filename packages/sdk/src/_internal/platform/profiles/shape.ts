@@ -1,5 +1,5 @@
 import { CONFIG_SCHEMA, type ConfigKey } from '../config/index.js';
-import type { ProfileData } from '@pellux/goodvibes-sdk/platform/profiles/manager';
+import type { ProfileData } from './manager.js';
 
 function setNestedValue(target: Record<string, unknown>, path: readonly string[], value: unknown): void {
   let current: Record<string, unknown> = target;

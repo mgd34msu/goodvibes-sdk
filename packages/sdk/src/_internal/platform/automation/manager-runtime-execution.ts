@@ -2,13 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { SharedSessionBroker } from '../control-plane/index.js';
 import type { SharedSessionRecord, SharedSessionSubmission } from '../control-plane/index.js';
 import type { RouteBindingManager } from '../channels/index.js';
-import type { AutomationJob } from '@pellux/goodvibes-sdk/platform/automation/jobs';
-import type { AutomationRouteBinding } from '@pellux/goodvibes-sdk/platform/automation/routes';
-import type { AutomationRun, AutomationRunContinuationMode } from '@pellux/goodvibes-sdk/platform/automation/runs';
-import type { AutomationSessionTarget } from '@pellux/goodvibes-sdk/platform/automation/session-targets';
-import type { AutomationRunTrigger } from '@pellux/goodvibes-sdk/platform/automation/types';
+import type { AutomationJob } from './jobs.js';
+import type { AutomationRouteBinding } from './routes.js';
+import type { AutomationRun, AutomationRunContinuationMode } from './runs.js';
+import type { AutomationSessionTarget } from './session-targets.js';
+import type { AutomationRunTrigger } from './types.js';
 import type { ConfigManager } from '../config/manager.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 import {
   buildAutomationExecutionIntent,
   buildAutomationExecutionContext,

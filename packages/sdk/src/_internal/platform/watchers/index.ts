@@ -1,6 +1,6 @@
 export type { RegisterWatcherInput, RegisterPollingWatcherInput, WatcherRegistryOptions } from './registry.js';
 export { WatcherRegistry } from './registry.js';
-export type { WatcherStoreSnapshot } from '@pellux/goodvibes-sdk/platform/watchers/store';
+export type { WatcherStoreSnapshot } from './store.js';
 export {
   getWatcherStorePath,
   loadWatcherSnapshot,
@@ -8,4 +8,4 @@ export {
   resolveWatcherStorePath,
   saveWatcherSnapshot,
   saveWatcherSnapshotToPath,
-} from '@pellux/goodvibes-sdk/platform/watchers/store';
+} from './store.js';

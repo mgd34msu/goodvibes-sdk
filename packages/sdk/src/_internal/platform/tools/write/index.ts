@@ -1,19 +1,19 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, copyFileSync, unlinkSync, realpathSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import type { Tool, ToolDefinition } from '@pellux/goodvibes-sdk/platform/types/tools';
-import { WRITE_SCHEMA, type WriteInput, type WriteFileInput, type WriteMode } from '@pellux/goodvibes-sdk/platform/tools/write/schema';
-import { runValidators, formatValidatorFailure, type ValidatorName } from '@pellux/goodvibes-sdk/platform/tools/shared/validators';
-import { FileStateCache } from '@pellux/goodvibes-sdk/platform/state/file-cache';
-import { ProjectIndex } from '@pellux/goodvibes-sdk/platform/state/project-index';
-import { FileUndoManager } from '@pellux/goodvibes-sdk/platform/state/file-undo';
+import type { Tool, ToolDefinition } from '../../types/tools.js';
+import { WRITE_SCHEMA, type WriteInput, type WriteFileInput, type WriteMode } from './schema.js';
+import { runValidators, formatValidatorFailure, type ValidatorName } from '../shared/validators.js';
+import { FileStateCache } from '../../state/file-cache.js';
+import { ProjectIndex } from '../../state/project-index.js';
+import { FileUndoManager } from '../../state/file-undo.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { ToolLLM } from '../../config/tool-llm.js';
 import { AutoHealer } from '../shared/auto-heal.js';
-import { isNotebookFile } from '@pellux/goodvibes-sdk/platform/utils/notebook';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { SessionChangeTracker } from '@pellux/goodvibes-sdk/platform/sessions/change-tracker';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { isNotebookFile } from '../../utils/notebook.js';
+import { logger } from '../../utils/logger.js';
+import type { SessionChangeTracker } from '../../sessions/change-tracker.js';
+import { summarizeError } from '../../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
 // Result types

@@ -1,13 +1,13 @@
-import type { Tool } from '@pellux/goodvibes-sdk/platform/types/tools';
+import type { Tool } from '../../types/tools.js';
 import type { ConfigManager } from '../../config/manager.js';
-import { AGENT_TOOL_SCHEMA } from '@pellux/goodvibes-sdk/platform/tools/agent/schema';
-import type { AgentInput } from '@pellux/goodvibes-sdk/platform/tools/agent/schema';
-import { ArchetypeLoader } from '@pellux/goodvibes-sdk/platform/agents/archetypes';
+import { AGENT_TOOL_SCHEMA } from './schema.js';
+import type { AgentInput } from './schema.js';
+import { ArchetypeLoader } from '../../agents/archetypes.js';
 import { AgentMessageBus } from '../../agents/message-bus.js';
 import type { WrfcController } from '../../agents/wrfc-controller.js';
 import { AGENT_TEMPLATES, AgentManager } from './manager.js';
 import { evaluateOrchestrationSpawn } from '../../runtime/orchestration/spawn-policy.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 export type { AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 

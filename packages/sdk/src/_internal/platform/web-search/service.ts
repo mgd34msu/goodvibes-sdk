@@ -1,5 +1,5 @@
 import { FetchRuntimeService, type FetchRuntimeDeps } from '../tools/fetch/index.js';
-import type { FetchExtractMode } from '@pellux/goodvibes-sdk/platform/tools/fetch/schema';
+import type { FetchExtractMode } from '../tools/fetch/schema.js';
 import { WebSearchProviderRegistry } from './provider-registry.js';
 import type {
   WebSearchEvidence,
@@ -8,7 +8,7 @@ import type {
   WebSearchResponse,
   WebSearchResult,
   WebSearchVerbosity,
-} from '@pellux/goodvibes-sdk/platform/web-search/types';
+} from './types.js';
 
 export interface WebSearchServiceStatus {
   readonly enabled: boolean;

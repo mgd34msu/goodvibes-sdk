@@ -10,12 +10,12 @@ import { AmazonBedrockMantleProvider } from './amazon-bedrock-mantle.js';
 import { AnthropicVertexProvider } from './anthropic-vertex.js';
 import { GitHubCopilotProvider } from './github-copilot.js';
 import { BUILTIN_COMPAT_PROVIDERS, type BuiltinCompatDefinition } from './builtin-catalog.js';
-import { normalizeFoundryEndpoint } from '@pellux/goodvibes-sdk/platform/providers/microsoft-foundry-shared';
+import { normalizeFoundryEndpoint } from './microsoft-foundry-shared.js';
 import { SyntheticProvider } from './synthetic.js';
-import type { BenchmarkEntry } from '@pellux/goodvibes-sdk/platform/providers/model-benchmarks';
+import type { BenchmarkEntry } from './model-benchmarks.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { CanonicalModel } from './synthetic.js';
-import type { SubscriptionManager } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
+import type { SubscriptionManager } from '../config/subscriptions.js';
 
 export interface ProviderRegistrar {
   register(provider: LLMProvider): void;

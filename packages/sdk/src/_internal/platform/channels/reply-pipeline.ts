@@ -7,7 +7,7 @@ import type {
   ChannelRenderResult,
   ChannelReasoningVisibility,
   ChannelSurface,
-} from '@pellux/goodvibes-sdk/platform/channels/types';
+} from './types.js';
 import type { ChannelPluginRegistry } from './plugin-registry.js';
 import type { RouteBindingManager } from './route-manager.js';
 

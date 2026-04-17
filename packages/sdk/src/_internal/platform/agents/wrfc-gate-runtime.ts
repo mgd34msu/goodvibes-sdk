@@ -1,12 +1,12 @@
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type { QualityGateResult } from './wrfc-types.js';
 import {
   executeGateCommand,
   getSkippedGateReason,
   loadPackageScripts,
-} from '@pellux/goodvibes-sdk/platform/agents/wrfc-gates';
+} from './wrfc-gates.js';
 import { getEnabledWrfcGates } from './wrfc-config.js';
 import { emitWrfcGateResult } from './wrfc-runtime-events.js';
 

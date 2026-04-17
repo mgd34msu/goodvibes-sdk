@@ -8,7 +8,7 @@
  * 4. Return a resolved PluginCapabilityManifest
  */
 
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../../utils/logger.js';
 import {
   ALL_CAPABILITIES,
   HIGH_RISK_CAPABILITIES,

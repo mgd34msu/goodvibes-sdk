@@ -7,14 +7,14 @@ import type {
   ChannelActorAuthorizationRequest,
   ChannelActorAuthorizationResult,
   ChannelSurface,
-} from '@pellux/goodvibes-sdk/platform/channels/types';
+} from '../types.js';
 import type { BuiltinChannelRuntimeDeps } from './shared.js';
 import {
   readDirectoryScope,
   readSecretScope,
   readString,
   readStringList,
-} from '@pellux/goodvibes-sdk/platform/channels/builtin/parsing';
+} from './parsing.js';
 import {
   asProviderRuntimeSurface,
   isManagedSurface,

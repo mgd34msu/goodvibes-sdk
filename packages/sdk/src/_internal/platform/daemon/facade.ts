@@ -1,11 +1,11 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import { jsonErrorResponse } from '@pellux/goodvibes-sdk/platform/daemon/http/error-response';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { logger } from '../utils/logger.js';
+import { jsonErrorResponse } from './http/error-response.js';
+import { summarizeError } from '../utils/error-display.js';
 import { AgentManager } from '../tools/agent/index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
-import type { UserAuthManager } from '@pellux/goodvibes-sdk/platform/security/user-auth';
+import type { UserAuthManager } from '../security/user-auth.js';
 import type {
   AutomationDeliveryManager,
   AutomationManager,

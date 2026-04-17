@@ -1,6 +1,6 @@
 import { getBuiltinSubscriptionProvider } from './subscription-providers.js';
-import type { SubscriptionManager } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
-import { refreshOpenAICodexToken } from '@pellux/goodvibes-sdk/platform/config/openai-codex-auth';
+import type { SubscriptionManager } from './subscriptions.js';
+import { refreshOpenAICodexToken } from './openai-codex-auth.js';
 
 export async function resolveSubscriptionAccessToken(
   provider: string,

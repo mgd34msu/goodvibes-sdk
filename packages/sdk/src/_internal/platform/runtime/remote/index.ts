@@ -13,10 +13,10 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { DurableIdentityManager } from '@pellux/goodvibes-sdk/platform/runtime/remote/identity';
-import { ReconnectEngine } from '@pellux/goodvibes-sdk/platform/runtime/remote/reconnect';
-import { RemoteStateSyncer, createNoOpSyncCallbacks } from '@pellux/goodvibes-sdk/platform/runtime/remote/sync';
-import { RemoteObservabilityProvider } from '@pellux/goodvibes-sdk/platform/runtime/remote/observability';
+import { DurableIdentityManager } from './identity.js';
+import { ReconnectEngine } from './reconnect.js';
+import { RemoteStateSyncer, createNoOpSyncCallbacks } from './sync.js';
+import { RemoteObservabilityProvider } from './observability.js';
 import type {
   RemoteSubstrateConfig,
   RemoteSession,
@@ -25,10 +25,10 @@ import type {
   DurableIdentity,
   HandshakeToken,
   ReplayConfig,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/types';
-import type { SyncStoreCallbacks } from '@pellux/goodvibes-sdk/platform/runtime/remote/sync';
-import type { TransportAdapter, ReconnectEngineCallbacks } from '@pellux/goodvibes-sdk/platform/runtime/remote/reconnect';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+} from './types.js';
+import type { SyncStoreCallbacks } from './sync.js';
+import type { TransportAdapter, ReconnectEngineCallbacks } from './reconnect.js';
+import { logger } from '../../utils/logger.js';
 
 // ── Re-exports ────────────────────────────────────────────────────────────────
 
@@ -56,31 +56,31 @@ export type {
   TransportErrorCategory,
   RetryPolicy,
   AuthProvider,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/types';
+} from './types.js';
 
 export type {
   // Identity
   IdentitySnapshot,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/identity';
+} from './identity.js';
 
 export type {
   // Reconnect
   ConnectOutcome,
   TransportAdapter,
   ReconnectEngineCallbacks,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/reconnect';
+} from './reconnect.js';
 
 export type {
   // Sync
   SyncStoreCallbacks,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/sync';
+} from './sync.js';
 
 export type {
   // Observability
   RemoteConnectionSnapshot,
   RemoteTaskSnapshot,
   RemoteObservabilitySnapshot,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/observability';
+} from './observability.js';
 
 export {
   // Transport contract
@@ -94,21 +94,21 @@ export {
   createFailureMessage,
   computeRetryDelay,
   shouldRetry,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/transport-contract';
+} from './transport-contract.js';
 
 export type {
   ControlMessageType,
   DataMessageType,
   ControlPayloads,
   DataPayloads,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/transport-contract';
+} from './transport-contract.js';
 
 export {
   CURRENT_PROTOCOL_VERSION,
   TRANSPORT_COMPATIBILITY_MATRIX,
   VersionMismatchError,
   negotiateProtocolVersion,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/transport-contract';
+} from './transport-contract.js';
 
 export type {
   ProtocolVersion,
@@ -117,43 +117,43 @@ export type {
   VersionNegotiationResult,
   NegotiatedProtocol,
   DowngradeReason,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/types';
+} from './types.js';
 
-export { DurableIdentityManager } from '@pellux/goodvibes-sdk/platform/runtime/remote/identity';
-export { ReconnectEngine, generateIdempotencyKey } from '@pellux/goodvibes-sdk/platform/runtime/remote/reconnect';
-export { RemoteStateSyncer, createNoOpSyncCallbacks, buildAcpConnectionEntry, countActiveRemoteConnections, extractRemoteTaskIds } from '@pellux/goodvibes-sdk/platform/runtime/remote/sync';
-export { RemoteObservabilityProvider } from '@pellux/goodvibes-sdk/platform/runtime/remote/observability';
+export { DurableIdentityManager } from './identity.js';
+export { ReconnectEngine, generateIdempotencyKey } from './reconnect.js';
+export { RemoteStateSyncer, createNoOpSyncCallbacks, buildAcpConnectionEntry, countActiveRemoteConnections, extractRemoteTaskIds } from './sync.js';
+export { RemoteObservabilityProvider } from './observability.js';
 export {
   deriveRemoteCapabilities,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/capabilities';
+} from './capabilities.js';
 export type {
   RemoteCapabilityId,
   RemoteCapabilitySnapshot,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/capabilities';
+} from './capabilities.js';
 export {
   deriveRemoteHeartbeat,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/heartbeat';
+} from './heartbeat.js';
 export type {
   RemoteHeartbeatSnapshot,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/heartbeat';
+} from './heartbeat.js';
 export {
   deriveRemoteNegotiation,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/negotiation';
+} from './negotiation.js';
 export type {
   RemoteNegotiationSnapshot,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/negotiation';
+} from './negotiation.js';
 export {
   deriveRemoteRecoveryActions,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/recovery';
+} from './recovery.js';
 export type {
   RemoteRecoveryAction,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/recovery';
+} from './recovery.js';
 export {
   buildRemoteSessionStateSnapshot,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/session-state';
+} from './session-state.js';
 export type {
   RemoteSessionStateSnapshot,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/session-state';
+} from './session-state.js';
 export {
   RemoteSupervisor,
 } from './supervisor.js';
@@ -182,11 +182,11 @@ export type {
   DistributedRuntimeAuditRecord,
   DistributedPeerAuth,
   DistributedNodeHostContract,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/distributed-runtime';
+} from './distributed-runtime.js';
 export {
   DistributedRuntimeManager,
   getDistributedNodeHostContract,
-} from '@pellux/goodvibes-sdk/platform/runtime/remote/distributed-runtime';
+} from './distributed-runtime.js';
 
 // ── RemoteSubstrate facade ────────────────────────────────────────────────────
 

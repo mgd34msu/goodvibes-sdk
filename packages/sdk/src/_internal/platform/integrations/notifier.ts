@@ -1,10 +1,10 @@
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/events/index.js';
-import { SlackIntegration } from '@pellux/goodvibes-sdk/platform/integrations/slack';
-import { DiscordIntegration } from '@pellux/goodvibes-sdk/platform/integrations/discord';
-import { DeliveryQueue } from '@pellux/goodvibes-sdk/platform/integrations/delivery';
-import type { DeliveryQueueConfig, IntegrationQueueStatus } from '@pellux/goodvibes-sdk/platform/integrations/delivery';
-import { snapshotQueueStatus } from '@pellux/goodvibes-sdk/platform/integrations/delivery';
+import { SlackIntegration } from './slack.js';
+import { DiscordIntegration } from './discord.js';
+import { DeliveryQueue } from './delivery.js';
+import type { DeliveryQueueConfig, IntegrationQueueStatus } from './delivery.js';
+import { snapshotQueueStatus } from './delivery.js';
 import { ServiceRegistry } from '../config/service-registry.js';
 
 // ---------------------------------------------------------------------------

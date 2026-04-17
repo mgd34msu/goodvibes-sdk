@@ -1,4 +1,4 @@
-import { MediaProviderRegistry } from '@pellux/goodvibes-sdk/platform/media/provider-registry';
+import { MediaProviderRegistry } from './provider-registry.js';
 import {
   createAnthropicImageUnderstandingProvider,
   createBuiltinImageUnderstandingProvider,
@@ -6,8 +6,8 @@ import {
   createLocalImageUnderstandingProvider,
   createOpenAIImageUnderstandingProvider,
 } from './builtin-image-understanding.js';
-import { builtinGenerationProviders } from '@pellux/goodvibes-sdk/platform/media/builtin-generation-providers';
-import type { ArtifactStore } from '@pellux/goodvibes-sdk/platform/artifacts/index';
+import { builtinGenerationProviders } from './builtin-generation-providers.js';
+import type { ArtifactStore } from '../artifacts/index.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 
 export function ensureBuiltinMediaProviders(

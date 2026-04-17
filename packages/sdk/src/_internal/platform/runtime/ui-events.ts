@@ -11,7 +11,7 @@ import type {
   TurnEvent,
   WorkflowEvent,
 } from './events/index.js';
-import { createRuntimeEventFeed, type RuntimeEventFeed } from '@pellux/goodvibes-sdk/platform/runtime/event-feeds';
+import { createRuntimeEventFeed, type RuntimeEventFeed } from './event-feeds.js';
 
 export type UiEventFeed<TEvent extends AnyRuntimeEvent> = RuntimeEventFeed<TEvent>;
 

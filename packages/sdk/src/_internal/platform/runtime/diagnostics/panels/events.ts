@@ -9,14 +9,14 @@
  */
 import type { RuntimeEventBus, EnvelopeListener } from '../../events/index.js';
 import type { AnyRuntimeEvent, RuntimeEventDomain } from '../../events/domain-map.js';
-import type { RuntimeEventEnvelope } from '@pellux/goodvibes-sdk/platform/runtime/events/envelope';
+import type { RuntimeEventEnvelope } from '../../events/envelope.js';
 import {
   type EventEntry,
   type DiagnosticFilter,
   type PanelConfig,
   DEFAULT_PANEL_CONFIG,
   appendBounded,
-} from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/types';
+} from '../types.js';
 
 /** All domains observed by the events panel. */
 const ALL_DOMAINS: readonly RuntimeEventDomain[] = [

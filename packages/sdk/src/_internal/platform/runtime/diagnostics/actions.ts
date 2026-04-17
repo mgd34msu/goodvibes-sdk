@@ -13,11 +13,11 @@
  *  - Jump to agent: navigates the UI focus to a related agent entry
  *  - Jump to tool call: navigates the UI focus to a related tool call entry
  */
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
-import type { DeterministicReplayEngine } from '@pellux/goodvibes-sdk/platform/core/deterministic-replay';
-import type { PermissionSimulator } from '@pellux/goodvibes-sdk/platform/runtime/permissions/simulation';
+import { logger } from '../../utils/logger.js';
+import type { DeterministicReplayEngine } from '../../core/deterministic-replay.js';
+import type { PermissionSimulator } from '../permissions/simulation.js';
 import type { OpsControlPlane } from '../ops/control-plane.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 
 // ── Action type union ─────────────────────────────────────────────────────────
 

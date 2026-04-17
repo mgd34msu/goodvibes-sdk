@@ -1,14 +1,14 @@
 import type { ConfigManager } from '../config/manager.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { ContentPart, LLMProvider } from '../providers/interface.js';
-import type { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/cache-strategy';
-import type { SessionLineageTracker } from '@pellux/goodvibes-sdk/platform/core/session-lineage';
-import type { IdempotencyStore } from '@pellux/goodvibes-sdk/platform/runtime/idempotency/index';
+import type { CacheHitTracker } from '../providers/cache-strategy.js';
+import type { SessionLineageTracker } from './session-lineage.js';
+import type { IdempotencyStore } from '../runtime/idempotency/index.js';
 import { estimateTokens } from './context-compaction.js';
-import type { AdaptivePlanner } from '@pellux/goodvibes-sdk/platform/core/adaptive-planner';
-import type { ExecutionPlanManager } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
-import type { SessionMemoryStore } from '@pellux/goodvibes-sdk/platform/core/session-memory';
-import type { FavoritesStore } from '@pellux/goodvibes-sdk/platform/providers/favorites';
+import type { AdaptivePlanner } from './adaptive-planner.js';
+import type { ExecutionPlanManager } from './execution-plan.js';
+import type { SessionMemoryStore } from './session-memory.js';
+import type { FavoritesStore } from '../providers/favorites.js';
 
 export type OrchestratorCoreServices = {
   configManager?: Pick<ConfigManager, 'get' | 'getCategory' | 'getWorkingDirectory'>;

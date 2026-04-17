@@ -13,7 +13,7 @@
 import type { ProviderMessage, ContentPart } from '../providers/interface.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { WrfcChain } from '../agents/wrfc-types.js';
-import type { ExecutionPlan, PlanItem } from '@pellux/goodvibes-sdk/platform/core/execution-plan';
+import type { ExecutionPlan, PlanItem } from './execution-plan.js';
 import type { CompactionSection, CompactionConfig, SessionMemory } from './compaction-types.js';
 import { estimateTokens } from './compaction-types.js';
 

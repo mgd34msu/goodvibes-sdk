@@ -10,12 +10,12 @@
  *   6. Health check → active (healthy) or degraded (unhealthy)
  */
 
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '../../utils/logger.js';
 import type { PluginLoaderDeps } from '../../plugins/loader.js';
 import type { LoadedPlugin } from '../../plugins/loader.js';
 import type { PluginHealthCheckResult, PluginManifestV2 } from './types.js';
 import type { PluginLifecycleManager } from './manager.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../../utils/error-display.js';
 
 /**
  * Options for a single plugin hot-reload operation.

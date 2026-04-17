@@ -22,10 +22,10 @@ import { dirname, isAbsolute, join, resolve } from 'path';
 import { hostname, userInfo } from 'os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import type { ConfigManager } from './manager.js';
-import { getSecretRefSource, isSecretRefInput, resolveSecretRef } from '@pellux/goodvibes-sdk/platform/config/secret-refs';
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { getSecretRefSource, isSecretRefInput, resolveSecretRef } from './secret-refs.js';
+import { logger } from '../utils/logger.js';
 import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
-import { summarizeError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { summarizeError } from '../utils/error-display.js';
 
 export type SecretStorageMode = 'plaintext_allowed' | 'preferred_secure' | 'require_secure';
 export type SecretScope = 'project' | 'user';

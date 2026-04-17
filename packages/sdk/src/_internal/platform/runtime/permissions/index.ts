@@ -7,17 +7,17 @@
  * Feature flag: `permissions-policy-engine` must be enabled to use this module in production.
  */
 
-export { LayeredPolicyEvaluator } from '@pellux/goodvibes-sdk/platform/runtime/permissions/evaluator';
-export { DecisionLog } from '@pellux/goodvibes-sdk/platform/runtime/permissions/decision-log';
-export { runSafetyChecks } from '@pellux/goodvibes-sdk/platform/runtime/permissions/safety-checks';
-export { PermissionSimulator, SimulationEnforcementError } from '@pellux/goodvibes-sdk/platform/runtime/permissions/simulation';
-export { buildDefaultPolicySimulationScenarios, runPolicySimulationScenarios } from '@pellux/goodvibes-sdk/platform/runtime/permissions/simulation-scenarios';
-export { lintPolicyConfig } from '@pellux/goodvibes-sdk/platform/runtime/permissions/lint';
+export { LayeredPolicyEvaluator } from './evaluator.js';
+export { DecisionLog } from './decision-log.js';
+export { runSafetyChecks } from './safety-checks.js';
+export { PermissionSimulator, SimulationEnforcementError } from './simulation.js';
+export { buildDefaultPolicySimulationScenarios, runPolicySimulationScenarios } from './simulation-scenarios.js';
+export { lintPolicyConfig } from './lint.js';
 export { buildPolicyPreflightReview } from './preflight.js';
 export { buildPermissionRuleSuggestions } from './rule-suggestions.js';
 // Policy signing
-export { signBundle, verifyBundle, canonicalise } from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-signer';
-export { loadPolicyBundle, createUnsignedBundle, PolicySignatureError } from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-loader';
+export { signBundle, verifyBundle, canonicalise } from './policy-signer.js';
+export { loadPolicyBundle, createUnsignedBundle, PolicySignatureError } from './policy-loader.js';
 
 export type {
   PermissionMode,
@@ -41,11 +41,11 @@ export type {
   DivergenceStats,
   DivergenceReport,
   PermissionSimulatorConfig,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/types';
+} from './types.js';
 
-export type { DecisionLogEntry, DecisionLogQuery } from '@pellux/goodvibes-sdk/platform/runtime/permissions/decision-log';
-export type { SafetyCheckResult } from '@pellux/goodvibes-sdk/platform/runtime/permissions/safety-checks';
-export type { PolicyLintFinding, PolicyLintSeverity } from '@pellux/goodvibes-sdk/platform/runtime/permissions/lint';
+export type { DecisionLogEntry, DecisionLogQuery } from './decision-log.js';
+export type { SafetyCheckResult } from './safety-checks.js';
+export type { PolicyLintFinding, PolicyLintSeverity } from './lint.js';
 export type { PermissionRuleSuggestion } from './rule-suggestions.js';
 export type {
   PolicyPreflightStatus,
@@ -57,7 +57,7 @@ export type {
   PolicySimulationScenario,
   PolicySimulationScenarioResult,
   PolicySimulationSummary,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/simulation-scenarios';
+} from './simulation-scenarios.js';
 // Policy signing
 export type {
   PolicyBundleId,
@@ -65,13 +65,13 @@ export type {
   ProvenanceSource,
   SignedPolicyBundle,
   VerifyResult,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-signer';
+} from './policy-signer.js';
 export type {
   PolicyBundlePayload,
   BundleProvenance,
   PolicyLoadResult,
   PolicyLoaderOptions,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-loader';
+} from './policy-loader.js';
 
 export {
   evaluatePrefixRule,
@@ -79,23 +79,23 @@ export {
   evaluatePathScopeRule,
   evaluateNetworkScopeRule,
   evaluateModeConstraintRule,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/rules/index';
+} from './rules/index.js';
 
 // Divergence dashboard
 export {
   DivergenceDashboard,
   DivergenceGateError,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/divergence-dashboard';
+} from './divergence-dashboard.js';
 export type {
   DivergenceTrendEntry,
   EnforceGateStatus,
   EnforceGateResult,
   DivergenceDashboardSnapshot,
   DivergenceDashboardConfig,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/divergence-dashboard';
+} from './divergence-dashboard.js';
 
 // Policy-as-Code
-export { PolicyRegistry } from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-registry';
+export { PolicyRegistry } from './policy-registry.js';
 export {
   PolicyRuntimeState,
 } from './policy-runtime.js';
@@ -106,15 +106,15 @@ export type {
   PromoteResult,
   RollbackResult,
   PolicyRegistryConfig,
-} from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-registry';
+} from './policy-registry.js';
 
 // ── Factory ──────────────────────────────────────────────────────────────────────
 
-import { LayeredPolicyEvaluator } from '@pellux/goodvibes-sdk/platform/runtime/permissions/evaluator';
-import { PermissionSimulator } from '@pellux/goodvibes-sdk/platform/runtime/permissions/simulation';
-import type { PermissionsConfig, SimulationMode, PermissionSimulatorConfig } from '@pellux/goodvibes-sdk/platform/runtime/permissions/types';
-import type { FeatureFlagManager } from '@pellux/goodvibes-sdk/platform/runtime/feature-flags/manager';
-import type { BundleProvenance } from '@pellux/goodvibes-sdk/platform/runtime/permissions/policy-loader';
+import { LayeredPolicyEvaluator } from './evaluator.js';
+import { PermissionSimulator } from './simulation.js';
+import type { PermissionsConfig, SimulationMode, PermissionSimulatorConfig } from './types.js';
+import type { FeatureFlagManager } from '../feature-flags/manager.js';
+import type { BundleProvenance } from './policy-loader.js';
 
 /**
  * createPermissionEvaluator — Factory function for the runtime permission evaluator.

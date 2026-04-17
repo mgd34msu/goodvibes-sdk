@@ -1,6 +1,6 @@
-import type { RuntimeTask } from '@pellux/goodvibes-sdk/platform/runtime/store/domains/tasks';
+import type { RuntimeTask } from './store/domains/tasks.js';
 import type { UiTasksSnapshot } from './ui-read-models.js';
-import type { TaskCreateParams, TaskFailParams, TaskUpdateParams } from '@pellux/goodvibes-sdk/platform/runtime/tasks/types';
+import type { TaskCreateParams, TaskFailParams, TaskUpdateParams } from './tasks/types.js';
 
 export interface OpsTaskApi {
   snapshot(): UiTasksSnapshot;
