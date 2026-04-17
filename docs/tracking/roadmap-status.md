@@ -1,8 +1,8 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.18.51
-**Current score**: 7.0 / 10
+**Current version**: 0.19.0
+**Current score**: 8.3 / 10
 **Last updated**: 2026-04-17
 
 ---
@@ -11,9 +11,9 @@
 
 | Wave | Name | Target | Status | Score effect | Shipped in | Notes |
 |------|------|--------|--------|--------------|------------|-------|
-| S-α | Stabilize the public surface | 0.19.0 | **in-progress** | 7.0 → 7.5 | — | TUI F-arch-04 blocker |
+| S-α | Stabilize the public surface | 0.19.0 | **shipped** | 7.0 → 7.5 | 0.19.0 `d5e2f04` | TUI F-arch-04 now unblocked |
 | S-β | Error taxonomy enforcement | 0.19.1 | not-started | 7.5 → 8.0 | — | Depends on S-α |
-| S-γ | Mirror-drift guard | 0.19.0 | **shipped (unreleased)** | 8.0 → 8.3 | commit `2ed2853` | Held for 0.19.0 cut alongside S-α. Follow-up WRFC needed to run `bun run sync` for the 8 tracked drifts. |
+| S-γ | Mirror-drift guard | 0.19.0 | **shipped** | 8.0 → 8.3 | 0.19.0 `d5e2f04` (S-γ scripts from `2ed2853`) | Follow-up WRFC needed to run `bun run sync` for 8 tracked drifts before CI goes green on main. |
 | S-δ | Per-release migration notes | 0.19.2 | not-started | 8.3 → 8.5 | — | Parallel with S-γ |
 | S-ε | Multi-platform test matrix | 0.19.3 | not-started | 8.5 → 8.8 | — | Parallel after S-α |
 | S-ζ | Integration + property tests | 0.19.4 | not-started | 8.8 → 9.2 | — | Depends on S-α + S-β |
@@ -42,6 +42,14 @@ Smallest combination that moves the score needle (7.0 → 8.3 when both land) an
 Initial review 8.8/10 (three Minors + a "pre-existing" phrasing violation), fix pass 10.0/10. Landed under commit `2ed2853` without a version bump. Key decision: held release until S-α also lands, both ship together as 0.19.0.
 
 Reviewer recommendation: spawn a follow-up WRFC **after** 0.19.0 cut to run `bun run sync` and commit the 8 regenerated mirror files (7 legacy-banner + `sse-stream.ts` content drift). Until that follow-up lands, the `mirror-drift` CI job will red-X every PR — the drift-cleanup is the gating task before CI goes green on main.
+
+### 2026-04-17 — S-α landed, 0.19.0 released, score 7.0 → 8.3
+
+Initial review 9.4/10 (circular `_internal` self-imports through the public `platform/*` barrier, planning-ID in a TODO, and the banned "pre-existing" phrasing). Fix pass 10.0/10 after rewriting 1,496 self-imports across 358 `_internal/**` files to relative `.js`-suffixed paths and cleaning the TODO.
+
+**Important recovery**: the fix engineer's `git checkout` revert of a first-pass bad import rewrite accidentally wiped the `packages/sdk/package.json` exports-map change. The orchestrator caught this pre-commit and re-applied the change manually before cutting 0.19.0; otherwise the whole S-α intent (close the `_internal` leak) would have shipped as a no-op. Lesson for future waves: engineers who revert working trees must re-verify the full S-α invariant in their completion report, not just their specific section.
+
+Bundled S-γ into the same 0.19.0 cut (S-γ's 3 scripts were already committed at `2ed2853`; the release is `d5e2f04`). TUI's F-arch-04 is now unblocked; the mirror-drift CI job is armed and will fail on main until the drift-cleanup follow-up WRFC runs `bun run sync`.
 
 ---
 
