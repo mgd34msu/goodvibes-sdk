@@ -1,9 +1,16 @@
 /**
- * OAuthClient — Focused responsibility: OAuth 2.0 / PKCE flows.
+ * OAuthClient — OAuth flows for **daemon authentication**.
  *
- * Wraps the pure functions in `oauth-core.ts` behind a class boundary so
- * callers can inject config once and call methods, rather than threading
- * `OAuthProviderConfig` through every call.
+ * Wraps the pure PKCE/OAuth 2.0 functions in `oauth-core.ts` behind a class
+ * boundary so callers can inject config once and call methods, rather than
+ * threading `OAuthProviderConfig` through every call.
+ *
+ * This client handles authentication between the SDK and the goodvibes daemon.
+ * For OAuth flows that subscribe to external AI providers (OpenAI, Anthropic,
+ * etc.), see {@link SubscriptionManager} in
+ * `../config/subscriptions.ts`.
+ *
+ * @see SubscriptionManager — OAuth flows for provider subscriptions.
  */
 
 import type { OAuthProviderConfig } from '../config/subscriptions.js';

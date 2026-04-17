@@ -200,6 +200,7 @@ export function createHttpStatusError(
   url: string,
   method: string,
   body: unknown,
+  fallbackHint?: string,
 ): HttpStatusError {
   if (isStructuredDaemonErrorBody(body)) {
     return new HttpStatusError(body.error, {
@@ -211,7 +212,7 @@ export function createHttpStatusError(
       url,
       method,
       body,
-      hint: body.hint,
+      hint: body.hint ?? fallbackHint,
       provider: body.provider,
       operation: body.operation,
       phase: body.phase,
@@ -231,5 +232,6 @@ export function createHttpStatusError(
     url,
     method,
     body,
+    hint: fallbackHint,
   });
 }

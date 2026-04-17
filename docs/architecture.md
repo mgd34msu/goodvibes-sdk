@@ -399,6 +399,14 @@ Four built-in strategies:
 
 ---
 
+---
+
+## Platform Layer Map
+
+For a directory-by-directory breakdown of every subdirectory under `packages/sdk/src/_internal/platform/` — including one-line purpose descriptions, dependency hints, the sync-from-packages pattern, and extraction candidates — see [architecture-platform.md](./architecture-platform.md).
+
+---
+
 ## Pairing System
 
 **Source:** `packages/sdk/src/_internal/platform/pairing/`

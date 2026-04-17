@@ -2,7 +2,14 @@
 // Extracted from legacy source: src/runtime/transports/runtime-events-client.ts
 import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../contracts/index.js';
 import type { AnyRuntimeEvent } from '../platform/runtime/events/index.js';
-import { normalizeAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '../transport-http/index.js';
+import {
+  normalizeAuthToken,
+  type AuthTokenResolver,
+  type StreamReconnectPolicy,
+  openRawServerSentEventStream as openServerSentEventStream,
+  normalizeStreamReconnectPolicy,
+  getStreamReconnectDelay,
+} from '../transport-http/index.js';
 import { buildUrl, normalizeBaseUrl } from '../transport-http/index.js';
 import {
   createRemoteDomainEvents,
@@ -53,6 +60,12 @@ export interface RuntimeEventConnectorOptions {
 }
 
 type AuthTokenSource = string | null | undefined | AuthTokenResolver;
+
+/** Default max reconnect attempts for WebSocket connections (finite to prevent infinite auth loops). */
+export const DEFAULT_WS_MAX_ATTEMPTS = 10;
+
+/** Maximum number of messages that may be queued in outboundQueue pending a producer API. */
+const MAX_OUTBOUND_QUEUE = 256;
 
 export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
   connect: DomainEventConnector<RuntimeEventDomain, TEvent>,
@@ -119,10 +132,20 @@ export function createWebSocketConnector(
     const url = buildWebSocketUrl(baseUrl, [domain]);
     const reconnect = options.reconnect;
     const enabled = reconnect?.enabled ?? false;
+    // Normalize reconnect policy, defaulting maxAttempts to a finite value to prevent
+    // infinite auth-failure loops. Callers can opt-in to a higher limit explicitly.
+    const reconnectPolicy = normalizeStreamReconnectPolicy({
+      ...reconnect,
+      maxAttempts: reconnect?.maxAttempts ?? DEFAULT_WS_MAX_ATTEMPTS,
+    });
     let stopped = false;
     let reconnectAttempt = 0;
+    let hasReceivedMessage = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    // TODO: producer API not yet wired. When added, bound queue size via
+    // MAX_OUTBOUND_QUEUE (see below) and drop oldest or reject with onError.
+    const outboundQueue: string[] = [];
 
     const closeSocket = () => {
       if (!socket) return;
@@ -137,34 +160,44 @@ export function createWebSocketConnector(
     const scheduleReconnect = () => {
       if (!enabled || stopped) return;
       const nextAttempt = reconnectAttempt + 1;
-      const maxAttempts = reconnect?.maxAttempts ?? Number.POSITIVE_INFINITY;
-      if (nextAttempt >= maxAttempts) return;
+      if (nextAttempt >= reconnectPolicy.maxAttempts) return;
       reconnectAttempt = nextAttempt;
-      const baseDelayMs = reconnect?.baseDelayMs ?? 500;
-      const maxDelayMs = reconnect?.maxDelayMs ?? 5_000;
-      const backoffFactor = reconnect?.backoffFactor ?? 2;
-      const delayMs = Math.min(maxDelayMs, Math.floor(baseDelayMs * (backoffFactor ** Math.max(0, nextAttempt - 1))));
+      // Use shared backoff helper so WS and SSE are on identical schedule.
+      const delayMs = getStreamReconnectDelay(nextAttempt, reconnectPolicy);
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         void connect();
       }, delayMs);
     };
 
+    const flushOutboundQueue = (ws: WebSocket) => {
+      while (outboundQueue.length > 0) {
+        ws.send(outboundQueue.shift()!);
+      }
+    };
+
     const onOpen = async () => {
-      reconnectAttempt = 0;
       const authToken = (await normalizeAuthToken(token ?? undefined)()) ?? null;
       if (!authToken || !socket) return;
+      // Send auth frame first, then drain any messages buffered during resolution.
       socket.send(JSON.stringify({
         type: 'auth',
         token: authToken,
         domains: [domain],
       }));
+      flushOutboundQueue(socket);
     };
 
     const onMessage = (event: MessageEvent<string>) => {
       try {
         const frame = JSON.parse(event.data) as { type?: string; event?: string; payload?: unknown };
         if (frame.type === 'event' && frame.event === domain && frame.payload && typeof frame.payload === 'object') {
+          // Reset reconnect counter on first successful message — transient mid-session
+          // failures should not compound with failures from the initial connection phase.
+          if (!hasReceivedMessage) {
+            hasReceivedMessage = true;
+            reconnectAttempt = 0;
+          }
           onEnvelope(frame.payload as SerializedRuntimeEnvelope<AnyRuntimeEvent>);
         }
       } catch {
@@ -173,6 +206,7 @@ export function createWebSocketConnector(
     };
 
     const onClose = () => {
+      hasReceivedMessage = false;
       closeSocket();
       scheduleReconnect();
     };

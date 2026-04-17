@@ -1,5 +1,6 @@
 // Synced from packages/transport-http/src/http-core.ts
 // Extracted from legacy source: src/runtime/transports/http-json-transport.ts
+import { ConfigurationError, ContractError, HttpStatusError, createHttpStatusError } from '../errors/index.js';
 import { sleepWithSignal } from './backoff.js';
 import { mergeHeaders, normalizeAuthToken, resolveAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';
 import {
@@ -72,10 +73,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
 function applyHeaderSource(
   target: Record<string, string>,
   source: HeadersInit | undefined,
@@ -108,64 +105,81 @@ function mergeHeaderRecord(...sources: Array<HeadersInit | undefined>): Record<s
   return merged;
 }
 
-function readErrorMessage(status: number, url: string, body: unknown): string {
-  if (isRecord(body) && typeof body.error === 'string' && body.error.trim()) {
-    return body.error.trim();
+function inferTransportHint(
+  status: number,
+  url: string,
+  retryAfterMs?: number,
+): string | undefined {
+  if (status === 0) return `Transport could not reach ${url}. Verify the baseUrl is reachable.`;
+  if (status === 401) return 'Check your authentication token or credentials.';
+  if (status === 403) return 'Valid credentials but insufficient permissions for this operation.';
+  if (status === 404) return 'The requested resource was not found.';
+  if (status === 408) return 'The request timed out. Consider retrying.';
+  if (status === 429) {
+    return retryAfterMs !== undefined
+      ? `Rate limit exceeded. Retry after ${retryAfterMs}ms.`
+      : 'Rate limit exceeded. Back off and retry.';
   }
-  if (typeof body === 'string' && body.trim()) {
-    return body.trim();
-  }
-  return `Transport request failed with status ${status} for ${url}`;
+  if (status >= 500) return 'Remote server error. The service may be temporarily unavailable.';
+  return undefined;
 }
 
-function createTransportError(
+export function createTransportError(
   status: number,
   url: string,
   method: string,
   body: unknown,
   retryAfterMs?: number,
-): Error & { readonly transport: TransportJsonError } {
-  return Object.assign(new Error(readErrorMessage(status, url, body)), {
-    transport: {
-      status,
-      body,
-      url,
-      method,
-      ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
-    },
+): HttpStatusError & { readonly transport: TransportJsonError } {
+  const inferred = inferTransportHint(status, url, retryAfterMs);
+  const baseError = createHttpStatusError(status, url, method, body, inferred);
+  const transportPayload: TransportJsonError = {
+    status,
+    body,
+    url,
+    method,
+    ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+  };
+  return Object.assign(baseError, {
+    transport: transportPayload,
+    ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
   });
 }
 
-/**
- * Creates a transport error representing a network-level failure (no HTTP response received).
- *
- * Note: `Error.cause` (set via `Object.assign`) is the authoritative standard-compliant
- * cause field. The inner `transport.cause` mirrors it for callers that inspect the raw
- * transport payload — treat `Error.cause` as the source of truth.
- */
-function createNetworkTransportError(
+export function createNetworkTransportError(
   error: unknown,
   url: string,
   method: string,
-): Error & { readonly transport: TransportJsonError } {
+): HttpStatusError & { readonly transport: TransportJsonError } {
   const message = error instanceof Error && error.message.trim()
     ? error.message.trim()
     : `Transport request failed before receiving a response for ${url}`;
-  return Object.assign(new Error(message), {
-    cause: error,
-    transport: {
-      status: 0,
-      body: { error: message },
-      url,
-      method,
-      cause: error,
-    },
+  const hint = `Transport could not reach ${url}. Verify the baseUrl is reachable.`;
+  const networkError = new HttpStatusError(message, {
+    category: 'network',
+    source: 'transport',
+    recoverable: true,
+    url,
+    method,
+    body: { error: message },
+    hint,
   });
+  if (error !== undefined) {
+    Object.defineProperty(networkError, 'cause', { value: error, writable: true, configurable: true });
+  }
+  const transportPayload: TransportJsonError = {
+    status: 0,
+    body: { error: message },
+    url,
+    method,
+    cause: error,
+  };
+  return Object.assign(networkError, { transport: transportPayload });
 }
 
 function toStringValue(value: unknown, key: string): string {
   if (value === undefined || value === null) {
-    throw new Error(`Missing required path parameter "${key}"`);
+    throw new ContractError(`Missing required path parameter "${key}"`);
   }
   return String(value);
 }
@@ -229,7 +243,7 @@ export const createJsonInit = createJsonRequestInit;
 export function createFetch(fetchImpl?: typeof fetch, fallbackFetch?: typeof fetch): typeof fetch {
   const resolved = fetchImpl ?? fallbackFetch ?? globalThis.fetch;
   if (typeof resolved !== 'function') {
-    throw new Error('Fetch implementation is required');
+    throw new ConfigurationError('Fetch implementation is required');
   }
   return resolved.bind(globalThis);
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { ContractError, HttpStatusError } from '../packages/errors/dist/index.js';
+import { ContractError, GoodVibesSdkError, HttpStatusError } from '../packages/errors/dist/index.js';
 import { createHttpTransport, openServerSentEventStream } from '../packages/transport-http/dist/index.js';
+import { createTransportError, createNetworkTransportError } from '../packages/transport-http/src/http-core.js';
 
 function createFetchStub(factory: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): typeof fetch {
   return factory as unknown as typeof fetch;
@@ -31,6 +32,59 @@ function createSseResponse(chunks: readonly string[], status = 200): Response {
     },
   });
 }
+
+describe('transport-http structured throws', () => {
+  test('createTransportError(404) returns HttpStatusError instance with kind not-found', () => {
+    const err = createTransportError(404, 'http://example.com/api', 'GET', { error: 'not found' });
+    expect(err).toBeInstanceOf(HttpStatusError);
+    expect(err.kind).toBe('not-found');
+    expect(err.status).toBe(404);
+    expect(err.category).toBe('not_found');
+    expect(err.source).toBe('transport');
+    expect(err.transport.status).toBe(404);
+    expect(err.transport.url).toBe('http://example.com/api');
+    expect(err.transport.method).toBe('GET');
+  });
+
+  test('createTransportError(429) carries retryAfterMs in both error and transport payload', () => {
+    const err = createTransportError(429, 'http://example.com/api', 'GET', { error: 'rate limited' }, 5000);
+    expect(err).toBeInstanceOf(HttpStatusError);
+    expect(err.kind).toBe('rate-limit');
+    expect(err.retryAfterMs).toBe(5000);
+    expect(err.transport.retryAfterMs).toBe(5000);
+  });
+
+  test('createNetworkTransportError returns HttpStatusError with kind network and cause preserved', () => {
+    const cause = new TypeError('fetch failed');
+    const err = createNetworkTransportError(cause, 'http://example.com/api', 'GET');
+    expect(err).toBeInstanceOf(HttpStatusError);
+    expect(err.kind).toBe('network');
+    expect(err.category).toBe('network');
+    expect(err.source).toBe('transport');
+    expect(err.recoverable).toBe(true);
+    expect((err as unknown as { cause: unknown }).cause).toBe(cause);
+    expect(err.transport.status).toBe(0);
+    expect(err.transport.cause).toBe(cause);
+  });
+
+  test('createStreamError via SSE stream produces GoodVibesSdkError with kind network', async () => {
+    const transport = createHttpTransport({
+      baseUrl: 'http://127.0.0.1:3210',
+      fetch: async () => new Response('service unavailable', { status: 503 }),
+    });
+    let caught: unknown;
+    try {
+      await openServerSentEventStream(transport, '/api/stream', {});
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(GoodVibesSdkError);
+    const err = caught as GoodVibesSdkError;
+    expect(err.kind).toBe('network');
+    expect(err.category).toBe('network');
+    expect(err.source).toBe('transport');
+  });
+});
 
 describe('transport-http', () => {
   test('normalizes failed JSON requests into structured HTTP errors', async () => {

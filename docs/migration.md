@@ -503,3 +503,229 @@ Consumers that already pass the right shape to their provider do not need to ado
 ### Automated migration
 
 None required. Existing token-resolution code continues to work. Adopting `normalizeAuthToken()` is a voluntary refactor.
+
+---
+
+## Orchestrator options-object constructor (0.18.50) {#orchestrator-options-object-constructor-01850}
+
+### Why this changed
+
+`Orchestrator` previously took 11 positional arguments. Adding a twelfth required a positional-breaking change; all callsites had to be updated in lockstep; and optional arguments could not be given sensible defaults without the caller omitting trailing undefineds. An options object solves all three problems: new optional fields are zero-migration, defaults live in one place, and named fields make each argument self-documenting.
+
+### Before
+
+```ts
+new Orchestrator(
+  conversation,
+  getViewportHeight,
+  scrollToEnd,
+  toolRegistry,
+  permissionManager,
+  getSystemPrompt,
+  hookDispatcher,
+  flagManager,
+  requestRender,
+  runtimeBus,
+  services
+);
+```
+
+### After
+
+```ts
+new Orchestrator({
+  // Required
+  conversation,
+  getViewportHeight,
+  scrollToEnd,
+  toolRegistry,
+  permissionManager,
+  services,
+  // Optional — sensible defaults apply if omitted
+  getSystemPrompt,
+  hookDispatcher,
+  flagManager,
+  requestRender,
+  runtimeBus,
+});
+```
+
+### Automated migration
+
+No automated migration. TypeScript will produce a compile error at every `new Orchestrator(arg1, arg2, ...)` call site because the signature changed. Work through each call site and convert to the options-object form. The field names are identical to the old positional names — the transformation is mechanical.
+
+---
+
+## SDKErrorKind tagged union (0.18.50) {#sdkerrorkind-tagged-union-01850}
+
+### Why this changed
+
+Previous error handling required catching and `instanceof`-checking concrete subclasses (`HttpStatusError`, `ConfigurationError`, `ContractError`). This pattern requires importing the subclass type and breaks down for errors thrown by new code paths that callers have not anticipated. A `kind` discriminant on the base class lets callers branch by category without knowing the concrete subclass.
+
+### Before
+
+```ts
+try {
+  await client.getSession(id);
+} catch (err) {
+  if (err instanceof HttpStatusError && err.statusCode === 404) {
+    // handle not-found
+  } else if (err instanceof HttpStatusError && err.statusCode >= 500) {
+    // handle server error
+  }
+}
+```
+
+### After
+
+```ts
+try {
+  await client.getSession(id);
+} catch (err) {
+  if (err instanceof GoodVibesSdkError) {
+    switch (err.kind) {
+      case 'not-found':  handleNotFound();  break;
+      case 'server':     handleServer();    break;
+      case 'network':    handleNetwork();   break;
+      case 'auth':       handleAuth();      break;
+      case 'rate-limit': handleRateLimit(); break;
+    }
+  }
+}
+```
+
+`SDKErrorKind` values: `auth | config | contract | network | not-found | rate-limit | server | validation | unknown`.
+
+Existing `instanceof HttpStatusError` / `instanceof ConfigurationError` / `instanceof ContractError` checks remain valid — those subclasses are preserved as deprecated aliases.
+
+### Automated migration
+
+No automated migration. Existing `instanceof` chains continue to work. The `kind` discriminant is an additive improvement; adopt it where it simplifies error-handling code.
+
+---
+
+## Auth client split (0.18.50) {#auth-client-split-01850}
+
+### Why this changed
+
+`GoodVibesAuthClient` had grown to own token persistence, session lifecycle, PKCE OAuth flows, and permission checks — four unrelated responsibilities in one class. Splitting into focused classes makes each testable in isolation and makes the dependency surface of each consumer explicit.
+
+### Split classes
+
+| Class | Responsibility | Import path |
+|---|---|---|
+| `TokenStore` | Token persistence (`hasToken`, `getToken`, `setToken`, `clearToken`) | `platform/auth/token-store` |
+| `SessionManager` | Login lifecycle, persist-on-login semantics | `platform/auth/session-manager` |
+| `OAuthClient` | PKCE flow, code exchange, token refresh, JWT decode | `platform/auth/oauth-client` |
+| `PermissionResolver` | Role and scope checks over `ControlPlaneAuthSnapshot` | `platform/auth/permission-resolver` |
+
+### Before
+
+```ts
+import { GoodVibesAuthClient } from '@pellux/goodvibes-sdk/platform/auth';
+
+// Monolithic client
+const auth = new GoodVibesAuthClient(config);
+const token = await auth.getToken();
+await auth.login(credentials);
+const hasScope = auth.hasScope('admin');
+```
+
+### After
+
+```ts
+import { GoodVibesAuthClient } from '@pellux/goodvibes-sdk/platform/auth'; // facade still works
+
+// Or use focused classes directly:
+import { TokenStore } from '@pellux/goodvibes-sdk/platform/auth/token-store';
+import { PermissionResolver } from '@pellux/goodvibes-sdk/platform/auth/permission-resolver';
+
+const store = new TokenStore(config);
+const resolver = new PermissionResolver(snapshot);
+```
+
+### Automated migration
+
+None required. `GoodVibesAuthClient` remains the thin facade over the split classes. The aggregated token methods (`getToken`/`setToken`/`clearToken`) on the facade are now `@deprecated` but functional. Prefer the focused classes for new code.
+
+---
+
+## Async cascade: beginAuthorization, beginOpenAICodexLogin, beginOAuthLogin (0.18.51) {#async-cascade-01851}
+
+### Why this changed
+
+These three functions previously generated a PKCE code verifier using `Math.random()`, which is not cryptographically secure. The 0.18.51 Web Crypto migration switches to `globalThis.crypto.getRandomValues()`, which is `async` in some environments (notably React Native Hermes). All three functions therefore became `async` to accommodate the async crypto call.
+
+### Functions affected
+
+| Function | Owner |
+|---|---|
+| `OAuthClient.beginAuthorization(params)` | `platform/auth/oauth-client` |
+| `beginOpenAICodexLogin(...)` | `platform/config/openai-codex-auth` |
+| `SubscriptionManager.beginOAuthLogin(...)` | `platform/config/subscriptions` |
+
+### Before
+
+```ts
+// All three were synchronous
+const { authorizationUrl } = client.beginAuthorization(params);
+const { url, state } = beginOpenAICodexLogin(config);
+const loginUrl = manager.beginOAuthLogin();
+```
+
+### After
+
+```ts
+// All three are now async — must be awaited
+const { authorizationUrl } = await client.beginAuthorization(params);
+const { url, state } = await beginOpenAICodexLogin(config);
+const loginUrl = await manager.beginOAuthLogin();
+```
+
+### Impact
+
+Callers that do not `await` receive a `Promise<OAuthStartState>` instead of an `OAuthStartState`. TypeScript surfaces this as a type error when the return value is used. Non-awaited call sites that discard the return value will compile silently but will not open the authorization URL at runtime — a silent no-op.
+
+### Automated migration
+
+No automated migration. TypeScript will surface type errors at any call site that uses the return value without `await`. Scan for `beginAuthorization`, `beginOpenAICodexLogin`, and `beginOAuthLogin` and add `await`. Each caller must be in an `async` function (or top-level `await` context) — propagate `async` up the call stack as needed.
+
+---
+
+## OAuthClient moved to /oauth subpath (0.18.51) {#oauthclient-subpath-01851}
+
+### Why this changed
+
+The 0.18.50 auth barrel split placed `OAuthClient` in the main `platform/auth` barrel. The 0.18.51 RN bundling fix determined that this caused React Native bundlers to pull in Node-only crypto code through the barrel. Moving `OAuthClient` to its own `/oauth` subpath lets RN bundlers tree-shake the auth barrel without encountering the PKCE crypto path.
+
+### Before
+
+```ts
+import { OAuthClient } from '@pellux/goodvibes-sdk/auth';
+```
+
+### After
+
+```ts
+import { OAuthClient } from '@pellux/goodvibes-sdk/oauth';
+```
+
+### Automated migration
+
+No automated migration. Update all import sites that reference `OAuthClient` from the `/auth` subpath to use `/oauth` instead. The main `/auth` barrel no longer re-exports `OAuthClient`.
+
+---
+
+## Node.js minimum version raised to 19 (0.18.51) {#node-minimum-version-01851}
+
+### Why this changed
+
+Node 18 reached EOL in April 2025. The Web Crypto migration in 0.18.51 relies on `globalThis.crypto` being available natively, which requires Node 19+. The `engines` field in `packages/sdk/package.json` now declares `"node": ">=19"`.
+
+### Action required
+
+Update your CI and production environments to Node 20 LTS or 22 LTS if you are currently running Node 18. No code changes are needed — this is an environment-level requirement.
+
+### Automated migration
+
+None. Update your `.nvmrc`, `.node-version`, CI job images, and container base images as appropriate.

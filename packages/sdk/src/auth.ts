@@ -5,17 +5,19 @@ import type {
 } from './_internal/contracts/index.js';
 import type { AuthTokenResolver } from './_internal/transport-http/index.js';
 import type { OperatorSdk } from './_internal/operator/index.js';
+import {
+  PermissionResolver,
+  SessionManager,
+  TokenStore,
+} from './_internal/platform/auth/index.js';
+import type { ControlPlaneAuthSnapshot } from './_internal/platform/control-plane/auth-snapshot.js';
 
 // Re-export focused responsibility classes for consumers who prefer
 // narrower, single-concern APIs over the combined GoodVibesAuthClient facade.
 // NOTE: OAuthClient is intentionally NOT re-exported here. It depends on
 // node:crypto and is not safe in React Native / browser bundles.
 // Use @pellux/goodvibes-sdk/oauth for Node.js consumers who need OAuthClient.
-export {
-  PermissionResolver,
-  SessionManager,
-  TokenStore,
-} from './_internal/platform/auth/index.js';
+export { PermissionResolver, SessionManager, TokenStore } from './_internal/platform/auth/index.js';
 export type { OAuthStartState, OAuthTokenPayload } from './_internal/platform/auth/oauth-types.js';
 
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
@@ -42,33 +44,34 @@ export interface GoodVibesAuthLoginOptions {
  *
  * This interface aggregates token storage and session management behind a
  * single object for convenience. For focused single-responsibility access,
- * use the split classes exported from this module:
- * - Token persistence: `TokenStore`
- * - Login / session lifecycle: `SessionManager`
- * - OAuth 2.0 flows: `OAuthClient`
- * - Role / scope checks: `PermissionResolver`
+ * use the split classes exposed as readonly getters on this object:
+ * - `sdk.auth.tokenStore` — Token persistence (`TokenStore`)
+ * - `sdk.auth.sessionManager` — Login / session lifecycle (`SessionManager`)
+ * - `sdk.auth.permissionResolver(snapshot)` — Role / scope checks (`PermissionResolver`)
+ * - OAuth 2.0 flows: import `OAuthClient` from `@pellux/goodvibes-sdk/oauth` (Node only)
  */
 export interface GoodVibesAuthClient {
   readonly writable: boolean;
+  /** The underlying `TokenStore`, or null when using a read-only `getAuthToken` resolver. */
+  readonly tokenStore: TokenStore | null;
+  /** The underlying `SessionManager`, which owns login and current-auth delegation. */
+  readonly sessionManager: SessionManager;
+  /**
+   * Build a `PermissionResolver` from a live auth snapshot.
+   *
+   * @example
+   * const snap = await sdk.auth.current();
+   * const perm = sdk.auth.permissionResolver(snap);
+   * if (perm.hasRole('admin')) { ... }
+   */
+  permissionResolver(snapshot: GoodVibesCurrentAuth): PermissionResolver;
   current(): Promise<GoodVibesCurrentAuth>;
   login(input: GoodVibesLoginInput, options?: GoodVibesAuthLoginOptions): Promise<GoodVibesLoginOutput>;
-  /**
-   * @deprecated Prefer `TokenStore.getToken()` for direct token access.
-   * `GoodVibesAuthClient.getToken()` remains supported and delegates to the
-   * same underlying store.
-   */
+  /** Retrieve the current token. Delegates to `TokenStore.getToken()`. */
   getToken(): Promise<string | null>;
-  /**
-   * @deprecated Prefer `TokenStore.setToken()` for direct token mutation.
-   * `GoodVibesAuthClient.setToken()` remains supported and delegates to the
-   * same underlying store.
-   */
+  /** Persist a token. Delegates to `TokenStore.setToken()`. */
   setToken(token: string | null): Promise<void>;
-  /**
-   * @deprecated Prefer `TokenStore.clearToken()` for direct token mutation.
-   * `GoodVibesAuthClient.clearToken()` remains supported and delegates to the
-   * same underlying store.
-   */
+  /** Clear the stored token. Delegates to `TokenStore.clearToken()`. */
   clearToken(): Promise<void>;
 }
 
@@ -194,23 +197,38 @@ export function createGoodVibesAuthClient(
   tokenStore: GoodVibesTokenStore | null,
   getAuthToken?: AuthTokenResolver,
 ): GoodVibesAuthClient {
+  // Construct the split-class instances that own each concern.
+  // The facade delegates to these rather than duplicating logic.
+  const ts: TokenStore | null = tokenStore ? new TokenStore(tokenStore) : null;
+  const sm: SessionManager = new SessionManager(operator, ts);
+
   return {
-    writable: tokenStore !== null,
+    get writable(): boolean {
+      return sm.writable;
+    },
+    get tokenStore(): TokenStore | null {
+      return ts;
+    },
+    get sessionManager(): SessionManager {
+      return sm;
+    },
+    permissionResolver(snapshot: GoodVibesCurrentAuth): PermissionResolver {
+      return new PermissionResolver(snapshot as unknown as ControlPlaneAuthSnapshot);
+    },
     async current(): Promise<GoodVibesCurrentAuth> {
-      return await operator.control.auth.current();
+      return sm.current();
     },
     async login(
       input: GoodVibesLoginInput,
       options: GoodVibesAuthLoginOptions = {},
     ): Promise<GoodVibesLoginOutput> {
-      const result = await operator.control.auth.login(input);
-      if ((options.persistToken ?? true) && tokenStore) {
-        await tokenStore.setToken(result.token);
-      }
-      return result;
+      return sm.login(input, options);
     },
     async getToken(): Promise<string | null> {
-      return await readToken(tokenStore, getAuthToken);
+      if (ts) {
+        return ts.getToken();
+      }
+      return await readToken(null, getAuthToken);
     },
     async setToken(token: string | null): Promise<void> {
       await assertWritableTokenStore(tokenStore).setToken(token);

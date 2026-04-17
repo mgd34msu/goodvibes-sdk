@@ -66,6 +66,19 @@ function isSubscriptionExpired(expiresAt?: number, bufferMs = 60_000): boolean {
   return Date.now() + bufferMs >= expiresAt;
 }
 
+/**
+ * SubscriptionManager — OAuth flows for **provider subscriptions**.
+ *
+ * Manages OAuth-based subscriptions to external AI providers (OpenAI,
+ * Anthropic, Gemini, etc.) including authorization URL generation, code
+ * exchange, token refresh, and persisting credentials to disk.
+ *
+ * This class handles provider-subscription OAuth on behalf of the daemon.
+ * For OAuth flows that authenticate the SDK client with the goodvibes daemon
+ * itself, see {@link OAuthClient} in `../auth/oauth-client.ts`.
+ *
+ * @see OAuthClient — OAuth flows for daemon authentication.
+ */
 export class SubscriptionManager {
   private readonly path: string;
 
