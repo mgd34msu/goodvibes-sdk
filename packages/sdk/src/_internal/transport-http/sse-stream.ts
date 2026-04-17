@@ -1,6 +1,4 @@
 // Synced from packages/transport-http/src/sse-stream.ts
-// Extracted from legacy source: src/runtime/transports/sse-stream.ts
-import { GoodVibesSdkError } from '../errors/index.js';
 import { sleepWithSignal } from './backoff.js';
 import { mergeHeaders, resolveAuthToken, type AuthTokenResolver } from './auth.js';
 import {
@@ -8,6 +6,7 @@ import {
   normalizeStreamReconnectPolicy,
   type StreamReconnectPolicy,
 } from './reconnect.js';
+import { GoodVibesSdkError } from '../errors/index.js';
 import type { TransportJsonError } from './http-core.js';
 
 export interface ServerSentEventHandlers {

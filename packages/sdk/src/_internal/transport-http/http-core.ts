@@ -1,5 +1,4 @@
 // Synced from packages/transport-http/src/http-core.ts
-// Extracted from legacy source: src/runtime/transports/http-json-transport.ts
 import { ConfigurationError, ContractError, HttpStatusError, createHttpStatusError } from '../errors/index.js';
 import { sleepWithSignal } from './backoff.js';
 import { mergeHeaders, normalizeAuthToken, resolveAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';

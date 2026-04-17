@@ -1,5 +1,4 @@
 // Synced from packages/transport-http/src/contract-client.ts
-// Extracted from legacy source: src/runtime/transports/contract-http-client.ts
 import type { HttpTransport } from './http.js';
 import { openServerSentEventStream, type ServerSentEventHandlers } from './sse-stream.js';
 

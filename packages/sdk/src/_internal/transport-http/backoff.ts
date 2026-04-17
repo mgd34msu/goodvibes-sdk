@@ -1,5 +1,4 @@
 // Synced from packages/transport-http/src/backoff.ts
-// Extracted from legacy source: src/runtime/transports/backoff.ts
 export interface BackoffPolicy {
   readonly maxAttempts?: number;
   readonly baseDelayMs?: number;

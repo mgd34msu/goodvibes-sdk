@@ -1,5 +1,4 @@
 // Synced from packages/transport-http/src/paths.ts
-// Extracted from legacy source: src/runtime/transports/transport-paths.ts
 export interface TransportPaths {
   readonly baseUrl: string;
   readonly statusUrl: string;

@@ -32,6 +32,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.19.2] - 2026-04-17
+
+Mirror drift cleanup. No consumer-facing API changes.
+
+### Added
+
+- **`--scope=<subsystem>` flag on `scripts/sync-sdk-internals.ts`** (Wave S-γ-cleanup): allows narrow regeneration of a single mirror subsystem without touching others. `removeStaleFiles` is narrowed to the scoped `targetDir` when `--scope` is active, fixing a prior bug where the stale walker would traverse all of `_internal/` regardless of the sync target. Default (no `--scope`) behavior preserved — full-tree sync still works.
+
+### Fixed
+
+- **8 transport-http mirror drifts resolved** (Wave S-γ-cleanup): ran `bun scripts/sync-sdk-internals.ts --scope=transport-http` to regenerate `auth.ts`, `backoff.ts`, `contract-client.ts`, `http-core.ts`, `paths.ts`, `reconnect.ts`, `retry.ts`, `sse-stream.ts`. Legacy `// Extracted from …` banners replaced with correct `// Synced from …` banners; `sse-stream.ts` import-order content drift resolved. The `mirror-drift` CI job (introduced in 0.19.0) can now pass on `main`.
+
+### Migration
+
+- For future narrow drift cleanups, use `bun scripts/sync-sdk-internals.ts --scope=<subsystem>` where `<subsystem>` is one of: `contracts`, `errors`, `daemon`, `transport-core`, `transport-direct`, `transport-http`, `transport-realtime`, `operator`, `peer`.
+
+---
+
 ## [0.19.1] - 2026-04-17
 
 Two release-infrastructure waves. No consumer-facing API changes.
