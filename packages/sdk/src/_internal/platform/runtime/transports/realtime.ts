@@ -1,4 +1,4 @@
-import { createHttpTransport } from './http.js';
+import { createHttpTransport } from './daemon-http-client.js';
 import { createClientTransport } from '@pellux/goodvibes-sdk/platform/runtime/transports/client-transport';
 import type { HttpTransportOptions, HttpTransportPeerClient, HttpTransportOperatorClient, HttpTransportSnapshot } from './http-types.js';
 import { createWebSocketConnector } from './shared.js';

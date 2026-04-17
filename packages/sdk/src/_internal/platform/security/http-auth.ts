@@ -81,10 +81,13 @@ export function authenticateOperatorToken(
   const normalized = token.trim();
   if (!normalized) return null;
 
-  if (context.sharedToken) {
-    return matchesSharedToken(normalized, context.sharedToken)
-      ? { kind: 'shared-token', token: normalized }
-      : null;
+  // Try shared-token first. If present AND it matches, grant shared-token access.
+  // Critically: do NOT return null here if it doesn't match — fall through to
+  // session validation so that session cookies remain valid even when a shared
+  // token is also configured (e.g. when the daemon is enabled with a bearer token
+  // for operator tooling but the companion app uses session-cookie auth).
+  if (context.sharedToken && matchesSharedToken(normalized, context.sharedToken)) {
+    return { kind: 'shared-token', token: normalized };
   }
 
   const session = context.userAuth.validateSession(normalized);
