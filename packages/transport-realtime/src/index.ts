@@ -11,6 +11,7 @@ export {
   createEventSourceConnector,
   createRemoteRuntimeEvents,
   createWebSocketConnector,
+  DEFAULT_WS_MAX_ATTEMPTS,
   forSessionRuntime,
 } from './runtime-events.js';
 export type { RuntimeEventConnectorOptions } from './runtime-events.js';

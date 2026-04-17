@@ -343,13 +343,75 @@ The `AuthenticatedPrincipal` type carries a `principalKind` (`user` | `bot` | `s
 
 ### Bootstrap Credential File
 
-On first boot, if no user store exists, the daemon generates a random password for the default admin account and writes it to a plaintext credential file (path configured by `bootstrapCredentialPath`). This file exists only to allow the first login. After logging in and verifying access:
+**Source:** `packages/sdk/src/_internal/platform/security/user-auth.ts` — `writeBootstrapCredentialFile()`, `clearBootstrapCredentialFile()`
 
-1. Call `clearBootstrapCredentialFile()` or delete the file manually
-2. Change the admin password with `rotatePassword()`
-3. Verify the file is no longer present before exposing the daemon to any network
+#### What it is and when it is created
 
-The credential file path should be kept outside the project root to avoid accidental inclusion in Docker images or version control.
+On first boot, if no persistent user store exists (`auth-users.json` is absent or empty), `UserAuthManager` calls `loadOrBootstrapUsers()`, which:
+
+1. Generates a 16-byte cryptographically random password (`randomBytes(16).toString('hex')`) for the default `admin` account
+2. Hashes and stores the password in the user store file (`bootstrapFilePath`, e.g. `.goodvibes/tui/auth-users.json`)
+3. Writes the raw plaintext credentials to a second file (`bootstrapCredentialPath`, e.g. `.goodvibes/tui/auth-bootstrap.txt`) and sets its permissions to `0o600` (owner read/write only)
+
+The bootstrap file format is plain key-value text:
+
+```
+GoodVibes bootstrap auth
+username=admin
+password=<32-hex-chars>
+purpose=Use these credentials only for local daemon/http listener /login routes when those surfaces are enabled.
+note=Normal SDK host usage does not require these credentials.
+```
+
+This file is an **output only**. It is not read back by the runtime after bootstrap — edits to it do not change the stored password hash.
+
+#### Drift detection
+
+Every time `UserAuthManager` is constructed (daemon startup), `detectBootstrapCredentialDrift()` runs automatically when operating in file-backed mode. It reads the bootstrap file and verifies that the stored password still matches the hash in `auth-users.json`. If they have drifted — for example because someone manually edited the file — a `warn`-level log is emitted:
+
+```
+Bootstrap credential file password does not match the stored hash; /login with this password will fail.
+Rotate the password via UserAuthManager.rotatePassword() or regenerate the credential by deleting both files so they are re-created in sync.
+```
+
+Drift detection fires only on file-backed instances; test configs that pass explicit `users` are exempt.
+
+#### Recommended lifecycle after first login
+
+1. Log in once using the bootstrap credentials (via the `/login` route)
+2. Immediately rotate the admin password to a value you control:
+   ```ts
+   authManager.rotatePassword('admin', newPassword);
+   ```
+   `rotatePassword()` updates the user store, revokes all active sessions for that user, and overwrites the bootstrap file with the new password.
+3. Delete the bootstrap file:
+   ```ts
+   authManager.clearBootstrapCredentialFile(); // returns true if the file existed and was removed
+   ```
+   Alternatively, delete the file manually: `rm .goodvibes/tui/auth-bootstrap.txt`.
+4. Verify the file is gone:
+   ```ts
+   const snap = authManager.inspect();
+   console.assert(!snap.bootstrapCredentialPresent, 'Bootstrap file still present!');
+   ```
+
+#### Failure modes
+
+| Situation | Outcome |
+|---|---|
+| Bootstrap file deleted before first login | Re-bootstrap by deleting both `auth-bootstrap.txt` **and** `auth-users.json`; both files are regenerated on next start |
+| `auth-users.json` deleted while `auth-bootstrap.txt` still exists | Daemon re-bootstraps with a new password; old bootstrap file becomes stale. Drift detection will warn on next start |
+| Both files deleted | Clean re-bootstrap — a new admin account and new bootstrap file are created. All existing sessions are invalidated (sessions are in-memory) |
+| Bootstrap file manually edited | Password mismatch; `/login` will reject the edited password. Drift detection warns on next startup. Fix by calling `rotatePassword()` to bring both files back in sync |
+
+There is no recovery path for a forgotten admin password beyond deleting both files to trigger a re-bootstrap.
+
+#### Security implications
+
+- The bootstrap file contains a **plaintext password**. `0o600` limits access to the file owner, but it is not encrypted.
+- Keep `bootstrapCredentialPath` outside the project root to prevent accidental inclusion in Docker `COPY` layers, version control, or build artifacts.
+- Do not leave the file present after first login. A stale bootstrap file is a standing credential that grants admin access to any process running as the same OS user.
+- The bootstrap file path should be added to `.gitignore` and `.dockerignore` as a matter of policy, even though it lives outside the project root by convention.
 
 ### Logging Guidance
 

@@ -25,7 +25,9 @@
 ## Architecture and Security
 
 - [Architecture](./architecture.md)
+- [Platform layer architecture](./architecture-platform.md)
 - [Security](./security.md)
+- [Tool safety](./tool-safety.md)
 
 ## Server and Host Embedding
 

@@ -1,5 +1,6 @@
 // Synced from packages/transport-http/src/sse-stream.ts
 // Extracted from legacy source: src/runtime/transports/sse-stream.ts
+import { GoodVibesSdkError } from '../errors/index.js';
 import { sleepWithSignal } from './backoff.js';
 import { mergeHeaders, resolveAuthToken, type AuthTokenResolver } from './auth.js';
 import {
@@ -49,18 +50,25 @@ function createStreamError(
   status: number,
   url: string,
   body: string,
-): Error & { readonly transport: TransportJsonError } {
+): GoodVibesSdkError & { readonly transport: TransportJsonError } {
   const message = body.trim()
     ? `Unable to open SSE stream: ${status} ${body}`.trim()
     : `Unable to open SSE stream: ${status}`;
-  return Object.assign(new Error(message), {
-    transport: {
-      status,
-      body,
-      url,
-      method: 'GET',
-    },
+  const error = new GoodVibesSdkError(message, {
+    category: 'network',
+    source: 'transport',
+    recoverable: status === 0 || status >= 500,
+    url,
+    method: 'GET',
+    ...(status > 0 ? { status } : {}),
   });
+  const transportPayload: TransportJsonError = {
+    status,
+    body,
+    url,
+    method: 'GET',
+  };
+  return Object.assign(error, { transport: transportPayload });
 }
 
 function reportStreamError(error: unknown, handlers: ServerSentEventHandlers): void {
@@ -232,7 +240,8 @@ export async function openServerSentEventStream(
             return;
           }
           reconnectAttempts = nextAttempt;
-          const delayMs = getStreamReconnectDelay(nextAttempt + 1, reconnectPolicy);
+          // Use the same 1-based attempt counter as the WS connector for a symmetric schedule.
+          const delayMs = getStreamReconnectDelay(nextAttempt, reconnectPolicy);
           handlers.onReconnect?.({ attempt: nextAttempt, delayMs });
           handlers.onError?.(error);
           try {

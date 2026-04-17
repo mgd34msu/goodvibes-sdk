@@ -1,5 +1,5 @@
 // Synced from packages/transport-http/src/http.ts
-import { ConfigurationError, ContractError, HttpStatusError, createHttpStatusError } from '../errors/index.js';
+import { ConfigurationError, ContractError, GoodVibesSdkError, HttpStatusError, createHttpStatusError } from '../errors/index.js';
 import {
   type AuthTokenResolver,
   type HeaderResolver,
@@ -131,6 +131,11 @@ function inferTransportHint(
 }
 
 export function normalizeTransportError(error: unknown): Error {
+  // Fast path: already a structured SDK error — return directly, no re-wrapping needed.
+  // Covers HttpStatusError (subclass) and GoodVibesSdkError (e.g. SSE stream errors) alike.
+  if (error instanceof GoodVibesSdkError) {
+    return error;
+  }
   if (isTransportError(error)) {
     const { status, url, body, method, retryAfterMs, cause } = error.transport;
     const resolvedMethod = typeof method === 'string' ? method : 'GET';
@@ -171,6 +176,8 @@ export function normalizeTransportError(error: unknown): Error {
     );
   }
   if (error instanceof Error) {
+    // Defensive string-match fallback for non-SDK errors that slip through.
+    // With structured throws in http-core.ts, these paths are rarely exercised.
     if (error.message === 'Fetch implementation is required' || error.message === 'Transport baseUrl is required') {
       return new ConfigurationError(error.message);
     }
