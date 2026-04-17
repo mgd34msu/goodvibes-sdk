@@ -1,0 +1,117 @@
+# Road to 1.0.0
+
+Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a gate — the 1.0.0 publish does not happen until all boxes are checked **and** the repo owner has explicitly signed off.
+
+## Status
+
+- **Current released version**: `0.19.6` (published to npm, `latest` tag)
+- **Current score**: 9.0 / 10
+- **Eligibility**: NOT eligible for 1.0.0 — pending all waves below
+
+## Version plan
+
+```
+0.19.6          current
+  → 0.19.7–0.19.14   Waves 1–8, one minor/patch bump per wave
+  → 0.21.0            soak period (skip 0.20.x to avoid "just another release" ambiguity)
+  → 1.0.0            owner-approved release
+```
+
+We deliberately skip `1.0.0-rc.X` prerelease syntax to avoid `package.json` pinning confusion. The 2-minor jump to `0.21.0` is the soak signal.
+
+---
+
+## Wave 1 — S-θ.2 observer seams (target: 0.19.7)
+
+Wire the three remaining `SDKObserver` callbacks.
+
+- [ ] `TransportObserver` interface defined in `packages/transport-core/src/`
+- [ ] `SDKObserver` in `packages/sdk/src/observer/` extends `TransportObserver`
+- [ ] `onEvent` wired in `transport-realtime` receive paths + event facade
+- [ ] `onError` wired at every `SDKError` throw site in transport/auth layers
+- [ ] `onTransportActivity` wired in `transport-http` + `transport-realtime`
+- [ ] All observer calls wrapped in `invokeObserver(…)` so exceptions don't surface
+- [ ] OpenTelemetry observer tested end-to-end (real OTEL collector)
+- [ ] `test/sdk-observer.test.ts` extended with the three new callbacks
+
+## Wave 2 — Browser real-runtime (target: 0.19.8)
+
+- [ ] `test/browser/` harness using `@vitest/browser` + Playwright
+- [ ] Imports built `dist/browser.js` via `./browser` subpath
+- [ ] Exercises auth + transport-http + transport-realtime against MSW mock
+- [ ] New CI matrix dimension `browser` in `platform-matrix` job
+- [ ] `examples-smoke` CI gate added (prevents example rot)
+
+## Wave 3 — Hermes real-runtime (target: 0.19.9)
+
+- [ ] `test/hermes/` harness using `hermes-engine` binary
+- [ ] Imports built `dist/react-native.js` via `./react-native` subpath
+- [ ] New CI matrix dimension `hermes`
+- [ ] Any Hermes shims land in `sdk/src/_internal/platform/*` following existing runtime-conditional pattern
+
+## Wave 4 — Workers real-runtime (target: 0.19.10)
+
+- [ ] `test/workers/` harness using Miniflare
+- [ ] First attempt: `/web` entry under Miniflare. If clean, reuse.
+- [ ] If Workers-specific adaptation needed: new `sdk/src/workers.ts` entry + `./workers` subpath export + bundle guard row
+- [ ] New CI matrix dimension `workers`
+
+## Wave 5 — Package hygiene + supply chain (target: 0.19.11)
+
+- [ ] `@arethetypeswrong/cli` CI gate (validates `exports` map type resolution across `node16` + `bundler`)
+- [ ] `publint` CI gate
+- [ ] `npm publish --provenance` wired via GitHub Actions OIDC
+- [ ] Signed git tags (`git tag -s`) on every release tag
+- [ ] `SECURITY.md` at repo root with reporting policy and response SLA
+- [ ] **SBOM generation** (CycloneDX JSON via `@cyclonedx/cyclonedx-npm`) attached to every GitHub release and the npm tarball; new CI job `sbom-check`
+
+## Wave 6 — Policy & UX (target: 0.19.12)
+
+- [ ] `docs/semver-policy.md` — explicit definition of what counts as a breaking change
+- [ ] Error-message quality audit — every `SDKError` throw site graded and rewritten where lacking
+- [ ] Timeout / retry / backoff defaults audit across transport-http, transport-realtime, auth refresh
+- [ ] Any finding documented in CHANGELOG as a fix
+
+## Wave 7 — Verification + Zod runtime validation (target: 0.19.13)
+
+- [ ] Zod (v4, modular tree-shakeable build) adopted at transport boundary
+- [ ] Schemas auto-generated from contract definitions in `packages/contracts/`
+- [ ] Validation failures throw `SDKError{kind:'contract'}` with field-level detail
+- [ ] Verdaccio dry-run publish + install into scratch project
+- [ ] Per-runtime-entry bundle-size budgets enforced in CI (post-Zod measurement)
+
+## Wave 8 — S-ι hardening (target: 0.19.14+)
+
+- [ ] Coverage backfill — target 100% no-skip across all packages and `_internal/platform/*` subsystems
+- [ ] Flake detection CI gate (N-run stability check)
+- [ ] Public API surface snapshot via `@microsoft/api-extractor` or equivalent
+- [ ] Snapshot gate fails on unintended public surface changes
+
+## Wave 9 — Soak period (target: 0.21.0)
+
+- [ ] Bump from `0.19.14` to `0.21.0` (skip `0.20.x`)
+- [ ] No new features during soak — hotfixes only (→ 0.21.1, 0.21.2, …)
+- [ ] Owner-defined soak duration
+
+## Wave 10 — 1.0.0
+
+- [ ] **Owner explicit sign-off** (required regardless of gate state)
+- [ ] All gates above green on main
+- [ ] All CI dimensions passing: `bun`, `rn-bundle`, `browser`, `hermes`, `workers`
+- [ ] All new CI jobs passing: `are-the-types-wrong`, `publint`, `sbom-check`, `bundle-budget`, `api-surface-snapshot`, `flake-watch`, `examples-smoke`
+- [ ] npm publish as `1.0.0` with `--provenance` and signed tag
+
+---
+
+## Cross-cutting rules
+
+- Each wave ships as its own CHANGELOG section + version bump (enforced by `changelog:check`)
+- Mirror syncs always scoped: `bun run sync --scope=<subsystem>` — **never** unscoped
+- Bundle guard extended per new runtime entry
+- TUI downstream typecheck before pushing any SDK release
+- CHANGELOG.md and package.json versions are orchestrator-managed — agents do not touch them
+- All tools default to precision_engine (native Read/Write/Edit/Grep/Glob/WebFetch are deprecated)
+
+## Owner sign-off
+
+**1.0.0 publish will not occur without explicit owner approval.** Green gates are necessary but not sufficient. This file is the shared reference for what "ready" means.
