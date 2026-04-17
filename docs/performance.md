@@ -1,5 +1,7 @@
 # Performance and Tuning
 
+> **Surface scope:** This document covers performance tuning for the **full surface (Bun runtime)**. Code examples use `createGoodVibesSdk` from the full-surface entry point. Companion-surface consumers (React Native, browser) use surface-specific constructors — see [Runtime Surfaces](./surfaces.md) for the full breakdown.
+
 This guide covers the tuning knobs, runtime contracts, and internal subsystems that govern SDK performance across provider calls, context management, component rendering, and tool execution.
 
 ## Provider Optimization
@@ -9,9 +11,9 @@ This guide covers the tuning knobs, runtime contracts, and internal subsystems t
 The SDK uses exponential backoff with jitter for all retryable HTTP failures. The `withRetry` utility is the underlying primitive; runtime-specific entrypoints expose it through the top-level `retry` config.
 
 ```ts
-import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
-const sdk = createNodeGoodVibesSdk({
+const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
   authToken: process.env.GOODVIBES_TOKEN ?? null,
   retry: {
@@ -144,7 +146,7 @@ For long-lived clients where tokens expire, use `tokenStore` or `getAuthToken` i
 ```ts
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
-const sdk = createNodeGoodVibesSdk({
+const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
   tokenStore: createMemoryTokenStore(), // refreshed externally via tokenStore.set()
 });

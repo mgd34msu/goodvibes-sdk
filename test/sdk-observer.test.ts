@@ -1,0 +1,178 @@
+/**
+ * Smoke tests for SDKObserver wire-up.
+ *
+ * Verifies that:
+ * 1. createGoodVibesAuthClient accepts an observer and fires onAuthTransition on login.
+ * 2. Observers that throw do NOT propagate errors into SDK logic.
+ * 3. createConsoleObserver and createOpenTelemetryObserver construct without error.
+ */
+
+import { describe, expect, test } from 'bun:test';
+import {
+  createGoodVibesAuthClient,
+} from '../packages/sdk/src/auth.js';
+import {
+  createConsoleObserver,
+  createOpenTelemetryObserver,
+  type SDKObserver,
+  type AuthTransitionInfo,
+} from '../packages/sdk/src/observer/index.js';
+import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
+
+function makeRawStore(initial: string | null = null) {
+  let current = initial;
+  return {
+    async getToken() { return current; },
+    async setToken(t: string | null) { current = t; },
+    async clearToken() { current = null; },
+  };
+}
+
+function makeOperator() {
+  return {
+    control: {
+      auth: {
+        current: async () => ({
+          authenticated: true,
+          authMode: 'session',
+          tokenPresent: true,
+          authorizationHeaderPresent: true,
+          sessionCookiePresent: false,
+          principalId: 'alice',
+          principalKind: 'user',
+          admin: false,
+          scopes: [],
+          roles: [],
+        }),
+        login: async (_input: unknown) => ({
+          token: 'tok_test',
+          authenticated: true,
+          username: 'alice',
+          expiresAt: Date.now() + 60_000,
+        }),
+      },
+    },
+  } as unknown as OperatorSdk;
+}
+
+describe('SDKObserver — auth wire-up', () => {
+  test('onAuthTransition is called with login transition on successful login', async () => {
+    const observed: AuthTransitionInfo[] = [];
+    const observer: SDKObserver = {
+      onAuthTransition(t) { observed.push(t); },
+    };
+
+    const auth = createGoodVibesAuthClient(
+      makeOperator(),
+      makeRawStore(),
+      undefined,
+      observer,
+    );
+
+    await auth.login({ username: 'alice', password: 'secret' });
+    expect(observed).toHaveLength(1);
+    expect(observed[0].reason).toBe('login');
+    expect(observed[0].to).toBe('token');
+  });
+
+  test('onAuthTransition is called with logout transition on clearToken', async () => {
+    const observed: AuthTransitionInfo[] = [];
+    const observer: SDKObserver = {
+      onAuthTransition(t) { observed.push(t); },
+    };
+
+    const auth = createGoodVibesAuthClient(
+      makeOperator(),
+      makeRawStore('existing-token'),
+      undefined,
+      observer,
+    );
+
+    await auth.clearToken();
+    expect(observed).toHaveLength(1);
+    expect(observed[0].reason).toBe('logout');
+  });
+
+  test('an observer that throws does NOT propagate into SDK logic', async () => {
+    const observer: SDKObserver = {
+      onAuthTransition(_t) {
+        throw new Error('observer is broken');
+      },
+    };
+
+    const auth = createGoodVibesAuthClient(
+      makeOperator(),
+      makeRawStore(),
+      undefined,
+      observer,
+    );
+
+    // Should NOT throw despite the observer throwing
+    await expect(auth.login({ username: 'alice', password: 'secret' })).resolves.toBeDefined();
+  });
+
+  test('createGoodVibesAuthClient works identically when observer is undefined', async () => {
+    // Backward compatibility: 3-arg call still works, no observer
+    const auth = createGoodVibesAuthClient(
+      makeOperator(),
+      makeRawStore(),
+    );
+    const result = await auth.login({ username: 'alice', password: 'secret' });
+    expect(result.token).toBe('tok_test');
+  });
+});
+
+describe('SDKObserver — built-in adapters', () => {
+  test('createConsoleObserver constructs without error', () => {
+    expect(() => createConsoleObserver()).not.toThrow();
+    expect(() => createConsoleObserver({ level: 'debug' })).not.toThrow();
+    expect(() => createConsoleObserver({ level: 'info' })).not.toThrow();
+  });
+
+  test('createConsoleObserver.onAuthTransition does not throw', () => {
+    const obs = createConsoleObserver();
+    expect(() => obs.onAuthTransition?.({ from: 'anonymous', to: 'token', reason: 'login' })).not.toThrow();
+  });
+
+  test('createOpenTelemetryObserver constructs and calls meter/tracer without error', () => {
+    const spans: Array<{ name: string; ended: boolean }> = [];
+    const counters: Array<{ name: string; value: number }> = [];
+
+    const mockTracer: Parameters<typeof createOpenTelemetryObserver>[0] = {
+      startActiveSpan(name, fn) {
+        const span = {
+          setAttribute: () => span,
+          setStatus: () => span,
+          recordException: () => span,
+          end: () => { spans.push({ name, ended: true }); },
+        };
+        return fn(span) as ReturnType<typeof fn>;
+      },
+      startSpan(name) {
+        const span = {
+          setAttribute: () => span,
+          setStatus: () => span,
+          recordException: () => span,
+          end: () => { spans.push({ name, ended: true }); },
+        };
+        return span;
+      },
+    };
+
+    const mockMeter: Parameters<typeof createOpenTelemetryObserver>[1] = {
+      createCounter(name) {
+        return { add: (v) => { counters.push({ name, value: v }); } };
+      },
+      createHistogram(_name) {
+        return { record: (_v) => {} };
+      },
+    };
+
+    const obs = createOpenTelemetryObserver(mockTracer, mockMeter);
+    expect(obs).toBeDefined();
+
+    obs.onAuthTransition?.({ from: 'anonymous', to: 'token', reason: 'login' });
+    expect(counters.some((c) => c.name === 'sdk.auth.transitions' && c.value === 1)).toBe(true);
+    expect(spans.some((s) => s.name === 'sdk.auth.transition' && s.ended)).toBe(true);
+  });
+});

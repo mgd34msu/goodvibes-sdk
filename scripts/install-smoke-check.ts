@@ -18,7 +18,6 @@ import {
 const REGISTRY_MODE = process.argv.includes('--registry');
 const PUBLIC_PACKAGE_DIR = 'packages/sdk';
 const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || readPackage(PUBLIC_PACKAGE_DIR).name;
-const NODE_ENTRY = `${PUBLIC_PACKAGE_NAME}/node`;
 const WEB_ENTRY = `${PUBLIC_PACKAGE_NAME}/web`;
 const NATIVE_ENTRY = `${PUBLIC_PACKAGE_NAME}/react-native`;
 const AUTH_ENTRY = `${PUBLIC_PACKAGE_NAME}/auth`;
@@ -37,7 +36,6 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const root = await import('${PUBLIC_PACKAGE_NAME}');
-const nodeEntry = await import('${NODE_ENTRY}');
 const webEntry = await import('${WEB_ENTRY}');
 const nativeEntry = await import('${NATIVE_ENTRY}');
 const auth = await import('${AUTH_ENTRY}');
@@ -48,7 +46,7 @@ const contracts = await import('${CONTRACTS_ENTRY}');
 const runtimeEvents = await import('${REALTIME_ENTRY}');
 const stateInspector = await import('${STATE_INSPECTOR_ENTRY}');
 
-const sdk = nodeEntry.createNodeGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
+const sdk = root.createGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
 if (!sdk?.operator || !sdk?.peer || !sdk?.realtime) throw new Error('sdk entrypoint missing expected surfaces');
 if (typeof auth.createMemoryTokenStore !== 'function') throw new Error('auth entrypoint missing token helpers');
 if (typeof operator.createOperatorSdk !== 'function') throw new Error('operator client export missing');

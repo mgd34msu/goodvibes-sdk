@@ -1,4 +1,6 @@
 import { ConfigurationError } from './_internal/errors/index.js';
+import type { SDKObserver } from './observer/index.js';
+import { invokeObserver } from './observer/index.js';
 import type {
   OperatorMethodInput,
   OperatorMethodOutput,
@@ -16,7 +18,10 @@ import type { ControlPlaneAuthSnapshot } from './_internal/platform/control-plan
 // narrower, single-concern APIs over the combined GoodVibesAuthClient facade.
 // NOTE: OAuthClient is intentionally NOT re-exported here. It depends on
 // node:crypto and is not safe in React Native / browser bundles.
-// Use @pellux/goodvibes-sdk/oauth for Node.js consumers who need OAuthClient.
+// OAuthClient was previously exposed via '@pellux/goodvibes-sdk/oauth' for Node consumers.
+// That subpath was removed in 0.19.6. OAuth flows should now be handled server-side
+// (e.g. by your operator/daemon process) with the client receiving an already-acquired
+// token via TokenStore.
 export { PermissionResolver, SessionManager, TokenStore } from './_internal/platform/auth/index.js';
 export type { OAuthStartState, OAuthTokenPayload } from './_internal/platform/auth/oauth-types.js';
 
@@ -48,7 +53,9 @@ export interface GoodVibesAuthLoginOptions {
  * - `sdk.auth.tokenStore` — Token persistence (`TokenStore`)
  * - `sdk.auth.sessionManager` — Login / session lifecycle (`SessionManager`)
  * - `sdk.auth.permissionResolver(snapshot)` — Role / scope checks (`PermissionResolver`)
- * - OAuth 2.0 flows: import `OAuthClient` from `@pellux/goodvibes-sdk/oauth` (Node only)
+ * - OAuth 2.0 flows: handle server-side (operator/daemon) and provide the acquired
+ *   token to the client via TokenStore. The prior `@pellux/goodvibes-sdk/oauth` subpath
+ *   was removed in 0.19.6.
  */
 export interface GoodVibesAuthClient {
   readonly writable: boolean;
@@ -196,6 +203,7 @@ export function createGoodVibesAuthClient(
   operator: OperatorSdk,
   tokenStore: GoodVibesTokenStore | null,
   getAuthToken?: AuthTokenResolver,
+  observer?: SDKObserver,
 ): GoodVibesAuthClient {
   // Construct the split-class instances that own each concern.
   // The facade delegates to these rather than duplicating logic.
@@ -222,7 +230,21 @@ export function createGoodVibesAuthClient(
       input: GoodVibesLoginInput,
       options: GoodVibesAuthLoginOptions = {},
     ): Promise<GoodVibesLoginOutput> {
-      return sm.login(input, options);
+      // Capture prior auth state BEFORE the login mutation so the observer's
+      // `from` field reflects the actual pre-login state (anonymous vs token
+      // refresh), not the post-login state.
+      const priorToken = await ts?.getToken();
+      const result = await sm.login(input, options);
+      // Notify observer of the auth state transition. Observer errors are
+      // swallowed so they never disrupt SDK logic.
+      invokeObserver(() =>
+        observer?.onAuthTransition?.({
+          from: priorToken ? 'token' : 'anonymous',
+          to: 'token',
+          reason: 'login',
+        }),
+      );
+      return result;
     },
     async getToken(): Promise<string | null> {
       if (ts) {
@@ -234,7 +256,17 @@ export function createGoodVibesAuthClient(
       await assertWritableTokenStore(tokenStore).setToken(token);
     },
     async clearToken(): Promise<void> {
+      const currentToken = await ts?.getToken();
       await assertWritableTokenStore(tokenStore).clearToken();
+      // Notify observer of the logout transition. Observer errors are
+      // swallowed so they never disrupt SDK logic.
+      invokeObserver(() =>
+        observer?.onAuthTransition?.({
+          from: currentToken ? 'token' : 'anonymous',
+          to: 'anonymous',
+          reason: 'logout',
+        }),
+      );
     },
   };
 }

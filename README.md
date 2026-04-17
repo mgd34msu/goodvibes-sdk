@@ -5,105 +5,46 @@
 > orchestrates those on your behalf. If you need to call a provider directly, use their official
 > SDK instead. If you don't have a daemon yet, see [Daemon embedding](./docs/daemon-embedding.md).
 
-TypeScript SDK workspace for GoodVibes operator, peer, transport, realtime, contract, and daemon integration surfaces.
+TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.
 
-Current foundation source:
-- operator methods: `213`
-- operator events: `29`
-- peer endpoints: `6`
-
-## Scope
-
-This repo publishes the TypeScript client and daemon integration layers for the GoodVibes platform.
-
-Use it when you need to:
-- call operator or peer APIs from Node, Bun, browser, React Native, or Expo
-- consume realtime runtime events over SSE or WebSocket
-- embed reusable GoodVibes daemon route modules in another TypeScript host
-- build companion apps and web UIs against the GoodVibes platform surface
-- pair a mobile companion app using QR-code-based pairing (`platform/pairing/`)
-
-This repo does **not** try to run the full GoodVibes platform on mobile devices. Companion apps talk to the platform remotely over the same contracts the SDK uses.
+This package has two surfaces with different runtime requirements. See [Runtime Surfaces](./docs/surfaces.md) for the authoritative two-tier model:
+- **Full surface** — Bun runtime consumers (TUI, daemon, CLI). Gets the complete agentic harness.
+- **Companion surface** — Hermes (React Native / Expo) or browser consumers. Gets auth, transport, events, contracts, errors, and observer only.
 
 ## Install
 
 This is one npm package with subpath exports.
 
 ```bash
+bun add @pellux/goodvibes-sdk
+# or
 npm install @pellux/goodvibes-sdk
 ```
 
 Alternate registry:
-- npmjs primary package: `@pellux/goodvibes-sdk`
+- npmjs primary: `@pellux/goodvibes-sdk`
 - GitHub Packages mirror: `@mgd34msu/goodvibes-sdk`
 
-GitHub Packages install requires scoped registry mapping:
+GitHub Packages requires a scoped registry mapping:
 
 ```ini
 @mgd34msu:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
-Then import only the subpath entrypoints you need:
-
-```ts
-import { createOperatorSdk } from '@pellux/goodvibes-sdk/operator';
-import { createRemoteRuntimeEvents } from '@pellux/goodvibes-sdk/transport-realtime';
-```
-
-## Entry Points
-
-- `@pellux/goodvibes-sdk/contracts`
-  Runtime-neutral contract artifacts, ids, and generated typed method/endpoint/event maps.
-- `@pellux/goodvibes-sdk/auth`
-  Token storage helpers plus login/current-auth flows layered over the operator client.
-- `@pellux/goodvibes-sdk/errors`
-  Structured SDK, transport, and daemon error types.
-- `@pellux/goodvibes-sdk/daemon`
-  Embeddable daemon route contracts, handler builders, and dispatchers for server hosts.
-- `@pellux/goodvibes-sdk/transport-core`
-  Shared transport/event-feed primitives.
-- `@pellux/goodvibes-sdk/transport-direct`
-  In-process direct transport shell for embedded/local integration.
-- `@pellux/goodvibes-sdk/transport-http`
-  HTTP, JSON, path, auth, retry, and SSE primitives.
-- `@pellux/goodvibes-sdk/transport-realtime`
-  Runtime-event connectors over SSE and WebSocket.
-- `@pellux/goodvibes-sdk/operator`
-  Contract-driven operator/control-plane client.
-- `@pellux/goodvibes-sdk/peer`
-  Contract-driven peer/distributed-runtime client.
-- `@pellux/goodvibes-sdk/platform/pairing`
-  QR code generation, companion token management, and connection info formatting for mobile companion app pairing.
-- `@pellux/goodvibes-sdk/platform/daemon/port-check`
-  Port-in-use checking utilities used by `DaemonServer` and `HttpListener` before binding.
-- `@pellux/goodvibes-sdk`
-  Umbrella SDK plus runtime-specific helpers for Node, browser/web UI, React Native, and Expo.
-
-## Runtime Entry Points
-
-- `@pellux/goodvibes-sdk`
-  Lowest-friction umbrella entrypoint when you want operator, peer, auth, and realtime together.
-- `@pellux/goodvibes-sdk/node`
-  Node/Bun defaults for HTTP retry and realtime reconnect.
-- `@pellux/goodvibes-sdk/browser`
-  Generic browser defaults.
-- `@pellux/goodvibes-sdk/web`
-  Browser/web UI alias when your mental model is “web app”.
-- `@pellux/goodvibes-sdk/react-native`
-  React Native defaults with WebSocket-first realtime.
-- `@pellux/goodvibes-sdk/expo`
-  Expo-flavored React Native alias.
-
 ## Quick Start
 
-Prerequisite: a reachable GoodVibes daemon/operator endpoint. The SDK is a client for the platform; it does not start the platform for you.
+Prerequisite: a reachable GoodVibes daemon endpoint. The SDK is a client — it does not start the platform for you.
+
+### Bun (TUI / daemon / CLI)
+
+For Bun services, TUI apps, and CLI tools, import from the root entry:
 
 ```ts
-import { createNodeGoodVibesSdk } from '@pellux/goodvibes-sdk/node';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
-const sdk = createNodeGoodVibesSdk({
+const sdk = createGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
   tokenStore: createMemoryTokenStore(process.env.GOODVIBES_TOKEN ?? null),
 });
@@ -111,18 +52,67 @@ const sdk = createNodeGoodVibesSdk({
 console.log(await sdk.operator.control.snapshot());
 ```
 
-For the full walkthrough — login flows, token persistence, browser, React Native, Expo, and realtime transports — see **[Getting Started](./docs/getting-started.md)**.
+For daemon embedding:
 
-## Auth and Realtime Guidance
+```ts
+import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
+```
 
-- Browser web UI on the same origin:
-  prefer session auth or a token store-backed browser client, and use SSE for live dashboards.
-- Server-side Node/Bun integrations:
-  prefer bearer tokens and SSE.
-- React Native / Expo companion apps:
-  prefer bearer tokens in secure storage and WebSocket realtime.
-- Native Kotlin / Swift companion apps:
-  use the same HTTP and WebSocket contract reference documents; this repo itself publishes TypeScript packages.
+### Companion (React Native / Expo / browser)
+
+For mobile and browser companion apps, use the runtime-specific entry point:
+
+```ts
+// React Native / Expo
+import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
+// or: import { createExpoGoodVibesSdk } from '@pellux/goodvibes-sdk/expo';
+
+const sdk = createReactNativeGoodVibesSdk({
+  baseUrl: 'https://goodvibes.example.com',
+  authToken: await SecureStore.getItemAsync('gv-token'),
+});
+```
+
+```ts
+// Browser / web app
+import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
+import { createBrowserTokenStore } from '@pellux/goodvibes-sdk/auth';
+
+const sdk = createWebGoodVibesSdk({
+  baseUrl: 'https://goodvibes.example.com',
+  tokenStore: createBrowserTokenStore(),
+});
+```
+
+For the full walkthrough — login flows, token persistence, realtime transports, error handling, and observability — see **[Getting Started](./docs/getting-started.md)**.
+
+## Runtime Entry Points
+
+| Entry point | Consumer | Surface |
+|---|---|---|
+| `@pellux/goodvibes-sdk` | Bun apps (TUI, daemon, CLI) | Full |
+| `@pellux/goodvibes-sdk/daemon` | Bun server hosts embedding daemon routes | Full |
+| `@pellux/goodvibes-sdk/react-native` | React Native (Hermes) | Companion |
+| `@pellux/goodvibes-sdk/expo` | Expo (alias of `/react-native`) | Companion |
+| `@pellux/goodvibes-sdk/browser` | Browser apps | Companion |
+| `@pellux/goodvibes-sdk/web` | Web apps (alias of `/browser`) | Companion |
+| `@pellux/goodvibes-sdk/auth` | Token storage and auth flows | Companion |
+| `@pellux/goodvibes-sdk/operator` | Operator/control-plane client only | Companion |
+| `@pellux/goodvibes-sdk/peer` | Peer/distributed-runtime client only | Companion |
+| `@pellux/goodvibes-sdk/contracts` | Runtime-neutral contract types and method IDs | Companion |
+| `@pellux/goodvibes-sdk/contracts/node` | **Artifact path helpers only** (JSON schema file paths) — not a runtime target | N/A |
+| `@pellux/goodvibes-sdk/errors` | Typed error classes | Companion |
+| `@pellux/goodvibes-sdk/platform/*` | Advanced Bun-specific barrels (pairing, port-check, etc.) | Full |
+
+> **Note on `/contracts/node`:** this entry exports filesystem path helpers for locating the JSON contract artifacts on disk. It is a build/tooling convenience, not a runtime surface. It does not indicate Node.js runtime support.
+
+## Contract Reference
+
+- operator methods: `213`
+- operator events: `29`
+- peer endpoints: `6`
+
+See [Operator API reference](./docs/reference-operator.md) and [Peer API reference](./docs/reference-peer.md) for full contract details.
 
 ## Realtime
 
@@ -131,27 +121,20 @@ The SDK supports both realtime transports:
 - WebSocket via `sdk.realtime.viaWebSocket()`
 
 Recommended defaults:
-- Node / Bun: SSE
-- Browser web UI: SSE for same-origin operator sessions, WebSocket when you need a persistent duplex channel
-- React Native: WebSocket
-- Expo: WebSocket
-- Native Android / iOS: WebSocket when using the protocol directly
+- Bun (TUI / daemon): SSE
+- Browser web UI: SSE for same-origin sessions, WebSocket for persistent duplex
+- React Native / Expo: WebSocket
 
-The transport layers support:
-- HTTP retry/backoff
-- SSE replay via `Last-Event-ID`
-- SSE reconnect
-- WebSocket reconnect
-- dynamic auth token resolution for long-lived clients
+The transport layers support HTTP retry/backoff, SSE replay via `Last-Event-ID`, SSE reconnect, WebSocket reconnect, and dynamic auth token resolution for long-lived clients.
 
 ## Platform Configuration
 
 ### tools.llmEnabled
 
-Tool LLM calls are opt-in via the `tools.llmEnabled` config key (default: `false`). When disabled, `resolveToolLLM()` returns an empty string instead of silently falling through to the main conversation model. Set it explicitly to enable a dedicated tool LLM:
+Tool LLM calls are opt-in via the `tools.llmEnabled` config key (default: `false`). When disabled, `resolveToolLLM()` returns an empty string instead of silently falling through to the main conversation model.
 
 ```ts
-// goodvibes.config.ts (host config)
+// goodvibes.config.ts
 tools: {
   llmEnabled: true,
   // ...provider config
@@ -160,28 +143,19 @@ tools: {
 
 ### Component health monitoring
 
-The health monitoring infrastructure was generalized from Panel-specific to Component-generic in `0.18.29`. The public API uses `ComponentHealthMonitor`, `ComponentResourceContract`, and `ComponentHealthState`. The old `Panel*` names remain as deprecated aliases for backward compatibility.
-
-## Contracts
-
-The default `@pellux/goodvibes-sdk/contracts` entry is runtime-neutral and safe for Node, browser, and mobile builds.
-
-Raw JSON artifacts are still exported:
-- `@pellux/goodvibes-sdk/contracts/operator-contract.json`
-- `@pellux/goodvibes-sdk/contracts/peer-contract.json`
-
-Node-only artifact-path helpers are available from:
-- `@pellux/goodvibes-sdk/contracts/node`
-
-Auth helpers are also available as a narrow subpath:
-- `@pellux/goodvibes-sdk/auth`
+The health monitoring infrastructure uses `ComponentHealthMonitor`, `ComponentResourceContract`, and `ComponentHealthState`. The old `Panel*` names remain as deprecated aliases for backward compatibility.
 
 ## Docs
 
+- [Runtime surfaces](./docs/surfaces.md) — two-tier model definition
+- [Public surface reference](./docs/public-surface.md) — full exports map
 - [Docs index](./docs/README.md)
 - [Getting started](./docs/getting-started.md)
 - [Package guide](./docs/packages.md)
 - [Authentication](./docs/authentication.md)
+- [Error handling](./docs/error-handling.md)
+- [Error kinds reference](./docs/error-kinds.md)
+- [Observability](./docs/observability.md)
 - [Browser integration](./docs/browser-integration.md)
 - [Web UI integration](./docs/web-ui-integration.md)
 - [React Native integration](./docs/react-native-integration.md)
@@ -192,7 +166,8 @@ Auth helpers are also available as a narrow subpath:
 - [Realtime and telemetry](./docs/realtime-and-telemetry.md)
 - [Retries and reconnect](./docs/retries-and-reconnect.md)
 - [Companion app patterns](./docs/companion-app-patterns.md)
-- [Error handling](./docs/error-handling.md)
+- [Companion message routing](./docs/companion-message-routing.md)
+- [Companion app pairing](./docs/pairing.md)
 - [Troubleshooting](./docs/troubleshooting.md)
 - [Compatibility](./docs/compatibility.md)
 - [Release and publishing](./docs/release-and-publishing.md)
@@ -200,11 +175,12 @@ Auth helpers are also available as a narrow subpath:
 - [Operator API reference](./docs/reference-operator.md)
 - [Peer API reference](./docs/reference-peer.md)
 - [Runtime events reference](./docs/reference-runtime-events.md)
+- [Changelog](./CHANGELOG.md)
 
 ## Examples
 
 - [Submit turn quickstart](./examples/submit-turn-quickstart.mjs) — create session, submit message, stream tokens to stdout
-- [Node operator quickstart](./examples/operator-http-quickstart.mjs)
+- [Operator quickstart](./examples/operator-http-quickstart.mjs)
 - [Peer quickstart](./examples/peer-http-quickstart.mjs)
 - [Realtime quickstart](./examples/realtime-events-quickstart.mjs)
 - [Auth and token store quickstart](./examples/auth-login-and-token-store.ts)

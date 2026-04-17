@@ -1,5 +1,9 @@
 # GoodVibes SDK — Architecture Overview
 
+> **Surface scope:** The SDK exposes two consumer-visible surfaces — the full surface (Bun runtime) and the companion surface (Hermes/browser/React Native). This document describes the **internal source organization** that backs the full surface. For the distinction between surfaces and their public barrel exports, see [Runtime Surfaces](./surfaces.md) and [Public Surface Reference](./public-surface.md).
+>
+> Consumers import via `./platform/*` public barrels (e.g. `@pellux/goodvibes-sdk/platform/core/adaptive-planner`), **not** the `_internal/platform/*` paths shown in this document. The `_internal/platform/*` paths are the underlying source layout — accurate descriptions of where things live, but not the import surface exposed to SDK consumers.
+
 This document describes the internal architecture of the GoodVibes SDK: how its packages, subsystems, and runtime components relate to each other, and how you use them to build AI agent products.
 
 ## What the SDK Enables

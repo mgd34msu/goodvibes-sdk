@@ -1,5 +1,7 @@
 # Authentication
 
+Auth is available on both full and companion surfaces. See [Runtime Surfaces](./surfaces.md).
+
 GoodVibes currently exposes two auth modes through the operator contract:
 - `shared-bearer`
 - `session-login`
@@ -88,7 +90,7 @@ Useful auth helpers:
 
 ## Recommended auth by environment
 
-- Node/Bun services: bearer token
+- Bun services: bearer token
 - Browser web UI on same origin: session cookie or bearer token
 - React Native / Expo: bearer token
 - Native Android / iOS: bearer token
@@ -127,6 +129,8 @@ The SDK preserves structured authorization failures. When a token is missing req
 - `category`
 - `source`
 - `hint`
+
+For the typed `err.kind` values returned on auth failures (invalid session, expired token, permission denied), see [Error kinds](./error-kinds.md).
 
 Do not rely on message parsing to detect authorization problems.
 

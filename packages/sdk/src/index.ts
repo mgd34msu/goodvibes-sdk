@@ -24,8 +24,6 @@ export type { BrowserGoodVibesSdkOptions } from './browser.js';
 export { createBrowserGoodVibesSdk } from './browser.js';
 export type { WebGoodVibesSdkOptions } from './web.js';
 export { createWebGoodVibesSdk } from './web.js';
-export type { NodeGoodVibesSdkOptions } from './node.js';
-export { createNodeGoodVibesSdk } from './node.js';
 export type {
   ReactNativeGoodVibesRealtime,
   ReactNativeGoodVibesSdk,
@@ -34,6 +32,7 @@ export type {
 export { createReactNativeGoodVibesSdk } from './react-native.js';
 export type { ExpoGoodVibesSdkOptions } from './expo.js';
 export { createExpoGoodVibesSdk } from './expo.js';
+export * from './observer/index.js';
 export * from './contracts.js';
 export * from './daemon.js';
 export * from './errors.js';

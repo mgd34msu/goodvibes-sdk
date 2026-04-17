@@ -1,5 +1,7 @@
 # Tool Safety
 
+> **Surface scope:** This document describes tool-call behavior for the **full surface (Bun runtime)**. See [Runtime Surfaces](./surfaces.md) for companion-surface constraints.
+
 This guide covers how tool-call arguments move from raw streaming output through to your handler, what can go wrong at each step, and how to write tools that handle bad input gracefully.
 
 ---

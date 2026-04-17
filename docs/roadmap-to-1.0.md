@@ -1,8 +1,8 @@
 # Roadmap to 1.0
 
 **Status**: Active. Last updated 2026-04-17.
-**Current version**: 0.18.51.
-**Current score**: 7.0 / 10.
+**Current version**: 0.19.6.
+**Current score**: 9.0 / 10.
 **Target for 1.0.0 cut**: 10.0 / 10, plus explicit approval from the project owner.
 
 ---
@@ -26,7 +26,7 @@ The SDK has the bones today. It does not have the enforcement.
 
 ## Wave plan
 
-### Wave S-α — Stabilize the public surface
+### Wave S-α — Stabilize the public surface ✓ shipped 0.19.0
 **Target release**: 0.19.0 · **Effort**: ~3 days · **Score effect**: 7.0 → 7.5
 
 Prerequisite for TUI's F-arch-04 adapter layer and for every downstream wave. The hardest one to get right.
@@ -37,7 +37,7 @@ Prerequisite for TUI's F-arch-04 adapter layer and for every downstream wave. Th
 - Add a CI gate that fails the build if any consumer imports a non-exported path (runs against the TUI's source as a downstream smoke test).
 - Write `docs/public-surface.md`: one entry per exported subpath with its stability contract (stable / beta / preview).
 
-### Wave S-β — Error taxonomy enforcement
+### Wave S-β — Error taxonomy enforcement ✓ shipped 0.19.3
 **Target release**: 0.19.1 · **Effort**: ~2 days · **Score effect**: 7.5 → 8.0 · **Depends on**: S-α
 
 - Grep every `throw new Error(` in `packages/*/src/**` (excluding tests and internal helpers that throw+catch locally).
@@ -45,7 +45,7 @@ Prerequisite for TUI's F-arch-04 adapter layer and for every downstream wave. Th
 - Add an AST-grep CI rule: `throw new Error(...)` in any file under a `public/` directory (or matching the exports map) fails the build.
 - Document every `SDKErrorKind` value in `docs/error-kinds.md`: when it fires, what remediation consumers should attempt, whether it's retryable.
 
-### Wave S-γ — Mirror-drift guard
+### Wave S-γ — Mirror-drift guard ✓ shipped 0.19.0 (+ S-γ-cleanup 0.19.2)
 **Target release**: 0.19.1 · **Effort**: ~1 day · **Score effect**: 8.0 → 8.3 · **Parallel with S-β**
 
 Closes the bug class where canonical transport-http diverged from the sdk/_internal mirror on one SSE call.
@@ -54,7 +54,7 @@ Closes the bug class where canonical transport-http diverged from the sdk/_inter
 - Migrate the existing sync script to be idempotent and verifiable — a `sync:check` command that exits non-zero if a mirror is stale.
 - Add a pre-commit hook (opt-in) that runs `sync:check` on staged transport-http files.
 
-### Wave S-δ — Per-release migration notes
+### Wave S-δ — Per-release migration notes ✓ shipped 0.19.1
 **Target release**: 0.19.2 · **Effort**: ~1 day · **Score effect**: 8.3 → 8.5 · **Parallel with S-γ**
 
 Ends the "SDK bump → surprise TUI test burn" pattern.
@@ -64,7 +64,7 @@ Ends the "SDK bump → surprise TUI test burn" pattern.
 - Auto-generate the skeleton from conventional commits between tags where feasible. Manual edits still allowed.
 - Each breaking change gets a copy-pasteable before/after snippet.
 
-### Wave S-ε — Multi-platform test matrix
+### Wave S-ε — Multi-platform test matrix ✓ shipped partial 0.19.1 (S-ε.2 pending)
 **Target release**: 0.19.3 · **Effort**: ~2 days · **Score effect**: 8.5 → 8.8 · **Parallel after S-α**
 
 The existing RN CI gate is a one-off. Extend to full platform parity.
@@ -73,7 +73,7 @@ The existing RN CI gate is a one-off. Extend to full platform parity.
 - Transport-http + auth + runtime-events get explicit per-platform expectations tests.
 - RN bundle check extends to also verify that typed events serialize/deserialize identically across platforms.
 
-### Wave S-ζ — Integration + property tests
+### Wave S-ζ — Integration + property tests ✓ shipped 0.19.4
 **Target release**: 0.19.4 · **Effort**: ~3 days · **Score effect**: 8.8 → 9.2 · **Depends on**: S-α + S-β
 
 The tests that would have caught tonight's TUI regressions at the SDK level.
@@ -83,7 +83,7 @@ The tests that would have caught tonight's TUI regressions at the SDK level.
 - Property-based tests (fast-check or similar) on `AnyRuntimeEvent` discriminants: every event kind round-trips through JSON serialization without type loss.
 - Integration test for `createGoodVibesAuthClient` decomposition: `TokenStore` + `SessionManager` + `PermissionResolver` compose to exactly the same observable behavior as the monolithic legacy facade.
 
-### Wave S-θ — Observability hooks
+### Wave S-θ — Observability hooks ✓ shipped partial 0.19.5
 **Target release**: 0.19.5 · **Effort**: ~2 days · **Score effect**: 9.2 → 9.5 · **Parallel after S-α**
 
 Without this, consumers have to monkey-patch to get telemetry. With it, they plug in.

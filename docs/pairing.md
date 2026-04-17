@@ -162,14 +162,14 @@ const sdk = createGoodVibesSdk({
 const status = await sdk.operator.control.status();
 ```
 
-For React Native or Expo, swap `createMemoryTokenStore` with `createReactNativeTokenStore` (backed by SecureStore):
+For React Native or Expo, use `createMemoryTokenStore` from `@pellux/goodvibes-sdk/auth` or implement a custom `GoodVibesTokenStore` adapter backed by `expo-secure-store` or `react-native-keychain`:
 
 ```ts
-import { createReactNativeTokenStore } from '@pellux/goodvibes-sdk/react-native';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
   baseUrl: payload.url,
-  tokenStore: createReactNativeTokenStore(),
+  tokenStore: createMemoryTokenStore(),
 });
 ```
 
@@ -223,7 +223,7 @@ The companion token is stored as a plaintext file under `.goodvibes/<surfaceRoot
 
 On mobile companions:
 - Use the platform's secure storage (iOS Keychain, Android Keystore).
-- The SDK's `createReactNativeTokenStore()` wraps Expo SecureStore, which uses the platform keychain.
+- Use a `GoodVibesTokenStore` adapter backed by `expo-secure-store` or `react-native-keychain`, which use the platform keychain.
 - Never store the token in AsyncStorage, localStorage, or other unencrypted stores.
 
 ### QR code exposure
@@ -296,9 +296,9 @@ A companion app requires:
 ```ts
 import { useState } from 'react';
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
-import { createReactNativeTokenStore } from '@pellux/goodvibes-sdk/react-native';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
-const tokenStore = createReactNativeTokenStore();
+const tokenStore = createMemoryTokenStore();
 
 export function usePairedSdk(baseUrl: string) {
   const sdk = createGoodVibesSdk({

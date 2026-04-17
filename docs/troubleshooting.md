@@ -9,10 +9,10 @@ Pass `baseUrl` explicitly, or use the browser/web entrypoint in a runtime where 
 Your runtime does not provide `fetch`, and you did not pass `options.fetch`.
 
 Use:
-- Node 18+/Bun
-- a browser runtime
-- React Native runtime fetch
+- Bun ≥1.0 (full surface), Hermes via React Native/Expo (companion), modern browsers (companion)
 - or inject `fetch` manually
+
+See [Runtime Surfaces](./surfaces.md) for the full surface breakdown.
 
 ## `WebSocket implementation is required`
 
