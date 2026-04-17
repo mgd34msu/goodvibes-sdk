@@ -3,11 +3,14 @@ import type {
   LLMProvider,
   ChatRequest,
   ChatResponse,
+  ChatStopReason,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
+
+import { mapOpenAIStopReason } from './stop-reason-maps.js';
 import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
 import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
 import {
@@ -51,7 +54,8 @@ export class OpenAIProvider implements LLMProvider {
       let inputTokens = 0;
       let outputTokens = 0;
       let cacheReadTokens = 0;
-      let stopReason: ChatResponse['stopReason'] = 'end';
+      let rawStopReason: string | undefined;
+      let stopReason: ChatStopReason = 'unknown';
       let rawToolCalls: OpenAIToolCall[] = [];
 
       const openaiMessages = toOpenAIMessages(messages, systemPrompt);
@@ -101,8 +105,10 @@ export class OpenAIProvider implements LLMProvider {
           }
 
           const finishReason = chunk.choices[0]?.finish_reason;
-          if (finishReason === 'tool_calls') stopReason = 'tool_use';
-          else if (finishReason === 'length') stopReason = 'max_tokens';
+          if (finishReason) {
+            rawStopReason = finishReason;
+            stopReason = mapOpenAIStopReason(finishReason);
+          }
 
           const usage = (chunk as { usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } }).usage;
           if (usage) {
@@ -139,7 +145,8 @@ export class OpenAIProvider implements LLMProvider {
         if (extracted.toolCalls.length > 0) {
           toolCalls = extracted.toolCalls;
           responseText = extracted.cleanedContent;
-          stopReason = 'tool_use';
+          stopReason = 'tool_call';
+          rawStopReason = rawStopReason ?? 'tool_calls';
         }
       }
 
@@ -156,7 +163,8 @@ export class OpenAIProvider implements LLMProvider {
           outputTokens,
           ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
         },
-        stopReason,
+        stopReason: stopReason === 'unknown' && responseText ? 'completed' : stopReason,
+        ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
       };
     });
   }

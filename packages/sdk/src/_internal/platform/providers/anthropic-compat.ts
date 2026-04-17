@@ -2,11 +2,13 @@ import type {
   LLMProvider,
   ChatRequest,
   ChatResponse,
+  ChatStopReason,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { REASONING_BUDGET_MAP } from './interface.js';
 import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
+import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import {
@@ -209,7 +211,8 @@ export class AnthropicCompatProvider implements LLMProvider {
       let outputTokens = 0;
       let cacheReadTokens = 0;
       let cacheWriteTokens = 0;
-      let stopReason: ChatResponse['stopReason'] = 'end';
+      let rawStopReason: string | undefined;
+      let stopReason: ChatStopReason = 'unknown';
 
       // Accumulate tool use blocks by index
       const toolBlocks = new Map<number, { id: string; name: string; args: string }>();
@@ -274,8 +277,10 @@ export class AnthropicCompatProvider implements LLMProvider {
                 }
               }
             } else if (event.type === 'message_delta') {
-              if (event.delta?.stop_reason === 'tool_use') stopReason = 'tool_use';
-              else if (event.delta?.stop_reason === 'max_tokens') stopReason = 'max_tokens';
+              if (event.delta?.stop_reason) {
+                rawStopReason = event.delta.stop_reason;
+                stopReason = mapAnthropicStopReason(rawStopReason);
+              }
               if (event.usage?.output_tokens) outputTokens = event.usage.output_tokens;
               if (event.usage?.cache_read_input_tokens != null) cacheReadTokens = event.usage.cache_read_input_tokens;
               if (event.usage?.cache_creation_input_tokens != null) cacheWriteTokens = event.usage.cache_creation_input_tokens;
@@ -320,7 +325,8 @@ export class AnthropicCompatProvider implements LLMProvider {
         content: text,
         toolCalls,
         usage: { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens },
-        stopReason,
+        stopReason: stopReason === 'unknown' && text ? 'completed' : stopReason,
+        ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
       };
     });
   }

@@ -3,6 +3,7 @@ import type {
   LLMProvider,
   ChatRequest,
   ChatResponse,
+  ChatStopReason,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
   ProviderRuntimeMetadata,
@@ -24,6 +25,8 @@ import type { CacheHitTracker } from '@pellux/goodvibes-sdk/platform/providers/c
 import { extractOpenAIStreamTextDelta } from '@pellux/goodvibes-sdk/platform/providers/openai-stream-delta';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
 import { summarizeError, toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+
+import { mapOpenAIStopReason } from './stop-reason-maps.js';
 
 const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},
@@ -336,7 +339,8 @@ export class OpenAICompatProvider implements LLMProvider {
       let inputTokens = 0;
       let outputTokens = 0;
       let cacheReadTokens = 0;
-      let stopReason: ChatResponse['stopReason'] = 'end';
+      let rawStopReason: string | undefined;
+      let stopReason: ChatStopReason = 'unknown';
       let reasoningSummaryText: string | undefined;
       let rawToolCalls: OpenAIToolCall[] = [];
       const selectedModel = model ?? this.defaultModel;
@@ -443,8 +447,10 @@ export class OpenAICompatProvider implements LLMProvider {
           }
 
           const finishReason = raw.choices[0]?.finish_reason;
-          if (finishReason === 'tool_calls') stopReason = 'tool_use';
-          else if (finishReason === 'length') stopReason = 'max_tokens';
+          if (finishReason) {
+            rawStopReason = finishReason;
+            stopReason = mapOpenAIStopReason(finishReason);
+          }
 
           if (raw.usage) {
             const rawUsage = raw.usage as {
@@ -505,7 +511,8 @@ export class OpenAICompatProvider implements LLMProvider {
         if (extracted.toolCalls.length > 0) {
           toolCalls = extracted.toolCalls;
           responseText = extracted.cleanedContent;
-          stopReason = 'tool_use';
+          stopReason = 'tool_call';
+          rawStopReason = rawStopReason ?? 'tool_calls';
         }
       }
 
@@ -517,7 +524,8 @@ export class OpenAICompatProvider implements LLMProvider {
           outputTokens,
           ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
         },
-        stopReason,
+        stopReason: stopReason === 'unknown' && responseText ? 'completed' : stopReason,
+        ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
       };
 
       if (reasoningSummaryText) {

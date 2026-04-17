@@ -156,6 +156,19 @@ export interface ChatRequest {
   onDelta?: (delta: StreamDelta) => void;
 }
 
+/**
+ * Normalized stop-reason vocabulary for `ChatResponse`.
+ * Every provider's raw finish reason maps to exactly one canonical value.
+ */
+export type ChatStopReason =
+  | 'completed'        // Natural end of generation (was 'end')
+  | 'max_tokens'       // Output token limit reached
+  | 'tool_call'        // Model requested tool invocation (was 'tool_use')
+  | 'stop_sequence'    // Matched an explicit stop sequence
+  | 'content_filter'   // Provider content filter triggered
+  | 'error'            // Generation aborted due to error
+  | 'unknown';         // Fallback for unmapped provider values
+
 export interface ChatResponse {
   content: string;
   toolCalls: ToolCall[];
@@ -165,7 +178,13 @@ export interface ChatResponse {
     cacheReadTokens?: number;  // Anthropic: tokens read from prompt cache
     cacheWriteTokens?: number; // Anthropic: tokens written to prompt cache
   };
-  stopReason: 'end' | 'tool_use' | 'max_tokens' | 'error';
+  /** Normalized stop reason — use this for cross-provider comparisons. */
+  stopReason: ChatStopReason;
+  /**
+   * Raw stop reason string emitted by the underlying provider, preserved for
+   * consumers that need provider-specific detail (e.g. analytics, debugging).
+   */
+  providerStopReason?: string;
   /** Mercury-2 specific: condensed chain-of-thought, if requested. */
   reasoningSummary?: string;
   /**

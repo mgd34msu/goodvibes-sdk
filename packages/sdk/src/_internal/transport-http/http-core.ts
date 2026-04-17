@@ -1,7 +1,7 @@
 // Synced from packages/transport-http/src/http-core.ts
 // Extracted from legacy source: src/runtime/transports/http-json-transport.ts
 import { sleepWithSignal } from './backoff.js';
-import { mergeHeaders, resolveAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';
+import { mergeHeaders, normalizeAuthToken, resolveAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';
 import {
   getHttpRetryDelay,
   isRetryableHttpStatus,
@@ -254,6 +254,8 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
   const baseUrl = options.baseUrl.trim();
   const fetchImpl = createFetch(options.fetchImpl, options.fetch);
   const authToken = options.authToken ?? null;
+  // Normalize at the boundary: downstream always works with a single resolver.
+  const getAuthToken = options.getAuthToken ?? normalizeAuthToken(options.authToken ?? undefined);
   const defaultHeaders = options.headers;
   const retryPolicy = options.retry;
   const paths = createTransportPaths(baseUrl);
@@ -268,7 +270,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
 
     while (true) {
       attempt += 1;
-      const token = await resolveAuthToken(authToken, options.getAuthToken);
+      const token = (await getAuthToken()) ?? null;
       const headers = await resolveHeaders(defaultHeaders, options.getHeaders);
       try {
         return await requestJson<T>(
@@ -328,7 +330,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
       return buildUrl(baseUrl, path);
     },
     async getAuthToken(): Promise<string | null> {
-      return await resolveAuthToken(authToken, options.getAuthToken);
+      return (await getAuthToken()) ?? null;
     },
     requestJson: requestJsonForTransport,
     resolveContractRequest,

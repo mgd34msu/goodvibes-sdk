@@ -2,12 +2,15 @@ import type {
   LLMProvider,
   ChatRequest,
   ChatResponse,
+  ChatStopReason,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { REASONING_BUDGET_MAP } from './interface.js';
+
+import { mapGeminiStopReason } from './stop-reason-maps.js';
 import { ProviderError } from '@pellux/goodvibes-sdk/platform/types/errors';
 import { withRetry } from '@pellux/goodvibes-sdk/platform/utils/retry';
 import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
@@ -345,9 +348,9 @@ export class GeminiProvider implements LLMProvider {
       // Prefer streamedText for content; fall back to parsed if no streaming happened
       const text = streamedText || parsedText;
 
-      let stopReason: ChatResponse['stopReason'] = 'end';
-      if (lastFinishReason === 'MAX_TOKENS') stopReason = 'max_tokens';
-      else if (toolCalls.length > 0) stopReason = 'tool_use';
+      let stopReason: ChatStopReason = toolCalls.length > 0
+        ? 'tool_call'
+        : mapGeminiStopReason(lastFinishReason);
 
       // Clear old signatures — new ones were captured from this response's functionCall parts
       // (kept across calls within a tool-use loop, cleared when no new functionCalls arrive)
@@ -370,6 +373,7 @@ export class GeminiProvider implements LLMProvider {
           // cacheWriteTokens is omitted: Gemini does not charge separately for cache writes
         },
         stopReason,
+        ...(lastFinishReason ? { providerStopReason: lastFinishReason } : {}),
       };
     });
   }

@@ -40,7 +40,6 @@ export function classifyFailure(input: ClassifierInput): FailureClass {
   // LLM stop reason: max_tokens
   if (
     input.stopReason === 'max_tokens'
-    || input.stopReason === 'length'
     || input.stopReason === 'context_overflow'
   ) {
     return 'max_tokens';
@@ -128,9 +127,7 @@ export function summariseFailure(
     case 'cancelled':
       return 'Entity was explicitly cancelled';
     case 'max_tokens':
-      return stopReason === 'length'
-        ? 'Response truncated at max_tokens (length stop)'
-        : 'Model stopped due to token limit (max_tokens)';
+      return 'Model stopped due to token limit (max_tokens)';
     case 'compaction_error':
       return 'Context compaction failed';
     case 'unknown':

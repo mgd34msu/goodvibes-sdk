@@ -2,12 +2,14 @@ import type { MessageStreamEvent } from '@anthropic-ai/sdk/resources/messages';
 import type {
   ChatRequest,
   ChatResponse,
+  ChatStopReason,
   LLMProvider,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { REASONING_BUDGET_MAP } from './interface.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
+import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import {
   fromAnthropicContent,
   toAnthropicMessages,
@@ -106,7 +108,8 @@ export class AnthropicSdkProvider implements LLMProvider {
 
       const toolBlocks = new Map<number, { id: string; name: string; args: string }>();
       let responseText = '';
-      let stopReason: ChatResponse['stopReason'] = 'end';
+      let rawStopReason: string | undefined;
+      let stopReason: ChatStopReason = 'unknown';
 
       try {
         const streamFactory = client.messages.stream as (
@@ -140,8 +143,10 @@ export class AnthropicSdkProvider implements LLMProvider {
               });
             }
           } else if (event.type === 'message_delta') {
-            if (event.delta.stop_reason === 'tool_use') stopReason = 'tool_use';
-            else if (event.delta.stop_reason === 'max_tokens') stopReason = 'max_tokens';
+            if (event.delta.stop_reason) {
+              rawStopReason = event.delta.stop_reason;
+              stopReason = mapAnthropicStopReason(rawStopReason);
+            }
           }
         }
 
@@ -178,7 +183,8 @@ export class AnthropicSdkProvider implements LLMProvider {
             ...(finalMessage.usage.cache_read_input_tokens != null ? { cacheReadTokens: finalMessage.usage.cache_read_input_tokens } : {}),
             ...(finalMessage.usage.cache_creation_input_tokens != null ? { cacheWriteTokens: finalMessage.usage.cache_creation_input_tokens } : {}),
           },
-          stopReason,
+          stopReason: stopReason === 'unknown' && parsed.text ? 'completed' : stopReason,
+          ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
         };
       } catch (error) {
         throw toProviderError(error, {

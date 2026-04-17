@@ -333,7 +333,7 @@ export function emitMalformedToolUseWarning(args: {
 }): void {
   logger.warn('Orchestrator: provider reported stopReason=tool_use but returned no tool calls (malformed response)', {
     model: args.providerRegistry.getCurrentModel().id,
-    stopReason: 'tool_use',
+    stopReason: 'tool_call',
   });
   if (args.isReconciliationEnabled) {
     args.conversation.addSystemMessage(

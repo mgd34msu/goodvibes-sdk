@@ -14,6 +14,7 @@ import { resolveSubscriptionAccessToken } from '../config/subscription-auth.js';
 import { arch, platform, release } from 'node:os';
 import type { SubscriptionManager } from '@pellux/goodvibes-sdk/platform/config/subscriptions';
 import { toProviderError } from '@pellux/goodvibes-sdk/platform/utils/error-display';
+import { mapCodexStopReason } from './stop-reason-maps.js';
 
 const OPENAI_CODEX_BASE_URL = 'https://chatgpt.com/backend-api';
 const OPENAI_CODEX_PROVIDER_NAME = 'openai-subscriber';
@@ -131,13 +132,6 @@ function buildResponsesInput(messages: ProviderMessage[]): ResponsesInputItem[] 
   }
 
   return input;
-}
-
-function mapStopReason(status: string | undefined, toolCalls: ToolCall[]): ChatResponse['stopReason'] {
-  if (toolCalls.length > 0 && status === 'completed') return 'tool_use';
-  if (status === 'incomplete') return 'max_tokens';
-  if (status === 'failed' || status === 'cancelled') return 'error';
-  return 'end';
 }
 
 function buildErrorMessage(status: number, body: string): string {
@@ -404,7 +398,8 @@ export async function chatWithOpenAICodex(
             outputTokens,
             ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
           },
-          stopReason: mapStopReason(status, resolvedToolCalls),
+          stopReason: mapCodexStopReason(status, resolvedToolCalls.length > 0),
+          ...(status !== 'completed' ? { providerStopReason: status } : {}),
         };
       } catch (error: unknown) {
         throw toProviderError(error, {

@@ -350,7 +350,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     const reasoningForMsg = reasoningAccumulated || undefined;
     const reasoningSummaryForMsg = response.reasoningSummary || undefined;
 
-    if (response.stopReason === 'tool_use' && response.toolCalls.length === 0) {
+    if (response.stopReason === 'tool_call' && response.toolCalls.length === 0) {
       emitMalformedToolUseWarning({
         conversation: context.conversation,
         providerRegistry: context.providerRegistry,

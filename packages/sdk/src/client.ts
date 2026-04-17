@@ -15,6 +15,7 @@ import type {
   HttpRetryPolicy,
   StreamReconnectPolicy,
 } from './_internal/transport-http/index.js';
+import { normalizeAuthToken } from './_internal/transport-http/index.js';
 import {
   createEventSourceConnector,
   createRemoteRuntimeEvents,
@@ -146,6 +147,8 @@ export function createGoodVibesSdk(
   const getAuthToken = tokenStore
     ? () => tokenStore.getToken()
     : options.getAuthToken;
+  // Single normalized resolver used by realtime connectors.
+  const tokenResolver = normalizeAuthToken(getAuthToken ?? options.authToken ?? undefined);
   const fetchImpl = () => requireFetchImplementation(options.fetch);
   const operator = createOperatorSdk(createOperatorOptions({
     ...options,
@@ -163,7 +166,7 @@ export function createGoodVibesSdk(
     realtime: {
       viaSse(): RemoteRuntimeEvents<RuntimeEventRecord> {
         return createRemoteRuntimeEvents(
-          createEventSourceConnector(baseUrl, getAuthToken ?? authToken, fetchImpl(), {
+          createEventSourceConnector(baseUrl, tokenResolver, fetchImpl(), {
             reconnect: options.realtime?.sseReconnect,
             onError: options.realtime?.onError,
           }),
@@ -173,7 +176,7 @@ export function createGoodVibesSdk(
         return createRemoteRuntimeEvents(
           createWebSocketConnector(
             baseUrl,
-            getAuthToken ?? authToken,
+            tokenResolver,
             requireWebSocketImplementation(webSocketImpl ?? options.WebSocketImpl),
             {
               reconnect: options.realtime?.webSocketReconnect,

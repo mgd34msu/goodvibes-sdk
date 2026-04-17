@@ -2,7 +2,7 @@
 // Extracted from legacy source: src/runtime/transports/runtime-events-client.ts
 import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../contracts/index.js';
 import type { AnyRuntimeEvent } from '../platform/runtime/events/index.js';
-import { resolveAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '../transport-http/index.js';
+import { normalizeAuthToken, type AuthTokenResolver, type StreamReconnectPolicy, openRawServerSentEventStream as openServerSentEventStream } from '../transport-http/index.js';
 import { buildUrl, normalizeBaseUrl } from '../transport-http/index.js';
 import {
   createRemoteDomainEvents,
@@ -25,13 +25,6 @@ export interface RuntimeEventConnectorOptions {
 }
 
 type AuthTokenSource = string | null | undefined | AuthTokenResolver;
-
-async function resolveAuthTokenSource(source: AuthTokenSource): Promise<string | null> {
-  if (typeof source === 'function') {
-    return await resolveAuthToken(null, source);
-  }
-  return source ?? null;
-}
 
 export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
   connect: DomainEventConnector<RuntimeEventDomain, TEvent>,
@@ -73,6 +66,7 @@ export function createEventSourceConnector(
   const handleError = options.onError ?? (options.reconnect?.enabled ? (() => {}) : undefined);
   return async (domain, onEnvelope) => {
     const url = buildEventSourceUrl(baseUrl, domain);
+    const getAuthToken = normalizeAuthToken(token ?? undefined);
     return await openServerSentEventStream(fetchImpl, url, {
       onEvent: (eventName, payload) => {
         if (eventName !== domain) return;
@@ -82,8 +76,7 @@ export function createEventSourceConnector(
       onError: handleError,
     }, {
       reconnect: options.reconnect,
-      getAuthToken: typeof token === 'function' ? token : undefined,
-      authToken: typeof token === 'function' ? null : token,
+      getAuthToken,
     });
   };
 }
@@ -131,7 +124,7 @@ export function createWebSocketConnector(
 
     const onOpen = async () => {
       reconnectAttempt = 0;
-      const authToken = await resolveAuthTokenSource(token);
+      const authToken = (await normalizeAuthToken(token ?? undefined)()) ?? null;
       if (!authToken || !socket) return;
       socket.send(JSON.stringify({
         type: 'auth',
