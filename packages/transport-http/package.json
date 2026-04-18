@@ -1,7 +1,7 @@
 {
   "name": "@pellux/goodvibes-transport-http",
   "private": true,
-  "version": "0.21.4",
+  "version": "0.21.5",
   "description": "HTTP, JSON, path, and SSE transport primitives for GoodVibes client integrations.",
   "type": "module",
   "main": "./dist/index.js",
