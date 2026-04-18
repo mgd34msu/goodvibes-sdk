@@ -403,30 +403,35 @@ describe('HTTP transport: traceparent injection with OTel module override (injec
 
 describe('SSE transport: traceparent in fetch headers when OTel is present', () => {
   test('traceparent header appears in SSE fetch request when active span is present', async () => {
-    // Strategy: mock.module replaces @pellux/goodvibes-transport-core/dist before the
-    // dynamic import of transport-realtime/dist/runtime-events.js, intercepting
-    // injectTraceparentAsync at the binding level. We spread real exports and override
-    // only injectTraceparentAsync so all other transport functions remain functional.
-    //
-    // WHY DIST: mock.module intercepts by resolved file path. The dist/runtime-events.js
-    // is already bundled and its import of @pellux/goodvibes-transport-core resolves to
-    // packages/transport-core/dist/index.js — the path mock.module targets.
-    const { createRequire } = await import('module');
-    const req = createRequire(import.meta.url);
+    // Strategy: use the setOtelModuleOverride injection seam exported from the dist
+    // otel module. This is reliable across the full CI test suite because:
+    //   1. _otelModuleOverride is checked FIRST in probeOtel(), before the module cache.
+    //   2. Even if otelApi was set to null by a prior "OTel absent" test, the override
+    //      takes priority — mock.module cannot re-bind already-loaded ESM modules in CI.
+    //   3. __resetOtelCache() clears both otelApi and _otelModuleOverride after each use.
+    const { setOtelModuleOverride, __resetOtelCache } =
+      await import('../packages/transport-core/dist/otel.js') as {
+        setOtelModuleOverride: (api: unknown) => void;
+        __resetOtelCache: () => void;
+      };
 
     const mockTraceId = '0af7651916cd43dd8448eb211c80319c';
     const mockSpanId  = 'b7ad6b7169203331';
 
-    const transportCorePath =
-      '/home/buzzkill/Projects/goodvibes-sdk/packages/transport-core/dist/index.js';
-    const realTransportCore = req(transportCorePath) as Record<string, unknown>;
-
-    mock.module(transportCorePath, () => ({
-      ...realTransportCore,
-      injectTraceparentAsync: async (headers: Record<string, string>) => {
-        headers['traceparent'] = `00-${mockTraceId}-${mockSpanId}-01`;
+    // Reset any prior cache state, then install the fake OTel API.
+    __resetOtelCache();
+    setOtelModuleOverride({
+      trace: {
+        getActiveSpan: () => ({
+          spanContext: () => ({
+            traceId: mockTraceId,
+            spanId: mockSpanId,
+            traceFlags: 1,
+            traceState: null,
+          }),
+        }),
       },
-    }));
+    });
 
     const { createEventSourceConnector } =
       await import('../packages/transport-realtime/dist/runtime-events.js') as {
@@ -455,8 +460,8 @@ describe('SSE transport: traceparent in fetch headers when OTel is present', () 
 
     await connector('agents', () => {}).catch(() => {});
 
-    // Restore the real module so subsequent tests are unaffected.
-    mock.module(transportCorePath, () => ({ ...realTransportCore }));
+    // Always clear the override so subsequent tests are not affected.
+    __resetOtelCache();
 
     expect(capturedHeaders['traceparent']).toBe(`00-${mockTraceId}-${mockSpanId}-01`);
   });
@@ -468,22 +473,31 @@ describe('SSE transport: traceparent in fetch headers when OTel is present', () 
 
 describe('WebSocket transport: traceparent in auth frame when OTel is present', () => {
   test('traceparent field appears in WS auth frame when active span is present', async () => {
-    const { createRequire } = await import('module');
-    const req = createRequire(import.meta.url);
+    // Strategy: use the setOtelModuleOverride injection seam (same as SSE test above).
+    // Avoids mock.module which cannot re-bind already-loaded ESM modules in CI.
+    const { setOtelModuleOverride, __resetOtelCache } =
+      await import('../packages/transport-core/dist/otel.js') as {
+        setOtelModuleOverride: (api: unknown) => void;
+        __resetOtelCache: () => void;
+      };
 
     const mockTraceId = '0af7651916cd43dd8448eb211c80319c';
     const mockSpanId  = 'b7ad6b7169203331';
 
-    const transportCorePath =
-      '/home/buzzkill/Projects/goodvibes-sdk/packages/transport-core/dist/index.js';
-    const realTransportCore = req(transportCorePath) as Record<string, unknown>;
-
-    mock.module(transportCorePath, () => ({
-      ...realTransportCore,
-      injectTraceparentAsync: async (headers: Record<string, string>) => {
-        headers['traceparent'] = `00-${mockTraceId}-${mockSpanId}-01`;
+    // Reset any prior cache state, then install the fake OTel API.
+    __resetOtelCache();
+    setOtelModuleOverride({
+      trace: {
+        getActiveSpan: () => ({
+          spanContext: () => ({
+            traceId: mockTraceId,
+            spanId: mockSpanId,
+            traceFlags: 1,
+            traceState: null,
+          }),
+        }),
       },
-    }));
+    });
 
     const { createWebSocketConnector } =
       await import('../packages/transport-realtime/dist/runtime-events.js') as {
@@ -538,8 +552,8 @@ describe('WebSocket transport: traceparent in auth frame when OTel is present', 
     // Allow async onOpen handler (which calls injectTraceparentAsync) to complete.
     await new Promise((r) => setTimeout(r, 30));
 
-    // Restore the real module.
-    mock.module(transportCorePath, () => ({ ...realTransportCore }));
+    // Always clear the override so subsequent tests are not affected.
+    __resetOtelCache();
 
     expect(sentMessages.length).toBeGreaterThanOrEqual(1);
     const authFrame = JSON.parse(sentMessages[0]!) as {
