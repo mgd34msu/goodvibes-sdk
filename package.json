@@ -58,7 +58,8 @@
     "todo:check": "bun scripts/no-todo-markers.ts",
     "flake:check": "bun scripts/flake-detect.ts",
     "api:extract": "bunx api-extractor run --local",
-    "api:check": "bunx api-extractor run"
+    "api:check": "bunx api-extractor run",
+    "test:workers:wrangler": "bun run build && bun test test/workers-wrangler/wrangler.test.ts"
   },
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
@@ -82,6 +83,7 @@
     "miniflare": "^4.20260415.0",
     "publint": "0.3.18",
     "typescript": "^5.9.3",
-    "verdaccio": "^6.5.1"
+    "verdaccio": "^6.5.1",
+    "wrangler": "4.83.0"
   }
 }

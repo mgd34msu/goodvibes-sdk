@@ -1,0 +1,16 @@
+# wrangler.toml — real workerd harness for @pellux/goodvibes-sdk
+#
+# Points wrangler dev at the test worker entry (test/workers-wrangler/worker.mjs).
+# wrangler bundles via its own esbuild pipeline, resolving relative imports
+# (../../packages/sdk/dist/web.js) from the entry file location.
+#
+# compatibility_date: 2026-04-01 — within the last quarter of writing.
+# Bump quarterly. This date governs which compat flags workerd enables by default.
+#
+# Do NOT add CF_API_TOKEN or account_id — wrangler dev --local does not require them.
+
+name = "goodvibes-sdk-workers-test"
+main = "worker.mjs"
+compatibility_date = "2026-04-01"
+
+# No KV, D1, R2, or other bindings needed — pure HTTP + global API surface test.
