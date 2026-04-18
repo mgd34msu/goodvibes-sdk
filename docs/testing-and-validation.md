@@ -17,7 +17,7 @@ Every push and PR to `main` must pass these gates:
 | `version-consistency` | `bun run version:check` | Ensures all workspace `package.json` files carry the same version |
 | `types-check` | `bun run types:check` | Compiles type-level usage tests against the public API surface to catch type regressions |
 | `bundle-budgets` | `bun run bundle:check` | Enforces per-entry gzip size budgets from `bundle-budgets.json`; a budget failure means an entry point grew beyond its 20% headroom allowance |
-| `sbom-check` | `bun run sbom:check` | Validates the CycloneDX SBOM is non-empty and structurally valid |
+| `sbom-check` | `bun run sbom:generate` + CI-inline size + schema assertions | Generates the CycloneDX SBOM (`sbom.cdx.json`) and asserts non-empty + valid schema (no standalone `sbom:check` script — validation is inlined in `.github/workflows/ci.yml`) |
 
 ## Portable Validation
 
