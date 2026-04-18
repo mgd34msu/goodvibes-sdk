@@ -44,7 +44,8 @@ jobs:
   generate-sbom:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: ${{ github.event_name == 'push' && fromJSON('["verify-tag-version"]') || fromJSON('[]') }}
+    needs: [verify-tag-version]
+    if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped')
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
@@ -72,7 +73,8 @@ jobs:
   publish-npm:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: ${{ github.event_name == 'push' && fromJSON('["verify-tag-version", "generate-sbom"]') || fromJSON('[]') }}
+    needs: [verify-tag-version, generate-sbom]
+    if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped')
     permissions:
       contents: read
       id-token: write
@@ -109,7 +111,8 @@ jobs:
   publish-github-packages:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: ${{ github.event_name == 'push' && fromJSON('["verify-tag-version", "generate-sbom"]') || fromJSON('[]') }}
+    needs: [verify-tag-version, generate-sbom]
+    if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped')
     permissions:
       contents: read
       packages: write
