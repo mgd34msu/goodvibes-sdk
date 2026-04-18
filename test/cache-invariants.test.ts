@@ -67,7 +67,7 @@ function makeMinimalRegistry(): ProviderRegistry {
     modelLimitsService: undefined,
     featureFlags: null,
     runtimeBus: null,
-  } as any;
+  } as unknown as ProviderRegistryOptions;
 
   return new ProviderRegistry(stub);
 }
@@ -93,9 +93,9 @@ describe('I2(a): setModelContextCap invalidation reflected in listModels()', () 
     // Directly inject into customModels (loaded by loadCustomProviders in production;
     // we bypass the filesystem here to keep the test self-contained).
     const model = makeCustomModel('custom-model-a', 'custom-test:custom-model-a');
-    (registry as any).customModels = [model];
+    (registry as unknown as { customModels: ReturnType<typeof makeCustomModel>[] }).customModels = [model];
     // Invalidate so the injected model is picked up in the next listModels() call
-    (registry as any)._invalidateModelRegistry();
+    (registry as unknown as { _invalidateModelRegistry(): void })._invalidateModelRegistry();
 
     // Prime the cache
     const before = registry.listModels();
@@ -120,12 +120,14 @@ describe('I2(a): setModelContextCap invalidation reflected in listModels()', () 
     registry.registerDiscoveredProviders([
       {
         name: 'discovered-test',
+        host: '127.0.0.1',
+        port: 11434,
         baseURL: 'http://localhost:11434',
         serverType: 'ollama',
         models: ['llama3'],
         modelContextWindows: { llama3: 4096 },
         modelOutputLimits: {},
-      } as any,
+      } satisfies DiscoveredServer,
     ]);
 
     // Prime the cache
@@ -152,7 +154,7 @@ describe('I2(b): registerRuntimeProvider unregister callback invalidates cache',
     const provider = {
       name: 'plugin-provider',
       complete: async () => { throw new Error('not implemented'); },
-    } as any;
+    } as unknown as import('../packages/sdk/src/_internal/platform/providers/interface.js').LLMProvider;
     const model = makeCustomModel('plugin-model', 'plugin-provider:plugin-model');
 
     const unregister = registry.registerRuntimeProvider({ provider, models: [model] });
@@ -188,7 +190,7 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
     // `getSnapshot` which reports ring state, we drive events through
     // `trackRequest` public method if available, else call the private method
     // via type-casting.
-    const gw_any = gw as any;
+    const gw_any = gw as unknown as { rememberEvent(event: string, data: Record<string, unknown>): void; _syncScheduled: boolean; };
     for (let i = 0; i < n; i++) {
       gw_any.rememberEvent(`test-event-${i}`, { seq: i });
     }
@@ -198,7 +200,7 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
     const gw = new ControlPlaneGateway({});
     driveEvents(gw, 3);
 
-    const events = (gw as any).recentEvents as Array<{ event: string }>;
+    const events = (gw as unknown as { recentEvents: Array<{ event: string }> }).recentEvents;
     expect(events.length).toBe(3);
     // newest first: event-2, event-1, event-0
     expect(events[0].event).toBe('test-event-2');
@@ -210,7 +212,7 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
     const gw = new ControlPlaneGateway({});
     driveEvents(gw, 600);
 
-    const events = (gw as any).recentEvents as Array<{ event: string }>;
+    const events = (gw as unknown as { recentEvents: Array<{ event: string }> }).recentEvents;
     expect(events.length).toBe(500);
     // newest first: event-599, event-598, ...
     expect(events[0].event).toBe('test-event-599');
@@ -220,8 +222,8 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
   test('getSnapshot totals.recentEvents uses _recentEventsCount (O(1), no array alloc)', () => {
     const gw = new ControlPlaneGateway({});
     driveEvents(gw, 7);
-    const snap = gw.getSnapshot() as any;
-    expect(snap.totals.recentEvents).toBe(7);
+    const snap = gw.getSnapshot() as Record<string, unknown> & { totals?: Record<string, unknown> };
+    expect((snap.totals as Record<string, unknown>).recentEvents).toBe(7);
   });
 });
 
@@ -233,7 +235,7 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
   test('N synchronous rememberEvent calls produce exactly 1 syncControlPlaneState dispatch per microtask', async () => {
     let dispatchCount = 0;
     const mockDispatch = {
-      syncControlPlaneState: (..._args: any[]) => { dispatchCount++; },
+      syncControlPlaneState: (..._args: Parameters<DomainDispatch['syncControlPlaneState']>) => { dispatchCount++; },
       syncControlPlaneClient: () => {},
       syncControlPlaneServer: () => {},
     };
@@ -241,16 +243,16 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
     // Build a gateway with a mock store that creates the dispatch
     const mockStore = {
       getState: () => ({}),
-      dispatch: (fn: any) => fn({ syncControlPlaneState: mockDispatch.syncControlPlaneState }),
+      dispatch: (fn: (slice: Partial<DomainDispatch>) => void) => fn({ syncControlPlaneState: mockDispatch.syncControlPlaneState }),
       subscribe: () => () => {},
-    } as any;
+    } as unknown as import('../packages/sdk/src/_internal/platform/runtime/store/index.js').RuntimeStore;
 
     // We use the internal attach mechanism to inject dispatch
     const gw = new ControlPlaneGateway({});
     // Manually inject the dispatch mock (normally done by attachRuntime)
-    (gw as any).dispatch = mockDispatch;
+    (gw as unknown as { dispatch: Partial<DomainDispatch> }).dispatch = mockDispatch;
 
-    const gw_any = gw as any;
+    const gw_any = gw as unknown as { rememberEvent(event: string, data: Record<string, unknown>): void; _syncScheduled: boolean; };
 
     // Burst: 10 synchronous rememberEvent calls
     for (let i = 0; i < 10; i++) {
@@ -272,12 +274,12 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
   test('lastEventAt inside setImmediate reflects most recent event, not first', async () => {
     let capturedLastEventAt = -1;
     const mockDispatch = {
-      syncControlPlaneState: (payload: any) => { capturedLastEventAt = payload.lastEventAt; },
+      syncControlPlaneState: (payload: Partial<ControlPlaneDomainState>) => { capturedLastEventAt = payload.lastEventAt ?? -1; },
     };
 
     const gw = new ControlPlaneGateway({});
-    (gw as any).dispatch = mockDispatch;
-    const gw_any = gw as any;
+    (gw as unknown as { dispatch: Partial<DomainDispatch> }).dispatch = mockDispatch;
+    const gw_any = gw as unknown as { rememberEvent(event: string, data: Record<string, unknown>): void; _syncScheduled: boolean; };
 
     const t0 = Date.now();
     gw_any.rememberEvent('first', {});
@@ -326,11 +328,11 @@ describe('I2(e): getMessagesForLLM reference identity', () => {
     ['mergeBranch', (c) => {
       // Fork current state, then add a message to the branch so merge actually appends
       c.forkBranch('merge-src');
-      const branchMsgs = (c as any).branches.get('merge-src') as any[];
+      const branchMsgs = (c as unknown as { branches: Map<string, import('../packages/sdk/src/_internal/platform/core/conversation.js').ConversationMessageSnapshot[]> }).branches.get('merge-src')!;
       branchMsgs.push({ role: 'assistant', content: 'merged-reply' });
       c.mergeBranch('merge-src');
     }],
-    ['fromJSON', (c) => c.fromJSON({ messages: [{ role: 'user', content: 'from-json' }] as any })],
+    ['fromJSON', (c) => c.fromJSON({ messages: [{ role: 'user', content: 'from-json' }] as import('../packages/sdk/src/_internal/platform/core/conversation.js').ConversationMessageSnapshot[] })],
     ['undo', (c) => { c.addUserMessage('extra'); c.undo(); }],
     ['redo', (c) => { c.addUserMessage('extra'); c.undo(); c.redo(); }],
     ['markLastUserMessageCancelled', (c) => c.markLastUserMessageCancelled()],
