@@ -92,7 +92,7 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
       // Resolve the bare model id from the registry's ModelDefinition.
       // options.model is the registry key (e.g. "inception:mercury-2"); provider.chat()
       // needs just the bare id (e.g. "mercury-2") — upstream compat APIs reject the prefix.
-      const _bareModelId = ((): string => {
+      const bareModelId = ((): string => {
         const modelRegistry = providerRegistry.listModels();
         const def = options.model
           ? (options.provider
@@ -115,7 +115,7 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
         resolve = null;
       };
       const chatPromise = provider.chat({
-        model: _bareModelId,
+        model: bareModelId,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         systemPrompt: options.systemPrompt ?? undefined,
         signal: options.abortSignal,

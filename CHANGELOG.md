@@ -8,6 +8,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.8] - 2026-04-18
+
+### Changed
+- Renamed internal local `_bareModelId` to `bareModelId` in companion chat adapter (0.21.7 review nit — the value is used, so the underscore prefix was misleading). Pure cosmetic, no behavioral change.
+
 ## [0.21.7] - 2026-04-18
 
 ### Fixed
