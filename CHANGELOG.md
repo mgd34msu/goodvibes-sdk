@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.7] - 2026-04-18
+
+### Fixed
+
+- Companion chat adapter now correctly passes the bare model id (e.g. `"mercury-2"`) to provider `.chat()` calls, not the compound registry key (e.g. `"inception:mercury-2"`). Upstream compat APIs (InceptionLabs, Venice, Cerebras, Groq, etc.) only accept bare ids and were returning 400 invalid_request_error for requests that included the provider prefix. The `createCompanionProviderAdapter` function now resolves the `ModelDefinition` via the registry and uses its `.id` field, with a safe split-on-colon fallback if the definition lookup fails.
+- Regression test added: `test/companion-adapter-model-resolution.test.ts` asserts the bare-id invariant.
+
+---
+
 ## [0.21.6] - 2026-04-18
 
 ### Changed
