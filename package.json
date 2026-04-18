@@ -59,7 +59,8 @@
     "flake:check": "bun scripts/flake-detect.ts",
     "api:extract": "bunx api-extractor run --local",
     "api:check": "bunx api-extractor run",
-    "test:workers:wrangler": "bun run build && bun test test/workers-wrangler/wrangler.test.ts"
+    "test:workers:wrangler": "bun run build && bun test test/workers-wrangler/wrangler.test.ts",
+    "any:check": "bun scripts/no-any-types.ts"
   },
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
