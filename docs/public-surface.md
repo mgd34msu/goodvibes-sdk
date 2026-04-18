@@ -196,4 +196,4 @@ The following paths are intentionally NOT exported and will cause a module resol
 
 - `@pellux/goodvibes-sdk/_internal/**` — Implementation internals. Sealed in S-α.
 
-Any consumer that previously imported from `_internal` directly must migrate to the corresponding `platform/*` stable subpath. See the migration matrix in `HANDOFF-2026-04-16.md` or the F-arch-04 tracking issue.
+Any consumer that previously imported from `_internal` directly must migrate to the corresponding `platform/*` stable subpath. See [Migration and upgrade guide](./migration.md) for the 0.19.0 breaking changes.

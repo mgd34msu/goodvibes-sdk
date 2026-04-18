@@ -53,6 +53,56 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 
 CI job `platform-matrix` (`rn-bundle` dimension) enforces that companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports. See [Compatibility](./compatibility.md).
 
+
+## Transport Middleware
+
+The SDK supports Koa-style transport middleware via `sdk.use()`. Middleware wraps every HTTP request/response cycle through the operator and peer transports.
+
+```ts
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
+import type { TransportMiddleware } from '@pellux/goodvibes-sdk/transport-core';
+
+const sdk = createGoodVibesSdk({
+  baseUrl: 'http://127.0.0.1:3210',
+  authToken: process.env.GOODVIBES_TOKEN,
+});
+
+// Append middleware at construction time via options.middleware:
+// const sdk = createGoodVibesSdk({ ..., middleware: [myMiddleware] });
+
+// Or append after construction:
+sdk.use(async (ctx, next) => {
+  const start = Date.now();
+  console.log('->', ctx.method, ctx.url);
+  await next();
+  console.log('<-', ctx.response?.status, Date.now() - start, 'ms');
+  if (ctx.error) {
+    console.error('transport error', ctx.error);
+  }
+});
+```
+
+Middleware runs in order. Each middleware receives a mutable `TransportContext` and a `next()` function. Calling `next()` executes the remainder of the chain (including the real fetch). After `await next()` returns:
+- `ctx.response` — the `Response` object (on success)
+- `ctx.durationMs` — round-trip time in milliseconds
+- `ctx.error` — the thrown error (on failure)
+
+Middleware can:
+- inspect or mutate request headers (`ctx.headers`) before the fetch
+- inspect the response after `next()` resolves
+- short-circuit by not calling `next()` (returns without a response)
+- access `ctx.signal`, `ctx.body`, `ctx.options` for per-request data
+
+`TransportMiddleware` and `TransportContext` are exported from `@pellux/goodvibes-sdk/transport-core`.
+
+`composeMiddleware` is also exported for building standalone composed chains outside the SDK:
+
+```ts
+import { composeMiddleware } from '@pellux/goodvibes-sdk/transport-core';
+
+const executor = composeMiddleware([loggingMiddleware, retryMiddleware], innerFetch);
+```
+
 ## Contracts
 
 The `@pellux/goodvibes-sdk/contracts` entry is runtime-neutral. Raw JSON artifacts are available at:
