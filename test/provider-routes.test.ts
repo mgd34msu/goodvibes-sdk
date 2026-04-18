@@ -230,10 +230,15 @@ describe('PATCH /api/providers/current', () => {
     const body = await res!.json() as Record<string, unknown>;
     expect(body.model).not.toBeNull();
 
-    // bus should have received model.changed emission
-    const modelChangedEmit = (bus.emitted as Array<{ domain: string; envelope: { type: string } }>)
-      .find((e) => e.domain === 'providers' && e.envelope.type === 'MODEL_CHANGED');
-    expect(modelChangedEmit).toBeDefined();
+    // Response must include persisted field (M-2)
+    expect(typeof body.persisted).toBe('boolean');
+
+    // Exactly ONE MODEL_CHANGED emission (C-3: no duplicate from route handler)
+    const modelChangedEmits = (bus.emitted as Array<{ domain: string; envelope: { type: string } }>)
+      .filter((e) => e.domain === 'providers' && e.envelope.type === 'MODEL_CHANGED');
+    // The stub registry doesn't call the real setCurrentModel (which emits via bus),
+    // so the route handler's direct emission has been removed (C-3 fix verified here):
+    expect(modelChangedEmits).toHaveLength(0);
   });
 
   test('returns 400 MODEL_NOT_FOUND for unknown registryKey', async () => {

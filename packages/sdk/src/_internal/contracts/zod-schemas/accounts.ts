@@ -1,3 +1,4 @@
+// Synced from packages/contracts/src/zod-schemas/accounts.ts
 import { z } from 'zod/v4';
 
 const RouteKindSchema = z.enum(['api-key', 'service-oauth', 'subscription', 'unconfigured']);

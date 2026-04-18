@@ -1,6 +1,6 @@
 # Provider & Model API Reference
 
-**Version**: `@pellux/goodvibes-sdk` ≥ 0.21.2
+**Version**: `@pellux/goodvibes-sdk` ≥ 0.21.3
 **Base path**: all routes are under `/api/providers`
 **Authentication**: all routes require the standard daemon bearer token (`Authorization: Bearer <token>` or the operator session cookie).
 
@@ -19,7 +19,7 @@ List all registered providers and their models. Returns configured status and en
   "providers": [
     {
       "id": "inception",
-      "label": "Inception",
+      "label": "Inception Labs",
       "configured": true,
       "configuredVia": "env",
       "envVars": ["INCEPTION_API_KEY"],
@@ -65,7 +65,7 @@ List all registered providers and their models. Returns configured status and en
 | `providers[].id` | `string` | Provider identifier (e.g. `"inception"`, `"venice"`, `"openai"`) |
 | `providers[].label` | `string` | Human-readable label |
 | `providers[].configured` | `boolean` | `true` if the daemon has credentials for this provider |
-| `providers[].configuredVia` | `"env" \| "secrets" \| "subscription" \| "anonymous" \| undefined` | How credentials are supplied |
+| `providers[].configuredVia` | `"env" \| "subscription" \| "anonymous" \| undefined` | How credentials are supplied: `"env"` = environment variable present; `"subscription"` = OAuth subscription token; `"anonymous"` = provider allows unauthenticated access (e.g. local SGLang); `undefined` = not configured |
 | `providers[].envVars` | `string[]` | Environment variable names that configure this provider |
 | `providers[].models` | `ProviderModelEntry[]` | All models exposed by this provider |
 | `providers[].models[].registryKey` | `string` | Compound key to pass to `PATCH /api/providers/current` |
@@ -130,7 +130,7 @@ Switch the active model live — no daemon restart required. Persists the select
 |-------|------|-------------|
 | `registryKey` | `string` | The `registryKey` from `GET /api/providers` (format: `provider:modelId`) |
 
-**Response `200 OK`** — same shape as `GET /api/providers/current` with the new model.
+**Response `200 OK`** — same shape as `GET /api/providers/current` with the new model, plus `persisted`.
 
 ```json
 {
@@ -140,9 +140,14 @@ Switch the active model live — no daemon restart required. Persists the select
     "id": "mercury-2"
   },
   "configured": true,
-  "configuredVia": "env"
+  "configuredVia": "env",
+  "persisted": true
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `persisted` | `boolean` | `true` if the selection was durably written to config; `false` if persistence failed (model is still switched in memory and the event is still emitted). |
 
 **Error responses**
 
@@ -187,7 +192,7 @@ curl -X PATCH \
 
 When a `PATCH /api/providers/current` succeeds, or when the model is changed via any other codepath (e.g. TUI settings), a `MODEL_CHANGED` event is emitted on the `providers` RuntimeEventBus domain.
 
-**Companion SSE subscribers** receive this event automatically on their existing event stream (`GET /api/companion/chat/sessions/:id/events`) when they are subscribed to the `providers` domain.
+**Companion SSE subscribers** receive this event automatically on their existing event stream (`GET /api/companion/chat/sessions/:id/events`). The `providers` domain is included in `DEFAULT_DOMAINS` as of 0.21.3 — no explicit domain subscription is needed.
 
 **Event envelope** (SSE `data:` payload):
 
@@ -217,6 +222,7 @@ import {
   CurrentModelResponseSchema,
   PatchCurrentModelBodySchema,
   PatchCurrentModelErrorSchema,
+  PatchCurrentModelResponseSchema,
   ModelChangedEventSchema,
 } from '@pellux/contracts';
 

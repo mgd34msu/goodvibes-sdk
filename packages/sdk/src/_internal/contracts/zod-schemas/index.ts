@@ -1,3 +1,4 @@
+// Synced from packages/contracts/src/zod-schemas/index.ts
 export {
   ControlAuthLoginResponseSchema,
   ControlAuthCurrentResponseSchema,
@@ -32,3 +33,28 @@ export type {
   ControlStatusResponse,
   LocalAuthStatusResponse,
 } from './session.js';
+
+export {
+  ProviderModelRefSchema,
+  ProviderModelEntrySchema,
+  ConfiguredViaSchema,
+  ProviderEntrySchema,
+  ListProvidersResponseSchema,
+  CurrentModelResponseSchema,
+  PatchCurrentModelBodySchema,
+  PatchCurrentModelErrorSchema,
+  PatchCurrentModelResponseSchema,
+  ModelChangedEventSchema,
+} from './providers.js';
+export type {
+  ProviderModelRef,
+  ProviderModelEntry,
+  ConfiguredVia,
+  ProviderEntry,
+  ListProvidersResponse,
+  CurrentModelResponse,
+  PatchCurrentModelBody,
+  PatchCurrentModelError,
+  PatchCurrentModelResponse,
+  ModelChangedEvent,
+} from './providers.js';
