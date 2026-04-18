@@ -241,7 +241,7 @@ export interface GoodVibesSdk {
 function requireBaseUrl(baseUrl: string): string {
   const normalized = baseUrl.trim();
   if (!normalized) {
-    throw new ConfigurationError('GoodVibes baseUrl is required');
+    throw new ConfigurationError('GoodVibes baseUrl is required. Pass a non-empty baseUrl in your createGoodVibesSdk options (e.g. "https://my-daemon.example.com").');
   }
   return normalized;
 }

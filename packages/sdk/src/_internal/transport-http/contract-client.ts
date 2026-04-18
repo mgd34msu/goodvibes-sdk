@@ -39,7 +39,7 @@ export function requireContractRoute<TRoute extends ContractRouteLike>(
 ): TRoute {
   const route = routes.find((candidate) => candidate.id === routeId);
   if (!route) {
-    throw new GoodVibesSdkError(`Unknown ${kind} "${routeId}"`, { category: 'contract', source: 'contract', recoverable: false });
+    throw new GoodVibesSdkError(`Unknown ${kind} "${routeId}". Verify the method/route id is correct and that your contract manifest is up to date.`, { category: 'contract', source: 'contract', recoverable: false });
   }
   return route;
 }

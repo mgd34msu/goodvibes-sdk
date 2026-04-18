@@ -56,6 +56,12 @@ export interface RuntimeEventConnectorOptions {
   readonly reconnect?: StreamReconnectPolicy;
   readonly onError?: (error: unknown) => void;
   readonly observer?: TransportObserver;
+  /**
+   * Called once the WebSocket connector is set up, providing an `emitLocal`
+   * function the caller can use to send messages over this connection.
+   * Primarily for test/shim use cases that need to inject outbound frames.
+   */
+  readonly onEmitter?: (emitLocal: (data: string) => void) => void;
 }
 
 type AuthTokenSource = string | null | undefined | AuthTokenResolver;
@@ -63,8 +69,8 @@ type AuthTokenSource = string | null | undefined | AuthTokenResolver;
 /** Default max reconnect attempts for WebSocket connections (finite to prevent infinite auth loops). */
 export const DEFAULT_WS_MAX_ATTEMPTS = 10;
 
-/** Maximum number of messages that may be queued in outboundQueue pending a producer API. */
-const MAX_OUTBOUND_QUEUE = 256;
+/** Maximum number of messages that may be queued in the outbound queue before the oldest entry is dropped. */
+const MAX_OUTBOUND_QUEUE = 1024;
 
 export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
   connect: DomainEventConnector<RuntimeEventDomain, TEvent>,
@@ -157,9 +163,43 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     let hasReceivedMessage = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    // TODO: producer API not yet wired. When added, bound queue size via
-    // MAX_OUTBOUND_QUEUE (see below) and drop oldest or reject with onError.
+    // Bounded outbound message queue — max MAX_OUTBOUND_QUEUE entries, drop-oldest policy.
+    // Messages pushed while the socket is not yet open or is reconnecting are buffered here
+    // and flushed on the next successful open event.
     const outboundQueue: string[] = [];
+    let droppedOutboundCount = 0;
+
+    /**
+     * Enqueue a message for delivery over this WebSocket connection.
+     *
+     * If the socket is currently open the message is sent immediately.
+     * If the socket is not yet open (or is reconnecting), the message is
+     * buffered and will be flushed once the connection is re-established.
+     *
+     * When the buffer is full (> MAX_OUTBOUND_QUEUE), the oldest pending
+     * message is silently dropped and a counter is incremented. Callers that
+     * need back-pressure should check `socket?.readyState` before calling.
+     *
+     * @param data - Serialised message string to send.
+     */
+    const emitLocal = (data: string): void => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(data);
+        return;
+      }
+      if (outboundQueue.length >= MAX_OUTBOUND_QUEUE) {
+        // Drop oldest message to make room (drop-oldest policy).
+        outboundQueue.shift();
+        droppedOutboundCount += 1;
+        options.onError?.(new Error(
+          `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE}). Oldest message dropped; total dropped: ${droppedOutboundCount}.`,
+        ));
+      }
+      outboundQueue.push(data);
+    };
+
+    // Notify caller of the emitter handle (for test/shim use cases).
+    options.onEmitter?.(emitLocal);
 
     const closeSocket = () => {
       if (!socket) return;

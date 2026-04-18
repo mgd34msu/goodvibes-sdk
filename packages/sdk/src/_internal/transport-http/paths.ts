@@ -33,7 +33,7 @@ export interface TransportPaths {
 export function normalizeBaseUrl(baseUrl: string): string {
   const normalized = baseUrl.trim();
   if (!normalized) {
-    throw new ConfigurationError('Transport baseUrl is required', { code: 'SDK_TRANSPORT_BASE_URL_REQUIRED' });
+    throw new ConfigurationError('Transport baseUrl is required. Pass a non-empty baseUrl string to your transport or SDK options.', { code: 'SDK_TRANSPORT_BASE_URL_REQUIRED' });
   }
   return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
 }
