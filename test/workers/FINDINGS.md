@@ -144,7 +144,7 @@ If a Workers-specific realtime transport adapter is added in a future wave (e.g.
 
 ---
 
-## Real workerd harness (wrangler dev --local)
+## wrangler-CLI harness (shares Miniflare 4 runtime)
 
 **Added**: 2026-04-17
 **Harness location**: `test/workers-wrangler/wrangler.test.ts`
@@ -152,24 +152,27 @@ If a Workers-specific realtime transport adapter is added in a future wave (e.g.
 **Script**: `bun run test:workers:wrangler`
 **CI dimension**: `platform-matrix / workers-wrangler`
 
+**Key finding (read first)**: `wrangler dev --local` uses **Miniflare 4 as its local runtime layer** — it is NOT the raw workerd binary. The shared Miniflare 4 package (`miniflare@4.20260415.0`) is used by both the standalone Miniflare harness and this wrangler-CLI harness. Both inject `EventSource` (`globals.EventSource === true` in both). The production EventSource-absence gap cannot be exercised locally; it requires a real CF deployment with `CF_API_TOKEN`.
+
+The value of this harness is exercising wrangler's **esbuild bundling pipeline** and **CLI config surface** (`wrangler.toml`, entry resolution) — not a different runtime. The other 8 assertions exercise real SDK behaviour through the wrangler bundling path.
+
 ### What it covers
 
-- Runs the built `./web` entry (`packages/sdk/dist/web.js`) under the **real workerd binary** via `wrangler dev --local`, not Miniflare's simulation layer
+- Runs the built `./web` entry (`packages/sdk/dist/web.js`) through wrangler's esbuild pipeline and Miniflare 4 runtime (NOT the raw workerd binary)
 - Exercises the same 9 assertions across the same 6 endpoints as the Miniflare harness
-- Specifically verifies the **Miniflare/workerd parity gap**: `EventSource` is `false` under real workerd (Miniflare was injecting it as `true`)
+- Exercises wrangler's esbuild bundling pipeline, distinct from the manual `bunx esbuild` pre-bundle step used in the standalone Miniflare harness
 - Subprocess management: spawns `wrangler dev --local --port <random>` in `beforeAll`, polls `/health` until ready (60s timeout), kills in `afterAll`
-- No Cloudflare account or API token required — `--local` mode uses the local workerd binary only
+- No Cloudflare account or API token required — `--local` mode uses Miniflare 4, not the production CF network
 
-### Key finding: EventSource parity gap confirmed
+### EventSource: same as standalone Miniflare harness (both true)
 
-The Miniflare harness asserts `globals.EventSource === true` (Miniflare simulation artifact).
-The wrangler harness asserts `globals.EventSource === false` (real workerd truth).
+Both this harness and the standalone Miniflare harness assert `globals.EventSource === true`. This is expected: both use Miniflare 4 internally, which injects EventSource as a simulation artifact.
 
-This is the primary gap this harness was built to close. The `sdk.realtime.viaSse()` path is unavailable from within a production Worker — callers must use `sdk.operator` (HTTP transport) instead.
+The `sdk.realtime.viaSse()` path is unavailable from within a production Worker (production workerd does not expose EventSource) — callers must use `sdk.operator` (HTTP transport) instead. This production gap cannot be verified locally.
 
 ### What it does NOT cover
 
-- **Actual production deployment**: `wrangler dev --local` exercises the real workerd binary locally, but production Workers run in Cloudflare's edge network with additional trust boundaries, network ACLs, and resource limits. Testing against a real deployment requires `CF_API_TOKEN` and a Cloudflare account — out of scope for this harness.
+- **Actual production deployment**: `wrangler dev --local` uses Miniflare 4 internally — it does NOT exercise the real workerd binary directly. Production Workers run in Cloudflare's edge network with additional trust boundaries, network ACLs, and resource limits. Testing against a real deployment requires `CF_API_TOKEN` and a Cloudflare account — out of scope for this harness.
 - **Cold-start latency**: wrangler dev takes 5–15s to boot (first run downloads the workerd binary). CI timeout is 15 min for the job; harness startup timeout is 60s.
 - **Workers-specific bindings** (KV, D1, R2, Durable Objects): the SDK does not use these; harness does not configure them.
 - **CPU/wall-time limits**: Local workerd does not enforce the 50ms CPU / 30s wall-time limits of the free/paid tiers. High-retry SDK configurations that would be problematic in production are not caught here.

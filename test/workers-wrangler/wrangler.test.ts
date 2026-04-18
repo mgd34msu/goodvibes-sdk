@@ -1,15 +1,21 @@
 /**
- * Real workerd harness — @pellux/goodvibes-sdk Workers parity test.
+ * wrangler-CLI harness — @pellux/goodvibes-sdk Workers parity test.
  *
  * Spawns `wrangler dev --local` against test/workers-wrangler/worker.mjs and
  * exercises the same endpoint surface as the Miniflare harness in
- * test/workers/workers.test.ts. This is the closest you can get to production
- * Cloudflare Workers without an actual deployment.
+ * test/workers/workers.test.ts.
  *
- * Key differences from the Miniflare harness:
- *   - EventSource is NOT available (Miniflare was polyfilling it; workerd doesn't)
- *   - Real workerd V8 isolate — not Miniflare's simulation layer
- *   - Transport goes through wrangler's esbuild pipeline, not manual esbundle step
+ * IMPORTANT: `wrangler dev --local` uses Miniflare 4 as its local runtime
+ * layer internally — it is NOT the raw workerd binary. Both this harness and
+ * the standalone Miniflare harness share the same Miniflare 4 runtime, which
+ * means EventSource IS available in both harnesses (Miniflare injects it).
+ * The production EventSource-absence gap can only be verified via a real CF
+ * deployment. See test/workers/FINDINGS.md for full details.
+ *
+ * What this harness adds over the standalone Miniflare harness:
+ *   - Exercises wrangler's esbuild bundling pipeline (not the manual esbundle step)
+ *   - Exercises wrangler CLI config surface (wrangler.toml, entry resolution)
+ *   - EventSource is present in BOTH harnesses (Miniflare 4 injects it in both)
  *
  * Run:
  *   bun run build && bun run test:workers:wrangler
@@ -57,8 +63,6 @@ beforeAll(async () => {
       'dev',
       '--local',
       '--port', String(PORT),
-      // Suppress interactive prompts — we are non-interactive in CI and tests.
-      '--no-bundle=false',
     ],
     {
       cwd: HARNESS_DIR,
@@ -69,6 +73,8 @@ beforeAll(async () => {
         // Suppress wrangler telemetry and update checks in CI.
         WRANGLER_SEND_METRICS: 'false',
         NO_COLOR: '1',
+        // Signal non-interactive mode to wrangler (suppresses prompts).
+        CI: 'true',
       },
     },
   );
@@ -146,7 +152,7 @@ async function get(path: string): Promise<{ status: number; body: unknown }> {
 // ---------------------------------------------------------------------------
 
 describe('Workers wrangler: smoke', () => {
-  test('SDK loads and factory produces a valid sdk object under real workerd', async () => {
+  test('SDK loads and factory produces a valid sdk object through wrangler bundling pipeline', async () => {
     const { status, body } = await get('/smoke');
     expect(status).toBe(200);
 
@@ -164,7 +170,7 @@ describe('Workers wrangler: smoke', () => {
 });
 
 describe('Workers wrangler: auth flow', () => {
-  test('auth token is stored and retrievable inside real workerd isolate', async () => {
+  test('auth token is stored and retrievable inside wrangler-hosted worker', async () => {
     const { status, body } = await get('/auth');
     expect(status).toBe(200);
 
@@ -223,7 +229,7 @@ describe('Workers wrangler: error taxonomy', () => {
 });
 
 describe('Workers wrangler: crypto', () => {
-  test('crypto.randomUUID produces valid UUID v4 under real workerd', async () => {
+  test('crypto.randomUUID produces valid UUID v4 in wrangler-hosted worker', async () => {
     const { status, body } = await get('/crypto');
     expect(status).toBe(200);
 
@@ -275,7 +281,7 @@ describe('Workers wrangler: globals audit', () => {
     expect(globals.EventSource).toBe(true);
   }, 10_000);
 
-  test('location is NOT available in real workerd (must pass explicit baseUrl)', async () => {
+  test('location is NOT available in wrangler-hosted worker (must pass explicit baseUrl)', async () => {
     const { status, body } = await get('/globals');
     expect(status).toBe(200);
 
