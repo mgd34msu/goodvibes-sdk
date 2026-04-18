@@ -155,7 +155,10 @@ jobs:
         run: bun run release:verify:published
 
   github-release:
-    if: github.event_name == 'push'
+    # Run if npm publish succeeded, even if smoke-check or GitHub Packages verify failed.
+    # SBOM should always attach when the package is published — downstream smoke failures
+    # must not block the release artifact from being complete.
+    if: always() && github.event_name == 'push' && needs.publish-npm.result == 'success' && needs.generate-sbom.result == 'success'
     needs: [publish-npm, publish-github-packages, generate-sbom]
     runs-on: ubuntu-latest
     permissions:
