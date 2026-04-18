@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.6] - 2026-04-18
+
+### Changed
+
+- Tightened test hygiene in the provider-routes secrets-tier regression test (env mutation now scoped to `beforeEach`/`afterEach` to avoid any cross-file race potential).
+- Added a cross-reference comment at the `secretsManager` dispatch site in `DaemonHttpRouter` to make the link to the `DaemonHttpRouterContext.secretsManager` doc obvious at the call site.
+
+---
+
 ## [0.21.5] - 2026-04-18
 
 ### Fixed

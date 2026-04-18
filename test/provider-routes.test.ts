@@ -8,7 +8,7 @@
  *   Turn-time isConfigured guard in createCompanionProviderAdapter
  */
 
-import { describe, expect, test, beforeEach } from 'bun:test';
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { dispatchProviderRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
 import type { ProviderRouteContext } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
 import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.js';
@@ -425,6 +425,18 @@ describe('createCompanionProviderAdapter: isConfigured guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('DaemonHttpRouter: secretsManager wiring (regression guard)', () => {
+  // Scoped env mutation: remove OPENAI_API_KEY so the env tier is skipped,
+  // ensuring the secrets tier is exercised. Scoped to beforeEach/afterEach to
+  // avoid any cross-file race in parallel test runners.
+  let _savedOpenAiKey: string | undefined;
+  beforeEach(() => {
+    _savedOpenAiKey = process.env['OPENAI_API_KEY'];
+    delete process.env['OPENAI_API_KEY'];
+  });
+  afterEach(() => {
+    if (_savedOpenAiKey !== undefined) process.env['OPENAI_API_KEY'] = _savedOpenAiKey;
+    else delete process.env['OPENAI_API_KEY'];
+  });
   /**
    * This test exercises the full production code path:
    *   Request → DaemonHttpRouter.dispatchApiRoutes
@@ -511,24 +523,17 @@ describe('DaemonHttpRouter: secretsManager wiring (regression guard)', () => {
 
     const router = new DaemonHttpRouter(routerContext as never);
 
-    // Temporarily unset OPENAI_API_KEY so the env tier is skipped
-    const originalEnv = process.env['OPENAI_API_KEY'];
-    delete process.env['OPENAI_API_KEY'];
+    const req = new Request('http://localhost/api/providers', { method: 'GET' });
+    const res = await router.dispatchApiRoutes(req);
+    expect(res).not.toBeNull();
+    const body = await res!.json() as Record<string, unknown>;
+    const providers = body.providers as Array<Record<string, unknown>>;
+    const openaiProv = providers.find((p) => p['id'] === 'openai');
+    expect(openaiProv).toBeDefined();
+    // Without the secretsManager wiring, this would be false and configuredVia undefined
+    expect(openaiProv!['configured']).toBe(true);
+    expect(openaiProv!['configuredVia']).toBe('secrets');
 
-    try {
-      const req = new Request('http://localhost/api/providers', { method: 'GET' });
-      const res = await router.dispatchApiRoutes(req);
-      expect(res).not.toBeNull();
-      const body = await res!.json() as Record<string, unknown>;
-      const providers = body.providers as Array<Record<string, unknown>>;
-      const openaiProv = providers.find((p) => p['id'] === 'openai');
-      expect(openaiProv).toBeDefined();
-      // Without the secretsManager wiring, this would be false and configuredVia undefined
-      expect(openaiProv!['configured']).toBe(true);
-      expect(openaiProv!['configuredVia']).toBe('secrets');
-    } finally {
-      if (originalEnv !== undefined) process.env['OPENAI_API_KEY'] = originalEnv;
-      router.dispose();
-    }
+    router.dispose();
   });
 });

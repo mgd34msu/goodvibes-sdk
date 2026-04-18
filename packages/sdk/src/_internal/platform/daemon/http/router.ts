@@ -260,6 +260,7 @@ export class DaemonHttpRouter {
         configManager: this.context.configManager,
         runtimeBus: this.context.runtimeBus,
         parseJsonBody: (request: Request) => this.parseJsonBody(request),
+        // threaded for configuredVia='secrets' tier — see DaemonHttpRouterContext.secretsManager doc above
         secretsManager: this.context.secretsManager,
       });
       if (providerResponse) return providerResponse;
