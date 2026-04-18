@@ -72,13 +72,13 @@ try {
     }
   );
   console.log(`[sbom:generate] SBOM generated successfully.`);
-} catch (e: any) {
+} catch (e: unknown) {
   // cyclonedx-npm exits non-zero on --ignore-npm-errors but still writes output
   if (existsSync(OUTPUT_FILE)) {
     console.log(`[sbom:generate] SBOM generated (with npm warnings — expected in bun workspace).`);
   } else {
     console.error(`[sbom:generate] ERROR: SBOM generation failed and no output file was written.`);
-    if (e.stderr) process.stderr.write(e.stderr);
+    if (e != null && typeof e === 'object' && 'stderr' in e && e.stderr) process.stderr.write(e.stderr as string);
     process.exit(1);
   }
 }
