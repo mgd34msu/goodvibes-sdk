@@ -15,6 +15,7 @@
 import type { ProviderRegistry } from '../../providers/registry.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
+import type { SecretsManager } from '../../config/secrets.js';
 import { findModelDefinition } from '../../providers/registry-models.js';
 import { BUILTIN_COMPAT_PROVIDERS, BUILTIN_PROVIDER_ENV_KEYS } from '../../providers/builtin-catalog.js';
 import { logger } from '../../utils/logger.js';
@@ -120,16 +121,42 @@ export interface ProviderRouteContext {
   readonly configManager: ConfigManager;
   readonly runtimeBus: RuntimeEventBus;
   readonly parseJsonBody: (req: Request) => Promise<Record<string, unknown> | Response>;
+  readonly secretsManager?: Pick<SecretsManager, 'get'> | null;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Pre-resolve all non-env secret keys stored in SecretsManager in one async
+ * batch. The resulting set is passed into the synchronous getConfiguredVia so
+ * that the secrets tier check remains pure/non-async.
+ */
+async function resolveSecretKeys(
+  secretsManager?: Pick<SecretsManager, 'get'> | null,
+): Promise<ReadonlySet<string>> {
+  if (!secretsManager) return new Set<string>();
+  // Enumerate all env var names that any known provider might use
+  const allEnvVarNames = Object.values(BUILTIN_PROVIDER_ENV_KEYS).flat() as string[];
+  const results = await Promise.all(
+    allEnvVarNames.map(async (v) => {
+      if (typeof process.env[v] === 'string' && (process.env[v] as string).length > 0) {
+        // Already in env; skip the secrets lookup to avoid redundant I/O
+        return null;
+      }
+      const val = await secretsManager.get(v);
+      return val !== null ? v : null;
+    }),
+  );
+  return new Set(results.filter((v): v is string => v !== null));
+}
+
 function getConfiguredVia(
   providerId: string,
   envVars: string[],
   providerRegistry: ProviderRegistry,
+  secretKeys?: ReadonlySet<string>,
 ): ConfiguredVia | undefined {
   // Tier 1: env var present
   const hasEnvKey = envVars.some((v) => {
@@ -138,18 +165,24 @@ function getConfiguredVia(
   });
   if (hasEnvKey) return 'env';
 
-  // Tier 2: detect anonymous providers (no env vars required by design)
+  // Tier 2: SecretsManager has a stored value for any of the provider's env var names
+  if (secretKeys && envVars.some((v) => secretKeys.has(v))) return 'secrets';
+
+  // Tier 3: detect anonymous providers (no env vars required by design)
   const catalogDef = BUILTIN_COMPAT_PROVIDERS.find((d) => d.id === providerId);
   if (catalogDef?.allowAnonymous && catalogDef?.anonymousConfigured) return 'anonymous';
 
-  // Tier 3: present in configuredProviderIds but not env — subscription-backed
+  // Tier 4: present in configuredProviderIds but not env — subscription-backed
   const configuredIds = providerRegistry.getConfiguredProviderIds();
   if (configuredIds.includes(providerId)) return 'subscription';
 
   return undefined;
 }
 
-function buildCurrentModelResponse(providerRegistry: ProviderRegistry): CurrentModelResponse {
+function buildCurrentModelResponse(
+  providerRegistry: ProviderRegistry,
+  secretKeys?: ReadonlySet<string>,
+): CurrentModelResponse {
   let model: ProviderModelRef | null = null;
   let configured = false;
   let configuredVia: ConfiguredVia | undefined;
@@ -161,26 +194,10 @@ function buildCurrentModelResponse(providerRegistry: ProviderRegistry): CurrentM
 
     // Determine configured status for the current model's provider
     const envVars = (BUILTIN_PROVIDER_ENV_KEYS[current.provider] ?? []) as string[];
-    const hasEnvKey = envVars.some((v) => {
-      const val = process.env[v];
-      return typeof val === 'string' && val.length > 0;
-    });
-
-    if (hasEnvKey) {
+    const via = getConfiguredVia(current.provider, envVars, providerRegistry, secretKeys);
+    if (via !== undefined) {
       configured = true;
-      configuredVia = 'env';
-    } else {
-      const catalogDef = BUILTIN_COMPAT_PROVIDERS.find((d) => d.id === current.provider);
-      if (catalogDef?.allowAnonymous && catalogDef?.anonymousConfigured) {
-        configured = true;
-        configuredVia = 'anonymous';
-      } else {
-        const configuredIds = providerRegistry.getConfiguredProviderIds();
-        if (configuredIds.includes(current.provider)) {
-          configured = true;
-          configuredVia = 'subscription';
-        }
-      }
+      configuredVia = via;
     }
   } catch {
     // No model configured
@@ -220,7 +237,10 @@ export async function dispatchProviderRoutes(
 // ---------------------------------------------------------------------------
 
 async function handleListProviders(context: ProviderRouteContext): Promise<Response> {
-  const { providerRegistry } = context;
+  const { providerRegistry, secretsManager } = context;
+
+  // Pre-resolve which secret keys are stored (one async batch, then sync logic below)
+  const secretKeys = await resolveSecretKeys(secretsManager);
 
   const allModels = providerRegistry.listModels();
   const configuredIds = new Set(providerRegistry.getConfiguredProviderIds());
@@ -242,10 +262,9 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
   const providers: ProviderEntry[] = [];
   for (const [providerId, models] of byProvider) {
     const envVars = (BUILTIN_PROVIDER_ENV_KEYS[providerId] ?? []) as string[];
-    const configured = configuredIds.has(providerId);
-    const configuredVia = configured
-      ? getConfiguredVia(providerId, envVars, providerRegistry)
-      : undefined;
+    const via = getConfiguredVia(providerId, envVars, providerRegistry, secretKeys);
+    const configured = via !== undefined;
+    const configuredVia = configured ? via : undefined;
 
     const label = getProviderLabel(providerId);
 
@@ -258,7 +277,7 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
     return a.id.localeCompare(b.id);
   });
 
-  const currentModel = buildCurrentModelResponse(providerRegistry).model;
+  const currentModel = buildCurrentModelResponse(providerRegistry, secretKeys).model;
 
   const body: ListProvidersResponse = { providers, currentModel };
   return Response.json(body);
@@ -269,7 +288,8 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
 // ---------------------------------------------------------------------------
 
 async function handleGetCurrentModel(context: ProviderRouteContext): Promise<Response> {
-  return Response.json(buildCurrentModelResponse(context.providerRegistry));
+  const secretKeys = await resolveSecretKeys(context.secretsManager);
+  return Response.json(buildCurrentModelResponse(context.providerRegistry, secretKeys));
 }
 
 // ---------------------------------------------------------------------------
@@ -341,5 +361,6 @@ async function handlePatchCurrentModel(
 
   // setCurrentModel emits MODEL_CHANGED synchronously on the same runtimeBus —
   // no second emission needed here.
-  return Response.json({ ...buildCurrentModelResponse(providerRegistry), persisted });
+  const secretKeys = await resolveSecretKeys(context.secretsManager);
+  return Response.json({ ...buildCurrentModelResponse(providerRegistry, secretKeys), persisted });
 }

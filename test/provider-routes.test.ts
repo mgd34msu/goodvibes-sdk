@@ -11,7 +11,7 @@
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { dispatchProviderRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
 import type { ProviderRouteContext } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
-import type { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
+import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
 import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
 import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
 import type { ModelDefinition } from '../packages/sdk/src/_internal/platform/providers/registry-types.js';
@@ -34,16 +34,16 @@ function makeModel(provider: string, id: string, selectable = true): ModelDefini
   } as ModelDefinition;
 }
 
-function makeRuntimeBus(): RuntimeEventBus & { emitted: unknown[] } {
-  const emitted: unknown[] = [];
-  return {
-    emitted,
-    emit(domain: string, envelope: unknown) { emitted.push({ domain, envelope }); },
-    on: () => () => {},
-    onDomain: () => () => {},
-    once: () => () => {},
-    off: () => {},
-  } as unknown as RuntimeEventBus & { emitted: unknown[] };
+function makeRuntimeBus(): RuntimeEventBus & { emitted: Array<{ domain: string; envelope: unknown }> } {
+  const emitted: Array<{ domain: string; envelope: unknown }> = [];
+  const realBus = new RuntimeEventBus();
+  // Intercept emissions so tests can assert on them
+  const originalEmit = realBus.emit.bind(realBus);
+  realBus.emit = (domain, envelope) => {
+    emitted.push({ domain, envelope });
+    originalEmit(domain, envelope);
+  };
+  return Object.assign(realBus, { emitted });
 }
 
 function makeRegistry(opts: {
@@ -51,9 +51,10 @@ function makeRegistry(opts: {
   currentModel?: ModelDefinition;
   configuredIds?: string[];
   setCurrentModelThrows?: string;
+  bus?: RuntimeEventBus;
 }): ProviderRegistry {
   const models = opts.models ?? [];
-  const current = opts.currentModel ?? models[0];
+  let current = opts.currentModel ?? models[0];
   const configuredIds = opts.configuredIds ?? [];
 
   return {
@@ -65,7 +66,23 @@ function makeRegistry(opts: {
     getConfiguredProviderIds: () => configuredIds,
     setCurrentModel: (modelId: string) => {
       if (opts.setCurrentModelThrows) throw new Error(opts.setCurrentModelThrows);
-      // no-op for tests (event emission is tested via registry unit tests)
+      // Emulate real registry behavior: emit exactly one MODEL_CHANGED per setCurrentModel
+      const newModel = models.find((m) => m.registryKey === modelId || m.id === modelId);
+      if (newModel) {
+        const previous = current;
+        current = newModel;
+        if (opts.bus) {
+          opts.bus.emit(
+            'providers',
+            createEventEnvelope('MODEL_CHANGED', {
+              type: 'MODEL_CHANGED',
+              registryKey: newModel.registryKey ?? modelId,
+              provider: newModel.provider,
+              previous: previous ? { registryKey: previous.registryKey ?? previous.id, provider: previous.provider } : undefined,
+            }, { sessionId: 'system', source: 'test-registry', traceId: `test:${Date.now()}` }),
+          );
+        }
+      }
     },
   } as unknown as ProviderRegistry;
 }
@@ -76,13 +93,13 @@ function makeConfigManager(): ConfigManager {
   } as unknown as ConfigManager;
 }
 
-function makeContext(registryOpts: Parameters<typeof makeRegistry>[0]): {
+function makeContext(registryOpts: Omit<Parameters<typeof makeRegistry>[0], 'bus'>): {
   context: ProviderRouteContext;
-  bus: RuntimeEventBus & { emitted: unknown[] };
+  bus: RuntimeEventBus & { emitted: Array<{ domain: string; envelope: unknown }> };
 } {
   const bus = makeRuntimeBus();
   const context: ProviderRouteContext = {
-    providerRegistry: makeRegistry(registryOpts),
+    providerRegistry: makeRegistry({ ...registryOpts, bus }),
     configManager: makeConfigManager(),
     runtimeBus: bus,
     parseJsonBody: async (req) => {
@@ -165,6 +182,45 @@ describe('GET /api/providers', () => {
     const res = await dispatchProviderRoutes(req, context);
     expect(res).toBeNull();
   });
+
+  test("returns configuredVia='secrets' when provider has no env var but SecretsManager has the key", async () => {
+    const m1 = makeModel('openai', 'gpt-4o');
+    // No env var set for OPENAI_API_KEY (test env), but secrets has it
+    const secretsManager = {
+      get: async (key: string): Promise<string | null> => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test-from-secrets';
+        return null;
+      },
+    };
+    const bus = makeRuntimeBus();
+    const context: ProviderRouteContext = {
+      providerRegistry: makeRegistry({ models: [m1], currentModel: m1, configuredIds: ['openai'], bus }),
+      configManager: makeConfigManager(),
+      runtimeBus: bus,
+      parseJsonBody: async (req) => {
+        try { return await req.json(); }
+        catch { return new Response('Bad JSON', { status: 400 }); }
+      },
+      secretsManager,
+    };
+
+    // Temporarily unset the env var so we hit the secrets path
+    const original = process.env['OPENAI_API_KEY'];
+    delete process.env['OPENAI_API_KEY'];
+
+    try {
+      const req = makeRequest('GET', 'http://localhost/api/providers');
+      const res = await dispatchProviderRoutes(req, context);
+      const body = await res!.json() as Record<string, unknown>;
+      const providers = body.providers as Array<Record<string, unknown>>;
+      const openaiProv = providers.find((p) => p['id'] === 'openai');
+      expect(openaiProv).toBeDefined();
+      expect(openaiProv!['configured']).toBe(true);
+      expect(openaiProv!['configuredVia']).toBe('secrets');
+    } finally {
+      if (original !== undefined) process.env['OPENAI_API_KEY'] = original;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -230,15 +286,21 @@ describe('PATCH /api/providers/current', () => {
     const body = await res!.json() as Record<string, unknown>;
     expect(body.model).not.toBeNull();
 
-    // Response must include persisted field (M-2)
+    // Response must include persisted field
     expect(typeof body.persisted).toBe('boolean');
 
-    // Exactly ONE MODEL_CHANGED emission (C-3: no duplicate from route handler)
-    const modelChangedEmits = (bus.emitted as Array<{ domain: string; envelope: { type: string } }>)
-      .filter((e) => e.domain === 'providers' && e.envelope.type === 'MODEL_CHANGED');
-    // The stub registry doesn't call the real setCurrentModel (which emits via bus),
-    // so the route handler's direct emission has been removed (C-3 fix verified here):
-    expect(modelChangedEmits).toHaveLength(0);
+    // C-3: EXACTLY ONE MODEL_CHANGED emission per setCurrentModel.
+    // The registry stub now emulates real registry behavior by emitting on the bus
+    // when setCurrentModel is called. The route handler must NOT emit a second one.
+    // If this assertion fails with length > 1, a duplicate emission was introduced.
+    const modelChangedEmits = bus.emitted
+      .filter((e): e is { domain: string; envelope: Record<string, unknown> } =>
+        e.domain === 'providers' &&
+        typeof e.envelope === 'object' &&
+        e.envelope !== null &&
+        (e.envelope as Record<string, unknown>)['type'] === 'MODEL_CHANGED',
+      );
+    expect(modelChangedEmits).toHaveLength(1);
   });
 
   test('returns 400 MODEL_NOT_FOUND for unknown registryKey', async () => {
