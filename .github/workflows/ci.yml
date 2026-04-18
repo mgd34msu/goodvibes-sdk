@@ -49,6 +49,7 @@ jobs:
           - bun
           - rn-bundle
           - workers
+          - workers-wrangler
         include:
           - platform: bun
             node-version: "22"
@@ -59,6 +60,9 @@ jobs:
           - platform: workers
             node-version: "22"
             test-cmd: bun run test:workers
+          - platform: workers-wrangler
+            node-version: "22"
+            test-cmd: bun run test:workers:wrangler
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd

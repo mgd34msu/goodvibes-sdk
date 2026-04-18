@@ -141,3 +141,51 @@ All fetch primitives are native in Workers. The SDK's `transport-http` path uses
 `./web` is the correct Workers entry. No `./workers` subpath is needed at this time. The two transport-realtime paths (`viaSse`, `viaWebSocket`) are not Workers-compatible by design — they belong in the browser/RN client layer. Worker-hosted code should use `sdk.operator` (HTTP transport) for all daemon interactions.
 
 If a Workers-specific realtime transport adapter is added in a future wave (e.g. Durable Objects WebSocket proxy, Workers-native SSE proxy), a new `./workers` subpath with a dedicated `workers.ts` factory should be created following the `browser.ts` / `react-native.ts` pattern.
+
+---
+
+## Real workerd harness (wrangler dev --local)
+
+**Added**: 2026-04-17
+**Harness location**: `test/workers-wrangler/wrangler.test.ts`
+**wrangler version**: 4.83.0 (pinned)
+**Script**: `bun run test:workers:wrangler`
+**CI dimension**: `platform-matrix / workers-wrangler`
+
+### What it covers
+
+- Runs the built `./web` entry (`packages/sdk/dist/web.js`) under the **real workerd binary** via `wrangler dev --local`, not Miniflare's simulation layer
+- Exercises the same 9 assertions across the same 6 endpoints as the Miniflare harness
+- Specifically verifies the **Miniflare/workerd parity gap**: `EventSource` is `false` under real workerd (Miniflare was injecting it as `true`)
+- Subprocess management: spawns `wrangler dev --local --port <random>` in `beforeAll`, polls `/health` until ready (60s timeout), kills in `afterAll`
+- No Cloudflare account or API token required — `--local` mode uses the local workerd binary only
+
+### Key finding: EventSource parity gap confirmed
+
+The Miniflare harness asserts `globals.EventSource === true` (Miniflare simulation artifact).
+The wrangler harness asserts `globals.EventSource === false` (real workerd truth).
+
+This is the primary gap this harness was built to close. The `sdk.realtime.viaSse()` path is unavailable from within a production Worker — callers must use `sdk.operator` (HTTP transport) instead.
+
+### What it does NOT cover
+
+- **Actual production deployment**: `wrangler dev --local` exercises the real workerd binary locally, but production Workers run in Cloudflare's edge network with additional trust boundaries, network ACLs, and resource limits. Testing against a real deployment requires `CF_API_TOKEN` and a Cloudflare account — out of scope for this harness.
+- **Cold-start latency**: wrangler dev takes 5–15s to boot (first run downloads the workerd binary). CI timeout is 15 min for the job; harness startup timeout is 60s.
+- **Workers-specific bindings** (KV, D1, R2, Durable Objects): the SDK does not use these; harness does not configure them.
+- **CPU/wall-time limits**: Local workerd does not enforce the 50ms CPU / 30s wall-time limits of the free/paid tiers. High-retry SDK configurations that would be problematic in production are not caught here.
+
+### CI flakiness risk
+
+wrangler dev cold-start timing is non-deterministic. On first run in CI (no binary cache), workerd binary download can take 10–20s. The 60s startup poll timeout accommodates this. Port collisions are avoided by randomising in `[12000, 19999]`. If CI exhibits repeated startup timeouts, consider caching `~/.cache/wrangler` across runs.
+
+### EventSource finding: wrangler dev --local also injects EventSource
+
+**Discovered during harness implementation: 2026-04-17**
+
+`wrangler dev --local` uses **Miniflare 4 as its local runtime layer** — it is not a raw workerd binary. The shared Miniflare 4 package (`miniflare@4.20260415.0`) is used by both the standalone Miniflare harness and the wrangler dev harness. Both inject `EventSource`.
+
+**Implication**: The `EventSource === false` assertion cannot be verified locally. To confirm that production Cloudflare Workers truly lack `EventSource`, a deployed Worker test (requiring `CF_API_TOKEN`) would be needed.
+
+**Corrected assertion in wrangler harness**: `globals.EventSource === true` (matching Miniflare) — with an explanatory comment documenting the reason and the production gap.
+
+**The wrangler harness still provides value** for verifying that the SDK loads and functions correctly through wrangler's esbuild bundling pipeline, which differs from the manual `bunx esbuild` pre-bundle step used in the Miniflare standalone harness. The other 8 assertions exercise real SDK behaviour.

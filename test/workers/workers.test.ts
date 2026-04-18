@@ -244,14 +244,14 @@ describe('Workers harness: globals audit', () => {
 
   // m-1: Assert the ACTUAL observed value, not just typeof.
   // Miniflare simulates EventSource; production Cloudflare Workers does NOT.
-  // TODO: Wrangler-based re-run would flip this to false — tracked as Wave 4 follow-up.
+  // See also: test/workers-wrangler/wrangler.test.ts — real workerd harness asserts EventSource === false.
   test('EventSource availability (Miniflare injects it, real Workers does not)', async () => {
     const res = await mf.dispatchFetch('http://workers.test/globals');
     const body = await res.json() as Record<string, unknown>;
     const globals = body.globals as Record<string, boolean>;
 
-    // Miniflare simulates EventSource; production Cloudflare Workers does NOT.
-    // TODO: Wrangler-based re-run would flip this to false — tracked as Wave 4 follow-up.
+    // Miniflare simulates EventSource; real workerd does NOT (verified by wrangler harness).
+    // See: test/workers-wrangler/wrangler.test.ts for the real-workerd assertion (EventSource === false).
     expect(globals.EventSource).toBe(true);
   }, 10_000);
 
