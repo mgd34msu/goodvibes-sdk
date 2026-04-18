@@ -58,7 +58,7 @@ For daemon embedding:
 import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
 ```
 
-### Companion (React Native / Expo / browser)
+### Companion (React Native / Expo / browser / Cloudflare Workers)
 
 For mobile and browser companion apps, use the runtime-specific entry point:
 

@@ -12,7 +12,7 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 
 ```
 0.19.8          current (Waves 1–9 landed)
-  → 0.19.x            hotfixes / follow-ups (e.g. Wrangler parity rerun)
+  → 0.19.x            hotfixes / follow-ups (Wrangler-CLI harness landed in 0.19.8; remaining follow-ups are real-Node matrix and any post-launch hotfixes)
   → 0.21.0            soak period (skip 0.20.x to avoid "just another release" ambiguity)
   → 1.0.0            owner-approved release
 ```
@@ -103,7 +103,7 @@ Wire the three remaining `SDKObserver` callbacks.
 
 - [ ] **Owner explicit sign-off** (required regardless of gate state)
 - [ ] All gates above green on main
-- [ ] All CI dimensions passing: `bun`, `rn-bundle`, `browser`, `hermes`, `workers`
+- [ ] All CI dimensions passing: `bun`, `rn-bundle`, `browser`, `hermes`, `workers`, `workers-wrangler`
 - [ ] All new CI jobs passing: `are-the-types-wrong`, `publint`, `sbom-check`, `bundle-budget`, `api-surface-snapshot`, `flake-watch`, `examples-smoke`, `no-todo-markers`
 - [ ] npm publish as `1.0.0` with `--provenance` and signed tag
 

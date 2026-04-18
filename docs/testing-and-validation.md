@@ -74,7 +74,7 @@ To update budgets after a legitimate size change:
 
 ## Workers Runtime Verification
 
-The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatible (Cloudflare Workers / Miniflare 4 / `workerd`). CI verifies this through the `rn-bundle` dimension of `platform-matrix`: no `node:*` imports or `Bun.*` identifiers may appear in companion dist bundles.
+The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatible (Cloudflare Workers / Miniflare 4 / `workerd`). CI verifies this three ways: (1) `rn-bundle` statically scans the built `web.js` for forbidden identifiers (`node:*`, `Bun.*`); (2) `platform-matrix (workers)` boots `./web` under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests; (3) `platform-matrix (workers-wrangler)` boots `./web` via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate — see `test/workers/FINDINGS.md` for the production-workerd gap).
 
 ## Type-Level Tests
 
@@ -84,6 +84,6 @@ The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatibl
 
 - **mirror-drift** — `packages/transport-http/src/` is mirrored into `packages/sdk/src/_internal/transport-http/`. Without this gate, a source edit in the canonical package silently diverges from the inlined copy.
 - **throw-guard** — All consumer-reachable errors must be `GoodVibesSdkError` instances with a typed `kind` discriminant. Raw `throw new Error` bypasses the error contract.
-- **rn-bundle** — Companion surface (React Native, Expo, browser, web) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers.
+- **rn-bundle** — Static bundle scan. Companion surface (React Native, Expo, browser, web) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers. (Runtime verification of `./web` under workerd lives in the separate `workers` and `workers-wrangler` lanes above.)
 - **bundle-budgets** — Prevents accidental bundle size growth. Each entry has a ceiling; the 20% headroom prevents transient-spike failures.
 - **types-check** — TypeScript type inference is non-trivial for discriminated union returns. Type tests validate at compile time without runtime overhead.

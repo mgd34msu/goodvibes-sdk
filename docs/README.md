@@ -10,7 +10,7 @@
 - [Package guide](./packages.md)
 - [Compatibility](./compatibility.md)
 
-### Companion surface (React Native / Expo / browser)
+### Companion surface (React Native / Expo / browser / Cloudflare Workers)
 
 - [Getting started](./getting-started.md) — includes companion quickstart paths
 - [React Native integration](./react-native-integration.md)

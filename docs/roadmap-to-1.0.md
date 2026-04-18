@@ -64,7 +64,7 @@ Ends the "SDK bump → surprise TUI test burn" pattern.
 - Auto-generate the skeleton from conventional commits between tags where feasible. Manual edits still allowed.
 - Each breaking change gets a copy-pasteable before/after snippet.
 
-### Wave S-ε — Multi-platform test matrix ✓ shipped partial 0.19.1, expanded 0.19.8 (S-ε.2 Browser + Hermes + Workers landed; real Node + Wrangler still pending)
+### Wave S-ε — Multi-platform test matrix ✓ shipped partial 0.19.1, expanded 0.19.8 (S-ε.2 Browser + Hermes + Workers + wrangler-CLI landed; real Node still pending; production-workerd parity out of scope for 1.0)
 **Target release**: 0.19.3 · **Effort**: ~2 days · **Score effect**: 8.5 → 8.8 · **Parallel after S-α**
 
 The existing RN CI gate is a one-off. Extend to full platform parity.
