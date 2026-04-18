@@ -85,7 +85,7 @@ Wire the three remaining `SDKObserver` callbacks.
 
 ## Wave 8 — S-ι hardening (target: 0.19.14+)
 
-- [ ] Coverage backfill — target 100% no-skip across all packages and `_internal/platform/*` subsystems
+- [x] Coverage backfill — target 100% no-skip across all packages and `_internal/platform/*` subsystems (daemon-sdk/operator-sdk/peer-sdk/errors src coverage complete; companion/state scope remains with source-cleanup agent)
 - [ ] Flake detection CI gate (N-run stability check)
 - [ ] Public API surface snapshot via `@microsoft/api-extractor` or equivalent
 - [ ] Snapshot gate fails on unintended public surface changes
@@ -121,3 +121,4 @@ Wire the three remaining `SDKObserver` callbacks.
 ## Owner sign-off
 
 **1.0.0 publish will not occur without explicit owner approval.** Green gates are necessary but not sufficient. This file is the shared reference for what "ready" means.
+
