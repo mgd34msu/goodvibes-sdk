@@ -1,14 +1,18 @@
 /**
- * Cloudflare Workers test script for @pellux/goodvibes-sdk — real workerd harness.
+ * Cloudflare Workers test script for @pellux/goodvibes-sdk — wrangler-CLI harness.
  *
  * Mirrors test/workers/worker.mjs exactly. This version is bundled by wrangler dev
- * (real workerd/esbuild pipeline) rather than Miniflare's programmatic API.
+ * (esbuild pipeline) rather than Miniflare's programmatic API.
  *
- * The key difference: wrangler uses the real workerd binary for V8 isolation.
- * Globals that Miniflare simulates (notably EventSource) are absent here.
+ * IMPORTANT: Despite the name, `wrangler dev --local` does NOT use the raw workerd
+ * binary directly — it uses Miniflare 4 as its local runtime layer. This means
+ * EventSource IS available here (same as the standalone Miniflare harness). The
+ * value of this harness is exercising wrangler's esbuild bundling pipeline and CLI
+ * config surface, not a different runtime. To verify production-workerd behaviour
+ * (where EventSource is truly absent), a real CF deployment is required.
  *
  * Imports resolve against packages/sdk/dist via the relative path from this file.
- * wrangler dev bundles via its own esbuild pipeline before handing to workerd.
+ * wrangler dev bundles via its own esbuild pipeline before handing to Miniflare 4.
  */
 
 import { createWebGoodVibesSdk } from '../../packages/sdk/dist/web.js';
@@ -212,7 +216,9 @@ function handleGlobals() {
       cryptoSubtle: typeof crypto?.subtle !== 'undefined',
       cryptoRandomUUID: typeof crypto?.randomUUID === 'function',
       WebSocket: typeof WebSocket !== 'undefined',
-      // Real workerd does NOT inject EventSource (Miniflare was simulating it)
+      // wrangler dev --local uses Miniflare 4 internally, which injects EventSource.
+      // Both this harness and the standalone Miniflare harness will be true here.
+      // Production workerd does NOT inject EventSource — verifiable only via real CF deployment.
       EventSource: typeof EventSource !== 'undefined',
       location: typeof globalThis.location !== 'undefined',
       setTimeout: typeof setTimeout === 'function',
