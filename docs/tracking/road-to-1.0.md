@@ -4,16 +4,15 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 
 ## Status
 
-- **Current released version**: `0.19.8` (Waves 5–9 consolidated; published to npm, `latest` tag)
+- **Current released version**: `0.21.0` (soak-period release; published to npm, `latest` tag)
 - **Current score**: 9.0 / 10
-- **Eligibility**: NOT eligible for 1.0.0 — Waves 1–9 landed, soak period + owner sign-off still pending
+- **Eligibility**: NOT eligible for 1.0.0 — soak period in progress (started 2026-04-18); owner sign-off pending
 
 ## Version plan
 
 ```
-0.19.8          current (Waves 1–9 landed)
-  → 0.19.x            hotfixes / follow-ups (Wrangler-CLI harness landed in 0.19.8; remaining follow-ups are real-Node matrix and any post-launch hotfixes)
-  → 0.21.0            soak period (skip 0.20.x to avoid "just another release" ambiguity)
+0.19.9          previous (Waves 1–9 consolidated + pipeline hardening + zero-any gate)
+  → 0.21.0            soak period [CURRENT — started 2026-04-18]
   → 1.0.0            owner-approved release
 ```
 
@@ -93,9 +92,9 @@ Wire the three remaining `SDKObserver` callbacks.
 - [x] Replace `@ts-ignore` suppressions with real `sql.js` type declarations (`packages/sdk/src/_internal/platform/state/sqlite-store.ts:82`, `state/db.ts:76`) — add minimal `.d.ts` shim for the API surface actually used
 - [x] **New CI gate `no-todo-markers`**: fail the build if `\b(TODO|FIXME|XXX|HACK|STUB)\b` appears in any source file outside `_internal/**`, `**/vendor/**`, `**/generated/**`, and `**/*.test.ts`. Prevents TODO drift in public-surface code post-1.0.0. (shipped in `487a84d`)
 
-## Wave 9 — Soak period (target: 0.21.0)
+## Wave 9 — Soak period (target: 0.21.0) — IN PROGRESS (started 2026-04-18)
 
-- [ ] Bump from `0.19.14` to `0.21.0` (skip `0.20.x`)
+- [x] Bump from `0.19.9` to `0.21.0` (skip `0.20.x`)
 - [ ] No new features during soak — hotfixes only (→ 0.21.1, 0.21.2, …)
 - [ ] Owner-defined soak duration
 

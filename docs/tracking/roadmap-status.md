@@ -1,9 +1,9 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.19.8
+**Current version**: 0.21.0
 **Current score**: 9.0 / 10
-**Last updated**: 2026-04-17
+**Last updated**: 2026-04-18
 
 ---
 
@@ -28,7 +28,8 @@
 | S-θ | Observability hooks | 0.19.5 | **shipped (partial)** | 9.2 → 9.5 | 0.19.5 | SDKObserver interface + onEvent/onError adapters; OTel adapter deferred |
 | honest-runtime-posture | Honest runtime posture | 0.19.6 | **shipped** | no score effect (hygiene) | 0.19.6 | Stripped theater CI labels; runtime reporting now accurately reflects actual execution |
 | Wave M | Metadata / polish | 0.19.6 | **shipped** | no score effect (docs) | 0.19.6 | CONTRIBUTING.md CI gates, roadmap-status refresh, stale docs cleanup |
-| Wave D | Dependency audit + hardening prep | — | **in-progress** | — | — | Cluster 6: roadmap polish (this run) |
+| Wave D | Dependency audit + hardening prep | — | **shipped** | — | — | minimatch ReDoS override applied (root + packages/sdk package.json); consumer note documented in CHANGELOG |
+| Wave 9 (soak) | Soak period | 0.21.0 | **in-progress** | — | 0.21.0 | Started 2026-04-18. No new features; hotfixes only (→ 0.21.1, 0.21.2, …). Owner sign-off pending for 1.0.0. |
 | S-ι | Hardening gates | 0.19.8 / 0.20.x | **shipped (partial)** | 9.5 → 10.0 | 0.19.8 (Waves 5–8) | Waves 5–8 landed (hygiene, policy, verification, API-extractor/flake/no-todo). Remaining S-ι scope from `docs/roadmap-to-1.0.md`: mutation testing ≥85% kill rate, branch-coverage ≥95% on error paths, JSDoc `@throws` contract lint, public-surface file-size cap, `no-any-leak` lint. Score-effect withheld until full S-ι lands. |
 | 1.0.0 cut | Owner approval gate | 1.0.0 | **blocked on owner approval** | — | — | **Requires explicit owner approval. Not automatic.** |
 
