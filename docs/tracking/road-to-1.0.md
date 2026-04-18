@@ -55,7 +55,7 @@ Wire the three remaining `SDKObserver` callbacks.
 - [x] First attempt: `/web` entry under Miniflare. If clean, reuse.
 - [x] Decision: `./web` is sufficient — no `./workers` subpath needed. `dist/web.js` has zero `node:` and zero `Bun.*`.
 - [x] New CI matrix dimension `workers`
-- [ ] Follow-up: run harness against real Wrangler (stricter than Miniflare simulation) — tracked as a MIN item
+- [x] Follow-up: `wrangler dev --local` harness landed in `test/workers-wrangler/` (9 tests, CI matrix dimension). Discovered that `wrangler dev --local` uses Miniflare 4 internally, so the runtime layer is the same as the Miniflare harness — value is exercising wrangler's esbuild bundling pipeline and wrangler.toml. Production-workerd verification (e.g. `EventSource === false`) remains unverifiable locally; requires a real Cloudflare deploy (out of scope for 1.0). See `test/workers/FINDINGS.md`.
 
 ## Wave 5 — Package hygiene + supply chain (target: 0.19.11)
 

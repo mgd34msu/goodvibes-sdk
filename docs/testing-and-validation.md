@@ -18,6 +18,11 @@ Every push and PR to `main` must pass these gates:
 | `types-check` | `bun run types:check` | Compiles type-level usage tests against the public API surface to catch type regressions |
 | `bundle-budgets` | `bun run bundle:check` | Enforces per-entry gzip size budgets from `bundle-budgets.json`; a budget failure means an entry point grew beyond its 20% headroom allowance |
 | `sbom-check` | `bun run sbom:generate` + CI-inline size + schema assertions | Generates the CycloneDX SBOM (`sbom.cdx.json`) and asserts non-empty + valid schema (no standalone `sbom:check` script — validation is inlined in `.github/workflows/ci.yml`) |
+| `platform-matrix (workers)` | `bun run test:workers` | Runs the `./web` entry under Miniflare 4 (workerd V8 isolate, in-process) — 9 tests validate Worker-runtime compatibility (no `node:*`, no `Bun.*`, no client `EventSource`/`WebSocket` dependence) |
+| `platform-matrix (workers-wrangler)` | `bun run test:workers:wrangler` | Runs the `./web` entry under `wrangler dev --local` — exercises wrangler's esbuild bundling pipeline and wrangler.toml config. NOTE: wrangler dev --local shares the Miniflare 4 runtime, so this is **not** a production-workerd verification (see `test/workers/FINDINGS.md`) |
+| `zero-any` | `bun run any:check` | Scans `packages/`, `test/`, `scripts/` for TypeScript `any` types in real type positions. Zero tolerance — fails the build on any occurrence outside vendored third-party code (`packages/*/vendor/`). See `scripts/no-any-types.ts` |
+| `attw` (are-the-types-wrong) | `bunx @arethetypeswrong/cli --pack` | Validates the `exports` map resolves cleanly under `node16` and `bundler` conditions for every published subpath |
+| `publint` | `bunx publint` | Detects common `package.json` packaging hygiene issues before release |
 
 ## Portable Validation
 
