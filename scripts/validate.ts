@@ -18,6 +18,7 @@ run('bun run build');
 run('bun run types:check');
 run('bun scripts/browser-compat-check.ts');
 run('bun scripts/package-metadata-check.ts');
+run('bun run any:check');
 run('bun run test');
 run('bun run pack:check');
 run('bun run install:smoke');
