@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
@@ -112,7 +112,8 @@
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "files": [
     "dist",
-    "sbom.cdx.json"
+    "sbom.cdx.json",
+    "scripts/postinstall-patch-minimatch.mjs"
   ],
   "homepage": "https://github.com/mgd34msu/goodvibes-sdk",
   "keywords": [
@@ -146,5 +147,8 @@
   },
   "overrides": {
     "minimatch": "^10.2.5"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall-patch-minimatch.mjs"
   }
 }

@@ -35,6 +35,24 @@ GitHub Packages requires a scoped registry mapping:
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
+### Security: postinstall patcher
+
+This package ships a `postinstall` script that automatically upgrades a vulnerable `minimatch` transitive dependency in your `node_modules`. The patcher remediates three ReDoS advisories (GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74) that stem from `bash-language-server → editorconfig → minimatch@10.0.1`. It exits 0 on all errors and never breaks your install.
+
+**If your environment uses `--ignore-scripts`** (e.g., CI hardening, Yarn PnP strict mode), the patcher will not run. Add this to your own `package.json` as a fallback:
+
+```json
+"overrides": { "minimatch": "^10.2.5" }
+```
+
+**Bun users:** if your project's trust policy restricts lifecycle scripts, run:
+
+```bash
+bun pm trust @pellux/goodvibes-sdk
+```
+
+Or add the `overrides` block above instead.
+
 ## Quick Start
 
 Prerequisite: a reachable GoodVibes daemon endpoint. The SDK is a client — it does not start the platform for you.

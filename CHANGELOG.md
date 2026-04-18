@@ -8,6 +8,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.1] - 2026-04-18
+
+### Fixed
+
+- **Postinstall patcher upgrades `minimatch` transitive to `10.2.5` in consumer installs**, remediating the 3 ReDoS advisories (GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74). A `postinstall` script (`scripts/postinstall-patch-minimatch.mjs`) ships in the published tarball. When consumers run `npm install @pellux/goodvibes-sdk`, the script scans their `node_modules` for any `minimatch@>=10.0.0 <10.2.3` install and upgrades it in place by downloading `minimatch@10.2.5` from the npm registry and extracting it over the vulnerable directory.
+
+**Background:** `bash-language-server@5.6.0` (a direct SDK dependency) hard-pins `editorconfig@2.0.1`, which hard-pins `minimatch@10.0.1`. The SDK's root `overrides` field works for local development and workspace installs but is ignored by npm and Bun when the package is consumed from a registry — npm/bun do not propagate `overrides` fields from installed packages into the consumer's install tree. The postinstall patcher is the mechanism that actually reaches consumer trees.
+
+**Caveats:**
+- If your environment uses `--ignore-scripts`, the patcher will not run. Add the following to your own `package.json` as a fallback:
+  ```json
+  "overrides": { "minimatch": "^10.2.5" }
+  ```
+  Then re-run `npm install`.
+- Bun users: if your project's trust policy does not allow lifecycle scripts from this package, run `bun pm trust @pellux/goodvibes-sdk` before installing, or add the overrides block above.
+- The patcher exits 0 on all errors and never fails your install.
+
 ## [0.21.0] - 2026-04-18
 
 **Soak-period release.** Per `docs/tracking/road-to-1.0.md`, the SDK is now in soak. Consumers should begin integration testing against 0.21.0; the next version jump is 1.0.0 pending owner sign-off. 0.20.x is deliberately skipped to avoid "just another release" ambiguity.
