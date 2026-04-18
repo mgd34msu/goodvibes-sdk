@@ -3,3 +3,6 @@ dist/
 *.tsbuildinfo
 .tmp/
 .goodvibes/
+
+# Verdaccio dry-run scratch dir
+.test-tmp/

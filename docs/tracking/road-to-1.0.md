@@ -77,11 +77,11 @@ Wire the three remaining `SDKObserver` callbacks.
 
 ## Wave 7 — Verification + Zod runtime validation (target: 0.19.13)
 
-- [ ] Zod (v4, modular tree-shakeable build) adopted at transport boundary
-- [ ] Schemas auto-generated from contract definitions in `packages/contracts/`
-- [ ] Validation failures throw `SDKError{kind:'contract'}` with field-level detail
-- [ ] Verdaccio dry-run publish + install into scratch project
-- [ ] Per-runtime-entry bundle-size budgets enforced in CI (post-Zod measurement)
+- [x] Zod (v4, modular tree-shakeable build) adopted at transport boundary
+- [x] Schemas auto-generated from contract definitions in `packages/contracts/`
+- [x] Validation failures throw `SDKError{kind:'contract'}` with field-level detail
+- [x] Verdaccio dry-run publish + install into scratch project
+- [x] Per-runtime-entry bundle-size budgets enforced in CI (post-Zod measurement)
 
 ## Wave 8 — S-ι hardening (target: 0.19.14+)
 

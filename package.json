@@ -52,7 +52,9 @@
     "publint:check": "publint packages/sdk",
     "sbom:generate": "bun scripts/sbom-generate.ts",
     "release:tag": "bun scripts/create-release-tag.ts",
-    "release:publish:ci": "bun scripts/publish-packages.ts --provenance"
+    "release:publish:ci": "bun scripts/publish-packages.ts --provenance",
+    "release:verify:verdaccio": "bun scripts/verdaccio-dry-run.ts",
+    "bundle:check": "bun scripts/bundle-budget.ts"
   },
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
@@ -63,16 +65,18 @@
     "@pellux/goodvibes-transport-core": "workspace:*",
     "@pellux/goodvibes-transport-direct": "workspace:*",
     "@pellux/goodvibes-transport-http": "workspace:*",
-    "@pellux/goodvibes-transport-realtime": "workspace:*"
+    "@pellux/goodvibes-transport-realtime": "workspace:*",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.2",
+    "@cyclonedx/cyclonedx-npm": "4.2.1",
     "@types/bun": "^1.3.10",
     "@types/node": "^24.3.0",
     "fast-check": "3.23.2",
     "miniflare": "^4.20260415.0",
+    "publint": "0.3.18",
     "typescript": "^5.9.3",
-    "@arethetypeswrong/cli": "0.18.2",
-    "@cyclonedx/cyclonedx-npm": "4.2.1",
-    "publint": "0.3.18"
+    "verdaccio": "^6.5.1"
   }
 }
