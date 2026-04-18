@@ -73,7 +73,6 @@ export class TelemetryDB {
     if (this.ready) return;
     try {
       // Dynamic import to avoid top-level WASM load overhead
-      // @ts-ignore — sql.js ships no bundled type declarations
       const initSqlJs = (await import('sql.js')).default;
       const SQL = await initSqlJs();
       if (this.dbPath && existsSync(this.dbPath)) {

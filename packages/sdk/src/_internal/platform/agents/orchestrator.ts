@@ -211,6 +211,15 @@ export class AgentOrchestrator {
     this.fullRegistryChannelVersion = -2;
   }
 
+  /**
+   * Returns the fully-populated ToolRegistry for this orchestrator.
+   * Used by companion chat to execute tool calls emitted by the LLM.
+   * Delegates to the lazy-initialized internal registry.
+   */
+  getToolRegistry(): ToolRegistry {
+    return this.getFullRegistry();
+  }
+
   /** Lazily build and cache the full ToolRegistry. */
   private getFullRegistry(): ToolRegistry {
     const channelVersion = this.channelRegistry?.getVersion() ?? -1;

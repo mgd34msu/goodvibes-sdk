@@ -228,6 +228,11 @@ export function resolveDaemonFacadeRuntime(
   const companionChatManager = new CompanionChatManager({
     eventPublisher: controlPlaneGateway,
     provider: createCompanionProviderAdapter(runtimeServices.providerRegistry),
+    // C-2: Explicitly opt into disk persistence for the daemon. Default is
+    // false (safe for tests/embedders); daemon is the only caller that needs it.
+    persist: true,
+    // C-3: Wire the full ToolRegistry so LLM-emitted tool calls are executed.
+    toolRegistry: runtimeServices.agentOrchestrator.getToolRegistry(),
   });
   runtimeServices.approvalBroker.setPublisher(controlPlaneGateway);
   runtimeServices.sessionBroker.setEventPublisher((event, payload) => {
