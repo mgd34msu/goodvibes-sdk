@@ -8,6 +8,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.2] - 2026-04-18
+
+### Added
+
+- **** — lists all registered providers and their models, with  /  flags and the list of environment variable names that would configure each provider. Response also includes .
+- **** — returns the currently-selected model reference plus its  /  status.
+- **** — body . Switches the active model live (no daemon restart). Returns 400  for unknown keys, 409  (with ) when the target provider lacks credentials, 200 + new current-model shape on success.
+- **Reactive  event** —  now emits  on the  RuntimeEventBus domain. Companion SSE subscribers receive it automatically via the existing gateway domain-routing. Shape: .
+- **Zod contract schemas** — , , , ,  exported from .
+- **** — optional interface method; implemented on  and .
+- **** — full API reference with curl examples, SSE event format, and error codes.
+
+### Fixed
+
+- **Clean error on unconfigured-provider turns** —  now checks  before calling . Unconfigured providers yield  immediately instead of letting the upstream return a cryptic 401 that was previously surfaced as .
+
+### Migration
+
+None required. All endpoint additions are additive. The  method is optional on the  interface — existing custom provider implementations that do not implement it are treated as configured.
+
+---
+
 ## [0.21.1] - 2026-04-18
 
 ### Fixed

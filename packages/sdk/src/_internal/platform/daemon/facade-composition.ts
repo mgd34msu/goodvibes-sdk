@@ -73,6 +73,19 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
         yield { type: 'error' as const, error: 'No provider available for companion chat' };
         return;
       }
+      // Guard: if the selected provider has no credentials, yield a clean error
+      // immediately instead of letting the upstream respond with a cryptic 401.
+      if (typeof provider.isConfigured === 'function' && !provider.isConfigured()) {
+        const providerName = provider.name;
+        const envVarHint = (provider as { authEnvVars?: readonly string[] }).authEnvVars?.[0]
+          ?? (provider as { authEnvVars?: readonly string[] }).authEnvVars?.join(' or ')
+          ?? 'the appropriate API key env var';
+        yield {
+          type: 'error' as const,
+          error: `Provider '${providerName}' is not configured. Set ${envVarHint} or configure via the TUI settings.`,
+        };
+        return;
+      }
       // Queue-based streaming bridge: onDelta pushes into a queue consumed by the generator.
       const queue: CompanionProviderChunk[] = [];
       let resolve: (() => void) | null = null;

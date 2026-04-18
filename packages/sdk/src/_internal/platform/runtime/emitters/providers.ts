@@ -28,3 +28,11 @@ export function emitModelFallback(
 ): void {
   bus.emit('providers', createEventEnvelope('MODEL_FALLBACK', { type: 'MODEL_FALLBACK', ...data }, ctx));
 }
+
+export function emitModelChanged(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { registryKey: string; provider: string; previous?: { registryKey: string; provider: string } }
+): void {
+  bus.emit('providers', createEventEnvelope('MODEL_CHANGED', { type: 'MODEL_CHANGED', ...data }, ctx));
+}

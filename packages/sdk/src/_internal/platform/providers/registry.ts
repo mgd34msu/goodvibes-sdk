@@ -13,7 +13,7 @@ import { createDiscoveredProvider, getDiscoveredReasoningFormat } from './discov
 import { getDiscoveredTraits } from './discovered-traits.js';
 import { getConfiguredApiKeys, getConfiguredModelId, getConfiguredProviderId } from '../config/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import { emitProvidersChanged, emitProviderWarning } from '../runtime/emitters/index.js';
+import { emitProvidersChanged, emitProviderWarning, emitModelChanged } from '../runtime/emitters/index.js';
 import { loadCustomProviders, watchCustomProviders } from './custom-loader.js';
 import {
   buildSyntheticCanonicalModels,
@@ -584,8 +584,20 @@ export class ProviderRegistry {
     const def = findModelDefinition(modelId, this.getModelRegistry());
     if (!def) throw new Error(`Model '${modelId}' not found.`);
     if (!def.selectable) throw new Error(`Model '${modelId}' is not selectable.`);
+    const previousRegistryKey = this.currentModelId;
+    const previousProvider = previousRegistryKey.includes(':') ? previousRegistryKey.split(':')[0] : previousRegistryKey;
     // Store the registryKey for unambiguous future lookups
     this.currentModelId = def.registryKey ?? modelId;
+    if (this.runtimeBus) {
+      const traceId = `model:changed:${Date.now()}`;
+      emitModelChanged(this.runtimeBus, { sessionId: 'system', source: 'provider-registry', traceId }, {
+        registryKey: this.currentModelId,
+        provider: def.provider,
+        previous: previousRegistryKey !== this.currentModelId
+          ? { registryKey: previousRegistryKey, provider: previousProvider }
+          : undefined,
+      });
+    }
   }
 
   /**
