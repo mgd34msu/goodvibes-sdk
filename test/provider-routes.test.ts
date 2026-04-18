@@ -11,6 +11,7 @@
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { dispatchProviderRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
 import type { ProviderRouteContext } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
+import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.js';
 import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
 import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
 import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
@@ -415,5 +416,119 @@ describe('createCompanionProviderAdapter: isConfigured guard', () => {
     expect(hasError).toBe(false);
     const hasDone = chunks.some((c) => (c as { type: string }).type === 'done');
     expect(hasDone).toBe(true);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Router-level integration test — secretsManager wiring through DaemonHttpRouter
+// ---------------------------------------------------------------------------
+
+describe('DaemonHttpRouter: secretsManager wiring (regression guard)', () => {
+  /**
+   * This test exercises the full production code path:
+   *   Request → DaemonHttpRouter.dispatchApiRoutes
+   *     → dispatchProviderRoutes (with secretsManager threaded in)
+   *       → handleListProviders → resolveSecretKeys → secretsManager.get
+   *
+   * If a future PR removes secretsManager from the DaemonHttpRouterContext
+   * or forgets to pass it into the ProviderRouteContext literal, this test
+   * will fail because configuredVia will come back undefined instead of
+   * 'secrets'.
+   */
+  test("GET /api/providers returns configuredVia='secrets' via DaemonHttpRouter when secret is stored but no env var", async () => {
+    const m1 = makeModel('openai', 'gpt-4o');
+    const bus = makeRuntimeBus();
+
+    // SecretsManager stub: only has OPENAI_API_KEY
+    const secretsManager = {
+      get: async (key: string): Promise<string | null> => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test-secret-via-router';
+        return null;
+      },
+    };
+
+    // Minimal stub for all the required DaemonHttpRouter context fields.
+    // Only the fields exercised by the /api/providers code path need real values.
+    const registry = makeRegistry({ models: [m1], currentModel: m1, configuredIds: ['openai'], bus });
+    const configManager = makeConfigManager();
+
+    // Build a minimal stub context satisfying DaemonHttpRouterContext.
+    // Fields not touched by the provider route path are stubbed with never-called fns.
+    const routerContext = {
+      configManager,
+      serviceRegistry: {} as never,
+      userAuth: {} as never,
+      agentManager: {} as never,
+      automationManager: {} as never,
+      approvalBroker: {} as never,
+      controlPlaneGateway: {
+        createEventStream: () => { throw new Error('not expected'); },
+      } as never,
+      gatewayMethods: {} as never,
+      providerRegistry: registry,
+      sessionBroker: {} as never,
+      routeBindings: {} as never,
+      channelPolicy: {} as never,
+      channelPlugins: {} as never,
+      surfaceRegistry: {} as never,
+      distributedRuntime: {} as never,
+      watcherRegistry: {} as never,
+      voiceService: {} as never,
+      webSearchService: {} as never,
+      knowledgeService: {} as never,
+      knowledgeGraphqlService: {} as never,
+      mediaProviders: {} as never,
+      multimodalService: {} as never,
+      artifactStore: {} as never,
+      memoryRegistry: {} as never,
+      memoryEmbeddingRegistry: {} as never,
+      platformServiceManager: {} as never,
+      integrationHelpers: null,
+      runtimeBus: bus,
+      runtimeStore: null,
+      runtimeDispatch: null,
+      githubWebhookSecret: null,
+      authToken: () => null,
+      buildSurfaceAdapterContext: () => { throw new Error('not expected'); },
+      buildGenericWebhookAdapterContext: () => { throw new Error('not expected'); },
+      checkAuth: () => true,
+      extractAuthToken: () => '',
+      requireAuthenticatedSession: () => null,
+      requireAdmin: () => null,
+      requireRemotePeer: async () => { throw new Error('not expected'); },
+      describeAuthenticatedPrincipal: () => null,
+      invokeGatewayMethodCall: async () => { throw new Error('not expected'); },
+      queueSurfaceReplyFromBinding: () => {},
+      surfaceDeliveryEnabled: () => false,
+      syncSpawnedAgentTask: () => {},
+      syncFinishedAgentTask: () => {},
+      trySpawnAgent: () => { throw new Error('not expected'); },
+      companionChatManager: null,
+      // THE CRITICAL FIELD UNDER TEST: secretsManager must be threaded in here
+      secretsManager,
+    };
+
+    const router = new DaemonHttpRouter(routerContext as never);
+
+    // Temporarily unset OPENAI_API_KEY so the env tier is skipped
+    const originalEnv = process.env['OPENAI_API_KEY'];
+    delete process.env['OPENAI_API_KEY'];
+
+    try {
+      const req = new Request('http://localhost/api/providers', { method: 'GET' });
+      const res = await router.dispatchApiRoutes(req);
+      expect(res).not.toBeNull();
+      const body = await res!.json() as Record<string, unknown>;
+      const providers = body.providers as Array<Record<string, unknown>>;
+      const openaiProv = providers.find((p) => p['id'] === 'openai');
+      expect(openaiProv).toBeDefined();
+      // Without the secretsManager wiring, this would be false and configuredVia undefined
+      expect(openaiProv!['configured']).toBe(true);
+      expect(openaiProv!['configuredVia']).toBe('secrets');
+    } finally {
+      if (originalEnv !== undefined) process.env['OPENAI_API_KEY'] = originalEnv;
+      router.dispose();
+    }
   });
 });

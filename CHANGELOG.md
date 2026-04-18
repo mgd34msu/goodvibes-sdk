@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.5] - 2026-04-18
+
+### Fixed
+
+- `configuredVia: 'secrets'` now correctly returned for providers whose API key is stored in SecretsManager but not in the environment. The 0.21.4 implementation was type-wired through `ProviderRouteContext` but the production `DaemonHttpRouter` never threaded `secretsManager` into the context literal, leaving the feature dead on live code paths. Added the plumbing and a router-level integration test to prevent regression.
+
+---
+
 ## [0.21.4] - 2026-04-18
 
 ### Fixed

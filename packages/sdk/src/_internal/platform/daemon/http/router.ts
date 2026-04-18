@@ -138,6 +138,14 @@ interface DaemonHttpRouterContext {
    * when the companion feature is active.
    */
   readonly companionChatManager?: CompanionChatManager | null;
+  /**
+   * SecretsManager instance used to resolve provider API keys stored as secrets
+   * rather than env vars. Threaded into ProviderRouteContext so that
+   * resolveSecretKeys() can return the correct configuredVia='secrets' tier.
+   * Without this, the production router always passes undefined and the secrets
+   * tier is permanently dead on live code paths.
+   */
+  readonly secretsManager?: Pick<import('../../config/secrets.js').SecretsManager, 'get'> | null;
   readonly trySpawnAgent: (
     input: Parameters<AgentManager['spawn']>[0],
     logLabel?: string,
@@ -252,6 +260,7 @@ export class DaemonHttpRouter {
         configManager: this.context.configManager,
         runtimeBus: this.context.runtimeBus,
         parseJsonBody: (request: Request) => this.parseJsonBody(request),
+        secretsManager: this.context.secretsManager,
       });
       if (providerResponse) return providerResponse;
     }

@@ -464,6 +464,7 @@ export function createDaemonFacadeCollaborators(
     syncFinishedAgentTask: options.syncFinishedAgentTask,
     trySpawnAgent: options.trySpawnAgent,
     companionChatManager: runtime.companionChatManager,
+    secretsManager: runtime.runtimeServices.secretsManager,
   });
   const providerRuntime = new ChannelProviderRuntimeManager({
     configManager: runtime.configManager,
