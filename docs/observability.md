@@ -571,22 +571,20 @@ export interface SDKObserver {
 
 ### Registering an observer
 
-Pass an observer as the fourth argument to `createGoodVibesAuthClient`:
+Pass an observer in `GoodVibesSdkOptions` when constructing the SDK:
 
 ```ts
-import {
-  createGoodVibesAuthClient,
-  createMemoryTokenStore,
-  createConsoleObserver,
-} from '@pellux/goodvibes-sdk';
+import { createGoodVibesSdk, createConsoleObserver } from '@pellux/goodvibes-sdk';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
-const auth = createGoodVibesAuthClient(
-  operatorSdk,
-  createMemoryTokenStore(),
-  undefined, // getAuthToken resolver
-  createConsoleObserver({ level: 'debug' }),
-);
+const sdk = createGoodVibesSdk({
+  baseUrl: 'http://127.0.0.1:3210',
+  tokenStore: createMemoryTokenStore(),
+  observer: createConsoleObserver({ level: 'debug' }),
+});
 ```
+
+The observer is propagated internally to the operator transport, peer transport, auth client, and realtime connectors — all from the single `observer` field on `GoodVibesSdkOptions`. You do not need to wire it separately to each subsystem.
 
 ### Error swallowing guarantee
 
@@ -648,15 +646,43 @@ Spans emitted:
 | `sdk.auth.transition` | On each auth state transition |
 | `sdk.error` | On each `GoodVibesSdkError` |
 
-### Wire-up status (S-θ)
+### Wire-up status
 
 | Seam | Status |
 |---|---|
 | `createGoodVibesAuthClient` — `onAuthTransition` on login | Wired |
 | `createGoodVibesAuthClient` — `onAuthTransition` on logout (clearToken) | Wired |
-| `RuntimeEventBus.emit` — `onEvent` | Deferred to S-θ.2 |
-| `OperatorSdk` / `PeerSdk` transport — `onTransportActivity` | Deferred to S-θ.2 |
-| Error rethrow sites — `onError` | Deferred to S-θ.2 |
+| `AutoRefreshCoordinator` — `onAuthTransition` reason `refresh` / `expire` | Wired |
+| `OperatorSdk` / `PeerSdk` HTTP transport — `onTransportActivity` (send + recv) | Wired |
+| SSE transport — `onTransportActivity` (send on connect, recv on event) | Wired |
+| WebSocket transport — `onTransportActivity` (send on connect, recv on message) | Wired |
+| SSE / WebSocket transport — `onEvent` (incoming remote runtime events) | Wired |
+| HTTP transport error sites — `onError` | Wired |
+| SSE / WebSocket transport error sites — `onError` | Wired |
+| `RuntimeEventBus.emit` (platform-internal bus) — `onEvent` | Not wired — internal bus is not observable via SDKObserver |
+
+### W3C Traceparent Propagation
+
+The transport layer can inject W3C Trace Context headers (`traceparent`, `tracestate`) into outgoing HTTP and realtime requests when an active OpenTelemetry span is available.
+
+Two helpers are exported from `@pellux/goodvibes-sdk/transport-core`:
+
+```ts
+import {
+  injectTraceparent,
+  injectTraceparentAsync,
+} from '@pellux/goodvibes-sdk/transport-core';
+
+// Synchronous — uses require-based OTel detection. Use for HTTP requests.
+const headers: Record<string, string> = {};
+injectTraceparent(headers);
+// headers['traceparent'] = '00-<traceId>-<spanId>-01'  (if OTel span active)
+
+// Async — uses dynamic import on first call, then caches. Use for SSE/WS setup.
+await injectTraceparentAsync(headers);
+```
+
+Both functions are no-ops when `@opentelemetry/api` is not installed or no active span exists. There is no hard dependency on `@opentelemetry/*` — detection happens at runtime via dynamic import (async) or `require` (sync). Bundlers see no statically-analysable `import('@opentelemetry/api')`.
 
 ---
 

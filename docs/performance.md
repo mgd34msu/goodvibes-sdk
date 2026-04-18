@@ -244,7 +244,17 @@ const estimate = estimateConversationTokens(messages); // number
 
 ### Performance Budgets
 
-The SDK defines measurable SLO gates enforced in CI. All budgets use consecutive-violation counting: a budget fails only when the threshold is exceeded on `tolerance` consecutive samples, preventing transient spikes from failing the gate.
+The SDK defines two categories of performance budgets: **bundle size budgets** and **runtime SLO gates**.
+
+**Bundle size budgets** are enforced per entry point via `bundle-budgets.json` at the repo root. Each entry has a gzip ceiling (measured actual × 1.2 headroom). CI fails when an entry grows beyond its ceiling:
+
+```bash
+bun run bundle:check  # prints actual vs. budget for every entry point
+```
+
+To update after a legitimate size increase, see [Testing and Validation](./testing-and-validation.md#bundle-budget-enforcement).
+
+**Runtime SLO gates** use consecutive-violation counting: a budget fails only when the threshold is exceeded on `tolerance` consecutive samples, preventing transient spikes from failing the gate.
 
 | Metric | Threshold | Tolerance |
 |---|---|---|

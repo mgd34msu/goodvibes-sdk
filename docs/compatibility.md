@@ -9,6 +9,7 @@ See [Runtime Surfaces](./surfaces.md) for the full two-tier model.
 | **Bun ≥1.0** | Full + Companion | TUI, daemons, CLI apps, and all companion entry points |
 | **Hermes (React Native / Expo)** | Companion only | iOS and Android companion apps via `/react-native` and `/expo` |
 | **Modern browsers** | Companion only | Browser and web UI apps via `/browser` and `/web` |
+| **Cloudflare Workers / workerd / Miniflare 4** | Companion only | Use the `/web` entry point (`createWebGoodVibesSdk`); no `node:*` imports, no `Bun.*` |
 
 ## Node.js is NOT Supported
 
@@ -61,5 +62,5 @@ The workspace tracks the SDK release line directly. See [CHANGELOG.md](../CHANGE
 
 When shared behavior changes inside this repo:
 1. Update the SDK source.
-2. Run `bun run sync` if umbrella internals need refresh.
-3. Rerun validation: `bun test`.
+2. Refresh the umbrella package internals if needed (see [Testing and Validation](./testing-and-validation.md)).
+3. Rerun validation: `bun run validate`.

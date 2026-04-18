@@ -55,7 +55,7 @@ import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
 
 For companion apps and web UIs, use the runtime-specific entry point. These entry points contain no Bun globals and bundle cleanly with Metro, Vite, webpack, and esbuild.
 
-For a React Native or Expo deep-dive, see the dedicated quickstart guides (coming soon: `docs/quickstart-react-native.md`, `docs/quickstart-web.md`).
+For a React Native or Expo deep-dive, see [React Native integration](./react-native-integration.md) and [Expo integration](./expo-integration.md). For browser and web UI, see [Browser integration](./browser-integration.md) and [Web UI integration](./web-ui-integration.md).
 
 ### React Native
 

@@ -40,7 +40,8 @@ This surface works on Hermes (React Native / Expo), browser, and Bun. Metro's bu
 |---------|---------|-------|
 | Bun | Full + Companion | Dev environment, TUI, daemons, CLI apps |
 | Hermes (React Native / Expo) | Companion only | iOS and Android companion apps |
-| Browser | Companion only | web-ui |
+| Browser | Companion only | Web UI apps |
+| Cloudflare Workers / workerd / Miniflare 4 | Companion only | Use the `/web` entry point |
 
 ## Runtimes NOT supported
 

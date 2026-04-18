@@ -65,6 +65,31 @@ const sdk = createReactNativeGoodVibesSdk({
 });
 ```
 
+
+## Idempotency Keys
+
+For non-GET mutations, the SDK automatically injects an `Idempotency-Key` header when the call is marked idempotent. This enables safe retry of state-changing operations without duplicate side effects.
+
+**Precedence chain (highest → lowest):**
+
+1. **`perMethodPolicy[methodId]`** — an explicit per-method retry policy set on the SDK options overrides everything else.
+2. **`contract.idempotent`** — the operator contract marks certain POST/PUT/PATCH/DELETE routes as idempotent (`idempotent: true`). Those methods automatically get an `Idempotency-Key` on each call.
+3. **HTTP-verb default** — safe methods (`GET`, `HEAD`, `OPTIONS`) are retried by default; unsafe methods are not retried unless explicitly marked idempotent.
+
+When an idempotent call is retried, the same `Idempotency-Key` UUID is used on each attempt. This lets the daemon detect and deduplicate retried requests.
+
+For application-level idempotency on mutations not covered by the contract, generate and store your own key and pass it as a request option:
+
+```ts
+import { generateIdempotencyKey } from '@pellux/goodvibes-sdk/transport-http';
+
+const key = generateIdempotencyKey(); // UUID v4
+const result = await transport.requestJson(route, payload, { idempotencyKey: key });
+// On retry with the same key, the daemon returns the cached result.
+```
+
+Never retry unsafe mutations blindly. Only operations with application-level or contract-level idempotency guarantees are safe to retry.
+
 ## Token Rotation
 
 If a long-lived client can rotate tokens, prefer:

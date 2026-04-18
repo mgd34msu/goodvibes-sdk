@@ -113,6 +113,39 @@ const sdk = createBrowserGoodVibesSdk({
 
 For same-origin web UIs, cookie-backed session auth is often simpler than token persistence.
 
+## Automatic Token Refresh
+
+When you provide a `tokenStore`, the SDK wires a built-in `AutoRefreshCoordinator` that handles proactive token refresh and reactive 401 retry automatically. No custom middleware is needed.
+
+**Proactive refresh** — the coordinator checks the token's `expiresAt` field before each request. If the token expires within `refreshLeewayMs` (default: 60 seconds), a refresh call is issued before the request proceeds.
+
+**Reactive 401 retry** — when the server returns 401, the coordinator attempts one refresh and retries the original request with the new token, transparently to the caller.
+
+Configure via the `autoRefresh` option in `createGoodVibesSdk`:
+
+```ts
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
+
+const sdk = createGoodVibesSdk({
+  baseUrl: 'http://127.0.0.1:3210',
+  tokenStore: createMemoryTokenStore(),
+  autoRefresh: {
+    autoRefresh: true,         // default; set false to disable
+    refreshLeewayMs: 60_000,   // refresh this many ms before expiry (default: 60s)
+    refresh: async (store) => {
+      // Call your token refresh endpoint and update the store.
+      const newToken = await myRefreshEndpoint();
+      await store.setToken(newToken);
+    },
+  },
+});
+```
+
+Auto-refresh is enabled by default when `tokenStore` is present. Set `autoRefresh: false` to disable it entirely. The `refresh` callback is required for proactive refresh to work; without it, only the reactive 401 retry path is active.
+
+The `AutoRefreshCoordinator` class is also available directly from `@pellux/goodvibes-sdk/auth` for advanced use cases where you need to manage the coordinator lifecycle yourself.
+
 ## Read-only token resolvers
 
 If you pass `getAuthToken`, the SDK can read tokens dynamically for requests and reconnects, but it cannot persist or mutate them unless you also pass `tokenStore`.
