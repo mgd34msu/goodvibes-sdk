@@ -1,16 +1,27 @@
 // Synced from packages/transport-http/src/retry.ts
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
+export interface PerMethodRetryPolicy {
+  readonly maxAttempts?: number;
+  readonly baseDelayMs?: number;
+  readonly maxDelayMs?: number;
+  readonly backoffFactor?: number;
+}
+
 export interface HttpRetryPolicy extends BackoffPolicy {
   readonly retryOnStatuses?: readonly number[];
   readonly retryOnMethods?: readonly string[];
   readonly retryOnNetworkError?: boolean;
+  /** Per-method retry policy overrides keyed by method ID. */
+  readonly perMethodPolicy?: Readonly<Record<string, PerMethodRetryPolicy>>;
 }
 
 export interface ResolvedHttpRetryPolicy extends ResolvedBackoffPolicy {
   readonly retryOnStatuses: readonly number[];
   readonly retryOnMethods: readonly string[];
   readonly retryOnNetworkError: boolean;
+  /** Per-method retry policy overrides keyed by method ID. */
+  readonly perMethodPolicy: Readonly<Record<string, PerMethodRetryPolicy>>;
 }
 
 export const DEFAULT_HTTP_RETRY_POLICY: ResolvedHttpRetryPolicy = {
@@ -21,6 +32,7 @@ export const DEFAULT_HTTP_RETRY_POLICY: ResolvedHttpRetryPolicy = {
   retryOnStatuses: [408, 429, 500, 502, 503, 504],
   retryOnMethods: ['GET', 'HEAD', 'OPTIONS'],
   retryOnNetworkError: true,
+  perMethodPolicy: {},
 };
 
 export function normalizeHttpRetryPolicy(
@@ -32,6 +44,7 @@ export function normalizeHttpRetryPolicy(
     retryOnStatuses: [...(policy?.retryOnStatuses ?? DEFAULT_HTTP_RETRY_POLICY.retryOnStatuses)],
     retryOnMethods: [...(policy?.retryOnMethods ?? DEFAULT_HTTP_RETRY_POLICY.retryOnMethods)].map((method) => method.toUpperCase()),
     retryOnNetworkError: policy?.retryOnNetworkError ?? DEFAULT_HTTP_RETRY_POLICY.retryOnNetworkError,
+    perMethodPolicy: policy?.perMethodPolicy ?? DEFAULT_HTTP_RETRY_POLICY.perMethodPolicy,
   };
 }
 
@@ -50,6 +63,26 @@ export function resolveHttpRetryPolicy(
     retryOnStatuses: override.retryOnStatuses ? [...override.retryOnStatuses] : base.retryOnStatuses,
     retryOnMethods: override.retryOnMethods ? override.retryOnMethods.map((method) => method.toUpperCase()) : base.retryOnMethods,
     retryOnNetworkError: override.retryOnNetworkError ?? base.retryOnNetworkError,
+    perMethodPolicy: override.perMethodPolicy ?? base.perMethodPolicy,
+  };
+}
+
+/**
+ * Resolve a per-method retry policy override by method ID.
+ * Returns the base policy with overrides applied, or the base policy unchanged.
+ */
+export function applyPerMethodPolicy(
+  base: ResolvedHttpRetryPolicy,
+  methodId: string,
+): ResolvedHttpRetryPolicy {
+  const override = base.perMethodPolicy[methodId];
+  if (!override) return base;
+  return {
+    ...base,
+    maxAttempts: override.maxAttempts ?? base.maxAttempts,
+    baseDelayMs: override.baseDelayMs ?? base.baseDelayMs,
+    maxDelayMs: override.maxDelayMs ?? base.maxDelayMs,
+    backoffFactor: override.backoffFactor ?? base.backoffFactor,
   };
 }
 

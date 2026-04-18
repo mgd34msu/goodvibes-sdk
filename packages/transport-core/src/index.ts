@@ -6,3 +6,6 @@ export type { ClientTransport } from './client-transport.js';
 export { createClientTransport } from './client-transport.js';
 export type { TransportObserver, TransportActivityInfo } from './observer.js';
 export { invokeTransportObserver } from './observer.js';
+export type { TransportContext, TransportMiddleware } from './middleware.js';
+export { composeMiddleware } from './middleware.js';
+export { injectTraceparent, injectTraceparentAsync } from './otel.js';

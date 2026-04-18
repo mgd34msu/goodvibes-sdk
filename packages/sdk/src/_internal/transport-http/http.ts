@@ -37,6 +37,7 @@ import {
   createHttpJsonTransport,
   createJsonInit,
   createJsonRequestInit,
+  generateIdempotencyKey,
   readJsonBody,
   requestJson,
   type HttpJsonRequestOptions,
@@ -45,6 +46,8 @@ import {
   type JsonObject,
   type JsonValue,
   type ResolvedContractRequest,
+  type TransportContext,
+  type TransportMiddleware,
   type TransportJsonError,
 } from './http-core.js';
 
@@ -62,7 +65,9 @@ export type {
   ResolvedHttpRetryPolicy,
   ResolvedStreamReconnectPolicy,
   StreamReconnectPolicy,
+  TransportContext,
   TransportJsonError,
+  TransportMiddleware,
 };
 export type HttpTransportOptions = HttpJsonTransportOptions;
 export type HttpTransport = HttpJsonTransport;
@@ -70,6 +75,7 @@ export {
   createFetch,
   createJsonInit,
   createJsonRequestInit,
+  generateIdempotencyKey,
   readJsonBody,
   requestJson,
   mergeHeaders,

@@ -55,6 +55,8 @@ export interface OperatorMethodContract {
   readonly pluginId?: string;
   readonly dangerous?: boolean;
   readonly invokable?: boolean;
+  /** Whether this method is idempotent. When true, safe to retry on 5xx + network errors. */
+  readonly idempotent?: boolean;
   readonly metadata?: Record<string, unknown>;
 }
 
@@ -166,6 +168,8 @@ export interface PeerEndpointContract {
   readonly description: string;
   readonly inputSchema?: JsonSchema;
   readonly outputSchema?: JsonSchema;
+  /** Whether this endpoint is idempotent. When true, safe to retry on 5xx + network errors. */
+  readonly idempotent?: boolean;
 }
 
 export interface PeerContractManifest {

@@ -34,6 +34,8 @@ export class SessionManager {
   /**
    * Perform a login and, when `persistToken` is not false, automatically
    * persist the returned token into the configured token store.
+   * The `expiresAt` from the login response is also persisted when the store
+   * supports `setTokenEntry`.
    */
   async login(
     input: GoodVibesLoginInput,
@@ -41,7 +43,12 @@ export class SessionManager {
   ): Promise<GoodVibesLoginOutput> {
     const result = await this.#operator.control.auth.login(input);
     if ((options.persistToken ?? true) && this.#tokenStore) {
-      await this.#tokenStore.setToken(result.token);
+      // Prefer setTokenEntry to persist expiry alongside the token.
+      if (result.expiresAt) {
+        await this.#tokenStore.setTokenEntry(result.token, result.expiresAt);
+      } else {
+        await this.#tokenStore.setToken(result.token);
+      }
     }
     return result;
   }

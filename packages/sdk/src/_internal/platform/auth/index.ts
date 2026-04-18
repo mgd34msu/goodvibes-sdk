@@ -5,3 +5,6 @@
 export { PermissionResolver } from './permission-resolver.js';
 export { SessionManager } from './session-manager.js';
 export { TokenStore } from './token-store.js';
+export { AutoRefreshCoordinator } from './auto-refresh.js';
+export type { AutoRefreshOptions, AutoRefreshCoordinatorOptions } from './auto-refresh.js';
+export { createAutoRefreshMiddleware } from './auto-refresh-middleware.js';

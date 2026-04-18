@@ -25,3 +25,10 @@ export { forSession } from './transport-realtime.js';
 export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactNativeGoodVibesSdk {
   return createReactNativeGoodVibesSdk(options);
 }
+
+export {
+  createExpoSecureTokenStore,
+  type ExpoSecureTokenStore,
+  type ExpoSecureTokenStoreOptions,
+  type ExpoSecureStoreAccessible,
+} from './_internal/platform/auth/expo-secure-token-store.js';

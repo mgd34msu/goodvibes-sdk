@@ -8,10 +8,12 @@ import type {
 import type { AuthTokenResolver } from './_internal/transport-http/index.js';
 import type { OperatorSdk } from './_internal/operator/index.js';
 import {
+  AutoRefreshCoordinator,
   PermissionResolver,
   SessionManager,
   TokenStore,
 } from './_internal/platform/auth/index.js';
+import type { AutoRefreshOptions } from './_internal/platform/auth/index.js';
 import type { ControlPlaneAuthSnapshot } from './_internal/platform/control-plane/auth-snapshot.js';
 
 // Re-export focused responsibility classes for consumers who prefer
@@ -29,10 +31,30 @@ export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
 export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;
 export type GoodVibesLoginOutput = OperatorMethodOutput<'control.auth.login'>;
 
+/**
+ * Token storage interface for the GoodVibes SDK.
+ *
+ * Implement all three core methods. The optional `getTokenEntry` / `setTokenEntry`
+ * methods are used by auto-refresh to track token expiry without requiring
+ * consumers to change their existing `GoodVibesTokenStore` implementations.
+ */
 export interface GoodVibesTokenStore {
   getToken(): Promise<string | null>;
   setToken(token: string | null): Promise<void>;
   clearToken(): Promise<void>;
+
+  /**
+   * Return the current token and its expiry timestamp (unix ms).
+   * Optional: when absent, auto-refresh falls back to `getToken()` with no
+   * expiry tracking (leeway-based pre-flight checks are disabled).
+   */
+  getTokenEntry?(): Promise<{ token: string | null; expiresAt?: number }>;
+
+  /**
+   * Persist a token alongside its expiry timestamp (unix ms).
+   * Optional: when absent, auto-refresh falls back to `setToken()`.
+   */
+  setTokenEntry?(token: string | null, expiresAt?: number): Promise<void>;
 }
 
 export interface BrowserTokenStoreOptions {
@@ -82,6 +104,13 @@ export interface GoodVibesAuthClient {
   clearToken(): Promise<void>;
 }
 
+/**
+ * Options for the auto-refresh feature on the auth client.
+ *
+ * @see AutoRefreshOptions
+ */
+export type { AutoRefreshOptions };
+
 function requireStorage(storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   const resolved = storage ?? globalThis.localStorage;
   if (!resolved) {
@@ -105,17 +134,29 @@ function requireStorage(storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeI
  * const sdk = createGoodVibesSdk({ baseUrl: '...', tokenStore: store });
  * await sdk.auth.clearToken(); // clears only in-memory
  */
-export function createMemoryTokenStore(initialToken: string | null = null): GoodVibesTokenStore {
+export function createMemoryTokenStore(initialToken: string | null = null, initialExpiresAt?: number): GoodVibesTokenStore {
   let token = initialToken;
+  let expiresAt: number | undefined = initialExpiresAt;
   return {
     async getToken(): Promise<string | null> {
       return token;
     },
     async setToken(nextToken: string | null): Promise<void> {
       token = nextToken;
+      // When setToken is called directly (not via setTokenEntry), clear expiry
+      // to avoid stale expiry data attached to a manually-set token.
+      expiresAt = undefined;
     },
     async clearToken(): Promise<void> {
       token = null;
+      expiresAt = undefined;
+    },
+    async getTokenEntry(): Promise<{ token: string | null; expiresAt?: number }> {
+      return { token, expiresAt };
+    },
+    async setTokenEntry(nextToken: string | null, nextExpiresAt?: number): Promise<void> {
+      token = nextToken;
+      expiresAt = nextExpiresAt;
     },
   };
 }
@@ -138,6 +179,7 @@ export function createMemoryTokenStore(initialToken: string | null = null): Good
 export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}): GoodVibesTokenStore {
   const storage = requireStorage(options.storage);
   const key = options.key?.trim() || 'goodvibes.token';
+  const expiresAtKey = `${key}.expiresAt`;
   return {
     async getToken(): Promise<string | null> {
       const value = storage.getItem(key);
@@ -146,12 +188,36 @@ export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}):
     async setToken(token: string | null): Promise<void> {
       if (!token) {
         storage.removeItem(key);
+        storage.removeItem(expiresAtKey);
         return;
       }
       storage.setItem(key, token);
+      // Clear expiry when set via setToken (no expiry info provided).
+      storage.removeItem(expiresAtKey);
     },
     async clearToken(): Promise<void> {
       storage.removeItem(key);
+      storage.removeItem(expiresAtKey);
+    },
+    async getTokenEntry(): Promise<{ token: string | null; expiresAt?: number }> {
+      const value = storage.getItem(key);
+      const token = value && value.trim() ? value : null;
+      const expiresAtStr = storage.getItem(expiresAtKey);
+      const expiresAt = expiresAtStr ? parseInt(expiresAtStr, 10) : undefined;
+      return { token, expiresAt: Number.isFinite(expiresAt) ? expiresAt : undefined };
+    },
+    async setTokenEntry(token: string | null, expiresAt?: number): Promise<void> {
+      if (!token) {
+        storage.removeItem(key);
+        storage.removeItem(expiresAtKey);
+        return;
+      }
+      storage.setItem(key, token);
+      if (expiresAt !== undefined) {
+        storage.setItem(expiresAtKey, String(expiresAt));
+      } else {
+        storage.removeItem(expiresAtKey);
+      }
     },
   };
 }
@@ -204,11 +270,36 @@ export function createGoodVibesAuthClient(
   tokenStore: GoodVibesTokenStore | null,
   getAuthToken?: AuthTokenResolver,
   observer?: SDKObserver,
+  autoRefreshOptions?: AutoRefreshOptions,
+  /**
+   * Optional pre-built `AutoRefreshCoordinator`. When provided, it is reused
+   * directly (no new coordinator is constructed). This allows `createGoodVibesSdk`
+   * to share a single coordinator instance between the transport middleware and
+   * the auth client, avoiding duplicate refresh calls.
+   */
+  existingCoordinator?: AutoRefreshCoordinator | null,
 ): GoodVibesAuthClient {
   // Construct the split-class instances that own each concern.
   // The facade delegates to these rather than duplicating logic.
   const ts: TokenStore | null = tokenStore ? new TokenStore(tokenStore) : null;
   const sm: SessionManager = new SessionManager(operator, ts);
+
+  // Use the provided coordinator if available; otherwise build one.
+  const coordinator: AutoRefreshCoordinator | null = existingCoordinator !== undefined
+    ? existingCoordinator
+    : (() => {
+        const autoRefresh = autoRefreshOptions?.autoRefresh ?? true;
+        const refreshLeewayMs = autoRefreshOptions?.refreshLeewayMs ?? 60_000;
+        return tokenStore && autoRefresh
+          ? new AutoRefreshCoordinator({
+              tokenStore,
+              autoRefresh,
+              refreshLeewayMs,
+              refresh: autoRefreshOptions?.refresh,
+              observer,
+            })
+          : null;
+      })();
 
   return {
     get writable(): boolean {
@@ -224,6 +315,10 @@ export function createGoodVibesAuthClient(
       return new PermissionResolver(snapshot as unknown as ControlPlaneAuthSnapshot);
     },
     async current(): Promise<GoodVibesCurrentAuth> {
+      if (coordinator) {
+        await coordinator.ensureFreshToken();
+        return coordinator.withRetryOn401(() => sm.current());
+      }
       return sm.current();
     },
     async login(

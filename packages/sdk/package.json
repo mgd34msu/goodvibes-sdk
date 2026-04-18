@@ -131,5 +131,17 @@
   },
   "sideEffects": false,
   "type": "module",
-  "types": "./dist/index.d.ts"
+  "types": "./dist/index.d.ts",
+  "peerDependencies": {
+    "expo-secure-store": ">=13.0.0",
+    "react-native-keychain": ">=8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "expo-secure-store": {
+      "optional": true
+    },
+    "react-native-keychain": {
+      "optional": true
+    }
+  }
 }

@@ -11,6 +11,8 @@ export interface ContractRouteDefinition {
 
 export interface ContractRouteLike {
   readonly id: string;
+  /** When true, this route is safe to retry on 5xx even for mutating HTTP verbs. */
+  readonly idempotent?: boolean;
 }
 
 export interface ContractInvokeOptions {
@@ -55,7 +57,7 @@ export function requireContractRoute<TRoute extends ContractRouteLike>(
 
 export async function invokeContractRoute<T = unknown>(
   transport: HttpTransport,
-  route: ContractRouteDefinition,
+  route: ContractRouteDefinition & ContractRouteLike,
   input?: Record<string, unknown>,
   options: ContractInvokeOptions = {},
 ): Promise<T> {
@@ -65,6 +67,8 @@ export async function invokeContractRoute<T = unknown>(
     body: resolved.body,
     headers: options.headers,
     signal: options.signal,
+    methodId: route.id,
+    idempotent: route.idempotent === true,
   });
   if (options.responseSchema) {
     const result = options.responseSchema.safeParse(body);
