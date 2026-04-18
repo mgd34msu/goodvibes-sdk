@@ -32,7 +32,7 @@ Imported via:
 - `./transport-core`, `./transport-direct`, `./transport-http`, `./transport-realtime` — transport primitives
 - `./peer` — peer ACP client
 
-This surface works on Hermes (React Native / Expo), browser, and Bun. Metro's bundler (React Native) and standard browser bundlers (Vite, webpack, esbuild) can trace and bundle these entry points without modification.
+This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers, and Bun. Metro's bundler (React Native) and standard browser bundlers (Vite, webpack, esbuild) can trace and bundle these entry points without modification.
 
 ## Runtimes explicitly supported
 

@@ -4,7 +4,7 @@ This SDK publishes one npm package: `@pellux/goodvibes-sdk`.
 
 Everything in this document is a subpath export from that one package, not a separate install.
 
-See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun) vs. companion surface (Hermes / browser).
+See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun) vs. companion surface (Hermes / browser / Workers).
 
 ## Consumer Decision Matrix
 

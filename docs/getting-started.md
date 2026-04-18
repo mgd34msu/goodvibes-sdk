@@ -7,7 +7,7 @@
 
 This SDK has two surfaces. Read [Runtime Surfaces](./surfaces.md) to understand which applies to you:
 - **Full surface** — Bun consumers (TUI, daemon, CLI).
-- **Companion surface** — Hermes (React Native / Expo) or browser consumers.
+- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers.
 
 ## Install
 
@@ -51,7 +51,7 @@ For daemon embedding in a Bun server host:
 import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
 ```
 
-## Companion quickstart (React Native / Expo / browser)
+## Companion quickstart (React Native / Expo / browser / Cloudflare Workers)
 
 For companion apps and web UIs, use the runtime-specific entry point. These entry points contain no Bun globals and bundle cleanly with Metro, Vite, webpack, and esbuild.
 

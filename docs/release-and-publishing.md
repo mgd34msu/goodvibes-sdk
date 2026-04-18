@@ -210,7 +210,7 @@ The check runs automatically in CI via the `version-consistency` job on every pu
 |-----|---------|----------|
 | `validate` | `bun run validate` | Full workspace validation: docs, TypeScript build, type-level checks, tests, pack, install smoke |
 | `mirror-drift` | `bun run sync:check` | Ensures transport-http mirror parity — catches body divergence between source and mirror |
-| `platform-matrix` | `bun run build && bun test test` / `bun run test:rn` | Runs test suite on bun and rn-bundle platforms |
+| `platform-matrix` | `bun run build && bun test test` / `bun run test:rn` / `bun run test:workers` / `bun run test:workers:wrangler` | Runs test suite on bun, rn-bundle, workers (Miniflare 4), and workers-wrangler platforms |
 | `throw-guard` | inline rg scan | Prevents raw throws from shipping in public SDK source |
 | `changelog-check` | `bun run changelog:check` | Blocks releases when CHANGELOG.md is missing a section for the current version |
 | `version-consistency` | `bun run version:check` | Ensures all workspace package.json files carry the same version |
