@@ -10,3 +10,6 @@ dist/
 # api-extractor transient output (temp/ is gitignored; only etc/ baseline is committed)
 temp/
 **/temp/
+
+# wrangler dev --local cache (test/workers-wrangler/.wrangler/)
+.wrangler/
