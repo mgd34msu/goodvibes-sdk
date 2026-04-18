@@ -8,6 +8,53 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.19.8] - 2026-04-17
+
+**Waves 5-9 consolidated — production-readiness push.**
+
+### Added
+
+- **SBOM generation** (`scripts/sbom-generate.ts`, `bun run sbom:generate`): CycloneDX JSON output (`sbom.cdx.json`) with 1242 components. Uploaded as release artifact in `release.yml`.
+- **Sync safety enforcement** (`scripts/sync-sdk-internals.ts` hardened): script refuses to run without `--scope=<name>`; supports comma-separated scopes and `--scope=all` explicit opt-in (with warning); protects `_internal/*.ts` barrel files from deletion.
+- **`sync:check` expanded** (`scripts/sync-check.ts`): covers all 9 subsystems (was transport-http-only); supports `--scope` filter.
+- **`sync-safety-check` CI job** in `.github/workflows/ci.yml`: asserts mirror in sync + deletion count ≤10 on PRs touching the tree.
+- **`SECURITY.md`**: responsible-disclosure policy with reporting contact, GPG fingerprint placeholder, response SLA table, CVSS-based fix timelines, in/out-of-scope tables, 90-day coordinated disclosure, hall-of-fame credit terms.
+- **`docs/semver-policy.md`**: explicit definition of what counts as a breaking change post-1.0.0 — major/minor/patch triggers, `_internal/` exclusions, deprecation process, TypeScript compatibility policy, enforcement via CHANGELOG gate.
+- **Error-message quality audit** (Wave 6): every error across `transport-http`, `transport-realtime`, `operator-sdk`, `daemon-sdk`, `sdk/client.ts`, `sdk/auth.ts` rewritten to pass the three-part test: (a) states operation, (b) names offending field, (c) provides actionable recovery hint.
+- **`docs/defaults.md`**: authoritative table of all timeout, retry, and backoff defaults with pathway, rationale, and 1.0.0 blocker notes.
+- **Producer API bounded queue** (`transport-realtime`): new `emitLocal` method on `DomainEvents` with bounded queue (1024 entries, drop-oldest policy + counter).
+- **Bundle-size budget gate** (`scripts/bundle-budget.ts`, `bundle-budgets.json`, `bun run bundle:check`): discovers exports map, gzips every JS dist entry, compares against per-entry budgets (16 entries at `ceil(actual_gzip * 1.2)`). Exits non-zero on FAIL or NO-BUDGET.
+- **Verdaccio dry-run publish** (`scripts/verdaccio-dry-run.ts`, `bun run release:verify:verdaccio`): spawns local Verdaccio on ephemeral port, publishes SDK tarball, installs into scratch project, smoke-tests all 16 documented entries + 9 key named exports, anti-leak guard, cleanup on both success and failure paths.
+- **Zod runtime validation at transport boundary** (Wave 7): opt-out (`validateResponses` SDK option) schema validation of typed operator responses at `transport-http` boundary. Schemas in `packages/contracts/src/zod-schemas/` cover auth, accounts, events, and session endpoints. `invokeContractRoute` throws `ContractError` with Wave 6 three-part message on parse failure.
+- **`no-todo-markers` CI gate** (`scripts/no-todo-markers.ts`, `bun run todo:check`): greps `packages/` for `TODO|FIXME|XXX|HACK|STUB` outside `_internal/**`, vendor, generated, and test files. Exits non-zero on any match.
+- **`flake-detect` CI gate** (`scripts/flake-detect.ts`, `bun run flake:check`): runs test suite N times (`FLAKE_RUNS` env; default 5, CI uses 3). Fails if any test flips between pass/fail across runs.
+- **`api-extractor` CI gate** (`@microsoft/api-extractor@^7.58.4`, `api-extractor.json`, `etc/goodvibes-sdk.api.md` baseline, `bun run api:check`): fails on unintended public-surface diff. Companion `packages/sdk/tsconfig.api-extractor.json` prevents dist clobber.
+- **Coverage backfill — 195 new tests** (Wave 8): `test/auth-coverage.test.ts`, `test/observer-coverage.test.ts`, `test/daemon-sdk-helpers.test.ts`, `test/operator-sdk-coverage.test.ts`, `test/peer-sdk-coverage.test.ts`. Zero rejection-swallow patterns; every test has at least one meaningful `expect()`.
+- **Companion chat — 4 TODO items resolved** (Wave 8): session persistence (`companion-chat-persistence.ts`, atomic tmp-file+rename, per-session JSON), rate limiting (`companion-chat-rate-limiter.ts`, token-bucket per-session + per-client, `SDKError{kind:'rate-limit'}`), `ToolRegistry` DI wired into `CompanionChatManager`, all 4 TODO comments removed.
+- **`sql.js` type shim** (`packages/sdk/src/_internal/platform/types/sql-js.d.ts`): covers `initSqlJs` + `Database` runtime surface; removes both `@ts-ignore` suppressions from `state/db.ts` and `state/sqlite-store.ts`.
+- **Koa-style middleware chain** at `transport-http` request/response boundary. `TransportContext` + `TransportMiddleware` types in `packages/transport-core`. `sdk.use(mw)` facade on `createGoodVibesSdk`; `GoodVibesSdkOptions.middleware` initial set.
+- **Idempotency-Key header** (UUID v4 via `crypto.randomUUID` with RFC 4122 fallback) on every non-GET/HEAD outgoing request.
+- **Per-method retry policies**: `perMethodPolicy[methodId]` override, then `contract.idempotent` flag, then HTTP-verb default. `contract.idempotent` field added to `OperatorMethodContract` and `PeerEndpointContract`.
+- **W3C Trace Context `traceparent` propagation**: HTTP headers, SSE headers, and WebSocket auth frame JSON. Zero-dep OTel detection via `new Function` pattern (Miniflare-safe). `setOtelModuleOverride` injection seam for tests.
+- **`AutoRefreshCoordinator`** (Wave 9): pre-flight leeway check, shared-promise in-flight request coalescing, reactive 401 retry with one-shot guard. Consumer-pluggable via `AutoRefreshOptions.refresh`. Integrated as `createAutoRefreshMiddleware` prepended to transport middleware chain. `onAuthTransition` observer emissions on silent refresh and refresh failure.
+- **`TokenStore` extensions**: optional `getTokenEntry`/`setTokenEntry` methods for `expiresAt` persistence; `SessionManager.login` persists `expiresAt` from login response.
+- **Platform token stores** (Wave 9): `createExpoSecureTokenStore`, `createIOSKeychainTokenStore`, `createAndroidKeystoreTokenStore` — each persists token + `expiresAt` as single JSON blob in native secure slot. Optional peer deps (`expo-secure-store`, `react-native-keychain`). `__loadModule` injection seam. Exposed via `/expo` and `/react-native` subpaths.
+- **`test/helpers/dist-errors.ts`**: re-exports compiled error classes from `packages/errors/dist` for tests asserting `instanceof` against transport-http's dist code (ESM module-identity pitfall).
+
+### Changed
+
+- **`maxAttempts` default**: `Infinity` → `DEFAULT_STREAM_MAX_ATTEMPTS = 10` (prevents prod-hang on auth-failure loops).
+- **`maxDelayMs` default**: 5 s → 30 s for retry backoff.
+- **`bundle-budgets.json`**: `./auth` entry raised 2500 → 3200 to accommodate auto-refresh middleware growth.
+- **Mirror sync**: `ConversationMessageEnvelope` + `publishConversationFollowup` added to canonical `packages/daemon-sdk/src/runtime-route-types.ts`; companion-message routing added to `packages/daemon-sdk/src/runtime-session-routes.ts`.
+- **JSDoc added** to `GoodVibesSdkError`, `ConfigurationError`, `ContractError`, `HttpStatusError` in `packages/errors/src/index.ts`.
+
+### Fixed
+
+- **`release.yml` `needs` expressions**: replaced invalid dynamic `fromJSON()` expressions with static arrays + `if: always()` guards. Workflow was failing at parse time (0 s) on every push to main since 83009b5.
+- **Traceparent test isolation**: swapped `mock.module` for `setOtelModuleOverride` seam in `test/traceparent-propagation.test.ts`. Tests passed in isolation but failed under full CI ordering due to Bun ESM cache poisoning.
+- **`ctx.error` passthrough**: non-401 errors placed on `ctx.error` (not re-thrown) so transport outer handler preserves original error kind (`5xx` stays `'server'`, network stays `'network'`).
+
 ## [0.19.7] - 2026-04-17
 
 **Wave 4 Cloudflare Workers real-runtime verification + Track C policy docs.**
