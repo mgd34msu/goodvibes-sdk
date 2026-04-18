@@ -65,7 +65,7 @@ List all registered providers and their models. Returns configured status and en
 | `providers[].id` | `string` | Provider identifier (e.g. `"inception"`, `"venice"`, `"openai"`) |
 | `providers[].label` | `string` | Human-readable label |
 | `providers[].configured` | `boolean` | `true` if the daemon has credentials for this provider |
-| `providers[].configuredVia` | `"env" \| "subscription" \| "anonymous" \| undefined` | How credentials are supplied: `"env"` = environment variable present; `"subscription"` = OAuth subscription token; `"anonymous"` = provider allows unauthenticated access (e.g. local SGLang); `undefined` = not configured |
+| `providers[].configuredVia` | `"env" \| "secrets" \| "subscription" \| "anonymous" \| undefined` | How credentials are supplied: `"env"` = environment variable present; `"secrets"` = provider API key is stored in SecretsManager but not in the environment (added in 0.21.4); `"subscription"` = OAuth subscription token; `"anonymous"` = provider allows unauthenticated access (e.g. local SGLang); `undefined` = not configured |
 | `providers[].envVars` | `string[]` | Environment variable names that configure this provider |
 | `providers[].models` | `ProviderModelEntry[]` | All models exposed by this provider |
 | `providers[].models[].registryKey` | `string` | Compound key to pass to `PATCH /api/providers/current` |

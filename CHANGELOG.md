@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.4] - 2026-04-18
+
+### Fixed
+
+- `GET /api/providers` and `GET /api/providers/current` now correctly return `configuredVia: 'secrets'` when a provider's API key is stored in SecretsManager but not in the environment. Previously this state collapsed to `undefined`, reporting the provider as unconfigured and contradicting the advertised Zod contract.
+
+### Testing
+
+- `test/provider-sse-integration.test.ts` now exercises the real SSE path end-to-end: constructs a ControlPlaneGateway with an in-memory RuntimeEventBus, opens a live event stream, emits a MODEL_CHANGED envelope, and asserts exactly one SSE frame arrives. Protects against future regressions of gateway domain filtering or envelope serialization.
+- `test/provider-routes.test.ts` PATCH-handler single-emission assertion now uses a real RuntimeEventBus + registry stub that emulates `setCurrentModel` emitting on the bus. The "exactly one MODEL_CHANGED per setCurrentModel" invariant is now meaningfully verified (was previously asserting 0 emissions from a no-op stub).
+
+---
+
 ## [0.21.3] - 2026-04-18
 
 ### Fixed
