@@ -1,7 +1,7 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.19.6
+**Current version**: 0.19.8
 **Current score**: 9.0 / 10
 **Last updated**: 2026-04-17
 
@@ -16,14 +16,20 @@
 | S-γ | Mirror-drift guard | 0.19.0 | **shipped** | 8.0 → 8.3 | 0.19.0 `d5e2f04` (S-γ scripts from `2ed2853`) | Follow-up WRFC needed to run `bun run sync` for 8 tracked drifts before CI goes green on main. |
 | S-δ | Per-release migration notes | 0.19.1 | **shipped** | 8.3 → 8.5 | 0.19.1 `d5b99e0` | Changelog gate live, CI job `changelog-check` armed. |
 | S-ε | Multi-platform test matrix | 0.19.1 | **shipped (partial)** | 8.5 → 8.5 | 0.19.1 `d5b99e0` | 4 dimensions wired (Bun + bun-on-nodeN + RN). Real Node/Browser/Workers deferred to S-ε.2. Partial — score effect withheld until full delivery. |
-| S-ε.2 | Platform matrix — real Node + Browser + Workers | 0.19.x | not-started | 8.5 → 8.8 | — | Follow-up to S-ε |
+| S-ε.2 | Platform matrix — real Node + Browser + Workers | 0.19.8 | **shipped (partial)** | 8.5 → 8.8 | 0.19.8 `f86123b` (browser) / `8262775` (hermes) / `47d870a` (workers) | Browser + Hermes + Workers harnesses landed. Real-Node matrix dimension + Wrangler (vs Miniflare) parity rerun still open. |
+| S-θ.2 | Observer seams — onEvent + onError + onTransportActivity | 0.19.8 | **shipped** | 9.0 → 9.2 | 0.19.8 `60a2a06` | All three callbacks wired at transport + SDKError sites; OTel adapter covered. |
+| Wave 5 | Package hygiene + SBOM + provenance | 0.19.8 | **shipped** | no score effect (hygiene) | 0.19.8 `83009b5` | attw + publint + provenance + signed tags + SBOM (CycloneDX). |
+| Wave 6 | Policy & UX — error audit, timeout bounds, producer queue | 0.19.8 | **shipped** | no score effect (hygiene) | 0.19.8 `23c4292` | `docs/semver-policy.md` + `docs/defaults.md`; bounded realtime queue replaces unbounded. |
+| Wave 7 | Verification — Zod validation + bundle budgets + Verdaccio | 0.19.8 | **shipped** | no score effect (hygiene) | 0.19.8 `3fb64e2` + `9cd9558` | Zod v4 modular adopted at transport boundary; bundle-budget gate; Verdaccio dry-run. |
+| Wave 8 | Hardening — coverage backfill, flake, API extractor, no-todo | 0.19.8 | **shipped** | 9.2 → 9.5 | 0.19.8 `552f8d4` + `487a84d` + `25fe936` | 195-test coverage backfill; flake-detect, api-extractor baseline (`etc/goodvibes-sdk.api.md`), no-todo-markers CI; companion TODOs + sql.js shim cleaned. |
+| Wave 9 (features) | SDK enhancements — auto-refresh + middleware + idempotency + traceparent + platform stores | 0.19.8 | **shipped** | no score effect (features) | 0.19.8 `4965939` (+ `b3e2984` test fix) | Auth auto-refresh middleware, idempotency keys, W3C traceparent, iOS Keychain / Android Keystore / Expo SecureStore token stores. Distinct from the "Wave 9 soak period" tracked in `road-to-1.0.md`. |
 | S-γ-cleanup | Transport-http drift cleanup (narrow) | 0.19.2 | **shipped** | no score effect (infra) | 0.19.2 `c7c561e` | `--scope=<subsystem>` flag added; 8 transport-http drifts resolved; `mirror-drift` CI can now pass on main. |
 | S-ζ | Integration + property tests | 0.19.4 | **shipped** | 8.8 → 9.2 | 0.19.4 | End-to-end auth, SSE/WS chaos, property-based discriminant tests |
 | S-θ | Observability hooks | 0.19.5 | **shipped (partial)** | 9.2 → 9.5 | 0.19.5 | SDKObserver interface + onEvent/onError adapters; OTel adapter deferred |
 | honest-runtime-posture | Honest runtime posture | 0.19.6 | **shipped** | no score effect (hygiene) | 0.19.6 | Stripped theater CI labels; runtime reporting now accurately reflects actual execution |
 | Wave M | Metadata / polish | 0.19.6 | **shipped** | no score effect (docs) | 0.19.6 | CONTRIBUTING.md CI gates, roadmap-status refresh, stale docs cleanup |
 | Wave D | Dependency audit + hardening prep | — | **in-progress** | — | — | Cluster 6: roadmap polish (this run) |
-| S-ι | Hardening gates | 0.20.x | not-started | 9.5 → 10.0 | — | Depends on S-α..S-θ |
+| S-ι | Hardening gates | 0.19.8 / 0.20.x | **shipped (partial)** | 9.5 → 10.0 | 0.19.8 (Waves 5–8) | Waves 5–8 landed (hygiene, policy, verification, API-extractor/flake/no-todo). Remaining S-ι scope from `docs/roadmap-to-1.0.md`: mutation testing ≥85% kill rate, branch-coverage ≥95% on error paths, JSDoc `@throws` contract lint, public-surface file-size cap, `no-any-leak` lint. Score-effect withheld until full S-ι lands. |
 | 1.0.0 cut | Owner approval gate | 1.0.0 | **blocked on owner approval** | — | — | **Requires explicit owner approval. Not automatic.** |
 
 Status values: `not-started` · `in-progress` · `in-review` · `shipped` · `blocked` · `deferred`.
@@ -97,6 +103,25 @@ Integration + property tests landed. End-to-end auth fixture, SSE/WS chaos harne
 ### 2026-04-17 — S-θ shipped (partial), 0.19.5 released
 
 `SDKObserver` interface shipped with `onEvent`, `onError`, and `onTransportActivity` hooks accepted as constructor options on all top-level clients. Console dev adapter included. OpenTelemetry adapter deferred to S-θ.2 — score effect withheld until full OTel delivery lands.
+
+### 2026-04-17 — Waves 1–9 shipped, 0.19.8 released
+
+Consolidated Waves 5–9 into the 0.19.8 cut. Ten engineer-stream commits landed between `60a2a06` (Wave 1 S-θ.2) and `4965939` (Wave 9 features), plus `b3e2984` (traceparent test-isolation fix) and `ff68ad5` (release.yml dynamic-needs fix).
+
+- **Wave 1 (S-θ.2)** `60a2a06` — `onEvent` / `onError` / `onTransportActivity` wired through `transport-realtime`, `transport-http`, auth; observer calls wrapped in `invokeObserver` so consumer-thrown exceptions don't poison SDK state.
+- **Wave 2 (browser)** `f86123b` — `@vitest/browser` + Playwright harness against MSW mock; `dist/browser.js` exercised via `./browser` subpath; CI matrix dimension added.
+- **Wave 3 (hermes)** `488b615` + `8262775` — `hermes-engine` harness + CI matrix dimension.
+- **Wave 4 (workers, perfection fix)** `47d870a` — M-1 + m-1..m-6 + n-1..n-3 defects closed on the Miniflare harness. Real Wrangler rerun still open as a follow-up MIN (Miniflare is a simulation, not a stress test of real Workers runtime behavior).
+- **Wave 5 (hygiene + SBOM + provenance)** `83009b5` — attw + publint CI gates, OIDC `npm publish --provenance`, signed tags, SECURITY.md, CycloneDX SBOM generation.
+- **Wave 6 (policy & UX)** `23c4292` — `docs/semver-policy.md`, `docs/defaults.md`, error-message audit across `SDKError` throw sites, timeout/retry/backoff defaults audit, bounded producer queue in `transport-realtime/runtime-events.ts` (replaces unbounded prod-hang risk).
+- **Wave 7 (verification)** `3fb64e2` (bundle budgets + Verdaccio dry-run) + `9cd9558` (Zod v4 modular runtime validation at transport boundary; validation failures throw `SDKError{kind:'contract'}` with field-level detail).
+- **Wave 8 (S-ι hardening)** `552f8d4` (195-test coverage backfill) + `487a84d` (flake-detect + api-extractor + no-todo-markers CI gates; `etc/goodvibes-sdk.api.md` 14805-line public-API baseline) + `25fe936` (companion TODOs cleaned: session persistence, rate-limiting, ToolRegistry DI; sql.js shim replaces `@ts-ignore`).
+- **Wave 9 (SDK enhancements)** `4965939` — auto-refresh middleware, idempotency keys, W3C traceparent propagation, iOS Keychain / Android Keystore / Expo SecureStore token stores. Feature scope (not in the `road-to-1.0.md` wave plan, which uses "Wave 9" for the soak period).
+
+**Open follow-ups**:
+- Real Wrangler rerun of the workers harness (Miniflare is a simulation, not real Workers runtime).
+- Full S-ι scope from `docs/roadmap-to-1.0.md` beyond what Wave 8 delivered: mutation testing ≥85% kill rate, ≥95% branch coverage on error paths, JSDoc `@throws` contract lint, public-surface file-size cap, `no-any-leak` lint rule.
+- Wave 9 (soak period) and Wave 10 (1.0.0 owner sign-off) per `road-to-1.0.md`.
 
 ### 2026-04-17 — honest-runtime-posture + Wave M shipped, 0.19.6 released
 

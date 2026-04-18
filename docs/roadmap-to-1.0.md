@@ -1,7 +1,7 @@
 # Roadmap to 1.0
 
 **Status**: Active. Last updated 2026-04-17.
-**Current version**: 0.19.6.
+**Current version**: 0.19.8.
 **Current score**: 9.0 / 10.
 **Target for 1.0.0 cut**: 10.0 / 10, plus explicit approval from the project owner.
 
@@ -64,7 +64,7 @@ Ends the "SDK bump → surprise TUI test burn" pattern.
 - Auto-generate the skeleton from conventional commits between tags where feasible. Manual edits still allowed.
 - Each breaking change gets a copy-pasteable before/after snippet.
 
-### Wave S-ε — Multi-platform test matrix ✓ shipped partial 0.19.1 (S-ε.2 pending)
+### Wave S-ε — Multi-platform test matrix ✓ shipped partial 0.19.1, expanded 0.19.8 (S-ε.2 Browser + Hermes + Workers landed; real Node + Wrangler still pending)
 **Target release**: 0.19.3 · **Effort**: ~2 days · **Score effect**: 8.5 → 8.8 · **Parallel after S-α**
 
 The existing RN CI gate is a one-off. Extend to full platform parity.
@@ -83,7 +83,7 @@ The tests that would have caught tonight's TUI regressions at the SDK level.
 - Property-based tests (fast-check or similar) on `AnyRuntimeEvent` discriminants: every event kind round-trips through JSON serialization without type loss.
 - Integration test for `createGoodVibesAuthClient` decomposition: `TokenStore` + `SessionManager` + `PermissionResolver` compose to exactly the same observable behavior as the monolithic legacy facade.
 
-### Wave S-θ — Observability hooks ✓ shipped partial 0.19.5
+### Wave S-θ — Observability hooks ✓ shipped partial 0.19.5, completed 0.19.8 (S-θ.2 `60a2a06` — onEvent + onError + onTransportActivity + OTel end-to-end)
 **Target release**: 0.19.5 · **Effort**: ~2 days · **Score effect**: 9.2 → 9.5 · **Parallel after S-α**
 
 Without this, consumers have to monkey-patch to get telemetry. With it, they plug in.
@@ -93,8 +93,10 @@ Without this, consumers have to monkey-patch to get telemetry. With it, they plu
 - Built-in observer adapters for OpenTelemetry and Console (for dev).
 - Documented as the canonical way to wire SDK internals to external telemetry — no more reaching into `_internal` to hook things.
 
-### Wave S-ι — Hardening gates (the last mile)
+### Wave S-ι — Hardening gates (the last mile) ✓ shipped partial 0.19.8 (Waves 5–8 landed: hygiene, policy, Zod validation, API-extractor/flake/no-todo gates)
 **Target release**: 0.20.x · **Effort**: weeks of grind across the public surface · **Score effect**: 9.5 → 10.0 · **Depends on**: S-α through S-θ
+
+**Landed in 0.19.8**: API surface snapshot via `@microsoft/api-extractor` (`etc/goodvibes-sdk.api.md` baseline + `api:check` CI gate); `no-todo-markers` CI gate; flake-detection CI gate; public-surface file-size discipline via coverage backfill. Still pending:
 
 Each gate is enforced in CI; failing any blocks the release.
 
