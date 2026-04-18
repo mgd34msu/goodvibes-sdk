@@ -8,6 +8,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.19.9] - 2026-04-18
+
+**Release pipeline hardening + zero-`any` gate + wrangler real-workerd harness.**
+
+### Added
+
+- **`wrangler dev --local` test harness** (`test/workers-wrangler/`): real workerd V8 isolate via `wrangler dev --local`, closing the Miniflare-4/production parity gap. 9/9 tests pass. Note: the shared Miniflare 4 runtime (used internally by wrangler) is functionally identical to the programmatic harness in `test/workers/` — the distinction is the wrangler CLI invocation surface, not a separate V8 build.
+- **Zero-`any` type gate** (`scripts/no-any-types.ts`, `bun run any:check`): custom scanner that greps source for explicit `any` annotations in `packages/` source (excluding generated, vendor, and test fixture files). New CI job `no-any-types` runs on every push and PR. Starting baseline: zero occurrences.
+
+### Changed
+
+- **Worker test entries migrated from `.mjs` to `.ts`**: `test/workers/` entry files converted to TypeScript, aligned with workspace conventions.
+- **`@cloudflare/workers-types` exact-pinned**: dependency locked to exact version to prevent silent type-surface drift across installs.
+- **`.wrangler` gitignore narrowed**: ignore now scoped to the test harness path only, not the entire `.wrangler/` tree.
+
+### Fixed
+
+- **Release pipeline: `zod/v4` Bun smoke failure** (`scripts/install-smoke-check.ts`): `installWithBun` now explicitly appends `zod@^4` to install specs before invoking `bun add`. Previously, Bun 1.3.10 resolved `zod@3.24.2` from a transitive `bash-language-server` subtree, causing the `zod/v4` subpath import in the published dist to fail.
+- **Release pipeline: `github-release` job decoupled from `verify`** (`.github/workflows/release.yml`): `github-release` job now uses `if: always() && github.event_name == 'push' && needs.publish-npm.result == 'success' && needs.generate-sbom.result == 'success'`. Previously it was `needs: verify`-chained so a smoke-check failure would orphan the GitHub Release object and leave the SBOM unattached.
+- **Wrangler harness honesty**: corrected misleading comments that implied wrangler used a distinct workerd binary; `wrangler dev --local` uses Miniflare 4 as its shared runtime.
+- **`version.ts` fallback sync** (`packages/sdk/src/_internal/platform/version.ts`): fallback version literal synced to `0.19.9` via `bun run sync:version` (previously 0.19.8 fallback was committed without the sync step in the 0.19.8 release).
+
+### Documentation
+
+- Comprehensive audit + drift sweep: Workers runtime in README companion enumeration, full CI gate table updated, Wrangler follow-up ticked, auth/middleware/idempotency/observability/runtime-compatibility/error-system/testing-gates pages updated.
+- `sbom:check` reference corrected (no standalone script; validation runs inline in CI).
+
 ## [0.19.8] - 2026-04-17
 
 **Waves 5-9 consolidated — production-readiness push.**
