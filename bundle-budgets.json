@@ -15,8 +15,8 @@
     "rationale": "full SDK re-export entry — re-exports all sub-entries; measured 235 B gzip * 1.2"
   },
   "./auth": {
-    "gzip_bytes": 2500,
-    "rationale": "auth surface with TokenStore, SessionManager, PermissionResolver; measured 2083 B gzip * 1.2"
+    "gzip_bytes": 3200,
+    "rationale": "auth surface with TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator + createAutoRefreshMiddleware (Wave 9: transport-boundary auto-refresh); measured 2747 B gzip * 1.15"
   },
   "./browser": {
     "gzip_bytes": 1197,

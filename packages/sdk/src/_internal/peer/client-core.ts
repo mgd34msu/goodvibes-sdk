@@ -11,6 +11,8 @@ import {
   invokeContractRoute,
   requireContractRoute,
   type ContractInvokeOptions,
+  type ContractRouteDefinition,
+  type ContractRouteLike,
 } from '../transport-http/index.js';
 
 export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {}
@@ -87,7 +89,7 @@ export interface PeerRemoteClient {
 function requireEndpoint(
   contract: PeerContractManifest,
   endpointId: string,
-): PeerEndpointContract {
+): PeerEndpointContract & ContractRouteDefinition & ContractRouteLike {
   return requireContractRoute(contract.endpoints, endpointId, 'peer endpoint');
 }
 

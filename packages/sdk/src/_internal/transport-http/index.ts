@@ -29,6 +29,8 @@ export {
   readJsonBody,
   requestJson,
 } from './http.js';
+export type { TransportContext, TransportMiddleware } from './http-core.js';
+export { generateIdempotencyKey } from './http-core.js';
 export type { ServerSentEventHandlers, ServerSentEventOptions } from './sse.js';
 export { openServerSentEventStream } from './sse.js';
 export type { ServerSentEventHandlers as RawServerSentEventHandlers, ServerSentEventOptions as RawServerSentEventOptions } from './sse-stream.js';
@@ -37,8 +39,8 @@ export type { AuthTokenInput, AuthTokenResolver, HeaderResolver, MaybePromise } 
 export { mergeHeaders, normalizeAuthToken, resolveAuthToken, resolveHeaders } from './auth.js';
 export type { BackoffPolicy, ResolvedBackoffPolicy } from './backoff.js';
 export { computeBackoffDelay, normalizeBackoffPolicy, sleepWithSignal } from './backoff.js';
-export type { HttpRetryPolicy, ResolvedHttpRetryPolicy } from './retry.js';
-export { DEFAULT_HTTP_RETRY_POLICY, getHttpRetryDelay, isRetryableHttpStatus, isRetryableNetworkError, normalizeHttpRetryPolicy, resolveHttpRetryPolicy } from './retry.js';
+export type { HttpRetryPolicy, PerMethodRetryPolicy, ResolvedHttpRetryPolicy } from './retry.js';
+export { DEFAULT_HTTP_RETRY_POLICY, applyPerMethodPolicy, getHttpRetryDelay, isRetryableHttpStatus, isRetryableNetworkError, normalizeHttpRetryPolicy, resolveHttpRetryPolicy } from './retry.js';
 export type { StreamReconnectPolicy, ResolvedStreamReconnectPolicy } from './reconnect.js';
 export { DEFAULT_STREAM_RECONNECT_POLICY, getStreamReconnectDelay, normalizeStreamReconnectPolicy } from './reconnect.js';
 export type { TransportPaths } from './paths.js';

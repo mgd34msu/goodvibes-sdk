@@ -118,3 +118,18 @@ export function createReactNativeGoodVibesSdk(
     },
   };
 }
+
+export {
+  createIOSKeychainTokenStore,
+  type IOSKeychainTokenStore,
+  type IOSKeychainTokenStoreOptions,
+  type KeychainAccessible,
+} from './_internal/platform/auth/ios-keychain-token-store.js';
+
+export {
+  createAndroidKeystoreTokenStore,
+  type AndroidKeystoreTokenStore,
+  type AndroidKeystoreTokenStoreOptions,
+  type AndroidAccessControl,
+  type AndroidAccessible,
+} from './_internal/platform/auth/android-keystore-token-store.js';

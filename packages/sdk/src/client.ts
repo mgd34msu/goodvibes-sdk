@@ -14,6 +14,7 @@ import type {
   HeaderResolver,
   HttpRetryPolicy,
   StreamReconnectPolicy,
+  TransportMiddleware,
 } from './_internal/transport-http/index.js';
 import { normalizeAuthToken } from './_internal/transport-http/index.js';
 import {
@@ -26,9 +27,14 @@ import type { AnyRuntimeEvent } from './_internal/platform/runtime/events/index.
 import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
+  type AutoRefreshOptions,
   type GoodVibesAuthClient,
   type GoodVibesTokenStore,
 } from './auth.js';
+import {
+  AutoRefreshCoordinator,
+  createAutoRefreshMiddleware,
+} from './_internal/platform/auth/index.js';
 import type { SDKObserver } from './observer/index.js';
 
 /**
@@ -157,6 +163,41 @@ export interface GoodVibesSdkOptions {
    * exceptions never propagate into SDK logic.
    */
   readonly observer?: SDKObserver;
+
+  /**
+   * Initial middleware chain applied to every HTTP request/response cycle.
+   *
+   * Middleware functions receive a mutable `TransportContext` and a `next()`
+   * callback. They run in the order provided (outer-first, onion model).
+   *
+   * Additional middleware can be appended at any time via `sdk.use(mw)`.
+   *
+   * @example
+   * const sdk = createGoodVibesSdk({
+   *   baseUrl: 'https://daemon.example.com',
+   *   middleware: [
+   *     async (ctx, next) => {
+   *       ctx.headers['X-Request-Id'] = crypto.randomUUID();
+   *       await next();
+   *     },
+   *   ],
+   * });
+   */
+  readonly middleware?: TransportMiddleware[];
+
+  /**
+   * Options for silent token auto-refresh.
+   *
+   * - `autoRefresh` — when `false`, disables silent refresh entirely and lets
+   *   401 responses propagate to the caller immediately. Default: `true`.
+   * - `refreshLeewayMs` — milliseconds before token expiry to trigger a
+   *   pre-flight refresh. Default: 60_000 (1 minute).
+   * - `refresh` — optional callback invoked to obtain a new token on pre-flight
+   *   leeway trigger or reactive 401. When absent, pre-flight is a no-op and
+   *   401 retry re-reads the token store (useful when an external party updates
+   *   it). See `AutoRefreshOptions.refresh` for a full example.
+   */
+  readonly autoRefresh?: AutoRefreshOptions;
 }
 
 /**
@@ -236,6 +277,20 @@ export interface GoodVibesSdk {
    * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/realtime-and-telemetry.md
    */
   readonly realtime: GoodVibesRealtime;
+  /**
+   * Append a middleware to the SDK's HTTP transport chain.
+   *
+   * Multiple `use()` calls compose in order (outer-first). The method is
+   * idempotent in the sense that each call simply appends — call it once per
+   * middleware to avoid double-registration.
+   *
+   * @example
+   * sdk.use(async (ctx, next) => {
+   *   ctx.headers['X-Tenant-Id'] = 'acme';
+   *   await next();
+   * });
+   */
+  use(middleware: TransportMiddleware): void;
 }
 
 function requireBaseUrl(baseUrl: string): string {
@@ -280,6 +335,7 @@ function createClientOptions<T extends OperatorSdkOptions | PeerSdkOptions>(
     ...(options.headers ? { headers: options.headers } : {}),
     ...(options.getHeaders ? { getHeaders: options.getHeaders } : {}),
     ...(options.retry ? { retry: options.retry } : {}),
+    ...(options.middleware ? { middleware: options.middleware } : {}),
   } as T;
 }
 
@@ -309,28 +365,90 @@ export function createGoodVibesSdk(
 ): GoodVibesSdk {
   const baseUrl = requireBaseUrl(options.baseUrl);
   const tokenStore = options.tokenStore ?? (options.getAuthToken ? null : createMemoryTokenStore(options.authToken ?? null));
-  const authToken = options.authToken ?? null;
   const getAuthToken = tokenStore
     ? () => tokenStore.getToken()
     : options.getAuthToken;
   // Single normalized resolver used by realtime connectors.
   const tokenResolver = normalizeAuthToken(getAuthToken ?? options.authToken ?? undefined);
   const fetchImpl = () => requireFetchImplementation(options.fetch);
+
+  const { observer } = options;
+
+  // Build the auto-refresh coordinator when a writable token store is present
+  // and autoRefresh is not explicitly disabled.
+  const autoRefreshEnabled = (options.autoRefresh?.autoRefresh ?? true) && tokenStore !== null;
+  const coordinator: AutoRefreshCoordinator | null = autoRefreshEnabled && tokenStore
+    ? new AutoRefreshCoordinator({
+        tokenStore,
+        autoRefresh: true,
+        refreshLeewayMs: options.autoRefresh?.refreshLeewayMs ?? 60_000,
+        refresh: options.autoRefresh?.refresh,
+        observer,
+      })
+    : null;
+
+  // Build the merged middleware list: auto-refresh first (if enabled), then
+  // consumer-provided middleware. This ensures the auto-refresh pre-flight runs
+  // before any consumer middleware sees ctx.headers.Authorization, and that the
+  // reactive 401 retry is transparent to consumer middleware.
+  //
+  // The transport reference for the retry callback is resolved lazily: we pass
+  // a proxy object whose `requestJson` property is populated immediately after
+  // createOperatorSdk / createPeerSdk returns. Because the middleware only calls
+  // `transport.requestJson` on a reactive 401 (not at construction time), the
+  // holder is always populated before it is accessed.
+  // Lazy transport proxy: populated after createOperatorSdk / createPeerSdk.
+  // The middleware only invokes requestJson on a reactive 401 — never at
+  // construction time — so the proxy is always populated before first use.
+  let operatorRequestJson: ((url: string, opts?: unknown) => Promise<unknown>) | null = null;
+  let peerRequestJson: ((url: string, opts?: unknown) => Promise<unknown>) | null = null;
+
+  const buildMiddleware = (
+    getRequestJson: () => ((url: string, opts?: unknown) => Promise<unknown>) | null,
+  ): TransportMiddleware[] => {
+    const mws: TransportMiddleware[] = [];
+    if (coordinator) {
+      // Wrap the coordinator + lazy transport reference into a minimal proxy
+      // that satisfies createAutoRefreshMiddleware's Pick<HttpJsonTransport, 'requestJson'>.
+      const transportProxy = {
+        requestJson<T>(url: string, opts?: unknown): Promise<T> {
+          const rj = getRequestJson();
+          if (!rj) throw new Error('Auto-refresh: transport not yet initialised');
+          return rj(url, opts) as Promise<T>;
+        },
+      };
+      mws.push(createAutoRefreshMiddleware(coordinator, transportProxy, tokenStore!));
+    }
+    if (options.middleware) {
+      mws.push(...options.middleware);
+    }
+    return mws;
+  };
+
   const operator = createOperatorSdk(createClientOptions<OperatorSdkOptions>({
     ...options,
     tokenStore: tokenStore ?? undefined,
+    middleware: buildMiddleware(() => operatorRequestJson),
   }));
+  // Populate the lazy reference now that the transport is fully constructed.
+  operatorRequestJson = (url, opts) => operator.transport.requestJson(url, opts as never);
+
   const peer = createPeerSdk(createClientOptions<PeerSdkOptions>({
     ...options,
     tokenStore: tokenStore ?? undefined,
+    middleware: buildMiddleware(() => peerRequestJson),
   }));
-
-  const { observer } = options;
+  // Populate the lazy reference now that the transport is fully constructed.
+  peerRequestJson = (url, opts) => peer.transport.requestJson(url, opts as never);
 
   return {
     operator,
     peer,
-    auth: createGoodVibesAuthClient(operator, tokenStore, getAuthToken, observer),
+    auth: createGoodVibesAuthClient(operator, tokenStore, getAuthToken, observer, options.autoRefresh, coordinator),
+    use(middleware: TransportMiddleware): void {
+      operator.transport.use(middleware);
+      peer.transport.use(middleware);
+    },
     realtime: {
       viaSse(): RemoteRuntimeEvents<RuntimeEventRecord> {
         return createRemoteRuntimeEvents(

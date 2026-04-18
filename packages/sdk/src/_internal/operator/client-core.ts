@@ -14,6 +14,7 @@ import {
   openContractRouteStream,
   requireContractRoute,
   type ContractRouteDefinition,
+  type ContractRouteLike,
   type ContractInvokeOptions,
   type ContractStreamOptions,
 } from '../transport-http/index.js';
@@ -169,12 +170,16 @@ function requireMethod(
 function requireMethodRoute(
   contract: OperatorContractManifest,
   methodId: string,
-): ContractRouteDefinition {
+): ContractRouteDefinition & ContractRouteLike {
   const method = requireMethod(contract, methodId);
   if (!method.http) {
     throw new GoodVibesSdkError(`Operator method "${methodId}" does not expose an HTTP binding. This method may be internal-only or require a different transport. Check the contract manifest for available HTTP methods.`, { category: 'contract', source: 'contract', recoverable: false });
   }
-  return method.http;
+  return {
+    ...method.http,
+    id: method.id,
+    idempotent: method.idempotent,
+  };
 }
 
 export function createOperatorRemoteClient(

@@ -9,7 +9,7 @@ import {
   getStreamReconnectDelay,
 } from '../transport-http/index.js';
 import { buildUrl, normalizeBaseUrl } from '../transport-http/index.js';
-import { invokeTransportObserver, type TransportObserver } from '../transport-core/index.js';
+import { injectTraceparentAsync, invokeTransportObserver, type TransportObserver } from '../transport-core/index.js';
 import {
   createRemoteDomainEvents,
   type DomainEventConnector,
@@ -115,6 +115,9 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
   return async (domain, onEnvelope) => {
     const url = buildEventSourceUrl(baseUrl, domain);
     const getAuthToken = normalizeAuthToken(token ?? undefined);
+    // Inject W3C traceparent if OTel is active (async probe for SSE cold-start).
+    const sseHeaders: Record<string, string> = {};
+    await injectTraceparentAsync(sseHeaders);
     // Notify observer of outbound SSE connection attempt.
     invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'sse' }));
     return await openServerSentEventStream(fetchImpl, url, {
@@ -138,6 +141,7 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
     }, {
       reconnect: options.reconnect,
       getAuthToken,
+      headers: Object.keys(sseHeaders).length > 0 ? sseHeaders : undefined,
     });
   };
 }
@@ -237,10 +241,15 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       // Notify observer of outbound WS connection.
       invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
       // Send auth frame first, then drain any messages buffered during resolution.
+      // Inject traceparent into the auth frame for W3C Trace Context propagation over WebSocket.
+      const wsTraceHeaders: Record<string, string> = {};
+      await injectTraceparentAsync(wsTraceHeaders);
       socket.send(JSON.stringify({
         type: 'auth',
         token: authToken,
         domains: [domain],
+        ...(wsTraceHeaders['traceparent'] ? { traceparent: wsTraceHeaders['traceparent'] } : {}),
+        ...(wsTraceHeaders['tracestate'] ? { tracestate: wsTraceHeaders['tracestate'] } : {}),
       }));
       flushOutboundQueue(socket);
     };
