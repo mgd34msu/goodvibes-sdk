@@ -18,6 +18,7 @@ import {
   type ContractStreamOptions,
 } from '../transport-http/index.js';
 
+
 export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions {}
 
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {}

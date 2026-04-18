@@ -1,4 +1,5 @@
-import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
+import { ContractError, GoodVibesSdkError } from '@pellux/goodvibes-errors';
+import type { ZodType } from 'zod/v4';
 import type { HttpTransport } from './http.js';
 import { openServerSentEventStream, type ServerSentEventHandlers } from './sse-stream.js';
 
@@ -14,6 +15,14 @@ export interface ContractRouteLike {
 export interface ContractInvokeOptions {
   readonly signal?: AbortSignal;
   readonly headers?: HeadersInit;
+  /**
+   * Optional Zod v4 schema to validate the parsed response body against.
+   * When provided, a failed parse throws a {@link ContractError} with
+   * field-level detail: operation, field path, expected type, and a
+   * recovery hint.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly responseSchema?: ZodType<any>;
 }
 
 export interface ContractStreamOptions extends ContractInvokeOptions {
@@ -43,19 +52,34 @@ export function requireContractRoute<TRoute extends ContractRouteLike>(
   return route;
 }
 
-export function invokeContractRoute<T = unknown>(
+export async function invokeContractRoute<T = unknown>(
   transport: HttpTransport,
   route: ContractRouteDefinition,
   input?: Record<string, unknown>,
   options: ContractInvokeOptions = {},
 ): Promise<T> {
   const resolved = transport.resolveContractRequest(route.method, route.path, input);
-  return transport.requestJson<T>(resolved.url, {
+  const body = await transport.requestJson<T>(resolved.url, {
     method: resolved.method,
     body: resolved.body,
     headers: options.headers,
     signal: options.signal,
   });
+  if (options.responseSchema) {
+    const result = options.responseSchema.safeParse(body);
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      const fieldPath = issue ? issue.path.join('.') || '(root)' : '(unknown)';
+      const expected = issue ? (issue as { readonly expected?: string }).expected ?? issue.code : 'unknown';
+      const received = issue ? (issue as { readonly received?: string }).received ?? 'unknown' : 'unknown';
+      throw new ContractError(
+        `Response validation failed for "${route.method} ${route.path}": field "${fieldPath}" expected ${expected} but received ${received}. Ensure the server is running a compatible version of the GoodVibes daemon.`,
+        { source: 'contract' },
+      );
+    }
+    return result.data as T;
+  }
+  return body;
 }
 
 export async function openContractRouteStream(

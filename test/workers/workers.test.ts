@@ -39,6 +39,7 @@ const WORKER_SOURCE = resolve(__dirname, 'worker.mjs');
 // Concurrent builds that clean/rewrite dist/ cannot clobber the staged file.
 const TMP_DIR = resolve(__dirname, '../../.test-tmp/workers-harness');
 const WORKER_IN_TMP = resolve(TMP_DIR, '_workers-test-entry.mjs');
+const WORKER_BUNDLED = resolve(TMP_DIR, '_workers-test-bundled.mjs');
 
 let mf: Miniflare;
 
@@ -50,32 +51,42 @@ beforeAll(async () => {
   if (existsSync(TMP_DIR)) {
     rmSync(TMP_DIR, { recursive: true, force: true });
   }
-  // Recursively copy SDK_DIST into TMP_DIR preserving directory structure.
-  function copyDir(src: string, dest: string): void {
-    mkdirSync(dest, { recursive: true });
-    for (const entry of readdirSync(src, { withFileTypes: true })) {
-      const srcPath = resolve(src, entry.name);
-      const destPath = resolve(dest, entry.name);
-      if (entry.isDirectory()) {
-        copyDir(srcPath, destPath);
-      } else {
-        copyFileSync(srcPath, destPath);
-      }
+  // (esbuild handles module resolution; no copyDir needed)
+  mkdirSync(TMP_DIR, { recursive: true });
+  // Stage the worker source INSIDE SDK_DIST so its ./web.js / ./errors.js
+  // relative imports resolve against the built dist during bundling.
+  const WORKER_IN_DIST = resolve(SDK_DIST, '_workers-test-entry.mjs');
+  writeFileSync(WORKER_IN_DIST, readFileSync(WORKER_SOURCE, 'utf8'), 'utf8');
+
+  // Pre-bundle the worker entry via esbuild so bare-module specifiers
+  // (e.g. 'zod/v4') that Miniflare cannot resolve locally are inlined
+  // into a single self-contained module. Output lands in TMP_DIR.
+  const { execFileSync: execBundle } = await import('node:child_process');
+  try {
+    execBundle(
+      'bunx',
+      [
+        'esbuild',
+        '--bundle',
+        '--platform=browser',
+        '--format=esm',
+        '--target=es2022',
+        `--outfile=${WORKER_BUNDLED}`,
+        WORKER_IN_DIST,
+      ],
+      { stdio: 'inherit' },
+    );
+  } finally {
+    // Clean up the staged worker file from dist so concurrent builds don't trip over it.
+    if (existsSync(WORKER_IN_DIST)) {
+      rmSync(WORKER_IN_DIST, { force: true });
     }
   }
-  copyDir(SDK_DIST, TMP_DIR);
-  // Stage the worker entry script into TMP_DIR.
-  writeFileSync(WORKER_IN_TMP, readFileSync(WORKER_SOURCE, 'utf8'), 'utf8');
 
   mf = new Miniflare({
     modules: true,
-    scriptPath: WORKER_IN_TMP,
-    // modulesRoot points to TMP_DIR — a stable snapshot of SDK_DIST files
-    // that concurrent builds cannot race against.
+    scriptPath: WORKER_BUNDLED,
     modulesRoot: TMP_DIR,
-    // Treat all .js/.mjs files in the dist directory as ES modules.
-    // Without this, Miniflare defaults to CommonJS parsing for .js files,
-    // but our dist is pure ESM (type: module in package.json).
     modulesRules: [
       { type: 'ESModule', include: ['**/*.js', '**/*.mjs'] },
     ],

@@ -17,6 +17,7 @@ import {
   type ContractStreamOptions,
 } from '@pellux/goodvibes-transport-http';
 
+
 export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions {}
 
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {}
