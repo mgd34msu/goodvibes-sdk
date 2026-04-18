@@ -370,6 +370,7 @@ describe('createCompanionProviderAdapter: isConfigured guard', () => {
     const mockRegistry = {
       getCurrentModel: () => ({ id: 'llama-3.3-70b', provider: 'venice' }),
       getForModel: () => unconfiguredProvider,
+      listModels: () => [],
     } as unknown as ProviderRegistry;
 
     const adapter = createCompanionProviderAdapter(mockRegistry);
@@ -403,8 +404,9 @@ describe('createCompanionProviderAdapter: isConfigured guard', () => {
     };
 
     const mockRegistry = {
-      getCurrentModel: () => ({ id: 'mercury-2', provider: 'inception' }),
+      getCurrentModel: () => ({ id: 'mercury-2', provider: 'inception', registryKey: 'inception:mercury-2' }),
       getForModel: () => configuredProvider,
+      listModels: () => [{ id: 'mercury-2', provider: 'inception', registryKey: 'inception:mercury-2' }],
     } as unknown as ProviderRegistry;
 
     const adapter = createCompanionProviderAdapter(mockRegistry);

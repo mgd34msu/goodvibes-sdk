@@ -32,6 +32,9 @@ import { DaemonTransportEventsHelper } from './transport-events.js';
 import { DaemonHttpRouter } from './http/router.js';
 import { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import type { CompanionLLMProvider, CompanionProviderChunk } from '../companion/companion-chat-manager.js';
+import { findModelDefinition, findModelDefinitionForProvider } from '../providers/registry-models.js';
+import { getBaseModelId } from '../providers/registry-helpers.js';
+import { CATALOG_PROVIDER_NAME_ALIASES } from '../providers/builtin-registry.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
 import type { DaemonConfig, PendingSurfaceReply } from './types.js';
@@ -86,6 +89,21 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
         };
         return;
       }
+      // Resolve the bare model id from the registry's ModelDefinition.
+      // options.model is the registry key (e.g. "inception:mercury-2"); provider.chat()
+      // needs just the bare id (e.g. "mercury-2") — upstream compat APIs reject the prefix.
+      const _bareModelId = ((): string => {
+        const modelRegistry = providerRegistry.listModels();
+        const def = options.model
+          ? (options.provider
+              ? findModelDefinitionForProvider(options.model, options.provider, modelRegistry, CATALOG_PROVIDER_NAME_ALIASES)
+              : findModelDefinition(options.model, modelRegistry))
+          : undefined;
+        if (def) return def.id;
+        // Fallback: strip provider prefix from registry key (safe for all known formats)
+        if (options.model) return getBaseModelId(options.model);
+        return providerRegistry.getCurrentModel().id;
+      })();
       // Queue-based streaming bridge: onDelta pushes into a queue consumed by the generator.
       const queue: CompanionProviderChunk[] = [];
       let resolve: (() => void) | null = null;
@@ -97,7 +115,7 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
         resolve = null;
       };
       const chatPromise = provider.chat({
-        model: options.model ?? providerRegistry.getCurrentModel().id,
+        model: _bareModelId,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         systemPrompt: options.systemPrompt ?? undefined,
         signal: options.abortSignal,
