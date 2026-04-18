@@ -4,15 +4,15 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 
 ## Status
 
-- **Current released version**: `0.19.6` (published to npm, `latest` tag); `0.19.7` pending publish (Wave 4 + Track C)
+- **Current released version**: `0.19.8` (Waves 5–9 consolidated; published to npm, `latest` tag)
 - **Current score**: 9.0 / 10
-- **Eligibility**: NOT eligible for 1.0.0 — pending all waves below
+- **Eligibility**: NOT eligible for 1.0.0 — Waves 1–9 landed, soak period + owner sign-off still pending
 
 ## Version plan
 
 ```
-0.19.6          current
-  → 0.19.7–0.19.14   Waves 1–8, one minor/patch bump per wave
+0.19.8          current (Waves 1–9 landed)
+  → 0.19.x            hotfixes / follow-ups (e.g. Wrangler parity rerun)
   → 0.21.0            soak period (skip 0.20.x to avoid "just another release" ambiguity)
   → 1.0.0            owner-approved release
 ```
@@ -21,33 +21,33 @@ We deliberately skip `1.0.0-rc.X` prerelease syntax to avoid `package.json` pinn
 
 ---
 
-## Wave 1 — S-θ.2 observer seams (target: 0.19.8, engineer-complete, review pending)
+## Wave 1 — S-θ.2 observer seams (target: 0.19.8, shipped in `60a2a06`)
 
 Wire the three remaining `SDKObserver` callbacks.
 
-- [ ] `TransportObserver` interface defined in `packages/transport-core/src/`
-- [ ] `SDKObserver` in `packages/sdk/src/observer/` extends `TransportObserver`
-- [ ] `onEvent` wired in `transport-realtime` receive paths + event facade
-- [ ] `onError` wired at every `SDKError` throw site in transport/auth layers
-- [ ] `onTransportActivity` wired in `transport-http` + `transport-realtime`
-- [ ] All observer calls wrapped in `invokeObserver(…)` so exceptions don't surface
-- [ ] OpenTelemetry observer tested end-to-end (in-memory collector mock)
-- [ ] `test/sdk-observer.test.ts` extended with the three new callbacks
+- [x] `TransportObserver` interface defined in `packages/transport-core/src/`
+- [x] `SDKObserver` in `packages/sdk/src/observer/` extends `TransportObserver`
+- [x] `onEvent` wired in `transport-realtime` receive paths + event facade
+- [x] `onError` wired at every `SDKError` throw site in transport/auth layers
+- [x] `onTransportActivity` wired in `transport-http` + `transport-realtime`
+- [x] All observer calls wrapped in `invokeObserver(…)` so exceptions don't surface
+- [x] OpenTelemetry observer tested end-to-end (in-memory collector mock)
+- [x] `test/sdk-observer.test.ts` extended with the three new callbacks
 
-## Wave 2 — Browser real-runtime (target: 0.19.8)
+## Wave 2 — Browser real-runtime (target: 0.19.8, shipped in `f86123b`)
 
-- [ ] `test/browser/` harness using `@vitest/browser` + Playwright
-- [ ] Imports built `dist/browser.js` via `./browser` subpath
-- [ ] Exercises auth + transport-http + transport-realtime against MSW mock
-- [ ] New CI matrix dimension `browser` in `platform-matrix` job
-- [ ] `examples-smoke` CI gate added (prevents example rot)
+- [x] `test/browser/` harness using `@vitest/browser` + Playwright
+- [x] Imports built `dist/browser.js` via `./browser` subpath
+- [x] Exercises auth + transport-http + transport-realtime against MSW mock
+- [x] New CI matrix dimension `browser` in `platform-matrix` job
+- [x] `examples-smoke` CI gate added (prevents example rot)
 
-## Wave 3 — Hermes real-runtime (target: 0.19.9)
+## Wave 3 — Hermes real-runtime (target: 0.19.8, shipped in `488b615`+`8262775`)
 
-- [ ] `test/hermes/` harness using `hermes-engine` binary
-- [ ] Imports built `dist/react-native.js` via `./react-native` subpath
-- [ ] New CI matrix dimension `hermes`
-- [ ] Any Hermes shims land in `sdk/src/_internal/platform/*` following existing runtime-conditional pattern
+- [x] `test/hermes/` harness using `hermes-engine` binary
+- [x] Imports built `dist/react-native.js` via `./react-native` subpath
+- [x] New CI matrix dimension `hermes`
+- [x] Any Hermes shims land in `sdk/src/_internal/platform/*` following existing runtime-conditional pattern
 
 ## Wave 4 — Workers real-runtime (target: 0.19.7, landed)
 
@@ -86,12 +86,12 @@ Wire the three remaining `SDKObserver` callbacks.
 ## Wave 8 — S-ι hardening (target: 0.19.14+)
 
 - [x] Coverage backfill — target 100% no-skip across all packages and `_internal/platform/*` subsystems (daemon-sdk/operator-sdk/peer-sdk/errors src coverage complete; companion/state scope remains with source-cleanup agent)
-- [ ] Flake detection CI gate (N-run stability check)
-- [ ] Public API surface snapshot via `@microsoft/api-extractor` or equivalent
-- [ ] Snapshot gate fails on unintended public surface changes
+- [x] Flake detection CI gate (N-run stability check) — `scripts/flake-detect.ts` + `flake:check` (shipped in `487a84d`)
+- [x] Public API surface snapshot via `@microsoft/api-extractor` or equivalent — `etc/goodvibes-sdk.api.md` baseline (shipped in `487a84d`)
+- [x] Snapshot gate fails on unintended public surface changes — `api:check` CI gate (shipped in `487a84d`)
 - [x] Internal TODO cleanup (companion): session persistence, rate-limiting, ToolRegistry DI for tool-call execution (3 TODOs in `packages/sdk/src/_internal/platform/companion/companion-chat-manager.ts` + 1 in `companion-chat-types.ts`)
 - [x] Replace `@ts-ignore` suppressions with real `sql.js` type declarations (`packages/sdk/src/_internal/platform/state/sqlite-store.ts:82`, `state/db.ts:76`) — add minimal `.d.ts` shim for the API surface actually used
-- [ ] **New CI gate `no-todo-markers`**: fail the build if `\b(TODO|FIXME|XXX|HACK|STUB)\b` appears in any source file outside `_internal/**`, `**/vendor/**`, `**/generated/**`, and `**/*.test.ts`. Prevents TODO drift in public-surface code post-1.0.0.
+- [x] **New CI gate `no-todo-markers`**: fail the build if `\b(TODO|FIXME|XXX|HACK|STUB)\b` appears in any source file outside `_internal/**`, `**/vendor/**`, `**/generated/**`, and `**/*.test.ts`. Prevents TODO drift in public-surface code post-1.0.0. (shipped in `487a84d`)
 
 ## Wave 9 — Soak period (target: 0.21.0)
 
