@@ -8,6 +8,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.0] - 2026-04-18
+
+**Soak-period release.** Per `docs/tracking/road-to-1.0.md`, the SDK is now in soak. Consumers should begin integration testing against 0.21.0; the next version jump is 1.0.0 pending owner sign-off. 0.20.x is deliberately skipped to avoid "just another release" ambiguity.
+
+This release is a posture statement, not a feature release. All engineering from 0.19.x is carried forward intact.
+
+### Security
+
+- **minimatch ReDoS CVEs patched via override** (GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74). Root `package.json` and `packages/sdk/package.json` now pin `minimatch ^10.2.5` via the `overrides` field, forcing the bash-language-server → editorconfig → minimatch transitive chain to the patched version in local dev and bun workspace installs. Zero feature regression.
+
+  **Consumer note**: npm does not propagate `overrides` from installed packages to the consumer's install tree. If your `npm audit` reports minimatch CVEs after installing this SDK, add the following to your own `package.json`:
+  ```json
+  "overrides": { "minimatch": "^10.2.5" }
+  ```
+  Then re-run `npm install`. This is a limitation of npm's override scoping — the SDK cannot force it on your behalf.
+
+### Current state
+
+The SDK surface covers two tiers: **full surface** (Node.js / Bun — all features including LSP services, auth with AutoRefreshCoordinator, platform token stores for iOS Keychain / Android Keystore / Expo SecureStore, Zod runtime validation, middleware/interceptor API, idempotency keys, W3C traceparent propagation, SBOM + provenance) and **companion surface** (browser / React Native / Expo / Workers — transport, auth, and event facade only; no `node:` builtins).
+
+Transport stack: HTTP (fetch-based, streaming SSE), WebSocket (realtime events), direct (same-process). Auth: AutoRefreshCoordinator middleware with configurable refresh windows, token stores, typed retry backoff. Worker compatibility: Miniflare 4 + wrangler-CLI harness; see `test/workers/FINDINGS.md` for scope boundaries.
+
+For full surface documentation: [packages.md](./docs/packages.md) · [surfaces.md](./docs/surfaces.md) · [authentication.md](./docs/authentication.md) · [observability.md](./docs/observability.md).
+
+### Known posture
+
+- **Production-workerd parity is out-of-scope for 1.0** — both `test/workers` and `test/workers-wrangler` harnesses share the Miniflare 4 runtime (`wrangler dev --local` uses Miniflare internally). True production verification requires a live Cloudflare deploy. See `test/workers/FINDINGS.md`.
+- **Real-Node harness dimension still open** — tracked in `docs/tracking/roadmap-status.md`.
+- **bash-language-server is a direct SDK dep** — required by the LSP service feature. Alternative classifications (devDep, peerDep) are a post-1.0 architectural question.
+
+### Semver intent
+
+0.21.0 → 1.0.0 will be a SEMVER-compliant jump. Any breaking change between this release and 1.0.0 must be called out in 1.0.0's CHANGELOG per `docs/semver-policy.md`.
+
 ## [0.19.9] - 2026-04-18
 
 **Release pipeline hardening + zero-`any` gate + wrangler real-workerd harness.**

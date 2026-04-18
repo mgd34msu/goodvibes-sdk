@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.19.9",
+  "version": "0.21.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
@@ -143,5 +143,8 @@
     "react-native-keychain": {
       "optional": true
     }
+  },
+  "overrides": {
+    "minimatch": "^10.2.5"
   }
 }

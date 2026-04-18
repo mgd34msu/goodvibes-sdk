@@ -15,6 +15,9 @@ This package has two surfaces with different runtime requirements. See [Runtime 
 
 This is one npm package with subpath exports.
 
+> **0.21.0 is the soak-period release.** If you are integrating the SDK, this is the stable target. The next version jump is to 1.0.0 pending owner sign-off. See [the roadmap](./docs/tracking/road-to-1.0.md).
+
+
 ```bash
 bun add @pellux/goodvibes-sdk
 # or
