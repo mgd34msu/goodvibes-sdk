@@ -64,13 +64,13 @@ function makeUserAuth(): UserAuthManager {
 /** A minimal Bun.serve mock that records calls. */
 function makeServeMock() {
   const calls: Array<{ port: number; hostname: string }> = [];
-  const factory = (options: any) => {
+  const factory = (options: Record<string, unknown>) => {
     calls.push({ port: options.port, hostname: options.hostname });
     return {
       stop: (_force?: boolean) => {},
       port: options.port,
       hostname: options.hostname,
-    } as any;
+    } as unknown as ReturnType<typeof Bun.serve>;
   };
   return { calls, factory };
 }
@@ -80,7 +80,7 @@ function makeHttpListener(cm: ConfigManager, serveMock: ReturnType<typeof makeSe
     configManager: cm,
     userAuth: makeUserAuth(),
     serveFactory: serveMock.factory,
-  } as any);
+  } as unknown as Parameters<InstanceType<typeof import('../packages/sdk/src/_internal/platform/daemon/http-listener.js').HttpListener>['start']>[0] extends never ? never : ConstructorParameters<typeof import('../packages/sdk/src/_internal/platform/daemon/http-listener.js').HttpListener>[0]);
 }
 
 async function startListener(listener: HttpListener) {

@@ -24,6 +24,7 @@ import { AgentTaskAdapter } from '../packages/sdk/src/_internal/platform/runtime
 import { createRuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
 import type { RuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
+import type { AgentEvent } from '../packages/sdk/src/_internal/platform/runtime/events/agents.js';
 
 // ---------------------------------------------------------------------------
 // Real Zustand store for AgentTaskAdapter (required — createDomainDispatch uses store.setState)
@@ -45,12 +46,12 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
   beforeEach(() => {
     bus = new RuntimeEventBus();
     store = makeStore();
-    adapter = new AgentTaskAdapter(store as any);
+    adapter = new AgentTaskAdapter(store);
     adapter.attachRuntimeBus(bus);
   });
 
   function emitAgent(type: 'AGENT_COMPLETED' | 'AGENT_FAILED' | 'AGENT_CANCELLED', agentId: string, extra: Record<string, unknown> = {}): void {
-    const payload = { type, agentId, durationMs: 100, ...extra } as any;
+    const payload = { type, agentId, durationMs: 100, ...extra } as AgentEvent;
     bus.emit('agents', createEventEnvelope(type, payload, {
       sessionId: 'test-session',
       traceId: `test:${agentId}`,
@@ -124,22 +125,25 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
 import type { SharedSessionRecord, SharedSessionMessage } from '../packages/sdk/src/_internal/platform/control-plane/session-types.js';
 import type { SharedSessionInputRecord } from '../packages/sdk/src/_internal/platform/control-plane/session-intents.js';
 import { SharedSessionBroker } from '../packages/sdk/src/_internal/platform/control-plane/session-broker.js';
+import type { SharedSessionStoreSnapshot, SharedSessionEventPublisher } from '../packages/sdk/src/_internal/platform/control-plane/session-broker-internals.js';
+import type { PersistentStore } from '../packages/sdk/src/_internal/platform/state/persistent-store.js';
+import type { RouteBindingManager } from '../packages/sdk/src/_internal/platform/channels/route-manager.js';
 
 /** Minimal in-memory PersistentStore stub (matches PersistentStore<T> API: load + persist) */
-function makePersistentStoreStub(): any {
-  let _data: any = null;
+function makePersistentStoreStub(): PersistentStore<SharedSessionStoreSnapshot> {
+  let _data: SharedSessionStoreSnapshot | null = null;
   return {
     load: async () => _data,
-    persist: async (data: any) => { _data = data; },
-  };
+    persist: async (data: SharedSessionStoreSnapshot) => { _data = data; },
+  } as unknown as PersistentStore<SharedSessionStoreSnapshot>;
 }
 
-function makeRouteBindingStub(): any {
+function makeRouteBindingStub(): RouteBindingManager {
   return {
     start: async () => {},
-    getBinding: () => null,
+    getBinding: () => undefined,
     patchBinding: async () => null,
-  };
+  } as unknown as RouteBindingManager;
 }
 
 function makeBroker(idleEmptyMs = 10 * 60 * 1000, idleLongMs = 24 * 60 * 60 * 1000): SharedSessionBroker {
@@ -163,7 +167,7 @@ function emitAgentOnBus(
   agentId: string,
   extra: Record<string, unknown> = {},
 ): void {
-  const payload = { type, agentId, durationMs: 100, ...extra } as any;
+  const payload = { type, agentId, durationMs: 100, ...extra } as AgentEvent;
   bus.emit('agents', createEventEnvelope(type, payload, {
     sessionId: 'broker-test',
     traceId: `broker:${agentId}`,
@@ -290,7 +294,7 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
   test('wrapAgent then AGENT_COMPLETED transitions task to completed in store', () => {
     const bus = new RuntimeEventBus();
     const store = makeStore();
-    const adapter = new AgentTaskAdapter(store as any);
+    const adapter = new AgentTaskAdapter(store);
     adapter.attachRuntimeBus(bus);
 
     // Simulates what DaemonServer.trySpawnAgent does
@@ -301,7 +305,7 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
     expect(running?.status).toBe('running');
 
     // Bus event simulates AGENT_COMPLETED arriving from the runtime event bus
-    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-m1', durationMs: 400, output: 'ok' } as any;
+    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-m1', durationMs: 400, output: 'ok' } as AgentEvent;
     bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', payload, {
       sessionId: 'sess-m1',
       traceId: 'test:m1',
@@ -315,7 +319,7 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
 
   test('wrapAgent is idempotent — second call returns same taskId', () => {
     const store = makeStore();
-    const adapter = new AgentTaskAdapter(store as any);
+    const adapter = new AgentTaskAdapter(store);
     const id1 = adapter.wrapAgent('ag-idem', 'Task', { sessionId: 'sess-1' });
     const id2 = adapter.wrapAgent('ag-idem', 'Task again', { sessionId: 'sess-1' });
     expect(id1).toBe(id2);
@@ -330,7 +334,7 @@ describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
   test('second attachRuntimeBus call is a no-op and does not double-fire events', () => {
     const bus = new RuntimeEventBus();
     const store = makeStore();
-    const adapter = new AgentTaskAdapter(store as any);
+    const adapter = new AgentTaskAdapter(store);
     adapter.attachRuntimeBus(bus);
     // Second call — should warn and return no-op unsub
     const warnSpy: string[] = [];
@@ -344,7 +348,7 @@ describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
     adapter.handleAgentStateChange('ag-idem2', 'running');
     unsub2(); // no-op unsub should not break anything
 
-    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-idem2', durationMs: 100 } as any;
+    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-idem2', durationMs: 100 } as AgentEvent;
     bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', payload, {
       sessionId: 'sess-x', traceId: 'idem2', source: 'test',
     }));
@@ -360,7 +364,7 @@ describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
 describe('M2: AgentTaskAdapter.reconcileOnRestart — marks running tasks aborted', () => {
   test('tasks with status running at startup are cancelled with daemon-restart error', () => {
     const store = makeStore();
-    const adapter = new AgentTaskAdapter(store as any);
+    const adapter = new AgentTaskAdapter(store);
 
     // Pre-populate: wrap two agents, transition to running, then simulate restart
     const bus = new RuntimeEventBus();
@@ -374,7 +378,7 @@ describe('M2: AgentTaskAdapter.reconcileOnRestart — marks running tasks aborte
     expect(store.getState().tasks.tasks.get(t2)?.status).toBe('running');
 
     // Simulate restart: new adapter instance inherits the same store
-    const adapterAfterRestart = new AgentTaskAdapter(store as any);
+    const adapterAfterRestart = new AgentTaskAdapter(store);
     adapterAfterRestart.reconcileOnRestart();
 
     expect(store.getState().tasks.tasks.get(t1)?.status).toBe('cancelled');
@@ -384,14 +388,14 @@ describe('M2: AgentTaskAdapter.reconcileOnRestart — marks running tasks aborte
 
   test('tasks not in running state are not touched by reconcileOnRestart', () => {
     const store = makeStore();
-    const adapter = new AgentTaskAdapter(store as any);
+    const adapter = new AgentTaskAdapter(store);
     const bus = new RuntimeEventBus();
     adapter.attachRuntimeBus(bus);
     const tQueued = adapter.wrapAgent('ag-q', 'Queued task', { sessionId: 'sess-q' });
     // Leave it in queued state
     expect(store.getState().tasks.tasks.get(tQueued)?.status).toBe('queued');
 
-    const adapterAfterRestart = new AgentTaskAdapter(store as any);
+    const adapterAfterRestart = new AgentTaskAdapter(store);
     adapterAfterRestart.reconcileOnRestart();
 
     // Queued is not 'running', so should not be touched
@@ -417,17 +421,17 @@ describe('M2: SharedSessionBroker.start() — startup reconciliation', () => {
     });
     const sess = await broker1.createSession({ title: 'Restart Test' });
     // Inject 3 spawned inputs directly into broker internals
-    const inputs = (broker1 as any).inputs as Map<string, any[]>;
+    const inputs = (broker1 as unknown as { inputs: Map<string, SharedSessionInputRecord[]> }).inputs;
     inputs.set(sess.id, [
       { id: 'sin-1', sessionId: sess.id, state: 'spawned', intent: 'submit', createdAt: 1, updatedAt: 1, body: 'a', correlationId: 'c1', metadata: {}, routing: undefined },
       { id: 'sin-2', sessionId: sess.id, state: 'delivered', intent: 'submit', createdAt: 2, updatedAt: 2, body: 'b', correlationId: 'c2', metadata: {}, routing: undefined },
       { id: 'sin-3', sessionId: sess.id, state: 'queued', intent: 'submit', createdAt: 3, updatedAt: 3, body: 'c', correlationId: 'c3', metadata: {}, routing: undefined },
     ]);
     // Bind active agent
-    const sessions = (broker1 as any).sessions as Map<string, any>;
+    const sessions = (broker1 as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
     sessions.set(sess.id, { ...sess, activeAgentId: 'dead-agent' });
     // Persist current state
-    await (broker1 as any).persist();
+    await (broker1 as unknown as { persist(): Promise<void> }).persist();
 
     // Second broker (simulates daemon restart): loads from same persistent store
     const broker2 = new SharedSessionBroker({
@@ -466,13 +470,13 @@ describe('M3: SharedSessionBroker.stop() — graceful teardown', () => {
     await broker.start();
 
     // _gcInterval should be set after start()
-    expect((broker as any)._gcInterval).not.toBeNull();
-    expect((broker as any)._busUnsubs).toHaveLength(0); // no bus attached yet
+    expect((broker as unknown as { _gcInterval: ReturnType<typeof setInterval> | null })._gcInterval).not.toBeNull();
+    expect((broker as unknown as { _busUnsubs: Array<() => void> })._busUnsubs).toHaveLength(0); // no bus attached yet
 
     await broker.stop();
 
-    expect((broker as any)._gcInterval).toBeNull();
-    expect((broker as any)._busUnsubs).toHaveLength(0);
+    expect((broker as unknown as { _gcInterval: ReturnType<typeof setInterval> | null })._gcInterval).toBeNull();
+    expect((broker as unknown as { _busUnsubs: Array<() => void> })._busUnsubs).toHaveLength(0);
   });
 
   test('stop() with attached bus clears _busAttached flag', async () => {
@@ -480,11 +484,11 @@ describe('M3: SharedSessionBroker.stop() — graceful teardown', () => {
     const broker = makeBroker();
     await broker.start();
     broker.attachRuntimeBus(bus, () => null);
-    expect((broker as any)._busAttached).toBe(true);
+    expect((broker as unknown as { _busAttached: boolean })._busAttached).toBe(true);
 
     await broker.stop();
-    expect((broker as any)._busAttached).toBe(false);
-    expect((broker as any)._busUnsubs).toHaveLength(0);
+    expect((broker as unknown as { _busAttached: boolean })._busAttached).toBe(false);
+    expect((broker as unknown as { _busUnsubs: Array<() => void> })._busUnsubs).toHaveLength(0);
   });
 
   test('attachRuntimeBus after stop() is accepted (idempotency reset)', async () => {
@@ -579,7 +583,7 @@ describe('M4: lastActivityAt bumped at touch sites', () => {
     const before = broker.getSession(sess.id)!.lastActivityAt;
     await new Promise((r) => setTimeout(r, 2));
     // Call finalizeAgentInputs directly (bypasses completeAgent)
-    (broker as any).finalizeAgentInputs(sess.id, 'ag-finalize', 'completed');
+    (broker as unknown as { finalizeAgentInputs(sessionId: string, agentId: string, outcome: string): void }).finalizeAgentInputs(sess.id, 'ag-finalize', 'completed');
     const after = broker.getSession(sess.id)!.lastActivityAt;
     expect(after).toBeGreaterThan(before);
   });
@@ -595,17 +599,17 @@ describe('M4: GC guard — pendingInputCount > 0 prevents sweep', () => {
     const sess = await broker.createSession({ title: 'Pending inputs' });
 
     // Inject a pending input to make pendingInputCount > 0
-    const sessions = (broker as any).sessions as Map<string, any>;
+    const sessions = (broker as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
     sessions.set(sess.id, { ...sess, pendingInputCount: 1 });
 
     // Backdate so idle check would normally fire
     const backdateSession = (broker: SharedSessionBroker, sessionId: string, idleMs: number) => {
-      const s = (broker as any).sessions as Map<string, any>;
+      const s = (broker as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
       const session = s.get(sessionId);
       s.set(sessionId, { ...session, lastActivityAt: Date.now() - idleMs });
     };
     backdateSession(broker, sess.id, 5000);
-    (broker as any)._gcSweep();
+    (broker as unknown as { _gcSweep(): void })._gcSweep();
 
     expect(broker.getSession(sess.id)?.status).toBe('active');
   });
@@ -621,7 +625,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
    * sees it as idle without actually waiting wall-clock time.
    */
   function backdateSession(broker: SharedSessionBroker, sessionId: string, idleMs: number): void {
-    const sessions = (broker as any).sessions as Map<string, SharedSessionRecord>;
+    const sessions = (broker as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
     const session = sessions.get(sessionId);
     if (!session) throw new Error(`Session ${sessionId} not found`);
     sessions.set(sessionId, {
@@ -638,7 +642,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     expect(session.status).toBe('active');
 
     backdateSession(broker, session.id, 2); // idle 2ms > 1ms threshold
-    (broker as any)._gcSweep();
+    (broker as unknown as { _gcSweep(): void })._gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     expect(afterSweep?.status).toBe('closed');
@@ -649,11 +653,11 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     const session = await broker.createSession({ title: 'Has Content' });
 
     // Simulate message by manually setting messageCount > 0
-    const sessions = (broker as any).sessions as Map<string, SharedSessionRecord>;
+    const sessions = (broker as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
     sessions.set(session.id, { ...session, messageCount: 1 });
 
     backdateSession(broker, session.id, 2);
-    (broker as any)._gcSweep();
+    (broker as unknown as { _gcSweep(): void })._gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     // Has messages — should NOT be closed by the empty-ghost policy
@@ -664,17 +668,17 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     const broker = makeBroker(10 * 60 * 1000, 1); // 1ms long-idle threshold
     const session = await broker.createSession({ title: 'Old Chat' });
 
-    const sessions = (broker as any).sessions as Map<string, SharedSessionRecord>;
+    const sessions = (broker as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
     sessions.set(session.id, { ...session, messageCount: 5 });
 
-    let closedPayload: any = null;
+    let closedPayload: unknown = null;
     // publishUpdate wraps all events as ('session-update', { event, payload })
-    broker.setEventPublisher((event, payload: any) => {
-      if (event === 'session-update' && payload?.event === 'session-closed') closedPayload = payload.payload;
+    broker.setEventPublisher((event: string, payload: unknown) => {
+      if (event === 'session-update' && typeof payload === 'object' && payload !== null && 'event' in payload && (payload as Record<string, unknown>).event === 'session-closed') closedPayload = (payload as Record<string, unknown>).payload;
     });
 
     backdateSession(broker, session.id, 2);
-    (broker as any)._gcSweep();
+    (broker as unknown as { _gcSweep(): void })._gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     expect(afterSweep?.status).toBe('closed');
@@ -687,7 +691,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     await broker.bindAgent(session.id, 'ag-live');
 
     backdateSession(broker, session.id, 10_000);
-    (broker as any)._gcSweep();
+    (broker as unknown as { _gcSweep(): void })._gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     expect(afterSweep?.status).toBe('active');
@@ -697,14 +701,14 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     const broker = makeBroker(1, 24 * 60 * 60 * 1000);
     const session = await broker.createSession({ title: 'Ghost Events' });
 
-    let closedPayload: any = null;
+    let closedPayload: unknown = null;
     // publishUpdate wraps all events as ('session-update', { event, payload })
-    broker.setEventPublisher((event, payload: any) => {
-      if (event === 'session-update' && payload?.event === 'session-closed') closedPayload = payload.payload;
+    broker.setEventPublisher((event: string, payload: unknown) => {
+      if (event === 'session-update' && typeof payload === 'object' && payload !== null && 'event' in payload && (payload as Record<string, unknown>).event === 'session-closed') closedPayload = (payload as Record<string, unknown>).payload;
     });
 
     backdateSession(broker, session.id, 2);
-    (broker as any)._gcSweep();
+    (broker as unknown as { _gcSweep(): void })._gcSweep();
 
     expect(closedPayload?.reason).toBe('idle-empty');
     expect(closedPayload?.id).toBe(session.id);
