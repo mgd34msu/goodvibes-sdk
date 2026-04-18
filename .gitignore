@@ -11,5 +11,5 @@ dist/
 temp/
 **/temp/
 
-# wrangler dev --local cache (test/workers-wrangler/.wrangler/)
-.wrangler/
+# wrangler dev --local cache — created inside test/workers-wrangler/ on first run
+test/workers-wrangler/.wrangler/
