@@ -23,8 +23,7 @@ export interface ContractInvokeOptions {
    * field-level detail: operation, field path, expected type, and a
    * recovery hint.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  readonly responseSchema?: ZodType<any>;
+  readonly responseSchema?: ZodType;
 }
 
 export interface ContractStreamOptions extends ContractInvokeOptions {
