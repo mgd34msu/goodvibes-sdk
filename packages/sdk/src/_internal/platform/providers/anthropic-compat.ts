@@ -127,6 +127,10 @@ export class AnthropicCompatProvider implements LLMProvider {
     this.anonymousDetail = opts.anonymousDetail;
   }
 
+  isConfigured(): boolean {
+    return Boolean(this.apiKey) || this.anonymousConfigured;
+  }
+
   async chat(params: ChatRequest): Promise<ChatResponse> {
     const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort } = params;
 

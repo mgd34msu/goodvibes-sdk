@@ -62,6 +62,7 @@ import { AppError } from '../../types/errors.js';
 import { VERSION } from '../../version.js';
 import type { CompanionChatManager } from '../../companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-routes.js';
+import { dispatchProviderRoutes } from './provider-routes.js';
 
 interface DaemonHttpRouterContext {
   readonly configManager: ConfigManager;
@@ -244,6 +245,17 @@ export class DaemonHttpRouter {
   async dispatchApiRoutes(req: Request): Promise<Response | null> {
     // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.
     // Handled before the main API router so they never touch the global control-plane feed.
+    // Provider discovery + model-switching routes
+    if (req.url.includes('/api/providers')) {
+      const providerResponse = await dispatchProviderRoutes(req, {
+        providerRegistry: this.context.providerRegistry,
+        configManager: this.context.configManager,
+        runtimeBus: this.context.runtimeBus,
+        parseJsonBody: (request: Request) => this.parseJsonBody(request),
+      });
+      if (providerResponse) return providerResponse;
+    }
+
     if (this.context.companionChatManager && req.url.includes('/api/companion/chat/')) {
       const gateway = this.context.controlPlaneGateway;
       const chatManager = this.context.companionChatManager;

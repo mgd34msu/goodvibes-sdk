@@ -119,6 +119,13 @@ export interface LLMProvider {
   chat(params: ChatRequest): Promise<ChatResponse>;
   embed?(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult>;
   describeRuntime?(deps: ProviderRuntimeMetadataDeps): ProviderRuntimeMetadata | Promise<ProviderRuntimeMetadata>;
+  /**
+   * Returns true if this provider has a valid API key or other credentials
+   * configured. When false, any chat() call will fail with an auth error.
+   *
+   * Optional — providers that don't implement this are assumed configured.
+   */
+  isConfigured?(): boolean;
 }
 
 /** Incremental tool call data received during streaming. */

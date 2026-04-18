@@ -320,6 +320,10 @@ export class OpenAICompatProvider implements LLMProvider {
     });
   }
 
+  isConfigured(): boolean {
+    return this.configured || this.anonymousConfigured;
+  }
+
   async chat(params: ChatRequest): Promise<ChatResponse> {
     const {
       messages,

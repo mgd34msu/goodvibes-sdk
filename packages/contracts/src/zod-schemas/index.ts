@@ -32,3 +32,26 @@ export type {
   ControlStatusResponse,
   LocalAuthStatusResponse,
 } from './session.js';
+
+export {
+  ProviderModelRefSchema,
+  ProviderModelEntrySchema,
+  ConfiguredViaSchema,
+  ProviderEntrySchema,
+  ListProvidersResponseSchema,
+  CurrentModelResponseSchema,
+  PatchCurrentModelBodySchema,
+  PatchCurrentModelErrorSchema,
+  ModelChangedEventSchema,
+} from './providers.js';
+export type {
+  ProviderModelRef,
+  ProviderModelEntry,
+  ConfiguredVia,
+  ProviderEntry,
+  ListProvidersResponse,
+  CurrentModelResponse,
+  PatchCurrentModelBody,
+  PatchCurrentModelError,
+  ModelChangedEvent,
+} from './providers.js';
