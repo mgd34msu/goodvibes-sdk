@@ -41,7 +41,7 @@ function newestMtime(dir: string): number {
     for (const entry of readdirSync(dir, { recursive: true, withFileTypes: true })) {
       if (!entry.isFile()) continue;
       // Node 20+ withFileTypes recursive gives entry.path; fall back to dir
-      const entryPath: string = (entry as any).path ?? dir;
+      const entryPath: string = entry.parentPath ?? dir;
       const fullPath = resolve(entryPath, entry.name);
       try {
         const mt = statSync(fullPath).mtimeMs;
