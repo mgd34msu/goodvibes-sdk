@@ -9,7 +9,7 @@ TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-co
 
 This package has two surfaces with different runtime requirements. See [Runtime Surfaces](./docs/surfaces.md) for the authoritative two-tier model:
 - **Full surface** — Bun runtime consumers (TUI, daemon, CLI). Gets the complete agentic harness.
-- **Companion surface** — Hermes (React Native / Expo) or browser consumers. Gets auth, transport, events, contracts, errors, and observer only.
+- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers. Gets auth, transport, events, contracts, errors, and observer only.
 
 ## Install
 
