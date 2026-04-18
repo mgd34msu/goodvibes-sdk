@@ -208,7 +208,7 @@ export class DaemonServer {
 
     // M1: Wire AgentTaskAdapter to the RuntimeEventBus so task records reach
     // terminal states when their backing agent finishes.
-    this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore as any);
+    this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore);
     this.agentTaskAdapterUnsub = this.agentTaskAdapter.attachRuntimeBus(this.runtimeBus);
     // M2: Mark any tasks that were 'running' at startup as aborted (daemon restart)
     this.agentTaskAdapter.reconcileOnRestart();
