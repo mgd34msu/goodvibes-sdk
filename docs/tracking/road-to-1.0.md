@@ -69,11 +69,11 @@ Wire the three remaining `SDKObserver` callbacks.
 ## Wave 6 — Policy & UX (target: 0.19.12)
 
 - [x] `docs/semver-policy.md` — explicit definition of what counts as a breaking change
-- [ ] Error-message quality audit — every `SDKError` throw site graded and rewritten where lacking
-- [ ] Timeout / retry / backoff defaults audit across transport-http, transport-realtime, auth refresh
-- [ ] Public-surface TODO cleanup: fold `packages/sdk/src/platform/runtime/transports/http.ts` into `daemon-http-client` once consumers stop importing `transports/http` directly
-- [ ] Public-surface TODO cleanup: wire producer API + bound queue size in `packages/transport-realtime/src/runtime-events.ts:143` (unbounded queue is a prod-hang risk; resync mirror scoped after fix)
-- [ ] Any finding documented in CHANGELOG as a fix
+- [x] Error-message quality audit — every `SDKError` throw site graded and rewritten where lacking
+- [x] Timeout / retry / backoff defaults audit across transport-http, transport-realtime, auth refresh
+- [x] Public-surface TODO cleanup: fold `packages/sdk/src/platform/runtime/transports/http.ts` into `daemon-http-client` once consumers stop importing `transports/http` directly
+- [x] Public-surface TODO cleanup: wire producer API + bound queue size in `packages/transport-realtime/src/runtime-events.ts:143` (unbounded queue is a prod-hang risk; resync mirror scoped after fix)
+- [x] Any finding documented in CHANGELOG as a fix
 
 ## Wave 7 — Verification + Zod runtime validation (target: 0.19.13)
 

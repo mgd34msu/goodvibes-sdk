@@ -170,7 +170,7 @@ function requireMethodRoute(
 ): ContractRouteDefinition {
   const method = requireMethod(contract, methodId);
   if (!method.http) {
-    throw new GoodVibesSdkError(`Operator method "${methodId}" does not expose an HTTP binding`, { category: 'contract', source: 'contract', recoverable: false });
+    throw new GoodVibesSdkError(`Operator method "${methodId}" does not expose an HTTP binding. This method may be internal-only or require a different transport. Check the contract manifest for available HTTP methods.`, { category: 'contract', source: 'contract', recoverable: false });
   }
   return method.http;
 }

@@ -179,7 +179,7 @@ export function createNetworkTransportError(
 
 function toStringValue(value: unknown, key: string): string {
   if (value === undefined || value === null) {
-    throw new ContractError(`Missing required path parameter "${key}"`);
+    throw new ContractError(`Missing required path parameter "${key}". Ensure the input object includes a non-null value for this field before invoking the route.`);
   }
   return String(value);
 }
@@ -243,7 +243,7 @@ export const createJsonInit = createJsonRequestInit;
 export function createFetch(fetchImpl?: typeof fetch, fallbackFetch?: typeof fetch): typeof fetch {
   const resolved = fetchImpl ?? fallbackFetch ?? globalThis.fetch;
   if (typeof resolved !== 'function') {
-    throw new ConfigurationError('Fetch implementation is required');
+    throw new ConfigurationError('Fetch implementation is required. Pass a fetch option (e.g. options.fetch) or ensure globalThis.fetch is available in your runtime.');
   }
   return resolved.bind(globalThis);
 }

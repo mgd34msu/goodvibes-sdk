@@ -9,11 +9,14 @@ export interface ResolvedStreamReconnectPolicy extends ResolvedBackoffPolicy {
   readonly enabled: boolean;
 }
 
+/** Maximum reconnect attempts when reconnect is enabled and the caller does not set a limit. */
+export const DEFAULT_STREAM_MAX_ATTEMPTS = 10;
+
 export const DEFAULT_STREAM_RECONNECT_POLICY: ResolvedStreamReconnectPolicy = {
   enabled: false,
-  maxAttempts: Number.POSITIVE_INFINITY,
+  maxAttempts: DEFAULT_STREAM_MAX_ATTEMPTS,
   baseDelayMs: 500,
-  maxDelayMs: 5_000,
+  maxDelayMs: 30_000,
   backoffFactor: 2,
 };
 
