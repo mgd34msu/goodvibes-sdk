@@ -30,6 +30,7 @@ const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
   'transport',
   'ops',
   'knowledge',
+  'providers',
 ];
 
 const DEFAULT_SERVER_CONFIG: ControlPlaneServerConfig = {
@@ -746,3 +747,10 @@ export class ControlPlaneGateway {
     return record;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Test export — exposes DEFAULT_DOMAINS for regression tests.
+// This export is intentional; the const itself is module-scoped so tests
+// cannot otherwise verify its contents without runtime inspection.
+// ---------------------------------------------------------------------------
+export { DEFAULT_DOMAINS as DEFAULT_DOMAINS_TEST_EXPORT };

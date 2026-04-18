@@ -15,9 +15,57 @@
 import type { ProviderRegistry } from '../../providers/registry.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
-import { emitModelChanged } from '../../runtime/emitters/index.js';
 import { findModelDefinition } from '../../providers/registry-models.js';
-import { BUILTIN_PROVIDER_ENV_KEYS } from '../../providers/builtin-catalog.js';
+import { BUILTIN_COMPAT_PROVIDERS, BUILTIN_PROVIDER_ENV_KEYS } from '../../providers/builtin-catalog.js';
+import { logger } from '../../utils/logger.js';
+
+// ---------------------------------------------------------------------------
+// Provider label map — brand-accurate display names
+// ---------------------------------------------------------------------------
+
+const BUILTIN_LABEL_MAP: Record<string, string> = {
+  // Native / first-party providers (not in BUILTIN_COMPAT_PROVIDERS)
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  gemini: 'Gemini',
+  inceptionlabs: 'Inception Labs',
+  'amazon-bedrock': 'Amazon Bedrock',
+  'amazon-bedrock-mantle': 'Amazon Bedrock (Mantle)',
+  'anthropic-vertex': 'Anthropic (Vertex)',
+  'github-copilot': 'GitHub Copilot',
+  groq: 'Groq',
+  cerebras: 'Cerebras',
+  mistral: 'Mistral',
+  'ollama-cloud': 'Ollama Cloud',
+  huggingface: 'Hugging Face',
+  nvidia: 'NVIDIA',
+  llm7: 'LLM7',
+  perplexity: 'Perplexity',
+  deepgram: 'Deepgram',
+  elevenlabs: 'ElevenLabs',
+  microsoft: 'Microsoft',
+  vydra: 'Vydra',
+  byteplus: 'BytePlus',
+  fal: 'fal.ai',
+  comfy: 'ComfyUI',
+  runway: 'Runway',
+  alibaba: 'Alibaba Cloud',
+  synthetic: 'Synthetic (Local)',
+};
+
+// Build label map from the compat catalog (these already carry a label field)
+const _catalogLabelMap: Record<string, string> = {};
+for (const def of BUILTIN_COMPAT_PROVIDERS) {
+  if (def.label) _catalogLabelMap[def.id] = def.label;
+}
+
+function getProviderLabel(providerId: string): string {
+  return (
+    BUILTIN_LABEL_MAP[providerId] ??
+    _catalogLabelMap[providerId] ??
+    providerId.charAt(0).toUpperCase() + providerId.slice(1)
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Response shape types
@@ -59,6 +107,10 @@ export interface CurrentModelResponse {
   readonly configuredVia?: ConfiguredVia;
 }
 
+export interface PatchCurrentModelResponse extends CurrentModelResponse {
+  readonly persisted: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Route context
 // ---------------------------------------------------------------------------
@@ -79,20 +131,20 @@ function getConfiguredVia(
   envVars: string[],
   providerRegistry: ProviderRegistry,
 ): ConfiguredVia | undefined {
-  // Check env vars
+  // Tier 1: env var present
   const hasEnvKey = envVars.some((v) => {
     const val = process.env[v];
     return typeof val === 'string' && val.length > 0;
   });
   if (hasEnvKey) return 'env';
 
-  // Check subscription manager via getConfiguredProviderIds (it includes subscription-backed)
-  // We check if the provider appears in configuredProviderIds without env vars
+  // Tier 2: detect anonymous providers (no env vars required by design)
+  const catalogDef = BUILTIN_COMPAT_PROVIDERS.find((d) => d.id === providerId);
+  if (catalogDef?.allowAnonymous && catalogDef?.anonymousConfigured) return 'anonymous';
+
+  // Tier 3: present in configuredProviderIds but not env — subscription-backed
   const configuredIds = providerRegistry.getConfiguredProviderIds();
-  if (configuredIds.includes(providerId)) {
-    // It's configured but not via env — could be subscription or anonymous
-    return 'subscription';
-  }
+  if (configuredIds.includes(providerId)) return 'subscription';
 
   return undefined;
 }
@@ -118,10 +170,16 @@ function buildCurrentModelResponse(providerRegistry: ProviderRegistry): CurrentM
       configured = true;
       configuredVia = 'env';
     } else {
-      const configuredIds = providerRegistry.getConfiguredProviderIds();
-      if (configuredIds.includes(current.provider)) {
+      const catalogDef = BUILTIN_COMPAT_PROVIDERS.find((d) => d.id === current.provider);
+      if (catalogDef?.allowAnonymous && catalogDef?.anonymousConfigured) {
         configured = true;
-        configuredVia = 'subscription';
+        configuredVia = 'anonymous';
+      } else {
+        const configuredIds = providerRegistry.getConfiguredProviderIds();
+        if (configuredIds.includes(current.provider)) {
+          configured = true;
+          configuredVia = 'subscription';
+        }
       }
     }
   } catch {
@@ -189,8 +247,7 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
       ? getConfiguredVia(providerId, envVars, providerRegistry)
       : undefined;
 
-    // Infer label from provider id (capitalize first letter)
-    const label = providerId.charAt(0).toUpperCase() + providerId.slice(1);
+    const label = getProviderLabel(providerId);
 
     providers.push({ id: providerId, label, configured, configuredVia, envVars, models });
   }
@@ -223,7 +280,7 @@ async function handlePatchCurrentModel(
   req: Request,
   context: ProviderRouteContext,
 ): Promise<Response> {
-  const { providerRegistry, configManager, runtimeBus } = context;
+  const { providerRegistry, configManager } = context;
 
   const bodyOrErr = await context.parseJsonBody(req);
   if (bodyOrErr instanceof Response) return bodyOrErr;
@@ -272,21 +329,17 @@ async function handlePatchCurrentModel(
   }
 
   // Persist to config
+  let persisted = false;
   try {
     configManager.set('provider.model', modelDef.id);
     configManager.set('provider.provider', modelDef.provider);
-  } catch {
-    // Non-fatal: model is switched in memory; persistence failed
+    persisted = true;
+  } catch (persistErr: unknown) {
+    const msg = persistErr instanceof Error ? persistErr.message : String(persistErr);
+    logger.warn(`[provider-routes] Failed to persist model selection to config: ${msg}`);
   }
 
-  // Also emit a bus event for SSE fan-out to companions (belt-and-suspenders;
-  // setCurrentModel already emits, this ensures companion subscribers see it even
-  // if runtimeBus wiring is async).
-  const traceId = `model:changed:${Date.now()}`;
-  emitModelChanged(runtimeBus, { sessionId: 'system', source: 'http-api', traceId }, {
-    registryKey,
-    provider: modelDef.provider,
-  });
-
-  return Response.json(buildCurrentModelResponse(providerRegistry));
+  // setCurrentModel emits MODEL_CHANGED synchronously on the same runtimeBus —
+  // no second emission needed here.
+  return Response.json({ ...buildCurrentModelResponse(providerRegistry), persisted });
 }

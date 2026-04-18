@@ -8,6 +8,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.3] - 2026-04-18
+
+### Fixed
+
+- **Reactive `model.changed` delivery** — `DEFAULT_DOMAINS` in the control-plane gateway now includes `'providers'`, so `MODEL_CHANGED` events are automatically delivered to all companion SSE subscribers (e.g. `GET /api/companion/chat/sessions/:id/events`). This was broken in 0.21.2 where `'providers'` was missing from the default domain set.
+- **Duplicate `MODEL_CHANGED` emission eliminated** — `PATCH /api/providers/current` previously emitted a second `MODEL_CHANGED` event after `setCurrentModel()` already emitted one synchronously. The redundant emission (with a different `traceId`, different `source`, and missing `previous` context) has been removed. Subscribers now receive exactly one `MODEL_CHANGED` per model switch.
+- **`configuredVia` now correctly distinguishes all four states** — previously collapsed `subscription`, `anonymous`, and (theoretical) `secrets` into a single `'subscription'` value. Now returns `'env'` for env-var-backed providers, `'anonymous'` for anonymous-configured providers (e.g. SGLang, litellm local), and `'subscription'` for subscription-backed providers.
+- **Persistence failures logged and reported** — `PATCH /api/providers/current` previously swallowed config-persistence errors silently. Failures are now logged via the platform logger and reported as `persisted: false` in the response body. Success returns `persisted: true`. See `PatchCurrentModelResponseSchema` / `PatchCurrentModelResponse` in `@pellux/contracts`.
+- **Provider labels use brand-accurate casing** — `GET /api/providers` previously generated labels via naive titleCase (`Microsoft-foundry`, `Inceptionlabs`). Labels are now brand-accurate: `"OpenAI"`, `"Anthropic"`, `"Inception Labs"`, `"Microsoft Foundry"`, `"Hugging Face"`, `"GitHub Copilot"`, `"ElevenLabs"`, etc.
+- **Internal contracts mirror regenerated** — `packages/sdk/src/_internal/contracts/zod-schemas/providers.ts` mirror was missing entirely in 0.21.2 (truncated `index.ts`, absent `providers.ts`). Regenerated from canonical `packages/contracts/src/zod-schemas/`.
+- **CI: release workflow gates on `bun run sync:check`** — the `verify-tag-version` job now runs `bun run sync:check` before proceeding, so mirror drift cannot ship again.
+
+### Added
+
+- **`PatchCurrentModelResponseSchema` / `PatchCurrentModelResponse`** — new Zod schema and TypeScript type in `@pellux/contracts` for the `PATCH /api/providers/current` 200 response, extending `CurrentModelResponseSchema` with `persisted: boolean`.
+
+---
+
 ## [0.21.2] - 2026-04-18
 
 ### Added

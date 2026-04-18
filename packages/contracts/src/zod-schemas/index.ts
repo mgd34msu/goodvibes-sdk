@@ -42,6 +42,7 @@ export {
   CurrentModelResponseSchema,
   PatchCurrentModelBodySchema,
   PatchCurrentModelErrorSchema,
+  PatchCurrentModelResponseSchema,
   ModelChangedEventSchema,
 } from './providers.js';
 export type {
@@ -53,5 +54,6 @@ export type {
   CurrentModelResponse,
   PatchCurrentModelBody,
   PatchCurrentModelError,
+  PatchCurrentModelResponse,
   ModelChangedEvent,
 } from './providers.js';

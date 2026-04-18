@@ -1,3 +1,4 @@
+// Synced from packages/contracts/src/zod-schemas/providers.ts
 import { z } from 'zod/v4';
 
 /**
