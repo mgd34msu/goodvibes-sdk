@@ -1,24 +1,23 @@
 /**
  * companion-chat-manager.ts
  *
- * In-memory manager for companion-app chat-mode sessions.
+ * Disk-backed manager for companion-app chat-mode sessions.
  *
  * Design:
  * - Each session owns a ConversationManager (isolated message history).
+ * - Sessions survive daemon restart via CompanionChatPersistence (atomic JSON files).
+ * - Inbound messages are rate-limited per session and per client via
+ *   CompanionChatRateLimiter (token-bucket, 30 msgs/min per client,
+ *   10 msgs/min per session by default, configurable).
  * - When a user message is posted, the manager appends it to the conversation
  *   and runs a lightweight LLM turn using the provider registry.
+ * - Tool calls emitted by the LLM are executed via the injected ToolRegistry
+ *   (if provided); results are fed back into the stream and published as
+ *   turn.tool_result events.
  * - Streaming chunks are fanned out via ControlPlaneGateway.publishEvent
  *   with a per-session clientId filter, so they only reach the subscriber
  *   for that specific session — never the global TUI event feed.
  * - A GC sweep closes sessions that have been idle beyond the TTL.
- *
- * TODO (follow-up): persist sessions across daemon restart.
- * TODO (follow-up): rate-limiting per session / per client.
- * TODO (follow-up): tool-call execution requires ToolRegistry injection;
- *   currently tools are passed through the Orchestrator which needs the
- *   full TUI context. For v1, we provide a no-op tool registry so tool
- *   calls degrade gracefully. Proper tool support requires the daemon to
- *   inject its ToolRegistry into CompanionChatManager.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -26,11 +25,17 @@ import { ConversationManager } from '../core/conversation.js';
 import type {
   CompanionChatMessage,
   CompanionChatSession,
-  CompanionChatSessionStatus,
   CompanionChatTurnEvent,
   ConversationMessageEnvelope,
   CreateCompanionChatSessionInput,
 } from './companion-chat-types.js';
+import {
+  CompanionChatPersistence,
+  defaultSessionsDir,
+} from './companion-chat-persistence.js';
+import { CompanionChatRateLimiter } from './companion-chat-rate-limiter.js';
+import type { CompanionChatRateLimiterOptions } from './companion-chat-rate-limiter.js';
+import type { ToolRegistry } from '../tools/registry.js';
 
 // ---------------------------------------------------------------------------
 // Minimal provider types (subset of the real ProviderRegistry interface)
@@ -82,8 +87,8 @@ export interface CompanionChatEventPublisher {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_IDLE_ACTIVE_MS = 30 * 60 * 1_000; // 30 minutes with messages
-const DEFAULT_IDLE_EMPTY_MS = 5 * 60 * 1_000; // 5 minutes empty session
-const GC_INTERVAL_MS = 60 * 1_000; // sweep every minute
+const DEFAULT_IDLE_EMPTY_MS = 5 * 60 * 1_000;   // 5 minutes empty session
+const GC_INTERVAL_MS = 60 * 1_000;               // sweep every minute
 
 // ---------------------------------------------------------------------------
 // Internal session state (includes mutable conversation + turn queue)
@@ -110,6 +115,24 @@ type MutableSessionMeta = {
 export interface CompanionChatManagerConfig {
   readonly provider: CompanionLLMProvider;
   readonly eventPublisher: CompanionChatEventPublisher;
+  /**
+   * ToolRegistry to use for executing tool calls emitted by the LLM.
+   * When omitted, tool_call chunks are published as events but not executed;
+   * the LLM receives no tool result and must degrade gracefully.
+   */
+  readonly toolRegistry?: ToolRegistry;
+  /**
+   * Directory under which session JSON files are persisted.
+   * Default: ~/.goodvibes/companion-chat/sessions/
+   */
+  readonly sessionsDir?: string;
+  /**
+   * Pass `false` to disable disk persistence entirely (useful in tests).
+   * Default: true
+   */
+  readonly persist?: boolean;
+  /** Rate-limiting options. Defaults: 30 msgs/min per client, 10/min per session. */
+  readonly rateLimiter?: CompanionChatRateLimiterOptions | false;
   /** Override for tests */
   readonly idleActiveMs?: number;
   /** Override for tests */
@@ -122,20 +145,94 @@ export class CompanionChatManager {
   private readonly sessions = new Map<string, InternalSession>();
   private readonly provider: CompanionLLMProvider;
   private readonly eventPublisher: CompanionChatEventPublisher;
+  private readonly toolRegistry: ToolRegistry | null;
+  private readonly persistence: CompanionChatPersistence | null;
+  private readonly rateLimiter: CompanionChatRateLimiter | null;
   private readonly idleActiveMs: number;
   private readonly idleEmptyMs: number;
   private gcTimer: ReturnType<typeof setInterval> | null = null;
+  /** Tracks whether the async init() has completed. */
+  private initCompleted = false;
+  /**
+   * Serializes persistence writes per session to prevent write-after-write
+   * races where two concurrent saves could result in an older snapshot
+   * overwriting a newer one.
+   */
+  private readonly _pendingSaves = new Map<string, Promise<void>>();
 
   constructor(config: CompanionChatManagerConfig) {
     this.provider = config.provider;
     this.eventPublisher = config.eventPublisher;
+    this.toolRegistry = config.toolRegistry ?? null;
     this.idleActiveMs = config.idleActiveMs ?? DEFAULT_IDLE_ACTIVE_MS;
     this.idleEmptyMs = config.idleEmptyMs ?? DEFAULT_IDLE_EMPTY_MS;
 
+    // Persistence
+    // Default is false — most callers (tests, downstream consumers) get the
+    // safe no-write default. The daemon opts into persistence explicitly via
+    // persist: true in facade-composition.
+    const persist = config.persist === true;
+    this.persistence = persist
+      ? new CompanionChatPersistence(config.sessionsDir ?? defaultSessionsDir())
+      : null;
+
+    // Rate limiter
+    this.rateLimiter =
+      config.rateLimiter === false
+        ? null
+        : new CompanionChatRateLimiter(config.rateLimiter ?? {});
+
     const gcIntervalMs = config.gcIntervalMs ?? GC_INTERVAL_MS;
-    this.gcTimer = setInterval(() => this._gcSweep(), gcIntervalMs);
+    this.gcTimer = setInterval(() => {
+      this._gcSweep();
+      this.rateLimiter?.cleanup();
+    }, gcIntervalMs);
     // Don't block node process on this timer
     this.gcTimer.unref?.();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Async initialisation — load persisted sessions from disk
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Load sessions persisted from a previous daemon run.
+   * Should be called once after construction before accepting requests.
+   * Safe to call multiple times (idempotent after first call).
+   */
+  async init(): Promise<void> {
+    if (this.initCompleted || !this.persistence) {
+      this.initCompleted = true;
+      return;
+    }
+
+    const stored = await this.persistence.loadAll();
+    for (const { meta, messages } of stored) {
+      // Skip sessions that were already closed before the restart — they are
+      // in a terminal state and don't need to be in memory.
+      if (meta.status === 'closed') continue;
+
+      const conversation = new ConversationManager();
+      // Replay messages into the conversation to restore LLM context
+      for (const msg of messages) {
+        if (msg.role === 'user') {
+          conversation.addUserMessage(msg.content);
+        } else {
+          conversation.addAssistantMessage(msg.content);
+        }
+      }
+
+      this.sessions.set(meta.id, {
+        meta,
+        conversation,
+        messages: [...messages],
+        abortController: new AbortController(),
+        lastActivityAt: meta.updatedAt,
+        subscriberClientId: null,
+      });
+    }
+
+    this.initCompleted = true;
   }
 
   // ---------------------------------------------------------------------------
@@ -169,6 +266,9 @@ export class CompanionChatManager {
       lastActivityAt: now,
       subscriberClientId: null,
     });
+
+    // Persist async (non-blocking)
+    void this._persist(id);
 
     return meta;
   }
@@ -206,16 +306,30 @@ export class CompanionChatManager {
     session.abortController.abort();
     const now = Date.now();
     const updated = this._updateMeta(session, { status: 'closed', closedAt: now, updatedAt: now });
+
+    // Persist the closed state async (non-blocking)
+    void this._persist(sessionId);
+
     return updated;
   }
 
   /**
    * Post a user message and start an async LLM turn. Returns the messageId.
-   * Throws if the session is closed.
+   *
+   * Rate-limited per session and per client (throws GoodVibesSdkError{kind:'rate-limit'}
+   * if limits are exceeded).
+   *
+   * Throws if the session is closed or not found.
+   *
+   * @param sessionId - The session to post to.
+   * @param content   - The message text.
+   * @param clientId  - The SSE/HTTP client identity for per-client rate limiting.
+   *                    Pass '' to skip client-level rate limiting.
    */
   async postMessage(
     sessionId: string,
     content: string,
+    clientId = '',
   ): Promise<string> {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -224,6 +338,9 @@ export class CompanionChatManager {
     if (session.meta.status === 'closed') {
       throw Object.assign(new Error(`Session is closed: ${sessionId}`), { code: 'SESSION_CLOSED', status: 409 });
     }
+
+    // Rate-limit check (throws GoodVibesSdkError on violation)
+    this.rateLimiter?.check(sessionId, clientId);
 
     const messageId = randomUUID();
     const now = Date.now();
@@ -243,6 +360,9 @@ export class CompanionChatManager {
       messageCount: session.messages.length,
       updatedAt: now,
     });
+
+    // Persist async (non-blocking)
+    void this._persist(sessionId);
 
     // Fire-and-forget: run the turn without blocking the HTTP response
     void this._runTurn(session, messageId);
@@ -328,6 +448,37 @@ export class CompanionChatManager {
               toolName: chunk.toolName ?? '',
               toolInput: chunk.toolInput ?? null,
             });
+
+            // Execute via ToolRegistry if available
+            if (this.toolRegistry && chunk.toolName && chunk.toolCallId) {
+              const toolCallId = chunk.toolCallId;
+              const toolName = chunk.toolName;
+              const toolInput = (chunk.toolInput ?? {}) as Record<string, unknown>;
+
+              try {
+                const toolResult = await this.toolRegistry.execute(toolCallId, toolName, toolInput);
+                publish({
+                  type: 'turn.tool_result',
+                  sessionId,
+                  turnId,
+                  toolCallId,
+                  toolName,
+                  result: toolResult.output ?? null,
+                  isError: !toolResult.success,
+                });
+              } catch (toolErr: unknown) {
+                const errMsg = toolErr instanceof Error ? toolErr.message : String(toolErr);
+                publish({
+                  type: 'turn.tool_result',
+                  sessionId,
+                  turnId,
+                  toolCallId,
+                  toolName,
+                  result: errMsg,
+                  isError: true,
+                });
+              }
+            }
             break;
           }
           case 'tool_result': {
@@ -367,6 +518,9 @@ export class CompanionChatManager {
       session.lastActivityAt = now;
       this._updateMeta(session, { messageCount: session.messages.length, updatedAt: now });
 
+      // Persist assistant reply
+      void this._persist(sessionId);
+
       const completedEnvelope: ConversationMessageEnvelope = {
         sessionId,
         messageId: assistantMessageId,
@@ -394,6 +548,7 @@ export class CompanionChatManager {
       if (session.meta.status === 'closed') {
         // Remove already-closed sessions after a short grace period (5 min)
         if (now - (session.meta.closedAt ?? now) > 5 * 60_000) {
+          void this.persistence?.delete(id);
           this.sessions.delete(id);
         }
         continue;
@@ -407,6 +562,7 @@ export class CompanionChatManager {
         // Close via GC
         session.abortController.abort();
         this._updateMeta(session, { status: 'closed', closedAt: now, updatedAt: now });
+        void this._persist(id);
       }
     }
   }
@@ -422,5 +578,33 @@ export class CompanionChatManager {
     const updated: CompanionChatSession = { ...session.meta, ...patch };
     (session as { meta: CompanionChatSession }).meta = updated;
     return updated;
+  }
+
+  /**
+   * Schedule a persistence save for the given session.
+   * Saves are serialized per-session: each new save waits for the prior one to
+   * complete before writing. The save always reads the CURRENT session state,
+   * so rapid create→update→close sequences correctly persist the final state.
+   */
+  private _persist(sessionId: string): void {
+    if (!this.persistence) return;
+    const prior = this._pendingSaves.get(sessionId) ?? Promise.resolve();
+    const next = prior.then(() => this._doSave(sessionId));
+    this._pendingSaves.set(
+      sessionId,
+      next.finally(() => {
+        // Clean up the slot once this save is the settled head.
+        if (this._pendingSaves.get(sessionId) === next) {
+          this._pendingSaves.delete(sessionId);
+        }
+      }),
+    );
+  }
+
+  private async _doSave(sessionId: string): Promise<void> {
+    if (!this.persistence) return;
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    await this.persistence.save({ meta: session.meta, messages: session.messages });
   }
 }

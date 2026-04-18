@@ -89,8 +89,8 @@ Wire the three remaining `SDKObserver` callbacks.
 - [ ] Flake detection CI gate (N-run stability check)
 - [ ] Public API surface snapshot via `@microsoft/api-extractor` or equivalent
 - [ ] Snapshot gate fails on unintended public surface changes
-- [ ] Internal TODO cleanup (companion): session persistence, rate-limiting, ToolRegistry DI for tool-call execution (3 TODOs in `packages/sdk/src/_internal/platform/companion/companion-chat-manager.ts` + 1 in `companion-chat-types.ts`)
-- [ ] Replace `@ts-ignore` suppressions with real `sql.js` type declarations (`packages/sdk/src/_internal/platform/state/sqlite-store.ts:82`, `state/db.ts:76`) — add minimal `.d.ts` shim for the API surface actually used
+- [x] Internal TODO cleanup (companion): session persistence, rate-limiting, ToolRegistry DI for tool-call execution (3 TODOs in `packages/sdk/src/_internal/platform/companion/companion-chat-manager.ts` + 1 in `companion-chat-types.ts`)
+- [x] Replace `@ts-ignore` suppressions with real `sql.js` type declarations (`packages/sdk/src/_internal/platform/state/sqlite-store.ts:82`, `state/db.ts:76`) — add minimal `.d.ts` shim for the API surface actually used
 - [ ] **New CI gate `no-todo-markers`**: fail the build if `\b(TODO|FIXME|XXX|HACK|STUB)\b` appears in any source file outside `_internal/**`, `**/vendor/**`, `**/generated/**`, and `**/*.test.ts`. Prevents TODO drift in public-surface code post-1.0.0.
 
 ## Wave 9 — Soak period (target: 0.21.0)

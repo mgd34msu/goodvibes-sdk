@@ -3,10 +3,8 @@
  *
  * Types for companion-app chat-mode sessions. These are distinct from the
  * TUI operator session and from task-submit (SharedSessionBroker) sessions.
- * Chat sessions are managed by the CompanionChatManager and live entirely
- * in memory (no persistence across daemon restart — v1 scope).
- *
- * TODO (follow-up): persist chat sessions to disk / database on daemon restart.
+ * Chat sessions are managed by the CompanionChatManager and persisted to disk
+ * via CompanionChatPersistence so they survive daemon restarts.
  */
 
 import type { ConversationMessageEnvelope } from '../control-plane/conversation-message.js';

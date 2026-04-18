@@ -332,6 +332,9 @@ export class DaemonServer {
         this.distributedRuntime.start(),
       ]);
       await this.providerRuntime.startConfigured();
+      // C-2: Load persisted companion sessions from disk so sessions survive
+      // daemon restarts. Must run after providers are configured.
+      await this.companionChatManager.init();
       if (this.replyPoller === null) {
         this.replyPoller = setInterval(() => {
           void this.pollPendingSurfaceReplies();
