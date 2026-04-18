@@ -10,7 +10,7 @@
  * and zero Bun.* API calls, matching the Workers runtime constraint exactly.
  *
  * Module resolution: Miniflare resolves static imports relative to the
- * worker script location. We copy worker.mjs into a tmp directory outside
+ * worker script location. We copy worker.ts into a tmp directory outside
  * dist/ to avoid racing with concurrent builds, and point modulesRoot at
  * packages/sdk/dist/ so that `import './web.js'` resolves correctly.
  * The tmp directory is cleaned up in afterAll().
@@ -33,7 +33,7 @@ import { Miniflare } from 'miniflare';
 // confusion when reading this file alongside CJS code.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_DIST = resolve(__dirname, '../../packages/sdk/dist');
-const WORKER_SOURCE = resolve(__dirname, 'worker.mjs');
+const WORKER_SOURCE = resolve(__dirname, 'worker.ts');
 
 // m-5: Write to a tmp dir OUTSIDE dist/ to eliminate the dist-race foot-gun.
 // Concurrent builds that clean/rewrite dist/ cannot clobber the staged file.
@@ -55,7 +55,7 @@ beforeAll(async () => {
   mkdirSync(TMP_DIR, { recursive: true });
   // Stage the worker source INSIDE SDK_DIST so its ./web.js / ./errors.js
   // relative imports resolve against the built dist during bundling.
-  const WORKER_IN_DIST = resolve(SDK_DIST, '_workers-test-entry.mjs');
+  const WORKER_IN_DIST = resolve(SDK_DIST, '_workers-test-entry.ts');
   writeFileSync(WORKER_IN_DIST, readFileSync(WORKER_SOURCE, 'utf8'), 'utf8');
 
   // Pre-bundle the worker entry via esbuild so bare-module specifiers
@@ -243,15 +243,17 @@ describe('Workers harness: globals audit', () => {
   }, 10_000);
 
   // m-1: Assert the ACTUAL observed value, not just typeof.
-  // Miniflare simulates EventSource; production Cloudflare Workers does NOT.
-  // See also: test/workers-wrangler/wrangler.test.ts — real workerd harness asserts EventSource === false.
+  // Miniflare simulates EventSource; production workerd does NOT.
+  // Local verification is impossible — both Miniflare and wrangler dev --local share the Miniflare 4
+  // runtime and inject EventSource. See test/workers/FINDINGS.md for the full gap analysis.
   test('EventSource availability (Miniflare injects it, real Workers does not)', async () => {
     const res = await mf.dispatchFetch('http://workers.test/globals');
     const body = await res.json() as Record<string, unknown>;
     const globals = body.globals as Record<string, boolean>;
 
-    // Miniflare simulates EventSource; real workerd does NOT (verified by wrangler harness).
-    // See: test/workers-wrangler/wrangler.test.ts for the real-workerd assertion (EventSource === false).
+    // Miniflare simulates EventSource; production workerd does NOT.
+    // Both Miniflare and wrangler dev --local share the Miniflare 4 runtime — EventSource is
+    // injected in both local harnesses. Production absence is unverifiable without a real CF deploy.
     expect(globals.EventSource).toBe(true);
   }, 10_000);
 

@@ -120,7 +120,7 @@ Miniflare 4 is programmatic-only. The CLI was removed in Miniflare 3.
 
 Key constructor options used:
 - `modules: true` — enable ES module Worker format (boolean, not array)
-- `scriptPath` — path to the Worker entry `.mjs` file. **Must be inside `modulesRoot`** for static imports to resolve correctly. The test runner stages `worker.mjs` into `packages/sdk/dist/` at startup and removes it after.
+- `scriptPath` — path to the Worker entry. **Must be inside `modulesRoot`** for static imports to resolve correctly. The test runner stages `worker.ts` (as `_workers-test-entry.ts`) into `packages/sdk/dist/` at startup and removes it after.
 - `modulesRoot` — base directory for module resolution (set to `packages/sdk/dist`). Static imports in the worker resolve relative to `scriptPath`, which must live under `modulesRoot`.
 - `modulesRules` — **required** to treat `.js` files as ESModule. Without this, Miniflare defaults to CommonJS parsing for `.js` files, which fails on `import`/`export` syntax. Add: `[{ type: 'ESModule', include: ['**/*.js', '**/*.mjs'] }]`
 - `compatibilityDate` — Workers runtime compatibility date. **Policy**: bump quarterly; pick a date within the last calendar quarter (e.g. `'2026-04-01'` for Q1 2026).
@@ -151,7 +151,7 @@ await mf.dispose();
 
 ---
 
-## 7. Worker script: `worker.mjs`
+## 7. Worker script: `worker.ts`
 
 The Worker script uses ES module format (`export default { async fetch() {} }`). It handles routes:
 

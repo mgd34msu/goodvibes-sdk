@@ -1,7 +1,7 @@
 /**
  * Cloudflare Workers test script for @pellux/goodvibes-sdk — wrangler-CLI harness.
  *
- * Mirrors test/workers/worker.mjs exactly. This version is bundled by wrangler dev
+ * Mirrors test/workers/worker.ts exactly. This version is bundled by wrangler dev
  * (esbuild pipeline) rather than Miniflare's programmatic API.
  *
  * IMPORTANT: Despite the name, `wrangler dev --local` does NOT use the raw workerd
@@ -15,44 +15,22 @@
  * wrangler dev bundles via its own esbuild pipeline before handing to Miniflare 4.
  */
 
+import type { ExportedHandler, ExecutionContext } from '@cloudflare/workers-types';
+// @ts-ignore — resolved by wrangler's esbuild pipeline, not tsc
 import { createWebGoodVibesSdk } from '../../packages/sdk/dist/web.js';
+// @ts-ignore — resolved by wrangler's esbuild pipeline, not tsc
 import * as SdkErrors from '../../packages/sdk/dist/errors.js';
 
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
+interface Env {}
 
-    try {
-      switch (url.pathname) {
-        case '/health':
-          return new Response('ok', { status: 200 });
-        case '/smoke':
-          return handleSmoke();
-        case '/auth':
-          return handleAuth();
-        case '/transport-success':
-          return handleTransportSuccess();
-        case '/transport-error':
-          return handleTransportError();
-        case '/errors':
-          return handleErrors();
-        case '/crypto':
-          return handleCrypto();
-        case '/globals':
-          return handleGlobals();
-        default:
-          return new Response('Not Found', { status: 404 });
-      }
-    } catch (err) {
-      return new Response(
-        JSON.stringify({ error: String(err), stack: err?.stack }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-  },
-};
+function json(data: unknown): Response {
+  return new Response(JSON.stringify(data), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
-function handleSmoke() {
+function handleSmoke(): Response {
   const sdk = createWebGoodVibesSdk({
     baseUrl: 'http://mock-daemon.internal',
     authToken: 'test-token',
@@ -71,7 +49,7 @@ function handleSmoke() {
   });
 }
 
-async function handleAuth() {
+async function handleAuth(): Promise<Response> {
   const token = 'workers-auth-token-abc123';
   const sdk = createWebGoodVibesSdk({
     baseUrl: 'http://mock-daemon.internal',
@@ -84,7 +62,7 @@ async function handleAuth() {
   return json({ ok: true, tokenMatches, storedToken });
 }
 
-async function handleTransportSuccess() {
+async function handleTransportSuccess(): Promise<Response> {
   const mockPayload = {
     totals: { sessions: 1, active: 1, closed: 0 },
     sessions: [{
@@ -102,8 +80,8 @@ async function handleTransportSuccess() {
     }],
   };
 
-  const mockFetch = async (input, init) => {
-    const url = typeof input === 'string' ? input : input.url;
+  const mockFetch = async (input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
     if (url.includes('/api/sessions')) {
       return new Response(JSON.stringify(mockPayload), {
         status: 200,
@@ -120,21 +98,23 @@ async function handleTransportSuccess() {
     retry: { maxAttempts: 1 },
   });
 
-  let result = null;
-  let kind = null;
-  let ctor = null;
+  let result: unknown = null;
+  let kind: string | null = null;
+  let ctor: string | null = null;
   try {
     result = await sdk.operator.sessions.list();
-  } catch (err) {
-    kind = err?.kind ?? null;
-    ctor = err?.constructor?.name ?? null;
+  } catch (err: unknown) {
+    kind = (err as Record<string, unknown>)?.kind as string ?? null;
+    ctor = (err as Record<string, unknown>)?.constructor instanceof Function
+      ? ((err as Record<string, unknown>).constructor as { name?: string }).name ?? null
+      : null;
   }
 
   return json({ ok: true, result, kind, ctor });
 }
 
-async function handleTransportError() {
-  const mockFetch = async () => {
+async function handleTransportError(): Promise<Response> {
+  const mockFetch = async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
     return new Response(
       JSON.stringify({ error: 'Internal Server Error', code: 'MOCK_500' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
@@ -148,28 +128,33 @@ async function handleTransportError() {
     retry: { maxAttempts: 1 },
   });
 
-  let result = null;
-  let kind = null;
-  let ctor = null;
+  let result: unknown = null;
+  let kind: string | null = null;
+  let ctor: string | null = null;
   try {
     result = await sdk.operator.sessions.list();
-  } catch (err) {
-    kind = err?.kind ?? null;
-    ctor = err?.constructor?.name ?? null;
+  } catch (err: unknown) {
+    kind = (err as Record<string, unknown>)?.kind as string ?? null;
+    ctor = (err as Record<string, unknown>)?.constructor instanceof Function
+      ? ((err as Record<string, unknown>).constructor as { name?: string }).name ?? null
+      : null;
   }
 
   return json({ ok: true, result, kind, ctor });
 }
 
-function handleErrors() {
+function handleErrors(): Response {
   const errorClassNames = Object.keys(SdkErrors).filter((k) => {
-    const v = SdkErrors[k];
-    return typeof v === 'function' && v.prototype instanceof Error;
+    const v = (SdkErrors as Record<string, unknown>)[k];
+    return typeof v === 'function' && (v as { prototype?: unknown }).prototype instanceof Error;
   });
 
   let sdkErrorWorks = false;
-  if (SdkErrors.GoodVibesSdkError) {
-    const e = new SdkErrors.GoodVibesSdkError('test', {
+  const GoodVibesSdkError = (SdkErrors as Record<string, unknown>).GoodVibesSdkError as
+    | (new (msg: string, meta: Record<string, unknown>) => Error)
+    | undefined;
+  if (GoodVibesSdkError) {
+    const e = new GoodVibesSdkError('test', {
       kind: 'unknown',
       category: 'internal',
       source: 'transport',
@@ -181,7 +166,7 @@ function handleErrors() {
   return json({ ok: true, errorClassNames, sdkErrorWorks });
 }
 
-async function handleCrypto() {
+async function handleCrypto(): Promise<Response> {
   const uuid = crypto.randomUUID();
   const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(uuid);
 
@@ -202,7 +187,7 @@ async function handleCrypto() {
   });
 }
 
-function handleGlobals() {
+function handleGlobals(): Response {
   return json({
     ok: true,
     globals: {
@@ -220,19 +205,49 @@ function handleGlobals() {
       // Both this harness and the standalone Miniflare harness will be true here.
       // Production workerd does NOT inject EventSource — verifiable only via real CF deployment.
       EventSource: typeof EventSource !== 'undefined',
-      location: typeof globalThis.location !== 'undefined',
+      location: typeof (globalThis as Record<string, unknown>).location !== 'undefined',
       setTimeout: typeof setTimeout === 'function',
       setInterval: typeof setInterval === 'function',
       clearTimeout: typeof clearTimeout === 'function',
-      process: typeof process !== 'undefined',
-      Buffer: typeof Buffer !== 'undefined',
+      process: typeof (globalThis as Record<string, unknown>).process !== 'undefined',
+      Buffer: typeof (globalThis as Record<string, unknown>).Buffer !== 'undefined',
     },
   });
 }
 
-function json(data) {
-  return new Response(JSON.stringify(data), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
+const handler: ExportedHandler<Env> = {
+  async fetch(request, _env, _ctx): Promise<Response> {
+    const url = new URL(request.url);
+
+    try {
+      switch (url.pathname) {
+        case '/health':
+          return new Response('ok', { status: 200 });
+        case '/smoke':
+          return handleSmoke();
+        case '/auth':
+          return await handleAuth();
+        case '/transport-success':
+          return await handleTransportSuccess();
+        case '/transport-error':
+          return await handleTransportError();
+        case '/errors':
+          return handleErrors();
+        case '/crypto':
+          return await handleCrypto();
+        case '/globals':
+          return handleGlobals();
+        default:
+          return new Response('Not Found', { status: 404 });
+      }
+    } catch (err: unknown) {
+      const e = err as { message?: string; stack?: string };
+      return new Response(
+        JSON.stringify({ error: String(err), stack: e?.stack }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+  },
+};
+
+export default handler;

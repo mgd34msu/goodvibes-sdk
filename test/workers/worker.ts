@@ -16,41 +16,21 @@
  * Workers-specific notes embedded in each handler.
  */
 
+import type { ExportedHandler, ExecutionContext } from '@cloudflare/workers-types';
 // Static imports resolved via Miniflare modulesRoot -> packages/sdk/dist
+// @ts-ignore — resolved by esbuild at bundle time, not tsc
 import { createWebGoodVibesSdk } from './web.js';
+// @ts-ignore — resolved by esbuild at bundle time, not tsc
 import * as SdkErrors from './errors.js';
 
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
+interface Env {}
 
-    try {
-      switch (url.pathname) {
-        case '/smoke':
-          return handleSmoke();
-        case '/auth':
-          return handleAuth();
-        case '/transport-success':
-          return handleTransportSuccess();
-        case '/transport-error':
-          return handleTransportError();
-        case '/errors':
-          return handleErrors();
-        case '/crypto':
-          return handleCrypto();
-        case '/globals':
-          return handleGlobals();
-        default:
-          return new Response('Not Found', { status: 404 });
-      }
-    } catch (err) {
-      return new Response(
-        JSON.stringify({ error: String(err), stack: err?.stack }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-  },
-};
+function json(data: unknown): Response {
+  return new Response(JSON.stringify(data), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 /**
  * /smoke — SDK import + factory call succeeds in isolate.
@@ -61,7 +41,7 @@ export default {
  * unavailable. We always pass an explicit baseUrl — this is the correct
  * Workers usage pattern.
  */
-function handleSmoke() {
+function handleSmoke(): Response {
   const sdk = createWebGoodVibesSdk({
     baseUrl: 'http://mock-daemon.internal',
     authToken: 'test-token',
@@ -87,7 +67,7 @@ function handleSmoke() {
  * Workers concern: none. Auth is synchronous token storage — no node: or
  * Bun.* surface. crypto.randomUUID() and crypto.subtle are available.
  */
-async function handleAuth() {
+async function handleAuth(): Promise<Response> {
   const token = 'workers-auth-token-abc123';
   const sdk = createWebGoodVibesSdk({
     baseUrl: 'http://mock-daemon.internal',
@@ -113,7 +93,7 @@ async function handleAuth() {
  * Route: sdk.operator.sessions.list() sends GET /api/sessions.
  * The mock returns a real-shape JSON response so result is populated.
  */
-async function handleTransportSuccess() {
+async function handleTransportSuccess(): Promise<Response> {
   // Real-shape mock payload matching sessions.list output schema.
   const mockPayload = {
     totals: { sessions: 1, active: 1, closed: 0 },
@@ -133,8 +113,8 @@ async function handleTransportSuccess() {
   };
 
   // Mock fetch matching the real SDK route: GET /api/sessions
-  const mockFetch = async (input, init) => {
-    const url = typeof input === 'string' ? input : input.url;
+  const mockFetch = async (input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
     if (url.includes('/api/sessions')) {
       return new Response(JSON.stringify(mockPayload), {
         status: 200,
@@ -152,14 +132,16 @@ async function handleTransportSuccess() {
   });
 
   // sdk.operator.sessions.list() — GET /api/sessions
-  let result = null;
-  let kind = null;
-  let ctor = null;
+  let result: unknown = null;
+  let kind: string | null = null;
+  let ctor: string | null = null;
   try {
     result = await sdk.operator.sessions.list();
-  } catch (err) {
-    kind = err?.kind ?? null;
-    ctor = err?.constructor?.name ?? null;
+  } catch (err: unknown) {
+    kind = (err as Record<string, unknown>)?.kind as string ?? null;
+    ctor = (err as Record<string, unknown>)?.constructor instanceof Function
+      ? ((err as Record<string, unknown>).constructor as { name?: string }).name ?? null
+      : null;
   }
 
   return json({
@@ -176,9 +158,9 @@ async function handleTransportSuccess() {
  * Mock returns a 500 to verify the SDK's error taxonomy surfaces
  * a typed 'server' error kind rather than a raw runtime crash.
  */
-async function handleTransportError() {
+async function handleTransportError(): Promise<Response> {
   // Mock fetch that always returns a 5xx to trigger typed error
-  const mockFetch = async (input, init) => {
+  const mockFetch = async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
     return new Response(
       JSON.stringify({ error: 'Internal Server Error', code: 'MOCK_500' }),
       {
@@ -195,16 +177,18 @@ async function handleTransportError() {
     retry: { maxAttempts: 1 }, // no retries
   });
 
-  let result = null;
-  let kind = null;
-  let ctor = null;
+  let result: unknown = null;
+  let kind: string | null = null;
+  let ctor: string | null = null;
   try {
     result = await sdk.operator.sessions.list();
-  } catch (err) {
+  } catch (err: unknown) {
     // Return kind and ctor as separate fields to avoid conflating
     // typed SDKErrorKind values with raw constructor names.
-    kind = err?.kind ?? null;
-    ctor = err?.constructor?.name ?? null;
+    kind = (err as Record<string, unknown>)?.kind as string ?? null;
+    ctor = (err as Record<string, unknown>)?.constructor instanceof Function
+      ? ((err as Record<string, unknown>).constructor as { name?: string }).name ?? null
+      : null;
   }
 
   return json({
@@ -221,16 +205,19 @@ async function handleTransportError() {
  * Workers concern: none for pure error class instantiation.
  * The SDK error classes use no node: or Bun.* APIs.
  */
-function handleErrors() {
+function handleErrors(): Response {
   // Only include actual Error subclasses — not plain functions or non-Error exports.
   const errorClassNames = Object.keys(SdkErrors).filter((k) => {
-    const v = SdkErrors[k];
-    return typeof v === 'function' && v.prototype instanceof Error;
+    const v = (SdkErrors as Record<string, unknown>)[k];
+    return typeof v === 'function' && (v as { prototype?: unknown }).prototype instanceof Error;
   });
 
   let sdkErrorWorks = false;
-  if (SdkErrors.GoodVibesSdkError) {
-    const e = new SdkErrors.GoodVibesSdkError('test', {
+  const GoodVibesSdkError = (SdkErrors as Record<string, unknown>).GoodVibesSdkError as
+    | (new (msg: string, meta: Record<string, unknown>) => Error)
+    | undefined;
+  if (GoodVibesSdkError) {
+    const e = new GoodVibesSdkError('test', {
       kind: 'unknown',
       category: 'internal',
       source: 'transport',
@@ -249,7 +236,7 @@ function handleErrors() {
  * crypto.randomUUID IS available. This verifies future token-crypto paths
  * will work without shims.
  */
-async function handleCrypto() {
+async function handleCrypto(): Promise<Response> {
   const uuid = crypto.randomUUID();
   const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(uuid);
 
@@ -277,7 +264,7 @@ async function handleCrypto() {
  *
  * Documents which globals are present/absent for the FINDINGS.md record.
  */
-function handleGlobals() {
+function handleGlobals(): Response {
   return json({
     ok: true,
     globals: {
@@ -295,21 +282,49 @@ function handleGlobals() {
       // NOT available in production Workers (Miniflare simulates it)
       EventSource: typeof EventSource !== 'undefined',
       // NOT available in Workers (no DOM)
-      location: typeof globalThis.location !== 'undefined',
+      location: typeof (globalThis as Record<string, unknown>).location !== 'undefined',
       // Timers — available but request-scoped
       setTimeout: typeof setTimeout === 'function',
       setInterval: typeof setInterval === 'function',
       clearTimeout: typeof clearTimeout === 'function',
       // Not available
-      process: typeof process !== 'undefined',
-      Buffer: typeof Buffer !== 'undefined',
+      process: typeof (globalThis as Record<string, unknown>).process !== 'undefined',
+      Buffer: typeof (globalThis as Record<string, unknown>).Buffer !== 'undefined',
     },
   });
 }
 
-function json(data) {
-  return new Response(JSON.stringify(data), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
+const handler: ExportedHandler<Env> = {
+  async fetch(request, _env, _ctx): Promise<Response> {
+    const url = new URL(request.url);
+
+    try {
+      switch (url.pathname) {
+        case '/smoke':
+          return handleSmoke();
+        case '/auth':
+          return await handleAuth();
+        case '/transport-success':
+          return await handleTransportSuccess();
+        case '/transport-error':
+          return await handleTransportError();
+        case '/errors':
+          return handleErrors();
+        case '/crypto':
+          return await handleCrypto();
+        case '/globals':
+          return handleGlobals();
+        default:
+          return new Response('Not Found', { status: 404 });
+      }
+    } catch (err: unknown) {
+      const e = err as { message?: string; stack?: string };
+      return new Response(
+        JSON.stringify({ error: String(err), stack: e?.stack }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+  },
+};
+
+export default handler;

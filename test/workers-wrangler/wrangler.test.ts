@@ -1,7 +1,7 @@
 /**
  * wrangler-CLI harness — @pellux/goodvibes-sdk Workers parity test.
  *
- * Spawns `wrangler dev --local` against test/workers-wrangler/worker.mjs and
+ * Spawns `wrangler dev --local` against test/workers-wrangler/worker.ts and
  * exercises the same endpoint surface as the Miniflare harness in
  * test/workers/workers.test.ts.
  *
@@ -26,7 +26,7 @@
  *   - No Cloudflare account or API token required (--local mode)
  *
  * Startup behaviour:
- *   - wrangler dev cold-starts in ~5-15s (downloads workerd binary on first run)
+ *   - wrangler dev cold-starts in ~5-15s (first run populates Miniflare's workerd cache)
  *   - CI timeout: 120s for the job; wrangler startup timeout here: 60s
  *   - Port: randomised above 10000 to avoid collisions with other test jobs
  */
