@@ -33,7 +33,8 @@ describe('sdk auth helpers', () => {
             expiresAt: Date.now() + 60_000,
           });
         }
-        return createJsonResponse({ ok: true });
+        // Return a minimal valid accounts.snapshot response so Zod validation passes.
+        return createJsonResponse({ capturedAt: Date.now(), providers: [], configuredCount: 0, issueCount: 0 });
       },
     });
 

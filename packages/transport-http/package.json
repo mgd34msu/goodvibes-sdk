@@ -37,6 +37,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@pellux/goodvibes-errors": "workspace:*"
+    "@pellux/goodvibes-errors": "workspace:*",
+    "zod": "^4.3.6"
   }
 }

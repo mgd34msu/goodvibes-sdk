@@ -17,7 +17,11 @@
     },
     "./operator-contract.json": "./artifacts/operator-contract.json",
     "./peer-contract.json": "./artifacts/peer-contract.json",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./zod-schemas": {
+      "types": "./dist/zod-schemas/index.d.ts",
+      "import": "./dist/zod-schemas/index.js"
+    }
   },
   "files": [
     "dist",
@@ -42,5 +46,8 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
   }
 }
