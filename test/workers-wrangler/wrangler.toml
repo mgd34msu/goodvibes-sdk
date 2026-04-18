@@ -1,6 +1,6 @@
 # wrangler.toml — wrangler-CLI harness for @pellux/goodvibes-sdk
 #
-# Points wrangler dev at the test worker entry (test/workers-wrangler/worker.mjs).
+# Points wrangler dev at the test worker entry (test/workers-wrangler/worker.ts).
 # wrangler bundles via its own esbuild pipeline, resolving relative imports
 # (../../packages/sdk/dist/web.js) from the entry file location.
 #
@@ -10,7 +10,7 @@
 # Do NOT add CF_API_TOKEN or account_id — wrangler dev --local does not require them.
 
 name = "goodvibes-sdk-workers-test"
-main = "worker.mjs"
+main = "worker.ts"
 compatibility_date = "2026-04-01"
 
 # No KV, D1, R2, or other bindings needed — pure HTTP + global API surface test.

@@ -179,7 +179,7 @@ The `sdk.realtime.viaSse()` path is unavailable from within a production Worker 
 
 ### CI flakiness risk
 
-wrangler dev cold-start timing is non-deterministic. On first run in CI (no binary cache), workerd binary download can take 10–20s. The 60s startup poll timeout accommodates this. Port collisions are avoided by randomising in `[12000, 19999]`. If CI exhibits repeated startup timeouts, consider caching `~/.cache/wrangler` across runs.
+wrangler dev cold-start timing is non-deterministic. On first run in CI (no binary cache), Miniflare's workerd cache download can take 10–20s. The 60s startup poll timeout accommodates this. Port collisions are avoided by randomising in `[12000, 19999]`. If CI exhibits repeated startup timeouts, consider caching `~/.cache/wrangler` across runs.
 
 ### EventSource finding: wrangler dev --local also injects EventSource
 
