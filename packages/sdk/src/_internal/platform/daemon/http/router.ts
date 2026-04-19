@@ -358,6 +358,7 @@ export class DaemonHttpRouter {
           requireAdmin: (request) => this.context.requireAdmin(request),
           requireAuthenticatedSession: (request) => this.context.requireAuthenticatedSession(request),
           routeBindings: this.context.routeBindings,
+          swapManager: null,
           watcherRegistry: this.context.watcherRegistry,
         }),
       }, req),

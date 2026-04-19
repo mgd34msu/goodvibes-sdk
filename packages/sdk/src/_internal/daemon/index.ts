@@ -58,6 +58,7 @@ export type {
   RouteBindingManagerLike,
   WatcherKind,
   WatcherRegistryLike,
+  WorkspaceSwapManagerLike,
 } from './system-route-types.js';
 export type {
   AuthenticatedPrincipalLike,

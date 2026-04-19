@@ -159,9 +159,16 @@ export class WorkspaceSwapManager {
   ): void {
     if (!this.deps.runtimeBus) return;
     try {
+      const envelope = createEventEnvelope(type, payload, {
+        sessionId: 'system',
+        source: 'workspace-swap-manager',
+      });
+      // Cast: workspace events are not in AnyRuntimeEvent's narrow union but are
+      // registered under the 'workspace' domain. See analogous cast in
+      // runtime/health/effect-handlers.ts for CASCADE_APPLIED.
       this.deps.runtimeBus.emit(
         'workspace',
-        createEventEnvelope(type, payload as Parameters<typeof createEventEnvelope>[1]),
+        envelope as unknown as Parameters<RuntimeEventBus['emit']>[1],
       );
     } catch {
       // Never throw from event emission

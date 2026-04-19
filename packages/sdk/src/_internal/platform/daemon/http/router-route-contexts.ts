@@ -146,6 +146,7 @@ export function buildSystemRouteContext(input: {
   readonly requireAdmin: (request: Request) => Response | null;
   readonly requireAuthenticatedSession: (request: Request) => { username: string; roles: readonly string[] } | null;
   readonly routeBindings: RouteBindingManager;
+  readonly swapManager: DaemonSystemRouteContext['swapManager'];
   readonly watcherRegistry: WatcherRegistry;
 }): DaemonSystemRouteContext {
   const castWatcherRecord = (value: unknown): WatcherRecord | null => value as WatcherRecord | null;
@@ -170,6 +171,7 @@ export function buildSystemRouteContext(input: {
     recordApiResponse: input.recordApiResponse,
     requireAdmin: input.requireAdmin,
     requireAuthenticatedSession: input.requireAuthenticatedSession,
+    swapManager: input.swapManager,
     routeBindings: {
       listBindings: () => input.routeBindings.listBindings(),
       upsertBinding: (binding) => input.routeBindings.upsertBinding(
