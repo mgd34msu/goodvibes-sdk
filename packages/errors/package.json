@@ -1,7 +1,7 @@
 {
   "name": "@pellux/goodvibes-errors",
   "private": true,
-  "version": "0.21.17",
+  "version": "0.21.18",
   "description": "Structured SDK, transport, and daemon error types for GoodVibes integrations.",
   "type": "module",
   "main": "./dist/index.js",

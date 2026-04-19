@@ -8,7 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
-## [0.21.17] - 2026-04-19
+## [0.21.18] - 2026-04-19
+
+### Fixed
+- Internal `_internal/daemon/` mirrors for `api-router.ts`, `index.ts`, `media-routes.ts`, `runtime-automation-routes.ts` regenerated via `bun run sync --scope=daemon` to match 0.21.17 canonical sources. `v0.21.17` tag CI failed on `sync:check` drift; 0.21.18 supersedes with the mirror included. Re-ships identical 0.21.17 behavior (no code delta beyond the mirror).
+
+## [0.21.17] - 2026-04-19 — superseded by 0.21.18 (CI orphan, no npm artifact)
 
 ### Added
 - `DaemonApiRouteExtension` type exported from `@pellux/goodvibes-daemon-sdk`. Callers of `dispatchDaemonApiRoutes` may now pass an optional third argument `extensions?: readonly DaemonApiRouteExtension[]`. Each extension is tried in order after the core route set; the first non-null result wins. This closes the route-parity gap between the TUI-embedded and standalone daemon postures: standalone operators can wire companion-chat and provider routes by passing their own dispatchers without modifying core SDK files (F1).
