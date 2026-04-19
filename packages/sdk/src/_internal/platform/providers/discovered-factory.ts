@@ -16,6 +16,8 @@ export function createDiscoveredProvider(server: DiscoveredServer): LLMProvider 
     defaultModel: server.models[0]!,
     models: server.models,
     capabilities: traits.providerCapabilities,
+    allowAnonymous: true,
+    anonymousConfigured: true,
   };
 
   switch (traits.adapter) {

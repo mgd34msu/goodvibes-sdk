@@ -503,6 +503,12 @@ export class ProviderRegistry {
       configured.add('synthetic');
     }
 
+    for (const [name, provider] of this.providers) {
+      if (typeof provider.isConfigured === 'function' && provider.isConfigured()) {
+        configured.add(name);
+      }
+    }
+
     return [...configured];
   }
 

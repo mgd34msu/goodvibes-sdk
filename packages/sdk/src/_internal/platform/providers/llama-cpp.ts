@@ -79,6 +79,10 @@ export class LlamaCppProvider implements LLMProvider {
     this.defaultHeaders = opts.defaultHeaders;
   }
 
+  isConfigured(): boolean {
+    return this.fallbackProvider.isConfigured?.() ?? true;
+  }
+
   async chat(params: ChatRequest): Promise<ChatResponse> {
     return withRetry(async () => {
       if (!shouldUseNonStreamingLlamaCpp(params)) {

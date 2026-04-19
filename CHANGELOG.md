@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.16] - 2026-04-19
+
+### Fixed
+- Network-discovered providers (LM Studio, Ollama, vLLM, llama.cpp, TGI, LocalAI, generic OpenAI-compat) now report as configured via `PATCH /api/providers/current`. Previously `createDiscoveredProvider` constructed instances with `apiKey: ''` but no anonymous flag, so `isConfigured()` returned false and the PATCH route rejected them with `PROVIDER_NOT_CONFIGURED`. Discovered providers are anonymous-configured by design (local-network servers); factory now passes `allowAnonymous: true, anonymousConfigured: true`.
+- `ProviderRegistry.getConfiguredProviderIds()` now also consults registered provider instances via their `isConfigured()` method, so network-discovered providers (which live in `this.providers` but not in `catalogModels`) appear in the configured set.
+- `LMStudioProvider`, `OllamaProvider`, `LlamaCppProvider` now expose `isConfigured()` that delegates to their fallback `OpenAICompatProvider` (compat shims `DiscoveredCompatProvider`, `VLLMProvider`, `TGIProvider`, `LocalAIProvider` already inherit from `OpenAICompatProvider`).
+- `PATCH /api/providers/current` 409 response no longer emits literal placeholder text `<API key for X>` when a provider has no declared env vars. Message now reads clearly and `missingEnvVars` is `[]`.
+
 ## [0.21.15] - 2026-04-19
 
 ### Fixed
