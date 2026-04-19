@@ -140,6 +140,7 @@ function makeContext(opts: {
       reopenSession: async (sessionId) => sessions.get(sessionId) ?? null,
       cancelInput: async () => null,
       completeAgent: async () => {},
+      appendCompanionMessage: async () => null,
     },
     agentManager: {
       getStatus: () => null,

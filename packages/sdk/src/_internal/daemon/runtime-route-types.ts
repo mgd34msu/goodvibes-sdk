@@ -158,6 +158,12 @@ export interface DaemonRuntimeRouteContext {
     reopenSession(sessionId: string): Promise<{ id: string } | null>;
     cancelInput(sessionId: string, inputId: string): Promise<unknown | null>;
     completeAgent(sessionId: string, agentId: string, message: string, meta: { status: string; routeId?: string }): Promise<void>;
+    appendCompanionMessage(sessionId: string, input: {
+      readonly messageId: string;
+      readonly body: string;
+      readonly timestamp: number;
+      readonly source: string;
+    }): Promise<unknown>;
   };
   readonly agentManager: {
     getStatus(agentId: string): AgentRecordLike | null;

@@ -391,6 +391,8 @@ export class DaemonHttpRouter {
           completeAgent: async (sessionId, agentId, message, meta) => {
             await this.context.sessionBroker.completeAgent(sessionId, agentId, message, meta);
           },
+          appendCompanionMessage: (sessionId, input) =>
+            this.context.sessionBroker.appendCompanionMessage(sessionId, input),
         },
         agentManager: {
           getStatus: (agentId) => this.context.agentManager.getStatus(agentId),

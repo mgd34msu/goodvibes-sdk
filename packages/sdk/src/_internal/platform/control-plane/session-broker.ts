@@ -426,6 +426,33 @@ export class SharedSessionBroker {
     });
   }
 
+  /**
+   * Persist a companion follow-up message to the shared session message log
+   * without spawning an agent. Called by the companion main-chat send path
+   * (kind='message') so that GET /api/sessions/:id/messages surfaces the message
+   * and TUI subscribers can render it.
+   */
+  async appendCompanionMessage(
+    sessionId: string,
+    input: {
+      readonly messageId: string;
+      readonly body: string;
+      readonly timestamp: number;
+      readonly source: string;
+    },
+  ): Promise<SharedSessionMessage | null> {
+    if (!input.body.trim()) return null;
+    return this.appendMessage(sessionId, {
+      role: 'user',
+      body: input.body,
+      metadata: {
+        source: input.source,
+        messageId: input.messageId,
+        timestamp: input.timestamp,
+      },
+    });
+  }
+
   async completeAgent(sessionId: string, agentId: string, body: string, metadata: Record<string, unknown> = {}): Promise<SharedSessionCompletion | null> {
     await this.start();
     const session = this.sessions.get(sessionId);
