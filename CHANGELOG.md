@@ -8,6 +8,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.11] - 2026-04-18
+
+### Added
+- `kind: 'followup'` accepted at `POST /api/sessions/:id/messages`. Routes through `sessionBroker.followUpMessage()` which always spawns an agent. Full agent event chain streams back to companion SSE subscribers. Intended for the companion app's "shared session → follow-up" flow.
+- New SSE endpoint: `GET /api/sessions/:id/events` — session-scoped event stream for companion consumption of shared-session events (turn deltas, agent chain, etc.). Scoped via `sessionId` filter + `clientKind: 'web'`.
+- `'turn'` added to `DEFAULT_DOMAINS` in the control-plane gateway. Turn events (`STREAM_DELTA`, `TURN_COMPLETED`, etc.) now reach all SSE subscribers automatically instead of requiring per-stream opt-in.
+
+### Changed
+- `kind: 'message'` at `POST /api/sessions/:id/messages` now routes through `sessionBroker.submitMessage()` (same path as TUI input box) after persisting + emitting `COMPANION_MESSAGE_RECEIVED`. Starts a turn; agent may spawn based on content; turn events stream back to both TUI and companion. Previously never triggered a turn — the 202 was misleading.
+- Companion app's "shared session → main chat" flow now behaves exactly like the TUI input box.
+
+### Upgraded
+- Daemon API surface adds `getSharedSessionEvents` handler. Contract types + Zod schemas updated in `packages/contracts` and mirrored.
+
 ## [0.21.10] - 2026-04-18
 
 ### Added
