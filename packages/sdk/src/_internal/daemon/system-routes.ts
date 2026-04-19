@@ -177,6 +177,27 @@ export function createDaemonSystemRouteHandlers(
       if (!key || typeof key !== 'string') {
         return Response.json({ error: 'Missing or invalid key' }, { status: 400 });
       }
+      // Special-case: runtime.workingDir is handled by the workspace swap manager.
+      if (key === 'runtime.workingDir') {
+        if (!context.swapManager) {
+          return Response.json({ error: 'Workspace swapping is not available in this daemon configuration.' }, { status: 400 });
+        }
+        if (typeof value !== 'string' || !value.trim()) {
+          return Response.json({ error: 'runtime.workingDir value must be a non-empty string path.' }, { status: 400 });
+        }
+        const result = await context.swapManager.requestSwap(value);
+        if (result.ok) {
+          return Response.json({ success: true, key, value: result.current, previous: result.previous });
+        }
+        if (result.code === 'WORKSPACE_BUSY') {
+          return Response.json(
+            { error: result.reason, code: 'WORKSPACE_BUSY', retryAfter: result.retryAfter },
+            { status: 409 },
+          );
+        }
+        // INVALID_PATH
+        return Response.json({ error: result.reason, code: 'INVALID_PATH' }, { status: 400 });
+      }
       if (!context.isValidConfigKey(key)) {
         return Response.json({ error: 'Invalid config key' }, { status: 400 });
       }

@@ -21,6 +21,18 @@ import { GoodVibesSdkError } from '../../errors/index.js';
 export const DEFAULT_MESSAGES_PER_MINUTE_PER_CLIENT = 30;
 export const DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION = 10;
 
+/**
+ * Read the per-session threshold override from the environment.
+ * GOODVIBES_CHAT_LIMITER_THRESHOLD=<int> overrides the per-session limit.
+ * Returns undefined when unset or not a positive integer.
+ */
+export function readThresholdFromEnv(env: NodeJS.ProcessEnv = process.env): number | undefined {
+  const raw = env['GOODVIBES_CHAT_LIMITER_THRESHOLD'];
+  if (!raw) return undefined;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Bucket state
 // ---------------------------------------------------------------------------
@@ -53,9 +65,11 @@ export class CompanionChatRateLimiter {
   /** sessionId → bucket */
   private readonly sessionBuckets = new Map<string, Bucket>();
 
-  constructor(options: CompanionChatRateLimiterOptions = {}) {
+  constructor(options: CompanionChatRateLimiterOptions = {}, env: NodeJS.ProcessEnv = process.env) {
+    // Precedence: explicit config option > env var > compile-time default
+    const envThreshold = readThresholdFromEnv(env);
     this.perClientLimit = options.perClientLimit ?? DEFAULT_MESSAGES_PER_MINUTE_PER_CLIENT;
-    this.perSessionLimit = options.perSessionLimit ?? DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION;
+    this.perSessionLimit = options.perSessionLimit ?? envThreshold ?? DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION;
     this.windowMs = options.windowMs ?? 60_000;
   }
 

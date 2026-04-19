@@ -30,6 +30,7 @@ import type { DeliveryEvent } from './deliveries.js';
 import type { WatcherEvent } from './watchers.js';
 import type { SurfaceEvent } from './surfaces.js';
 import type { KnowledgeEvent } from './knowledge.js';
+import type { WorkspaceEvent } from './workspace.js';
 
 /** Union of all runtime domain events. */
 export type AnyRuntimeEvent =
@@ -58,7 +59,8 @@ export type AnyRuntimeEvent =
   | DeliveryEvent
   | WatcherEvent
   | SurfaceEvent
-  | KnowledgeEvent;
+  | KnowledgeEvent
+  | WorkspaceEvent;
 
 /**
  * Utility type that maps an event type discriminant to its full event shape.
@@ -106,6 +108,7 @@ export const RUNTIME_EVENT_DOMAINS = [
   'watchers',
   'surfaces',
   'knowledge',
+  'workspace',
 ] as const;
 
 /**
@@ -145,6 +148,7 @@ export type DomainEventMap = {
   watchers: WatcherEvent;
   surfaces: SurfaceEvent;
   knowledge: KnowledgeEvent;
+  workspace: WorkspaceEvent;
 };
 
 /**

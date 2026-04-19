@@ -16,6 +16,7 @@ export type {
   PlatformServiceManagerLike,
   RouteBindingManagerLike,
   WatcherRegistryLike,
+  WorkspaceSwapManagerLike,
 } from '../../../daemon.js';
 
 export interface IntegrationApprovalSnapshotSourceLike {

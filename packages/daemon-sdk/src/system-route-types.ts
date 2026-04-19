@@ -133,6 +133,15 @@ export interface ApprovalBrokerLike {
   ): Promise<unknown | null>;
 }
 
+export interface WorkspaceSwapManagerLike {
+  getCurrentWorkingDir(): string;
+  requestSwap(newWorkingDir: string): Promise<
+    | { ok: true; previous: string; current: string }
+    | { ok: false; code: 'WORKSPACE_BUSY'; reason: string; retryAfter: number }
+    | { ok: false; code: 'INVALID_PATH'; reason: string }
+  >;
+}
+
 export interface DaemonSystemRouteContext {
   readonly approvalBroker: ApprovalBrokerLike;
   readonly configManager: ConfigManagerLike;
@@ -152,5 +161,7 @@ export interface DaemonSystemRouteContext {
   readonly requireAdmin: (req: Request) => Response | null;
   readonly requireAuthenticatedSession: (req: Request) => { username: string; roles: readonly string[] } | null;
   readonly routeBindings: RouteBindingManagerLike;
+  /** Manages runtime.workingDir swaps. Null when workspace swapping is not available. */
+  readonly swapManager: WorkspaceSwapManagerLike | null;
   readonly watcherRegistry: WatcherRegistryLike;
 }

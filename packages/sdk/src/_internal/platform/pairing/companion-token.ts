@@ -35,11 +35,21 @@ function generatePeerId(): string {
 }
 
 /**
- * Shared workspace-level token store, used across all daemon postures (TUI-embedded
- * and standalone). Supersedes the legacy per-surface paths. Companion apps can pair
- * once and connect regardless of which daemon posture is active.
+ * Resolve the token store path.
+ *
+ * Resolution order (first match wins):
+ *   1. daemonHomeDir — daemon-identity-scoped path (0.21.19+, recommended)
+ *   2. basePath — workspace-scoped path (0.21.17–0.21.18 layout, legacy fallback)
+ *   3. process.cwd() — absolute fallback
+ *
+ * Storing tokens under daemonHomeDir means workspace swaps never invalidate
+ * paired companions — a token paired once works regardless of which working
+ * directory the daemon is currently serving.
  */
-function resolveSharedTokenPath(basePath?: string): string {
+function resolveSharedTokenPath(basePath?: string, daemonHomeDir?: string): string {
+  if (daemonHomeDir) {
+    return join(daemonHomeDir, 'operator-tokens.json');
+  }
   const base = basePath ?? process.cwd();
   return join(base, '.goodvibes', 'operator-tokens.json');
 }
@@ -52,8 +62,8 @@ function resolveSharedTokenPath(basePath?: string): string {
  *
  * @deprecated `surface` parameter is ignored; use {@link resolveSharedTokenPath} directly.
  */
-function resolveTokenPath(_surface: string, basePath?: string): string {
-  return resolveSharedTokenPath(basePath);
+function resolveTokenPath(_surface: string, basePath?: string, daemonHomeDir?: string): string {
+  return resolveSharedTokenPath(basePath, daemonHomeDir);
 }
 
 /**
@@ -61,9 +71,9 @@ function resolveTokenPath(_surface: string, basePath?: string): string {
  */
 export function getOrCreateCompanionToken(
   surface: string,
-  options?: { basePath?: string; regenerate?: boolean },
+  options?: { basePath?: string; daemonHomeDir?: string; regenerate?: boolean },
 ): CompanionPairingResult {
-  const tokenPath = resolveTokenPath(surface, options?.basePath);
+  const tokenPath = resolveTokenPath(surface, options?.basePath, options?.daemonHomeDir);
 
   if (!options?.regenerate && existsSync(tokenPath)) {
     try {
@@ -83,7 +93,7 @@ export function getOrCreateCompanionToken(
     createdAt: Date.now(),
   };
 
-  mkdirSync(join(resolveTokenPath(surface, options?.basePath), '..'), { recursive: true });
+  mkdirSync(join(resolveTokenPath(surface, options?.basePath, options?.daemonHomeDir), '..'), { recursive: true });
   writeFileSync(tokenPath, JSON.stringify(record, null, 2), 'utf-8');
 
   return { token: record.token, peerId: record.peerId, createdAt: record.createdAt };
@@ -94,7 +104,7 @@ export function getOrCreateCompanionToken(
  */
 export function regenerateCompanionToken(
   surface: string,
-  options?: { basePath?: string },
+  options?: { basePath?: string; daemonHomeDir?: string },
 ): CompanionPairingResult {
   return getOrCreateCompanionToken(surface, { ...options, regenerate: true });
 }
