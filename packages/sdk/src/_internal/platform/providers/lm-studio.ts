@@ -69,6 +69,10 @@ export class LMStudioProvider implements LLMProvider {
     this.fallbackProvider = opts.fallbackProvider ?? new OpenAICompatProvider(opts);
   }
 
+  isConfigured(): boolean {
+    return this.fallbackProvider.isConfigured?.() ?? true;
+  }
+
   async chat(params: ChatRequest): Promise<ChatResponse> {
     return withRetry(async () => {
       const model = params.model || this.defaultModel;

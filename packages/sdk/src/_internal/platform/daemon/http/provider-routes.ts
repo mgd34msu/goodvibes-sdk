@@ -329,12 +329,14 @@ async function handlePatchCurrentModel(
   const configuredIds = new Set(providerRegistry.getConfiguredProviderIds());
   if (!configuredIds.has(modelDef.provider)) {
     const envVars = (BUILTIN_PROVIDER_ENV_KEYS[modelDef.provider] ?? []) as string[];
-    const missingEnvVars = envVars.length > 0 ? envVars : [`<API key for ${modelDef.provider}>`];
+    const errorMessage = envVars.length > 0
+      ? `Provider '${modelDef.provider}' not configured: set one of [${envVars.join(', ')}]`
+      : `Provider '${modelDef.provider}' is not configured. Check the provider's configuration (env var, subscription, or network discovery).`;
     return Response.json(
       {
-        error: `Provider '${modelDef.provider}' not configured: set one of [${missingEnvVars.join(', ')}]`,
+        error: errorMessage,
         code: 'PROVIDER_NOT_CONFIGURED',
-        missingEnvVars,
+        missingEnvVars: envVars,
       },
       { status: 409 },
     );

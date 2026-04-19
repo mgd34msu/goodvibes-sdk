@@ -351,6 +351,66 @@ describe('PATCH /api/providers/current', () => {
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /api/providers/current — discovered/anonymous provider (LM Studio bug fix)
+// ---------------------------------------------------------------------------
+
+describe('PATCH /api/providers/current — discovered anonymous provider', () => {
+  test('succeeds for a discovered provider not in BUILTIN_PROVIDER_ENV_KEYS when registry reports it configured', async () => {
+    // Simulate an LM Studio server discovered at 192.168.0.85.
+    // Its provider name won't be in BUILTIN_PROVIDER_ENV_KEYS (no env var).
+    // Fix 2 makes getConfiguredProviderIds() include it because the provider's
+    // isConfigured() returns true (anonymousConfigured: true via Fix 1).
+    const discoveredProviderName = 'LM Studio (192.168.0.85)';
+    const modelId = 'qwen2.5-coder-7b';
+    const m1 = makeModel(discoveredProviderName, modelId);
+    const { context, bus } = makeContext({
+      models: [m1],
+      currentModel: m1,
+      // Fix 2 ensures this list includes the discovered provider name
+      configuredIds: [discoveredProviderName],
+    });
+
+    const req = makeRequest('PATCH', 'http://localhost/api/providers/current', {
+      registryKey: `${discoveredProviderName}:${modelId}`,
+    });
+    const res = await dispatchProviderRoutes(req, context);
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(200);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(body.model).not.toBeNull();
+    expect(typeof body.persisted).toBe('boolean');
+  });
+
+  test('returns 409 PROVIDER_NOT_CONFIGURED with empty missingEnvVars for unknown provider with no env key list', async () => {
+    // When the provider is not configured AND has no entry in BUILTIN_PROVIDER_ENV_KEYS,
+    // Fix 3 ensures missingEnvVars is [] (not a placeholder string) and error is clear.
+    const discoveredProviderName = 'LM Studio (192.168.0.85)';
+    const modelId = 'qwen2.5-coder-7b';
+    const m1 = makeModel(discoveredProviderName, modelId);
+    const { context } = makeContext({
+      models: [m1],
+      currentModel: m1,
+      configuredIds: [], // NOT configured — simulates Fix 2 not yet applied / edge case
+    });
+
+    const req = makeRequest('PATCH', 'http://localhost/api/providers/current', {
+      registryKey: `${discoveredProviderName}:${modelId}`,
+    });
+    const res = await dispatchProviderRoutes(req, context);
+    expect(res!.status).toBe(409);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(body.code).toBe('PROVIDER_NOT_CONFIGURED');
+    // Fix 3: missingEnvVars must be an empty array, NOT a placeholder string
+    expect(Array.isArray(body.missingEnvVars)).toBe(true);
+    expect((body.missingEnvVars as string[]).length).toBe(0);
+    // Fix 3: error message must NOT contain the placeholder pattern
+    const errorMsg = body.error as string;
+    expect(errorMsg).not.toContain('<API key for');
+    expect(errorMsg).toContain(discoveredProviderName);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Turn-time isConfigured guard (facade-composition)
 // ---------------------------------------------------------------------------
 
