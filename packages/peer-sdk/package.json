@@ -1,7 +1,7 @@
 {
   "name": "@pellux/goodvibes-peer-sdk",
   "private": true,
-  "version": "0.21.12",
+  "version": "0.21.13",
   "description": "HTTP client for GoodVibes distributed-runtime peer APIs and work exchange flows.",
   "type": "module",
   "main": "./dist/index.js",

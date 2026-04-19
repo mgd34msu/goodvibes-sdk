@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.13] - 2026-04-19
+
+### Fixed
+- `POST /api/sessions/:id/messages` with `kind: 'message'` (companion main-chat) no longer falls through to `sessionBroker.submitMessage()` after persisting + emitting `COMPANION_MESSAGE_RECEIVED`. The fall-through triggered `buildContinuationTask()` → WRFC engineer-chain spawn, causing companion sends like "Hello" to produce engineer-agent acknowledgement boilerplate ("Update noted", "WRFC chain has passed all gates") instead of a normal chat response. Handler now returns 202 `{ messageId, routedTo: 'conversation', sessionId }` immediately after the runtime-bus emit. The TUI's `COMPANION_MESSAGE_RECEIVED` subscriber (TUI 0.19.8+) delegates to `orchestrator.handleUserInput()` which fires a real LLM turn — same entry point as the TUI input box. Turn `STREAM_DELTA` / `TURN_COMPLETED` events stream to both TUI and companion over the existing SSE.
+- Refreshed stale block-header comment describing the `kind: 'message'` branch behavior.
+
+### Migration
+- Requires TUI ≥ 0.19.8 for the companion-app main-chat flow to produce a response. The SDK-side fix alone prevents the WRFC-engineer-chain misbehavior; the TUI-side wiring converts the persisted companion message into a real LLM turn.
+
 ## [0.21.12] - 2026-04-19
 
 ### Added
