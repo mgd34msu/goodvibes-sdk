@@ -8,7 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
-## [0.21.11] - 2026-04-18
+## [0.21.12] - 2026-04-19
 
 ### Added
 - `kind: 'followup'` accepted at `POST /api/sessions/:id/messages`. Routes through `sessionBroker.followUpMessage()` which always spawns an agent. Full agent event chain streams back to companion SSE subscribers. Intended for the companion app's "shared session → follow-up" flow.
