@@ -31,6 +31,7 @@ const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
   'ops',
   'knowledge',
   'providers',
+  'turn',
 ];
 
 const DEFAULT_SERVER_CONFIG: ControlPlaneServerConfig = {

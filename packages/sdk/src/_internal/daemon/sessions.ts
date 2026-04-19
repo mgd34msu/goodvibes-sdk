@@ -16,6 +16,7 @@ export async function dispatchSessionRoutes(
     | 'postSharedSessionSteer'
     | 'postSharedSessionFollowUp'
     | 'cancelSharedSessionInput'
+    | 'getSharedSessionEvents'
   >,
 ): Promise<Response | null> {
   const url = new URL(req.url);
@@ -52,6 +53,9 @@ export async function dispatchSessionRoutes(
   if (sharedSessionCancelInputMatch && method === 'POST') {
     return handlers.cancelSharedSessionInput(sharedSessionCancelInputMatch[1], sharedSessionCancelInputMatch[2]);
   }
+
+  const sharedSessionEventsMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/events$/);
+  if (sharedSessionEventsMatch && method === 'GET') return handlers.getSharedSessionEvents(sharedSessionEventsMatch[1], req);
 
   return null;
 }

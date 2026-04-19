@@ -197,6 +197,7 @@ export interface DaemonApiRouteHandlers {
   postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
   postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
   cancelSharedSessionInput(sessionId: string, inputId: string): MaybeResponse;
+  getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
   getRuntimeTask(taskId: string): MaybeResponse;
   runtimeTaskAction(taskId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
   getTaskStatus(agentId: string): MaybeResponse;

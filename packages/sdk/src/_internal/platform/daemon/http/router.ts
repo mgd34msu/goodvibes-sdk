@@ -457,6 +457,19 @@ export class DaemonHttpRouter {
             { sessionId, ...envelope },
           );
         },
+        openSessionEventStream: (req, sessionId) => {
+          // Create a session-scoped SSE stream for the companion app to receive
+          // turn events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events.
+          // The 'turn' domain is included in DEFAULT_DOMAINS so turn events
+          // automatically flow to all SSE subscribers without extra configuration.
+          const clientId = `shared-session:${sessionId}`;
+          return this.context.controlPlaneGateway.createEventStream(req, {
+            clientId,
+            clientKind: 'web',
+            sessionId,
+            label: `shared-session/${sessionId}`,
+          });
+        },
       }),
       ...createDaemonRemoteRouteHandlers({
         authToken: this.context.authToken(),
