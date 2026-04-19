@@ -8,6 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.14] - 2026-04-19
+
+### Fixed
+- Updated `message-routing` tests in `test/` to match the corrected `kind: 'message'` behavior from 0.21.13. The previous tests encoded the old (buggy) behavior where `kind: 'message'` fell through to `sessionBroker.submitMessage()` + `bindAgent` (WRFC engineer chain). New tests verify the short-circuit: `appendCompanionMessage` + `publishConversationFollowup` fire, handler returns 202 with `{ routedTo: 'conversation' }`, no submitMessage/bindAgent call.
+- Follow-up to 0.21.13: CI failure for `v0.21.13` was caused by these stale tests, so no npm artifact exists for 0.21.13. `v0.21.13` tag points at the unreleased commit; 0.21.14 supersedes.
+
 ## [0.21.13] - 2026-04-19
 
 ### Fixed
