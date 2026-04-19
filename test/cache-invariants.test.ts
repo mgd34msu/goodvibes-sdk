@@ -286,11 +286,17 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
     // Simulate time passing between events in same tick
     await new Promise<void>((resolve) => setTimeout(resolve, 5));
     gw_any.rememberEvent('last', {});
-    const t1 = Date.now();
 
     await new Promise<void>((resolve) => setImmediate(resolve));
+    // Capture t1 AFTER setImmediate so the upper bound covers both sync
+    // rememberEvent capture and any dispatch-time Date.now() call. Without
+    // this, CI-runner timer jitter can race the assertion and flake.
+    const t1 = Date.now();
 
-    // lastEventAt must be the second event's timestamp, not the first
+    // lastEventAt must be the second event's timestamp, not the first.
+    // The setTimeout(5) proves the 'first' event's timestamp is at least 5ms
+    // older, so if capturedLastEventAt >= t0+5 it cannot be the first event's
+    // timestamp — it is the second's (or later dispatch time, still bounded by t1).
     expect(capturedLastEventAt).toBeGreaterThanOrEqual(t0 + 5);
     expect(capturedLastEventAt).toBeLessThanOrEqual(t1);
   });

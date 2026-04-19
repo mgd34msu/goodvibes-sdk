@@ -100,15 +100,46 @@ function writeRegistryConfig(projectDir) {
   writeFileSync(resolve(projectDir, '.npmrc'), `${lines.join('\n')}\n`);
 }
 
+// Network-aware retry for the install step. npm + bun fetches are prone to
+// transient ECONNRESET / ETIMEDOUT on CI runners; without retry a single
+// network blip fails the release. Code-level errors (parse, missing entry)
+// are NOT retried.
+function retryOnNetworkError(op, label) {
+  const MAX_ATTEMPTS = 3;
+  const BACKOFF_MS = [0, 2000, 5000];
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      if (attempt > 1) {
+        const delay = BACKOFF_MS[attempt - 1] ?? 5000;
+        console.log(`[install-smoke] ${label}: attempt ${attempt}/${MAX_ATTEMPTS} after ${delay}ms backoff`);
+        const wait = Date.now() + delay;
+        while (Date.now() < wait) { /* sync sleep */ }
+      }
+      op();
+      return;
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      const isNetwork = /ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|network|aborted/i.test(msg);
+      if (!isNetwork || attempt === MAX_ATTEMPTS) throw err;
+      console.log(`[install-smoke] ${label}: transient network error detected, retrying. (${msg.slice(0, 200)})`);
+    }
+  }
+  throw lastErr;
+}
+
 function installWithNpm(specs) {
   const projectDir = createSdkTempDir('goodvibes-sdk-npm-smoke-');
   try {
     writeConsumerFiles(projectDir);
-    run('npm', ['install', ...specs], projectDir, {
-      auth: REGISTRY_MODE,
-      registry: REGISTRY,
-      packageName: PUBLIC_PACKAGE_NAME,
-    });
+    retryOnNetworkError(() => {
+      run('npm', ['install', ...specs], projectDir, {
+        auth: REGISTRY_MODE,
+        registry: REGISTRY,
+        packageName: PUBLIC_PACKAGE_NAME,
+      });
+    }, 'npm install');
     run('node', ['check.mjs'], projectDir);
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
@@ -123,11 +154,13 @@ function installWithBun(specs) {
     // by bash-language-server (a dep of the SDK). Without this explicit pin, Bun 1.3.10
     // resolves zod@3.24.2 from that subtree and the dist's `zod/v4` subpath import fails.
     const bunSpecs = [...specs, 'zod@^4'];
-    run('bun', ['add', '--force', '--no-cache', ...bunSpecs], projectDir, {
-      auth: REGISTRY_MODE,
-      registry: REGISTRY,
-      packageName: PUBLIC_PACKAGE_NAME,
-    });
+    retryOnNetworkError(() => {
+      run('bun', ['add', '--force', '--no-cache', ...bunSpecs], projectDir, {
+        auth: REGISTRY_MODE,
+        registry: REGISTRY,
+        packageName: PUBLIC_PACKAGE_NAME,
+      });
+    }, 'bun add');
     run('bun', ['run', 'check.mjs'], projectDir);
   } finally {
     rmSync(projectDir, { recursive: true, force: true });

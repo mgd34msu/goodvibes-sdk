@@ -8,6 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.15] - 2026-04-19
+
+### Fixed
+- De-flaked `I2(d): _syncScheduled coalesces burst of rememberEvent calls > lastEventAt inside setImmediate reflects most recent event, not first` test.
+- Added network-error retry (3 attempts, 0/2s/5s backoff) to `scripts/install-smoke-check.ts` for both npm and bun install steps. CI smoke-check hits transient `ECONNRESET` / `ETIMEDOUT` from the registry under load; prior behavior failed the whole release on a single network blip. The assertion captured `t1 = Date.now()` BEFORE awaiting setImmediate; under CI timer jitter the `lastEventAt` value inside the dispatch callback could land after `t1`, causing the upper-bound assertion to race. Moved `t1` capture to AFTER the setImmediate await so the upper bound covers dispatch-time Date.now() calls. Two consecutive releases (0.21.13 and 0.21.14) failed on this flake; 0.21.15 re-ships the 0.21.14 content (companion main-chat short-circuit + updated tests) with the flake-proof test.
+
 ## [0.21.14] - 2026-04-19
 
 ### Fixed
