@@ -8,6 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.10] - 2026-04-18
+
+### Added
+- `COMPANION_MESSAGE_RECEIVED` session event emitted on the runtime bus when a companion-app follow-up message is received, enabling in-process TUI surfaces to subscribe and render companion messages in the conversation view.
+- `emitCompanionMessageReceived()` typed emitter in `platform/runtime/emitters`.
+
 ## [0.21.9] - 2026-04-18
 
 ### Fixed

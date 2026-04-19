@@ -27,6 +27,7 @@ import type { MultimodalService } from '../../multimodal/index.js';
 import type { IntegrationHelperService } from '../../runtime/integration/helpers.js';
 import type { DomainDispatch, RuntimeStore } from '../../runtime/store/index.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
+import { emitCompanionMessageReceived } from '../../runtime/emitters/session.js';
 import { TelemetryApiService } from '../../runtime/telemetry/api.js';
 import { inspectInboundTls, inspectOutboundTls } from '../../runtime/network/index.js';
 import type { MemoryEmbeddingProviderRegistry, MemoryRegistry } from '../../state/index.js';
@@ -447,6 +448,13 @@ export class DaemonHttpRouter {
             'conversation.followup.companion',
             { sessionId, ...envelope },
             { clientKind: 'tui' },
+          );
+          // Also emit on the runtime bus so the in-process TUI surface can
+          // subscribe and render the companion message in the conversation view.
+          emitCompanionMessageReceived(
+            this.context.runtimeBus,
+            { sessionId, traceId: `companion:${envelope.messageId}`, source: 'companion-followup' },
+            { sessionId, ...envelope },
           );
         },
       }),
