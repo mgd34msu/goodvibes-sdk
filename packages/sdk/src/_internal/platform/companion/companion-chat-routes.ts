@@ -142,8 +142,16 @@ async function handlePostMessage(
   if (bodyOrResponse instanceof Response) return bodyOrResponse;
 
   const body = bodyOrResponse as Record<string, unknown>;
+  // F13: accept both 'body' and 'content' field names; prefer 'body' if both are present
+  // (shared-session canonical uses 'body'; companion-chat clients may send 'content').
+  const rawContent =
+    typeof body['body'] === 'string'
+      ? body['body']
+      : typeof body['content'] === 'string'
+        ? body['content']
+        : '';
   const input: PostCompanionChatMessageInput = {
-    content: typeof body['content'] === 'string' ? body['content'] : '',
+    content: rawContent,
     metadata: typeof body['metadata'] === 'object' && body['metadata'] !== null
       ? (body['metadata'] as Record<string, unknown>)
       : undefined,
@@ -151,7 +159,7 @@ async function handlePostMessage(
 
   if (!input.content.trim()) {
     return Response.json(
-      { error: 'content is required and must be a non-empty string', code: 'INVALID_INPUT' },
+      { error: 'content or body is required and must be a non-empty string', code: 'INVALID_INPUT' },
       { status: 400 },
     );
   }

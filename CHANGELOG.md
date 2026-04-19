@@ -8,6 +8,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.19] - 2026-04-19
+
+### Added
+- **Section 1 — Daemon-home / working-dir split**: Introduced `daemonHomeDir` concept (resolved from `--daemon-home=<path>` CLI arg → `GOODVIBES_DAEMON_HOME` env → `~/.goodvibes/daemon/` default). Identity files (`auth-users.json`, `auth-bootstrap.txt`, `daemon-settings.json`, `operator-tokens.json`) now live under daemon home rather than the workspace.
+- **WorkspaceSwapManager**: New class managing `runtime.workingDir` transitions at runtime. Swap procedure: emit `WORKSPACE_SWAP_STARTED` → check busy sessions → mkdir subdirs → rerootStores → update state → persist to `daemon-settings.json` → emit `WORKSPACE_SWAP_COMPLETED`. Refused with `WORKSPACE_BUSY` (HTTP 409, `retryAfter: 5`) when any session has `pendingInputCount > 0`.
+- **`POST /config {key:"runtime.workingDir"}`**: Now delegates to `WorkspaceSwapManager.requestSwap()` instead of the generic config-set path. Returns 200 on success, 409 `WORKSPACE_BUSY`, or 400 `INVALID_PATH`.
+- **`WorkspaceSwapManagerLike`** interface added to `DaemonSystemRouteContext` as an optional (nullable) field `swapManager`. Exported from `@pellux/goodvibes-daemon-sdk`.
+- **Workspace swap events** (`WORKSPACE_SWAP_STARTED`, `WORKSPACE_SWAP_COMPLETED`, `WORKSPACE_SWAP_REFUSED`) registered under the new `'workspace'` domain in the `RuntimeEventBus` domain map.
+- **One-time migration**: On first startup with a new daemon home, `runDaemonHomeMigration()` copies identity files from old workspace paths (non-destructive; originals left intact).
+- **`runtime.workingDir` persistence**: `WorkspaceSwapManager` writes the new path to `<daemonHomeDir>/daemon-settings.json` on each successful swap; `resolveDaemonCliOwnership()` reads this at startup so the last-used working directory is remembered across restarts.
+- **`--daemon-home` and `--working-dir` CLI flags**: Parsed by the shared `parseCliFlag()` helper in `cli.ts`. `--working-dir` resolution order: flag → `GOODVIBES_WORKING_DIR` env → persisted daemon setting → `process.cwd()`.
+- **F15 — `GOODVIBES_CHAT_LIMITER_THRESHOLD` env var**: Overrides the per-session rate limit in `CompanionChatRateLimiter`. Precedence: `DaemonConfig.companionChatRateLimiterOptions.threshold` > env var > compile-time default (10). New exported helper `readThresholdFromEnv()` for testability.
+- **`DaemonConfig` additions**: `daemonHomeDir?: string` and `companionChatRateLimiterOptions?: { threshold?: number }` fields.
+
+### Fixed
+- **F3 revision — operator tokens follow daemon home**: `resolveSharedTokenPath()` in `companion-token.ts` now accepts a `daemonHomeDir` option (first priority). Workspace swaps no longer invalidate paired companion tokens; the token store stays in daemon home regardless of which workspace is active.
+- **F13 — Content/body field normalization**:
+  - `POST /api/companion/chat/sessions/:id/messages`: Now accepts both `body.body` and `body.content` (prefers `body` when both are present). Previously only read `body.content`.
+  - `POST /api/sessions/:id/messages`: Now accepts `body.body` (canonical), `body.content` (F13 alias), `body.message`, and `body.text` (legacy fallbacks). Previously only read `body.body`, `body.message`, `body.text`.
+  - Both endpoints return HTTP 400 when neither field is present.
+
+### Migration
+- **Daemon home migration is automatic and non-destructive**: On first 0.21.19 startup, identity files are copied from old paths to `<daemonHomeDir>/`. Original files are left in place. No manual steps required.
+- **`DaemonSystemRouteContext` interface change**: `swapManager: WorkspaceSwapManagerLike | null` is a new required field. Callers constructing a `DaemonSystemRouteContext` object must add `swapManager: null` if workspace swapping is not needed, or wire a real `WorkspaceSwapManager` instance.
+
 ## [0.21.18] - 2026-04-19
 
 ### Fixed

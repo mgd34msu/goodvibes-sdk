@@ -36,6 +36,13 @@ export interface DaemonConfig {
   host?: string;
   workingDir?: string;
   homeDirectory?: string;
+  /**
+   * Absolute path to the daemon home directory (`daemon.homeDir`).
+   * Resolved from --daemon-home CLI flag, GOODVIBES_DAEMON_HOME env, or
+   * ~/.goodvibes/daemon/ default. Holds immutable-after-startup identity state:
+   * auth-users.json, auth-bootstrap.txt, daemon-settings.json, operator-tokens.json.
+   */
+  daemonHomeDir?: string;
   configManager?: ConfigManager;
   githubWebhookSecret?: string;
   agentManager?: AgentManager;
@@ -43,6 +50,11 @@ export interface DaemonConfig {
   userAuth?: UserAuthManager;
   runtimeBus?: RuntimeEventBus | null;
   runtimeServices?: RuntimeServices;
+  /**
+   * Override companion-chat rate-limiter thresholds from daemon config.
+   * Takes precedence over GOODVIBES_CHAT_LIMITER_THRESHOLD env var.
+   */
+  companionChatRateLimiterOptions?: { threshold?: number };
 }
 
 export interface DaemonDangerConfig {
