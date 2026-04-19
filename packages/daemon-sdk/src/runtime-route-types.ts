@@ -218,10 +218,16 @@ export interface DaemonRuntimeRouteContext {
   } | null;
   /**
    * Publish a conversation follow-up event scoped to a specific session.
-   * Used by Problem-2 message routing: kind='message' submits skip agent spawn
-   * and instead broadcast a ConversationMessageEnvelope to TUI surface subscribers.
+   * Used by kind='message' routing to broadcast a ConversationMessageEnvelope
+   * to TUI surface subscribers so the operator can see the companion message.
    */
   readonly publishConversationFollowup: (sessionId: string, envelope: Omit<ConversationMessageEnvelope, 'sessionId'>) => void;
+  /**
+   * Open a session-scoped SSE event stream for the companion app.
+   * Streams turn events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events
+   * for the given shared session back to the caller over SSE.
+   */
+  readonly openSessionEventStream: (req: Request, sessionId: string) => Response;
 }
 
 export type DaemonRuntimeRouteHandlerMap = Pick<
@@ -251,6 +257,7 @@ export type DaemonRuntimeRouteHandlerMap = Pick<
   | 'getRuntimeTask'
   | 'runtimeTaskAction'
   | 'getTaskStatus'
+  | 'getSharedSessionEvents'
   | 'getSchedules'
   | 'postSchedule'
   | 'deleteSchedule'

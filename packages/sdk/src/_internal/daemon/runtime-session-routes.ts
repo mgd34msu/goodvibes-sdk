@@ -11,7 +11,8 @@ import type {
 
 type SharedSessionSubmission = Awaited<ReturnType<DaemonRuntimeRouteContext['sessionBroker']['submitMessage']>>;
 type SharedSessionSteerSubmission = Awaited<ReturnType<DaemonRuntimeRouteContext['sessionBroker']['steerMessage']>>;
-type SessionSubmission = SharedSessionSubmission | SharedSessionSteerSubmission;
+type SharedSessionFollowUpSubmission = Awaited<ReturnType<DaemonRuntimeRouteContext['sessionBroker']['followUpMessage']>>;
+type SessionSubmission = SharedSessionSubmission | SharedSessionSteerSubmission | SharedSessionFollowUpSubmission;
 
 export function createDaemonRuntimeSessionRouteHandlers(
   context: DaemonRuntimeRouteContext,
@@ -31,6 +32,7 @@ export function createDaemonRuntimeSessionRouteHandlers(
   | 'getRuntimeTask'
   | 'runtimeTaskAction'
   | 'getTaskStatus'
+  | 'getSharedSessionEvents'
 > {
   return {
     createSharedSession: async (request) => handleCreateSharedSession(context, request),
@@ -47,6 +49,7 @@ export function createDaemonRuntimeSessionRouteHandlers(
     getRuntimeTask: (taskId) => handleGetRuntimeTask(context, taskId),
     runtimeTaskAction: (taskId, action, request) => handleRuntimeTaskAction(context, taskId, action, request),
     getTaskStatus: (agentId) => handleGetTaskStatus(context, agentId),
+    getSharedSessionEvents: (sessionId, request) => handleGetSharedSessionEvents(context, sessionId, request),
   };
 }
 
@@ -246,11 +249,11 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
 
-  // Validate kind field — only 'task' (default) and 'message' are accepted
+  // Validate kind field — 'task' (default), 'message', and 'followup' are accepted
   const kind = body.kind === undefined ? 'task' : body.kind;
-  if (kind !== 'task' && kind !== 'message') {
+  if (kind !== 'task' && kind !== 'message' && kind !== 'followup') {
     return Response.json(
-      { error: `Invalid kind '${String(kind)}'. Accepted values: 'task' | 'message'`, code: 'INVALID_KIND' },
+      { error: `Invalid kind '${String(kind)}'. Accepted values: 'task' | 'message' | 'followup'`, code: 'INVALID_KIND' },
       { status: 400 },
     );
   }
@@ -260,9 +263,42 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
     return Response.json({ error: 'Missing shared session message body' }, { status: 400 });
   }
 
-  // Problem 2: kind='message' — route as companion follow-up, never spawn an agent
+  // kind='followup' — always queues/spawns a follow-up turn via followUpMessage()
+  if (kind === 'followup') {
+    const followUpSubmission = await context.sessionBroker.followUpMessage(buildSharedSessionMessageInput(sessionId, body, message));
+    return await respondToSessionSubmission(context, req, followUpSubmission, message, `/api/sessions/${sessionId}/messages`, 'DaemonServer.handlePostSharedSessionMessage.followup', {
+      context: `shared-session:${followUpSubmission.session.id}`,
+    });
+  }
+
+  // kind='message' — route like TUI input: call submitMessage(), allow agent to spawn or queue
+  // based on session state, stream turn events back to both TUI and companion over SSE.
+  // Note: also appends the companion message to the session log before submitting.
   if (kind === 'message') {
-    return handleCompanionMessageRouting(context, sessionId, message, body, req);
+    const session = context.sessionBroker.getSession(sessionId);
+    if (!session) {
+      return Response.json({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
+    }
+    if (session.status === 'closed') {
+      return Response.json({ error: 'Session is closed', code: 'SESSION_CLOSED' }, { status: 409 });
+    }
+    const messageId = randomUUID();
+    const timestamp = Date.now();
+    // Persist the companion message to the session log so GET /api/sessions/:id/messages
+    // returns it and the TUI can render it.
+    await context.sessionBroker.appendCompanionMessage(sessionId, {
+      messageId,
+      body: message,
+      source: 'companion-followup',
+      timestamp,
+    });
+    // Also notify the TUI's in-process subscriber via the conversation follow-up event.
+    context.publishConversationFollowup(sessionId, {
+      messageId,
+      body: message,
+      source: 'companion-followup',
+      timestamp,
+    });
   }
 
   const submission = await context.sessionBroker.submitMessage(buildSharedSessionMessageInput(sessionId, body, message));
@@ -273,57 +309,21 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
 }
 
 /**
- * Problem 2: companion message routing.
- *
- * A companion follow-up message is injected directly into the operator's
- * live conversation context via the control-plane event bus. No agent is
- * spawned; the TUI operator decides whether to respond.
- *
- * The message is routed as a control-plane event to the operator's live
- * conversation; no input record is created and no agent is spawned.
- * A `conversation.followup.companion` event is published scoped to the target
- * session's TUI-surface subscribers, carrying a ConversationMessageEnvelope.
+ * Handle GET /api/sessions/:id/events — creates a session-scoped SSE stream
+ * for the companion app to receive turn events (STREAM_DELTA, TURN_COMPLETED,
+ * etc.) and agent events from the shared session.
  */
-async function handleCompanionMessageRouting(
+async function handleGetSharedSessionEvents(
   context: DaemonRuntimeRouteContext,
   sessionId: string,
-  messageText: string,
-  _body: JsonBody,
   req: Request,
 ): Promise<Response> {
+  await context.sessionBroker.start();
   const session = context.sessionBroker.getSession(sessionId);
   if (!session) {
     return Response.json({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
   }
-  if (session.status === 'closed') {
-    return Response.json({ error: 'Session is closed', code: 'SESSION_CLOSED' }, { status: 409 });
-  }
-
-  const messageId = randomUUID();
-  const timestamp = Date.now();
-
-  // Persist the companion message to the shared session log BEFORE publishing the event.
-  // This ensures GET /api/sessions/:id/messages returns the message and the TUI can render it.
-  await context.sessionBroker.appendCompanionMessage(sessionId, {
-    messageId,
-    body: messageText,
-    source: 'companion-followup',
-    timestamp,
-  });
-
-  // Publish the follow-up event scoped to this session's TUI surface subscriber
-  context.publishConversationFollowup(sessionId, {
-    messageId,
-    body: messageText,
-    source: 'companion-followup',
-    timestamp,
-  });
-
-  return context.recordApiResponse(
-    req,
-    `/api/sessions/${sessionId}/messages`,
-    Response.json({ messageId, routedTo: 'conversation' }, { status: 202 }),
-  );
+  return context.openSessionEventStream(req, sessionId);
 }
 
 async function handlePostSharedSessionSteer(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {

@@ -31,6 +31,7 @@ export function createDaemonRuntimeRouteHandlers(
   | 'postSharedSessionSteer'
   | 'postSharedSessionFollowUp'
   | 'cancelSharedSessionInput'
+  | 'getSharedSessionEvents'
   | 'getRuntimeTask'
   | 'runtimeTaskAction'
   | 'getTaskStatus'

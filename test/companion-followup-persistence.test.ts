@@ -183,6 +183,7 @@ function makeContext(opts: {
     publishConversationFollowup: (sessionId, envelope) => {
       followupEvents.push({ sessionId, envelope } as FollowupEvent);
     },
+    openSessionEventStream: (_req, _sessionId) => new Response('stream', { status: 200 }),
   } as unknown as DaemonRuntimeRouteContext;
 }
 
@@ -296,7 +297,11 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     expect(callOrder).toEqual(['append', 'event']);
   });
 
-  test('response messageId matches the persisted messageId', async () => {
+  test('appendCompanionMessage and event use the same messageId (consistency)', async () => {
+    // kind='message' now routes through submitMessage() instead of returning
+    // a standalone {messageId, routedTo} response. Verify that the messageId
+    // used in persistence (appendCompanionMessage) and in the followup event
+    // are identical — the invariant that matters for the companion app.
     const ctx = makeContext({ sessions, appendCalls, followupEvents, persistedMessages });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
     const req = makeRequest('POST', `http://localhost/api/sessions/${sessionId}/messages`, {
@@ -304,11 +309,12 @@ describe('companion-followup-persistence: kind=message persists before emitting'
       kind: 'message',
     });
     const res = await handlers.postSharedSessionMessage(sessionId, req);
-    const body = await res.json() as { messageId: string; routedTo: string };
+    expect(res.status).toBe(202);
 
-    expect(body.routedTo).toBe('conversation');
-    expect(body.messageId).toBe(appendCalls[0].input.messageId);
-    expect(body.messageId).toBe(followupEvents[0].envelope.messageId);
+    // Both persistence call and event must use the same generated messageId
+    expect(appendCalls).toHaveLength(1);
+    expect(followupEvents).toHaveLength(1);
+    expect(appendCalls[0].input.messageId).toBe(followupEvents[0].envelope.messageId);
   });
 
   test('returns 404 for unknown session — no persistence attempted', async () => {
