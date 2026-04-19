@@ -1,4 +1,4 @@
-import { ConfigurationError } from './_internal/errors/index.js';
+import { ConfigurationError, GoodVibesSdkError } from './_internal/errors/index.js';
 import {
   createOperatorSdk,
   type OperatorSdk,
@@ -413,7 +413,7 @@ export function createGoodVibesSdk(
       const transportProxy = {
         requestJson<T>(url: string, opts?: unknown): Promise<T> {
           const rj = getRequestJson();
-          if (!rj) throw new Error('Auto-refresh: transport not yet initialised');
+          if (!rj) throw new GoodVibesSdkError('Auto-refresh: transport not yet initialised', { category: 'internal', source: 'runtime', recoverable: false });
           return rj(url, opts) as Promise<T>;
         },
       };

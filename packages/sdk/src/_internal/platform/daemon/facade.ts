@@ -724,6 +724,26 @@ export class DaemonServer {
     } catch (err) {
       const message = summarizeError(err);
       logger.error(`${logLabel}: agent spawn failed`, { error: message });
+      // Capacity-reached is backpressure, not a server error — return 429 so
+      // clients can apply the Retry-After hint and SDK retry policy handles it.
+      const isCapacity = typeof message === 'string' && message.includes('capacity reached');
+      if (isCapacity) {
+        return Response.json(
+          {
+            code: 'CAPACITY_EXCEEDED',
+            error: message,
+            category: 'service',
+            source: 'runtime',
+            recoverable: true,
+            hint: 'Wait for the current agent to complete or raise the orchestration.maxActiveAgents configuration.',
+            status: 429,
+          },
+          {
+            status: 429,
+            headers: { 'Retry-After': '5' },
+          },
+        );
+      }
       return jsonErrorResponse(err, { status: 500, fallbackMessage: 'Failed to spawn agent' });
     }
   }

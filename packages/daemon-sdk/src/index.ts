@@ -5,6 +5,7 @@ export { dispatchTaskRoutes } from './tasks.js';
 export { dispatchOperatorRoutes } from './operator.js';
 export { dispatchRemoteRoutes } from './remote.js';
 export { dispatchDaemonApiRoutes } from './api-router.js';
+export type { DaemonApiRouteExtension } from './api-router.js';
 export {
   buildMissingScopeBody,
   resolveAuthenticatedPrincipal,

@@ -35,12 +35,25 @@ function generatePeerId(): string {
 }
 
 /**
- * Resolve the path to the companion token file for a given surface.
- * Stored at `.goodvibes/<surface>/companion-token.json` relative to cwd.
+ * Shared workspace-level token store, used across all daemon postures (TUI-embedded
+ * and standalone). Supersedes the legacy per-surface paths. Companion apps can pair
+ * once and connect regardless of which daemon posture is active.
  */
-function resolveTokenPath(surface: string, basePath?: string): string {
+function resolveSharedTokenPath(basePath?: string): string {
   const base = basePath ?? process.cwd();
-  return join(base, '.goodvibes', surface, 'companion-token.json');
+  return join(base, '.goodvibes', 'operator-tokens.json');
+}
+
+/**
+ * Resolve the path to the companion token file.
+ *
+ * Always resolves to the shared workspace-level path regardless of surface,
+ * so that tokens are portable across TUI-embedded and standalone daemon postures.
+ *
+ * @deprecated `surface` parameter is ignored; use {@link resolveSharedTokenPath} directly.
+ */
+function resolveTokenPath(_surface: string, basePath?: string): string {
+  return resolveSharedTokenPath(basePath);
 }
 
 /**

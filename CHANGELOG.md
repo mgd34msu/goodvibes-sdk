@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.17] - 2026-04-19
+
+### Added
+- `DaemonApiRouteExtension` type exported from `@pellux/goodvibes-daemon-sdk`. Callers of `dispatchDaemonApiRoutes` may now pass an optional third argument `extensions?: readonly DaemonApiRouteExtension[]`. Each extension is tried in order after the core route set; the first non-null result wins. This closes the route-parity gap between the TUI-embedded and standalone daemon postures: standalone operators can wire companion-chat and provider routes by passing their own dispatchers without modifying core SDK files (F1).
+- Companion token store path changed from per-surface `.goodvibes/<surface>/companion-token.json` to shared workspace path `.goodvibes/operator-tokens.json`. Tokens are now portable across TUI-embedded and standalone daemon postures — pair once, connect from either (F3).
+
+### Fixed
+- **F6**: `POST /api/orchestration/agents` now returns HTTP 429 with `Retry-After: 5` and `code: CAPACITY_EXCEEDED` when agent capacity is exhausted. Previously returned 500, which clients could not distinguish from a genuine server error.
+- **F8**: `POST /api/voice/tts`, `POST /api/voice/stt`, and `POST /api/voice/realtime/session` now return HTTP 409 with `code: PROVIDER_NOT_CONFIGURED` when no voice provider is configured. Previously returned 404, which incorrectly implied the route does not exist.
+- **F9**: `POST /api/schedules` (and `POST /api/automation/jobs`) now correctly reads the cron expression from the nested `schedule.expression` field when the standard `automation.jobs.create` contract format is used. Previously only read `body.cron`, so the nested format always failed with "schedule.expression must not be empty" even when the expression was non-empty.
+- **F10**: Raw `throw new Error(...)` in `client.ts` auto-refresh path replaced with `throw new GoodVibesSdkError(...)` with `category: 'internal'`, `source: 'runtime'`, `recoverable: false`. Callers can now catch and narrow with `instanceof GoodVibesSdkError` rather than checking for `Error` and string-matching messages.
+
+### Design Decisions
+- **OTLP ingest (F7)**: The daemon telemetry API exposes consumer-pull OTLP GET endpoints only (`/api/telemetry/otlp/traces`, `/logs`, `/metrics`). These export recorded telemetry to external collectors. POST ingest endpoints for OTLP push-over-HTTP are not added; the daemon is a producer, not a collector. External OTLP collectors should be configured to receive push from the daemon if push delivery is required.
+
 ## [0.21.16] - 2026-04-19
 
 ### Fixed

@@ -54,7 +54,9 @@ async function handlePostSchedule(context: DaemonRuntimeRouteContext, req: Reque
   if (body instanceof Response) return body;
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : undefined;
   const kind = typeof body.kind === 'string' ? body.kind : 'cron';
-  const cron = typeof body.cron === 'string' ? body.cron : undefined;
+  const scheduleObj = typeof body.schedule === 'object' && body.schedule !== null ? body.schedule as Record<string, unknown> : null;
+  const cronExpression = typeof body.cron === 'string' ? body.cron : typeof scheduleObj?.expression === 'string' ? scheduleObj.expression : undefined;
+  const cron = cronExpression;
   const every = typeof body.every === 'string' ? body.every : undefined;
   const at = typeof body.at === 'string' || typeof body.at === 'number' ? body.at : undefined;
   const timezone = typeof body.timezone === 'string' ? body.timezone : undefined;
