@@ -271,9 +271,12 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
     });
   }
 
-  // kind='message' — route like TUI input: call submitMessage(), allow agent to spawn or queue
-  // based on session state, stream turn events back to both TUI and companion over SSE.
-  // Note: also appends the companion message to the session log before submitting.
+  // kind='message' — companion main-chat send. Persist + publish COMPANION_MESSAGE_RECEIVED
+  // on the runtime bus; TUI's bootstrap-core subscriber delegates to
+  // orchestrator.handleUserInput() which fires a real LLM turn (same entry as TUI input
+  // box). Turn events stream to both TUI and companion over SSE automatically.
+  // Deliberately short-circuits BEFORE sessionBroker.submitMessage() to avoid the
+  // buildContinuationTask WRFC engineer-chain spawn path.
   if (kind === 'message') {
     const session = context.sessionBroker.getSession(sessionId);
     if (!session) {
@@ -299,6 +302,18 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
       source: 'companion-followup',
       timestamp,
     });
+    // Return immediately. appendCompanionMessage persists the message and
+    // publishConversationFollowup emits COMPANION_MESSAGE_RECEIVED on the runtime bus.
+    // The TUI's bootstrap-core.ts COMPANION_MESSAGE_RECEIVED subscriber delegates to
+    // orchestrator.handleUserInput(), which adds the user message to the conversation
+    // view and fires a real LLM turn whose events stream to both TUI and companion SSE.
+    // The { routedTo: 'conversation' } shape signals the companion app that the message
+    // was received and persisted (isConversationRouteResult check).
+    return context.recordApiResponse(req, `/api/sessions/${sessionId}/messages`, Response.json({
+      messageId,
+      routedTo: 'conversation',
+      sessionId,
+    }, { status: 202 }));
   }
 
   const submission = await context.sessionBroker.submitMessage(buildSharedSessionMessageInput(sessionId, body, message));
