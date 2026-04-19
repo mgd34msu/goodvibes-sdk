@@ -49,10 +49,12 @@ function makeContext(opts: {
   sessions?: Map<string, MockSessionRecord>;
   bindAgentCallCount?: { value: number };
   followupEvents?: FollowupPayload[];
+  appendCompanionCallCount?: { value: number };
 }): DaemonRuntimeRouteContext {
   const sessions = opts.sessions ?? new Map<string, MockSessionRecord>();
   const bindAgentCallCount = opts.bindAgentCallCount ?? { value: 0 };
   const followupEvents = opts.followupEvents ?? [];
+  const appendCompanionCallCount = opts.appendCompanionCallCount ?? { value: 0 };
 
   return {
     parseJsonBody: async (req) => {
@@ -140,7 +142,7 @@ function makeContext(opts: {
       reopenSession: async (sessionId) => sessions.get(sessionId) ?? null,
       cancelInput: async () => null,
       completeAgent: async () => {},
-      appendCompanionMessage: async () => null,
+      appendCompanionMessage: async () => { appendCompanionCallCount.value += 1; return null; },
     },
     agentManager: {
       getStatus: () => null,
@@ -233,10 +235,11 @@ describe('message routing: kind=task (default) preserves existing behavior', () 
   });
 });
 
-describe('message routing: kind=message routes through submitMessage (TUI-equivalent flow)', () => {
+describe('message routing: kind=message persists and emits runtime bus event (no submitMessage fall-through)', () => {
   let sessionId: string;
   let sessions: Map<string, MockSessionRecord>;
   let bindAgentCallCount: { value: number };
+  let appendCompanionCallCount: { value: number };
   let followupEvents: FollowupPayload[];
   let ctx: DaemonRuntimeRouteContext;
 
@@ -244,11 +247,12 @@ describe('message routing: kind=message routes through submitMessage (TUI-equiva
     sessionId = randomUUID();
     sessions = new Map([[sessionId, { id: sessionId, status: 'active', messageCount: 0 }]]);
     bindAgentCallCount = { value: 0 };
+    appendCompanionCallCount = { value: 0 };
     followupEvents = [];
-    ctx = makeContext({ sessions, bindAgentCallCount, followupEvents });
+    ctx = makeContext({ sessions, bindAgentCallCount, followupEvents, appendCompanionCallCount });
   });
 
-  test('calls bindAgent (routes through submitMessage like TUI input)', async () => {
+  test('does NOT call bindAgent or submitMessage (short-circuits before spawn path)', async () => {
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
     const req = makeRequest(
       'POST',
@@ -257,12 +261,15 @@ describe('message routing: kind=message routes through submitMessage (TUI-equiva
     );
     const res = await handlers.postSharedSessionMessage(sessionId, req);
     expect(res.status).toBe(202);
-    // kind='message' now goes through submitMessage -> respondToSessionSubmission
-    // which spawns an agent (mode='spawn') and calls bindAgent
-    expect(bindAgentCallCount.value).toBe(1);
+    // kind='message' short-circuits BEFORE submitMessage — no bindAgent spawn
+    expect(bindAgentCallCount.value).toBe(0);
+    // appendCompanionMessage must be called to persist the message
+    expect(appendCompanionCallCount.value).toBe(1);
+    // publishConversationFollowup must fire to emit COMPANION_MESSAGE_RECEIVED
+    expect(followupEvents).toHaveLength(1);
   });
 
-  test('returns 202 with session/input/mode response shape', async () => {
+  test('returns 202 with { messageId, routedTo: conversation, sessionId } response shape', async () => {
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
     const req = makeRequest(
       'POST',
@@ -271,9 +278,12 @@ describe('message routing: kind=message routes through submitMessage (TUI-equiva
     );
     const res = await handlers.postSharedSessionMessage(sessionId, req);
     expect(res.status).toBe(202);
-    const body = await res.json() as { session: { id: string }; mode: string; agentId: string };
-    expect(body.session.id).toBe(sessionId);
-    expect(typeof body.mode).toBe('string');
+    const body = await res.json() as { messageId: string; routedTo: string; sessionId: string };
+    // Short-circuit response: no session/mode/agentId — just messageId, routedTo, sessionId
+    expect(typeof body.messageId).toBe('string');
+    expect(body.messageId.length).toBeGreaterThan(0);
+    expect(body.routedTo).toBe('conversation');
+    expect(body.sessionId).toBe(sessionId);
   });
 
   test('emits conversation.followup.companion event', async () => {
