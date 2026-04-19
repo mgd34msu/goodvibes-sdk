@@ -16,6 +16,29 @@ import type {
 
 type JsonBody = Record<string, unknown>;
 
+function readErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
+    return (error as { message: string }).message;
+  }
+  return 'Unknown error';
+}
+
+function isProviderNotConfiguredError(error: unknown): boolean {
+  const msg = readErrorMessage(error).toLowerCase();
+  return (
+    msg.includes('not configured')
+    || msg.includes('no provider')
+    || msg.includes('api key')
+    || msg.includes('api_key')
+    || msg.includes('missing key')
+    || msg.includes('no api')
+    || msg.includes('provider not')
+    || msg.includes('unconfigured')
+  );
+}
+
 export function createDaemonMediaRouteHandlers(
   context: DaemonMediaRouteContext,
 ): Pick<
@@ -93,7 +116,13 @@ async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): P
     );
     return Response.json(result);
   } catch (error) {
-    return jsonErrorResponse(error, { status: 404 });
+    if (isProviderNotConfiguredError(error)) {
+      return Response.json(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: 'config', source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+        { status: 409 },
+      );
+    }
+    return jsonErrorResponse(error, { status: 400 });
   }
 }
 
@@ -116,7 +145,13 @@ async function handleVoiceStt(context: DaemonMediaRouteContext, req: Request): P
     );
     return Response.json(result);
   } catch (error) {
-    return jsonErrorResponse(error, { status: 404 });
+    if (isProviderNotConfiguredError(error)) {
+      return Response.json(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: 'config', source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+        { status: 409 },
+      );
+    }
+    return jsonErrorResponse(error, { status: 400 });
   }
 }
 
@@ -137,7 +172,13 @@ async function handleVoiceRealtimeSession(context: DaemonMediaRouteContext, req:
     );
     return Response.json(result, { status: 201 });
   } catch (error) {
-    return jsonErrorResponse(error, { status: 404 });
+    if (isProviderNotConfiguredError(error)) {
+      return Response.json(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: 'config', source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+        { status: 409 },
+      );
+    }
+    return jsonErrorResponse(error, { status: 400 });
   }
 }
 
