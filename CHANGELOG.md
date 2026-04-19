@@ -8,7 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
-## [0.21.19] - 2026-04-19
+## [0.21.20] - 2026-04-19
+
+### Fixed
+- Build compilation errors from 0.21.19 (CI orphan — v0.21.19 tag has no npm artifact). Root causes:
+  - Missing `workspace` entry in `RUNTIME_DOMAIN_DESCRIPTIONS` Record after adding the `workspace` runtime domain.
+  - `WorkspaceSwapManagerLike` not re-exported from `@pellux/goodvibes-daemon-sdk` barrel.
+  - `buildSystemRouteContext` needed `swapManager` field in input + return; router call site passes `null` (real wiring lands when TUI standalone daemon assembles the swap manager).
+  - `WorkspaceSwapManager._emit` missing `context` arg on `createEventEnvelope` call + envelope-type cast to bus's registered-union.
+- No behavior delta from 0.21.19 — pure type-level fixes so the package actually builds.
+
+Gates: types:check pass, build clean, 827/827 tests pass, sync:check pass.
+
+## [0.21.19] - 2026-04-19 — superseded by 0.21.20 (CI orphan, no npm artifact)
 
 ### Added
 - **Section 1 — Daemon-home / working-dir split**: Introduced `daemonHomeDir` concept (resolved from `--daemon-home=<path>` CLI arg → `GOODVIBES_DAEMON_HOME` env → `~/.goodvibes/daemon/` default). Identity files (`auth-users.json`, `auth-bootstrap.txt`, `daemon-settings.json`, `operator-tokens.json`) now live under daemon home rather than the workspace.

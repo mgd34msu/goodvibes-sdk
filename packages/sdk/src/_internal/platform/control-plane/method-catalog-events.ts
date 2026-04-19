@@ -30,6 +30,7 @@ const RUNTIME_DOMAIN_DESCRIPTIONS = {
   watchers: 'Watcher state and heartbeat events.',
   surfaces: 'Surface registration and health events.',
   knowledge: 'Knowledge ingest, extraction, projection, packet, and job events.',
+  workspace: 'Workspace swap lifecycle events (start, complete, refuse).',
 } satisfies Record<RuntimeEventDomain, string>;
 
 export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] = [
