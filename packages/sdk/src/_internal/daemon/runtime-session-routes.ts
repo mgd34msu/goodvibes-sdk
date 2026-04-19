@@ -284,13 +284,13 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
  * A `conversation.followup.companion` event is published scoped to the target
  * session's TUI-surface subscribers, carrying a ConversationMessageEnvelope.
  */
-function handleCompanionMessageRouting(
+async function handleCompanionMessageRouting(
   context: DaemonRuntimeRouteContext,
   sessionId: string,
   messageText: string,
   _body: JsonBody,
   req: Request,
-): Response {
+): Promise<Response> {
   const session = context.sessionBroker.getSession(sessionId);
   if (!session) {
     return Response.json({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
@@ -301,6 +301,15 @@ function handleCompanionMessageRouting(
 
   const messageId = randomUUID();
   const timestamp = Date.now();
+
+  // Persist the companion message to the shared session log BEFORE publishing the event.
+  // This ensures GET /api/sessions/:id/messages returns the message and the TUI can render it.
+  await context.sessionBroker.appendCompanionMessage(sessionId, {
+    messageId,
+    body: messageText,
+    source: 'companion-followup',
+    timestamp,
+  });
 
   // Publish the follow-up event scoped to this session's TUI surface subscriber
   context.publishConversationFollowup(sessionId, {

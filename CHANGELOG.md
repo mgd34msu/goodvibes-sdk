@@ -8,6 +8,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.9] - 2026-04-18
+
+### Fixed
+- `POST /api/sessions/:id/messages` with `kind: 'message'` (companion main-chat sends) now persists the message to the shared session message log in addition to emitting the `conversation.followup.companion` event. Previously the 202 response was misleading — the event fired but the message never hit the session's persisted message store, so `GET /api/sessions/:id/messages` returned nothing for it and the TUI had no way to render it.
+
+---
+
 ## [0.21.8] - 2026-04-18
 
 ### Changed
