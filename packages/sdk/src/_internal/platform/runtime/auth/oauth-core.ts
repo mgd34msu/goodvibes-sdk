@@ -2,6 +2,7 @@ import type { OAuthProviderConfig } from '../../config/subscriptions.js';
 import { createSha256Hash, randomBytesBase64url } from './crypto-adapter.js';
 
 import type { OAuthStartState, OAuthTokenPayload } from '../../auth/oauth-types.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 export type { OAuthStartState, OAuthTokenPayload } from '../../auth/oauth-types.js';
 
 export function createOAuthState(bytes = 24): string {
@@ -67,7 +68,7 @@ async function exchangeOAuthRequest(
   const body = encoding === 'json'
     ? JSON.stringify(payload)
     : new URLSearchParams(Object.entries(payload).map(([key, value]) => [key, String(value)])).toString();
-  const response = await fetch(url, {
+  const response = await instrumentedFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': encoding === 'json' ? 'application/json' : 'application/x-www-form-urlencoded',

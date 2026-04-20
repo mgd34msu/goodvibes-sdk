@@ -28,6 +28,7 @@ export const DEFAULT_CONFIG = {
   service: runtimeConfigDefaults.service,
   network: runtimeConfigDefaults.network,
   runtime: runtimeConfigDefaults.runtime,
+  telemetry: runtimeConfigDefaults.telemetry,
   danger: coreConfigDefaults.danger,
   tools: coreConfigDefaults.tools,
   wrfc: coreConfigDefaults.wrfc,

@@ -1,4 +1,5 @@
 import { VERSION } from '../../version.js';
+import { sseSubscribers, telemetryBufferFill } from '../metrics.js';
 import { normalizeError, type NormalizedError } from '../../utils/error-display.js';
 import type { ErrorSource } from '../../types/errors.js';
 import type {
@@ -396,6 +397,8 @@ export class TelemetryApiService {
           const projected = sanitizeRecord(record, view);
           controller.enqueue(encoder.encode(`id: ${projected.id}\nevent: telemetry\ndata: ${JSON.stringify(projected)}\n\n`));
         });
+        // C-1: update SSE subscriber gauge on open
+        sseSubscribers.set(this.subscribers.size, { stream_type: 'telemetry' });
         const heartbeat = setInterval(() => {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
         }, 15_000);
@@ -404,6 +407,8 @@ export class TelemetryApiService {
         teardown = (): void => {
           clearInterval(heartbeat);
           unsub();
+          // C-1: update SSE subscriber gauge on close
+          sseSubscribers.set(this.subscribers.size, { stream_type: 'telemetry' });
         };
         request.signal.addEventListener('abort', () => {
           teardown();
@@ -490,6 +495,8 @@ export class TelemetryApiService {
       appendBounded(this.errors, record, this.errorLimit);
       this.errorCountsByCategory.set(normalizedError.category, (this.errorCountsByCategory.get(normalizedError.category) ?? 0) + 1);
     }
+    // C-1: update telemetry buffer fill gauge
+    telemetryBufferFill.set(this.records.length / this.eventLimit);
     this.captureSyntheticSpan(record);
     this.notify(record);
   }

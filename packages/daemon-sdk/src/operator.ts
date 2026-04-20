@@ -172,6 +172,7 @@ export async function dispatchOperatorRoutes(
     | 'postMultimodalWriteback'
     | 'getRemoteNodeHostContract'
     | 'getSchedulerCapacity'
+    | 'getRuntimeMetrics'
   >,
 ): Promise<Response | null> {
   const url = new URL(req.url);
@@ -455,6 +456,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile();
 
   if (pathname === '/api/runtime/scheduler' && method === 'GET') return handlers.getSchedulerCapacity();
+  if (pathname === '/api/runtime/metrics' && method === 'GET') return handlers.getRuntimeMetrics();
 
   if (pathname === '/api/panels' && method === 'GET') return handlers.getPanels();
   if (pathname === '/api/panels/open' && method === 'POST') return handlers.postPanelOpen(req);

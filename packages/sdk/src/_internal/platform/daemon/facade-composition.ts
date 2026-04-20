@@ -20,6 +20,7 @@ import {
 } from '../channels/index.js';
 import { RuntimeEventBus } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
+import { setTelemetryIncludeRawPrompts } from '../runtime/telemetry/redaction-config.js';
 import { PlatformServiceManager } from './service-manager.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { type DistributedPeerAuth } from '../runtime/remote/index.js';
@@ -393,6 +394,14 @@ export function createDaemonFacadeCollaborators(
   options: CreateDaemonFacadeCollaboratorsOptions,
 ): DaemonFacadeCollaborators {
   const { runtime } = options;
+
+  // OBS-06: wire telemetry.includeRawPrompts into turn-emitter redaction behavior.
+  // Default (false) redacts raw prompt/response content to {length, sha256, first100chars}.
+  // Opt-in surfaces a startup WARN (emitted inside setTelemetryIncludeRawPrompts when true).
+  setTelemetryIncludeRawPrompts(
+    runtime.configManager.get('telemetry.includeRawPrompts') === true,
+  );
+
   const channelReplyPipeline = new ChannelReplyPipeline({
     channelPlugins: runtime.channelPlugins,
     routeBindings: runtime.routeBindings,

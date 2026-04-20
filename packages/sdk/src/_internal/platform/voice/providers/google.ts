@@ -8,6 +8,7 @@ import {
   resolveAudioInput,
   trimToUndefined,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_GOOGLE_STT_MODEL = 'gemini-2.5-flash';
@@ -70,7 +71,7 @@ async function uploadGoogleFile(
   displayName: string,
 ): Promise<{ name: string; uri: string; mimeType: string }> {
   const uploadBaseUrl = baseUrl.replace(/\/v1beta$/, '');
-  const startResponse = await fetch(`${uploadBaseUrl}/upload/v1beta/files`, {
+  const startResponse = await instrumentedFetch(`${uploadBaseUrl}/upload/v1beta/files`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -93,7 +94,7 @@ async function uploadGoogleFile(
   if (!uploadUrl) {
     throw new Error('Google file upload start response missing upload URL');
   }
-  const uploadResponse = await fetch(uploadUrl, {
+  const uploadResponse = await instrumentedFetch(uploadUrl, {
     method: 'POST',
     headers: {
       'Content-Length': String(buffer.byteLength),
@@ -111,7 +112,7 @@ async function uploadGoogleFile(
 
 async function deleteGoogleFile(baseUrl: string, apiKey: string, name: string): Promise<void> {
   try {
-    await fetch(`${baseUrl}/${name}`, {
+    await instrumentedFetch(`${baseUrl}/${name}`, {
       method: 'DELETE',
       headers: {
         'x-goog-api-key': apiKey,
@@ -167,7 +168,7 @@ export function createGoogleProvider(): VoiceProvider {
             inferFilename(request.audio, '.wav'),
           );
         }
-        const response = await fetch(`${baseUrl}/models/${encodeURIComponent(model)}:generateContent`, {
+        const response = await instrumentedFetch(`${baseUrl}/models/${encodeURIComponent(model)}:generateContent`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

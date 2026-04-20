@@ -30,18 +30,34 @@ export type TurnEvent =
   | { type: 'STREAM_DELTA'; turnId: string; content: string; accumulated: string; reasoning?: string; toolCalls?: PartialToolCall[] }
   /** Streaming has ended. */
   | { type: 'STREAM_END'; turnId: string }
+  /** OBS-04: An LLM request is about to be dispatched to the provider. */
+  | {
+    type: 'LLM_REQUEST_STARTED';
+    turnId: string;
+    provider: string;
+    model: string;
+    /** Redacted prompt summary: {length, sha256, first100chars} unless telemetry.includeRawPrompts is true. */
+    promptSummary: { length: number; sha256: string; first100chars: string } | string;
+  }
   /** A provider chat call completed within the current turn iteration. */
   | {
     type: 'LLM_RESPONSE_RECEIVED';
     turnId: string;
     provider: string;
     model: string;
-    content: string;
+    /** Redacted response summary: {length, sha256, first100chars} unless telemetry.includeRawPrompts is true. */
+    contentSummary: { length: number; sha256: string; first100chars: string } | string;
     toolCallCount: number;
     inputTokens: number;
     outputTokens: number;
     cacheReadTokens?: number;
     cacheWriteTokens?: number;
+    /** OBS-04 enrichments */
+    durationMs?: number;
+    retries?: number;
+    costUsdCents?: number;
+    finishReason?: string;
+    providerRequestId?: string;
   }
   /** A batch of tool calls is ready for execution. */
   | { type: 'TOOL_BATCH_READY'; turnId: string; toolCalls: string[] }

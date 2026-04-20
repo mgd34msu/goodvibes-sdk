@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import type { CatalogModel } from './model-catalog.js';
 import { summarizeError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 interface CatalogModelPricing {
   input: number;
@@ -196,7 +197,7 @@ export async function fetchCatalog(): Promise<CatalogModel[]> {
   const timer = setTimeout(() => controller.abort(), CATALOG_FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(MODELS_DEV_URL, {
+    const response = await instrumentedFetch(MODELS_DEV_URL, {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
     });

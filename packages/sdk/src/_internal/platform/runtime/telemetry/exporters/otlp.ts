@@ -11,6 +11,8 @@ import type { ReadableSpan, SpanExporter } from '../types.js';
 import type { OtlpConfig, ExportResult } from './types.js';
 import { DEFAULT_OTLP_CONFIG, DEFAULT_QUEUE_CONFIG } from './types.js';
 import { ExportQueue } from './queue.js';
+import { logger } from '../../../utils/logger.js';
+import { instrumentedFetch } from '../../../utils/fetch-with-timeout.js';
 
 /**
  * Serialises a ReadableSpan[] into OTLP/HTTP JSON format (simplified).
@@ -158,7 +160,8 @@ export class OtlpExporter implements SpanExporter {
         this._queue.enqueue(batch);
       }
     } catch (err) {
-      console.error('[OtlpExporter] export() error (non-fatal):', err);
+      // OBS-07: use structured logger, not console
+      logger.error('[OtlpExporter] export() error (non-fatal)', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -174,7 +177,8 @@ export class OtlpExporter implements SpanExporter {
       }
       await this._queue.drain();
     } catch (err) {
-      console.error('[OtlpExporter] flush() error (non-fatal):', err);
+      // OBS-07: use structured logger, not console
+      logger.error('[OtlpExporter] flush() error (non-fatal)', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -191,7 +195,8 @@ export class OtlpExporter implements SpanExporter {
       }
       await this._queue.shutdown();
     } catch (err) {
-      console.error('[OtlpExporter] shutdown() error (non-fatal):', err);
+      // OBS-07: use structured logger, not console
+      logger.error('[OtlpExporter] shutdown() error (non-fatal)', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -210,7 +215,7 @@ export class OtlpExporter implements SpanExporter {
 
     try {
       const body = serialiseSpans(batch);
-      const response = await fetch(this._config.endpoint, {
+      const response = await instrumentedFetch(this._config.endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -235,13 +240,17 @@ export class OtlpExporter implements SpanExporter {
    */
   private _onExportResult(result: ExportResult): void {
     if (result.code === 'failure') {
-      console.error(
-        `[OtlpExporter] Export failed permanently — ${result.spanCount} span(s) lost after ${result.attempts} attempt(s): ${result.error}`,
-      );
+      // OBS-07: use structured logger so OTLP exporter failures appear in activity log
+      logger.error('[OtlpExporter] Export failed permanently — spans lost', {
+        spanCount: result.spanCount,
+        attempts: result.attempts,
+        error: result.error,
+      });
     } else if (result.code === 'dropped') {
-      console.warn(
-        `[OtlpExporter] Dropped ${result.spanCount} span(s) due to queue overflow`,
-      );
+      // OBS-07: use structured logger
+      logger.warn('[OtlpExporter] Dropped spans due to queue overflow', {
+        spanCount: result.spanCount,
+      });
     }
   }
 }

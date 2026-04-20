@@ -53,6 +53,22 @@ export type WorkspaceEvent =
       sourcePath: string;
       /** Human-readable reason (e.g. JSON parse error message). */
       reason: string;
+    }
+  /**
+   * Emitted when a workspace swap fails (mkdir or rerootStores threw).
+   * Any subscriber that saw WORKSPACE_SWAP_STARTED without a subsequent
+   * WORKSPACE_SWAP_COMPLETED should watch for this event. (OBS-08)
+   */
+  | {
+      type: 'WORKSPACE_SWAP_FAILED';
+      /** Original working directory (swap source). */
+      from: string;
+      /** Target path that was attempted. */
+      to: string;
+      /** Machine-readable failure code. */
+      code: 'INVALID_PATH' | 'REROOT_FAILED' | 'UNKNOWN';
+      /** Human-readable reason. */
+      reason: string;
     };
 
 export type WorkspaceEventType = WorkspaceEvent['type'];

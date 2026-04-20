@@ -39,6 +39,55 @@ export type SecurityEvent =
       tokenId: string;
       label: string;
       reason: 'scope_violation' | 'rotation_overdue' | 'scope_violation_and_rotation_overdue';
+    }
+  // ── Auth audit events (OBS-02) ────────────────────────────────────────────
+  /** Emitted when a user authenticates successfully. Never includes credentials. */
+  | {
+      type: 'AUTH_SUCCEEDED';
+      /** Authenticated username (display-safe). */
+      username: string;
+      /** Session token ID (not the token value). */
+      sessionId: string;
+      /** Client IP address. */
+      clientIp: string;
+      /** Authentication method used. */
+      method: 'password' | 'cookie' | 'token';
+    }
+  /** Emitted when an authentication attempt fails. Never includes credential values. */
+  | {
+      type: 'AUTH_FAILED';
+      /** The username that was attempted (may be blank or spoofed). */
+      usernameAttempted: string;
+      /** Client IP address. */
+      clientIp: string;
+      /** Machine-readable failure reason. */
+      reason: 'invalid_credentials' | 'rate_limited' | 'session_expired' | 'origin_denied' | 'unknown';
+    }
+  // ── Companion pairing events (OBS-21) ────────────────────────────────────
+  /** Emitted when a companion pairing request is initiated. */
+  | {
+      type: 'COMPANION_PAIR_REQUESTED';
+      clientIp: string;
+    }
+  /** Emitted when a companion pairing is successfully verified. */
+  | {
+      type: 'COMPANION_PAIR_VERIFIED';
+      /** Opaque token ID (not the token value). */
+      tokenId: string;
+      clientIp: string;
+    }
+  /** Emitted when a companion token is rotated. */
+  | {
+      type: 'COMPANION_TOKEN_ROTATED';
+      /** New opaque token ID (not the token value). */
+      newTokenId: string;
+      clientIp: string;
+    }
+  /** Emitted when a companion token is revoked. */
+  | {
+      type: 'COMPANION_TOKEN_REVOKED';
+      clientIp: string;
+      reason?: string;
     };
 
 /** All security event type literals as a union. */

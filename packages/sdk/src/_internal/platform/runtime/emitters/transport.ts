@@ -4,6 +4,7 @@
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { EmitterContext } from './index.js';
+import { transportRetriesTotal } from '../metrics.js';
 
 /** Emit TRANSPORT_INITIALIZING when the transport layer starts. */
 export function emitTransportInitializing(
@@ -75,4 +76,42 @@ export function emitTransportTerminalFailure(
   data: { transportId: string; error: string }
 ): void {
   bus.emit('transport', createEventEnvelope('TRANSPORT_TERMINAL_FAILURE', { type: 'TRANSPORT_TERMINAL_FAILURE', ...data }, ctx));
+}
+
+/** OBS-18: Emit TRANSPORT_RETRY_SCHEDULED when a retry is queued with backoff. */
+export function emitTransportRetryScheduled(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { transportId: string; attempt: number; maxAttempts: number; backoffMs: number; reason: string }
+): void {
+  transportRetriesTotal.add(1, { transport_type: data.transportId, reason: data.reason });
+  bus.emit('transport', createEventEnvelope('TRANSPORT_RETRY_SCHEDULED', { type: 'TRANSPORT_RETRY_SCHEDULED', ...data }, ctx));
+}
+
+/** OBS-18: Emit TRANSPORT_RETRY_EXECUTED when a retry attempt is fired. */
+export function emitTransportRetryExecuted(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { transportId: string; attempt: number; maxAttempts: number }
+): void {
+  transportRetriesTotal.add(1, { transport_type: data.transportId });
+  bus.emit('transport', createEventEnvelope('TRANSPORT_RETRY_EXECUTED', { type: 'TRANSPORT_RETRY_EXECUTED', ...data }, ctx));
+}
+
+/** OBS-19: Emit STREAM_SUBSCRIBER_CONNECTED when an SSE subscriber connects. */
+export function emitStreamSubscriberConnected(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { streamId: string; subscriberId: string; streamType: string }
+): void {
+  bus.emit('transport', createEventEnvelope('STREAM_SUBSCRIBER_CONNECTED', { type: 'STREAM_SUBSCRIBER_CONNECTED', ...data }, ctx));
+}
+
+/** OBS-19: Emit STREAM_SUBSCRIBER_DISCONNECTED when an SSE subscriber disconnects. */
+export function emitStreamSubscriberDisconnected(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { streamId: string; subscriberId: string; streamType: string; reason?: string }
+): void {
+  bus.emit('transport', createEventEnvelope('STREAM_SUBSCRIBER_DISCONNECTED', { type: 'STREAM_SUBSCRIBER_DISCONNECTED', ...data }, ctx));
 }

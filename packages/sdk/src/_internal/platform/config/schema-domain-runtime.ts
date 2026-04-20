@@ -6,6 +6,9 @@ export const runtimeConfigDefaults = {
       perSessionLimit: 10,
     },
   },
+  telemetry: {
+    includeRawPrompts: false,
+  },
   automation: {
     enabled: false,
     maxConcurrentRuns: 4,
@@ -383,5 +386,14 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
       'Max companion chat messages per 60-second window per session. ' +
       'Overrides the GOODVIBES_CHAT_LIMITER_THRESHOLD env var (env is read once at daemon startup; ' +
       'this config key is read on each check() call and takes precedence when set to a positive integer).',
+  },
+  {
+    key: 'telemetry.includeRawPrompts',
+    type: 'boolean',
+    default: false,
+    description:
+      'When false (default), turn emitters emit a redacted prompt summary {length, sha256, first100chars} instead of raw prompt/response content. ' +
+      'Set to true ONLY for debugging in non-production environments — raw prompts may contain PII, secrets, or proprietary data. ' +
+      'When true at startup, a WARN log is emitted to make the configuration visible to ops.',
   },
 ];

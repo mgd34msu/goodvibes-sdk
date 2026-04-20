@@ -296,7 +296,8 @@ export function updateMcpState(domain: McpDomainState, event: McpEvent): McpDoma
   };
 }
 
-function transportStateForEvent(event: TransportEvent): AcpTransportState | DaemonTransportState {
+/** Returns the transport state for lifecycle events that directly change state, or null for observability-only events. */
+function transportStateForEvent(event: TransportEvent): AcpTransportState | DaemonTransportState | null {
   switch (event.type) {
     case 'TRANSPORT_INITIALIZING':
       return 'initializing';
@@ -314,6 +315,12 @@ function transportStateForEvent(event: TransportEvent): AcpTransportState | Daem
       return 'disconnected';
     case 'TRANSPORT_TERMINAL_FAILURE':
       return 'terminal_failure';
+    // OBS-18/OBS-19: observability-only events — no state change.
+    case 'TRANSPORT_RETRY_SCHEDULED':
+    case 'TRANSPORT_RETRY_EXECUTED':
+    case 'STREAM_SUBSCRIBER_CONNECTED':
+    case 'STREAM_SUBSCRIBER_DISCONNECTED':
+      return null;
   }
 }
 
@@ -323,7 +330,10 @@ export function updateTransportState(
   event: TransportEvent,
 ): Pick<import('../../state.js').RuntimeState, 'acp' | 'daemon'> {
   const nextTransportState = transportStateForEvent(event);
-  const isAcp = event.transportId.startsWith('acp');
+  // OBS-18/OBS-19: observability-only events have no transportId and no state to update.
+  if (nextTransportState === null) return { acp, daemon };
+  const transportId = 'transportId' in event ? event.transportId : '';
+  const isAcp = transportId.startsWith('acp');
   const nextAcp = isAcp
     ? {
         ...updateDomainMetadata(acp, event.type),

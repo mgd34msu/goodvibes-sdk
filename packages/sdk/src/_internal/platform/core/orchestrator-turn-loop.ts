@@ -14,6 +14,7 @@ import type { HookEvent, HookResult } from '../hooks/types.js';
 import {
   emitOpsCacheMetrics,
   emitOpsHelperUsage,
+  emitLlmRequestStarted,
   emitLlmResponseReceived,
   emitPreflightFail,
   emitPreflightOk,
@@ -204,6 +205,14 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     }
 
     let response: Awaited<ReturnType<typeof provider.chat>>;
+    if (context.runtimeBus) {
+      emitLlmRequestStarted(context.runtimeBus, context.emitterContext(context.turnId), {
+        turnId: context.turnId,
+        provider: model.provider,
+        model: model.id,
+        promptSummary: '<redacted-length-unknown>',
+      });
+    }
     try {
       response = await provider.chat({
         model: model.id,
@@ -320,7 +329,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         turnId: context.turnId,
         provider: model.provider,
         model: model.id,
-        content: response.content,
+        contentSummary: response.content,
         toolCallCount: response.toolCalls.length,
         inputTokens: response.usage.inputTokens,
         outputTokens: response.usage.outputTokens,

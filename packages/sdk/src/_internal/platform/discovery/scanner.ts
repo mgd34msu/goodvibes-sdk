@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 import { discoverContextWindows } from '../providers/context-discovery.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
 import { resolveSurfaceDirectory } from '../runtime/surface-root.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,8 +96,9 @@ export function persistProviders(roots: DiscoveryRoots, servers: DiscoveredServe
     }
     mkdirSync(dirname(persistedPath), { recursive: true });
     writeFileSync(persistedPath, JSON.stringify([...byKey.values()], null, 2) + '\n', 'utf-8');
-  } catch {
-    // Non-fatal — persistence is best-effort
+  } catch (err: unknown) {
+    // OBS-11: Non-fatal — persistence is best-effort
+    logger.debug('[Scanner] persistProviders failed (non-fatal)', { error: String(err) });
   }
 }
 
@@ -112,8 +114,9 @@ export function removePersistedProviders(roots: DiscoveryRoots, toRemove: Array<
     const removeKeys = new Set(toRemove.map(s => `${s.host}:${s.port}`));
     const filtered = current.filter(s => !removeKeys.has(`${s.host}:${s.port}`));
     writeFileSync(persistedPath, JSON.stringify(filtered, null, 2) + '\n', 'utf-8');
-  } catch {
-    // Non-fatal
+  } catch (err: unknown) {
+    // OBS-11: Non-fatal — removal from persisted file failed
+    logger.debug('[Scanner] removePersistedProviders failed (non-fatal)', { error: String(err) });
   }
 }
 
@@ -220,7 +223,7 @@ interface FetchResult {
 
 async function tryFetch(url: string): Promise<FetchResult | null> {
   try {
-    const res = await fetch(url, {
+    const res = await instrumentedFetch(url, {
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
     if (!res.ok) return null;
@@ -330,7 +333,7 @@ export async function fetchModelContextWindows(
       await Promise.allSettled(
         models.map(async (model) => {
           try {
-            const res = await fetch(`http://${host}:${port}/api/show`, {
+            const res = await instrumentedFetch(`http://${host}:${port}/api/show`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name: model }),
@@ -374,7 +377,7 @@ export async function fetchModelContextWindows(
       await Promise.allSettled(
         models.map(async (model) => {
           try {
-            const res = await fetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
+            const res = await instrumentedFetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
               signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
             });
             if (!res.ok) return;
@@ -394,7 +397,7 @@ export async function fetchModelContextWindows(
     case 'llamacpp': {
       // llama.cpp: GET /props returns default_generation_settings.n_ctx (server-wide)
       try {
-        const res = await fetch(`http://${host}:${port}/props`, {
+        const res = await instrumentedFetch(`http://${host}:${port}/props`, {
           signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
         });
         if (res.ok) {
@@ -442,7 +445,7 @@ export async function fetchModelContextWindows(
       await Promise.allSettled(
         models.map(async (model) => {
           try {
-            const res = await fetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
+            const res = await instrumentedFetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
               signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
             });
             if (!res.ok) return;
@@ -467,7 +470,7 @@ export async function fetchModelContextWindows(
       // Fallback: try /props (llama.cpp-style) if no context windows found
       if (Object.keys(result).length === 0 && models.length > 0) {
         try {
-          const res = await fetch(`http://${host}:${port}/props`, {
+          const res = await instrumentedFetch(`http://${host}:${port}/props`, {
             signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
           });
           if (res.ok) {
@@ -516,7 +519,7 @@ async function fetchModelOutputLimits(
       await Promise.allSettled(
         models.map(async (model) => {
           try {
-            const res = await fetch(`http://${host}:${port}/api/show`, {
+            const res = await instrumentedFetch(`http://${host}:${port}/api/show`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name: model }),
@@ -559,7 +562,7 @@ async function fetchModelOutputLimits(
       await Promise.allSettled(
         models.map(async (model) => {
           try {
-            const res = await fetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
+            const res = await instrumentedFetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
               signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
             });
             if (!res.ok) return;
@@ -579,7 +582,7 @@ async function fetchModelOutputLimits(
     case 'llamacpp': {
       // llama.cpp: GET /props — look for default_generation_settings.n_predict
       try {
-        const res = await fetch(`http://${host}:${port}/props`, {
+        const res = await instrumentedFetch(`http://${host}:${port}/props`, {
           signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
         });
         if (res.ok) {
@@ -612,7 +615,7 @@ async function fetchModelOutputLimits(
       await Promise.allSettled(
         models.map(async (model) => {
           try {
-            const res = await fetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
+            const res = await instrumentedFetch(`http://${host}:${port}/v1/models/${encodeURIComponent(model)}`, {
               signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
             });
             if (!res.ok) return;
@@ -635,7 +638,7 @@ async function fetchModelOutputLimits(
       // Fallback: try /props (llama.cpp-style) for n_predict if no output limits found
       if (Object.keys(result).length === 0 && models.length > 0) {
         try {
-          const res = await fetch(`http://${host}:${port}/props`, {
+          const res = await instrumentedFetch(`http://${host}:${port}/props`, {
             signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
           });
           if (res.ok) {

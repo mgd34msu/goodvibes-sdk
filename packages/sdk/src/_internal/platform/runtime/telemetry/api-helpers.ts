@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { VERSION } from '../../version.js';
+import { getCorrelationContext } from '../correlation.js';
 import type { ErrorSource } from '../../types/errors.js';
 import type { NormalizedError } from '../../utils/error-display.js';
 import { redactStructuredData } from '../../utils/redaction.js';
@@ -26,6 +27,42 @@ import type {
 
 export const SERVICE_NAME = 'goodvibes-sdk';
 export const DEFAULT_EVENT_LIMIT = 500;
+
+/**
+ * OBS-22: Allowlist of metric label keys permitted in telemetry attributes.
+ * Keys outside this set are stripped before storage to prevent high-cardinality
+ * label explosion in metrics backends (Prometheus, OTLP, etc.).
+ */
+export const METRIC_LABEL_ALLOWLIST = new Set<string>([
+  // Core identifiers (bounded cardinality)
+  'domain',
+  'eventType',
+  'source',
+  'severity',
+  // HTTP labels
+  'method',
+  'status_class',
+  'path_pattern',
+  // LLM labels
+  'provider',
+  'model',
+  'status',
+  'finish_reason',
+  // Auth labels
+  'auth_method',
+  'auth_result',
+  // Transport labels
+  'transport_type',
+  'reason',
+  'protocol',
+  // Session labels
+  'session_type',
+  // Error labels
+  'category',
+  'error_source',
+  // Stream labels
+  'stream_type',
+]);
 export const DEFAULT_ERROR_LIMIT = 250;
 export const DEFAULT_SPAN_LIMIT = 250;
 
@@ -203,11 +240,31 @@ export function isErrorEventType(type: string): boolean {
   return /(^|_)(ERROR|FAILED|FAIL|TERMINAL_FAILURE)(_|$)/.test(type);
 }
 
+/**
+ * OBS-22: Filter metric labels against the allowlist to prevent high-cardinality
+ * label injection into metrics backends. Non-allowlisted keys are dropped.
+ *
+ * Note: full event attribute payloads (for telemetry records) are NOT filtered —
+ * this is only applied when building metric instrument labels.
+ */
+export function filterMetricLabels(labels: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(labels)) {
+    if (METRIC_LABEL_ALLOWLIST.has(key)) {
+      out[key] = labels[key];
+    }
+  }
+  return out;
+}
+
 export function buildAttributes(
   domain: RuntimeEventDomain,
   envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
   payload: Record<string, unknown>,
 ): Record<string, unknown> {
+  // C-2: merge correlation context so every event emitted from within a
+  // correlationCtx.run() scope automatically carries the ambient IDs.
+  const ctx = getCorrelationContext();
   return {
     domain,
     eventType: envelope.type,
@@ -217,6 +274,8 @@ export function buildAttributes(
     ...(envelope.turnId ? { turnId: envelope.turnId } : {}),
     ...(envelope.agentId ? { agentId: envelope.agentId } : {}),
     ...(envelope.taskId ? { taskId: envelope.taskId } : {}),
+    ...(ctx.requestId ? { requestId: ctx.requestId } : {}),
+    ...(ctx.runId ? { runId: ctx.runId } : {}),
     ...payload,
   };
 }

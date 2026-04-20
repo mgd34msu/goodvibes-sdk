@@ -17,6 +17,7 @@ import {
   resolveWatcherStorePath,
   saveWatcherSnapshotToPath,
 } from './store.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 export interface RegisterWatcherInput {
   readonly id: string;
@@ -465,7 +466,7 @@ export class WatcherRegistry {
       const url = typeof merged.url === 'string' ? merged.url : '';
       return async () => {
         if (!url) return `${record.id}:webhook-no-url`;
-        const response = await fetch(url, {
+        const response = await instrumentedFetch(url, {
           method: typeof merged.method === 'string' ? merged.method.toUpperCase() : 'GET',
           headers: typeof merged.headers === 'object' && merged.headers !== null
             ? Object.fromEntries(Object.entries(merged.headers).filter(([, value]) => typeof value === 'string')) as Record<string, string>
@@ -491,7 +492,7 @@ export class WatcherRegistry {
     const url = typeof merged.url === 'string' ? merged.url : typeof merged.endpoint === 'string' ? merged.endpoint : '';
     if (url) {
       return async () => {
-        const response = await fetch(url, {
+        const response = await instrumentedFetch(url, {
           method: typeof merged.method === 'string' ? merged.method.toUpperCase() : 'GET',
           headers: typeof merged.headers === 'object' && merged.headers !== null
             ? Object.fromEntries(Object.entries(merged.headers).filter(([, value]) => typeof value === 'string')) as Record<string, string>

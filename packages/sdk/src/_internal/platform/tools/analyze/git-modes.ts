@@ -13,6 +13,7 @@ import {
   truncateDiffAtBoundary,
   validateGitRefs,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 function parseSemanticDiffResponse(
   llmResponse: string | null,
@@ -346,7 +347,7 @@ export async function runUpgrade(
     batch.map(async (name) => {
       const current = currentVersions[name] ?? 'unknown';
       try {
-        const res = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/latest`, {
+        const res = await instrumentedFetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/latest`, {
           signal: AbortSignal.timeout(8000),
           headers: { Accept: 'application/json' },
         });

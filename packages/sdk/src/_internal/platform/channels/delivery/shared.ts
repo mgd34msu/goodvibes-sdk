@@ -7,6 +7,7 @@ import type {
   ChannelDeliverySurfaceKind,
   ChannelDeliveryTarget,
 } from './types.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 export function resolveChannelDeliverySurfaceKind(
   target: ChannelDeliveryTarget,
@@ -110,7 +111,7 @@ export async function resolveMSTeamsAccessToken(
     client_secret: appPassword,
     scope: 'https://api.botframework.com/.default',
   });
-  const response = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
+  const response = await instrumentedFetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -185,7 +186,7 @@ export async function postBridgePayload(
     readonly token?: string;
   },
 ): Promise<string | undefined> {
-  const response = await fetch(bridgeUrl, {
+  const response = await instrumentedFetch(bridgeUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

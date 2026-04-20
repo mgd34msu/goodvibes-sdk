@@ -169,8 +169,9 @@ export class ProjectIndex {
       const tokens = Math.ceil(size / 4);
       this.files.set(normalPath, tokens);
       this.scheduleFlush();
-    } catch {
-      // Non-fatal: leave existing value
+    } catch (err: unknown) {
+      // OBS-11: Non-fatal — stat failed; leave existing token estimate
+      logger.debug('[ProjectIndex] statSync failed for file update', { path, error: String(err) });
     }
   }
 
@@ -221,8 +222,9 @@ export class ProjectIndex {
     }
     try {
       await this.forceFlush();
-    } catch {
-      // Non-fatal — old location may be inaccessible after swap
+    } catch (err: unknown) {
+      // OBS-11: Non-fatal — old location may be inaccessible after swap
+      logger.debug('[ProjectIndex] forceFlush failed during reroot (non-fatal)', { error: String(err) });
     }
     // Step 2: reset state and re-point to new directory
     this.projectRoot = newBaseDir;

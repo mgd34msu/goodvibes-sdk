@@ -1,5 +1,6 @@
 import { AppError, ProviderError, type ErrorCategory, type ErrorSource, type ProviderErrorOptions } from '../types/errors.js';
 import type { StructuredDaemonErrorBody } from '../types/daemon-error-contract.js';
+import { redactSensitiveData } from './redaction.js';
 
 const MAX_ERROR_LENGTH = 240;
 
@@ -196,7 +197,8 @@ function extractErrorMessage(error: unknown): string {
 }
 
 export function normalizeError(error: unknown, options: ErrorNormalizationOptions = {}): NormalizedError {
-  const rawMessage = extractErrorMessage(error);
+  // OBS-24: Redact Bearer tokens and API keys before any further processing.
+  const rawMessage = redactSensitiveData(extractErrorMessage(error));
   const statusCode = error instanceof AppError
     ? error.statusCode
     : error && typeof error === 'object' && 'statusCode' in error && typeof (error as { statusCode?: unknown }).statusCode === 'number'

@@ -2,6 +2,7 @@ import type { HookDefinition, HookResult, HookEvent } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../../tools/fetch/trust-tiers.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 /**
  * HTTP hook runner.
@@ -34,7 +35,7 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
 
     let response: Response;
     try {
-      response = await fetch(url, {
+      response = await instrumentedFetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -68,11 +68,40 @@ export function emitToolPosthooked(
   bus.emit('tools', createEventEnvelope('TOOL_POSTHOOKED', { type: 'TOOL_POSTHOOKED', ...data }, ctx));
 }
 
+/**
+ * Convert any tool result (ToolResult, SyntheticToolResult, etc.) to a ToolResultSummary
+ * for safe emission in the event stream. Never leaks raw output; provides kind, byteSize, preview.
+ */
+export function toToolResultSummary(
+  result: { success?: boolean; output?: string; error?: string }
+): import('../events/tools.js').ToolResultSummary {
+  if (!result.success) {
+    const errStr = result.error ?? 'unknown error';
+    return {
+      kind: 'error',
+      byteSize: errStr.length,
+      preview: errStr.slice(0, 100),
+    };
+  }
+  const output = result.output ?? '';
+  let kind: string;
+  let preview: string | undefined;
+  try {
+    JSON.parse(output);
+    kind = 'json';
+    preview = output.slice(0, 100);
+  } catch {
+    kind = 'text';
+    preview = output.slice(0, 100);
+  }
+  return { kind, byteSize: output.length, preview };
+}
+
 /** Emit TOOL_SUCCEEDED when a tool call completes successfully. */
 export function emitToolSucceeded(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { callId: string; turnId: string; tool: string; durationMs: number; result?: unknown }
+  data: { callId: string; turnId: string; tool: string; durationMs: number; result?: import('../events/tools.js').ToolResultSummary }
 ): void {
   bus.emit('tools', createEventEnvelope('TOOL_SUCCEEDED', { type: 'TOOL_SUCCEEDED', ...data }, ctx));
 }
@@ -81,7 +110,7 @@ export function emitToolSucceeded(
 export function emitToolFailed(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { callId: string; turnId: string; tool: string; error: string; durationMs: number; result?: unknown }
+  data: { callId: string; turnId: string; tool: string; error: string; durationMs: number; result?: import('../events/tools.js').ToolResultSummary }
 ): void {
   bus.emit('tools', createEventEnvelope('TOOL_FAILED', { type: 'TOOL_FAILED', ...data }, ctx));
 }

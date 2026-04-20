@@ -15,6 +15,7 @@ import type {
   MeterConfig,
   MetricLabels,
 } from './types.js';
+import { filterMetricLabels } from './api-helpers.js';
 
 // ── Label key serialisation ─────────────────────────────────────────────────────
 
@@ -37,7 +38,8 @@ class CounterImpl implements Counter {
 
   add(delta = 1, labels?: MetricLabels): void {
     if (delta < 0) return; // Counters are monotonically increasing
-    const key = labelKey(labels);
+    const filtered = labels ? (filterMetricLabels(labels) as MetricLabels) : labels;
+    const key = labelKey(filtered);
     this._values.set(key, (this._values.get(key) ?? 0) + delta);
   }
 
@@ -59,7 +61,8 @@ class HistogramImpl implements Histogram {
   private readonly _accumulators = new Map<string, HistogramAccumulator>();
 
   record(value: number, labels?: MetricLabels): void {
-    const key = labelKey(labels);
+    const filtered = labels ? (filterMetricLabels(labels) as MetricLabels) : labels;
+    const key = labelKey(filtered);
     const acc = this._accumulators.get(key);
     if (acc === undefined) {
       this._accumulators.set(key, { count: 1, sum: value, min: value, max: value });
@@ -92,7 +95,8 @@ class GaugeImpl implements Gauge {
   private readonly _values = new Map<string, number>();
 
   set(value: number, labels?: MetricLabels): void {
-    this._values.set(labelKey(labels), value);
+    const filtered = labels ? (filterMetricLabels(labels) as MetricLabels) : labels;
+    this._values.set(labelKey(filtered), value);
   }
 
   value(labels?: MetricLabels): number {

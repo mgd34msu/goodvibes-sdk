@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -306,7 +307,7 @@ export class DiscordIntegration {
     if (content) payload.content = content;
     if (embeds && embeds.length > 0) payload.embeds = embeds;
 
-    const res = await fetch(target, {
+    const res = await instrumentedFetch(target, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -330,7 +331,7 @@ export class DiscordIntegration {
     if (content) payload.content = content;
     if (embeds && embeds.length > 0) payload.embeds = embeds;
 
-    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    const res = await instrumentedFetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -358,7 +359,7 @@ export class DiscordIntegration {
     const payload: Record<string, unknown> = { type };
     if (data) payload.data = data;
 
-    const res = await fetch(
+    const res = await instrumentedFetch(
       `https://discord.com/api/v10/interactions/${interactionId}/${interactionToken}/callback`,
       {
         method: 'POST',
@@ -386,7 +387,7 @@ export class DiscordIntegration {
     const payload: Record<string, unknown> = { content };
     if (embeds && embeds.length > 0) payload.embeds = embeds;
 
-    const res = await fetch(
+    const res = await instrumentedFetch(
       `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`,
       {
         method: 'PATCH',
@@ -414,7 +415,7 @@ export class DiscordIntegration {
     if (!token) {
       throw new Error(`DiscordIntegration: botToken is required for ${path}`);
     }
-    const res = await fetch(`https://discord.com/api/v10${path}`, {
+    const res = await instrumentedFetch(`https://discord.com/api/v10${path}`, {
       method: options.method ?? 'GET',
       headers: {
         Authorization: `Bot ${token}`,

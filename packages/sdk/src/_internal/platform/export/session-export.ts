@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { ContentPart } from '../providers/interface.js';
 import { exportToMarkdown, extractText, type ExportMessage, type ExportMetadata } from './markdown.js';
+import { redactSensitiveData } from '../utils/redaction.js';
 
 // ── Public Types ─────────────────────────────────────────────────────────────
 
@@ -18,42 +19,6 @@ export interface SessionExportData {
   cost?: number;
   /** ISO timestamp of export. */
   exportedAt?: string;
-}
-
-// ── Sensitive-data redaction ──────────────────────────────────────────────────
-
-/** Patterns that identify sensitive content — API keys and absolute paths. */
-const REDACT_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
-  // Generic API key patterns (sk-*, key-*, bearer tokens)
-  { pattern: /\b(sk-[A-Za-z0-9_-]{20,})/g, replacement: '[REDACTED_API_KEY]' },
-  { pattern: /\b(key-[A-Za-z0-9_-]{16,})/g, replacement: '[REDACTED_API_KEY]' },
-  // Bearer / Authorization header values
-  { pattern: /(Bearer\s+)[A-Za-z0-9._~+\/-]+=*/gi, replacement: '$1[REDACTED_TOKEN]' },
-  // GitHub tokens
-  { pattern: /\b(ghp_[A-Za-z0-9]{36,})/g, replacement: '[REDACTED_GITHUB_TOKEN]' },
-  { pattern: /\b(gho_[A-Za-z0-9]{36,})/g, replacement: '[REDACTED_GITHUB_TOKEN]' },
-  { pattern: /\b(github_pat_[A-Za-z0-9_]{36,})/g, replacement: '[REDACTED_GITHUB_TOKEN]' },
-  // GitLab tokens
-  { pattern: /\b(glpat-[A-Za-z0-9_-]{20,})/g, replacement: '[REDACTED_GITLAB_TOKEN]' },
-  // Slack tokens
-  { pattern: /\b(xoxb-[A-Za-z0-9-]{24,})/g, replacement: '[REDACTED_SLACK_TOKEN]' },
-  { pattern: /\b(xoxp-[A-Za-z0-9-]{24,})/g, replacement: '[REDACTED_SLACK_TOKEN]' },
-  // AWS access keys
-  { pattern: /\b(AKIA[A-Z0-9]{16})\b/g, replacement: '[REDACTED_AWS_KEY]' },
-  // Absolute Unix paths starting from home (e.g. /home/alice/projects/...)
-  { pattern: /\/home\/[A-Za-z0-9_.-]+/g, replacement: '/home/[REDACTED]' },
-  // Absolute Unix paths in /Users (macOS)
-  { pattern: /\/Users\/[A-Za-z0-9_.-]+/g, replacement: '/Users/[REDACTED]' },
-  // Windows user paths (C:\Users\username\...)
-  { pattern: /[A-Za-z]:\\Users\\[A-Za-z0-9_.-]+/g, replacement: 'C:\\Users\\[REDACTED]' },
-];
-
-export function redactSensitiveData(text: string): string {
-  let result = text;
-  for (const { pattern, replacement } of REDACT_PATTERNS) {
-    result = result.replace(pattern, replacement);
-  }
-  return result;
 }
 
 // ── Message redaction helper ─────────────────────────────────────────────────

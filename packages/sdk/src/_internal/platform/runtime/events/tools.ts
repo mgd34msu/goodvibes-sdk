@@ -6,6 +6,19 @@
  * Covers tool execution lifecycle events for the runtime event bus.
  */
 
+/**
+ * OBS-05: Structured summary of a tool result — avoids leaking raw `unknown` payloads
+ * into the event stream while still providing enough context for observability.
+ */
+export interface ToolResultSummary {
+  /** Discriminant for the result shape (e.g. 'text', 'json', 'error', 'binary'). */
+  kind: string;
+  /** Approximate byte size of the raw result. */
+  byteSize: number;
+  /** Optional short preview (first N chars, no credentials). */
+  preview?: string;
+}
+
 export type ToolEvent =
   /** A tool call request was received from the LLM. */
   | { type: 'TOOL_RECEIVED'; callId: string; turnId: string; tool: string; args: Record<string, unknown> }
@@ -22,9 +35,9 @@ export type ToolEvent =
   /** Post-execution hooks have run for this tool call. */
   | { type: 'TOOL_POSTHOOKED'; callId: string; turnId: string; tool: string }
   /** Tool call completed successfully. */
-  | { type: 'TOOL_SUCCEEDED'; callId: string; turnId: string; tool: string; durationMs: number; result?: unknown }
+  | { type: 'TOOL_SUCCEEDED'; callId: string; turnId: string; tool: string; durationMs: number; result?: ToolResultSummary }
   /** Tool call failed with an error. */
-  | { type: 'TOOL_FAILED'; callId: string; turnId: string; tool: string; error: string; durationMs: number; result?: unknown }
+  | { type: 'TOOL_FAILED'; callId: string; turnId: string; tool: string; error: string; durationMs: number; result?: ToolResultSummary }
   /** Tool results were synthesized to reconcile unresolved calls. */
   | {
       type: 'TOOL_RECONCILED';

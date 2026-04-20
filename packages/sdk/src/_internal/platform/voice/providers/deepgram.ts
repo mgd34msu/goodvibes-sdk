@@ -5,6 +5,7 @@ import {
   readFirstEnv,
   resolveAudioInput,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 type DeepgramTranscriptionResponse = {
   readonly results?: {
@@ -47,7 +48,7 @@ export function createDeepgramProvider(): VoiceProvider {
       url.searchParams.set('model', request.modelId?.trim() || 'nova-3');
       if (request.language?.trim()) url.searchParams.set('language', request.language.trim());
       url.searchParams.set('smart_format', 'true');
-      const response = await fetch(url, {
+      const response = await instrumentedFetch(url, {
         method: 'POST',
         headers: {
           Authorization: `Token ${apiKey}`,

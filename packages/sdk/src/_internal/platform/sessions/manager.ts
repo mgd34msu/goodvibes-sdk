@@ -69,8 +69,12 @@ export class SessionManager {
           }
         }
       }
-    } catch {
-      // Non-fatal: directory may not be readable yet
+    } catch (err: unknown) {
+      // OBS-11: Non-fatal — dir not readable yet; log so ops can diagnose permission issues
+      logger.debug('[SessionManager] _cleanupOrphanTempFiles: directory read failed', {
+        dir: this.sessionsDir,
+        error: String(err),
+      });
     }
   }
 

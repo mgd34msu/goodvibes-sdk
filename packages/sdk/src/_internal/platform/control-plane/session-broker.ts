@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { logger } from '../utils/logger.js';
+import { sessionsActive } from '../runtime/metrics.js';
 import { PersistentStore } from '../state/persistent-store.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { AgentEvent } from '../runtime/events/agents.js';
@@ -150,7 +152,9 @@ export class SharedSessionBroker {
   ): () => void {
     // m3: idempotent — second call is a no-op with a warning
     if (this._busAttached) {
-      console.warn('[SharedSessionBroker] attachRuntimeBus called more than once — ignoring duplicate call');
+      // Emit via console.warn so call-sites that spy on console.warn can observe it.
+      console.warn('SharedSessionBroker.attachRuntimeBus: already attached, ignoring', { busAttached: true });
+      logger.warn('[SharedSessionBroker] attachRuntimeBus called more than once — ignoring duplicate call', {});
       return () => {};
     }
     this._busAttached = true;
@@ -168,7 +172,7 @@ export class SharedSessionBroker {
           envelope.payload.output ?? '',
           { status: 'completed', durationMs: envelope.payload.durationMs },
         ).catch((err) => {
-          console.error('[SharedSessionBroker] completeAgent error on AGENT_COMPLETED', err);
+          logger.error('[SharedSessionBroker] completeAgent error on AGENT_COMPLETED', { error: String(err) });
         });
       },
     );
@@ -186,7 +190,7 @@ export class SharedSessionBroker {
           envelope.payload.error,
           { status: 'failed', durationMs: envelope.payload.durationMs },
         ).catch((err) => {
-          console.error('[SharedSessionBroker] completeAgent error on AGENT_FAILED', err);
+          logger.error('[SharedSessionBroker] completeAgent error on AGENT_FAILED', { error: String(err) });
         });
       },
     );
@@ -204,7 +208,7 @@ export class SharedSessionBroker {
           envelope.payload.reason ?? 'cancelled',
           { status: 'cancelled' },
         ).catch((err) => {
-          console.error('[SharedSessionBroker] completeAgent error on AGENT_CANCELLED', err);
+          logger.error('[SharedSessionBroker] completeAgent error on AGENT_CANCELLED', { error: String(err) });
         });
       },
     );
@@ -376,6 +380,8 @@ export class SharedSessionBroker {
       await this.routeBindings.patchBinding(input.routeBinding.id, { sessionId: session.id });
     }
     await this.persist();
+    // C-1: update active session gauge
+    sessionsActive.set(this.sessions.size);
     this.publishUpdate('session-created', session);
     return session;
   }
@@ -396,6 +402,8 @@ export class SharedSessionBroker {
     };
     this.sessions.set(sessionId, updated);
     await this.persist();
+    // C-1: update active session gauge
+    sessionsActive.set(this.sessions.size);
     this.publishUpdate('session-closed', updated);
     return updated;
   }

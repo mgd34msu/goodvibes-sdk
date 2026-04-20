@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, chmodSync, unlinkSync, renameSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 /** Platform + arch key for download URL resolution. */
 type PlatformKey = 'linux-x64' | 'linux-arm64' | 'darwin-x64' | 'darwin-arm64';
@@ -110,7 +111,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
   try {
     // Fetch latest release from GitHub API
     const releaseUrl = `https://api.github.com/repos/${spec.repo}/releases/latest`;
-    const releaseRes = await fetch(releaseUrl, {
+    const releaseRes = await instrumentedFetch(releaseUrl, {
       headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'goodvibes-sdk' },
       signal: AbortSignal.timeout(15000),
     });
@@ -137,7 +138,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
     }
 
     // Download the asset
-    const downloadRes = await fetch(asset.browser_download_url, {
+    const downloadRes = await instrumentedFetch(asset.browser_download_url, {
       signal: AbortSignal.timeout(120000), // 2 min for large binaries
       headers: { 'User-Agent': 'goodvibes-sdk' },
     });
@@ -153,7 +154,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
     // SHA256 verification — rust-analyzer publishes .sha256 sidecar files
     const sha256Asset = release.assets?.find(a => a.name === assetName + '.sha256');
     if (sha256Asset) {
-      const sha256Res = await fetch(sha256Asset.browser_download_url, {
+      const sha256Res = await instrumentedFetch(sha256Asset.browser_download_url, {
         signal: AbortSignal.timeout(10000),
         headers: { 'User-Agent': 'goodvibes-sdk' },
       });

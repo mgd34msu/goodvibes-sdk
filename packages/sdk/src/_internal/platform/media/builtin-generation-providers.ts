@@ -5,6 +5,7 @@ import type {
   MediaProvider,
   MediaProviderStatus,
 } from './provider-registry.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 function readFirstEnv(envVars: readonly string[]): string | null {
   for (const envVar of envVars) {
@@ -80,7 +81,7 @@ function resolveReferenceUrl(request: MediaGenerationRequest): string | undefine
 }
 
 async function fetchJson(url: string, init: RequestInit, timeoutMs = 120_000): Promise<unknown> {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  const response = await instrumentedFetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new Error(`Request failed (${response.status}) ${url}: ${text || response.statusText}`);
@@ -89,7 +90,7 @@ async function fetchJson(url: string, init: RequestInit, timeoutMs = 120_000): P
 }
 
 async function fetchResponse(url: string, init: RequestInit, timeoutMs = 120_000): Promise<Response> {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  const response = await instrumentedFetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new Error(`Request failed (${response.status}) ${url}: ${text || response.statusText}`);
@@ -116,7 +117,7 @@ async function maybeInlineArtifact(
   filename?: string,
   maxInlineBytes = 5_000_000,
 ): Promise<MediaArtifact> {
-  const head = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(20_000) }).catch(() => null);
+  const head = await instrumentedFetch(url, { method: 'HEAD', signal: AbortSignal.timeout(20_000) }).catch(() => null);
   const contentLength = Number.parseInt(head?.headers.get('content-length') ?? '', 10);
   const contentType = head?.headers.get('content-type')?.trim() || fallbackMimeType;
   if (Number.isFinite(contentLength) && contentLength > maxInlineBytes) {

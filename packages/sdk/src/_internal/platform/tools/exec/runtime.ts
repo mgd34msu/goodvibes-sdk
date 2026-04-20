@@ -200,8 +200,9 @@ async function runCommand(
       proc.kill('SIGTERM');
       await sleep(200);
       proc.kill('SIGKILL');
-    } catch {
-      // process already exited
+    } catch (err: unknown) {
+      // OBS-11: Non-fatal — process may have already exited before kill
+      logger.debug('[ExecRuntime] kill on timeout failed (process may have exited)', { error: String(err) });
     }
     timeoutResolve();
   }, timeoutMs);

@@ -259,8 +259,12 @@ function getCalendarParts(
       month: parseInt(parts['month'] ?? '1', 10),
       dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts['weekday'] ?? 'Sun'),
     };
-  } catch {
-    // Unknown timezone — fall back to local time
+  } catch (err: unknown) {
+    // OBS-11: Unknown timezone — fall back to local time; log at debug so misconfigured schedules surface
+    logger.debug('[Scheduler] timezone decomposition failed, falling back to local time', {
+      error: String(err),
+    });
+    // fall back to local time
     const d = new Date(ts);
     return {
       minute: d.getMinutes(),

@@ -14,6 +14,7 @@ import {
   success,
   trimForSurface,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 export function createSignalDeliveryStrategy(
   configManager: ConfigManager,
@@ -124,7 +125,7 @@ export function createWhatsAppDeliveryStrategy(
       if (!phoneNumberId) throw new Error('Missing WhatsApp phone number id');
       if (!accessToken) throw new Error('Missing WhatsApp access token');
       const apiBaseUrl = firstNonEmpty(process.env.WHATSAPP_BASE_URL, 'https://graph.facebook.com/v17.0')!;
-      const response = await fetch(`${normalizeBaseUrl(apiBaseUrl)}/${encodeURIComponent(phoneNumberId)}/messages`, {
+      const response = await instrumentedFetch(`${normalizeBaseUrl(apiBaseUrl)}/${encodeURIComponent(phoneNumberId)}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -230,7 +231,7 @@ export function createBlueBubblesDeliveryStrategy(
       if (!serverUrl) throw new Error('Missing BlueBubbles server URL');
       if (!password) throw new Error('Missing BlueBubbles password');
       if (!chatGuid) throw new Error('Missing BlueBubbles chat guid');
-      const response = await fetch(`${normalizeBaseUrl(serverUrl)}/api/v1/message/text?password=${encodeURIComponent(password)}`, {
+      const response = await instrumentedFetch(`${normalizeBaseUrl(serverUrl)}/api/v1/message/text?password=${encodeURIComponent(password)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -42,9 +42,11 @@ export function createDaemonRuntimeRouteHandlers(
   | 'setScheduleEnabled'
   | 'runScheduleNow'
   | 'getSchedulerCapacity'
+  | 'getRuntimeMetrics'
 > {
   return {
     ...createDaemonRuntimeSessionRouteHandlers(context),
     ...createDaemonRuntimeAutomationRouteHandlers(context),
+    getRuntimeMetrics: () => Response.json(context.snapshotMetrics()),
   };
 }

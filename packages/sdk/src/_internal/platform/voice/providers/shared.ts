@@ -3,6 +3,7 @@ import type {
   VoiceProvider,
   VoiceProviderStatus,
 } from '../types.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 export function trimToUndefined(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -41,7 +42,7 @@ export async function resolveAudioInput(
     };
   }
   if (typeof audio.uri === 'string' && audio.uri.trim().length > 0) {
-    const response = await fetch(audio.uri);
+    const response = await instrumentedFetch(audio.uri);
     if (!response.ok) throw new Error(`Failed to load audio URI: HTTP ${response.status}`);
     return {
       buffer: new Uint8Array(await response.arrayBuffer()),

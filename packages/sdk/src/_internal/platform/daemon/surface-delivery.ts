@@ -11,6 +11,7 @@ import { validatePublicWebhookUrl } from '../utils/url-safety.js';
 import type { SharedApprovalRecord } from '../control-plane/index.js';
 import type { PendingSurfaceReply } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 type DeliverySurface =
   | 'slack'
@@ -165,7 +166,7 @@ export class DaemonSurfaceDeliveryHelper {
         ?? process.env.SLACK_BOT_TOKEN;
       const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
       if (pending.responseUrl) {
-        await fetch(pending.responseUrl, {
+        await instrumentedFetch(pending.responseUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -207,7 +208,7 @@ export class DaemonSurfaceDeliveryHelper {
       ?? process.env.SLACK_BOT_TOKEN;
     const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
     if (pending.responseUrl) {
-      await fetch(pending.responseUrl, {
+      await instrumentedFetch(pending.responseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -298,7 +299,7 @@ export class DaemonSurfaceDeliveryHelper {
     } else if (secret && pending.callbackSignature === 'shared-secret') {
       headers.set('X-Goodvibes-Webhook-Secret', secret);
     }
-    await fetch(validation.url, {
+    await instrumentedFetch(validation.url, {
       method: 'POST',
       headers,
       signal: AbortSignal.timeout(timeoutMs),
@@ -444,7 +445,7 @@ export class DaemonSurfaceDeliveryHelper {
         ]
       : undefined;
     if (typeof binding.metadata.responseUrl === 'string' && binding.metadata.responseUrl.startsWith('https://')) {
-      await fetch(binding.metadata.responseUrl, {
+      await instrumentedFetch(binding.metadata.responseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -521,7 +522,7 @@ export class DaemonSurfaceDeliveryHelper {
     if (secret) {
       headers.set('X-Goodvibes-Signature', this.signWebhookPayload(payload, secret));
     }
-    await fetch(validation.url, {
+    await instrumentedFetch(validation.url, {
       method: 'POST',
       headers,
       body: payload,

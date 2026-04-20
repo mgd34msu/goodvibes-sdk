@@ -1,5 +1,6 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 export interface NtfyPublishOptions {
   readonly title?: string;
@@ -84,7 +85,7 @@ export class NtfyIntegration {
   async poll(topic: string, options: Omit<NtfySubscribeOptions, 'poll'> = {}): Promise<NtfyMessage[]> {
     const url = this.buildSubscribeUrl(topic, 'json', { ...options, poll: true });
     const headers = this.buildAuthHeaders();
-    const response = await fetch(url, {
+    const response = await instrumentedFetch(url, {
       method: 'GET',
       headers,
       signal: options.signal,
@@ -107,7 +108,7 @@ export class NtfyIntegration {
     options: NtfySubscribeOptions = {},
   ): Promise<void> {
     const url = this.buildSubscribeUrl(topic, 'json', options);
-    const response = await fetch(url, {
+    const response = await instrumentedFetch(url, {
       method: 'GET',
       headers: this.buildAuthHeaders(),
       signal: options.signal,

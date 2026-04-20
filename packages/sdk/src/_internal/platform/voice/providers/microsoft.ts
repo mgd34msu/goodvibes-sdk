@@ -13,6 +13,7 @@ import {
   inferExtFromOutputFormat,
   inferMimeFromExtension,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 type MicrosoftVoiceListEntry = {
   ShortName?: string;
@@ -38,7 +39,7 @@ function buildMicrosoftVoiceHeaders(): Record<string, string> {
 }
 
 async function listMicrosoftVoices(): Promise<readonly VoiceDescriptor[]> {
-  const response = await fetch(
+  const response = await instrumentedFetch(
     `https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=${TRUSTED_CLIENT_TOKEN}`,
     { headers: buildMicrosoftVoiceHeaders() },
   );

@@ -12,6 +12,7 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { logger } from '../../utils/logger.js';
 
 // ── Provenance types ──────────────────────────────────────────────────────────
 
@@ -181,8 +182,12 @@ export function verifyBundle<T>(
     expected = createHmac('sha256', keyBuf)
       .update(canonical, 'utf8')
       .digest();
-  } catch {
-    // Non-fatal: key is malformed; treat as invalid
+  } catch (err: unknown) {
+    // OBS-11: Non-fatal — key is malformed; treat as invalid
+    logger.warn('[PolicySigner] HMAC key error during signature computation', {
+      bundleId: bundle.bundleId,
+      error: String(err),
+    });
     return {
       ok: false,
       status: 'invalid',
