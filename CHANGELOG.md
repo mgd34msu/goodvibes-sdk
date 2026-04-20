@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.25] - 2026-04-20
+
+CI-orphan recovery. 0.21.24 was tagged and pushed but CI failed at `bunx tsc -b --force` (the actual build command) with three TS errors. 0.21.24 was **never published to npm**. This patch fixes those errors and is the first published artifact containing the Arch #3 scheduler-capacity work.
+
+### Fixed
+- **CI orphan — `getSchedulerCapacity` missing from platform HTTP layer**: `packages/sdk/src/_internal/platform/daemon/http/runtime-route-types.ts` — the local `DaemonRuntimeRouteContext.automationManager` shape was not updated when `getSchedulerCapacity` was added to the canonical `DaemonRuntimeRouteContext` in `packages/sdk/src/_internal/daemon/runtime-route-types.ts` (the daemon-sdk mirror). Added `getSchedulerCapacity(): { slots_total: number; slots_in_use: number; queue_depth: number; oldest_queued_age_ms: number | null }` to the `automationManager` block, fixing TS2430 at `runtime-route-types.ts(47,18)`.
+- **CI orphan — `getSchedulerCapacity` missing from router `automationManager` passthrough**: `packages/sdk/src/_internal/platform/daemon/http/router.ts` — the `automationManager` object literal passed to `createDaemonRuntimeRouteHandlers` at line 408 was missing the `getSchedulerCapacity` passthrough. Added `getSchedulerCapacity: () => this.context.automationManager.getSchedulerCapacity()`, fixing TS2741 at `router.ts(408,9)` and TS2345 at `router.ts(300,41)`.
+
+### Note
+- 0.21.24 entry below is preserved for history but that version was never published. 0.21.25 is the first npm artifact for this feature set.
+
+Gates: build pass (bunx tsc -b --force, exit 0), sync:check pass, version:check pass (all 11 packages at 0.21.25), changelog:check pass.
+
+---
+
 ## [0.21.24] - 2026-04-20
 
 UAT Run 3 / 3b triage against TUI 0.19.12. Five findings fixed in SDK; two deferred to TUI (see `docs/uat/handoff-to-tui.md`). One new scheduler-capacity endpoint added (Arch #3).

@@ -419,6 +419,7 @@ export class DaemonHttpRouter {
           },
           setEnabled: (jobId, enabled) => this.context.automationManager.setEnabled(jobId, enabled),
           runNow: (jobId) => this.context.automationManager.runNow(jobId),
+          getSchedulerCapacity: () => this.context.automationManager.getSchedulerCapacity(),
         },
         normalizeAtSchedule,
         normalizeEverySchedule,
