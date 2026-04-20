@@ -1,35 +1,10 @@
+import type { RuntimeEventDomain } from './generated/runtime-event-domains.js';
 export type JsonSchema = Record<string, unknown>;
 export type GatewayMethodTransport = 'http' | 'ws' | 'internal';
 export type GatewayMethodSource = 'builtin' | 'plugin';
 export type GatewayMethodAccess = 'public' | 'authenticated' | 'admin' | 'remote-peer';
 export type GatewayEventTransport = 'sse' | 'ws' | 'internal';
-export type RuntimeEventDomain =
-  | 'session'
-  | 'turn'
-  | 'providers'
-  | 'tools'
-  | 'tasks'
-  | 'agents'
-  | 'workflows'
-  | 'orchestration'
-  | 'communication'
-  | 'planner'
-  | 'permissions'
-  | 'plugins'
-  | 'mcp'
-  | 'transport'
-  | 'compaction'
-  | 'ui'
-  | 'ops'
-  | 'forensics'
-  | 'security'
-  | 'automation'
-  | 'routes'
-  | 'control-plane'
-  | 'deliveries'
-  | 'watchers'
-  | 'surfaces'
-  | 'knowledge';
+export type { RuntimeEventDomain } from './generated/runtime-event-domains.js';
 export type DistributedPeerKind = 'node' | 'device';
 export type DistributedWorkType = 'invoke' | 'status.request' | 'location.request' | 'session.message' | 'automation.run';
 export type DistributedWorkStatus = 'queued' | 'claimed' | 'completed' | 'failed' | 'cancelled' | 'expired';

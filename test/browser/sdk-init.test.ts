@@ -47,7 +47,7 @@ describe('SDK initialisation (browser)', () => {
     expect(typeof sdk.realtime.viaWebSocket).toBe('function');
   });
 
-  it('uses location.origin as baseUrl when omitted', () => {
+  it.skipIf(typeof window === 'undefined')('uses location.origin as baseUrl when omitted', () => {
     // In a browser context, location.origin is always defined.
     // createBrowserGoodVibesSdk must not throw when baseUrl is omitted.
     expect(() => createBrowserGoodVibesSdk()).not.toThrow();

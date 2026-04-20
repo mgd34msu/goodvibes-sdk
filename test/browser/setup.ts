@@ -15,24 +15,55 @@
  * Pre-requisite: the MSW service worker file must exist at public/mockServiceWorker.js.
  * Generate it once with: npx msw init public/
  */
-import { setupWorker } from 'msw/browser';
 import { beforeAll, afterEach, afterAll } from 'vitest';
 
-// The shared worker instance with no default handlers.
-// Each test file registers its own handlers via worker.use().
-export const worker = setupWorker();
+/**
+ * Guards against running MSW setup in non-browser environments (Node/Bun test
+ * runner). The browser tests are designed for vitest + Playwright and must
+ * only execute in a real browser V8 context where `window` is defined.
+ *
+ * When running under `bun test` (which lacks a browser context), all MSW
+ * lifecycle hooks become no-ops so bun can discover the files without failing
+ * at import time. The individual test suites skip via `describe.skipIf`.
+ */
+const IS_BROWSER = typeof window !== 'undefined';
 
-// Start the worker before all tests.
-beforeAll(async () => {
-  await worker.start({ onUnhandledRequest: 'error', quiet: true });
-});
+type WorkerLike = {
+  use: (...handlers: unknown[]) => void;
+  resetHandlers: () => void;
+  start: (options?: unknown) => Promise<void>;
+  stop: () => void;
+};
 
-// Reset handlers between tests to prevent handler pollution.
-afterEach(() => {
-  worker.resetHandlers();
-});
+let worker: WorkerLike;
 
-// Stop the worker after all tests.
-afterAll(() => {
-  worker.stop();
-});
+if (IS_BROWSER) {
+  // Dynamic import avoids calling setupWorker() at module parse time in non-browser envs.
+  const { setupWorker } = await import('msw/browser');
+  worker = setupWorker();
+
+  // Start the worker before all tests.
+  beforeAll(async () => {
+    await worker.start({ onUnhandledRequest: 'error', quiet: true });
+  });
+
+  // Reset handlers between tests to prevent handler pollution.
+  afterEach(() => {
+    worker.resetHandlers();
+  });
+
+  // Stop the worker after all tests.
+  afterAll(() => {
+    worker.stop();
+  });
+} else {
+  // No-op stub so test files that import { worker } compile and load without errors.
+  worker = {
+    use: () => {},
+    resetHandlers: () => {},
+    start: async () => {},
+    stop: () => {},
+  };
+}
+
+export { worker };

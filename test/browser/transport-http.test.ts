@@ -29,7 +29,7 @@ function makeSdk() {
   return createBrowserGoodVibesSdk({ baseUrl: BASE_URL });
 }
 
-describe('HTTP transport round-trip in browser (via MSW)', () => {
+describe.skipIf(typeof window === 'undefined')('HTTP transport round-trip in browser (via MSW)', () => {
   it('delivers typed JSON for a 200 response', async () => {
     // Real route: GET /api/accounts (accounts.snapshot in method-catalog-runtime.ts)
     const SNAPSHOT = {
