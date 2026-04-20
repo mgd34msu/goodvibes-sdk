@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.27] - 2026-04-20
+
+Three bugs reclassified from "by design" / "resolved" and fixed properly. F7 and F5b were previously mislabeled as not requiring implementation; F-PROV-009 had the code right but lacked router-level E2E test coverage.
+
+### Added
+- **F7: OTLP POST ingest receivers** — Implemented real POST endpoints at `/api/v1/telemetry/otlp/v1/logs`, `/api/v1/telemetry/otlp/v1/traces`, and `/api/v1/telemetry/otlp/v1/metrics` (plus legacy `/api/telemetry/otlp/v1/...` aliases). Added `postTelemetryOtlpLogs`, `postTelemetryOtlpTraces`, `postTelemetryOtlpMetrics` to `DaemonApiRouteHandlers` (canonical in `daemon-sdk/src/context.ts`, mirrored in `sdk/src/_internal/daemon/context.ts`). Handlers validate Content-Type (`415` for unsupported types), body size (`413` for >4 MiB), JSON structure (`400` for malformed), and require bearer auth (`401`). **JSON (`application/json`) only in this release — protobuf (`application/x-protobuf`) returns `415 Unsupported Media Type`**; protobuf decoding is planned for a future release. Payloads forwarded to `TelemetryApiService` (the required `ingestSink` field in `TelemetryRouteContext`), which stores ingested records in its bounded in-memory event buffer (ring buffer, default cap 500 events). Log records are individually mapped and appended per `logRecord` entry; trace spans generate a sentinel `TelemetryRecord` per POST only when at least one span was appended; metric datapoints generate a sentinel only when at least one datapoint was present. All ingested records are observable on `GET /api/v1/telemetry/events` with `source: 'otlp-ingest'` and type `OTLP_LOG_INGEST` / `OTLP_TRACE_INGEST` / `OTLP_METRICS_INGEST`. Sentinel emission is gated on actual records being appended — empty payloads do not produce false-positive observability events. Route dispatch wired in both `operator.ts` files. Tests in `test/otlp-ingest-routes.test.ts` (happy path JSON×3, protobuf×3 now assert 415, plus 401/415/400 error paths and sink forwarding/router dispatch tests) and sentinel-gating E2E tests in `test/otlp-ingest-e2e.test.ts`.
+- **F5b: sqlite-vec bundled binary resolver** — Added `resolveSqliteVecPath()` (exported for testability) and `loadSqliteVecExtension()` (private) to `packages/sdk/src/_internal/platform/state/memory-vector-store.ts`. Detects Bun bundled-executable context by checking `import.meta.url` for `$bunfs`. In bundled mode resolves extension from `join(dirname(process.execPath), 'lib', 'sqlite-vec-<os>-<arch>', 'vec0.<suffix>')`. Falls back to the npm package's `load()` in dev/test mode. Tests in `test/sqlite-vec-resolver.test.ts`.
+
+### Fixed
+- **F-PROV-009: `secretsResolutionSkipped` router-level E2E test** — The implementation was already correct in `provider-routes.ts` (line 287) and wired in `router.ts`. Added missing router-level end-to-end test to `test/provider-routes-secrets-skipped.test.ts` that exercises the full `Request → DaemonHttpRouter.dispatchApiRoutes → dispatchProviderRoutes` path with `secretsManager: null` and asserts `secretsResolutionSkipped: true` in the response.
+
+Gates: build pass (bunx tsc -b --force, exit 0), sync:check pass, version:check pass (all 10 packages at 0.21.27), changelog:check pass.
+
+---
+
 ## [0.21.26] - 2026-04-20
 
 Three loose ends from 0.21.25 closed: F16b router plumbing fully threaded end-to-end, `getSchedulerCapacity` registered in the method catalog so `buildOperatorContract` emits it, and the `_syncScheduled` coalescing test rewritten to be deterministic.

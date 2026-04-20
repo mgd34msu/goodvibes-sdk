@@ -24,6 +24,9 @@ export interface DaemonApiRouteHandlers {
   getTelemetryOtlpTraces(req: Request): MaybeResponse;
   getTelemetryOtlpLogs(req: Request): MaybeResponse;
   getTelemetryOtlpMetrics(req: Request): MaybeResponse;
+  postTelemetryOtlpLogs(req: Request): MaybeResponse;
+  postTelemetryOtlpTraces(req: Request): MaybeResponse;
+  postTelemetryOtlpMetrics(req: Request): MaybeResponse;
   getGatewayMethods(url: URL): MaybeResponse;
   getGatewayEvents(url: URL): MaybeResponse;
   getGatewayMethod(methodId: string): MaybeResponse;

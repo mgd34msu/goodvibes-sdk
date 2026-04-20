@@ -756,6 +756,176 @@ export class TelemetryApiService {
     throw new Error(`Invalid telemetry cursor: ${cursor}`);
   }
 
+  /**
+   * Implement TelemetryIngestSink.ingestLogs — delegates to ingestExternalLogs.
+   * Satisfies the interface expected by DaemonHttpRouterContext.ingestSink.
+   */
+  ingestLogs(payload: Record<string, unknown>): void {
+    this.ingestExternalLogs(payload);
+  }
+
+  /**
+   * Implement TelemetryIngestSink.ingestTraces — delegates to ingestExternalTraces.
+   */
+  ingestTraces(payload: Record<string, unknown>): void {
+    this.ingestExternalTraces(payload);
+  }
+
+  /**
+   * Implement TelemetryIngestSink.ingestMetrics — delegates to ingestExternalMetrics.
+   */
+  ingestMetrics(payload: Record<string, unknown>): void {
+    this.ingestExternalMetrics(payload);
+  }
+
+  /**
+   * Ingest an externally-received OTLP log payload into this service's event
+   * buffer. Each entry in `resourceLogs[].scopeLogs[].logRecords[]` is mapped
+   * to a TelemetryRecord and appended to `this.records` with domain 'telemetry'.
+   * Records are bounded by eventLimit (default 500). Subscribers are notified.
+   * Call is synchronous and never throws.
+   */
+  ingestExternalLogs(payload: Record<string, unknown>): void {
+    const resourceLogs = Array.isArray(payload['resourceLogs']) ? payload['resourceLogs'] as unknown[] : [];
+    for (const resource of resourceLogs) {
+      const scopeLogs = typeof resource === 'object' && resource !== null && Array.isArray((resource as Record<string, unknown>)['scopeLogs'])
+        ? (resource as Record<string, unknown>)['scopeLogs'] as unknown[]
+        : [];
+      for (const scope of scopeLogs) {
+        const logRecords = typeof scope === 'object' && scope !== null && Array.isArray((scope as Record<string, unknown>)['logRecords'])
+          ? (scope as Record<string, unknown>)['logRecords'] as unknown[]
+          : [];
+        for (const lr of logRecords) {
+          const entry = typeof lr === 'object' && lr !== null ? lr as Record<string, unknown> : {};
+          const record = this.buildIngestedRecord('OTLP_LOG_INGEST', entry);
+          appendBounded(this.records, record, this.eventLimit);
+          this.eventCountsByDomain.set('ops', (this.eventCountsByDomain.get('ops') ?? 0) + 1);
+          this.eventCountsByType.set('OTLP_LOG_INGEST', (this.eventCountsByType.get('OTLP_LOG_INGEST') ?? 0) + 1);
+          this.notify(record);
+        }
+      }
+    }
+  }
+
+  /**
+   * Ingest an externally-received OTLP trace payload into this service's span
+   * buffer. Each entry in `resourceSpans[].scopeSpans[].spans[]` is mapped
+   * to a ReadableSpan and appended to `this.spans`, bounded by spanLimit.
+   */
+  ingestExternalTraces(payload: Record<string, unknown>): void {
+    const resourceSpans = Array.isArray(payload['resourceSpans']) ? payload['resourceSpans'] as unknown[] : [];
+    let spansAppended = 0;
+    for (const resource of resourceSpans) {
+      const scopeSpans = typeof resource === 'object' && resource !== null && Array.isArray((resource as Record<string, unknown>)['scopeSpans'])
+        ? (resource as Record<string, unknown>)['scopeSpans'] as unknown[]
+        : [];
+      for (const scope of scopeSpans) {
+        const spans = typeof scope === 'object' && scope !== null && Array.isArray((scope as Record<string, unknown>)['spans'])
+          ? (scope as Record<string, unknown>)['spans'] as unknown[]
+          : [];
+        for (const sp of spans) {
+          const entry = typeof sp === 'object' && sp !== null ? sp as Record<string, unknown> : {};
+          const traceId = typeof entry['traceId'] === 'string' ? entry['traceId'] : normalizeTraceId(undefined);
+          const spanId = typeof entry['spanId'] === 'string' ? entry['spanId'] : buildSpanId(`otlp:${this.seq}`);
+          const name = typeof entry['name'] === 'string' ? entry['name'] : 'otlp.span';
+          const startMs = typeof entry['startTimeUnixNano'] === 'number' ? Math.floor(entry['startTimeUnixNano'] / 1_000_000) : Date.now();
+          const endMs = typeof entry['endTimeUnixNano'] === 'number' ? Math.floor(entry['endTimeUnixNano'] / 1_000_000) : startMs;
+          const span: ReadableSpan = {
+            name,
+            kind: SpanKinds.INTERNAL,
+            spanContext: { traceId, spanId, isValid: true },
+            startTimeMs: startMs,
+            endTimeMs: endMs,
+            durationMs: endMs - startMs,
+            attributes: {},
+            events: [],
+            status: { code: SpanStatusCode.UNSET },
+            instrumentationScope: 'otlp-ingest',
+          };
+          appendBounded(this.spans, span, this.spanLimit);
+          spansAppended++;
+        }
+      }
+    }
+    // Push a sentinel record into the event buffer only when at least one span
+    // was appended — empty payloads must not produce false-positive observability
+    // events on GET /api/v1/telemetry/events.
+    if (spansAppended === 0) return;
+    const record = this.buildIngestedRecord('OTLP_TRACE_INGEST', payload);
+    appendBounded(this.records, record, this.eventLimit);
+    this.eventCountsByDomain.set('ops', (this.eventCountsByDomain.get('ops') ?? 0) + 1);
+    this.eventCountsByType.set('OTLP_TRACE_INGEST', (this.eventCountsByType.get('OTLP_TRACE_INGEST') ?? 0) + 1);
+    this.notify(record);
+  }
+
+  /**
+   * Ingest an externally-received OTLP metrics payload. Creates a synthetic
+   * TelemetryRecord tagged 'OTLP_METRICS_INGEST' and appends it to the event
+   * buffer so it is visible on GET /api/v1/telemetry/events.
+   * Sentinel is only emitted when at least one metric datapoint is present.
+   */
+  ingestExternalMetrics(payload: Record<string, unknown>): void {
+    // Count datapoints across all resourceMetrics -> scopeMetrics -> metrics -> dataPoints.
+    const resourceMetrics = Array.isArray(payload['resourceMetrics']) ? payload['resourceMetrics'] as unknown[] : [];
+    let datapointsFound = 0;
+    for (const resource of resourceMetrics) {
+      const scopeMetrics = typeof resource === 'object' && resource !== null && Array.isArray((resource as Record<string, unknown>)['scopeMetrics'])
+        ? (resource as Record<string, unknown>)['scopeMetrics'] as unknown[]
+        : [];
+      for (const scope of scopeMetrics) {
+        const metrics = typeof scope === 'object' && scope !== null && Array.isArray((scope as Record<string, unknown>)['metrics'])
+          ? (scope as Record<string, unknown>)['metrics'] as unknown[]
+          : [];
+        for (const metric of metrics) {
+          if (typeof metric !== 'object' || metric === null) continue;
+          const m = metric as Record<string, unknown>;
+          // Datapoints may live under sum, gauge, histogram, exponentialHistogram, or summary.
+          for (const signalKey of ['sum', 'gauge', 'histogram', 'exponentialHistogram', 'summary']) {
+            const signal = m[signalKey];
+            if (typeof signal === 'object' && signal !== null) {
+              const dp = (signal as Record<string, unknown>)['dataPoints'];
+              if (Array.isArray(dp)) datapointsFound += dp.length;
+            }
+          }
+        }
+      }
+    }
+    // Emit sentinel only when at least one datapoint was present — empty
+    // payloads must not produce false-positive observability events.
+    if (datapointsFound === 0) return;
+    const record = this.buildIngestedRecord('OTLP_METRICS_INGEST', payload);
+    appendBounded(this.records, record, this.eventLimit);
+    this.eventCountsByDomain.set('ops', (this.eventCountsByDomain.get('ops') ?? 0) + 1);
+    this.eventCountsByType.set('OTLP_METRICS_INGEST', (this.eventCountsByType.get('OTLP_METRICS_INGEST') ?? 0) + 1);
+    this.notify(record);
+  }
+
+  /**
+   * Build a synthetic TelemetryRecord for an externally-ingested OTLP payload.
+   * Domain is always 'telemetry'; source is 'otlp-ingest'.
+   */
+  private buildIngestedRecord(
+    type: string,
+    payload: Record<string, unknown>,
+  ): TelemetryRecord {
+    const domain: RuntimeEventDomain = 'ops';
+    const now = Date.now();
+    const seq = this.seq++;
+    return {
+      id: `${domain}:${type}:${now}:${seq}`,
+      domain,
+      type,
+      timestamp: now,
+      severity: 'info',
+      traceId: normalizeTraceId(undefined),
+      sessionId: '',
+      source: 'otlp-ingest',
+      message: `OTLP ingest: ${type}`,
+      payload,
+      attributes: {},
+    };
+  }
+
   private notify(record: TelemetryRecord): void {
     for (const subscriber of this.subscribers) {
       try {

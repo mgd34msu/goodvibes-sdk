@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { Database, type SQLQueryBindings } from 'bun:sqlite';
 import { load as loadSqliteVec } from 'sqlite-vec';
@@ -11,6 +11,43 @@ import {
 } from './memory-embeddings.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+
+/**
+ * Resolves the path to the sqlite-vec native extension.
+ *
+ * When running inside a Bun bundled executable (import.meta.url path contains
+ * "$bunfs"), the npm package's import.meta.resolve() cannot find the extension
+ * because the virtual filesystem does not contain node_modules. In that case,
+ * the extension must be co-located with the binary under
+ * `<execDir>/lib/sqlite-vec-<os>-<arch>/vec0.<suffix>`.
+ *
+ * In development (bun run / node), the package's own getLoadablePath() is used
+ * via the re-exported `load()` function.
+ */
+export function resolveSqliteVecPath(): string {
+  const isBundled = import.meta.url.includes('$bunfs');
+  if (isBundled) {
+    const os = process.platform === 'win32' ? 'windows' : process.platform;
+    const arch = process.arch;
+    const suffix = process.platform === 'win32' ? 'dll' : process.platform === 'darwin' ? 'dylib' : 'so';
+    return join(dirname(process.execPath), 'lib', `sqlite-vec-${os}-${arch}`, `vec0.${suffix}`);
+  }
+  // In dev mode, delegate to sqlite-vec's own resolver.
+  return '';
+}
+
+/**
+ * Loads the sqlite-vec extension into a Bun SQLite database.
+ * Handles both bundled-binary and development execution contexts.
+ */
+function loadSqliteVecExtension(db: Database): void {
+  const bundledPath = resolveSqliteVecPath();
+  if (bundledPath) {
+    db.loadExtension(bundledPath);
+  } else {
+    loadSqliteVec(db);
+  }
+}
 
 // Keep this in sync with DEFAULT_MEMORY_EMBEDDING_DIMS in memory-embeddings.ts.
 // Duplicating the literal here avoids an initialization cycle when state/index.ts
@@ -115,7 +152,7 @@ export class SqliteVecMemoryIndex {
         mkdirSync(dirname(this.dbPath), { recursive: true });
       }
       this.db = new Database(this.dbPath);
-      loadSqliteVec(this.db);
+      loadSqliteVecExtension(this.db);
       this.available = true;
       this.enabled = true;
       this.createSchema();

@@ -345,6 +345,7 @@ export class DaemonHttpRouter {
           const token = this.context.extractAuthToken(request);
           return token ? this.context.describeAuthenticatedPrincipal(token) : null;
         },
+        ingestSink: this.telemetryApi,
       }),
       ...createDaemonChannelRouteHandlers({
         ...buildChannelRouteContext({
