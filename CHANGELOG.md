@@ -8,6 +8,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.24] - 2026-04-20
+
+UAT Run 3 / 3b triage against TUI 0.19.12. Five findings fixed in SDK; two deferred to TUI (see `docs/uat/handoff-to-tui.md`). One new scheduler-capacity endpoint added (Arch #3).
+
+### Added
+- **Arch #3 — `GET /api/runtime/scheduler`**: New endpoint returning current automation-scheduler capacity snapshot: `slots_total` (max concurrent runs), `slots_in_use` (currently executing), `queue_depth` (waiting in queue), `oldest_queued_age_ms` (age of oldest queued run in ms, `null` if queue is empty). Implemented via new public `AutomationManager.getSchedulerCapacity()` method wired through `DaemonRuntimeRouteContext.automationManager` sub-interface and `operator.ts` dispatcher.
+- **F-PROV-009 — `secretsResolutionSkipped` field on `GET /api/providers` response**: When `secretsManager` is `null`/`undefined` (secrets tier unavailable), the response now includes `secretsResolutionSkipped: true`. Previously the response silently returned 0 secrets-configured providers with no indication of why. Callers can now distinguish "no secrets configured" from "secrets tier skipped".
+
+### Fixed
+- **F16b — Companion-chat session-create leaves `provider: null`, `model: null`**: `handleCreateSession` now accepts an optional `resolveDefaultProviderModel?: () => { provider: string; model: string } | null` callback on `CompanionChatRouteContext`. When injected and the request body does not supply both `provider` and `model`, the callback is invoked to fill in defaults. If the callback is present but returns `null` (no default configured), the response is HTTP 400 `NO_MODEL_CONFIGURED`. Backward compatible: when the callback is absent, legacy behavior (null provider/model allowed through) is preserved.
+- **F17 — `DELETE /api/sessions/:id/inputs/:inputId` silent no-op on `spawned` state**: `cancelInput` in the session broker returns the input record unchanged when it is not in a cancellable state. The HTTP handler now detects this case (returned state is not `queued` or `cancelled`) and responds HTTP 409 `{ error: 'Cannot cancel input in state \'<state>\'', code: 'CANCEL_NOT_ALLOWED', input }`. Previously returned 200 with no state change, giving callers no actionable signal.
+- **F19 — `PATCH /api/channels/policies/:surface` returns 404 (regression, never implemented)**: `patchChannelPolicy(surface, req)` added to `DaemonApiRouteHandlers` interface, `operator.ts` dispatcher (PATCH branch on the channel-policy route), and `channel-routes.ts` handler factory. The handler applies a field-by-field partial update (spreading existing policy fields from the current snapshot, then overlaying request body fields). Implementation mirrors are in sync (`sync:check` passes).
+
+### Deferred
+- **F7 — POST `/api/v1/telemetry/otlp/v1/logs` returns 404**: Working as designed. The daemon is an OTLP exporter, not an inbound collector. Architecture decision `otlp-no-post-ingest` (2026-04-19) stands. TUI UAT plan must be updated to remove the POST expectation. See `docs/uat/handoff-to-tui.md#f7`.
+- **F9 — POST `/api/automation/jobs` returns 400 "Missing required field: prompt"**: Schema drift in the UAT plan. `prompt` is and has always been required. TUI UAT job fixtures must include a `prompt` string field. See `docs/uat/handoff-to-tui.md#f9`.
+
+### Docs
+- `docs/uat/handoff-to-tui.md` created: explains F7 and F9 as TUI-owned items with action items and example payloads.
+
+### Coming next (deferred from this UAT cycle)
+- **Arch #1** — Provider-latency telemetry (`latency_ms` on provider response).
+- **Arch #2** — `turn.stalled` event (timeout sentinel when a turn produces no output within a configurable window).
+
+Gates: sync:check pass, version:check pass (all 10 packages at 0.21.24), tsc --noEmit pass (0 errors), bun test pass (1012 pass / 17 skip / 0 fail). Added 31 new tests across 5 files covering F16b (companion-chat session-create provider resolution, 9 tests), F17 (input cancel state transitions, 5 tests), F19 (channel-policy PATCH, 7 tests), F-PROV-009 (secretsResolutionSkipped observability, 3 tests), and Arch #3 (scheduler capacity endpoint, 7 tests). F19 now includes a focused field-filter test (B3) asserting the handler drops untyped fields (rate_limit, bogusField) before they reach upsertPolicy. F19 and Arch #3 include dispatcher integration tests through dispatchOperatorRoutes verifying real HTTP route wiring.
+
+---
+
 ## [0.21.23] - 2026-04-19
 
 Fixes three blockers from WRFC review 5 (score 8.4/10 vs threshold 10.0).

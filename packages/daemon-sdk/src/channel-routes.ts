@@ -32,6 +32,7 @@ export function createDaemonChannelRouteHandlers(
   | 'postChannelAllowlistEdit'
   | 'getChannelPolicies'
   | 'postChannelPolicy'
+  | 'patchChannelPolicy'
   | 'getChannelPolicyAudit'
   | 'getChannelStatus'
   | 'getChannelDirectory'
@@ -277,6 +278,28 @@ export function createDaemonChannelRouteHandlers(
         : Response.json({ error: 'Unknown channel allowlist surface' }, { status: 404 });
     },
     getChannelPolicies: () => Response.json({ policies: context.channelPolicy.listPolicies() }),
+    patchChannelPolicy: async (surface, req) => {
+      const admin = context.requireAdmin(req);
+      if (admin) return admin;
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const updated = await context.channelPolicy.upsertPolicy(surface as ChannelSurface, {
+        ...(body.enabled !== undefined ? { enabled: Boolean(body.enabled) } : {}),
+        ...(body.requireMention !== undefined ? { requireMention: Boolean(body.requireMention) } : {}),
+        ...(body.allowDirectMessages !== undefined ? { allowDirectMessages: Boolean(body.allowDirectMessages) } : {}),
+        ...(body.allowGroupMessages !== undefined ? { allowGroupMessages: Boolean(body.allowGroupMessages) } : {}),
+        ...(body.allowThreadMessages !== undefined ? { allowThreadMessages: Boolean(body.allowThreadMessages) } : {}),
+        ...(body.dmPolicy === 'allow' || body.dmPolicy === 'deny' || body.dmPolicy === 'inherit' ? { dmPolicy: body.dmPolicy } : {}),
+        ...(body.groupPolicy === 'allow' || body.groupPolicy === 'deny' || body.groupPolicy === 'inherit' ? { groupPolicy: body.groupPolicy } : {}),
+        ...(body.allowTextCommandsWithoutMention !== undefined ? { allowTextCommandsWithoutMention: Boolean(body.allowTextCommandsWithoutMention) } : {}),
+        ...(Array.isArray(body.allowlistUserIds) ? { allowlistUserIds: body.allowlistUserIds.filter((value): value is string => typeof value === 'string') } : {}),
+        ...(Array.isArray(body.allowlistChannelIds) ? { allowlistChannelIds: body.allowlistChannelIds.filter((value): value is string => typeof value === 'string') } : {}),
+        ...(Array.isArray(body.allowlistGroupIds) ? { allowlistGroupIds: body.allowlistGroupIds.filter((value): value is string => typeof value === 'string') } : {}),
+        ...(Array.isArray(body.allowedCommands) ? { allowedCommands: body.allowedCommands.filter((value): value is string => typeof value === 'string') } : {}),
+        ...(typeof body.metadata === 'object' && body.metadata !== null ? { metadata: body.metadata as Record<string, unknown> } : {}),
+      });
+      return Response.json(updated);
+    },
     postChannelPolicy: async (surface, req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;

@@ -84,12 +84,29 @@ async function handleCreateSession(
   if (bodyOrResponse instanceof Response) return bodyOrResponse;
 
   const body = (bodyOrResponse ?? {}) as Record<string, unknown>;
+  // F16b: resolve provider/model from registry if caller did not specify them
+  // Only attempt resolution when the context provides the resolver.
+  const resolvedDefaults =
+    context.resolveDefaultProviderModel &&
+    (typeof body['model'] !== 'string' || typeof body['provider'] !== 'string')
+      ? (context.resolveDefaultProviderModel() ?? null)
+      : null;
+
   const input: CreateCompanionChatSessionInput = {
     title: typeof body['title'] === 'string' ? body['title'] : undefined,
-    model: typeof body['model'] === 'string' ? body['model'] : undefined,
-    provider: typeof body['provider'] === 'string' ? body['provider'] : undefined,
+    model: typeof body['model'] === 'string' ? body['model'] : (resolvedDefaults?.model ?? undefined),
+    provider: typeof body['provider'] === 'string' ? body['provider'] : (resolvedDefaults?.provider ?? undefined),
     systemPrompt: typeof body['systemPrompt'] === 'string' ? body['systemPrompt'] : undefined,
   };
+
+  // F16b: Only enforce the 400 gate when the caller opted into resolution.
+  // If resolveDefaultProviderModel is absent, allow null provider/model (legacy behavior).
+  if (context.resolveDefaultProviderModel && (!input.provider || !input.model)) {
+    return Response.json(
+      { error: 'No provider or model configured. Set a current model before creating a companion chat session.', code: 'NO_MODEL_CONFIGURED' },
+      { status: 400 },
+    );
+  }
 
   const session = context.chatManager.createSession(input);
   return Response.json(

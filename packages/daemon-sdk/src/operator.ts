@@ -53,6 +53,7 @@ export async function dispatchOperatorRoutes(
     | 'postChannelAllowlistEdit'
     | 'getChannelPolicies'
     | 'postChannelPolicy'
+    | 'patchChannelPolicy'
     | 'getChannelPolicyAudit'
     | 'getChannelStatus'
     | 'getChannelDirectory'
@@ -167,6 +168,7 @@ export async function dispatchOperatorRoutes(
     | 'postMultimodalPacket'
     | 'postMultimodalWriteback'
     | 'getRemoteNodeHostContract'
+    | 'getSchedulerCapacity'
   >,
 ): Promise<Response | null> {
   const url = new URL(req.url);
@@ -296,6 +298,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/channels/policies' && method === 'GET') return handlers.getChannelPolicies();
   const channelPolicyMatch = pathname.match(/^\/api\/channels\/policies\/([^/]+)$/);
   if (channelPolicyMatch && method === 'POST') return handlers.postChannelPolicy(channelPolicyMatch[1], req);
+  if (channelPolicyMatch && method === 'PATCH') return handlers.patchChannelPolicy(channelPolicyMatch[1], req);
   if (pathname === '/api/channels/policies/audit' && method === 'GET') {
     const limit = Number(url.searchParams.get('limit') ?? 100);
     return handlers.getChannelPolicyAudit(limit);
@@ -443,6 +446,8 @@ export async function dispatchOperatorRoutes(
   const sessionMatch = pathname.match(/^\/api\/local-auth\/sessions\/([^/]+)$/);
   if (sessionMatch && method === 'DELETE') return handlers.deleteLocalAuthSession(decodeURIComponent(sessionMatch[1]));
   if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile();
+
+  if (pathname === '/api/runtime/scheduler' && method === 'GET') return handlers.getSchedulerCapacity();
 
   if (pathname === '/api/panels' && method === 'GET') return handlers.getPanels();
   if (pathname === '/api/panels/open' && method === 'POST') return handlers.postPanelOpen(req);

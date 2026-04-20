@@ -69,6 +69,7 @@ export interface DaemonApiRouteHandlers {
   postChannelAllowlistEdit(surface: string, req: Request): MaybeResponse;
   getChannelPolicies(): MaybeResponse;
   postChannelPolicy(surface: string, req: Request): MaybeResponse;
+  patchChannelPolicy(surface: string, req: Request): MaybeResponse;
   getChannelPolicyAudit(limit: number): MaybeResponse;
   getChannelStatus(): MaybeResponse;
   getChannelDirectory(surface: string, url: URL): MaybeResponse;
@@ -205,4 +206,5 @@ export interface DaemonApiRouteHandlers {
   deleteSchedule(scheduleId: string): MaybeResponse;
   setScheduleEnabled(scheduleId: string, enabled: boolean): MaybeResponse;
   runScheduleNow(scheduleId: string): MaybeResponse;
+  getSchedulerCapacity(): MaybeResponse;
 }
