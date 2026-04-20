@@ -4,30 +4,60 @@
  *
  * Upgrades vulnerable minimatch transitive installs in consumer node_modules.
  *
- * Context: bash-language-server@5.6.0 hard-pins editorconfig@2.0.1, which
- * hard-pins minimatch@10.0.1. npm/bun ignore overrides fields in published
- * packages, so the root overrides in this SDK cannot fix consumer trees.
- * This postinstall patcher reaches into the consumer's node_modules and
- * upgrades any minimatch in the vulnerable range >=10.0.0 <10.2.3 in place.
+ * VULNERABILITY CONTEXT
+ * ---------------------
+ * bash-language-server@5.6.0 hard-pins editorconfig@2.0.1, which hard-pins
+ * minimatch@10.0.1. npm and bun both ignore `overrides` fields that appear in
+ * published packages (they only honour overrides in the root package.json of
+ * the consumer project). This means the root `overrides: { minimatch: ^10.2.5 }`
+ * in this SDK's package.json cannot fix downstream consumer trees where
+ * bash-language-server is a dependency.
  *
- * Advisory IDs addressed:
- *   GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74
+ * ADVISORIES ADDRESSED
+ * --------------------
+ *   GHSA-3ppc-4f35-3m26 — Regular expression denial of service in minimatch
+ *   GHSA-7r86-cg39-jmmj — Regular expression denial of service in minimatch
+ *   GHSA-23c5-xmqv-rm74 — Regular expression denial of service in minimatch
+ *
+ * All three affect minimatch >=10.0.0 <10.2.3. This patcher upgrades any such
+ * instance to the vendored 10.2.5 payload checked into this repository.
+ *
+ * WHY OVERRIDES ALONE DON'T SUFFICE
+ * ----------------------------------
+ * Per npm/bun specifications, `overrides` and `resolutions` in a published
+ * package are IGNORED by consuming project package managers. They are only
+ * honoured in the root package.json of the end-consumer project. Since
+ * bash-language-server is a production dependency of this SDK (required for
+ * its LSP "bash" language feature), consumers install it transitively and
+ * receive the pinned vulnerable minimatch without any override applying.
+ *
+ * SUPPLY-CHAIN SAFETY
+ * -------------------
+ * This script makes NO network calls. The replacement minimatch is vendored
+ * at scripts/vendor/minimatch/ (git-checked-in). This eliminates any
+ * registry-substitution / MITM / offline risk that a tarball fetch would
+ * introduce. The vendored directory is the exact contents of the
+ * minimatch@10.2.5 npm tarball (sha512 integrity:
+ *   sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH
+ *         +hETZKSkIk5c+T23GjFUMg==
+ * verified at time of vendoring, 2026-04-20).
+ *
+ * IDEMPOTENCY
+ * -----------
+ * Safe to run multiple times. Already-patched paths are detected by reading
+ * the version field; if it is already >=10.2.3, patching is skipped.
  *
  * Node stdlib only. No third-party dependencies. Requires Node 18+.
  */
 
-import { createGunzip } from 'node:zlib';
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const PATCH_VERSION = '10.2.5';
-const REGISTRY_URL = `https://registry.npmjs.org/minimatch/-/minimatch-${PATCH_VERSION}.tgz`;
+
+/** Absolute path to the vendored minimatch payload (relative to this script). */
+const VENDOR_DIR = join(dirname(fileURLToPath(import.meta.url)), 'vendor', 'minimatch');
 
 /**
  * Parse semver string into major/minor/patch integers.
@@ -56,87 +86,6 @@ function isVulnerable(v) {
   if (p.minor < 2) return true;
   if (p.minor === 2 && p.patch < 3) return true;
   return false;
-}
-
-/**
- * Minimal synchronous tar extractor. Handles ustar-compatible archives.
- * Supports regular files and directories. Strips the leading "package/"
- * prefix that npm tarballs use.
- *
- * @param {Buffer} tarball - raw (already gunzip-decoded) tar data
- * @param {string} destDir - destination directory (the minimatch package root)
- */
-function extractTar(tarball, destDir) {
-  const BLOCK = 512;
-  let offset = 0;
-
-  while (offset + BLOCK <= tarball.length) {
-    const header = tarball.subarray(offset, offset + BLOCK);
-    offset += BLOCK;
-
-    // End-of-archive: two consecutive zero blocks.
-    if (header.every((b) => b === 0)) break;
-
-    const nameRaw = header.subarray(0, 100).toString('utf8').replace(/\0.*$/, '');
-    if (!nameRaw) break;
-
-    const prefixRaw = header.subarray(345, 500).toString('utf8').replace(/\0.*$/, '');
-    const fullName = prefixRaw ? `${prefixRaw}/${nameRaw}` : nameRaw;
-
-    const sizeOctal = header.subarray(124, 136).toString('utf8').replace(/\0.*$/, '').trim();
-    const size = parseInt(sizeOctal, 8) || 0;
-
-    const typeFlag = String.fromCharCode(header[156]);
-    const isDir = typeFlag === '5';
-    const isFile = typeFlag === '0' || typeFlag === '\0';
-
-    const blocks = Math.ceil(size / BLOCK);
-    const fileData = isFile ? tarball.subarray(offset, offset + size) : null;
-    offset += blocks * BLOCK;
-
-    // Strip leading "package/" prefix (npm tarballs use "package/" as root).
-    let relPath = fullName;
-    if (relPath.startsWith('package/')) {
-      relPath = relPath.slice('package/'.length);
-    } else if (relPath === 'package') {
-      continue;
-    }
-
-    // Safety: reject absolute paths and path traversal.
-    if (!relPath || relPath.startsWith('/') || relPath.includes('..')) continue;
-
-    const destPath = join(destDir, relPath);
-
-    if (isDir || relPath.endsWith('/')) {
-      mkdirSync(destPath, { recursive: true });
-    } else if (isFile && fileData !== null) {
-      mkdirSync(dirname(destPath), { recursive: true });
-      writeFileSync(destPath, fileData);
-    }
-  }
-}
-
-/**
- * Download and gunzip the minimatch tgz from npm registry.
- * Returns the raw tar buffer (decompressed).
- * @returns {Promise<Buffer>}
- */
-async function fetchTarball() {
-  const resp = await fetch(REGISTRY_URL);
-  if (!resp.ok) {
-    throw new Error(`fetch ${REGISTRY_URL} → ${resp.status} ${resp.statusText}`);
-  }
-  const compressed = Buffer.from(await resp.arrayBuffer());
-
-  return new Promise((resolve, reject) => {
-    const gunzip = createGunzip();
-    /** @type {Buffer[]} */
-    const chunks = [];
-    gunzip.on('data', (chunk) => chunks.push(/** @type {Buffer} */ (chunk)));
-    gunzip.on('end', () => resolve(Buffer.concat(chunks)));
-    gunzip.on('error', reject);
-    gunzip.end(compressed);
-  });
 }
 
 /**
@@ -213,14 +162,23 @@ function findMinimatchPaths(nodeModules) {
   return results;
 }
 
-async function main() {
+function main() {
+  // Validate the vendored payload is present before doing anything else.
+  if (!existsSync(VENDOR_DIR) || !existsSync(join(VENDOR_DIR, 'package.json'))) {
+    console.warn(
+      '[postinstall] warning: vendored minimatch not found at scripts/vendor/minimatch/ — skipping patch.\n'
+      + '  This is unexpected. Please report to the goodvibes-sdk maintainers.',
+    );
+    process.exit(0);
+  }
+
   // npm sets INIT_CWD to the consumer project root during postinstall.
   // Fallback to process.cwd() which is the package root during npm install.
   const consumerRoot = process.env.INIT_CWD ?? process.cwd();
   const nodeModules = join(consumerRoot, 'node_modules');
 
   if (!existsSync(nodeModules)) {
-    console.log('[pellux-patch] node_modules not found, skipping minimatch patch');
+    console.log('[postinstall] node_modules not found, skipping minimatch patch');
     process.exit(0);
   }
 
@@ -230,7 +188,7 @@ async function main() {
     pkgJsonPaths = findMinimatchPaths(nodeModules);
   } catch (err) {
     console.warn(
-      `[pellux-patch] warning: failed to scan node_modules: ${/** @type {Error} */ (err)?.message ?? err}`,
+      `[postinstall] warning: failed to scan node_modules: ${/** @type {Error} */ (err)?.message ?? err}`,
     );
     process.exit(0);
   }
@@ -251,35 +209,34 @@ async function main() {
   }
 
   if (vulnerable.length === 0) {
-    console.log('[pellux-patch] no vulnerable minimatch detected');
+    console.log('[postinstall] no vulnerable minimatch detected, skipping patch');
     process.exit(0);
   }
-
-  /** @type {Buffer | null} */
-  let tarball = null;
 
   for (const { pkgJsonPath, version, dir } of vulnerable) {
     const rel = relative(consumerRoot, pkgJsonPath);
     try {
-      if (tarball === null) {
-        tarball = await fetchTarball();
-      }
-      extractTar(tarball, dir);
-      console.log(`[pellux-patch] upgraded minimatch at ${rel}: ${version} → ${PATCH_VERSION}`);
+      console.log(`[postinstall] patching minimatch at ${rel}`);
+      // cpSync with recursive:true copies the vendored payload over the target.
+      // force:true allows overwriting existing files.
+      cpSync(VENDOR_DIR, dir, { recursive: true, force: true });
+      console.log(`[postinstall] minimatch patched to v${PATCH_VERSION} from vendored payload (was ${version})`);
     } catch (err) {
       // Never fail the consumer's install — log and continue.
       console.warn(
-        `[pellux-patch] warning: failed to patch ${rel}: ${/** @type {Error} */ (err)?.message ?? err}`,
+        `[postinstall] warning: failed to patch ${rel}: ${/** @type {Error} */ (err)?.message ?? err}`,
       );
     }
   }
 }
 
-main().catch((err) => {
-  // Belt-and-suspenders: catch any top-level unhandled rejection and warn,
+try {
+  main();
+} catch (err) {
+  // Belt-and-suspenders: catch any top-level error and warn,
   // never propagate — postinstall must never break a consumer install.
   console.warn(
-    `[pellux-patch] warning: postinstall patcher encountered an error: ${/** @type {Error} */ (err)?.message ?? err}`,
+    `[postinstall] warning: postinstall patcher encountered an error: ${/** @type {Error} */ (err)?.message ?? err}`,
   );
   process.exit(0);
-});
+}
