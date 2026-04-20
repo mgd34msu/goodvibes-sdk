@@ -18,11 +18,12 @@
  *   - If ~/.goodvibes/daemon/ does not exist:
  *     - ~/.goodvibes/tui/auth-users.json → ~/.goodvibes/daemon/auth-users.json
  *     - ~/.goodvibes/tui/auth-bootstrap.txt → ~/.goodvibes/daemon/auth-bootstrap.txt
- *     - <cwd>/.goodvibes/operator-tokens.json → ~/.goodvibes/daemon/operator-tokens.json (F3 revision)
+ *   - Operator tokens are global-only: read/written exclusively at
+ *     <daemonHomeDir>/operator-tokens.json. No workspace-scoped paths.
  *   - Old paths are left intact (never deleted) to avoid breaking older binaries.
  */
 
-import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, renameSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, renameSync, chmodSync } from 'node:fs';
 import { join, isAbsolute, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { logger } from '../utils/logger.js';
@@ -44,8 +45,6 @@ export interface DaemonHomeDirs {
 export interface DaemonHomeOptions {
   /** Value of --daemon-home CLI flag, if provided. */
   readonly daemonHomeArg?: string | undefined;
-  /** Current working directory, used as base for operator-tokens migration. */
-  readonly cwd?: string;
   /** Override process.env for testing. */
   readonly env?: NodeJS.ProcessEnv;
 }
@@ -86,6 +85,18 @@ export function resolveDaemonHomeDir(options: DaemonHomeOptions = {}): string {
 }
 
 // ---------------------------------------------------------------------------
+// Global operator token path
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the single canonical path for operator tokens.
+ * All reads and writes MUST use this path. No workspace-scoped fallback exists.
+ */
+export function resolveOperatorTokenPath(daemonHomeDir: string): string {
+  return join(daemonHomeDir, 'operator-tokens.json');
+}
+
+// ---------------------------------------------------------------------------
 // One-time migration
 // ---------------------------------------------------------------------------
 
@@ -93,6 +104,10 @@ export function resolveDaemonHomeDir(options: DaemonHomeOptions = {}): string {
  * Run migration if the daemon home directory does not yet exist.
  * Creates the directory and copies identity files from legacy paths if found.
  * Old files are NOT deleted.
+ *
+ * Operator tokens are NOT migrated from workspace-scoped paths — the global
+ * daemon-home path is canonical since 0.21.28. If tokens are missing,
+ * the first pairing operation will create them at the global path.
  *
  * Returns `freshInstall: true` when migration ran, `false` when the dir already existed.
  */
@@ -111,7 +126,6 @@ export function runDaemonHomeMigration(
   mkdirSync(daemonHomeDir, { recursive: true });
 
   const userGoodVibesRoot = join(homedir(), '.goodvibes');
-  const cwd = options.cwd ?? process.cwd();
 
   // Migrate auth-users.json from tui surface path
   const legacyAuthUsers = join(userGoodVibesRoot, 'tui', 'auth-users.json');
@@ -125,65 +139,49 @@ export function runDaemonHomeMigration(
     safeCopy(legacyBootstrap, join(daemonHomeDir, 'auth-bootstrap.txt'));
   }
 
-  // Migrate operator-tokens.json — search multiple legacy paths (F3 revision).
-  // 0.21.17 used <cwd>/.goodvibes/operator-tokens.json (workspace-scoped).
-  // 0.21.16 and earlier used surface-scoped ~/.goodvibes/<surface>/companion-token.json.
-  // 0.21.19+ canonical path is <daemonHomeDir>/operator-tokens.json.
-  const destTokenPath = join(daemonHomeDir, 'operator-tokens.json');
-  if (!existsSync(destTokenPath)) {
-    // Priority 1: workspace-scoped path from 0.21.17
-    const legacyWorkspaceTokens = join(cwd, '.goodvibes', 'operator-tokens.json');
-    // Priority 2: surface-scoped legacy tokens from 0.21.16 and earlier
-    const legacySurfaceToken = join(userGoodVibesRoot, 'tui', 'companion-token.json');
-    // Priority 3: XDG data home if set
-    const xdgDataHome = options.env?.['XDG_DATA_HOME'];
-    const xdgToken = xdgDataHome ? join(xdgDataHome, 'goodvibes', 'operator-tokens.json') : null;
-
-    // Scan for any surface-scoped companion-token.json files under ~/.goodvibes/
-    const surfaceScopedTokens: string[] = [];
-    try {
-      const entries = readdirSync(userGoodVibesRoot, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const candidate = join(userGoodVibesRoot, entry.name, 'companion-token.json');
-          if (existsSync(candidate)) surfaceScopedTokens.push(candidate);
-        }
-      }
-    } catch {
-      // Best-effort scan
-    }
-
-    const tokenSources = [
-      legacyWorkspaceTokens,
-      ...(xdgToken ? [xdgToken] : []),
-      legacySurfaceToken,
-      ...surfaceScopedTokens,
-    ];
-
-    for (const src of tokenSources) {
-      if (!existsSync(src)) continue;
-      // Validate JSON before copying — corrupt JSON must not be migrated.
-      try {
-        JSON.parse(readFileSync(src, 'utf-8'));
-      } catch (parseErr) {
-        const reason = parseErr instanceof Error ? parseErr.message : String(parseErr);
-        logger.warn('daemon-home: skipping corrupt token file during migration', {
-          sourcePath: src,
-          reason,
-        });
-        _emitMigrationEvent(deps.runtimeBus, { type: 'WORKSPACE_IDENTITY_MIGRATION_FAILED', sourcePath: src, reason });
-        safeCopy(src, destTokenPath, { skipIfInvalid: true });
-        continue;
-      }
-      if (safeCopy(src, destTokenPath)) {
-        logger.info('daemon-home: migrated operator token', { from: src, to: destTokenPath });
-        _emitMigrationEvent(deps.runtimeBus, { type: 'WORKSPACE_IDENTITY_MIGRATED', from: src, to: destTokenPath });
-      }
-      break; // First valid source wins
-    }
-  }
+  // NOTE: Operator tokens are NOT migrated from legacy workspace-scoped paths.
+  // The canonical path is <daemonHomeDir>/operator-tokens.json (global, set at 0600).
+  // If no token file exists at the canonical path, the first pairing call will
+  // create it via getOrCreateCompanionToken (companion-token.ts).
+  void deps; // deps.runtimeBus reserved for future migration event emission
 
   return { daemonHomeDir, freshInstall: true };
+}
+
+// ---------------------------------------------------------------------------
+// Operator token file write (global-only, mode 0600)
+// ---------------------------------------------------------------------------
+
+/**
+ * Write operator tokens to the global daemon-home path with mode 0600.
+ * All token provisioning MUST go through this function.
+ *
+ * Uses a write-to-tmp-then-rename pattern for atomicity.
+ * Applies chmod 0600 after rename so the file is never world-readable.
+ */
+export function writeOperatorTokenFile(daemonHomeDir: string, content: string): void {
+  const tokenPath = resolveOperatorTokenPath(daemonHomeDir);
+  mkdirSync(dirname(tokenPath), { recursive: true });
+  const tmpPath = tokenPath + '.tmp';
+  writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 });
+  chmodSync(tmpPath, 0o600);
+  renameSync(tmpPath, tokenPath);
+  // Apply chmod again after rename — some filesystems reset permissions on rename
+  try { chmodSync(tokenPath, 0o600); } catch { /* best-effort */ }
+}
+
+/**
+ * Read operator tokens from the global daemon-home path.
+ * Returns undefined when the file does not exist or cannot be parsed.
+ */
+export function readOperatorTokenFile(daemonHomeDir: string): string | undefined {
+  const tokenPath = resolveOperatorTokenPath(daemonHomeDir);
+  if (!existsSync(tokenPath)) return undefined;
+  try {
+    return readFileSync(tokenPath, 'utf-8');
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -233,38 +231,10 @@ export function writeDaemonSetting(daemonHomeDir: string, key: string, value: st
 // ---------------------------------------------------------------------------
 
 /**
- * Emit a workspace migration event on the runtime bus.
- * Never throws — bus emission must not interrupt migration.
- */
-function _emitMigrationEvent(
-  bus: RuntimeEventBus | undefined,
-  payload:
-    | { type: 'WORKSPACE_IDENTITY_MIGRATED'; from: string; to: string }
-    | { type: 'WORKSPACE_IDENTITY_MIGRATION_FAILED'; sourcePath: string; reason: string },
-): void {
-  if (!bus) return;
-  try {
-    const envelope = createEventEnvelope(
-      payload.type,
-      payload,
-      { sessionId: '', source: 'daemon-home-migration' },
-    );
-    bus.emit<'workspace'>(
-      'workspace',
-      // WorkspaceEvent discriminated-union member; single widening cast is safe.
-      envelope as RuntimeEventEnvelope<WorkspaceEvent['type'], WorkspaceEvent>,
-    );
-  } catch {
-    // Swallow — never let event emission break migration
-  }
-}
-
-/**
  * Copy src to dest. Returns true on success, false on failure.
  * Failures are logged at warn level. Never throws.
  */
-function safeCopy(src: string, dest: string, opts?: { skipIfInvalid?: boolean }): boolean {
-  if (opts?.skipIfInvalid) return false;
+function safeCopy(src: string, dest: string): boolean {
   try {
     copyFileSync(src, dest);
     return true;

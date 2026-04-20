@@ -8,6 +8,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.28] - 2026-04-20
+
+F3 resolved: operator tokens are global-only. The prior "partially resolved" framing in CHANGELOG 0.21.19 was incomplete — the dual-path/workspace-scoped design was a mistake. This release removes it entirely.
+
+### Changed
+- **F3: operator tokens are global-only at `~/.goodvibes/daemon/operator-tokens.json` (daemon-home)** — Workspace-scoped token resolution (reading from `<cwd>/.goodvibes/operator-tokens.json`) is removed entirely. The single canonical path is `resolveDaemonHomeDir() + '/operator-tokens.json'`. No fallback. No migration from workspace paths.
+- **0600 file permissions on operator token writes** — `writeOperatorTokenFile()` (new export) and `getOrCreateCompanionToken()` both write with mode `0600` (owner read/write only), enforced via `chmodSync` after rename.
+- **`runDaemonHomeMigration` no longer migrates workspace-scoped tokens** — The `cwd` field is removed from `DaemonHomeOptions`. Migration only copies `auth-users.json` and `auth-bootstrap.txt` from the legacy `tui` surface path.
+- **`companion-token.ts` API tightened** — `getOrCreateCompanionToken` and `regenerateCompanionToken` now require `daemonHomeDir` (no longer optional). `basePath` workspace-scoped parameter removed entirely.
+- **New exports from `daemon-home.ts`**: `resolveOperatorTokenPath(daemonHomeDir)`, `writeOperatorTokenFile(daemonHomeDir, content)`, `readOperatorTokenFile(daemonHomeDir)`.
+
+### Added
+- **`test/operator-token-global.test.ts`** — 8 new tests: token at global path returned correctly; new token created at global path when absent; workspace-scoped path is never consulted; `writeOperatorTokenFile` sets 0600; `getOrCreateCompanionToken` sets 0600; E2E via `DaemonHttpRouter.dispatchApiRoutes` with authenticated request → 200; unauthenticated → 401; authenticated full `handleRequest` returns `providers` array.
+
+### Note
+- The prior "partially resolved" label for F3 in 0.21.19 was inaccurate. The dual-path design (global + workspace fallback) that shipped then was itself the bug. This release removes it clean, with zero compat shims. Pre-1.0, single user, nothing outside uses the workspace-scoped path.
+
+Gates: build pass (bunx tsc -b --force, exit 0), sync:check pass, version:check pass (all 11 packages at 0.21.28), changelog:check pass. Test count: via `bun run test` package script: 977 pass, 0 fail (baseline 962 + 15 new); full `bun test` scope: 1066 pass / 17 skip / 0 fail (baseline 1051 + 15 new).
+
+---
+
 ## [0.21.27] - 2026-04-20
 
 Three bugs reclassified from "by design" / "resolved" and fixed properly. F7 and F5b were previously mislabeled as not requiring implementation; F-PROV-009 had the code right but lacked router-level E2E test coverage.
