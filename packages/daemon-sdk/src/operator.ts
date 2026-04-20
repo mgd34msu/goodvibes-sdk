@@ -21,6 +21,9 @@ export async function dispatchOperatorRoutes(
     | 'getTelemetryOtlpTraces'
     | 'getTelemetryOtlpLogs'
     | 'getTelemetryOtlpMetrics'
+    | 'postTelemetryOtlpLogs'
+    | 'postTelemetryOtlpTraces'
+    | 'postTelemetryOtlpMetrics'
     | 'getGatewayMethods'
     | 'getGatewayEvents'
     | 'getGatewayMethod'
@@ -195,6 +198,10 @@ export async function dispatchOperatorRoutes(
   if ((pathname === '/api/telemetry/otlp/v1/traces' || pathname === '/api/v1/telemetry/otlp/v1/traces') && method === 'GET') return handlers.getTelemetryOtlpTraces(req);
   if ((pathname === '/api/telemetry/otlp/v1/logs' || pathname === '/api/v1/telemetry/otlp/v1/logs') && method === 'GET') return handlers.getTelemetryOtlpLogs(req);
   if ((pathname === '/api/telemetry/otlp/v1/metrics' || pathname === '/api/v1/telemetry/otlp/v1/metrics') && method === 'GET') return handlers.getTelemetryOtlpMetrics(req);
+  // OTLP ingest receivers — POST /api/v1/telemetry/otlp/v1/{logs,traces,metrics}
+  if ((pathname === '/api/telemetry/otlp/v1/logs' || pathname === '/api/v1/telemetry/otlp/v1/logs') && method === 'POST') return handlers.postTelemetryOtlpLogs(req);
+  if ((pathname === '/api/telemetry/otlp/v1/traces' || pathname === '/api/v1/telemetry/otlp/v1/traces') && method === 'POST') return handlers.postTelemetryOtlpTraces(req);
+  if ((pathname === '/api/telemetry/otlp/v1/metrics' || pathname === '/api/v1/telemetry/otlp/v1/metrics') && method === 'POST') return handlers.postTelemetryOtlpMetrics(req);
   if (pathname === '/api/control-plane/methods' && method === 'GET') return handlers.getGatewayMethods(url);
   const gatewayMethodInvokeMatch = pathname.match(/^\/api\/control-plane\/methods\/([^/]+)\/invoke$/);
   if (gatewayMethodInvokeMatch && method === 'POST') return handlers.invokeGatewayMethod(decodeURIComponent(gatewayMethodInvokeMatch[1]), req);

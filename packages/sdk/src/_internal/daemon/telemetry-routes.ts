@@ -40,9 +40,33 @@ interface TelemetryApiLike {
   buildOtlpMetricDocument(): unknown;
 }
 
+/**
+ * Ingest sink — receives parsed OTLP records forwarded by the POST receivers.
+ * When null (no ingest sink wired), the route still accepts and acknowledges
+ * payloads (to keep client exporters happy) but discards the data.
+ */
+interface TelemetryIngestSink {
+  /** Ingest a batch of log records from an OTLP ExportLogsServiceRequest. */
+  ingestLogs(payload: Record<string, unknown>): void;
+  /** Ingest a batch of trace spans from an OTLP ExportTraceServiceRequest. */
+  ingestTraces(payload: Record<string, unknown>): void;
+  /** Ingest a batch of metric data points from an OTLP ExportMetricsServiceRequest. */
+  ingestMetrics(payload: Record<string, unknown>): void;
+}
+
 interface TelemetryRouteContext {
   readonly telemetryApi: TelemetryApiLike | null;
   readonly resolveAuthenticatedPrincipal: (req: Request) => AuthenticatedPrincipal | null;
+  /**
+   * Sink for OTLP POST receivers. Must be provided by the caller.
+   * In production `DaemonHttpRouter` this is the `TelemetryApiService` instance
+   * which stores ingested records in its bounded event buffer (default 500
+   * records) and makes them observable via GET /api/v1/telemetry/events.
+   * Pass `null` only in test/stub contexts where ingestion is intentionally
+   * a no-op — the receivers still return 200 to keep OTLP exporters happy but
+   * discard the payload.
+   */
+  readonly ingestSink: TelemetryIngestSink | null;
 }
 
 function parseNumber(value: string | null): number | undefined {
@@ -86,6 +110,87 @@ function buildFilter(url: URL): TelemetryFilter {
     ...(url.searchParams.get('cursor') ? { cursor: url.searchParams.get('cursor') ?? undefined } : {}),
     ...(parseView(url.searchParams.get('view')) ? { view: parseView(url.searchParams.get('view')) } : {}),
   };
+}
+
+// ---------------------------------------------------------------------------
+// OTLP ingest helpers
+// ---------------------------------------------------------------------------
+
+/** Max ingest payload (4 MiB) — reject larger bodies with 413 */
+const OTLP_INGEST_MAX_BODY_BYTES = 4 * 1024 * 1024;
+
+/** Accepted content-types for OTLP/HTTP — JSON only; protobuf returns 415 */
+const OTLP_ACCEPTED_CONTENT_TYPES = [
+  'application/json',
+] as const;
+
+type OtlpIngestKind = 'logs' | 'traces' | 'metrics';
+
+const OTLP_PARTIAL_SUCCESS_KEYS: Record<OtlpIngestKind, string> = {
+  logs: 'partialSuccess',
+  traces: 'partialSuccess',
+  metrics: 'partialSuccess',
+};
+
+/**
+ * Validate and parse an OTLP HTTP ingest request body.
+ * Returns a parsed JSON Record on success, or a Response (error) on failure.
+ *
+ * Protocol: OTLP/HTTP spec §4.2 — only application/json is accepted in this
+ * release. application/x-protobuf returns 415; protobuf decoding is planned
+ * for a future release.
+ */
+async function parseOtlpBody(
+  req: Request,
+): Promise<Record<string, unknown> | Response> {
+  const contentType = (req.headers.get('content-type') ?? '').toLowerCase().split(';')[0].trim();
+
+  if (!OTLP_ACCEPTED_CONTENT_TYPES.some((ct) => contentType === ct)) {
+    return Response.json(
+      {
+        error: `Unsupported Content-Type '${contentType}' for OTLP ingest`,
+        code: 'UNSUPPORTED_MEDIA_TYPE',
+        category: 'bad_request',
+        hint: `Use 'application/json'. Protobuf decoding is not implemented in this release — planned for a future release.`,
+      },
+      { status: 415 },
+    );
+  }
+
+  const raw = await req.arrayBuffer();
+  if (raw.byteLength > OTLP_INGEST_MAX_BODY_BYTES) {
+    return Response.json(
+      {
+        error: `OTLP ingest payload too large (${raw.byteLength} > ${OTLP_INGEST_MAX_BODY_BYTES} bytes)`,
+        code: 'PAYLOAD_TOO_LARGE',
+        category: 'bad_request',
+      },
+      { status: 413 },
+    );
+  }
+
+  try {
+    const text = new TextDecoder().decode(raw);
+    const parsed = JSON.parse(text) as unknown;
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return Response.json(
+        { error: 'OTLP ingest body must be a JSON object', code: 'INVALID_PAYLOAD', category: 'bad_request' },
+        { status: 400 },
+      );
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return Response.json(
+      { error: 'OTLP ingest body is not valid JSON', code: 'INVALID_PAYLOAD', category: 'bad_request' },
+      { status: 400 },
+    );
+  }
+}
+
+function otlpIngestSuccess(kind: OtlpIngestKind): Response {
+  // Per OTLP/HTTP spec: respond with ExportXxxServiceResponse shape.
+  // partialSuccess omitted when empty (all records accepted).
+  return Response.json({ [OTLP_PARTIAL_SUCCESS_KEYS[kind]]: {} });
 }
 
 function unavailable(): Response {
@@ -176,7 +281,10 @@ export function createDaemonTelemetryRouteHandlers(
   | 'createTelemetryEventStream'
   | 'getTelemetryOtlpTraces'
   | 'getTelemetryOtlpLogs'
-      | 'getTelemetryOtlpMetrics'
+  | 'getTelemetryOtlpMetrics'
+  | 'postTelemetryOtlpLogs'
+  | 'postTelemetryOtlpTraces'
+  | 'postTelemetryOtlpMetrics'
 > {
   return {
     getTelemetrySnapshot: (req) => {
@@ -272,6 +380,48 @@ export function createDaemonTelemetryRouteHandlers(
       const access = authenticateTelemetryRequest(context, req, 'safe');
       if (access instanceof Response) return access;
       return Response.json(context.telemetryApi.buildOtlpMetricDocument());
+    },
+    // -------------------------------------------------------------------------
+    // OTLP POST ingest receivers
+    // -------------------------------------------------------------------------
+    postTelemetryOtlpLogs: async (req) => {
+      const auth = context.resolveAuthenticatedPrincipal(req);
+      if (!auth) {
+        return Response.json(
+          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: 'authentication', status: 401 },
+          { status: 401 },
+        );
+      }
+      const bodyOrErr = await parseOtlpBody(req);
+      if (bodyOrErr instanceof Response) return bodyOrErr;
+      context.ingestSink?.ingestLogs(bodyOrErr);
+      return otlpIngestSuccess('logs');
+    },
+    postTelemetryOtlpTraces: async (req) => {
+      const auth = context.resolveAuthenticatedPrincipal(req);
+      if (!auth) {
+        return Response.json(
+          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: 'authentication', status: 401 },
+          { status: 401 },
+        );
+      }
+      const bodyOrErr = await parseOtlpBody(req);
+      if (bodyOrErr instanceof Response) return bodyOrErr;
+      context.ingestSink?.ingestTraces(bodyOrErr);
+      return otlpIngestSuccess('traces');
+    },
+    postTelemetryOtlpMetrics: async (req) => {
+      const auth = context.resolveAuthenticatedPrincipal(req);
+      if (!auth) {
+        return Response.json(
+          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: 'authentication', status: 401 },
+          { status: 401 },
+        );
+      }
+      const bodyOrErr = await parseOtlpBody(req);
+      if (bodyOrErr instanceof Response) return bodyOrErr;
+      context.ingestSink?.ingestMetrics(bodyOrErr);
+      return otlpIngestSuccess('metrics');
     },
   };
 }
