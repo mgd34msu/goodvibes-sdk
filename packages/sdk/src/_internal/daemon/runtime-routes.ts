@@ -41,6 +41,7 @@ export function createDaemonRuntimeRouteHandlers(
   | 'deleteSchedule'
   | 'setScheduleEnabled'
   | 'runScheduleNow'
+  | 'getSchedulerCapacity'
 > {
   return {
     ...createDaemonRuntimeSessionRouteHandlers(context),
