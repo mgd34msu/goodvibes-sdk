@@ -1,5 +1,6 @@
 import type { GatewayEventDescriptor, GatewayMethodCatalog, GatewayMethodDescriptor } from './method-catalog.js';
 import { getOperatorContract } from '@pellux/goodvibes-sdk/contracts';
+import type { OperatorEventContract, OperatorMethodContract } from '../types/foundation-contract.js';
 import {
   BOOLEAN_SCHEMA,
   METHOD_DESCRIPTOR_SCHEMA,
@@ -150,14 +151,60 @@ function summarizeEventCoverage(events: readonly GatewayEventDescriptor[]): Oper
   };
 }
 
+function toMethodContract(d: GatewayMethodDescriptor): OperatorMethodContract {
+  return {
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    category: d.category,
+    source: d.source,
+    access: d.access,
+    transport: d.transport,
+    scopes: d.scopes,
+    ...(d.http ? { http: d.http } : {}),
+    ...(d.events ? { events: d.events } : {}),
+    ...(d.inputSchema ? { inputSchema: d.inputSchema } : {}),
+    ...(d.outputSchema ? { outputSchema: d.outputSchema } : {}),
+    ...(d.pluginId !== undefined ? { pluginId: d.pluginId } : {}),
+    ...(d.dangerous !== undefined ? { dangerous: d.dangerous } : {}),
+    ...(d.invokable !== undefined ? { invokable: d.invokable } : {}),
+    ...(d.metadata ? { metadata: d.metadata } : {}),
+  };
+}
+
+function toEventContract(d: GatewayEventDescriptor): OperatorEventContract {
+  return {
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    category: d.category,
+    source: d.source,
+    transport: d.transport,
+    scopes: d.scopes,
+    ...(d.domains ? { domains: d.domains } : {}),
+    ...(d.wireEvents ? { wireEvents: d.wireEvents } : {}),
+    ...(d.outputSchema ? { outputSchema: d.outputSchema } : {}),
+    ...(d.pluginId !== undefined ? { pluginId: d.pluginId } : {}),
+    ...(d.metadata ? { metadata: d.metadata } : {}),
+  };
+}
+
 export function buildOperatorContract(catalog: GatewayMethodCatalog): OperatorContractManifest {
-  void catalog;
   const contract = getOperatorContract();
+  const methods = catalog.list().map(toMethodContract);
+  const events = catalog.listEvents().map(toEventContract);
   return {
     ...contract,
     product: {
       ...contract.product,
       version: VERSION,
+    },
+    operator: {
+      ...contract.operator,
+      methods,
+      events,
+      schemaCoverage: summarizeSchemaCoverage(catalog.list()),
+      eventCoverage: summarizeEventCoverage(catalog.listEvents()),
     },
   };
 }

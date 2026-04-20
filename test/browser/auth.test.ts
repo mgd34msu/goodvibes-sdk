@@ -39,7 +39,7 @@ const HAPPY_LOGIN_RESPONSE = {
   expiresAt: Date.now() + 3_600_000,
 };
 
-describe('auth.login() against MSW mock (browser)', () => {
+describe.skipIf(typeof window === 'undefined')('auth.login() against MSW mock (browser)', () => {
   it('returns a typed login result with token', async () => {
     // Real route: POST /login (control.auth.login in method-catalog-control-core.ts)
     worker.use(

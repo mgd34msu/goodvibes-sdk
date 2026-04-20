@@ -27,6 +27,7 @@ export const DEFAULT_CONFIG = {
   watchers: runtimeConfigDefaults.watchers,
   service: runtimeConfigDefaults.service,
   network: runtimeConfigDefaults.network,
+  runtime: runtimeConfigDefaults.runtime,
   danger: coreConfigDefaults.danger,
   tools: coreConfigDefaults.tools,
   wrfc: coreConfigDefaults.wrfc,

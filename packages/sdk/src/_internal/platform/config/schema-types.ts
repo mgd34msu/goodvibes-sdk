@@ -246,6 +246,12 @@ export interface NetworkConfig {
   };
 }
 
+export interface RuntimeConfig {
+  companionChatLimiter: {
+    perSessionLimit: number;
+  };
+}
+
 export interface GoodVibesConfig {
   display: {
     stream: boolean;            // default: true
@@ -355,6 +361,7 @@ export interface GoodVibesConfig {
   notifications: NotificationsConfig;
   /** Persisted feature flag overrides keyed by flag id. */
   featureFlags: Record<string, PersistedFlagState>;
+  runtime: RuntimeConfig;
 }
 
 export interface ConfigSetting {

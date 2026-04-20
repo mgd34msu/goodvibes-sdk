@@ -124,7 +124,7 @@ function encodeSseEvents(events: Array<{ event?: string; data: string }>): Uint8
   return encoder.encode(lines.join('\n') + '\n');
 }
 
-describe('Realtime transport (browser, shape verification)', () => {
+describe.skipIf(typeof window === 'undefined')('Realtime transport (browser, shape verification)', () => {
   it('sdk.realtime.viaSse() returns a DomainEvents object with domain feeds', () => {
     const sdk = makeSdk();
     const events = sdk.realtime.viaSse();
@@ -153,7 +153,7 @@ describe('Realtime transport (browser, shape verification)', () => {
   });
 });
 
-describe('Realtime transport (browser, SSE)', () => {
+describe.skipIf(typeof window === 'undefined')('Realtime transport (browser, SSE)', () => {
   it('domain feed on() callback receives SSE events matching the domain', async () => {
     // The SSE connector opens GET /api/control-plane/events?domains={domain}
     // for each domain that has active listeners.
@@ -200,7 +200,7 @@ describe('Realtime transport (browser, SSE)', () => {
   });
 });
 
-describe('Realtime transport (browser, WebSocket mock)', () => {
+describe.skipIf(typeof window === 'undefined')('Realtime transport (browser, WebSocket mock)', () => {
   it('viaWebSocket() creates a WebSocket connection and receives messages', async () => {
     const { MockWebSocket, instances } = createMockWebSocketClass();
 

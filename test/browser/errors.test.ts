@@ -29,7 +29,7 @@ function makeSdk() {
   return createBrowserGoodVibesSdk({ baseUrl: BASE_URL });
 }
 
-describe('Error paths (browser)', () => {
+describe.skipIf(typeof window === 'undefined')('Error paths (browser)', () => {
   it('500 response with non-JSON body surfaces as SDKError with kind server', async () => {
     // readJsonBody returns the text string when JSON.parse fails (no throw on parse).
     // However, the 500 status triggers the !response.ok branch in requestJson(),

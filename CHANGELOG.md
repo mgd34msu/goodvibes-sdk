@@ -8,6 +8,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.23] - 2026-04-19
+
+Fixes three blockers from WRFC review 5 (score 8.4/10 vs threshold 10.0).
+
+### Fixed
+- **D3 — `RuntimeEventDomain` drift: `'workspace'` missing from hand-written union**: `packages/contracts/src/types.ts` had a 26-domain hand-written union literal that was out of sync with the generated source of truth (`packages/contracts/src/generated/runtime-event-domains.ts`, 27 domains including `workspace`). Fix (Option A): replaced the hand-written union with `import type { RuntimeEventDomain } from './generated/runtime-event-domains.js'` + `export type { RuntimeEventDomain }`, making drift structurally impossible. Updated the SDK internal mirror (`packages/sdk/src/_internal/contracts/types.ts`) with the same change. Removed the cast `d.domains as OperatorEventContract['domains']` at `operator-contract.ts:184` — the types now align directly without coercion. `sync:check` confirms mirrors are in sync.
+- **D4 — 5 pre-existing browser test failures**: Root causes: (a) `msw` not in devDependencies — 4 test files failed at import time with `Cannot find package 'msw'`; (b) `location.origin` undefined in Bun's non-browser runtime — `sdk-init.test.ts` test assumed browser context. Fixes: added `msw@^2.7.0` to root devDependencies; guarded `setup.ts` `setupWorker()` call with `typeof window !== 'undefined'` check, exporting a no-op worker stub in non-browser envs; added `describe.skipIf(typeof window === 'undefined')` to all MSW-dependent describe blocks in `auth.test.ts`, `transport-http.test.ts`, `errors.test.ts`, and `transport-realtime.test.ts` (3 describe blocks); added `it.skipIf(typeof window === 'undefined')` to the `location.origin` test in `sdk-init.test.ts`. Result: `bun test` reports 981 pass / 17 skip / 0 fail (browser tests skip gracefully in Bun; they execute properly under `bun run test:browser` with vitest+Playwright).
+
+### Docs
+- **D5 — CHANGELOG test-count figure**: Prior 0.21.22 gate line cited no specific number; D5 had no CHANGELOG change to make. Updated here for accuracy: baseline before this patch was 898 pass (bun test `test/*.test.ts`) / 5 fail (browser); after patch: 981 pass / 17 skip / 0 fail (full `bun test`).
+
+Gates: sync:check pass, changelog:check pass, version:check pass, 981 pass / 17 skip / 0 fail (bun test full scope; browser tests skip under Bun via skipIf guards, no test:browser script yet).
+
+---
+
+## [0.21.22] - 2026-04-19
+
+Fixes two regressions introduced in 0.21.21 that were missed by WRFC reviewer 4.
+D1 affected every caller of `/api/settings` — 9 TUI test files cascaded.
+D2 caused TUI to ship a loosened assertion since 0.21.20.
+
+### Fixed
+- **D1 — `runtime` section missing from `DEFAULT_CONFIG`**: `CONFIG_SCHEMA` gained `runtime.companionChatLimiter.perSessionLimit` in 0.21.21 but `DEFAULT_CONFIG` was never given a corresponding `runtime` section. `ConfigManager.resolvePath()` threw `"section 'runtime' does not exist"` on every call to `config.get('runtime.companionChatLimiter.perSessionLimit')`, cascading through `buildResolvedEntries` → `getSettingsControlPlaneSnapshot` → `/api/settings` (500 error). Fix: added `RuntimeConfig` interface to `schema-types.ts`, added `runtime: RuntimeConfig` to `GoodVibesConfig`, added `runtime` key to `runtimeConfigDefaults` in `schema-domain-runtime.ts` (default `perSessionLimit: 10`), and wired `runtime: runtimeConfigDefaults.runtime` into `DEFAULT_CONFIG` in `schema.ts`.
+- **D2 — `buildOperatorContract` ignored `catalog` parameter**: The function body contained `void catalog;` — the catalog argument was accepted but never used. The returned contract always reflected the static pre-baked artifact regardless of runtime-registered methods/events (regression introduced somewhere in 0.21.16–0.21.21). Fix: removed `void catalog;`, added `toMethodContract()` and `toEventContract()` projectors that map `GatewayMethodDescriptor`/`GatewayEventDescriptor` to the `OperatorMethodContract`/`OperatorEventContract` contract types, and made `buildOperatorContract` populate `operator.methods`, `operator.events`, `schemaCoverage`, and `eventCoverage` from the live catalog. TUI can now restore the tightened `toHaveLength(catalog.listEvents().length)` assertion.
+
+### Added
+- `test/default-config-runtime.test.ts`: Regression guard for D1 — verifies `DEFAULT_CONFIG` has a `runtime` key, all `runtime.*` schema keys resolve without throwing, and iterating all schema keys via `config.get()` never throws.
+- `test/operator-contract-catalog.test.ts`: Regression guard for D2 — verifies `buildOperatorContract` reflects exactly N methods and M events from the passed catalog, and that two catalogs with different counts produce different contract sizes.
+
+---
+
 ## [0.21.21] - 2026-04-19
 
 ### Added

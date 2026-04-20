@@ -1,6 +1,11 @@
 import type { ConfigSettingDefinition } from './schema-shared.js';
 
 export const runtimeConfigDefaults = {
+  runtime: {
+    companionChatLimiter: {
+      perSessionLimit: 10,
+    },
+  },
   automation: {
     enabled: false,
     maxConcurrentRuns: 4,
