@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
 export interface CompanionPairingResult {
@@ -35,47 +35,30 @@ function generatePeerId(): string {
 }
 
 /**
- * Resolve the token store path.
+ * Resolve the operator token store path.
  *
- * Resolution order (first match wins):
- *   1. daemonHomeDir — daemon-identity-scoped path (0.21.19+, recommended)
- *   2. basePath — workspace-scoped path (0.21.17–0.21.18 layout, legacy fallback)
- *   3. process.cwd() — absolute fallback
+ * The only valid location is <daemonHomeDir>/operator-tokens.json.
+ * Operator tokens are global (daemon-home scoped) since 0.21.28.
+ * No workspace-scoped fallback exists.
  *
- * Storing tokens under daemonHomeDir means workspace swaps never invalidate
- * paired companions — a token paired once works regardless of which working
- * directory the daemon is currently serving.
+ * @throws {Error} when daemonHomeDir is not provided — all callers must supply it.
  */
-function resolveSharedTokenPath(basePath?: string, daemonHomeDir?: string): string {
-  if (daemonHomeDir) {
-    return join(daemonHomeDir, 'operator-tokens.json');
-  }
-  const base = basePath ?? process.cwd();
-  return join(base, '.goodvibes', 'operator-tokens.json');
+function resolveSharedTokenPath(daemonHomeDir: string): string {
+  return join(daemonHomeDir, 'operator-tokens.json');
 }
 
 /**
- * Resolve the path to the companion token file.
- *
- * Always resolves to the shared workspace-level path regardless of surface,
- * so that tokens are portable across TUI-embedded and standalone daemon postures.
- *
- * @deprecated `surface` parameter is ignored; use {@link resolveSharedTokenPath} directly.
- */
-function resolveTokenPath(_surface: string, basePath?: string, daemonHomeDir?: string): string {
-  return resolveSharedTokenPath(basePath, daemonHomeDir);
-}
-
-/**
- * Load the stored companion token for a surface, or generate and persist a new one.
+ * Load the stored companion token, or generate and persist a new one.
+ * Token is always written to <daemonHomeDir>/operator-tokens.json at mode 0600.
  */
 export function getOrCreateCompanionToken(
   surface: string,
-  options?: { basePath?: string; daemonHomeDir?: string; regenerate?: boolean },
+  options: { daemonHomeDir: string; regenerate?: boolean },
 ): CompanionPairingResult {
-  const tokenPath = resolveTokenPath(surface, options?.basePath, options?.daemonHomeDir);
+  void surface; // surface parameter retained for API compatibility; token path is global
+  const tokenPath = resolveSharedTokenPath(options.daemonHomeDir);
 
-  if (!options?.regenerate && existsSync(tokenPath)) {
+  if (!options.regenerate && existsSync(tokenPath)) {
     try {
       const raw = readFileSync(tokenPath, 'utf-8');
       const record = JSON.parse(raw) as CompanionTokenRecord;
@@ -93,18 +76,22 @@ export function getOrCreateCompanionToken(
     createdAt: Date.now(),
   };
 
-  mkdirSync(dirname(tokenPath), { recursive: true });
-  writeFileSync(tokenPath, JSON.stringify(record, null, 2), 'utf-8');
+  const dir = dirname(tokenPath);
+  mkdirSync(dir, { recursive: true });
+  // Write with mode 0600 (owner read/write only) and enforce after write
+  writeFileSync(tokenPath, JSON.stringify(record, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  try { chmodSync(tokenPath, 0o600); } catch { /* best-effort */ }
 
   return { token: record.token, peerId: record.peerId, createdAt: record.createdAt };
 }
 
 /**
- * Regenerate the companion token for a surface, replacing any existing token.
+ * Regenerate the companion token, replacing any existing token.
+ * Written to <daemonHomeDir>/operator-tokens.json at mode 0600.
  */
 export function regenerateCompanionToken(
   surface: string,
-  options?: { basePath?: string; daemonHomeDir?: string },
+  options: { daemonHomeDir: string },
 ): CompanionPairingResult {
   return getOrCreateCompanionToken(surface, { ...options, regenerate: true });
 }

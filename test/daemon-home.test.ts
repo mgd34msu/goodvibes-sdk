@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
-import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -7,6 +7,9 @@ import {
   runDaemonHomeMigration,
   readDaemonSetting,
   writeDaemonSetting,
+  resolveOperatorTokenPath,
+  writeOperatorTokenFile,
+  readOperatorTokenFile,
 } from '../packages/sdk/src/_internal/platform/workspace/daemon-home.ts';
 import { WorkspaceSwapManager } from '../packages/sdk/src/_internal/platform/workspace/workspace-swap-manager.ts';
 
@@ -72,7 +75,7 @@ describe('runDaemonHomeMigration', () => {
   });
 
   test('freshInstall=true when daemon home does not exist yet', () => {
-    const result = runDaemonHomeMigration(daemonHome, { cwd: baseDir, env: {} });
+    const result = runDaemonHomeMigration(daemonHome, { env: {} });
     expect(result.freshInstall).toBe(true);
     expect(result.daemonHomeDir).toBe(daemonHome);
     expect(existsSync(daemonHome)).toBe(true);
@@ -80,37 +83,73 @@ describe('runDaemonHomeMigration', () => {
 
   test('freshInstall=false when daemon home already exists', () => {
     mkdirSync(daemonHome, { recursive: true });
-    const result = runDaemonHomeMigration(daemonHome, { cwd: baseDir, env: {} });
+    const result = runDaemonHomeMigration(daemonHome, { env: {} });
     expect(result.freshInstall).toBe(false);
   });
 
   test('creates daemon home directory during migration', () => {
-    // auth-users.json legacy source is at homedir()/.goodvibes/tui — not controllable in unit tests.
-    // We verify: migration creates the daemon home dir and returns freshInstall=true.
     expect(existsSync(daemonHome)).toBe(false);
-    runDaemonHomeMigration(daemonHome, { cwd: baseDir, env: {} });
+    runDaemonHomeMigration(daemonHome, { env: {} });
     expect(existsSync(daemonHome)).toBe(true);
   });
 
-  test('migrates operator-tokens.json from old workspace cwd (non-destructive)', () => {
-    const oldTokenDir = join(baseDir, '.goodvibes');
-    mkdirSync(oldTokenDir, { recursive: true });
-    const tokenContent = JSON.stringify({ tokens: ['tok1'] });
-    writeFileSync(join(oldTokenDir, 'operator-tokens.json'), tokenContent);
+  test('does NOT copy workspace-scoped operator-tokens.json during migration', () => {
+    // Workspace-scoped operator-tokens.json must NOT be migrated (removed in 0.21.28).
+    // Place a token file in a fake workspace .goodvibes/ — migration must ignore it.
+    const fakeWorkspace = join(baseDir, 'workspace');
+    mkdirSync(join(fakeWorkspace, '.goodvibes'), { recursive: true });
+    writeFileSync(join(fakeWorkspace, '.goodvibes', 'operator-tokens.json'), JSON.stringify({ tokens: ['tok1'] }));
 
-    runDaemonHomeMigration(daemonHome, { cwd: baseDir, env: {} });
+    runDaemonHomeMigration(daemonHome, { env: {} });
 
+    // Token must NOT appear at the global path
     const dest = join(daemonHome, 'operator-tokens.json');
-    expect(existsSync(dest)).toBe(true);
-    expect(readFileSync(dest, 'utf8')).toBe(tokenContent);
-
-    // Original still present (non-destructive)
-    expect(existsSync(join(oldTokenDir, 'operator-tokens.json'))).toBe(true);
+    expect(existsSync(dest)).toBe(false);
   });
 
   test('skips migration when source files do not exist (no error)', () => {
     // No old files anywhere; should not throw
-    expect(() => runDaemonHomeMigration(daemonHome, { cwd: baseDir, env: {} })).not.toThrow();
+    expect(() => runDaemonHomeMigration(daemonHome, { env: {} })).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveOperatorTokenPath / writeOperatorTokenFile / readOperatorTokenFile
+// ---------------------------------------------------------------------------
+
+describe('operator token path — global-only', () => {
+  let daemonHome: string;
+
+  beforeEach(() => { daemonHome = tempDir('op-token'); });
+  afterEach(() => { cleanup(daemonHome); });
+
+  test('resolveOperatorTokenPath returns <daemonHomeDir>/operator-tokens.json', () => {
+    expect(resolveOperatorTokenPath(daemonHome)).toBe(join(daemonHome, 'operator-tokens.json'));
+  });
+
+  test('writeOperatorTokenFile creates file at global path', () => {
+    const content = JSON.stringify({ token: 'gv_abc', peerId: 'p1', createdAt: 0 }, null, 2);
+    writeOperatorTokenFile(daemonHome, content);
+    const tokenPath = resolveOperatorTokenPath(daemonHome);
+    expect(existsSync(tokenPath)).toBe(true);
+    expect(readFileSync(tokenPath, 'utf-8')).toBe(content);
+  });
+
+  test('writeOperatorTokenFile sets mode 0600', () => {
+    writeOperatorTokenFile(daemonHome, '{"token":"gv_x","peerId":"p","createdAt":0}');
+    const tokenPath = resolveOperatorTokenPath(daemonHome);
+    const mode = statSync(tokenPath).mode & 0o777;
+    expect(mode).toBe(0o600);
+  });
+
+  test('readOperatorTokenFile returns undefined when file does not exist', () => {
+    expect(readOperatorTokenFile(daemonHome)).toBeUndefined();
+  });
+
+  test('readOperatorTokenFile returns content when file exists', () => {
+    const content = '{"token":"gv_y","peerId":"q","createdAt":1}';
+    writeOperatorTokenFile(daemonHome, content);
+    expect(readOperatorTokenFile(daemonHome)).toBe(content);
   });
 });
 
@@ -254,18 +293,9 @@ describe('WorkspaceSwapManager: path traversal', () => {
   }
 
   test('requestSwap with ".." relative path resolves cleanly and succeeds', async () => {
-    // The manager receives an absolute path resolved by the caller in practice.
-    // When a raw ".." is passed the OS path.resolve in mkdirSync will place it
-    // one level above baseDir — this is valid (no security boundary here) and
-    // must either succeed cleanly or return INVALID_PATH.
-    // We document the choice: we ALLOW traversal (resolve naturally, do not
-    // sanitise) because the swap endpoint is privileged (daemon-token-gated) and
-    // operators are trusted to specify absolute paths via the CLI or config tool.
     const mgr = makeManager();
     const traversalPath = join(baseDir, '..', 'traversal-target-' + Date.now());
     const result = await mgr.requestSwap(traversalPath);
-    // Either ok=true (resolved cleanly into a sibling dir) or ok=false INVALID_PATH.
-    // Both are acceptable. What must NOT happen is an unhandled exception.
     if (result.ok) {
       expect(mgr.getCurrentWorkingDir()).toBe(traversalPath);
     } else {
@@ -274,16 +304,13 @@ describe('WorkspaceSwapManager: path traversal', () => {
         expect(result.code).toBe('INVALID_PATH');
       }
     }
-    // Clean up the possible sibling dir
     try { rmSync(traversalPath, { recursive: true, force: true }); } catch { /* ignore */ }
   });
 
   test('requestSwap with absolute path containing ".." segments resolves correctly', async () => {
-    // Ensure /tmp/a/b/../c resolves to /tmp/a/c — no special rejection.
     const mgr = makeManager();
     const subDir = join(baseDir, 'sub');
     mkdirSync(subDir, { recursive: true });
-    // Build a path that traverses back to baseDir via parent
     const traversalPath = join(subDir, '..', 'resolved-target');
     const result = await mgr.requestSwap(traversalPath);
     if (result.ok) {
@@ -300,23 +327,27 @@ describe('WorkspaceSwapManager: path traversal', () => {
 // W-8 additional test cases
 // ---------------------------------------------------------------------------
 
-describe('runDaemonHomeMigration: corrupt JSON source', () => {
+describe('runDaemonHomeMigration: no workspace-scoped token migration', () => {
   let baseDir: string;
   let daemonHome: string;
 
   beforeEach(() => {
-    baseDir = tempDir('corrupt');
+    baseDir = tempDir('no-ws-token');
     daemonHome = join(baseDir, 'daemon-home');
   });
 
   afterEach(() => cleanup(baseDir));
 
-  test('skips corrupt operator-tokens.json (does not copy, does not throw)', () => {
+  test('does not migrate even valid workspace-scoped operator-tokens.json', () => {
+    // In 0.21.28+, workspace-scoped tokens are NOT migrated.
+    // Even if a valid JSON file is present at <cwd>/.goodvibes/operator-tokens.json,
+    // migration must not copy it.
     const oldTokenDir = join(baseDir, '.goodvibes');
     mkdirSync(oldTokenDir, { recursive: true });
-    writeFileSync(join(oldTokenDir, 'operator-tokens.json'), 'NOT VALID JSON {{{{');
+    const tokenContent = JSON.stringify({ token: 'gv_x', peerId: 'p', createdAt: 0 });
+    writeFileSync(join(oldTokenDir, 'operator-tokens.json'), tokenContent);
 
-    expect(() => runDaemonHomeMigration(daemonHome, { cwd: baseDir, env: {} })).not.toThrow();
+    runDaemonHomeMigration(daemonHome, { env: {} });
 
     const dest = join(daemonHome, 'operator-tokens.json');
     expect(existsSync(dest)).toBe(false);
