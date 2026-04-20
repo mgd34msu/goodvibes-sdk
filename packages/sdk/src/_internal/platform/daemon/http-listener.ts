@@ -34,6 +34,17 @@ interface HttpListenerConfig {
    * reverse proxy. Overrides the httpListener.trustProxy config value when set.
    */
   trustProxy?: boolean;
+  /**
+   * When true, CORS enforcement is active:
+   *   - Constructor refuses to start when hostMode=network and allowedOrigins is empty
+   *   - Requests carrying an Origin header are validated against allowedOrigins
+   * Default: false (permissive — no CORS enforcement). Opt-in for multi-user,
+   * internet-exposed, or enterprise deployments where browser-based CSRF is a
+   * concern. Home/single-user local deployments do not need this and the default
+   * behavior matches pre-0.21.29 semantics. When true, allowedOrigins must be
+   * configured (or hostMode must be local/loopback) — see SEC-07.
+   */
+  enforceCors?: boolean;
   /** Pre-configured UserAuthManager owned by the runtime service graph. */
   userAuth: UserAuthManager;
 }
@@ -129,6 +140,8 @@ export class HttpListener {
   private port: number;
   private host: string;
   private allowedOrigins: string[];
+  /** SEC-07: opt-in strict CORS enforcement. Default false (permissive). */
+  private enforceCors: boolean;
   private hookDispatcher: HookDispatcher | null;
   private authToken: string | null = null;
   private userAuth: UserAuthManager;
@@ -160,17 +173,20 @@ export class HttpListener {
     this.port = config.port ?? resolvedHttpBinding.port;
     this.host = config.host ?? resolvedHttpBinding.host;
     this.allowedOrigins = config.allowedOrigins ?? [];
+    this.enforceCors = config.enforceCors ?? false;
 
-    // SEC-07: Refuse to construct when hostMode=network and allowedOrigins is not configured.
-    // An empty allowedOrigins combined with a network-reachable bind is an open CSRF vector —
-    // any browser-initiated cross-origin request will carry an Origin header and be accepted.
-    const effectiveHostMode = (this.configManager.get('httpListener.hostMode') as string | undefined) ?? 'local';
-    if (effectiveHostMode === 'network' && this.allowedOrigins.length === 0) {
-      throw new Error(
-        'SECURITY_UNSAFE_ORIGIN_CONFIG: hostMode=network requires non-empty allowedOrigins to prevent CSRF. '
-        + 'Set config.httpListener.allowedOrigins to a list of trusted origins '
-        + "(e.g. ['https://companion.example.com']).",
-      );
+    // SEC-07: When enforceCors is true, refuse to construct with hostMode=network + empty allowedOrigins.
+    // Off by default — home and single-user local deployments don't need CORS enforcement.
+    // Enterprise / multi-user / internet-exposed deployments set enforceCors: true to gate against CSRF.
+    if (this.enforceCors) {
+      const effectiveHostMode = (this.configManager.get('httpListener.hostMode') as string | undefined) ?? 'local';
+      if (effectiveHostMode === 'network' && this.allowedOrigins.length === 0) {
+        throw new Error(
+          'SECURITY_UNSAFE_ORIGIN_CONFIG: hostMode=network with enforceCors=true requires non-empty allowedOrigins. '
+          + 'Set config.httpListener.allowedOrigins to a list of trusted origins '
+          + "(e.g. ['https://companion.example.com']), or leave enforceCors unset for permissive mode.",
+        );
+      }
     }
     this.hookDispatcher = config.hookDispatcher ?? null;
     this.userAuth = config.userAuth;
@@ -367,21 +383,23 @@ export class HttpListener {
       this.trustProxy || (this.tlsState?.trustProxy ?? false),
     ) ?? 'unknown';
 
-    // SEC-07: CORS origin check applies to ALL paths (including /login).
-    // Logic:
+    // SEC-07: CORS origin check is OPT-IN via enforceCors. Default is permissive
+    // (home/single-user deployments) — pre-0.21.29 behavior preserved. When
+    // enforceCors is true:
     //   - No Origin header → same-origin or non-browser request → allow.
-    //   - Origin present + allowedOrigins empty → no allowlist configured; block to
-    //     prevent CSRF even when hostMode is not 'network' (e.g. 'auto' with a
-    //     network-reachable bind). Constructor already refuses hostMode=network with
-    //     empty allowedOrigins at startup, but defence-in-depth covers the request path.
+    //   - Origin present + allowedOrigins empty → no allowlist configured; 403 CORS_NOT_CONFIGURED.
+    //     (Constructor already refuses hostMode=network + empty allowlist at startup; this is
+    //     defence-in-depth for non-network modes configured with enforceCors.)
     //   - Origin present + allowedOrigins non-empty → check allowlist.
-    const origin = req.headers.get('origin');
-    if (origin !== null) {
-      if (this.allowedOrigins.length === 0) {
-        return Response.json({ error: 'CORS_NOT_CONFIGURED: no allowedOrigins set' }, { status: 403 });
-      }
-      if (!this.allowedOrigins.includes(origin)) {
-        return Response.json({ error: 'ORIGIN_NOT_ALLOWED' }, { status: 403 });
+    if (this.enforceCors) {
+      const origin = req.headers.get('origin');
+      if (origin !== null) {
+        if (this.allowedOrigins.length === 0) {
+          return Response.json({ error: 'CORS_NOT_CONFIGURED: no allowedOrigins set' }, { status: 403 });
+        }
+        if (!this.allowedOrigins.includes(origin)) {
+          return Response.json({ error: 'ORIGIN_NOT_ALLOWED' }, { status: 403 });
+        }
       }
     }
 

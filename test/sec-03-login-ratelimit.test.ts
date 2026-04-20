@@ -40,6 +40,7 @@ function makeListener(opts: {
   rateLimit?: number;
   allowedOrigins?: string[];
   trustProxy?: boolean;
+  enforceCors?: boolean;
 }): { listener: HttpListener; dispatch: (req: Request) => Promise<Response> } {
   const userAuth = new UserAuthManager({
     bootstrapFilePath: join(opts.dir, 'auth-users.json'),
@@ -61,6 +62,7 @@ function makeListener(opts: {
     loginRateLimit: opts.loginRateLimit ?? 5,
     allowedOrigins: opts.allowedOrigins ?? [],
     trustProxy: opts.trustProxy ?? false,
+    enforceCors: opts.enforceCors,
     serveFactory: mockServe as unknown as typeof Bun.serve,
   });
 
@@ -185,10 +187,11 @@ describe('SEC-03 + SEC-07: origin check applies before /login dispatch', () => {
   beforeEach(() => { dir = tempDir('login-origin'); });
   afterEach(() => { cleanup(dir); });
 
-  test('blocked origin returns 403 before /login is processed', async () => {
+  test('blocked origin returns 403 before /login is processed (enforceCors=true)', async () => {
     const { listener, dispatch } = makeListener({
       dir,
       allowedOrigins: ['http://allowed.example.com'],
+      enforceCors: true,
     });
     await listener.start();
 
@@ -207,10 +210,11 @@ describe('SEC-03 + SEC-07: origin check applies before /login dispatch', () => {
     listener.stop();
   });
 
-  test('allowed origin passes to /login handler', async () => {
+  test('allowed origin passes to /login handler (enforceCors=true)', async () => {
     const { listener, dispatch } = makeListener({
       dir,
       allowedOrigins: ['http://allowed.example.com'],
+      enforceCors: true,
     });
     await listener.start();
 
