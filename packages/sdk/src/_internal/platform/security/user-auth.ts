@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 
@@ -99,15 +99,29 @@ function readBootstrapUsers(filePath: string): AuthUser[] | null {
   }
 }
 
-function writeBootstrapUsers(filePath: string, users: AuthUser[]): void {
+/**
+ * Write secret file content atomically at 0600 (owner read/write only).
+ * Uses write-to-tmp-then-rename for atomicity; chmod applied at both
+ * sides to defeat filesystem-reset behaviour on rename (observed on
+ * some Linux fs drivers).
+ */
+function atomicWriteSecretFile(filePath: string, content: string): void {
   mkdirSync(dirname(filePath), { recursive: true });
+  const tmpPath = filePath + '.tmp';
+  writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 });
+  try { chmodSync(tmpPath, 0o600); } catch { /* best-effort */ }
+  renameSync(tmpPath, filePath);
+  try { chmodSync(filePath, 0o600); } catch { /* best-effort */ }
+}
+
+function writeBootstrapUsers(filePath: string, users: AuthUser[]): void {
+  // SEC-01: auth-user store contains scrypt password hashes — must be 0600.
   const payload: AuthUserStore = { version: 1, users };
-  writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf-8');
+  atomicWriteSecretFile(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 function writeBootstrapCredentialFile(filePath: string, username: string, password: string): void {
-  mkdirSync(dirname(filePath), { recursive: true });
-  writeFileSync(
+  atomicWriteSecretFile(
     filePath,
     [
       'GoodVibes bootstrap auth',
@@ -116,13 +130,7 @@ function writeBootstrapCredentialFile(filePath: string, username: string, passwo
       'purpose=Use these credentials only for local daemon/http listener /login routes when those surfaces are enabled.',
       'note=Normal SDK host usage does not require these credentials.',
     ].join('\n') + '\n',
-    'utf-8',
   );
-  try {
-    chmodSync(filePath, 0o600);
-  } catch {
-    // best-effort only
-  }
 }
 
 function loadOrBootstrapUsers(filePath: string, credentialPath: string): AuthUser[] {

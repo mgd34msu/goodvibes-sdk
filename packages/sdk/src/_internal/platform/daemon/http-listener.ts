@@ -26,6 +26,14 @@ interface HttpListenerConfig {
   serveFactory?: typeof Bun.serve;
   /** Max requests per 60-second window per IP. Default: 60. */
   rateLimit?: number;
+  /** Max POST /login attempts per 60-second window per IP. Default: 5. */
+  loginRateLimit?: number;
+  /**
+   * When true, x-forwarded-for / x-real-ip headers are trusted for client IP
+   * extraction (rate limiting, audit logging). Only enable behind a trusted
+   * reverse proxy. Overrides the httpListener.trustProxy config value when set.
+   */
+  trustProxy?: boolean;
   /** Pre-configured UserAuthManager owned by the runtime service graph. */
   userAuth: UserAuthManager;
 }
@@ -125,6 +133,10 @@ export class HttpListener {
   private authToken: string | null = null;
   private userAuth: UserAuthManager;
   private rateLimiter: RateLimiter;
+  /** Dedicated tight rate-limiter for POST /login (SEC-03). */
+  private loginRateLimiter: RateLimiter;
+  /** Whether to trust x-forwarded-for / x-real-ip for client IP resolution. */
+  private trustProxy: boolean;
   private readonly configManager: ConfigManager;
   private readonly serveFactory: typeof Bun.serve;
   private tlsState: ResolvedInboundTlsContext | null = null;
@@ -148,9 +160,25 @@ export class HttpListener {
     this.port = config.port ?? resolvedHttpBinding.port;
     this.host = config.host ?? resolvedHttpBinding.host;
     this.allowedOrigins = config.allowedOrigins ?? [];
+
+    // SEC-07: Refuse to construct when hostMode=network and allowedOrigins is not configured.
+    // An empty allowedOrigins combined with a network-reachable bind is an open CSRF vector —
+    // any browser-initiated cross-origin request will carry an Origin header and be accepted.
+    const effectiveHostMode = (this.configManager.get('httpListener.hostMode') as string | undefined) ?? 'local';
+    if (effectiveHostMode === 'network' && this.allowedOrigins.length === 0) {
+      throw new Error(
+        'SECURITY_UNSAFE_ORIGIN_CONFIG: hostMode=network requires non-empty allowedOrigins to prevent CSRF. '
+        + 'Set config.httpListener.allowedOrigins to a list of trusted origins '
+        + "(e.g. ['https://companion.example.com']).",
+      );
+    }
     this.hookDispatcher = config.hookDispatcher ?? null;
     this.userAuth = config.userAuth;
     this.rateLimiter = new RateLimiter(config.rateLimit ?? 60);
+    // SEC-03: /login gets its own tight budget (5 attempts/min per IP) to prevent
+    // scrypt-cost-throttled online brute-force attacks.
+    this.loginRateLimiter = new RateLimiter(config.loginRateLimit ?? 5);
+    this.trustProxy = config.trustProxy ?? Boolean(this.configManager.get('httpListener.trustProxy'));
     this.serveFactory = config.serveFactory ?? Bun.serve;
   }
 
@@ -233,8 +261,9 @@ export class HttpListener {
       this._configWatchUnsub = null;
     }
 
-    // Stop rate limiter sweep interval before tearing down (C5 fix)
+    // Stop rate limiter sweep intervals before tearing down.
     this.rateLimiter.stop();
+    this.loginRateLimiter.stop();
     this.server.stop(true);
     this.server = null;
     this.tlsState = null;
@@ -332,21 +361,41 @@ export class HttpListener {
   // -------------------------------------------------------------------------
 
   private async handleRequest(req: Request): Promise<Response> {
-    // Handle login route before auth check
     const url = new URL(req.url);
-    if (url.pathname === '/login' && req.method === 'POST') {
-      return this.handleLogin(req);
-    }
-    // CORS origin check when allowedOrigins is configured
-    const origin = req.headers.get('origin') ?? '';
-    if (this.allowedOrigins.length > 0 && origin && !this.allowedOrigins.includes(origin)) {
-      return Response.json({ error: 'Origin not allowed' }, { status: 403 });
+    const clientIp = extractForwardedClientIp(
+      req,
+      this.trustProxy || (this.tlsState?.trustProxy ?? false),
+    ) ?? 'unknown';
+
+    // SEC-07: CORS origin check applies to ALL paths (including /login).
+    // Logic:
+    //   - No Origin header → same-origin or non-browser request → allow.
+    //   - Origin present + allowedOrigins empty → no allowlist configured; block to
+    //     prevent CSRF even when hostMode is not 'network' (e.g. 'auto' with a
+    //     network-reachable bind). Constructor already refuses hostMode=network with
+    //     empty allowedOrigins at startup, but defence-in-depth covers the request path.
+    //   - Origin present + allowedOrigins non-empty → check allowlist.
+    const origin = req.headers.get('origin');
+    if (origin !== null) {
+      if (this.allowedOrigins.length === 0) {
+        return Response.json({ error: 'CORS_NOT_CONFIGURED: no allowedOrigins set' }, { status: 403 });
+      }
+      if (!this.allowedOrigins.includes(origin)) {
+        return Response.json({ error: 'ORIGIN_NOT_ALLOWED' }, { status: 403 });
+      }
     }
 
-    // Rate limiting (keyed by a synthetic IP-like string from headers)
-    // Note: x-forwarded-for is only trustworthy when running behind a trusted reverse proxy.
-    // If exposed directly to the internet, clients can spoof this header.
-    const clientIp = extractForwardedClientIp(req, this.tlsState?.trustProxy ?? Boolean(this.configManager.get('httpListener.trustProxy'))) ?? 'unknown';
+    // SEC-03: /login route handled AFTER origin check and under its own tight
+    // rate-limit budget (5/min per IP) to prevent online brute-force attacks.
+    // x-forwarded-for is only trustworthy when running behind a trusted reverse proxy.
+    if (url.pathname === '/login' && req.method === 'POST') {
+      if (!this.loginRateLimiter.check(clientIp)) {
+        return Response.json({ error: 'Too many requests' }, { status: 429 });
+      }
+      return this.handleLogin(req);
+    }
+
+    // General rate limiting for all other routes.
     if (!this.rateLimiter.check(clientIp)) {
       return Response.json({ error: 'Too many requests' }, { status: 429 });
     }

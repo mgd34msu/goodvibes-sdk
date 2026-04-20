@@ -128,15 +128,16 @@ export function runDaemonHomeMigration(
   const userGoodVibesRoot = join(homedir(), '.goodvibes');
 
   // Migrate auth-users.json from tui surface path
+  // SEC-02: credential-bearing files must land at 0600 regardless of source perms.
   const legacyAuthUsers = join(userGoodVibesRoot, 'tui', 'auth-users.json');
   if (existsSync(legacyAuthUsers)) {
-    safeCopy(legacyAuthUsers, join(daemonHomeDir, 'auth-users.json'));
+    safeCopyIdentity(legacyAuthUsers, join(daemonHomeDir, 'auth-users.json'));
   }
 
   // Migrate auth-bootstrap.txt from tui surface path
   const legacyBootstrap = join(userGoodVibesRoot, 'tui', 'auth-bootstrap.txt');
   if (existsSync(legacyBootstrap)) {
-    safeCopy(legacyBootstrap, join(daemonHomeDir, 'auth-bootstrap.txt'));
+    safeCopyIdentity(legacyBootstrap, join(daemonHomeDir, 'auth-bootstrap.txt'));
   }
 
   // NOTE: Operator tokens are NOT migrated from legacy workspace-scoped paths.
@@ -222,8 +223,11 @@ export function writeDaemonSetting(daemonHomeDir: string, key: string, value: st
       // Overwrite corrupt file
     }
   }
-  writeFileSync(tmpPath, JSON.stringify({ ...existing, [key]: value }, null, 2), 'utf-8');
+  // SEC-12: daemon-settings.json may contain sensitive pairing state; write at 0600.
+  writeFileSync(tmpPath, JSON.stringify({ ...existing, [key]: value }, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  try { chmodSync(tmpPath, 0o600); } catch { /* best-effort */ }
   renameSync(tmpPath, settingsPath);
+  try { chmodSync(settingsPath, 0o600); } catch { /* best-effort */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -246,4 +250,25 @@ function safeCopy(src: string, dest: string): boolean {
     });
     return false;
   }
+}
+
+/**
+ * Copy a credential-bearing identity file from src to dest and force mode 0600.
+ *
+ * SEC-02: `copyFileSync` preserves source permissions. Legacy TUI files may be
+ * 0644 (world-readable). Calling `chmodSync` after copy ensures the new
+ * canonical path is always owner-only regardless of the source's permissions.
+ * Never throws — failures are logged at warn level.
+ */
+function safeCopyIdentity(src: string, dest: string): boolean {
+  if (!safeCopy(src, dest)) return false;
+  try {
+    chmodSync(dest, 0o600);
+  } catch (err) {
+    logger.warn('daemon-home: safeCopyIdentity chmod failed (best-effort)', {
+      dest,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+  return true;
 }

@@ -8,6 +8,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.29] - 2026-04-20
+
+Wave 1 of the enterprise-adoption security hardening series targeting the bar set in `docs/audit/0.21.28-master-triage.md`. This wave closes all CRITICAL security findings except SEC-10 (deferred to Wave 5 per user decision).
+
+### Security
+- **W1-1 / SEC-04: vendor minimatch inline; remove install-time fetch** — Rewrote `scripts/postinstall-patch-minimatch.mjs` to copy the minimatch payload from `scripts/vendor/minimatch/` (git-checked-in) rather than fetching from the npm registry. Eliminates the supply-chain MITM/substitution vector at install time. Vendored version is minimatch@10.2.5 (sha512 `sha512-MULk...Mg==`, verified 2026-04-20). Advisories addressed: GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74 (all affect minimatch >=10.0.0 <10.2.3 via bash-language-server transitive pinning).
+- **W1-2 / SEC-01: `writeBootstrapUsers` writes auth-user store at 0600** — Added `{ mode: 0o600 }` to the write call, plus write-to-tmp-then-rename pattern with `chmodSync` applied both before rename and after (defeats filesystem-reset behaviour). Affected file: `packages/sdk/src/_internal/platform/security/user-auth.ts`. Files now under 0600: `auth-users.json`.
+- **W1-3 / SEC-02: `safeCopy` → `safeCopyIdentity` for credential migration** — Added `safeCopyIdentity` helper that calls `chmodSync(dest, 0o600)` after `copyFileSync`, ensuring migrated credential files land at 0600 regardless of source permissions. Affected file: `packages/sdk/src/_internal/platform/workspace/daemon-home.ts`. Files now under 0600: `auth-users.json` (migrated), `auth-bootstrap.txt` (migrated).
+- **W1-4 / SEC-03: `/login` rate-limited and behind origin check** — Reordered `handleRequest` so CORS origin check runs first (before any route dispatch), then `/login` is dispatched with its own tight `loginRateLimiter` (default 5 attempts/min per IP, configurable via `HttpListenerConfig.loginRateLimit`). The general 60/min API rate limiter is independent. Affected file: `packages/sdk/src/_internal/platform/daemon/http-listener.ts`.
+- **W1-5 / SEC-07: enforce safe `allowedOrigins` defaults — refuse-to-start + request-time origin deny** — Two-layer defence: (1) **Startup guard**: constructing `HttpListener` with `hostMode=network` and empty `allowedOrigins` now throws `SECURITY_UNSAFE_ORIGIN_CONFIG` immediately, preventing the listener from binding. (2) **Request-time guard**: any request that carries an `Origin` header is rejected with 403 (`CORS_NOT_CONFIGURED`) when `allowedOrigins` is empty, and with 403 (`ORIGIN_NOT_ALLOWED`) when the origin is not in the allowlist. Requests without an `Origin` header (same-origin or non-browser) are unaffected. Affected file: `packages/sdk/src/_internal/platform/daemon/http-listener.ts`.
+- **W1-6 / SEC-12: `writeDaemonSetting` writes daemon-settings.json at 0600** — Applied `{ mode: 0o600 }` + `chmodSync` post-rename pattern to `writeDaemonSetting`. Affected file: `packages/sdk/src/_internal/platform/workspace/daemon-home.ts`. Files now under 0600: `daemon-settings.json`.
+
+### Added
+- `scripts/vendor/minimatch/` — vendored minimatch@10.2.5 payload (dist/, package.json, LICENSE.md, README.md). Git-checked-in. Source of truth for postinstall patching.
+- `test/sec-01-user-auth-perms.test.ts` — 4 tests asserting `auth-users.json` is created and maintained at mode 0600 across bootstrap, addUser, rotatePassword, deleteUser paths.
+- `test/sec-02-safecopy-perms.test.ts` — 3 tests for SEC-02 safeCopyIdentity behaviour and SEC-12 `writeDaemonSetting` mode enforcement.
+- `test/sec-03-login-ratelimit.test.ts` — 7 tests: first 5 login attempts allowed, 6th returns 429; 10 rapid attempts split 5/5; IPs tracked independently; login budget independent of general API limiter; origin check fires before /login; allowed origin passes through.
+- `test/sec-07-origin-defaults.test.ts` — 6 tests: startup guard throws on hostMode=network+empty allowedOrigins; startup guard accepts network+non-empty allowedOrigins; loopback+empty allowedOrigins+no Origin header passes; loopback+empty allowedOrigins+Origin header returns 403 CORS_NOT_CONFIGURED; network+allowedOrigins set+wrong origin returns 403 ORIGIN_NOT_ALLOWED; network+allowedOrigins set+correct origin passes.
+- `test/sec-04-postinstall-no-network.test.ts` — 3 tests: vendor payload present; postinstall runs exit 0 with no-network env (HTTPS_PROXY=unreachable); vulnerable minimatch is patched from vendor; already-patched is skipped.
+
+### Note
+- SEC-10 (`Math.random` crypto misuse) moved to Wave 5 per user decision — not in this wave.
+- This is Wave 1 of a planned 5-wave series. See `docs/audit/0.21.28-master-triage.md` for full triage and wave assignments.
+
+Gates: bun run build pass (tsc -b --force, exit 0), sync:check pass, version:check pass (all 10 packages at 0.21.29), changelog:check pass.
+
+---
+
 ## [0.21.28] - 2026-04-20
 
 F3 resolved: operator tokens are global-only. The prior "partially resolved" framing in CHANGELOG 0.21.19 was incomplete — the dual-path/workspace-scoped design was a mistake. This release removes it entirely.
