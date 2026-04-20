@@ -45,6 +45,23 @@ export interface StateToolOptions {
   readonly hookDispatcher?: HookDispatcher;
   readonly modeManager?: ModeManager;
   readonly telemetryDB?: TelemetryDB;
+  /**
+   * Current working directory at session start. Exposed as the well-known
+   * read-only key `runtime.workingDir` via `mode=get`.
+   * Updated dynamically via WorkspaceSwapManager on workspace swap.
+   */
+  readonly workingDir?: string;
+  /**
+   * Daemon home directory (immutable after startup). Exposed as the well-known
+   * read-only key `daemon.homeDir` via `mode=get`.
+   */
+  readonly daemonHomeDir?: string;
+  /**
+   * Workspace swap manager. When provided, `set({values: {'runtime.workingDir': '/new/path'}})`
+   * will trigger a real workspace swap via `requestSwap()` instead of returning an error.
+   * Swap failures are surfaced as `success: false` with the error reason.
+   */
+  readonly swapManager?: { requestSwap(newDir: string): Promise<{ ok: boolean; reason?: string; code?: string }> };
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +86,9 @@ export function createStateTool(
   const hookDispatcher = options.hookDispatcher;
   const modeManager = options.modeManager;
   const telemetryDB = options.telemetryDB;
+  const workingDir = options.workingDir;
+  const daemonHomeDir = options.daemonHomeDir;
+  const swapManager = options.swapManager;
   // Session start time and telemetry are scoped per-instance so multiple
   // createStateTool() calls don't share state.
   const SESSION_START_MS = Date.now();
@@ -106,8 +126,8 @@ export function createStateTool(
       const { mode } = input;
 
       switch (mode) {
-        case 'get':   return runGet(input, kvState);
-        case 'set':   return runSet(input, kvState);
+        case 'get':   return runGet(input, kvState, workingDir, daemonHomeDir);
+        case 'set':   return runSet(input, kvState, workingDir, daemonHomeDir, swapManager);
         case 'list':  return runList(input, kvState);
         case 'clear': return runClear(input, kvState);
         case 'budget': return runBudget(kvState, projectIndex);
@@ -444,25 +464,74 @@ function runMode(
   return { success: false, error: `Unknown mode action: ${String(action)}` };
 }
 
+/**
+ * Well-known read-only keys surfaced directly by the state tool.
+ * These keys are injected into the `get` response alongside KVState values
+ * and rejected with an error in `set` to prevent mutation.
+ */
+const WELL_KNOWN_READONLY_KEYS = new Set(['runtime.workingDir', 'daemon.homeDir']);
+
 async function runGet(
   input: StateInput,
   kvState: KVState,
+  workingDir: string | undefined,
+  daemonHomeDir: string | undefined,
 ): Promise<{ success: boolean; output?: string; error?: string }> {
   const keys = input.keys ?? [];
   if (keys.length === 0) {
     return { success: false, error: 'mode "get" requires a non-empty "keys" array' };
   }
-  const values = await kvState.get(keys);
+  // Separate well-known keys from regular KV keys
+  const kvKeys = keys.filter((k) => !WELL_KNOWN_READONLY_KEYS.has(k));
+  const values: Record<string, unknown> = kvKeys.length > 0 ? await kvState.get(kvKeys) : {};
+  // Inject well-known read-only keys
+  if (keys.includes('runtime.workingDir')) {
+    values['runtime.workingDir'] = workingDir ?? null;
+  }
+  if (keys.includes('daemon.homeDir')) {
+    values['daemon.homeDir'] = daemonHomeDir ?? null;
+  }
   return { success: true, output: JSON.stringify({ mode: 'get', values }) };
 }
 
 async function runSet(
   input: StateInput,
   kvState: KVState,
+  _workingDir: string | undefined,
+  _daemonHomeDir: string | undefined,
+  swapManager?: { requestSwap(newDir: string): Promise<{ ok: boolean; reason?: string; code?: string }> },
 ): Promise<{ success: boolean; output?: string; error?: string }> {
   const values = input.values;
   if (!values || typeof values !== 'object') {
     return { success: false, error: 'mode "set" requires a "values" object' };
+  }
+
+  // Handle runtime.workingDir specially — delegate to swap manager if available.
+  if ('runtime.workingDir' in values) {
+    const newDir = values['runtime.workingDir'];
+    if (typeof newDir !== 'string' || !newDir.trim()) {
+      return { success: false, error: 'runtime.workingDir must be a non-empty string.' };
+    }
+    if (!swapManager) {
+      return {
+        success: false,
+        error: 'Cannot write to runtime.workingDir: no swap manager available. Use POST /config to change runtime.workingDir.',
+      };
+    }
+    const result = await swapManager.requestSwap(newDir);
+    if (!result.ok) {
+      return { success: false, error: `Workspace swap failed (${result.code ?? 'UNKNOWN'}): ${result.reason ?? 'unknown error'}` };
+    }
+    return { success: true, output: JSON.stringify({ mode: 'set', swapped: true, newWorkingDir: newDir }) };
+  }
+
+  // Reject writes to other read-only well-known keys
+  const readonlyAttempts = Object.keys(values).filter((k) => WELL_KNOWN_READONLY_KEYS.has(k));
+  if (readonlyAttempts.length > 0) {
+    return {
+      success: false,
+      error: `Cannot write to read-only well-known key(s): ${readonlyAttempts.join(', ')}. These keys are immutable at runtime.`,
+    };
   }
   await kvState.set(values);
   // Only report keys that KVState actually persists (exclude reserved keys).

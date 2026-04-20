@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { logger } from '../utils/logger.js';
 import { ConfigManager } from '../config/manager.js';
 import { SecretsManager } from '../config/secrets.js';
 import { ServiceRegistry } from '../config/service-registry.js';
@@ -173,6 +174,25 @@ export interface RuntimeServices {
   readonly modeManager: ModeManager;
   readonly fileUndoManager: FileUndoManager;
   readonly integrationHelpers: IntegrationHelperService;
+  /**
+   * Re-root all path-bound services to a new working directory.
+   *
+   * Called by WorkspaceSwapManager.requestSwap() after the new directory has
+   * been verified and its subdirectories created.
+   *
+   * Stores that are re-rooted in-process:
+   * - MemoryStore (memory.sqlite + vector index): closed and reopened at new path.
+   * - ProjectIndex: flushed to old location then reset to new directory.
+   *
+   * Stores that require a process restart to fully re-root emit a warn-level log
+   * naming the subsystem. They continue serving the old path until the daemon is
+   * restarted with --working-dir=<newDir> (or the persisted daemon-settings.json
+   * value is picked up at startup).
+   *
+   * @throws if MemoryStore or ProjectIndex reroot fails. Propagated as INVALID_PATH
+   * by WorkspaceSwapManager.
+   */
+  rerootStores(newWorkingDir: string): Promise<void>;
 }
 
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
@@ -553,5 +573,37 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     modeManager,
     fileUndoManager,
     integrationHelpers,
+    async rerootStores(newWorkingDir: string): Promise<void> {
+      // Step 1: Re-root MemoryStore — close existing SQLite/vector handles, reopen at new path.
+      const newMemoryDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'memory.sqlite');
+      await memoryStore.reroot(newMemoryDbPath);
+
+      // Step 2: Re-root ProjectIndex — flush old location, reset, load from new directory.
+      await projectIndex.reroot(newWorkingDir);
+
+      // Step 3: Subsystems that cannot be live-rerooted emit a warn log.
+      // They continue operating at the old root path until the next process restart,
+      // at which point --working-dir / daemon-settings.json points to the new path.
+      // This is acceptable because: (a) the swap endpoint is daemon-token-gated,
+      // (b) these services primarily write user-scoped state (auth, bookmarks, profiles)
+      // that is not workspace-scoped, and (c) knowledge/artifact stores resolve paths
+      // through configManager which does not hot-reload during a running session.
+      const cannotReroot = [
+        'knowledgeStore (SQLite at configManager-resolved path — restart required)',
+        'sessionManager (initialised with fixed workingDirectory)',
+        'sessionOrchestration (task-graph.json path fixed at init)',
+        'artifactStore (resolves rootDir via configManager.getControlPlaneConfigDir)',
+        'hookDispatcher (projectRoot fixed at init)',
+        'sandboxSessionRegistry (workingDirectory fixed at init)',
+        'agentOrchestrator (workingDirectory fixed at init)',
+        'wrfcController (projectRoot fixed at init)',
+        'overflowHandler (baseDir fixed at init)',
+        'replayEngine (workingDirectory fixed at init)',
+        'planManager (workingDirectory fixed at init)',
+      ];
+      for (const name of cannotReroot) {
+        logger.warn('[rerootStores] subsystem requires restart to reroot', { subsystem: name, newWorkingDir });
+      }
+    },
   };
 }

@@ -31,6 +31,28 @@ export type WorkspaceEvent =
       reason: string;
       /** Suggested retry delay in seconds. */
       retryAfter: number;
+    }
+  /**
+   * Emitted when a daemon-home identity file is successfully copied during
+   * the one-time migration (0.21.19+ startup with a new daemon home).
+   */
+  | {
+      type: 'WORKSPACE_IDENTITY_MIGRATED';
+      /** Source path the file was copied from. */
+      from: string;
+      /** Destination path under the new daemon home. */
+      to: string;
+    }
+  /**
+   * Emitted when a candidate identity file is skipped during migration because
+   * it contains corrupt JSON that cannot be safely migrated.
+   */
+  | {
+      type: 'WORKSPACE_IDENTITY_MIGRATION_FAILED';
+      /** Path of the source file that was skipped. */
+      sourcePath: string;
+      /** Human-readable reason (e.g. JSON parse error message). */
+      reason: string;
     };
 
 export type WorkspaceEventType = WorkspaceEvent['type'];

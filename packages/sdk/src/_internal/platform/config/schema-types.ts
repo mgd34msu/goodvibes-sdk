@@ -562,7 +562,8 @@ export type ConfigKey =
   | 'network.outboundTls.customCaFile'
   | 'network.outboundTls.customCaDir'
   | 'network.outboundTls.allowInsecureLocalhost'
-  | 'network.remoteFetch.allowPrivateHosts';
+  | 'network.remoteFetch.allowPrivateHosts'
+  | 'runtime.companionChatLimiter.perSessionLimit';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -761,4 +762,5 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'network.outboundTls.customCaDir' ? string :
   K extends 'network.outboundTls.allowInsecureLocalhost' ? boolean :
   K extends 'network.remoteFetch.allowPrivateHosts' ? boolean :
+  K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   never;

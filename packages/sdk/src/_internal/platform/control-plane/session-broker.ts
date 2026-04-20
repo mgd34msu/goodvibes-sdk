@@ -96,6 +96,19 @@ export class SharedSessionBroker {
   }
 
   /**
+   * Returns the number of sessions that currently have a pending input
+   * (i.e. pendingInputCount > 0). Used by WorkspaceSwapManager to determine
+   * whether the daemon is busy before allowing a workspace swap.
+   */
+  countBusySessions(): number {
+    let count = 0;
+    for (const session of this.sessions.values()) {
+      if (session.pendingInputCount > 0) count++;
+    }
+    return count;
+  }
+
+  /**
    * M3: Gracefully stop the broker — clears GC interval, tears down bus subscriptions,
    * and persists state. Call from DaemonServer.stop().
    */
@@ -302,6 +315,13 @@ export class SharedSessionBroker {
     return bucket.slice(-Math.max(1, limit));
   }
 
+  /**
+   * Reserved session IDs that must never be assigned to real sessions.
+   * Empty string is reserved to distinguish system-emitted events from user
+   * sessions. 'system' is kept as a legacy guard.
+   */
+  private static readonly RESERVED_SESSION_IDS = new Set(['', 'system']);
+
   async createSession(input: {
     readonly id?: string;
     readonly title?: string;
@@ -309,6 +329,12 @@ export class SharedSessionBroker {
     readonly routeBinding?: AutomationRouteBinding;
     readonly participant?: SharedSessionParticipant;
   } = {}): Promise<SharedSessionRecord> {
+    if (input.id !== undefined && SharedSessionBroker.RESERVED_SESSION_IDS.has(input.id)) {
+      throw Object.assign(
+        new Error(`INVALID_SESSION_ID: '${input.id}' is a reserved session ID and cannot be assigned to a real session.`),
+        { code: 'INVALID_SESSION_ID' },
+      );
+    }
     await this.start();
     const now = Date.now();
     const sessionId = input.id ?? `sess-${randomUUID().slice(0, 8)}`;

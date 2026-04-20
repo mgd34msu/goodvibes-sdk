@@ -375,6 +375,11 @@ export interface CreateDaemonFacadeCollaboratorsOptions {
   readonly signWebhookPayload: (body: string, secret: string) => string;
   readonly handleApprovalAction: (approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request) => Promise<Response>;
   readonly tlsState: () => ResolvedInboundTlsContext | null;
+  /**
+   * WorkspaceSwapManager instance, forwarded from DaemonConfig.swapManager.
+   * Null in embedded/test contexts that don't support live workspace swaps.
+   */
+  readonly swapManager: import('../../daemon/system-route-types.js').WorkspaceSwapManagerLike | null;
 }
 
 export function createDaemonFacadeCollaborators(
@@ -483,6 +488,7 @@ export function createDaemonFacadeCollaborators(
     trySpawnAgent: options.trySpawnAgent,
     companionChatManager: runtime.companionChatManager,
     secretsManager: runtime.runtimeServices.secretsManager,
+    swapManager: options.swapManager,
   });
   const providerRuntime = new ChannelProviderRuntimeManager({
     configManager: runtime.configManager,

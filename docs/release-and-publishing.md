@@ -328,3 +328,27 @@ When publishing from GitHub Actions (`release:publish:ci`), npm provenance attes
 The `publish-npm` job in `release.yml` has `permissions: { id-token: write }` and calls `bun run release:publish:ci` which passes `--provenance` to `npm publish`.
 
 Local publishes (`bun run release:publish`) do not include provenance — this is expected.
+
+## Validation and Strict Gate
+
+The `validate:strict` script runs the full pre-release gate suite:
+
+```bash
+bun run validate:strict
+```
+
+This is equivalent to:
+
+```bash
+bun run validate && bun run types:check && bun run sync:check
+```
+
+- `validate` — TypeScript build + tests + pack smoke
+- `types:check` — standalone TypeScript type-level usage checks (`bun x tsc -b --force`)
+- `sync:check` — verifies the `_internal/daemon/` mirror is in sync with `packages/daemon-sdk/src/`
+
+Run `validate:strict` before every release tag. CI enforces all three gates independently.
+
+### Error Log
+
+Significant build and runtime errors encountered during development are logged to `.goodvibes/logs/errors.md` with root cause, resolution, and affected files. Consult this log when debugging recurring issues before starting a new investigation.

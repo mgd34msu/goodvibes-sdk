@@ -370,4 +370,13 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     default: false,
     description: 'Allow explicit admin-approved remote fetches from private, localhost, or metadata hosts for artifacts and ingest flows',
   },
+  {
+    key: 'runtime.companionChatLimiter.perSessionLimit',
+    type: 'number',
+    default: 10,
+    description:
+      'Max companion chat messages per 60-second window per session. ' +
+      'Overrides the GOODVIBES_CHAT_LIMITER_THRESHOLD env var (env is read once at daemon startup; ' +
+      'this config key is read on each check() call and takes precedence when set to a positive integer).',
+  },
 ];

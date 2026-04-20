@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 
 export interface CompanionPairingResult {
   readonly token: string;
@@ -93,7 +93,7 @@ export function getOrCreateCompanionToken(
     createdAt: Date.now(),
   };
 
-  mkdirSync(join(resolveTokenPath(surface, options?.basePath, options?.daemonHomeDir), '..'), { recursive: true });
+  mkdirSync(dirname(tokenPath), { recursive: true });
   writeFileSync(tokenPath, JSON.stringify(record, null, 2), 'utf-8');
 
   return { token: record.token, peerId: record.peerId, createdAt: record.createdAt };

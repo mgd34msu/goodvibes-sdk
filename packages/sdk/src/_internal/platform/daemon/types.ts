@@ -55,6 +55,13 @@ export interface DaemonConfig {
    * Takes precedence over GOODVIBES_CHAT_LIMITER_THRESHOLD env var.
    */
   companionChatRateLimiterOptions?: { threshold?: number };
+  /**
+   * WorkspaceSwapManager instance to handle runtime.workingDir transitions.
+   * When provided, POST /config runtime.workingDir requests are delegated
+   * to the swap manager rather than rejected. Injected by cli.ts at startup;
+   * omitted in embedded/test contexts where workspace swaps are not supported.
+   */
+  swapManager?: import('../../daemon/system-route-types.js').WorkspaceSwapManagerLike | null;
 }
 
 export interface DaemonDangerConfig {

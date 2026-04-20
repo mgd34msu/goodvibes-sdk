@@ -8,6 +8,47 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.21] - 2026-04-19
+
+### Added
+- **W-1 — WorkspaceSwapManager wired end-to-end**: `WorkspaceSwapManager` is now threaded through the full daemon stack: `DaemonConfig` → `DaemonServer` constructor → `createDaemonFacadeCollaborators()` → `DaemonHttpRouter` context → `buildSystemRouteContext()`. The `DaemonHttpRouterContext` interface gains `swapManager: WorkspaceSwapManagerLike | null`; real wiring now plumbs the live instance rather than a hard-coded `null`.
+- **W-1 — `countBusySessions()`**: `SharedSessionBroker` now exposes a public `countBusySessions(): number` method (counts sessions with `pendingInputCount > 0`) consumed by `WorkspaceSwapManager` to enforce the WORKSPACE_BUSY guard.
+- **W-1 — `rerootStores()`**: `RuntimeServices` interface and `createRuntimeServices()` return object now include a fully functional `rerootStores(newWorkingDir: string): Promise<void>` method. `MemoryStore` and `ProjectIndex` are closed and re-opened at the new path in-process. Subsystems that cannot be live-rerooted (KnowledgeStore, SessionManager, ArtifactStore, and others) emit a warn-level log naming the subsystem and continue operating until the next process restart, at which point `daemon-settings.json` points the daemon to the new path.
+- **W-4 — Reserved session ID validation**: `SharedSessionBroker.createSession()` now rejects `''` and `'system'` with `{ code: 'INVALID_SESSION_ID' }`. A static `RESERVED_SESSION_IDS` set documents the reservation policy.
+- **W-6 — Runtime config override for per-session rate limit**: `CompanionChatRateLimiter` accepts an optional `configManager` at construction time. On each `check()` call, `resolvePerSessionLimit()` reads `runtime.companionChatLimiter.perSessionLimit` from the config manager (when present); a positive integer there takes precedence over the constructor-time baseline, enabling live rate-limit tuning without a daemon restart. The env-var `GOODVIBES_CHAT_LIMITER_THRESHOLD` is still read once at startup as a fallback.
+- **W-6 — `runtime.companionChatLimiter.perSessionLimit` config key**: New runtime config key registered in schema-domain-runtime.ts (`type: 'number'`, default: 10). Added to `ConfigKey` union and `ConfigValue<K>` conditional in schema-types.ts.
+- **W-9 — `validate:strict` script**: `package.json` gains `"validate:strict": "bun run validate && bun run types:check && bun run sync:check"` for a single pre-release full-gate command.
+- **W-9 — Error log**: `.goodvibes/logs/errors.md` created, documenting the three significant errors encountered during the 0.21.20/0.21.21 work cycle (W5 generic emit, W3 sync mirror discipline, W6 ConfigKey union).
+- **B4 — Missing swapManager logged at warn**: `router-route-contexts.ts` upgrades the missing `swapManager` message from `logger.debug` to `logger.warn` so operator misconfiguration is visible in production logs.
+- **B5 — `safeCopy` failure logged at warn**: `daemon-home.ts` `safeCopy` helper now emits `logger.warn` (previously `logger.debug`) so copy failures during migration surface in production.
+- **B8 — `prepublishOnly` hook**: `package.json` gains `"prepublishOnly": "bun run validate:strict"` so `validate:strict` runs automatically before any `npm publish` (guards against accidental publish of unvalidated state).
+- **B10 — `DaemonHomeMigrationDeps` interface and `runtimeBus` threading**: `runDaemonHomeMigration()` gains an optional third `deps: DaemonHomeMigrationDeps` parameter. `cli.ts` now calls migration from `main()` after `RuntimeEventBus` is created, threading the live bus into the migration so `WORKSPACE_IDENTITY_MIGRATED` / `WORKSPACE_IDENTITY_MIGRATION_FAILED` events are emitted.
+- **B10 — `WORKSPACE_IDENTITY_MIGRATED` / `WORKSPACE_IDENTITY_MIGRATION_FAILED` events**: Two new event types added to the `WorkspaceEvent` union in `workspace.ts` and automatically registered in the `DomainEventMap` (since `WorkspaceEvent` is already the union type for that domain).
+- **B12 — Domain-keyed `RuntimeEventBus.emit` overload**: Added typed overload `emit<D extends RuntimeEventDomain>(domain: D, envelope: RuntimeEventEnvelope<DomainEventMap[D]['type'], DomainEventMap[D]>)` eliminating the `as Parameters<...>[1]` cast used in `WorkspaceSwapManager`. The implementation signature remains unchanged; only callers with a statically-known domain benefit.
+
+### Fixed
+- **W-2 — `runtime.workingDir` and `daemon.homeDir` as read-only well-known state keys**: The state tool (`tools/state/index.ts`) now intercepts `get` requests for these keys and injects live runtime values. `set` requests for these keys are rejected with a descriptive error instead of silently writing to the config map. `StateToolOptions` gains optional `workingDir` and `daemonHomeDir` fields.
+- **W-5 — `WorkspaceSwapManager._emit` type cast replaced by domain-keyed overload**: Previously used `emit('workspace', envelope as Parameters<RuntimeEventBus['emit']>[1])`. Now uses the typed `emit('workspace', envelope)` overload (see B12 above). Fixes TS1005 compilation error root-cause.
+- **W-7 — F13 test file imports real exported handlers**: `test/f13-field-normalization.test.ts` now imports `readCompanionChatMessageBody` from `companion-chat-routes` and `readSharedSessionMessageBody` from daemon runtime-session-routes instead of duplicating function logic locally. Added trim behavior, non-string value rejection, and wrong-field fallthrough edge-case tests.
+- **B7 — `StateToolOptions.swapManager` + `runtime.workingDir` set delegation**: `StateToolOptions` gains an optional `swapManager` field. When `runtime.workingDir` appears in a `set` call, the tool delegates to `swapManager.requestSwap()` (returns a descriptive error if no swap manager is wired). All other WELL_KNOWN_READONLY_KEYS still return read-only errors.
+- **B11 — F13 field normalization documented via JSDoc**: `handlePostMessage` (companion-chat-routes) and `handlePostSharedSessionMessage` (daemon runtime-session-routes) gain JSDoc describing field precedence (`body` > `content` for companion; `body` > `message` > `text` for shared-session).
+
+### Tests
+- **W-6 — RL6 test suite**: Added `describe('RL6: runtime configManager overrides per-session limit')` to `companion-chat-rate-limit.test.ts` — three cases: (a) configManager positive integer overrides baseline, (b) non-positive value falls back to baseline, (c) undefined value falls back to compile-time default.
+- **W-8 — WorkspaceSwapManager edge-case tests**: Added to `daemon-home.test.ts`: event order assertions (REFUSED before STARTED check, STARTED before COMPLETED), domain assertion (`workspace`), FILE path INVALID_PATH, concurrent swap, and persistence-write-failure case (`persistedInDaemonSettings: false` when `daemonHomeDir` is a file path).
+- **W-8 — `runDaemonHomeMigration` corrupt JSON test**: Verifies corrupt JSON source file is skipped without throwing and destination is not created.
+- **B2 — Mutex for concurrent swap requests**: `WorkspaceSwapManager.requestSwap()` is now guarded by a promise-based mutex. A second `requestSwap` call while the first is in progress returns `{ ok: false, code: 'WORKSPACE_BUSY', retryAfter: 1 }` immediately.
+- **B3 — Workspace swap HTTP integration test**: `test/workspace-swap-http.test.ts` exercises `createDaemonSystemRouteHandlers` end-to-end with a real `WorkspaceSwapManager`: valid swap → 200; empty path → 400 INVALID_PATH; file path → 400 INVALID_PATH.
+- **B6 — Reserved session ID tests**: `test/session-broker.test.ts` verifies that `''` and `'system'` are rejected with `INVALID_SESSION_ID` and that a normal ID succeeds.
+- **B7 — State tool workspace-key tests**: `test/state-tool-workspace-keys.test.ts` covers `get` of `runtime.workingDir` and `daemon.homeDir`, `set` delegation to swapManager, no-swapManager error path, and read-only rejection of `daemon.homeDir`.
+- **B9 — Path traversal tests**: Added to `daemon-home.test.ts` (`describe('WorkspaceSwapManager: path traversal')`). Documents the design choice: traversal is **allowed** (paths resolve naturally via OS; no sanitisation) because the swap endpoint is daemon-token-gated and operators are trusted. Tests verify no unhandled exception is thrown for `..` and path-with-dots inputs.
+- **B1 — Concurrent mutex test in workspace-swap-reroot.test.ts**: `test/workspace-swap-reroot.test.ts` verifies the `WORKSPACE_BUSY` mutex response for concurrent swap calls and tests rerootStores delegation.
+
+### Docs
+- **W-9 — `validate:strict` documented**: `docs/release-and-publishing.md` gains a "Validation and Strict Gate" section explaining the `validate:strict` command and the error log location.
+
+Gates: types:check pass, build clean, tests pass, sync:check pass.
+
 ## [0.21.20] - 2026-04-19
 
 ### Fixed
