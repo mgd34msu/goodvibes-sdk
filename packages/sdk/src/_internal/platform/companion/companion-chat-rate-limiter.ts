@@ -23,6 +23,14 @@ export const DEFAULT_MESSAGES_PER_MINUTE_PER_CLIENT = 30;
 export const DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION = 10;
 
 /**
+ * Maximum number of distinct clientId/sessionId buckets to track concurrently.
+ * A slow attacker sending requests with distinct IDs would otherwise grow the
+ * Map without bound between cleanup() cycles. LRU eviction caps the attack
+ * surface at O(MAX_BUCKETS) entries per map (SEC-06).
+ */
+export const MAX_RATE_LIMITER_BUCKETS = 10_000;
+
+/**
  * Read the per-session threshold override from the environment.
  * GOODVIBES_CHAT_LIMITER_THRESHOLD=<int> overrides the per-session limit.
  * Returns undefined when unset or not a positive integer.
@@ -200,10 +208,19 @@ export class CompanionChatRateLimiter {
   ): Bucket {
     let bucket = map.get(key);
     if (!bucket) {
+      // SEC-06: LRU eviction — evict the least-recently-used entry when the map
+      // is at capacity. JS Map preserves insertion order; the first key is LRU.
+      if (map.size >= MAX_RATE_LIMITER_BUCKETS) {
+        const lruKey = map.keys().next().value as string;
+        map.delete(lruKey);
+      }
       bucket = { timestamps: [] };
       map.set(key, bucket);
     } else {
+      // Promote to MRU position via delete + re-set (O(1)).
+      map.delete(key);
       prune(bucket, cutoff);
+      map.set(key, bucket);
     }
     return bucket;
   }

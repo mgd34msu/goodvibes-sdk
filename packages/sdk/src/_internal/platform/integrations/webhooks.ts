@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/events/index.js';
+import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../tools/fetch/trust-tiers.js';
 
 // ---------------------------------------------------------------------------
 // WebhookNotifier
@@ -163,6 +164,16 @@ export class WebhookNotifier {
   // -------------------------------------------------------------------------
 
   private async postOne(url: string, text: string): Promise<void> {
+    // SEC-08: SSRF tier filter — block requests to internal/private hosts.
+    const hostname = extractHostname(url);
+    if (hostname !== null) {
+      const trustResult = classifyHostTrustTier(hostname);
+      if (trustResult.tier === 'blocked') {
+        emitSsrfDeny(hostname, url, trustResult.reason);
+        throw new Error(`WebhookNotifier: blocked URL — ${trustResult.reason}`);
+      }
+    }
+
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },

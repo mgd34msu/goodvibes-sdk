@@ -8,6 +8,43 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.30] - 2026-04-20
+
+Wave 2 of the enterprise-adoption hardening series. Addresses 11 PERF, SEC, and OBS findings from `docs/audit/0.21.28-master-triage.md`. SEC-07 (CORS reversal) was pre-committed in 0.21.29 and is documented here as Wave 2 administrative closure.
+
+### Performance
+- **PERF-01: SessionBroker session/input retention window** — Closed sessions are now hard-deleted from `sessions`, `messages`, and `inputs` Maps after a 5-minute retention window (`SESSION_DELETION_RETENTION_MS = 5 * 60_000`) during `_gcSweep()`. Input buckets capped at `MAX_PERSISTED_INPUTS = 500`. Affected: `packages/sdk/src/_internal/platform/control-plane/session-broker.ts`.
+- **PERF-02: RateLimiter O(n) → O(1) LRU via Map insertion order** — Replaced `accessOrder: string[]` (indexOf + splice = O(n)) with `lruMap = new Map<string, number>()`. Promotion to MRU via delete + re-set. Eviction via `keys().next().value`. Sweep breaks early on first live entry. Affected: `packages/sdk/src/_internal/platform/daemon/http-listener.ts`.
+- **PERF-03: Scheduler pushHistory O(n) global filter + full-array persist → O(1) per-task Map + debounced save** — Replaced global `history: TaskRunRecord[]` with `historyByTask: Map<string, TaskRunRecord[]>`. `pushHistory()` now pushes into the per-task bucket and trims to `MAX_HISTORY_PER_TASK`. Hot-path `_onTaskFired` calls `scheduleSave()` (1 s debounce, `.unref?.()`) instead of `void this.save()`. Affected: `packages/sdk/src/_internal/platform/scheduler/scheduler.ts`.
+- **PERF-04: SSE heartbeat leak on cancel path** — Added shared `teardown` closure declared outside `new ReadableStream()` constructor; assigned in `start`, called from both `abort` and `cancel`. Previously `cancel` only called `unsub()`, leaking the heartbeat `setInterval`. Affected: `packages/sdk/src/_internal/platform/runtime/telemetry/api.ts`.
+- **PERF-05: Gateway SSE heartbeat + backpressure** — Added `.unref?.()` to heartbeat interval. Added `controller.desiredSize <= 0` backpressure guard before `enqueue`. Affected: `packages/sdk/src/_internal/platform/control-plane/gateway.ts`.
+- **PERF-06: Integration SSE heartbeat + backpressure** — Added `.unref?.()` to heartbeat interval. Added `controller.desiredSize <= 0` backpressure guard in `onDomain` callback. Affected: `packages/sdk/src/_internal/platform/runtime/integration/helpers.ts`.
+- **PERF-07: setInterval without .unref() (7 sites)** — Added `(interval as unknown as { unref?: () => void }).unref?.()` after each `setInterval` assignment across 7 files: `telemetry/api.ts`, `gateway.ts`, `integration/helpers.ts`, `http-listener.ts` (sweep), `bootstrap-runtime-events.ts`, `perf/slo-collector.ts`, `core/orchestrator.ts` (anim frame).
+- **PERF-09: DistributedRuntime audit array unbounded** — Already fixed in codebase (`MAX_AUDIT = 500` cap in `recordDistributedRuntimeAudit`). No change needed; marked resolved.
+
+### Security
+- **SEC-05: JSON body-size cap on all HTTP routes** — `parseJsonBody` and `parseOptionalJsonBody` in both `http-listener.ts` and `http/router.ts` now reject requests exceeding 1 MiB (1,048,576 bytes) with HTTP 413. `Content-Length` header is checked pre-read; body size is re-checked post-read to cover chunked transfers.
+- **SEC-06: Companion-chat rate limiter Map unbounded → LRU cap** — `CompanionChatRateLimiter.getOrCreate()` now evicts the LRU entry (Map insertion-order first key) when either `clientBuckets` or `sessionBuckets` reaches `MAX_RATE_LIMITER_BUCKETS = 10_000`. MRU promotion via delete + re-set on existing entries. Affected: `packages/sdk/src/_internal/platform/companion/companion-chat-rate-limiter.ts`.
+- **SEC-07: CORS enforcement reversed to opt-in (pre-committed in 0.21.29)** — `enforceCors` defaults to `false`. Origin checks only active when `enforceCors: true`. Pre-0.21.29 permissive behaviour preserved for home/single-user deployments.
+- **SEC-08: HTTP hooks and WebhookNotifier SSRF tier filter** — `hooks/runners/http.ts` and `integrations/webhooks.ts` now call `classifyHostTrustTier(extractHostname(url))` before each outbound fetch. Requests to `blocked` hosts (private IPs, localhost aliases, cloud metadata endpoints, encoded-IP bypass patterns) are rejected with `emitSsrfDeny` telemetry. Hook definitions may opt out via `allowInternal: true` (new `HookDefinition` field). Affected: `hooks/runners/http.ts`, `integrations/webhooks.ts`, `hooks/types.ts`.
+
+### Observability
+- **OBS-14: RuntimeEventBus dispatch fully synchronous → queueMicrotask** — Each subscriber dispatch is now wrapped in `queueMicrotask()`. A slow or throwing subscriber no longer blocks the emitter or subsequent subscribers. Per-subscriber errors are caught and logged. Tests updated to `await Promise.resolve()` after emit to drain the microtask queue. Affected: `packages/sdk/src/_internal/platform/runtime/events/index.ts`.
+
+### Tests
+- `test/perf-01-session-broker-eviction.test.ts` — Session/input retention window and MAX_PERSISTED_INPUTS cap.
+- `test/perf-02-rate-limiter-lru.test.ts` — O(1) LRU RateLimiter correctness: eviction, MRU promotion, sweep early-exit.
+- `test/perf-03-scheduler-history.test.ts` — Stable per-task history under 10k runs; debounced save; O(1) push.
+- `test/perf-04-sse-cancel.test.ts` — Heartbeat cleanup on SSE cancel path (no interval leak).
+- `test/sec-05-body-size-cap.test.ts` — HTTP 413 on large body; pass on ≤1 MiB body.
+- `test/sec-06-rate-limiter-lru.test.ts` — Companion-chat Map bounded at MAX_RATE_LIMITER_BUCKETS.
+- `test/sec-08-ssrf-filter.test.ts` — Hook and webhook SSRF rejection; allowInternal bypass.
+- `test/obs-14-async-event-bus.test.ts` — Slow subscriber does not block emitter; throwing subscriber does not cascade.
+
+Gates: bun run build pass (tsc -b --force, exit 0), sync:check pass, version:check pass (all 10 packages at 0.21.30), changelog:check pass, bun test 1126 pass / 17 skip / 0 fail (up from 1094 baseline at 0.21.29; +32 new Wave 2 tests).
+
+---
+
 ## [0.21.29] - 2026-04-20
 
 Wave 1 of the enterprise-adoption security hardening series targeting the bar set in `docs/audit/0.21.28-master-triage.md`. This wave closes all CRITICAL security findings except SEC-10 (deferred to Wave 5 per user decision).

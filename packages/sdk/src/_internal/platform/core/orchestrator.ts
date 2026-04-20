@@ -468,6 +468,8 @@ export class Orchestrator {
       this.thinkingFrame++;
       this.requestRender();
     }, 80);
+    // Don't block clean process exit (PERF-07).
+    (this.animInterval as unknown as { unref?: () => void }).unref?.();
     this.requestRender();
   }
 

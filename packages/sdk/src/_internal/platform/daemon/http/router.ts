@@ -530,15 +530,34 @@ export class DaemonHttpRouter {
   }
 
   async parseJsonBody(req: Request): Promise<JsonRecord | Response> {
+    // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
+    const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
+    const contentLength = req.headers.get('content-length');
+    if (contentLength !== null && Number(contentLength) > MAX_JSON_BYTES) {
+      return Response.json({ error: 'Request body too large' }, { status: 413 });
+    }
     try {
-      return await req.json() as JsonRecord;
+      const text = await req.text();
+      if (text.length > MAX_JSON_BYTES) {
+        return Response.json({ error: 'Request body too large' }, { status: 413 });
+      }
+      return this.parseJsonText(text);
     } catch {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
   }
 
   async parseOptionalJsonBody(req: Request): Promise<JsonRecord | null | Response> {
+    // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
+    const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
+    const contentLength = req.headers.get('content-length');
+    if (contentLength !== null && Number(contentLength) > MAX_JSON_BYTES) {
+      return Response.json({ error: 'Request body too large' }, { status: 413 });
+    }
     const raw = await req.text();
+    if (raw.length > MAX_JSON_BYTES) {
+      return Response.json({ error: 'Request body too large' }, { status: 413 });
+    }
     if (!raw.trim()) return null;
     return this.parseJsonText(raw);
   }

@@ -40,6 +40,14 @@ import {
 
 const MAX_PERSISTED_MESSAGES = 2_000;
 const MAX_CONTINUATION_MESSAGES = 16;
+/** Max inputs retained per session bucket. */
+const MAX_PERSISTED_INPUTS = 500;
+/**
+ * How long a closed session is retained in Maps before hard deletion.
+ * Allows trailing reads (e.g. status checks shortly after close) to still
+ * see the final record. Default: 5 minutes.
+ */
+const SESSION_DELETION_RETENTION_MS = 5 * 60_000;
 
 /** Scoped input-widening for createSession — avoids `any`, points at the exact expected shape. */
 interface CreateSessionInputWithKind {
@@ -896,7 +904,12 @@ export class SharedSessionBroker {
     };
     const bucket = this.inputs.get(sessionId) ?? [];
     bucket.push(entry);
-    this.inputs.set(sessionId, sortInputs(bucket));
+    // Cap input bucket to prevent unbounded growth (PERF-01 / MAX_PERSISTED_INPUTS).
+    const sorted = sortInputs(bucket);
+    if (sorted.length > MAX_PERSISTED_INPUTS) {
+      sorted.splice(0, sorted.length - MAX_PERSISTED_INPUTS);
+    }
+    this.inputs.set(sessionId, sorted);
     this.refreshPendingInputCount(sessionId);
     return entry;
   }
@@ -1023,6 +1036,19 @@ export class SharedSessionBroker {
     const now = Date.now();
     let anyChanged = false; // m4: track changed inline, not a second O(n) scan
     for (const [sessionId, session] of this.sessions.entries()) {
+      // Hard-delete sessions that have been closed past the retention window.
+      // This prevents unbounded growth of sessions/messages/inputs Maps (PERF-01).
+      if (session.status === 'closed') {
+        const closedAt = session.closedAt ?? session.updatedAt;
+        if (now - closedAt >= SESSION_DELETION_RETENTION_MS) {
+          this.sessions.delete(sessionId);
+          this.messages.delete(sessionId);
+          this.inputs.delete(sessionId);
+          anyChanged = true;
+        }
+        continue;
+      }
+
       if (session.status !== 'active') continue;
       if (session.activeAgentId) continue; // live agent — leave it
       if (session.pendingInputCount > 0) continue; // M4: never close sessions with pending inputs

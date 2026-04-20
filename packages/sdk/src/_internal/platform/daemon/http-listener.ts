@@ -68,13 +68,22 @@ const RATE_SWEEP_INTERVAL_MS = 60_000;
 class RateLimiter {
   /** hits[ip] = sorted ascending array of request timestamps within the window */
   private counts = new Map<string, number[]>();
-  /** Insertion-order LRU: tracks which IP was most recently active */
-  private accessOrder: string[] = [];
+  /**
+   * O(1) LRU tracking via Map insertion-order semantics.
+   * Key = ip, value = last-seen timestamp.
+   * To promote an entry to MRU: delete it and re-set it (both O(1)).
+   * The Map iterator yields entries in insertion order, so the first entry is
+   * the least-recently-used — perfect for LRU eviction without any indexOf scan.
+   * (PERF-02)
+   */
+  private lruMap = new Map<string, number>();
   private sweepInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(private limit: number) {
-    // Periodic sweep to evict entries whose TTL has expired (C5 fix)
+    // Periodic sweep to evict entries whose TTL has expired.
     this.sweepInterval = setInterval(() => this._sweep(), RATE_SWEEP_INTERVAL_MS);
+    // Don't block clean process exit (PERF-07).
+    (this.sweepInterval as unknown as { unref?: () => void }).unref?.();
   }
 
   /** Returns true if the request is allowed, false if rate-limited. */
@@ -85,15 +94,17 @@ class RateLimiter {
     hits.push(now);
     this.counts.set(ip, hits);
 
-    // Maintain LRU access order
-    const idx = this.accessOrder.indexOf(ip);
-    if (idx !== -1) this.accessOrder.splice(idx, 1);
-    this.accessOrder.push(ip);
+    // Promote to MRU: delete then re-set (both O(1) Map operations).
+    this.lruMap.delete(ip);
+    this.lruMap.set(ip, now);
 
-    // Evict oldest entry when cap is exceeded
-    if (this.accessOrder.length > RATE_MAX_ENTRIES) {
-      const evict = this.accessOrder.shift()!;
-      this.counts.delete(evict);
+    // Evict least-recently-used entry when cap is exceeded.
+    if (this.lruMap.size > RATE_MAX_ENTRIES) {
+      const evict = this.lruMap.keys().next().value;
+      if (evict !== undefined) {
+        this.lruMap.delete(evict);
+        this.counts.delete(evict);
+      }
     }
 
     return hits.length <= this.limit;
@@ -110,13 +121,12 @@ class RateLimiter {
   /** Evict entries whose last-seen timestamp is older than RATE_TTL_MS. */
   private _sweep(): void {
     const cutoff = Date.now() - RATE_TTL_MS;
-    for (const [ip, hits] of this.counts) {
-      // If the most recent hit is older than TTL, the entry is stale
-      if (hits.length === 0 || hits[hits.length - 1] < cutoff) {
-        this.counts.delete(ip);
-        const idx = this.accessOrder.indexOf(ip);
-        if (idx !== -1) this.accessOrder.splice(idx, 1);
-      }
+    for (const [ip, lastSeen] of this.lruMap) {
+      // Map iteration is insertion-order; first entries are oldest.
+      // Break early once we hit a non-expired entry (all subsequent are newer).
+      if (lastSeen >= cutoff) break;
+      this.lruMap.delete(ip);
+      this.counts.delete(ip);
     }
   }
 }
@@ -365,8 +375,18 @@ export class HttpListener {
   }
 
   private async parseJsonBody(req: Request): Promise<Record<string, unknown> | Response> {
+    // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
+    const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
+    const contentLength = req.headers.get('content-length');
+    if (contentLength !== null && Number(contentLength) > MAX_JSON_BYTES) {
+      return Response.json({ error: 'Request body too large' }, { status: 413 });
+    }
     try {
-      return await req.json() as Record<string, unknown>;
+      const text = await req.text();
+      if (text.length > MAX_JSON_BYTES) {
+        return Response.json({ error: 'Request body too large' }, { status: 413 });
+      }
+      return JSON.parse(text) as Record<string, unknown>;
     } catch {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }

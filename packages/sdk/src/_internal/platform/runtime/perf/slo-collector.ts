@@ -127,6 +127,8 @@ export class SloCollector {
   constructor(bus: RuntimeEventBus) {
     this._subscribe(bus);
     this._sweepTimer = setInterval(() => this._sweepPending(), SWEEP_INTERVAL_MS);
+    // Don't block clean process exit (PERF-07).
+    (this._sweepTimer as unknown as { unref?: () => void }).unref?.();
   }
 
   /**

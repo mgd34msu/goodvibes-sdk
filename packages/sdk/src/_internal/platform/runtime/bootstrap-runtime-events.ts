@@ -254,6 +254,8 @@ export function registerHostRuntimeEvents(
     });
     requestRender();
   }, AGENT_STATUS_INTERVAL_MS);
+  // Don't block clean process exit (PERF-07).
+  (agentStatusIntervalRef.value as unknown as { unref?: () => void }).unref?.();
 
   return { unsubs, agentStatusIntervalRef };
 }

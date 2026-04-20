@@ -65,6 +65,8 @@ interface TaskSchedulerConfig {
 
 /** Max run history records to keep per task. */
 const MAX_HISTORY_PER_TASK = 5;
+/** Debounce window for history persist calls (ms). Coalesces rapid consecutive runs. */
+const SAVE_DEBOUNCE_MS = 1_000;
 
 /** Maximum setTimeout delay — Node.js overflows at ~24.8 days; cap at 24 h. */
 const MAX_TIMEOUT_MS = 24 * 60 * 60 * 1000;
@@ -403,7 +405,11 @@ function countMissedRuns(
 export class TaskScheduler {
   private tasks: Map<string, ScheduledTask> = new Map();
   private timers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-  private history: TaskRunRecord[] = [];
+  /**
+   * Per-task run history indexed by taskId — O(1) push + trim per task run.
+   * The flat `history` array is derived from this on persist (PERF-03).
+   */
+  private historyByTask: Map<string, TaskRunRecord[]> = new Map();
   private store: PersistentStore<StoreData>;
   private readonly spawnTask?: (input: {
     readonly prompt: string;
@@ -411,6 +417,8 @@ export class TaskScheduler {
     readonly template?: string;
   }) => string;
   private running = false;
+  /** Debounce handle for coalescing rapid successive save() calls (PERF-03). */
+  private _saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: string | TaskSchedulerConfig) {
     const resolvedConfig = typeof config === 'string'
@@ -516,14 +524,14 @@ export class TaskScheduler {
     return Array.from(this.tasks.values());
   }
 
-  /** Return the run history for a given task (up to MAX_HISTORY_PER_TASK). */
+  /** Return the run history for a given task (up to MAX_HISTORY_PER_TASK). O(1) via Map index. */
   getHistory(taskId: string): TaskRunRecord[] {
-    return this.history.filter((r) => r.taskId === taskId).slice(-MAX_HISTORY_PER_TASK);
+    return [...(this.historyByTask.get(taskId) ?? [])];
   }
 
   /** Return all run history records. */
   getAllHistory(): TaskRunRecord[] {
-    return [...this.history];
+    return this.flatHistory();
   }
 
   /**
@@ -638,7 +646,7 @@ export class TaskScheduler {
         error: errorMsg,
       };
       this.pushHistory(runRecord);
-      void this.save().catch((e) => logger.warn('TaskScheduler: save failed', { error: summarizeError(e) }));
+      this.scheduleSave();
       throw err;
     }
 
@@ -653,38 +661,58 @@ export class TaskScheduler {
       status: 'running',
     };
     this.pushHistory(runRecord);
-    void this.save().catch((err) => logger.warn('TaskScheduler: save failed', { error: summarizeError(err) }));
+    this.scheduleSave();
 
     return agentId;
   }
 
+  /**
+   * O(1) per-task history push + trim (PERF-03).
+   * The Map index makes both the push and the cap check O(1) instead of O(n) global filter.
+   */
   private pushHistory(record: TaskRunRecord): void {
-    this.history.push(record);
-    // Keep only MAX_HISTORY_PER_TASK per task
-    const perTask = this.history.filter((r) => r.taskId === record.taskId);
-    if (perTask.length > MAX_HISTORY_PER_TASK) {
-      // Remove the oldest entries for this task
-      const toRemove = perTask.length - MAX_HISTORY_PER_TASK;
-      let removed = 0;
-      this.history = this.history.filter((r) => {
-        if (r.taskId === record.taskId && removed < toRemove) {
-          removed++;
-          return false;
-        }
-        return true;
-      });
+    const bucket = this.historyByTask.get(record.taskId) ?? [];
+    bucket.push(record);
+    // Trim to MAX_HISTORY_PER_TASK in-place — oldest entries are at the front.
+    if (bucket.length > MAX_HISTORY_PER_TASK) {
+      bucket.splice(0, bucket.length - MAX_HISTORY_PER_TASK);
     }
+    this.historyByTask.set(record.taskId, bucket);
   }
 
   // -------------------------------------------------------------------------
   // Persistence
   // -------------------------------------------------------------------------
 
+  /** Flatten historyByTask Map into a single array for serialisation. */
+  private flatHistory(): TaskRunRecord[] {
+    const out: TaskRunRecord[] = [];
+    for (const bucket of this.historyByTask.values()) {
+      for (const record of bucket) {
+        out.push(record);
+      }
+    }
+    return out;
+  }
+
   private async save(): Promise<void> {
     await this.store.persist({
       tasks: Array.from(this.tasks.values()),
-      history: this.history,
+      history: this.flatHistory(),
     });
+  }
+
+  /**
+   * Debounced save: coalesces multiple rapid calls into a single disk write
+   * that fires SAVE_DEBOUNCE_MS after the last call (PERF-03).
+   */
+  private scheduleSave(): void {
+    if (this._saveDebounceTimer !== null) return;
+    this._saveDebounceTimer = setTimeout(() => {
+      this._saveDebounceTimer = null;
+      void this.save().catch((err) => logger.warn('TaskScheduler: save failed', { error: summarizeError(err) }));
+    }, SAVE_DEBOUNCE_MS);
+    (this._saveDebounceTimer as unknown as { unref?: () => void }).unref?.();
   }
 
   private async load(): Promise<void> {
@@ -725,7 +753,7 @@ export class TaskScheduler {
           const expectedNext = computeNextRun(t.cron, new Date(t.lastRun), t.timezone);
           if (expectedNext.getTime() < now) {
             logger.warn('[Scheduler] Missed run detected', { taskId: t.id, missedAt: expectedNext.toISOString() });
-            this.history.push({
+            this.pushHistory({
               taskId: t.id,
               startedAt: expectedNext.getTime(),
               agentId: '',
@@ -738,8 +766,17 @@ export class TaskScheduler {
       }
     }
 
+    // Restore history from disk into per-task Map buckets.
     if (Array.isArray(data.history)) {
-      this.history = data.history;
+      for (const record of data.history) {
+        const bucket = this.historyByTask.get(record.taskId) ?? [];
+        bucket.push(record);
+        // Maintain cap on restore (PERF-03).
+        if (bucket.length > MAX_HISTORY_PER_TASK) {
+          bucket.splice(0, bucket.length - MAX_HISTORY_PER_TASK);
+        }
+        this.historyByTask.set(record.taskId, bucket);
+      }
     }
   }
 }
