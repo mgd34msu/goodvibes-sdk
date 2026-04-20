@@ -413,6 +413,87 @@ describe('companion-chat provider adapter: stream-error path', () => {
 // Deleting either line causes the corresponding test to fail.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// F16b: Router-level plumbing — resolveDefaultProviderModel forwarded
+//
+// Verifies that DaemonHttpRouter.dispatchApiRoutes forwards the optional
+// resolveDefaultProviderModel callback from DaemonHttpRouterContext into
+// the CompanionChatRouteContext passed to dispatchCompanionChatRoutes.
+// If the forwarding is absent, session-create without explicit provider/model
+// returns 400 instead of 201 when the resolver is present and returning values.
+// ---------------------------------------------------------------------------
+
+describe('F16b: DaemonHttpRouter forwards resolveDefaultProviderModel into companion dispatch', () => {
+  let manager: CompanionChatManager;
+
+  beforeEach(() => {
+    manager = makeManager();
+  });
+
+  afterEach(() => {
+    manager.dispose();
+  });
+
+  test('resolver injected on context → session created (201) when body has no provider/model', async () => {
+    // Build router context with resolveDefaultProviderModel wired in.
+    // The resolver returns a concrete provider+model pair.
+    const ctx = {
+      ...makeRouterContext(manager),
+      resolveDefaultProviderModel: () => ({ provider: 'inception', model: 'mercury-2' }),
+    } as unknown as ConstructorParameters<typeof DaemonHttpRouter>[0];
+    const router = new DaemonHttpRouter(ctx);
+
+    const req = new Request('http://localhost/api/companion/chat/sessions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}), // no provider/model
+    });
+
+    const res = await router.dispatchApiRoutes(req);
+    expect(res).not.toBeNull();
+    // 201 means the resolver filled in the defaults and the session was created
+    expect(res!.status).toBe(201);
+    const body = await res!.json();
+    expect(typeof body.sessionId).toBe('string');
+  });
+
+  test('resolver returns null → 400 NO_MODEL_CONFIGURED', async () => {
+    const ctx = {
+      ...makeRouterContext(manager),
+      resolveDefaultProviderModel: () => null,
+    } as unknown as ConstructorParameters<typeof DaemonHttpRouter>[0];
+    const router = new DaemonHttpRouter(ctx);
+
+    const req = new Request('http://localhost/api/companion/chat/sessions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    const res = await router.dispatchApiRoutes(req);
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(400);
+    const body = await res!.json();
+    expect(body.code).toBe('NO_MODEL_CONFIGURED');
+  });
+
+  test('resolver absent → session created even without body provider/model (legacy compat)', async () => {
+    // No resolveDefaultProviderModel on context — legacy behavior preserved.
+    const ctx = makeRouterContext(manager) as unknown as ConstructorParameters<typeof DaemonHttpRouter>[0];
+    const router = new DaemonHttpRouter(ctx);
+
+    const req = new Request('http://localhost/api/companion/chat/sessions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    const res = await router.dispatchApiRoutes(req);
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(201);
+  });
+});
+
 describe('companion-chat facade-composition: composition wire assertion', () => {
   const FACADE_COMPOSITION_PATH = resolve(
     import.meta.dir,
@@ -460,6 +541,17 @@ describe('companion-chat facade-composition: composition wire assertion', () => 
     // out is caught as well as deleting it.
     expect(sourceText).toMatch(
       /^(?!\s*\/\/).*companionChatManager:\s*runtime\.companionChatManager,/m,
+    );
+  });
+
+  test('F16b: createDaemonFacadeCollaborators passes resolveDefaultProviderModel from options to DaemonHttpRouter', () => {
+    // Verifies the F16b plumbing: CreateDaemonFacadeCollaboratorsOptions must
+    // declare resolveDefaultProviderModel and DaemonHttpRouter must receive it.
+    // If the forwarding line is deleted the companion-chat resolver callback
+    // is silently dropped and every session-create falls back to the legacy
+    // null-provider path (ignoring the registry lookup in DaemonServer).
+    expect(sourceText).toMatch(
+      /^(?!\s*\/\/).*resolveDefaultProviderModel:\s*options\.resolveDefaultProviderModel,/m,
     );
   });
 });

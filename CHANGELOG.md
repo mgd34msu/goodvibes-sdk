@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.26] - 2026-04-20
+
+Three loose ends from 0.21.25 closed: F16b router plumbing fully threaded end-to-end, `getSchedulerCapacity` registered in the method catalog so `buildOperatorContract` emits it, and the `_syncScheduled` coalescing test rewritten to be deterministic.
+
+### Added
+- **F16b: `resolveDefaultProviderModel` fully plumbed** — Added optional `resolveDefaultProviderModel?: () => { provider: string; model: string } | null` callback to `DaemonHttpRouterContext` and forwarded it into `dispatchCompanionChatRoutes`. Wired the field through `CreateDaemonFacadeCollaboratorsOptions` and `createDaemonFacadeCollaborators`. In `facade.ts`, built the callback from `providerRegistry.getCurrentModel()` so consumers no longer need to supply it manually.
+- **`scheduler.capacity` in method catalog** — Added `scheduler.capacity` method descriptor to `builtinGatewayRuntimeMethodDescriptors` in `method-catalog-runtime.ts`. `buildOperatorContract` now emits this method in the operator contract at runtime.
+
+### Fixed
+- **CI flake: `_syncScheduled` coalescing test** — Rewrote `lastEventAt inside setImmediate reflects most recent event, not first` in `test/cache-invariants.test.ts`. Root cause: intermediate `await setTimeout(5)` allowed the setImmediate (scheduled by the first `rememberEvent` call) to fire before the second call. Fix: both calls synchronous, `_lastEventAt` captured directly from the gateway instance after each call. 20/20 runs pass.
+
+Gates: build pass (bunx tsc -b --force, exit 0), sync:check pass, version:check pass (all 11 packages at 0.21.26), changelog:check pass.
+
+---
+
 ## [0.21.25] - 2026-04-20
 
 CI-orphan recovery. 0.21.24 was tagged and pushed but CI failed at `bunx tsc -b --force` (the actual build command) with three TS errors. 0.21.24 was **never published to npm**. This patch fixes those errors and is the first published artifact containing the Arch #3 scheduler-capacity work.

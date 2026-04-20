@@ -2,6 +2,7 @@ import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 import {
   EMPTY_OBJECT_SCHEMA,
   STRING_SCHEMA,
+  NUMBER_SCHEMA,
   objectSchema,
   listOutputSchema,
   entityOutputSchema,
@@ -9,6 +10,7 @@ import {
   methodDescriptor,
   runtimeEventId,
 } from './method-catalog-shared.js';
+import { nullableSchema } from './operator-contract-schemas-shared.js';
 import {
   CONTINUITY_SNAPSHOT_SCHEMA,
   DISTRIBUTED_NODE_HOST_CONTRACT_SCHEMA,
@@ -300,5 +302,20 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     http: { method: 'POST', path: '/api/memory/embeddings/default' },
     inputSchema: bodyEnvelopeSchema({ providerId: STRING_SCHEMA }, ['providerId']),
     outputSchema: MEMORY_DOCTOR_REPORT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'scheduler.capacity',
+    title: 'Scheduler Capacity',
+    description: 'Return the current automation-scheduler capacity snapshot: total slots, in-use slots, queue depth, and age of the oldest queued run.',
+    category: 'scheduler',
+    scopes: ['read:automation'],
+    http: { method: 'GET', path: '/api/runtime/scheduler' },
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: objectSchema({
+      slots_total: NUMBER_SCHEMA,
+      slots_in_use: NUMBER_SCHEMA,
+      queue_depth: NUMBER_SCHEMA,
+      oldest_queued_age_ms: nullableSchema(NUMBER_SCHEMA),
+    }, ['slots_total', 'slots_in_use', 'queue_depth', 'oldest_queued_age_ms']),
   }),
 ];

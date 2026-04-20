@@ -145,6 +145,13 @@ interface DaemonHttpRouterContext {
    */
   readonly companionChatManager?: CompanionChatManager | null;
   /**
+   * F16b: Resolve the current default provider/model from the provider registry.
+   * Forwarded into CompanionChatRouteContext so that session-create can fill in
+   * provider/model when the caller does not supply them. Optional — when absent,
+   * the legacy behavior (null provider/model allowed through) is preserved.
+   */
+  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
+  /**
    * SecretsManager instance used to resolve provider API keys stored as secrets
    * rather than env vars. Threaded into ProviderRouteContext so that
    * resolveSecretKeys() can return the correct configuredVia='secrets' tier.
@@ -279,6 +286,7 @@ export class DaemonHttpRouter {
         chatManager,
         parseJsonBody: (request: Request) => this.parseJsonBody(request),
         parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
+        resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
         openSessionEventStream: (request: Request, sessionId: string) => {
           // Create a session-scoped SSE stream. Use the clientId as the isolation key.
           const clientId = `companion-chat:${sessionId}`;
