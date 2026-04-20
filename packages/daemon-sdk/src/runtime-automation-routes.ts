@@ -22,6 +22,7 @@ export function createDaemonRuntimeAutomationRouteHandlers(
   | 'deleteSchedule'
   | 'setScheduleEnabled'
   | 'runScheduleNow'
+  | 'getSchedulerCapacity'
 > {
   return {
     getAutomationJobs: () => Response.json({ jobs: context.automationManager.listJobs() }),
@@ -40,6 +41,7 @@ export function createDaemonRuntimeAutomationRouteHandlers(
     deleteSchedule: async (scheduleId) => handleDeleteSchedule(context, scheduleId),
     setScheduleEnabled: (scheduleId, enabled) => handleSetScheduleEnabled(context, scheduleId, enabled),
     runScheduleNow: (scheduleId) => handleRunScheduleNow(context, scheduleId),
+    getSchedulerCapacity: () => Response.json(context.automationManager.getSchedulerCapacity()),
   };
 }
 

@@ -100,6 +100,8 @@ export interface ProviderEntry {
 export interface ListProvidersResponse {
   readonly providers: ProviderEntry[];
   readonly currentModel: ProviderModelRef | null;
+  /** F-PROV-009: true when secretsManager was absent — secrets-tier providers will show configured:false */
+  readonly secretsResolutionSkipped?: boolean;
 }
 
 export interface CurrentModelResponse {
@@ -279,7 +281,11 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
 
   const currentModel = buildCurrentModelResponse(providerRegistry, secretKeys).model;
 
-  const body: ListProvidersResponse = { providers, currentModel };
+  const body: ListProvidersResponse = {
+    providers,
+    currentModel,
+    ...(!secretsManager ? { secretsResolutionSkipped: true } : {}),
+  };
   return Response.json(body);
 }
 

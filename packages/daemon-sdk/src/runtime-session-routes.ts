@@ -383,6 +383,15 @@ async function handleCancelSharedSessionInput(context: DaemonRuntimeRouteContext
   if (!input) {
     return Response.json({ error: 'Unknown shared session input' }, { status: 404 });
   }
+  // F17: cancelInput returns the entry unchanged when state is not 'queued'.
+  // Return 409 so callers know the cancel was a no-op (e.g. already spawned).
+  const inputRecord = input as { state?: string };
+  if (inputRecord.state !== 'queued' && inputRecord.state !== 'cancelled') {
+    return Response.json(
+      { error: `Cannot cancel input in state '${inputRecord.state}'`, code: 'CANCEL_NOT_ALLOWED', input },
+      { status: 409 },
+    );
+  }
   return Response.json({ input });
 }
 

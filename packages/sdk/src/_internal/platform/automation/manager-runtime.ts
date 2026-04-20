@@ -635,6 +635,17 @@ export class AutomationManager {
     return total;
   }
 
+  getSchedulerCapacity(): { slots_total: number; slots_in_use: number; queue_depth: number; oldest_queued_age_ms: number | null } {
+    const slots_total = this.maxConcurrentRuns();
+    const slots_in_use = this.activeRunCount();
+    const queuedRuns = [...this.runs.values()].filter((r) => r.status === 'queued');
+    const queue_depth = queuedRuns.length;
+    const oldest_queued_age_ms = queuedRuns.length > 0
+      ? Date.now() - Math.min(...queuedRuns.map((r) => r.queuedAt))
+      : null;
+    return { slots_total, slots_in_use, queue_depth, oldest_queued_age_ms };
+  }
+
   private pruneRunHistory(jobId?: string): void {
     const limit = Math.max(1, Number(this.configManager.get('automation.runHistoryLimit') ?? 100));
     const runs = sortRuns(this.runs.values());

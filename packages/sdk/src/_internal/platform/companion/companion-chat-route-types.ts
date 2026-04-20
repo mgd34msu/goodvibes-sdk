@@ -17,6 +17,12 @@ export interface CompanionChatRouteContext {
   /** Parse optional JSON body. Returns null if body is absent. */
   readonly parseOptionalJsonBody: (req: Request) => Promise<{ [k: string]: unknown } | null | Response>;
   /**
+   * F16b: Resolve the current default provider/model from the provider registry.
+   * Called at session-create time when the caller does not specify provider/model.
+   * Returns null if no provider is currently configured.
+   */
+  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
+  /**
    * Open an SSE event stream scoped to a session.
    * Callers must call chatManager.registerSubscriber(sessionId, clientId)
    * before returning the Response so that event routing is set up.
