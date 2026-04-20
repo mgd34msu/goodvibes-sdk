@@ -244,6 +244,14 @@ async function handleGetSharedSessionInputs(
   });
 }
 
+/**
+ * Handle POST /api/sessions/:sessionId/messages.
+ *
+ * Accepts either `{body}`, `{message}`, or `{text}` in the request payload (F13 normalization,
+ * in priority order). If multiple fields are present, `{body}` takes precedence over
+ * `{message}`, which takes precedence over `{text}`.
+ * Returns 400 when none of the accepted fields are present or all are empty.
+ */
 async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
@@ -386,11 +394,21 @@ function handleGetRuntimeTask(context: DaemonRuntimeRouteContext, taskId: string
   return Response.json({ task });
 }
 
-function readSharedSessionMessageBody(body: JsonBody): string {
-  return typeof body.message === 'string'
-    ? body.message.trim()
-    : typeof body.body === 'string'
-      ? body.body.trim()
+/**
+ * Extract the message body from an incoming POST body.
+ *
+ * F13 normalization: accepts 'body', 'message', and 'text' field names in
+ * priority order (newest to legacy). Returns empty string when none are present.
+ * The caller must check for an empty result and return 400.
+ *
+ * @param body - Parsed JSON body from the request.
+ * @returns Trimmed message string, or '' if none of the accepted fields are present.
+ */
+export function readSharedSessionMessageBody(body: JsonBody): string {
+  return typeof body.body === 'string'
+    ? body.body.trim()
+    : typeof body.message === 'string'
+      ? body.message.trim()
       : typeof body.text === 'string'
         ? body.text.trim()
         : '';

@@ -12,6 +12,10 @@
 
 import { describe, expect, test } from 'bun:test';
 import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
+import {
+  CompanionChatRateLimiter,
+  DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION,
+} from '../packages/sdk/src/_internal/platform/companion/companion-chat-rate-limiter.js';
 import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
@@ -81,6 +85,55 @@ describe('RL1: per-session rate limit — (N+1)-th message throws', () => {
     expect(threw).toBe(true);
 
     manager.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RL6: Runtime config manager overrides per-session limit
+// ---------------------------------------------------------------------------
+
+describe('RL6: runtime configManager overrides per-session limit', () => {
+  test('uses configManager value when it returns a positive integer', () => {
+    let configValue: number | undefined = 5;
+    const configManager = { get: (_key: string) => configValue };
+
+    const limiter = new CompanionChatRateLimiter({
+      perSessionLimit: 2, // constructor-time baseline
+      configManager,
+    });
+
+    // configManager returns 5 — we should be able to send exactly 5 before throwing
+    for (let i = 0; i < 5; i++) {
+      expect(() => limiter.check('sess-1', '')).not.toThrow();
+    }
+    // 6th should throw (configManager limit = 5)
+    expect(() => limiter.check('sess-1', '')).toThrow();
+  });
+
+  test('falls back to constructor baseline when configManager returns non-positive', () => {
+    const configManager = { get: (_key: string) => 0 }; // 0 is not a positive integer
+
+    const limiter = new CompanionChatRateLimiter({
+      perSessionLimit: 2,
+      configManager,
+    });
+
+    // Baseline is 2 — exactly 2 succeed
+    expect(() => limiter.check('sess-2', '')).not.toThrow();
+    expect(() => limiter.check('sess-2', '')).not.toThrow();
+    // 3rd should throw
+    expect(() => limiter.check('sess-2', '')).toThrow();
+  });
+
+  test('falls back to DEFAULT when configManager returns undefined', () => {
+    const configManager = { get: (_key: string) => undefined };
+
+    const limiter = new CompanionChatRateLimiter({ configManager });
+    // Default per-session limit = DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION (10)
+    for (let i = 0; i < DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION; i++) {
+      expect(() => limiter.check(`sess-3`, '')).not.toThrow();
+    }
+    expect(() => limiter.check('sess-3', '')).toThrow();
   });
 });
 

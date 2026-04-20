@@ -130,9 +130,40 @@ async function handleDeleteSession(
 }
 
 // ---------------------------------------------------------------------------
+// F13 field normalization helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Read the message content from an incoming POST body.
+ *
+ * F13 normalization: accepts both 'body' and 'content' field names;
+ * prefers 'body' when both are present (shared-session canonical field);
+ * falls back to 'content' for companion-chat clients that send content.
+ * Returns empty string when neither field is present — the caller must
+ * check for empty and return 400 INVALID_INPUT.
+ *
+ * @param body - Parsed JSON body from the request.
+ * @returns Raw (un-trimmed) string value, or '' if neither field is present.
+ */
+export function readCompanionChatMessageBody(body: Record<string, unknown>): string {
+  return typeof body['body'] === 'string'
+    ? body['body']
+    : typeof body['content'] === 'string'
+      ? body['content']
+      : '';
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/companion/chat/sessions/:sessionId/messages
 // ---------------------------------------------------------------------------
 
+/**
+ * Handle POST /api/companion/chat/sessions/:sessionId/messages.
+ *
+ * Accepts either `{body}` or `{content}` in the request payload.
+ * If both are present, `{body}` takes precedence (shared-session canonical field).
+ * Returns 400 INVALID_INPUT when neither field is present or both are empty.
+ */
 async function handlePostMessage(
   req: Request,
   sessionId: string,

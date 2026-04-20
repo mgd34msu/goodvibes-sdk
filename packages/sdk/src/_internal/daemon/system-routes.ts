@@ -183,7 +183,7 @@ export function createDaemonSystemRouteHandlers(
           return Response.json({ error: 'Workspace swapping is not available in this daemon configuration.' }, { status: 400 });
         }
         if (typeof value !== 'string' || !value.trim()) {
-          return Response.json({ error: 'runtime.workingDir value must be a non-empty string path.' }, { status: 400 });
+          return Response.json({ error: 'runtime.workingDir value must be a non-empty string path.', code: 'INVALID_PATH' }, { status: 400 });
         }
         const result = await context.swapManager.requestSwap(value);
         if (result.ok) {

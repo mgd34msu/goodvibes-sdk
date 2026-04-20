@@ -1,5 +1,6 @@
 import type { ConfigManager } from '../../config/manager.js';
 import type { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../../channels/index.js';
+import { logger } from '../../utils/logger.js';
 import type { KnowledgeGraphqlService, KnowledgeService } from '../../knowledge/index.js';
 import type { ArtifactStore } from '../../artifacts/index.js';
 import type { MediaProviderRegistry } from '../../media/index.js';
@@ -150,6 +151,12 @@ export function buildSystemRouteContext(input: {
   readonly watcherRegistry: WatcherRegistry;
 }): DaemonSystemRouteContext {
   const castWatcherRecord = (value: unknown): WatcherRecord | null => value as WatcherRecord | null;
+
+  if (!input.swapManager) {
+    logger.warn(
+      'DaemonSystemRouteContext: initialized without swapManager — POST /config runtime.workingDir will be rejected',
+    );
+  }
 
   return {
     approvalBroker: input.approvalBroker,

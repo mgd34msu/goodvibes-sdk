@@ -196,6 +196,7 @@ export class DaemonServer {
       signWebhookPayload: (body, secret) => this.signWebhookPayload(body, secret),
       handleApprovalAction: (approvalId, action, req) => this.handleApprovalAction(approvalId, action, req),
       tlsState: () => this.tlsState,
+      swapManager: this.config.swapManager ?? null,
     });
     this.channelReplyPipeline = collaborators.channelReplyPipeline;
     this.controlPlaneHelper = collaborators.controlPlaneHelper;

@@ -1,104 +1,103 @@
 /**
  * F13: Content/body field normalization tests.
  *
- * Verifies that:
- * - Companion-chat POST /messages accepts both 'body' and 'content', preferring 'body'.
- * - Shared-session POST /messages accepts both 'body' and 'content', with 'body' canonical.
- * - A 400 is returned when neither field is present.
+ * Exercises the real exported normalization helpers:
+ *   - readCompanionChatMessageBody (companion-chat-routes.ts)
+ *   - readSharedSessionMessageBody (daemon/runtime-session-routes.ts)
+ *
+ * These helpers are the canonical implementation of F13 field preference
+ * order. Tests here serve as a regression guard against inadvertent
+ * changes to the preference order.
  */
 import { describe, expect, test } from 'bun:test';
+import { readCompanionChatMessageBody } from '../packages/sdk/src/_internal/platform/companion/companion-chat-routes.js';
+import { readSharedSessionMessageBody } from '../packages/sdk/src/_internal/daemon/runtime-session-routes.js';
 
 // ---------------------------------------------------------------------------
-// Unit-test the field-normalization logic directly (no HTTP server needed)
+// Companion-chat normalization: body > content > ''
 // ---------------------------------------------------------------------------
-
-/**
- * Mirrors the F13 logic in companion-chat-routes.ts handlePostMessage:
- * prefer 'body' over 'content'; empty string if neither.
- */
-function companionChatReadContent(body: Record<string, unknown>): string {
-  return typeof body['body'] === 'string'
-    ? body['body']
-    : typeof body['content'] === 'string'
-      ? body['content']
-      : '';
-}
-
-/**
- * Mirrors the F13 logic in runtime-session-routes.ts readSharedSessionMessageBody:
- * prefer 'body', then 'content', then legacy 'message'/'text'.
- */
-function sharedSessionReadContent(body: Record<string, unknown>): string {
-  return typeof body['body'] === 'string'
-    ? body['body'].trim()
-    : typeof body['content'] === 'string'
-      ? body['content'].trim()
-      : typeof body['message'] === 'string'
-        ? body['message'].trim()
-        : typeof body['text'] === 'string'
-          ? body['text'].trim()
-          : '';
-}
 
 describe('F13: companion-chat field normalization', () => {
   test('reads from body field', () => {
-    expect(companionChatReadContent({ body: 'hello from body' })).toBe('hello from body');
+    expect(readCompanionChatMessageBody({ body: 'hello from body' })).toBe('hello from body');
   });
 
   test('falls back to content field', () => {
-    expect(companionChatReadContent({ content: 'hello from content' })).toBe('hello from content');
+    expect(readCompanionChatMessageBody({ content: 'hello from content' })).toBe('hello from content');
   });
 
   test('prefers body over content when both present', () => {
-    expect(companionChatReadContent({ body: 'use body', content: 'not this' })).toBe('use body');
+    expect(readCompanionChatMessageBody({ body: 'body wins', content: 'content loses' })).toBe('body wins');
   });
 
   test('returns empty string when neither present', () => {
-    expect(companionChatReadContent({ message: 'ignored' })).toBe('');
+    expect(readCompanionChatMessageBody({})).toBe('');
   });
 
   test('returns empty string on empty body', () => {
-    expect(companionChatReadContent({})).toBe('');
+    expect(readCompanionChatMessageBody({ body: '' })).toBe('');
   });
 
   test('400 semantic: non-empty required — empty result triggers rejection', () => {
-    const result = companionChatReadContent({});
-    // The route handler checks .trim() and rejects
+    const result = readCompanionChatMessageBody({ other: 'ignored' });
+    expect(result).toBe('');
+    // Caller must check for empty and return 400
     expect(result.trim()).toBe('');
+  });
+
+  test('does not trim content (caller responsibility)', () => {
+    expect(readCompanionChatMessageBody({ body: '  padded  ' })).toBe('  padded  ');
+  });
+
+  test('ignores legacy message field (not in companion-chat normalization)', () => {
+    expect(readCompanionChatMessageBody({ message: 'legacy' })).toBe('');
   });
 });
 
+// ---------------------------------------------------------------------------
+// Shared-session normalization: body > message > text > ''
+// ---------------------------------------------------------------------------
+
 describe('F13: shared-session field normalization', () => {
   test('reads from body field (canonical)', () => {
-    expect(sharedSessionReadContent({ body: '  hello  ' })).toBe('hello');
+    expect(readSharedSessionMessageBody({ body: 'hello' })).toBe('hello');
   });
 
-  test('falls back to content field', () => {
-    expect(sharedSessionReadContent({ content: '  from content  ' })).toBe('from content');
+  test('trims whitespace from body', () => {
+    expect(readSharedSessionMessageBody({ body: '  padded  ' })).toBe('padded');
   });
 
-  test('falls back to legacy message field', () => {
-    expect(sharedSessionReadContent({ message: 'legacy msg' })).toBe('legacy msg');
+  test('falls back to message field (legacy)', () => {
+    expect(readSharedSessionMessageBody({ message: 'from message' })).toBe('from message');
   });
 
-  test('falls back to legacy text field', () => {
-    expect(sharedSessionReadContent({ text: 'legacy text' })).toBe('legacy text');
+  test('falls back to text field (legacy)', () => {
+    expect(readSharedSessionMessageBody({ text: 'from text' })).toBe('from text');
   });
 
-  test('prefers body over content and legacy fields', () => {
-    expect(sharedSessionReadContent({ body: 'canonical', content: 'alt', message: 'old' })).toBe('canonical');
+  test('prefers body over message and text', () => {
+    expect(readSharedSessionMessageBody({ body: 'body', message: 'msg', text: 'txt' })).toBe('body');
   });
 
-  test('prefers content over legacy fields when body absent', () => {
-    expect(sharedSessionReadContent({ content: 'f13-content', message: 'old' })).toBe('f13-content');
+  test('prefers message over text when body absent', () => {
+    expect(readSharedSessionMessageBody({ message: 'msg', text: 'txt' })).toBe('msg');
   });
 
-  test('returns empty string when no known field present', () => {
-    expect(sharedSessionReadContent({ unknown: 'nope' })).toBe('');
+  test('returns empty string when all fields absent', () => {
+    expect(readSharedSessionMessageBody({})).toBe('');
   });
 
-  test('400 semantic: empty result triggers rejection', () => {
-    const result = sharedSessionReadContent({});
-    expect(result).toBe('');
+  test('returns empty string when body is empty string', () => {
+    expect(readSharedSessionMessageBody({ body: '   ' })).toBe('');
+  });
+
+  test('does not fall through to content field (not in shared-session normalization)', () => {
+    // shared-session uses body/message/text; content is companion-chat only
+    expect(readSharedSessionMessageBody({ content: 'companion only' })).toBe('');
+  });
+
+  test('non-string values are ignored', () => {
+    expect(readSharedSessionMessageBody({ body: 42 as unknown as string })).toBe('');
+    expect(readSharedSessionMessageBody({ message: null as unknown as string })).toBe('');
   });
 });

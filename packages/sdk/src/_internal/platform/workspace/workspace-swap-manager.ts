@@ -21,6 +21,7 @@
 import { mkdirSync, existsSync } from 'node:fs';
 import { isAbsolute, resolve, join } from 'node:path';
 import { writeDaemonSetting } from './daemon-home.js';
+import type { WorkspaceEvent } from '../runtime/events/workspace.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { createEventEnvelope } from '../runtime/events/index.js';
 
@@ -59,6 +60,7 @@ export type WorkspaceSwapResult =
 
 export class WorkspaceSwapManager {
   private currentWorkingDir: string;
+  private swapInProgress: Promise<WorkspaceSwapResult> | null = null;
 
   constructor(
     initialWorkingDir: string,
@@ -72,6 +74,18 @@ export class WorkspaceSwapManager {
   }
 
   async requestSwap(newWorkingDir: string): Promise<WorkspaceSwapResult> {
+    if (this.swapInProgress) {
+      return { ok: false, code: 'WORKSPACE_BUSY', reason: 'Another workspace swap is already in progress.', retryAfter: 1 };
+    }
+    this.swapInProgress = this._requestSwapInner(newWorkingDir);
+    try {
+      return await this.swapInProgress;
+    } finally {
+      this.swapInProgress = null;
+    }
+  }
+
+  private async _requestSwapInner(newWorkingDir: string): Promise<WorkspaceSwapResult> {
     const raw = newWorkingDir.trim();
     if (!raw) {
       return { ok: false, code: 'INVALID_PATH', reason: 'Working directory path must not be empty.' };
@@ -81,22 +95,16 @@ export class WorkspaceSwapManager {
     const from = this.currentWorkingDir;
     const to = resolved;
 
-    // Emit started
-    this._emit('WORKSPACE_SWAP_STARTED', { type: 'WORKSPACE_SWAP_STARTED', from, to });
-
-    // Check busy sessions
+    // Check busy sessions BEFORE emitting STARTED — don't emit STARTED if we'll immediately refuse.
     const busyCount = this.deps.getBusySessionCount();
     if (busyCount > 0) {
       const reason = `${busyCount} session(s) have pending input. Retry after active inputs complete.`;
-      this._emit('WORKSPACE_SWAP_REFUSED', {
-        type: 'WORKSPACE_SWAP_REFUSED',
-        from,
-        to,
-        reason,
-        retryAfter: 5,
-      });
+      this._emit({ type: 'WORKSPACE_SWAP_REFUSED', from, to, reason, retryAfter: 5 });
       return { ok: false, code: 'WORKSPACE_BUSY', reason, retryAfter: 5 };
     }
+
+    // Swap is proceeding — emit STARTED now that busy check passed.
+    this._emit({ type: 'WORKSPACE_SWAP_STARTED', from, to });
 
     // Validate and create directory
     try {
@@ -132,12 +140,7 @@ export class WorkspaceSwapManager {
       // Non-fatal — swap succeeded but persistence failed
     }
 
-    this._emit('WORKSPACE_SWAP_COMPLETED', {
-      type: 'WORKSPACE_SWAP_COMPLETED',
-      from,
-      to: resolved,
-      persistedInDaemonSettings,
-    });
+    this._emit({ type: 'WORKSPACE_SWAP_COMPLETED', from, to: resolved, persistedInDaemonSettings });
 
     return { ok: true, previous: from, current: resolved };
   }
@@ -146,29 +149,20 @@ export class WorkspaceSwapManager {
   // Internal helpers
   // ---------------------------------------------------------------------------
 
-  private _emit(
-    type: 'WORKSPACE_SWAP_STARTED' | 'WORKSPACE_SWAP_REFUSED' | 'WORKSPACE_SWAP_COMPLETED',
-    payload: {
-      type: typeof type;
-      from: string;
-      to: string;
-      reason?: string;
-      retryAfter?: number;
-      persistedInDaemonSettings?: boolean;
-    },
-  ): void {
+  private _emit(payload: WorkspaceEvent): void {
     if (!this.deps.runtimeBus) return;
     try {
-      const envelope = createEventEnvelope(type, payload, {
-        sessionId: 'system',
-        source: 'workspace-swap-manager',
-      });
-      // Cast: workspace events are not in AnyRuntimeEvent's narrow union but are
-      // registered under the 'workspace' domain. See analogous cast in
-      // runtime/health/effect-handlers.ts for CASCADE_APPLIED.
-      this.deps.runtimeBus.emit(
+      const envelope = createEventEnvelope(
+        payload.type,
+        payload,
+        { sessionId: '', source: 'workspace-swap-manager' },
+      );
+      this.deps.runtimeBus.emit<'workspace'>(
         'workspace',
-        envelope as unknown as Parameters<RuntimeEventBus['emit']>[1],
+        // WorkspaceEvent is the DomainEventMap['workspace'] union; createEventEnvelope
+        // infers the payload type as the concrete member rather than the full union.
+        // A single widening cast (not through unknown) is safe here.
+        envelope as import('../runtime/events/index.js').RuntimeEventEnvelope<WorkspaceEvent['type'], WorkspaceEvent>,
       );
     } catch {
       // Never throw from event emission

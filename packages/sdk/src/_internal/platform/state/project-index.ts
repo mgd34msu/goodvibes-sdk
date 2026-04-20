@@ -45,9 +45,9 @@ interface DiskFormat {
  * Disk format: v4 tree (see DiskFormat above).
  */
 export class ProjectIndex {
-  private readonly indexPath: string;
-  private readonly projectRoot: string;
-  readonly baseDir: string;
+  private indexPath: string;
+  private projectRoot: string;
+  baseDir: string;
   private files: Map<string, number> = new Map(); // path -> tokens
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private createdAt: string = new Date().toISOString();
@@ -202,6 +202,37 @@ export class ProjectIndex {
       this.flushTimer = null;
     }
     await this.forceFlush();
+  }
+
+  /**
+   * Re-root the project index to a new base directory.
+   *
+   * Flushes any pending writes to the old location, then resets all in-memory
+   * state and re-points the index path to the new directory. A fresh load is
+   * performed to pick up any existing index at the new location.
+   *
+   * @param newBaseDir - Absolute path to the new project root.
+   */
+  async reroot(newBaseDir: string): Promise<void> {
+    // Step 1: flush pending writes to the old location (best-effort)
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    try {
+      await this.forceFlush();
+    } catch {
+      // Non-fatal — old location may be inaccessible after swap
+    }
+    // Step 2: reset state and re-point to new directory
+    this.projectRoot = newBaseDir;
+    this.baseDir = newBaseDir;
+    this.indexPath = join(newBaseDir, '.goodvibes', 'project-index.json');
+    this.files = new Map();
+    this.loaded = false;
+    this.createdAt = new Date().toISOString();
+    // Step 3: load existing index at new location (no-op if not present)
+    await this.load();
   }
 
   private scheduleFlush(): void {

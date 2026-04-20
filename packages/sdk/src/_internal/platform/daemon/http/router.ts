@@ -134,6 +134,11 @@ interface DaemonHttpRouterContext {
   readonly syncSpawnedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord) => void;
   /**
+   * WorkspaceSwapManager instance for delegating POST /config runtime.workingDir
+   * requests. Null in embedded/test contexts that don't support live workspace swaps.
+   */
+  readonly swapManager: import('../../../daemon/system-route-types.js').WorkspaceSwapManagerLike | null;
+  /**
    * Optional companion chat manager. When present, companion chat routes
    * (/api/companion/chat/...) are enabled. Injected by the daemon facade
    * when the companion feature is active.
@@ -358,7 +363,7 @@ export class DaemonHttpRouter {
           requireAdmin: (request) => this.context.requireAdmin(request),
           requireAuthenticatedSession: (request) => this.context.requireAuthenticatedSession(request),
           routeBindings: this.context.routeBindings,
-          swapManager: null,
+          swapManager: this.context.swapManager,
           watcherRegistry: this.context.watcherRegistry,
         }),
       }, req),

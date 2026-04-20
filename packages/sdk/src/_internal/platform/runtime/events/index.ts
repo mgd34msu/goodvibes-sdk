@@ -142,9 +142,16 @@ export class RuntimeEventBus {
    *
    * @see emitTurnSubmitted, emitToolReceived, etc. in `src/runtime/emitters/`
    *
+   * Domain-keyed overload: when the domain is statically known, the envelope
+   * type is narrowed to the corresponding DomainEventMap entry — no cast needed.
+   *
    * @param domain - Domain this event belongs to.
    * @param envelope - The fully-formed envelope to dispatch.
    */
+  public emit<D extends RuntimeEventDomain>(
+    domain: D,
+    envelope: RuntimeEventEnvelope<DomainEventMap[D]['type'], DomainEventMap[D]>
+  ): void;
   public emit(
     domain: RuntimeEventDomain,
     envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>

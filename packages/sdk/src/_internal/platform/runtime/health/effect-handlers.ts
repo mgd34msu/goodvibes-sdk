@@ -16,7 +16,7 @@ import { createCascadeAppliedEvent } from './types.js';
 import type { RuntimeHealthAggregator } from './aggregator.js';
 import type { RuntimeEventBus, RuntimeEventEnvelope } from '../events/index.js';
 import { createEventEnvelope } from '../events/index.js';
-import type { AnyRuntimeEvent } from '../events/index.js';
+import type { AnyRuntimeEvent, RuntimeEventDomain } from '../events/index.js';
 
 /**
  * Emits a synthetic health event on the bus.
@@ -40,7 +40,20 @@ function emitHealthEvent(
   bus: RuntimeEventBus,
   envelope: RuntimeEventEnvelope<string, unknown>,
 ): void {
-  bus.emit('session', envelope as unknown as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+  // GC-ARCH-002: CASCADE_APPLIED and synthetic health events live outside the AnyRuntimeEvent
+  // typed union by design. We use the implementation overload of bus.emit directly to route
+  // them without polluting the AnyRuntimeEvent union. The single-step cast (not via unknown)
+  // is audited and intentional — health events are valid RuntimeEventEnvelope objects whose
+  // type discriminant is a string literal unknown to the compile-time union.
+  //
+  // Do NOT copy this pattern elsewhere — use typed emitters from src/runtime/emitters/ for
+  // all standard domain events.
+  bus.emit(
+    // Health events use 'session' as the routing domain — it is the most general
+    // domain and health cascades originate from session-level failures.
+    'session' as RuntimeEventDomain,
+    envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
+  );
 }
 
 /** Context injected into each effect handler. */

@@ -13,6 +13,7 @@
  */
 
 import { GoodVibesSdkError } from '../../errors/index.js';
+import type { ConfigManager } from '../config/manager.js';
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -49,16 +50,45 @@ interface Bucket {
 export interface CompanionChatRateLimiterOptions {
   /** Max messages per 60-second window per clientId. Default: 30. */
   readonly perClientLimit?: number;
-  /** Max messages per 60-second window per sessionId. Default: 10. */
+  /**
+   * Max messages per 60-second window per sessionId. Default: 10.
+   *
+   * **Startup-time env var**: `GOODVIBES_CHAT_LIMITER_THRESHOLD` is read **once** at
+   * constructor time and used as a fallback when this option is not provided. It
+   * cannot be changed at runtime without a daemon restart.
+   *
+   * **Runtime config key**: `runtime.companionChatLimiter.perSessionLimit` is read
+   * on every `check()` call (when a `configManager` is provided) and takes
+   * precedence over the env-var-captured fallback.
+   */
   readonly perSessionLimit?: number;
   /** Window size in ms. Default: 60000 (1 minute). */
   readonly windowMs?: number;
+  /**
+   * Optional ConfigManager for runtime lookup of
+   * `runtime.companionChatLimiter.perSessionLimit`.
+   * When provided, `check()` reads this key on each call and uses it as the
+   * effective per-session limit (falling back to the constructor-time value
+   * when the config key is absent or not a positive integer).
+   */
+  readonly configManager?: Pick<ConfigManager, 'get'> | null;
 }
 
 export class CompanionChatRateLimiter {
   private readonly perClientLimit: number;
-  private readonly perSessionLimit: number;
+  /**
+   * Base per-session limit: resolved at constructor time from explicit option >
+   * env var > compile-time default. May be overridden per-call by the config
+   * manager when `configManager` is provided.
+   *
+   * **Note**: `GOODVIBES_CHAT_LIMITER_THRESHOLD` is read **once** at constructor
+   * time and cached here. Changing the env var after daemon startup has no effect
+   * without a daemon restart. Use the `runtime.companionChatLimiter.perSessionLimit`
+   * config key for live changes.
+   */
+  private readonly perSessionLimitBase: number;
   private readonly windowMs: number;
+  private readonly configManager: Pick<ConfigManager, 'get'> | null;
 
   /** clientId → bucket */
   private readonly clientBuckets = new Map<string, Bucket>();
@@ -69,8 +99,26 @@ export class CompanionChatRateLimiter {
     // Precedence: explicit config option > env var > compile-time default
     const envThreshold = readThresholdFromEnv(env);
     this.perClientLimit = options.perClientLimit ?? DEFAULT_MESSAGES_PER_MINUTE_PER_CLIENT;
-    this.perSessionLimit = options.perSessionLimit ?? envThreshold ?? DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION;
+    this.perSessionLimitBase = options.perSessionLimit ?? envThreshold ?? DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION;
     this.windowMs = options.windowMs ?? 60_000;
+    this.configManager = options.configManager ?? null;
+  }
+
+  /**
+   * Resolve the effective per-session limit for the current call.
+   *
+   * Runtime config key `runtime.companionChatLimiter.perSessionLimit` takes
+   * precedence over the constructor-time baseline when it resolves to a
+   * positive integer.
+   */
+  private resolvePerSessionLimit(): number {
+    if (this.configManager) {
+      const raw = this.configManager.get('runtime.companionChatLimiter.perSessionLimit');
+      if (typeof raw === 'number' && Number.isInteger(raw) && raw > 0) {
+        return raw;
+      }
+    }
+    return this.perSessionLimitBase;
   }
 
   /**
@@ -87,13 +135,14 @@ export class CompanionChatRateLimiter {
     const cutoff = now - this.windowMs;
 
     // --- Per-session check ---
+    const perSessionLimit = this.resolvePerSessionLimit();
     const sessionBucket = this.getOrCreate(this.sessionBuckets, sessionId, cutoff);
-    if (sessionBucket.timestamps.length >= this.perSessionLimit) {
+    if (sessionBucket.timestamps.length >= perSessionLimit) {
       const oldestTs = sessionBucket.timestamps[0]!;
       const retryAfterMs = this.windowMs - (now - oldestTs) + 1;
       throw new GoodVibesSdkError(
-        `Companion chat session rate limit exceeded: this session has sent ${this.perSessionLimit} messages in the last minute. ` +
-          `Each session is limited to ${this.perSessionLimit} messages per minute to prevent runaway conversations. ` +
+        `Companion chat session rate limit exceeded: this session has sent ${perSessionLimit} messages in the last minute. ` +
+          `Each session is limited to ${perSessionLimit} messages per minute to prevent runaway conversations. ` +
           `Wait ${Math.ceil(retryAfterMs / 1000)} seconds before sending the next message, or create a new session.`,
         {
           category: 'rate_limit',
