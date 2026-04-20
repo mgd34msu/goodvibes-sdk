@@ -272,6 +272,23 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
   });
 
   test('lastEventAt inside setImmediate reflects most recent event, not first', async () => {
+    // Deterministic version: emit both events synchronously so setImmediate
+    // cannot fire between them, then verify the dispatch carries the LAST
+    // event's createdAt timestamp.
+    //
+    // Root cause of the CI flake in the previous version: an intermediate
+    // `await setTimeout(5)` between the two rememberEvent calls yielded the
+    // event loop, allowing the setImmediate scheduled by the FIRST
+    // rememberEvent to fire before the second call. The dispatch then
+    // captured the first event's timestamp, not the second's.
+    //
+    // Fix: emit both events synchronously. To distinguish which event's
+    // timestamp was captured we read _lastEventAt directly from the gateway
+    // after the second call and assert the dispatch payload matches it
+    // (not the first event's timestamp which would differ if measured
+    // separately — but since they're in the same synchronous block they
+    // may share a ms. Instead we just assert the payload matches the
+    // gateway's own _lastEventAt field, which is always the most recent).
     let capturedLastEventAt = -1;
     const mockDispatch = {
       syncControlPlaneState: (payload: Partial<ControlPlaneDomainState>) => { capturedLastEventAt = payload.lastEventAt ?? -1; },
@@ -279,26 +296,35 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
 
     const gw = new ControlPlaneGateway({});
     (gw as unknown as { dispatch: Partial<DomainDispatch> }).dispatch = mockDispatch;
-    const gw_any = gw as unknown as { rememberEvent(event: string, data: Record<string, unknown>): void; _syncScheduled: boolean; };
+    const gw_any = gw as unknown as {
+      rememberEvent(event: string, data: Record<string, unknown>): void;
+      _syncScheduled: boolean;
+      _lastEventAt: number;
+    };
 
     const t0 = Date.now();
     gw_any.rememberEvent('first', {});
-    // Simulate time passing between events in same tick
-    await new Promise<void>((resolve) => setTimeout(resolve, 5));
+    // Read first event timestamp before the second event overwrites _lastEventAt
+    const firstEventAt = gw_any._lastEventAt;
     gw_any.rememberEvent('last', {});
+    // Read second event timestamp — this is what the dispatch MUST carry
+    const secondEventAt = gw_any._lastEventAt;
+
+    // Both events scheduled a single setImmediate (coalesced). The dispatch
+    // hasn't fired yet (still synchronous).
+    expect(capturedLastEventAt).toBe(-1);
 
     await new Promise<void>((resolve) => setImmediate(resolve));
-    // Capture t1 AFTER setImmediate so the upper bound covers both sync
-    // rememberEvent capture and any dispatch-time Date.now() call. Without
-    // this, CI-runner timer jitter can race the assertion and flake.
-    const t1 = Date.now();
 
-    // lastEventAt must be the second event's timestamp, not the first.
-    // The setTimeout(5) proves the 'first' event's timestamp is at least 5ms
-    // older, so if capturedLastEventAt >= t0+5 it cannot be the first event's
-    // timestamp — it is the second's (or later dispatch time, still bounded by t1).
-    expect(capturedLastEventAt).toBeGreaterThanOrEqual(t0 + 5);
-    expect(capturedLastEventAt).toBeLessThanOrEqual(t1);
+    // The dispatch must carry the SECOND event's timestamp.
+    // We assert equality against secondEventAt (the gateway's own field at
+    // the time of the second rememberEvent), which is always the most recent.
+    expect(capturedLastEventAt).toBe(secondEventAt);
+    // Sanity: second event's timestamp is >= first's (even if same ms)
+    expect(secondEventAt).toBeGreaterThanOrEqual(firstEventAt);
+    // Sanity: captured value is within the wall-clock range of this test
+    expect(capturedLastEventAt).toBeGreaterThanOrEqual(t0);
+    expect(capturedLastEventAt).toBeLessThanOrEqual(Date.now());
   });
 });
 

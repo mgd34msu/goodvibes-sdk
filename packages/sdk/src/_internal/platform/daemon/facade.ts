@@ -197,6 +197,18 @@ export class DaemonServer {
       handleApprovalAction: (approvalId, action, req) => this.handleApprovalAction(approvalId, action, req),
       tlsState: () => this.tlsState,
       swapManager: this.config.swapManager ?? null,
+      // F16b: Resolve current provider/model for companion-chat session-create
+      // defaults. Delegates to the live ProviderRegistry so the resolver always
+      // reflects the currently active provider, not a snapshot captured at startup.
+      resolveDefaultProviderModel: () => {
+        try {
+          const current = resolved.runtimeServices.providerRegistry.getCurrentModel();
+          if (!current.provider || !current.id) return null;
+          return { provider: current.provider, model: current.id };
+        } catch {
+          return null;
+        }
+      },
     });
     this.channelReplyPipeline = collaborators.channelReplyPipeline;
     this.controlPlaneHelper = collaborators.controlPlaneHelper;

@@ -380,6 +380,13 @@ export interface CreateDaemonFacadeCollaboratorsOptions {
    * Null in embedded/test contexts that don't support live workspace swaps.
    */
   readonly swapManager: import('../../daemon/system-route-types.js').WorkspaceSwapManagerLike | null;
+  /**
+   * F16b: Resolve the current default provider/model from the provider registry.
+   * Forwarded into DaemonHttpRouterContext so that companion-chat session-create
+   * can fill in provider/model when the request body does not supply them.
+   * Optional — when absent the legacy (null provider/model allowed) behavior is preserved.
+   */
+  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
 }
 
 export function createDaemonFacadeCollaborators(
@@ -489,6 +496,7 @@ export function createDaemonFacadeCollaborators(
     companionChatManager: runtime.companionChatManager,
     secretsManager: runtime.runtimeServices.secretsManager,
     swapManager: options.swapManager,
+    resolveDefaultProviderModel: options.resolveDefaultProviderModel,
   });
   const providerRuntime = new ChannelProviderRuntimeManager({
     configManager: runtime.configManager,
