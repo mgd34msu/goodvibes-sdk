@@ -78,6 +78,13 @@ export interface HookDefinition {
   name?: string;
   /** Whether the hook is enabled (default: true) */
   enabled?: boolean;
+  /**
+   * For http hooks: when true, bypasses the SEC-08 SSRF tier filter and
+   * allows requests to internal/private hosts. Use only in trusted,
+   * air-gapped environments where the hook target is a known internal service.
+   * Default: false (SSRF filter active).
+   */
+  allowInternal?: boolean;
 }
 
 /** Hook chain step */

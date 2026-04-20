@@ -609,11 +609,15 @@ export class IntegrationHelperService {
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         const unsubs = selectedDomains.map((domain) => this.context.runtimeBus.onDomain(domain, (envelope) => {
+          // PERF-06: Drop event if the stream buffer is full (backpressure guard).
+          if ((controller.desiredSize ?? 1) <= 0) return;
           controller.enqueue(encoder.encode(`event: ${domain}\ndata: ${JSON.stringify(serializeEnvelope(envelope))}\n\n`));
         }));
         const heartbeat = setInterval(() => {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
         }, 15_000);
+        // Don't block clean process exit (PERF-07).
+        (heartbeat as unknown as { unref?: () => void }).unref?.();
         teardown = () => {
           clearInterval(heartbeat);
           for (const unsub of unsubs) unsub();

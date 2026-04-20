@@ -59,7 +59,7 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
     }));
   }
 
-  test('AGENT_COMPLETED transitions task from running to completed', () => {
+  test('AGENT_COMPLETED transitions task from running to completed', async () => {
     const taskId = adapter.wrapAgent('ag-1', 'Do work', { sessionId: 'sess-1' });
     adapter.handleAgentStateChange('ag-1', 'running');
 
@@ -67,26 +67,29 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
     expect(before?.status).toBe('running');
 
     emitAgent('AGENT_COMPLETED', 'ag-1', { output: 'done', durationMs: 500 });
+    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
 
     const after = store.getState().tasks.tasks.get(taskId);
     expect(after?.status).toBe('completed');
   });
 
-  test('AGENT_FAILED transitions task from running to failed', () => {
+  test('AGENT_FAILED transitions task from running to failed', async () => {
     const taskId = adapter.wrapAgent('ag-2', 'Do work', { sessionId: 'sess-1' });
     adapter.handleAgentStateChange('ag-2', 'running');
 
     emitAgent('AGENT_FAILED', 'ag-2', { error: 'oops', durationMs: 200 });
+    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
 
     const after = store.getState().tasks.tasks.get(taskId);
     expect(after?.status).toBe('failed');
   });
 
-  test('AGENT_CANCELLED transitions task from running to cancelled', () => {
+  test('AGENT_CANCELLED transitions task from running to cancelled', async () => {
     const taskId = adapter.wrapAgent('ag-3', 'Do work', { sessionId: 'sess-1' });
     adapter.handleAgentStateChange('ag-3', 'running');
 
     emitAgent('AGENT_CANCELLED', 'ag-3', { reason: 'user cancelled' });
+    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
 
     const after = store.getState().tasks.tasks.get(taskId);
     expect(after?.status).toBe('cancelled');
@@ -291,7 +294,7 @@ describe('DR1: SharedSessionBroker.attachRuntimeBus — input record reconciliat
 // ---------------------------------------------------------------------------
 
 describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task completed', () => {
-  test('wrapAgent then AGENT_COMPLETED transitions task to completed in store', () => {
+  test('wrapAgent then AGENT_COMPLETED transitions task to completed in store', async () => {
     const bus = new RuntimeEventBus();
     const store = makeStore();
     const adapter = new AgentTaskAdapter(store);
@@ -311,6 +314,7 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
       traceId: 'test:m1',
       source: 'test',
     }));
+    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
 
     const completed = store.getState().tasks.tasks.get(taskId);
     expect(completed?.status).toBe('completed');
@@ -331,7 +335,7 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
 // ---------------------------------------------------------------------------
 
 describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
-  test('second attachRuntimeBus call is a no-op and does not double-fire events', () => {
+  test('second attachRuntimeBus call is a no-op and does not double-fire events', async () => {
     const bus = new RuntimeEventBus();
     const store = makeStore();
     const adapter = new AgentTaskAdapter(store);
@@ -352,6 +356,7 @@ describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
     bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', payload, {
       sessionId: 'sess-x', traceId: 'idem2', source: 'test',
     }));
+    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
     // Should still complete (first subscription still active)
     expect(store.getState().tasks.tasks.get(taskId)?.status).toBe('completed');
   });

@@ -1,6 +1,7 @@
 import type { HookDefinition, HookResult, HookEvent } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../../tools/fetch/trust-tiers.js';
 
 /**
  * HTTP hook runner.
@@ -10,6 +11,19 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
   const url = hook.url;
   if (!url) {
     return { ok: false, error: 'http hook missing "url" field' };
+  }
+
+  // SEC-08: SSRF tier filter — block requests to internal/private hosts unless
+  // the hook definition opts in with allowInternal: true.
+  if (!hook.allowInternal) {
+    const hostname = extractHostname(url);
+    if (hostname !== null) {
+      const trustResult = classifyHostTrustTier(hostname);
+      if (trustResult.tier === 'blocked') {
+        emitSsrfDeny(hostname, url, trustResult.reason);
+        return { ok: false, error: `http hook blocked: ${trustResult.reason}` };
+      }
+    }
   }
 
   const timeoutMs = (hook.timeout ?? 30) * 1000;

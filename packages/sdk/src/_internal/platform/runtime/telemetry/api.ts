@@ -376,6 +376,9 @@ export class TelemetryApiService {
       this.resolveCursor(this.records, requestedCursor);
     }
 
+    // Shared teardown closure — called from both abort and cancel paths (PERF-04).
+    let teardown = (): void => {};
+
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         if (requestedCursor) {
@@ -396,9 +399,14 @@ export class TelemetryApiService {
         const heartbeat = setInterval(() => {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
         }, 15_000);
-        request.signal.addEventListener('abort', () => {
+        // Don't block clean process exit (PERF-07).
+        (heartbeat as unknown as { unref?: () => void }).unref?.();
+        teardown = (): void => {
           clearInterval(heartbeat);
           unsub();
+        };
+        request.signal.addEventListener('abort', () => {
+          teardown();
           controller.close();
         }, { once: true });
         controller.enqueue(encoder.encode(`event: ready\ndata: ${JSON.stringify({
@@ -410,7 +418,8 @@ export class TelemetryApiService {
         })}\n\n`));
       },
       cancel: () => {
-        unsub();
+        // PERF-04: cancel() path must also clear the heartbeat interval.
+        teardown();
       },
     });
 

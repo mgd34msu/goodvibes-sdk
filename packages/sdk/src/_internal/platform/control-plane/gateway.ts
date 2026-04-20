@@ -628,6 +628,10 @@ export class ControlPlaneGateway {
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         const send = (event: string, payload: unknown, id?: string): void => {
+          // PERF-05: Drop event if the stream's internal queue is full (backpressure guard).
+          // desiredSize <= 0 means the consumer is falling behind; dropping prevents
+          // unbounded memory growth from enqueued-but-unread chunks.
+          if ((controller.desiredSize ?? 1) <= 0) return;
           controller.enqueue(encoder.encode(`${id ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
         };
         const unsubs = selectedDomains.map((domain) => this.runtimeBus!.onDomain(domain, (envelope) => {
@@ -655,6 +659,8 @@ export class ControlPlaneGateway {
         const heartbeat = setInterval(() => {
           send('heartbeat', { clientId, ts: Date.now() });
         }, 15_000);
+        // Don't block clean process exit (PERF-07).
+        (heartbeat as unknown as { unref?: () => void }).unref?.();
         teardown = () => {
           clearInterval(heartbeat);
           for (const unsub of unsubs) unsub();

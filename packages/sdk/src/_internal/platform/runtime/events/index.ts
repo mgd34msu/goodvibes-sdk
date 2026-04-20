@@ -163,28 +163,43 @@ export class RuntimeEventBus {
     const domainSet = this._domainListeners.get(domain);
     const domainHandlers = domainSet ? Array.from(domainSet) : [];
 
+    // OBS-14: Dispatch each subscriber in its own microtask so a slow or
+    // throwing subscriber cannot block the emitter. Errors are caught and
+    // logged per-subscriber; a single bad handler never cascades to others.
+
     // Dispatch to per-type listeners
     for (const handler of typeHandlers) {
-      try {
-        handler(envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
-      } catch (err) {
-        logger.error('[RuntimeEventBus] listener error', {
-          eventType: envelope.type,
-          error: summarizeError(err),
-        });
-      }
+      const h = handler;
+      const ev = envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>;
+      const evType = envelope.type;
+      queueMicrotask(() => {
+        try {
+          h(ev);
+        } catch (err) {
+          logger.error('[RuntimeEventBus] listener error', {
+            eventType: evType,
+            error: summarizeError(err),
+          });
+        }
+      });
     }
     // Dispatch to per-domain listeners
     for (const handler of domainHandlers) {
-      try {
-        handler(envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
-      } catch (err) {
-        logger.error('[RuntimeEventBus] domain listener error', {
-          domain,
-          eventType: envelope.type,
-          error: summarizeError(err),
-        });
-      }
+      const h = handler;
+      const ev = envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>;
+      const evType = envelope.type;
+      const d = domain;
+      queueMicrotask(() => {
+        try {
+          h(ev);
+        } catch (err) {
+          logger.error('[RuntimeEventBus] domain listener error', {
+            domain: d,
+            eventType: evType,
+            error: summarizeError(err),
+          });
+        }
+      });
     }
   }
 
