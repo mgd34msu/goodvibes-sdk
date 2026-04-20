@@ -14,6 +14,7 @@ import {
   success,
   trimForSurface,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 export function createMSTeamsDeliveryStrategy(
   configManager: ConfigManager,
@@ -49,7 +50,7 @@ export function createMSTeamsDeliveryStrategy(
         ? `${rawConversationId};messageid=${threadId}`
         : rawConversationId;
       const accessToken = await resolveMSTeamsAccessToken(configManager, serviceRegistry);
-      const response = await fetch(`${normalizeBaseUrl(serviceUrl)}/v3/conversations/${encodeURIComponent(conversationId)}/activities`, {
+      const response = await instrumentedFetch(`${normalizeBaseUrl(serviceUrl)}/v3/conversations/${encodeURIComponent(conversationId)}/activities`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,7 +100,7 @@ export function createMattermostDeliveryStrategy(
       if (!baseUrl) throw new Error('Missing Mattermost base URL');
       if (!botToken) throw new Error('Missing Mattermost bot token');
       if (!channelId) throw new Error('Missing Mattermost channel id');
-      const response = await fetch(`${normalizeBaseUrl(baseUrl)}/api/v4/posts`, {
+      const response = await instrumentedFetch(`${normalizeBaseUrl(baseUrl)}/api/v4/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +151,7 @@ export function createMatrixDeliveryStrategy(
       if (!roomId) throw new Error('Missing Matrix room id');
       const txnId = crypto.randomUUID();
       const threadId = request.binding?.threadId;
-      const response = await fetch(`${normalizeBaseUrl(homeserverUrl)}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${encodeURIComponent(txnId)}`, {
+      const response = await instrumentedFetch(`${normalizeBaseUrl(homeserverUrl)}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${encodeURIComponent(txnId)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

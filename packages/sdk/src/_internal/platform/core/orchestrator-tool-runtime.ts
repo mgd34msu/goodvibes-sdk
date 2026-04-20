@@ -15,6 +15,7 @@ import {
   emitToolReconciled,
   emitToolReceived,
   emitToolSucceeded,
+  toToolResultSummary,
 } from '../runtime/emitters/index.js';
 import { buildSyntheticResult, detectUnresolvedToolCalls, type ReconciliationReason } from './tool-reconciliation.js';
 import { logger } from '../utils/logger.js';
@@ -82,7 +83,7 @@ export async function executeToolCalls(
           tool: call.name,
           error: err.message,
           durationMs: 0,
-          result: deniedResult,
+          result: toToolResultSummary(deniedResult),
         });
       }
       continue;
@@ -123,7 +124,7 @@ export async function executeToolCalls(
               tool: call.name,
               error: deniedResult.error ?? `Tool '${call.name}' denied by hook`,
               durationMs: Date.now() - startedAt,
-              result: deniedResult,
+              result: toToolResultSummary(deniedResult),
             });
           }
           results.push(deniedResult);
@@ -201,7 +202,7 @@ export async function executeToolCalls(
           turnId,
           tool: call.name,
           durationMs: Date.now() - startedAt,
-          result,
+          result: toToolResultSummary(result),
         });
       } else {
         emitToolFailed(deps.runtimeBus, deps.emitterContext(turnId), {
@@ -210,7 +211,7 @@ export async function executeToolCalls(
           tool: call.name,
           error: result.error ?? 'unknown tool failure',
           durationMs: Date.now() - startedAt,
-          result,
+          result: toToolResultSummary(result),
         });
       }
     }
@@ -316,7 +317,7 @@ export function reconcileUnresolvedToolCalls(
         tool: unresolved.find((call) => call.id === sr.callId)?.name ?? 'unknown',
         error: sr.error ?? 'synthetic tool reconciliation failure',
         durationMs: 0,
-        result: sr,
+        result: toToolResultSummary(sr),
       });
     }
   }

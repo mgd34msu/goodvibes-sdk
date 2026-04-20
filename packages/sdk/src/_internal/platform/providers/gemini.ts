@@ -14,7 +14,8 @@ import { mapGeminiStopReason } from './stop-reason-maps.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
-import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import { fetchWithTimeout, instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import {
   toGeminiFunctionDeclarations,
   toGeminiContents,
@@ -179,7 +180,7 @@ export class GeminiProvider implements LLMProvider {
   async chat(params: ChatRequest): Promise<ChatResponse> {
     const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort } = params;
 
-    return withRetry(async () => {
+    return (await instrumentedLlmCall(() => withRetry(async () => {
       const { contents, systemInstruction } = toGeminiContents(messages, systemPrompt);
 
       // Inject thoughtSignatures into both model functionCall parts and user functionResponse parts
@@ -238,7 +239,7 @@ export class GeminiProvider implements LLMProvider {
 
       let res: Response;
       try {
-        res = await fetch(url, {
+        res = await instrumentedFetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -375,7 +376,7 @@ export class GeminiProvider implements LLMProvider {
         stopReason,
         ...(lastFinishReason ? { providerStopReason: lastFinishReason } : {}),
       };
-    });
+    }), { provider: 'gemini', model: model })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {
@@ -389,7 +390,7 @@ export class GeminiProvider implements LLMProvider {
 
     let res: Response;
     try {
-      res = await fetch(`${GEMINI_API_BASE}/models/${model}:embedContent`, {
+      res = await instrumentedFetch(`${GEMINI_API_BASE}/models/${model}:embedContent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -14,6 +14,8 @@ import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import {
   buildHttpError,
   buildResponsesInput,
@@ -64,7 +66,7 @@ export class LMStudioProvider implements LLMProvider {
     this.capabilities = opts.capabilities;
     this.defaultModel = opts.defaultModel;
     this.nativeChatUrl = deriveNativeChatUrl(opts.baseURL);
-    this.nativeFetch = opts.nativeFetch ?? ((input, init) => fetch(input, init));
+    this.nativeFetch = opts.nativeFetch ?? instrumentedFetch;
     this.responsesClient = opts.responsesClient ?? createResponsesClient(opts.baseURL, opts.apiKey, opts.defaultHeaders);
     this.fallbackProvider = opts.fallbackProvider ?? new OpenAICompatProvider(opts);
   }
@@ -74,7 +76,8 @@ export class LMStudioProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    return withRetry(async () => {
+    return (await instrumentedLlmCall(
+      () => withRetry(async () => {
       const model = params.model || this.defaultModel;
       const nativeContext = this.getNativeChatContext(model, params.systemPrompt, params.messages, params.tools);
 
@@ -97,7 +100,7 @@ export class LMStudioProvider implements LLMProvider {
       }
 
       return this.fallbackProvider.chat(params);
-    });
+    }), { provider: this.name, model: params.model || this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

@@ -16,6 +16,7 @@ import {
   titleFromBody,
   trimForSurface,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 export function createWebhookDeliveryStrategy(configManager: ConfigManager, artifactStore: ArtifactStore): ChannelDeliveryStrategy {
   return {
@@ -32,7 +33,7 @@ export function createWebhookDeliveryStrategy(configManager: ConfigManager, arti
       const validation = validatePublicWebhookUrl(address);
       if (!validation.ok) throw new Error(validation.error);
       const timeoutMs = Number(configManager.get('surfaces.webhook.timeoutMs') ?? 15_000);
-      const response = await fetch(validation.url, {
+      const response = await instrumentedFetch(validation.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ export function createSlackDeliveryStrategy(
         ? request.binding.metadata.responseUrl
         : undefined;
       if (responseUrl?.startsWith('https://hooks.slack.com/')) {
-        await fetch(responseUrl, {
+        await instrumentedFetch(responseUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -243,7 +244,7 @@ export function createTelegramDeliveryStrategy(
       );
       if (!token) throw new Error('Missing Telegram bot token');
       if (!chatId) throw new Error('Missing Telegram chat id');
-      const response = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`, {
+      const response = await instrumentedFetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -284,7 +285,7 @@ export function createGoogleChatDeliveryStrategy(
         throw new Error('Missing Google Chat webhook URL');
       }
       const threadKey = firstNonEmpty(request.binding?.threadId, request.binding?.channelId, request.binding?.externalId);
-      const response = await fetch(webhookUrl, {
+      const response = await instrumentedFetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({

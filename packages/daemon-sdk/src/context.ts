@@ -210,4 +210,5 @@ export interface DaemonApiRouteHandlers {
   setScheduleEnabled(scheduleId: string, enabled: boolean): MaybeResponse;
   runScheduleNow(scheduleId: string): MaybeResponse;
   getSchedulerCapacity(): MaybeResponse;
+  getRuntimeMetrics(): MaybeResponse;
 }

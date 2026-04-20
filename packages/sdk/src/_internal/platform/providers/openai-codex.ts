@@ -14,7 +14,9 @@ import { resolveSubscriptionAccessToken } from '../config/subscription-auth.js';
 import { arch, platform, release } from 'node:os';
 import type { SubscriptionManager } from '../config/subscriptions.js';
 import { toProviderError } from '../utils/error-display.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import { mapCodexStopReason } from './stop-reason-maps.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 const OPENAI_CODEX_BASE_URL = 'https://chatgpt.com/backend-api';
 const OPENAI_CODEX_PROVIDER_NAME = 'openai-subscriber';
@@ -178,7 +180,7 @@ export async function chatWithOpenAICodex(
 
       let response: Response;
       try {
-        response = await fetch(`${OPENAI_CODEX_BASE_URL}/codex/responses`, {
+        response = await instrumentedFetch(`${OPENAI_CODEX_BASE_URL}/codex/responses`, {
           method: 'POST',
           headers: {
             authorization: `Bearer ${accessToken}`,
@@ -429,7 +431,10 @@ export class OpenAICodexProvider implements LLMProvider {
         phase: 'auth',
       });
     }
-    return chatWithOpenAICodex(accessToken, params);
+    return (await instrumentedLlmCall(
+      () => chatWithOpenAICodex(accessToken, params),
+      { provider: this.name, model: params.model ?? '' },
+    )).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

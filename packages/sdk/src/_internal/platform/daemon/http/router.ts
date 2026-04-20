@@ -28,6 +28,7 @@ import type { IntegrationHelperService } from '../../runtime/integration/helpers
 import type { DomainDispatch, RuntimeStore } from '../../runtime/store/index.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import { emitCompanionMessageReceived } from '../../runtime/emitters/session.js';
+import { correlationCtx } from '../../runtime/correlation.js';
 import { TelemetryApiService } from '../../runtime/telemetry/api.js';
 import { inspectInboundTls, inspectOutboundTls } from '../../runtime/network/index.js';
 import type { MemoryEmbeddingProviderRegistry, MemoryRegistry } from '../../state/index.js';
@@ -44,6 +45,7 @@ import {
   handleRemotePeerWorkComplete,
 } from './remote-routes.js';
 import { createDaemonRuntimeRouteHandlers } from './runtime-routes.js';
+import { snapshotMetrics } from '../../runtime/metrics.js';
 import { createDaemonControlRouteHandlers } from './control-routes.js';
 import { createDaemonIntegrationRouteHandlers } from './integration-routes.js';
 import { createDaemonTelemetryRouteHandlers } from './telemetry-routes.js';
@@ -183,6 +185,9 @@ export class DaemonHttpRouter {
   }
 
   async handleRequest(req: Request): Promise<Response> {
+    return correlationCtx.run(
+      { requestId: req.headers.get('x-request-id') ?? crypto.randomUUID() },
+      async () => {
     const url = new URL(req.url);
 
     if (url.pathname === '/login' && req.method === 'POST') {
@@ -260,6 +265,8 @@ export class DaemonHttpRouter {
         guidance: 'Check the daemon API path and version. New SDK-facing routes are published under /api/v1.',
       }),
       { status: 404 },
+    );
+      },
     );
   }
 
@@ -473,6 +480,7 @@ export class DaemonHttpRouter {
             { sessionId, ...envelope },
           );
         },
+        snapshotMetrics: () => snapshotMetrics(),
         openSessionEventStream: (req, sessionId) => {
           // Create a session-scoped SSE stream for the companion app to receive
           // turn events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events.

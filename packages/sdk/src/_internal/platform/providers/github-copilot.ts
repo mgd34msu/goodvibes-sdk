@@ -6,6 +6,7 @@ import { AnthropicCompatProvider } from './anthropic-compat.js';
 import { ProviderError } from '../types/errors.js';
 import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
 import { toProviderError } from '../utils/error-display.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 
 const COPILOT_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
 const DEFAULT_COPILOT_API_BASE_URL = 'https://api.individual.githubcopilot.com';
@@ -206,7 +207,10 @@ export class GitHubCopilotProvider implements LLMProvider {
         aliases: ['copilot'],
         streamProtocol: 'openai-sse',
       });
-      return provider.chat({ ...params, model });
+      return (await instrumentedLlmCall(
+        () => provider.chat({ ...params, model }),
+        { provider: this.name, model },
+      )).result;
     } catch (error) {
       throw toProviderError(error, {
         provider: this.name,

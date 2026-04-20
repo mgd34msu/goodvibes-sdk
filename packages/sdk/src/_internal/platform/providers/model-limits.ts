@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { ModelDefinition, TokenLimits } from './registry.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 interface OpenRouterModelData {
   id: string;
@@ -87,7 +88,7 @@ async function fetchOpenRouterModels(): Promise<Map<string, OpenRouterModelData>
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(OPENROUTER_MODELS_URL, {
+    const response = await instrumentedFetch(OPENROUTER_MODELS_URL, {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
     });

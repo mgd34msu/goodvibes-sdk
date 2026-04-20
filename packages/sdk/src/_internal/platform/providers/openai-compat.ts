@@ -12,6 +12,7 @@ import type {
 import type { ProviderCapability } from './capabilities.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import {
   toOpenAITools,
   toOpenAIMessages,
@@ -337,7 +338,7 @@ export class OpenAICompatProvider implements LLMProvider {
       onDelta,
     } = params;
 
-    return withRetry(async () => {
+    return (await instrumentedLlmCall(() => withRetry(async () => {
       const allowReasoningStream = this.reasoningFormat !== 'none';
       let responseText = '';
       let inputTokens = 0;
@@ -542,7 +543,7 @@ export class OpenAICompatProvider implements LLMProvider {
       });
 
       return response;
-    });
+    }), { provider: this.name, model: model ?? this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

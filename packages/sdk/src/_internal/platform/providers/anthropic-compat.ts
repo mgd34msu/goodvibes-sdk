@@ -11,6 +11,7 @@ import { ProviderError } from '../types/errors.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import {
   toAnthropicTools,
   toAnthropicMessages,
@@ -18,6 +19,7 @@ import {
 } from './tool-formats.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { toProviderError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 const ANTHROPIC_API_VERSION = '2023-06-01';
 
@@ -134,7 +136,8 @@ export class AnthropicCompatProvider implements LLMProvider {
   async chat(params: ChatRequest): Promise<ChatResponse> {
     const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort } = params;
 
-    return withRetry(async () => {
+    return (await instrumentedLlmCall(
+      () => withRetry(async () => {
       const resolvedModel = model ?? this.defaultModel;
 
       const body: Record<string, unknown> = {
@@ -182,7 +185,7 @@ export class AnthropicCompatProvider implements LLMProvider {
 
       let res: Response;
       try {
-        res = await fetch(`${this.baseURL}/messages`, {
+        res = await instrumentedFetch(`${this.baseURL}/messages`, {
           method: 'POST',
           headers,
           body: JSON.stringify(body),
@@ -332,7 +335,7 @@ export class AnthropicCompatProvider implements LLMProvider {
         stopReason: stopReason === 'unknown' && text ? 'completed' : stopReason,
         ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
       };
-    });
+    }), { provider: this.name, model: model ?? this.defaultModel })).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

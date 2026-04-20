@@ -19,6 +19,7 @@
 
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -64,7 +65,7 @@ async function probe(
     if (options.apiKey) headers['Authorization'] = `Bearer ${options.apiKey}`;
     if (options.body) headers['Content-Type'] = 'application/json';
 
-    const response = await fetch(url, {
+    const response = await instrumentedFetch(url, {
       method: options.method ?? 'GET',
       headers,
       body: options.body,

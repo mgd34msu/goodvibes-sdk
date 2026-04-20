@@ -17,6 +17,7 @@ import type {
 } from './types.js';
 import { DEFAULT_QUEUE_CONFIG } from './types.js';
 import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 /** Internal entry held in the ring buffer. */
 interface QueueEntry {
@@ -130,9 +131,8 @@ export class ExportQueue {
           completedAt: Date.now(),
         });
       }
-      console.warn(
-        `[ExportQueue] Queue overflow — dropped oldest batch (size=${this._config.maxSize})`,
-      );
+      // OBS-07: structured logger, not console
+      logger.warn('[ExportQueue] Queue overflow — dropped oldest batch', { maxSize: this._config.maxSize });
     }
 
     this._ring[this._tail] = { batch, enqueuedAt: Date.now() };
@@ -225,18 +225,19 @@ export class ExportQueue {
         lastError = summarizeError(err);
         if (attempt < maxRetries) {
           const delay = computeDelay(attempt, this._config.retry);
-          console.warn(
-            `[ExportQueue] Export attempt ${attempt + 1} failed — retrying in ${delay}ms: ${lastError}`,
-          );
+          // OBS-07: structured logger, not console
+          logger.warn('[ExportQueue] Export attempt failed — retrying', { attempt: attempt + 1, delayMs: delay, error: lastError });
           await sleep(delay);
         }
       }
     }
 
-    // All retries exhausted
-    console.error(
-      `[ExportQueue] Export failed after ${attempts} attempt(s) — dropping batch of ${entry.batch.length} span(s): ${lastError}`,
-    );
+    // All retries exhausted — OBS-07: structured logger
+    logger.error('[ExportQueue] Export failed after all retries — batch dropped', {
+      attempts,
+      spanCount: entry.batch.length,
+      error: lastError,
+    });
     this._emitResult({
       code: 'failure',
       spanCount: entry.batch.length,

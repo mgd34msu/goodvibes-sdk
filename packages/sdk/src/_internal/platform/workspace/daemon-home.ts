@@ -219,8 +219,12 @@ export function writeDaemonSetting(daemonHomeDir: string, key: string, value: st
   if (existsSync(settingsPath)) {
     try {
       existing = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
-    } catch {
-      // Overwrite corrupt file
+    } catch (err: unknown) {
+      // OBS-11: Overwrite corrupt file; log so ops can see when this happens
+      logger.warn('[DaemonHome] daemon-settings.json parse failed — overwriting with fresh state', {
+        path: settingsPath,
+        error: String(err),
+      });
     }
   }
   // SEC-12: daemon-settings.json may contain sensitive pairing state; write at 0600.

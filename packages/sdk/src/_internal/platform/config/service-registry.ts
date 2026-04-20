@@ -25,6 +25,7 @@ import type { OAuthProviderConfig } from './subscriptions.js';
 import { SubscriptionManager } from './subscriptions.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -302,7 +303,7 @@ export class ServiceRegistry {
 
     for (const url of candidates) {
       try {
-        const response = await fetch(url, {
+        const response = await instrumentedFetch(url, {
           method: 'GET',
           headers: reqHeaders,
           signal: AbortSignal.timeout(5000),

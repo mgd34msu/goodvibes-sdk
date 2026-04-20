@@ -17,7 +17,7 @@ const REDACT_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
 ];
 
 const SECRET_KEY_PATTERN = /(^|[_-])(authorization|token|secret|password|passwd|cookie|credential|api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?(id|token)?)([_-]|$)/i;
-const CONTENT_KEY_PATTERN = /(^|[_-])(prompt|response|content|body|text|stdout|stderr|output|input|reasoning|transcript|command|arguments|query|detail|summary|message)([_-]|$)/i;
+const CONTENT_KEY_PATTERN = /(^|[_-])(prompt|response|content|accumulated|body|text|stdout|stderr|output|input|reasoning|transcript|command|arguments|query|detail|summary|message)([_-]|$)/i;
 
 function redactTextValue(value: string, key?: string): string {
   if (key && SECRET_KEY_PATTERN.test(key)) return '[REDACTED]';

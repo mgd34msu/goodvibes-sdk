@@ -174,8 +174,9 @@ export class McpClient {
       (this.proc.stdin as import('bun').FileSink).end();
       this.proc.kill();
       await this.proc.exited;
-    } catch {
-      // Ignore shutdown errors
+    } catch (err: unknown) {
+      // OBS-11: Non-fatal — process may already be gone; log at debug for ops
+      logger.debug('[McpClient] error during process shutdown (non-fatal)', { error: String(err) });
     } finally {
       this.proc = null;
       this.buffer = '';

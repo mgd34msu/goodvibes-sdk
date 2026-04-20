@@ -2,6 +2,11 @@
  * Turn emitters — typed emission wrappers for TurnEvent domain.
  *
  * Import and call these instead of emitting raw strings.
+ *
+ * Note: raw prompt/response content is carried on the event bus as-is so
+ * internal consumers (conversation reducer, reply pipeline, stream UI) can
+ * render and advance state. OBS-06 redaction happens at the telemetry
+ * boundary (TelemetryApiService) where events become externally observable.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
@@ -66,6 +71,20 @@ export function emitStreamEnd(
   bus.emit('turn', createEventEnvelope('STREAM_END', { type: 'STREAM_END', ...data }, ctx));
 }
 
+/** OBS-04: Emit LLM_REQUEST_STARTED when a provider chat request is about to be dispatched. */
+export function emitLlmRequestStarted(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: {
+    turnId: string;
+    provider: string;
+    model: string;
+    promptSummary: { length: number; sha256: string; first100chars: string } | string;
+  }
+): void {
+  bus.emit('turn', createEventEnvelope('LLM_REQUEST_STARTED', { type: 'LLM_REQUEST_STARTED', ...data }, ctx));
+}
+
 /** Emit LLM_RESPONSE_RECEIVED when a provider chat call completes within a turn iteration. */
 export function emitLlmResponseReceived(
   bus: RuntimeEventBus,
@@ -74,12 +93,18 @@ export function emitLlmResponseReceived(
     turnId: string;
     provider: string;
     model: string;
-    content: string;
+    contentSummary: { length: number; sha256: string; first100chars: string } | string;
     toolCallCount: number;
     inputTokens: number;
     outputTokens: number;
     cacheReadTokens?: number;
     cacheWriteTokens?: number;
+    /** OBS-04 enrichments */
+    durationMs?: number;
+    retries?: number;
+    costUsdCents?: number;
+    finishReason?: string;
+    providerRequestId?: string;
   }
 ): void {
   bus.emit('turn', createEventEnvelope('LLM_RESPONSE_RECEIVED', { type: 'LLM_RESPONSE_RECEIVED', ...data }, ctx));

@@ -20,6 +20,7 @@ import {
   inferArtifactKind,
   sanitizeArtifactFilename,
 } from './types.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 export interface ArtifactStoreConfig {
   readonly rootDir?: string;
@@ -418,7 +419,7 @@ export class ArtifactStore {
         throw new Error('Private-host remote artifact fetches are disabled by config.');
       }
       this.assertRemoteHostAllowed(current, fetchMode);
-      const response = await fetch(current, {
+      const response = await instrumentedFetch(current, {
         method: 'GET',
         redirect: 'manual',
       });

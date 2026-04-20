@@ -15,6 +15,7 @@ import {
 import { applyExtract, sniffContentType } from './extract.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 export interface FetchRuntimeDeps {
   readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null;
@@ -214,7 +215,7 @@ async function fetchOneRaw(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
   try {
-    const response = await fetch(effectiveUrl, {
+    const response = await instrumentedFetch(effectiveUrl, {
       method,
       headers: Object.keys(headers).length > 0 ? (headers as HeadersInit) : undefined,
       body,

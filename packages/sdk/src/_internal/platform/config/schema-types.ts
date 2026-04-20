@@ -252,6 +252,17 @@ export interface RuntimeConfig {
   };
 }
 
+export interface TelemetryConfig {
+  /**
+   * OBS-06: when true, raw prompt/response content remains visible in
+   * telemetry events (and view='raw' is permitted for operators).
+   * Default false: prompt/response fields in events are redacted via the
+   * standard sanitizer at safe-view egress. Set true only in non-production
+   * environments; a startup WARN is logged.
+   */
+  includeRawPrompts: boolean;
+}
+
 export interface GoodVibesConfig {
   display: {
     stream: boolean;            // default: true
@@ -362,6 +373,7 @@ export interface GoodVibesConfig {
   /** Persisted feature flag overrides keyed by flag id. */
   featureFlags: Record<string, PersistedFlagState>;
   runtime: RuntimeConfig;
+  telemetry: TelemetryConfig;
 }
 
 export interface ConfigSetting {
@@ -570,7 +582,8 @@ export type ConfigKey =
   | 'network.outboundTls.customCaDir'
   | 'network.outboundTls.allowInsecureLocalhost'
   | 'network.remoteFetch.allowPrivateHosts'
-  | 'runtime.companionChatLimiter.perSessionLimit';
+  | 'runtime.companionChatLimiter.perSessionLimit'
+  | 'telemetry.includeRawPrompts';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -770,4 +783,5 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'network.outboundTls.allowInsecureLocalhost' ? boolean :
   K extends 'network.remoteFetch.allowPrivateHosts' ? boolean :
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
+  K extends 'telemetry.includeRawPrompts' ? boolean :
   never;

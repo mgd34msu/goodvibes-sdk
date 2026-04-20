@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/events/index.js';
 import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../tools/fetch/trust-tiers.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // WebhookNotifier
@@ -174,7 +175,7 @@ export class WebhookNotifier {
       }
     }
 
-    const res = await fetch(url, {
+    const res = await instrumentedFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: text,

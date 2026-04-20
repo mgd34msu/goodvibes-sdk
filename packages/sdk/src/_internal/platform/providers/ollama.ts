@@ -1,4 +1,5 @@
 import { withRetry } from '../utils/retry.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import { ProviderError } from '../types/errors.js';
 import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import type { ProviderCapability } from './capabilities.js';
@@ -18,6 +19,7 @@ import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.
 import { toOpenAITools } from './tool-formats.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
 import { mapOllamaStopReason } from './stop-reason-maps.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 type NativeFetch = (
   input: RequestInfo | URL,
@@ -69,7 +71,7 @@ export class OllamaProvider implements LLMProvider {
     this.defaultModel = opts.defaultModel;
     this.nativeChatUrl = deriveOllamaChatUrl(opts.baseURL);
     this.nativeEmbedUrl = deriveOllamaEmbedUrl(opts.baseURL);
-    this.nativeFetch = opts.nativeFetch ?? ((input, init) => fetch(input, init));
+    this.nativeFetch = opts.nativeFetch ?? instrumentedFetch;
     this.fallbackProvider = opts.fallbackProvider ?? new OpenAICompatProvider(opts);
   }
 
@@ -78,7 +80,8 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    return withRetry(async () => {
+    return (await instrumentedLlmCall(
+      () => withRetry(async () => {
       const model = params.model || this.defaultModel;
 
       if (canUseNativeOllamaChat(params.messages)) {
@@ -92,7 +95,7 @@ export class OllamaProvider implements LLMProvider {
       }
 
       return this.fallbackProvider.chat(params);
-    });
+    }), { provider: this.name, model: params.model || this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

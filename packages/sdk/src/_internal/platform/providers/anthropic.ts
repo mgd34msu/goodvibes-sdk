@@ -7,6 +7,7 @@ import type { CacheContext, CacheHitTracker } from './cache-strategy.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import {
   toAnthropicTools,
   toAnthropicMessages,
@@ -14,6 +15,7 @@ import {
 } from './tool-formats.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { toProviderError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 const ANTHROPIC_API_VERSION = '2023-06-01';
@@ -99,7 +101,7 @@ export class AnthropicProvider implements LLMProvider {
   async chat(params: ChatRequest): Promise<ChatResponse> {
     const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort } = params;
 
-    return withRetry(async () => {
+    return (await instrumentedLlmCall(() => withRetry(async () => {
       const resolvedModel = normalizeAnthropicModel(model);
       // Build Anthropic-formatted messages and tools early so we can inject cache_control.
       const anthropicMessages = toAnthropicMessages(messages);
@@ -257,7 +259,7 @@ export class AnthropicProvider implements LLMProvider {
 
       let res: Response;
       try {
-        res = await fetch(`${ANTHROPIC_API_BASE}/messages`, {
+        res = await instrumentedFetch(`${ANTHROPIC_API_BASE}/messages`, {
           method: 'POST',
           headers,
           body: JSON.stringify(body),
@@ -419,7 +421,7 @@ export class AnthropicProvider implements LLMProvider {
           hitRate,
         },
       };
-    });
+    }), { provider: 'anthropic', model: model })).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

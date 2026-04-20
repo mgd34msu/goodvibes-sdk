@@ -1,4 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import { logger } from '../utils/logger.js';
+import {
+  authFailureTotal,
+  authSuccessTotal,
+  httpRequestDurationMs,
+  httpRequestsTotal,
+} from '../runtime/metrics.js';
 import { HookDispatcher } from '../hooks/dispatcher.js';
 import type { HookEvent } from '../hooks/types.js';
 import {
@@ -397,11 +404,44 @@ export class HttpListener {
   // -------------------------------------------------------------------------
 
   private async handleRequest(req: Request): Promise<Response> {
+    const requestId = randomUUID();
+    const startMs = Date.now();
     const url = new URL(req.url);
     const clientIp = extractForwardedClientIp(
       req,
       this.trustProxy || (this.tlsState?.trustProxy ?? false),
     ) ?? 'unknown';
+    let response: Response | null = null;
+    try {
+      response = await this._handleRequestInner(req, url, clientIp, requestId);
+      return response;
+    } finally {
+      const status = response?.status ?? 500;
+      const latencyMs = Date.now() - startMs;
+      // OBS-01: structured HTTP access log — SIEM-ingestable
+      logger.info('HTTP_ACCESS_LOG', {
+        type: 'HTTP_ACCESS_LOG',
+        requestId,
+        method: req.method,
+        path: url.pathname,
+        status,
+        latencyMs,
+        clientIp,
+      });
+      // C-1: record HTTP metric instruments
+      const statusClass = status >= 500 ? '5xx' : status >= 400 ? '4xx' : '2xx';
+      const pathPattern = url.pathname.replace(/\/[0-9a-f-]{8,}(?=\/|$)/gi, '/:id');
+      httpRequestsTotal.add(1, { method: req.method, status_class: statusClass });
+      httpRequestDurationMs.record(latencyMs, { method: req.method, path_pattern: pathPattern, status_class: statusClass });
+    }
+  }
+
+  private async _handleRequestInner(
+    req: Request,
+    url: URL,
+    clientIp: string,
+    requestId: string,
+  ): Promise<Response> {
 
     // SEC-07: CORS origin check is OPT-IN via enforceCors. Default is permissive
     // (home/single-user deployments) — pre-0.21.29 behavior preserved. When
@@ -430,7 +470,7 @@ export class HttpListener {
       if (!this.loginRateLimiter.check(clientIp)) {
         return Response.json({ error: 'Too many requests' }, { status: 429 });
       }
-      return this.handleLogin(req);
+      return this.handleLogin(req, clientIp, requestId);
     }
 
     // General rate limiting for all other routes.
@@ -456,7 +496,7 @@ export class HttpListener {
     return Response.json({ error: 'Not found' }, { status: 404 });
   }
 
-  private async handleLogin(req: Request): Promise<Response> {
+  private async handleLogin(req: Request, clientIp: string, requestId: string): Promise<Response> {
     const body = await this.parseJsonBody(req);
     if (body instanceof Response) return body;
 
@@ -465,10 +505,30 @@ export class HttpListener {
     const user = this.userAuth.authenticate(username, password);
 
     if (!user) {
+      // OBS-02: AUTH_FAILED — never log credential values
+      logger.warn('AUTH_FAILED', {
+        type: 'AUTH_FAILED',
+        requestId,
+        usernameAttempted: username,
+        clientIp,
+        reason: 'invalid_credentials',
+      });
+      // C-1: record auth failure metric
+      authFailureTotal.add(1);
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     const session = this.userAuth.createSession(user.username);
+    // OBS-02: AUTH_SUCCEEDED — never log credential values
+    // C-1: record auth success metric
+    authSuccessTotal.add(1);
+    logger.info('AUTH_SUCCEEDED', {
+      type: 'AUTH_SUCCEEDED',
+      requestId,
+      username: user.username,
+      clientIp,
+      method: 'password',
+    });
     return Response.json({
       authenticated: true,
       token: session.token,

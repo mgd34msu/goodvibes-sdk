@@ -1,4 +1,5 @@
 import { withRetry } from '../utils/retry.js';
+import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import { ProviderError } from '../types/errors.js';
 import type { ToolCall } from '../types/tools.js';
 import type { ProviderCapability } from './capabilities.js';
@@ -16,6 +17,7 @@ import type {
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
 import { mapLlamaCppStopReason } from './stop-reason-maps.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import {
   extractTextToolCalls,
   fromOpenAIToolCalls,
@@ -73,7 +75,7 @@ export class LlamaCppProvider implements LLMProvider {
     this.defaultModel = opts.defaultModel;
     this.reasoningFormat = opts.reasoningFormat ?? 'none';
     this.nativeChatUrl = deriveLlamaCppChatUrl(opts.baseURL);
-    this.nativeFetch = opts.nativeFetch ?? ((input, init) => fetch(input, init));
+    this.nativeFetch = opts.nativeFetch ?? instrumentedFetch;
     this.fallbackProvider = opts.fallbackProvider ?? new OpenAICompatProvider(opts);
     this.apiKey = opts.apiKey;
     this.defaultHeaders = opts.defaultHeaders;
@@ -84,12 +86,13 @@ export class LlamaCppProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    return withRetry(async () => {
+    return (await instrumentedLlmCall(
+      () => withRetry(async () => {
       if (!shouldUseNonStreamingLlamaCpp(params)) {
         return this.fallbackProvider.chat(params);
       }
       return this.chatViaNonStreamingCompat(params, params.model || this.defaultModel);
-    });
+    }), { provider: this.name, model: params.model || this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

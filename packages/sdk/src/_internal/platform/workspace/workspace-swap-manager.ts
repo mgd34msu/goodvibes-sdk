@@ -16,6 +16,7 @@
  *   WORKSPACE_SWAP_STARTED   — before swap begins
  *   WORKSPACE_SWAP_REFUSED   — when swap is rejected
  *   WORKSPACE_SWAP_COMPLETED — after all stores re-rooted
+ *   WORKSPACE_SWAP_FAILED    — when mkdir or rerootStores fails (OBS-08)
  */
 
 import { mkdirSync, existsSync } from 'node:fs';
@@ -24,6 +25,8 @@ import { writeDaemonSetting } from './daemon-home.js';
 import type { WorkspaceEvent } from '../runtime/events/workspace.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { createEventEnvelope } from '../runtime/events/index.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
 // Minimal interface requirements (avoids coupling to full store types)
@@ -115,6 +118,8 @@ export class WorkspaceSwapManager {
       const reason = `Cannot create workspace directory at '${resolved}': ${
         err instanceof Error ? err.message : String(err)
       }`;
+      // OBS-08: emit WORKSPACE_SWAP_FAILED so subscribers that saw STARTED get terminal resolution
+      this._emit({ type: 'WORKSPACE_SWAP_FAILED', from, to, code: 'INVALID_PATH', reason });
       return { ok: false, code: 'INVALID_PATH', reason };
     }
 
@@ -125,6 +130,8 @@ export class WorkspaceSwapManager {
       const reason = `Failed to re-initialize stores at '${resolved}': ${
         err instanceof Error ? err.message : String(err)
       }`;
+      // OBS-08: emit WORKSPACE_SWAP_FAILED so subscribers that saw STARTED get terminal resolution
+      this._emit({ type: 'WORKSPACE_SWAP_FAILED', from, to, code: 'REROOT_FAILED', reason });
       return { ok: false, code: 'INVALID_PATH', reason };
     }
 
@@ -136,8 +143,13 @@ export class WorkspaceSwapManager {
     try {
       writeDaemonSetting(this.deps.daemonHomeDir, 'runtime.workingDir', resolved);
       persistedInDaemonSettings = true;
-    } catch {
-      // Non-fatal — swap succeeded but persistence failed
+    } catch (err: unknown) {
+      // OBS-09: Non-fatal — swap succeeded but persistence failed. Log so ops can diagnose.
+      logger.warn('[WorkspaceSwap] daemon settings persistence failed — workingDir will not survive restart', {
+        error: summarizeError(err),
+        daemonHomeDir: this.deps.daemonHomeDir,
+        resolvedPath: resolved,
+      });
     }
 
     this._emit({ type: 'WORKSPACE_SWAP_COMPLETED', from, to: resolved, persistedInDaemonSettings });

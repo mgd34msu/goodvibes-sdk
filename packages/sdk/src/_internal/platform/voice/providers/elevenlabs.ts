@@ -14,6 +14,7 @@ import {
   resolveAudioInput,
   trimToUndefined,
 } from './shared.js';
+import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 const DEFAULT_ELEVENLABS_STT_MODEL = 'scribe_v2';
 const DEFAULT_ELEVENLABS_REALTIME_MODEL = 'scribe_v2_realtime';
@@ -132,7 +133,7 @@ export function createElevenLabsProvider(): VoiceProvider {
       const apiKey = readFirstEnv(envVars);
       if (!apiKey) return [];
       const baseUrl = normalizeBaseUrl(readFirstEnv(baseUrlEnvVars), 'https://api.elevenlabs.io');
-      const response = await fetch(`${baseUrl}/v1/voices`, {
+      const response = await instrumentedFetch(`${baseUrl}/v1/voices`, {
         headers: { 'xi-api-key': apiKey },
       });
       if (!response.ok) throw new Error(`ElevenLabs voices failed: HTTP ${response.status}`);
@@ -155,7 +156,7 @@ export function createElevenLabsProvider(): VoiceProvider {
       if (!apiKey) throw new Error('ElevenLabs API key missing');
       const baseUrl = normalizeBaseUrl(readFirstEnv(baseUrlEnvVars), 'https://api.elevenlabs.io');
       const voiceId = request.voiceId?.trim() || 'pMsXgVXv3BLzUgSXRplE';
-      const response = await fetch(`${baseUrl}/v1/text-to-speech/${voiceId}`, {
+      const response = await instrumentedFetch(`${baseUrl}/v1/text-to-speech/${voiceId}`, {
         method: 'POST',
         headers: {
           'xi-api-key': apiKey,
@@ -277,7 +278,7 @@ export function createElevenLabsProvider(): VoiceProvider {
       if (metadata?.['webhookMetadata'] !== undefined) {
         form.append('webhook_metadata', JSON.stringify(metadata['webhookMetadata']));
       }
-      const response = await fetch(url, {
+      const response = await instrumentedFetch(url, {
         method: 'POST',
         headers: {
           'xi-api-key': apiKey,
@@ -363,7 +364,7 @@ export function createElevenLabsProvider(): VoiceProvider {
         const value = normalizeBooleanString(metadata['enableLogging']);
         if (value) websocketUrl.searchParams.set('enable_logging', value);
       }
-      const tokenResponse = await fetch(`${baseUrl}/v1/single-use-token/realtime_scribe`, {
+      const tokenResponse = await instrumentedFetch(`${baseUrl}/v1/single-use-token/realtime_scribe`, {
         method: 'POST',
         headers: {
           'xi-api-key': apiKey,

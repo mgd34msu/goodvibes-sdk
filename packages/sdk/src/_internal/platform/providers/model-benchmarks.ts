@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 export interface ModelBenchmarks {
   gpqa?: number;
@@ -291,7 +292,7 @@ export class BenchmarkStore {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const response = await fetch(ZEROEVAL_URL, {
+      const response = await instrumentedFetch(ZEROEVAL_URL, {
         signal: controller.signal,
         headers: { Accept: 'application/json' },
       });
