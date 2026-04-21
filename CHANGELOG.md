@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.34] - 2026-04-21
+
+Patch fix for `ControlPlaneGateway.createEventStream` + `IntegrationHelpers.createEventStream` SSE backpressure.
+
+### Fixed
+- **PERF-08**: Both SSE event-stream constructors relied on the default `ReadableStream` high-water mark of 1. When `start()` synchronously enqueued `ready` + replayed recent traffic, `desiredSize` hit 0 after the first chunk and the PERF-05/PERF-06 backpressure guards dropped every subsequent chunk before any consumer had pulled. Fixed by passing `new CountQueuingStrategy({ highWaterMark: 256 })` to both `ReadableStream` constructors so startup handshake + recent-traffic replay + live events fit without tripping backpressure for a healthy consumer.
+
+### Migration
+No consumer changes required. Hosts on 0.21.33 that observed missing SSE events after the `ready` frame should see them delivered correctly on upgrade.
+
+---
+
 ## [0.21.33] - 2026-04-20
 
 Waves 4 closeout + Wave 5 of the enterprise-adoption hardening series. All 24 targeted findings (3 Wave-4 closeout refixes + 21 Wave-5 findings) at 10.0/10 review threshold. No breaking runtime changes; one narrowing-API change (VersionMismatchError.code exposed as typed union alongside mismatchCode) and one wire-format change (scheduler-capacity fields → camelCase).
