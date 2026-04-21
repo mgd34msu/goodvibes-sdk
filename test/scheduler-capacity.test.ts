@@ -3,7 +3,7 @@
  *
  * Tests for Architectural #3 — GET /api/runtime/scheduler scheduler capacity endpoint.
  *
- * - Empty state: correct zero-state shape with slots_total from config default
+ * - Empty state: correct zero-state shape with slotsTotal from config default
  * - With running + queued runs: counters reflect live state
  * - HTTP route wiring: dispatchDaemonOperatorApiRoutes returns documented shape
  */
@@ -19,10 +19,10 @@ import type { DaemonApiRouteHandlers } from '../packages/daemon-sdk/src/context.
 // ---------------------------------------------------------------------------
 
 type CapacitySnapshot = {
-  slots_total: number;
-  slots_in_use: number;
-  queue_depth: number;
-  oldest_queued_age_ms: number | null;
+  slotsTotal: number;
+  slotsInUse: number;
+  queueDepth: number;
+  oldestQueuedAgeMs: number | null;
 };
 
 function makeContext(capacity: CapacitySnapshot): DaemonRuntimeRouteContext {
@@ -92,101 +92,101 @@ function makeContext(capacity: CapacitySnapshot): DaemonRuntimeRouteContext {
 describe('Arch #3 — GET /api/runtime/scheduler: empty state', () => {
   test('empty state returns documented shape with zero counters', async () => {
     const ctx = makeContext({
-      slots_total: 4,
-      slots_in_use: 0,
-      queue_depth: 0,
-      oldest_queued_age_ms: null,
+      slotsTotal: 4,
+      slotsInUse: 0,
+      queueDepth: 0,
+      oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
     const res = handlers.getSchedulerCapacity();
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
-    expect(typeof body['slots_total']).toBe('number');
-    expect(typeof body['slots_in_use']).toBe('number');
-    expect(typeof body['queue_depth']).toBe('number');
-    // oldest_queued_age_ms is null when queue is empty
-    expect(body['oldest_queued_age_ms']).toBeNull();
-    expect(body['slots_total']).toBe(4);
-    expect(body['slots_in_use']).toBe(0);
-    expect(body['queue_depth']).toBe(0);
+    expect(typeof body['slotsTotal']).toBe('number');
+    expect(typeof body['slotsInUse']).toBe('number');
+    expect(typeof body['queueDepth']).toBe('number');
+    // oldestQueuedAgeMs is null when queue is empty
+    expect(body['oldestQueuedAgeMs']).toBeNull();
+    expect(body['slotsTotal']).toBe(4);
+    expect(body['slotsInUse']).toBe(0);
+    expect(body['queueDepth']).toBe(0);
   });
 
-  test('slots_total reflects automation.maxConcurrentRuns config default (4)', async () => {
+  test('slotsTotal reflects automation.maxConcurrentRuns config default (4)', async () => {
     const ctx = makeContext({
-      slots_total: 4,
-      slots_in_use: 0,
-      queue_depth: 0,
-      oldest_queued_age_ms: null,
+      slotsTotal: 4,
+      slotsInUse: 0,
+      queueDepth: 0,
+      oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
     const res = handlers.getSchedulerCapacity();
     const body = await res.json() as Record<string, unknown>;
-    expect(body['slots_total']).toBe(4);
+    expect(body['slotsTotal']).toBe(4);
   });
 });
 
 describe('Arch #3 — GET /api/runtime/scheduler: live state', () => {
-  test('with running runs: slots_in_use reflects executing count', async () => {
+  test('with running runs: slotsInUse reflects executing count', async () => {
     const ctx = makeContext({
-      slots_total: 4,
-      slots_in_use: 2,
-      queue_depth: 0,
-      oldest_queued_age_ms: null,
+      slotsTotal: 4,
+      slotsInUse: 2,
+      queueDepth: 0,
+      oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
     const res = handlers.getSchedulerCapacity();
     const body = await res.json() as Record<string, unknown>;
-    expect(body['slots_in_use']).toBe(2);
-    expect(body['queue_depth']).toBe(0);
+    expect(body['slotsInUse']).toBe(2);
+    expect(body['queueDepth']).toBe(0);
   });
 
-  test('with queued runs: queue_depth and oldest_queued_age_ms populated', async () => {
+  test('with queued runs: queueDepth and oldestQueuedAgeMs populated', async () => {
     const oldestAgeMs = 12_500;
     const ctx = makeContext({
-      slots_total: 4,
-      slots_in_use: 4,
-      queue_depth: 3,
-      oldest_queued_age_ms: oldestAgeMs,
+      slotsTotal: 4,
+      slotsInUse: 4,
+      queueDepth: 3,
+      oldestQueuedAgeMs: oldestAgeMs,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
     const res = handlers.getSchedulerCapacity();
     const body = await res.json() as Record<string, unknown>;
-    expect(body['slots_in_use']).toBe(4);
-    expect(body['queue_depth']).toBe(3);
-    expect(body['oldest_queued_age_ms']).toBe(oldestAgeMs);
+    expect(body['slotsInUse']).toBe(4);
+    expect(body['queueDepth']).toBe(3);
+    expect(body['oldestQueuedAgeMs']).toBe(oldestAgeMs);
   });
 
-  test('oldest_queued_age_ms is null when queue is empty even when slots_in_use > 0', async () => {
+  test('oldestQueuedAgeMs is null when queue is empty even when slotsInUse > 0', async () => {
     const ctx = makeContext({
-      slots_total: 4,
-      slots_in_use: 2,
-      queue_depth: 0,
-      oldest_queued_age_ms: null,
+      slotsTotal: 4,
+      slotsInUse: 2,
+      queueDepth: 0,
+      oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
     const res = handlers.getSchedulerCapacity();
     const body = await res.json() as Record<string, unknown>;
-    expect(body['oldest_queued_age_ms']).toBeNull();
+    expect(body['oldestQueuedAgeMs']).toBeNull();
   });
 });
 
 describe('Arch #3 — GET /api/runtime/scheduler: HTTP route wiring', () => {
   test('getSchedulerCapacity handler returns 200 with required field keys', async () => {
     const ctx = makeContext({
-      slots_total: 4,
-      slots_in_use: 1,
-      queue_depth: 2,
-      oldest_queued_age_ms: 5000,
+      slotsTotal: 4,
+      slotsInUse: 1,
+      queueDepth: 2,
+      oldestQueuedAgeMs: 5000,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
     const res = handlers.getSchedulerCapacity();
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     // Verify all four documented fields are present
-    expect('slots_total' in body).toBe(true);
-    expect('slots_in_use' in body).toBe(true);
-    expect('queue_depth' in body).toBe(true);
-    expect('oldest_queued_age_ms' in body).toBe(true);
+    expect('slotsTotal' in body).toBe(true);
+    expect('slotsInUse' in body).toBe(true);
+    expect('queueDepth' in body).toBe(true);
+    expect('oldestQueuedAgeMs' in body).toBe(true);
   });
 
   // Dispatcher integration: the following tests go through dispatchOperatorRoutes
@@ -194,10 +194,10 @@ describe('Arch #3 — GET /api/runtime/scheduler: HTTP route wiring', () => {
 
   test('happy path via dispatcher: GET /api/runtime/scheduler returns 200 with documented shape', async () => {
     const ctx = makeContext({
-      slots_total: 4,
-      slots_in_use: 1,
-      queue_depth: 2,
-      oldest_queued_age_ms: 5000,
+      slotsTotal: 4,
+      slotsInUse: 1,
+      queueDepth: 2,
+      oldestQueuedAgeMs: 5000,
     });
     const channelHandlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
     const handlers = {
@@ -208,13 +208,13 @@ describe('Arch #3 — GET /api/runtime/scheduler: HTTP route wiring', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(typeof body['slots_total']).toBe('number');
-    expect(typeof body['slots_in_use']).toBe('number');
-    expect(typeof body['queue_depth']).toBe('number');
-    expect(body['slots_total']).toBe(4);
-    expect(body['slots_in_use']).toBe(1);
-    expect(body['queue_depth']).toBe(2);
-    expect(body['oldest_queued_age_ms']).toBe(5000);
+    expect(typeof body['slotsTotal']).toBe('number');
+    expect(typeof body['slotsInUse']).toBe('number');
+    expect(typeof body['queueDepth']).toBe('number');
+    expect(body['slotsTotal']).toBe(4);
+    expect(body['slotsInUse']).toBe(1);
+    expect(body['queueDepth']).toBe(2);
+    expect(body['oldestQueuedAgeMs']).toBe(5000);
   });
 
   test('non-200 pass-through via dispatcher: handler returning 403 is plumbed through by dispatcher', async () => {

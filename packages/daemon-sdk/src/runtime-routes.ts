@@ -28,6 +28,7 @@ export function createDaemonRuntimeRouteHandlers(
   | 'getSharedSessionMessages'
   | 'getSharedSessionInputs'
   | 'postSharedSessionMessage'
+  | 'postSharedSessionInput'
   | 'postSharedSessionSteer'
   | 'postSharedSessionFollowUp'
   | 'cancelSharedSessionInput'

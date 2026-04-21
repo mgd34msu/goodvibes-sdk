@@ -424,6 +424,27 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     outputSchema: SHARED_SESSION_MESSAGE_CREATE_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
+    id: 'sessions.inputs.create',
+    title: 'Create Shared Session Input',
+    description: 'Create a shared-session input via the intent-dispatching alias. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler. Restored in SDK 0.21.36 for API surface parity after 0.21.35 removed the direct input-create endpoint.',
+    category: 'sessions',
+    scopes: ['write:sessions'],
+    http: { method: 'POST', path: '/api/sessions/{sessionId}/inputs' },
+    inputSchema: bodyEnvelopeSchema({
+      body: STRING_SCHEMA,
+      intent: STRING_SCHEMA,
+      surfaceKind: STRING_SCHEMA,
+      surfaceId: STRING_SCHEMA,
+      routing: SHARED_SESSION_ROUTING_INTENT_SCHEMA,
+      allowSpawnFallback: BOOLEAN_SCHEMA,
+    }, ['body']),
+    // Output shape is invariant across the three intents — submit/steer/follow-up
+    // all route through `respondToSessionSubmission`, which normalizes their payloads.
+    // If a future change specializes any of those responses, update this schema and
+    // add per-intent descriptors if necessary.
+    outputSchema: SHARED_SESSION_MESSAGE_CREATE_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
     id: 'sessions.inputs.list',
     title: 'List Shared Session Inputs',
     description: 'Return explicit session inputs, including queued follow-ups and delivered steering requests.',
@@ -590,5 +611,94 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     http: { method: 'POST', path: '/api/approvals/{approvalId}/cancel' },
     inputSchema: APPROVAL_ACTION_INPUT_SCHEMA,
     outputSchema: APPROVAL_ACTION_OUTPUT_SCHEMA,
+  }),
+  // ---------------------------------------------------------------------------
+  // F21 (SDK 0.21.36): companion-chat method catalog registration.
+  // The companion-chat routes were previously unadvertised in the method catalog
+  // even though the routes themselves worked. These entries restore parity so
+  // `/api/control-plane/methods` enumerates the full companion-chat surface.
+  // ---------------------------------------------------------------------------
+  methodDescriptor({
+    id: 'companion.chat.sessions.create',
+    title: 'Create Companion Chat Session',
+    description: 'Create a new companion-chat session. Optional `provider` / `model` override the registry default; `title` and `systemPrompt` are stored on the session record.',
+    category: 'companion',
+    scopes: ['write:sessions'],
+    http: { method: 'POST', path: '/api/companion/chat/sessions' },
+    inputSchema: bodyEnvelopeSchema({
+      title: STRING_SCHEMA,
+      model: STRING_SCHEMA,
+      provider: STRING_SCHEMA,
+      systemPrompt: STRING_SCHEMA,
+    }, []),
+    outputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      createdAt: NUMBER_SCHEMA,
+    }, ['sessionId', 'createdAt']),
+  }),
+  methodDescriptor({
+    id: 'companion.chat.sessions.get',
+    title: 'Get Companion Chat Session',
+    description: 'Return a companion-chat session record together with its full message history.',
+    category: 'companion',
+    scopes: ['read:sessions'],
+    http: { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}' },
+    inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
+    outputSchema: objectSchema({
+      session: SHARED_SESSION_RECORD_SCHEMA,
+      messages: arraySchema(objectSchema({}, [])),
+    }, ['session', 'messages']),
+  }),
+  methodDescriptor({
+    id: 'companion.chat.sessions.delete',
+    title: 'Close Companion Chat Session',
+    description: 'Close a companion-chat session. The session record is preserved in closed state.',
+    category: 'companion',
+    scopes: ['write:sessions'],
+    http: { method: 'DELETE', path: '/api/companion/chat/sessions/{sessionId}' },
+    inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
+    outputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      status: STRING_SCHEMA,
+    }, ['sessionId', 'status']),
+  }),
+  methodDescriptor({
+    id: 'companion.chat.messages.create',
+    title: 'Send Companion Chat Message',
+    description: 'Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided.',
+    category: 'companion',
+    scopes: ['write:sessions'],
+    http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages' },
+    inputSchema: bodyEnvelopeSchema({
+      body: STRING_SCHEMA,
+      content: STRING_SCHEMA,
+      metadata: objectSchema({}, []),
+    }, []),
+    outputSchema: objectSchema({
+      messageId: STRING_SCHEMA,
+    }, ['messageId']),
+  }),
+  methodDescriptor({
+    id: 'companion.chat.messages.list',
+    title: 'List Companion Chat Messages',
+    description: 'Return the message list for a companion-chat session. Restored in SDK 0.21.36 (F21) after it was briefly reachable only via the session-detail endpoint.',
+    category: 'companion',
+    scopes: ['read:sessions'],
+    http: { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/messages' },
+    inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
+    outputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      messages: arraySchema(objectSchema({}, [])),
+    }, ['sessionId', 'messages']),
+  }),
+  methodDescriptor({
+    id: 'companion.chat.events.stream',
+    title: 'Stream Companion Chat Events',
+    description: 'Server-Sent Events stream of turn and agent events scoped to a single companion-chat session.',
+    category: 'companion',
+    scopes: ['read:sessions'],
+    http: { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/events' },
+    inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
+    outputSchema: EMPTY_OBJECT_SCHEMA,
   }),
 ];

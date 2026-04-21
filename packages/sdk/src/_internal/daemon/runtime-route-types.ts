@@ -182,7 +182,7 @@ export interface DaemonRuntimeRouteContext {
     removeJob(jobId: string): Promise<void>;
     setEnabled(jobId: string, enabled: boolean): Promise<AutomationJobLike | null>;
     runNow(jobId: string): Promise<{ id: string; agentId?: string; status: string }>;
-    getSchedulerCapacity(): { slots_total: number; slots_in_use: number; queue_depth: number; oldest_queued_age_ms: number | null };
+    getSchedulerCapacity(): { slotsTotal: number; slotsInUse: number; queueDepth: number; oldestQueuedAgeMs: number | null };
   };
   readonly normalizeAtSchedule: (at: number) => unknown;
   readonly normalizeEverySchedule: (interval: string | number, anchorAt?: number) => unknown;
@@ -254,6 +254,7 @@ export type DaemonRuntimeRouteHandlerMap = Pick<
   | 'getSharedSessionMessages'
   | 'getSharedSessionInputs'
   | 'postSharedSessionMessage'
+  | 'postSharedSessionInput'
   | 'postSharedSessionSteer'
   | 'postSharedSessionFollowUp'
   | 'cancelSharedSessionInput'

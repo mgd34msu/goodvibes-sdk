@@ -8,6 +8,7 @@
  *   GET    /api/companion/chat/sessions/:sessionId
  *   DELETE /api/companion/chat/sessions/:sessionId
  *   POST   /api/companion/chat/sessions/:sessionId/messages
+ *   GET    /api/companion/chat/sessions/:sessionId/messages
  *   GET    /api/companion/chat/sessions/:sessionId/events  (SSE)
  *
  * All routes require the existing daemon bearer-token auth (enforced by the
@@ -62,6 +63,14 @@ export async function dispatchCompanionChatRoutes(
   // POST /api/companion/chat/sessions/:sessionId/messages
   if (sub === 'messages' && req.method === 'POST') {
     return handlePostMessage(req, sessionId, context);
+  }
+
+  // F21 restoration (SDK 0.21.36): GET /api/companion/chat/sessions/:sessionId/messages
+  // returns the message list directly (previously only reachable via the session-detail
+  // endpoint's embedded `messages` field). Restored for consumer parity — clients that
+  // enumerate messages independently of the session record can hit this path.
+  if (sub === 'messages' && req.method === 'GET') {
+    return handleGetMessages(sessionId, context);
   }
 
   // GET /api/companion/chat/sessions/:sessionId/events
@@ -223,6 +232,29 @@ async function handlePostMessage(
       { status },
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/companion/chat/sessions/:sessionId/messages
+// ---------------------------------------------------------------------------
+
+/**
+ * Handle GET /api/companion/chat/sessions/:sessionId/messages.
+ *
+ * F21 restoration: returns the message list for a companion-chat session.
+ * Response shape matches the `messages` field of the session-detail endpoint
+ * so clients can substitute one for the other.
+ */
+async function handleGetMessages(
+  sessionId: string,
+  context: CompanionChatRouteContext,
+): Promise<Response> {
+  const session = context.chatManager.getSession(sessionId);
+  if (!session) {
+    return Response.json({ error: 'Session not found', code: 'SESSION_NOT_FOUND' }, { status: 404 });
+  }
+  const messages = context.chatManager.getMessages(sessionId);
+  return Response.json({ sessionId, messages });
 }
 
 // ---------------------------------------------------------------------------

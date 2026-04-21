@@ -77,7 +77,7 @@ function makeContext(inputs: Map<string, InputRecord>): DaemonRuntimeRouteContex
       removeJob: async () => {},
       setEnabled: async () => null,
       runNow: async () => ({ id: 'stub-run', status: 'running' }),
-      getSchedulerCapacity: () => ({ slots_total: 4, slots_in_use: 0, queue_depth: 0, oldest_queued_age_ms: null }),
+      getSchedulerCapacity: () => ({ slotsTotal: 4, slotsInUse: 0, queueDepth: 0, oldestQueuedAgeMs: null }),
     },
     normalizeAtSchedule: () => ({}),
     normalizeEverySchedule: () => ({}),
