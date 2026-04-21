@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { discoverContextWindows } from '../providers/context-discovery.js';
+import { WELL_KNOWN_LOCAL_PORTS } from '../providers/well-known-endpoints.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
 import { resolveSurfaceDirectory } from '../runtime/surface-root.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
@@ -124,7 +125,19 @@ export function removePersistedProviders(roots: DiscoveryRoots, toRemove: Array<
 // Constants
 // ---------------------------------------------------------------------------
 
-const KNOWN_PORTS = [1234, 1337, 2242, 4891, 5000, 5001, 7860, 8000, 8001, 8080, 11434];
+const KNOWN_PORTS = [
+  WELL_KNOWN_LOCAL_PORTS.lmStudio,
+  WELL_KNOWN_LOCAL_PORTS.jan,
+  WELL_KNOWN_LOCAL_PORTS.aphrodite,
+  WELL_KNOWN_LOCAL_PORTS.gpt4all,
+  5000,
+  WELL_KNOWN_LOCAL_PORTS.koboldCpp,
+  7860,
+  8000,
+  8001,
+  WELL_KNOWN_LOCAL_PORTS.llamaCpp,
+  WELL_KNOWN_LOCAL_PORTS.ollama,
+];
 const PROBE_TIMEOUT_MS = 200;
 const MAX_CONCURRENT_PROBES = 50;
 const METADATA_TIMEOUT_MS = 2000;
@@ -288,13 +301,13 @@ function identifyServer(
       .join(' ');
   }
 
-  if (port === 11434) return 'ollama';
-  if (port === 1337) return 'jan';
-  if (port === 4891) return 'gpt4all';
-  if (port === 5001) return 'koboldcpp';
-  if (port === 2242) return 'aphrodite';
+  if (port === WELL_KNOWN_LOCAL_PORTS.ollama) return 'ollama';
+  if (port === WELL_KNOWN_LOCAL_PORTS.jan) return 'jan';
+  if (port === WELL_KNOWN_LOCAL_PORTS.gpt4all) return 'gpt4all';
+  if (port === WELL_KNOWN_LOCAL_PORTS.koboldCpp) return 'koboldcpp';
+  if (port === WELL_KNOWN_LOCAL_PORTS.aphrodite) return 'aphrodite';
 
-  if (port === 1234 || headerValues.includes('lmstudio') || modelIds.includes('lmstudio')) {
+  if (port === WELL_KNOWN_LOCAL_PORTS.lmStudio || headerValues.includes('lmstudio') || modelIds.includes('lmstudio')) {
     return 'lm-studio';
   }
 

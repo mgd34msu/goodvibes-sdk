@@ -1,5 +1,6 @@
 import type { OpenAICompatOptions } from './openai-compat.js';
 import type { AnthropicCompatOptions } from './anthropic-compat.js';
+import { WELL_KNOWN_LOCAL_ENDPOINTS } from './well-known-endpoints.js';
 
 export interface BuiltinProviderDefinition {
   readonly id: string;
@@ -294,7 +295,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
     label: 'LiteLLM',
     envVars: getBuiltinProviderEnvVars('litellm'),
     serviceNames: ['litellm'],
-    baseURL: 'http://localhost:4000/v1',
+    baseURL: `${WELL_KNOWN_LOCAL_ENDPOINTS.liteLLM}/v1`,
     defaultModel: 'claude-opus-4-6',
     models: ['claude-opus-4-6', 'gpt-5.4', 'gemini-3-pro'],
     allowAnonymous: true,
@@ -307,7 +308,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
     label: 'Copilot Proxy',
     envVars: getBuiltinProviderEnvVars('copilot-proxy'),
     serviceNames: ['copilot-proxy'],
-    baseURL: 'http://localhost:3000/v1',
+    baseURL: `${WELL_KNOWN_LOCAL_ENDPOINTS.copilotProxy}/v1`,
     defaultModel: 'gpt-5.2',
     models: [
       'gpt-5.2',
