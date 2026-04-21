@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.18.2"
+    "version": "0.21.36"
   },
   "auth": {
     "modes": [
@@ -264,16 +264,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "operator": {
     "methods": [
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "accounts.snapshot",
         "title": "Accounts Snapshot",
         "description": "Return provider and channel account posture.",
         "category": "accounts",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:accounts"
         ],
@@ -500,16 +500,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "approvals.approve",
         "title": "Approve Approval",
         "description": "Approve a pending approval.",
         "category": "approvals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:approvals"
         ],
@@ -591,15 +591,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -753,15 +749,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -830,16 +822,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "approvals.cancel",
         "title": "Cancel Approval",
         "description": "Cancel a pending approval.",
         "category": "approvals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:approvals"
         ],
@@ -921,15 +913,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -1083,15 +1071,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -1160,16 +1144,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "approvals.claim",
         "title": "Claim Approval",
         "description": "Claim a pending approval for operator handling.",
         "category": "approvals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:approvals"
         ],
@@ -1245,15 +1229,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -1407,15 +1387,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -1484,16 +1460,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "approvals.deny",
         "title": "Deny Approval",
         "description": "Deny a pending approval.",
         "category": "approvals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:approvals"
         ],
@@ -1575,15 +1551,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -1737,15 +1709,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -1814,16 +1782,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "approvals.list",
         "title": "List Approvals",
         "description": "Return pending and historical approval records.",
         "category": "approvals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:approvals"
         ],
@@ -2021,15 +1989,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.request.properties.args.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.request.properties.args.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -2183,15 +2147,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -2267,15 +2227,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http"
-        ],
-        "access": "authenticated",
         "id": "artifacts.content.get",
         "title": "Get Artifact Content",
         "description": "Return the raw content bytes for a stored artifact.",
         "category": "artifacts",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http"
+        ],
         "scopes": [
           "read:artifacts"
         ],
@@ -2320,16 +2280,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "artifacts.create",
         "title": "Create Artifact",
         "description": "Store a file or attachment artifact for later delivery or analysis.",
         "category": "artifacts",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:artifacts"
         ],
@@ -2385,15 +2345,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[7].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[7].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -2458,15 +2414,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[7].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[7].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -2492,16 +2444,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "artifacts.get",
         "title": "Get Artifact",
         "description": "Return metadata for a stored artifact.",
         "category": "artifacts",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:artifacts"
         ],
@@ -2578,15 +2530,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[8].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[8].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -2612,16 +2560,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "artifacts.list",
         "title": "List Artifacts",
         "description": "Return stored artifact metadata for files and attachments.",
         "category": "artifacts",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:artifacts"
         ],
@@ -2693,15 +2641,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[9].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[9].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -2728,16 +2672,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "local_auth.bootstrap.delete",
         "title": "Delete Bootstrap File",
         "description": "Delete the local-auth bootstrap credential file.",
         "category": "auth",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:auth"
         ],
@@ -2766,16 +2710,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "local_auth.sessions.delete",
         "title": "Revoke Local Auth Session",
         "description": "Revoke a local auth session.",
         "category": "auth",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:auth"
         ],
@@ -2811,16 +2755,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "local_auth.status",
         "title": "Local Auth Status",
         "description": "Return local auth posture, users, and sessions.",
         "category": "auth",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:auth"
         ],
@@ -2911,16 +2855,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "local_auth.users.create",
         "title": "Create Local Auth User",
         "description": "Create a local auth user.",
         "category": "auth",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:auth"
         ],
@@ -2975,16 +2919,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "local_auth.users.delete",
         "title": "Delete Local Auth User",
         "description": "Delete a local auth user.",
         "category": "auth",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:auth"
         ],
@@ -3020,16 +2964,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "local_auth.users.password.rotate",
         "title": "Rotate Local Auth Password",
         "description": "Rotate a local auth user password.",
         "category": "auth",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:auth"
         ],
@@ -3064,16 +3008,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.heartbeat.list",
         "title": "List Automation Heartbeat Queue",
         "description": "Return automation jobs queued for the next heartbeat.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:automation"
         ],
@@ -3146,16 +3090,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.heartbeat.run",
         "title": "Run Automation Heartbeat",
         "description": "Process automation jobs queued for the next heartbeat.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -3289,15 +3233,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -3648,15 +3588,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                     },
                                     {
                                       "type": "object",
-                                      "additionalProperties": {
-                                        "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "additionalProperties": {}
                                     },
                                     {
                                       "type": "array",
-                                      "items": {
-                                        "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "items": {}
                                     }
                                   ]
                                 }
@@ -3823,15 +3759,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.route.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.route.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -4077,15 +4009,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.result"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.result"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -4113,15 +4041,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -4228,16 +4152,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.integration.snapshot",
         "title": "Automation Integration Snapshot",
         "description": "Return the legacy integration automation snapshot.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:automation"
         ],
@@ -4449,16 +4373,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.create",
         "title": "Create Automation Job",
         "description": "Create a durable automation job.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -4876,15 +4800,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[19].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[19].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -5272,15 +5192,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[19].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[19].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -5584,15 +5500,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[19].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[19].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -5654,15 +5566,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[19].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[19].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -5691,16 +5599,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.delete",
         "title": "Delete Automation Job",
         "description": "Delete a durable automation job.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -5742,16 +5650,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.disable",
         "title": "Disable Automation Job",
         "description": "Disable a durable automation job.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -5793,16 +5701,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.enable",
         "title": "Enable Automation Job",
         "description": "Enable a durable automation job.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -5844,16 +5752,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.list",
         "title": "List Automation Jobs",
         "description": "Return automation jobs and recent runs.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:automation"
         ],
@@ -6251,15 +6159,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                     },
                                     {
                                       "type": "object",
-                                      "additionalProperties": {
-                                        "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "additionalProperties": {}
                                     },
                                     {
                                       "type": "array",
-                                      "items": {
-                                        "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "items": {}
                                     }
                                   ]
                                 }
@@ -6563,15 +6467,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -6633,15 +6533,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -6677,16 +6573,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.patch",
         "title": "Patch Automation Job",
         "description": "Patch a durable automation job.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -7156,15 +7052,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[24].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[24].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -7549,15 +7441,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[24].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[24].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -7861,15 +7749,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[24].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[24].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -7931,15 +7815,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[24].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[24].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -7968,16 +7848,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.pause",
         "title": "Pause Automation Job",
         "description": "Pause a durable automation job.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -8019,16 +7899,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.resume",
         "title": "Resume Automation Job",
         "description": "Resume a durable automation job.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -8070,16 +7950,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.jobs.run",
         "title": "Run Automation Job Now",
         "description": "Trigger an automation job immediately.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -8128,16 +8008,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.runs.cancel",
         "title": "Cancel Automation Run",
         "description": "Cancel an active automation run.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -8269,15 +8149,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -8628,15 +8504,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   },
                                   {
                                     "type": "object",
-                                    "additionalProperties": {
-                                      "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                    }
+                                    "additionalProperties": {}
                                   },
                                   {
                                     "type": "array",
-                                    "items": {
-                                      "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                    }
+                                    "items": {}
                                   }
                                 ]
                               }
@@ -8803,15 +8675,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -9057,15 +8925,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -9093,15 +8957,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -9134,16 +8994,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.runs.get",
         "title": "Get Automation Run",
         "description": "Return a single automation run record.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:automation"
         ],
@@ -9275,15 +9135,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -9634,15 +9490,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   },
                                   {
                                     "type": "object",
-                                    "additionalProperties": {
-                                      "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                    }
+                                    "additionalProperties": {}
                                   },
                                   {
                                     "type": "array",
-                                    "items": {
-                                      "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                    }
+                                    "items": {}
                                   }
                                 ]
                               }
@@ -9809,15 +9661,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -10063,15 +9911,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -10099,15 +9943,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -10237,16 +10077,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.runs.list",
         "title": "List Automation Runs",
         "description": "Return automation run history.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:automation"
         ],
@@ -10373,15 +10213,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -10732,15 +10568,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                     },
                                     {
                                       "type": "object",
-                                      "additionalProperties": {
-                                        "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "additionalProperties": {}
                                     },
                                     {
                                       "type": "array",
-                                      "items": {
-                                        "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "items": {}
                                     }
                                   ]
                                 }
@@ -10907,15 +10739,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -11161,15 +10989,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.result"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.result"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -11197,15 +11021,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -11239,16 +11059,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "automation.runs.retry",
         "title": "Retry Automation Run",
         "description": "Retry a completed or failed automation run.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -11380,15 +11200,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -11739,15 +11555,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   },
                                   {
                                     "type": "object",
-                                    "additionalProperties": {
-                                      "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                    }
+                                    "additionalProperties": {}
                                   },
                                   {
                                     "type": "array",
-                                    "items": {
-                                      "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                    }
+                                    "items": {}
                                   }
                                 ]
                               }
@@ -11914,15 +11726,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -12168,15 +11976,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -12204,15 +12008,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -12245,16 +12045,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "schedules.create",
         "title": "Create Schedule",
         "description": "Create a legacy schedule record.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -12993,15 +12793,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[32].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[32].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -13305,15 +13101,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[32].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[32].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -13375,15 +13167,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[32].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[32].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -13412,16 +13200,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "schedules.delete",
         "title": "Delete Schedule",
         "description": "Delete a legacy schedule record.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -13460,16 +13248,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "schedules.disable",
         "title": "Disable Schedule",
         "description": "Disable a legacy schedule record.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -13508,16 +13296,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "schedules.enable",
         "title": "Enable Schedule",
         "description": "Enable a legacy schedule record.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -13556,16 +13344,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "schedules.list",
         "title": "List Schedules",
         "description": "Return legacy schedule records.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:automation"
         ],
@@ -13960,15 +13748,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                     },
                                     {
                                       "type": "object",
-                                      "additionalProperties": {
-                                        "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "additionalProperties": {}
                                     },
                                     {
                                       "type": "array",
-                                      "items": {
-                                        "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "items": {}
                                     }
                                   ]
                                 }
@@ -14272,15 +14056,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -14342,15 +14122,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -14488,15 +14264,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -14847,15 +14619,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                     },
                                     {
                                       "type": "object",
-                                      "additionalProperties": {
-                                        "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "additionalProperties": {}
                                     },
                                     {
                                       "type": "array",
-                                      "items": {
-                                        "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                                      }
+                                      "items": {}
                                     }
                                   ]
                                 }
@@ -15022,15 +14790,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -15276,15 +15040,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.result"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.result"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -15312,15 +15072,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -15355,16 +15111,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "schedules.run",
         "title": "Run Schedule Now",
         "description": "Trigger a legacy schedule immediately.",
         "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:automation"
         ],
@@ -15410,16 +15166,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.accounts.action.default",
         "title": "Run Channel Account Action",
         "description": "Run a lifecycle action on the default channel account for a surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -15451,15 +15207,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[38].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[38].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -15607,15 +15359,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -15686,15 +15434,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -15719,16 +15463,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.accounts.action.named",
         "title": "Run Named Channel Account Action",
         "description": "Run a lifecycle action on a specific channel account.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -15760,15 +15504,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[39].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[39].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -15916,15 +15656,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -15995,15 +15731,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -16028,16 +15760,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.accounts.get",
         "title": "Get Channel Account",
         "description": "Return a single channel account record.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -16166,15 +15898,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[40].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[40].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -16198,16 +15926,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.accounts.list",
         "title": "List Channel Accounts",
         "description": "Return channel account lifecycle posture.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -16330,15 +16058,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[41].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[41].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -16369,16 +16093,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.accounts.surface.list",
         "title": "List Channel Surface Accounts",
         "description": "Return account posture for a single channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -16508,15 +16232,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[42].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[42].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -16547,16 +16267,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.actions.invoke",
         "title": "Run Channel Action",
         "description": "Run a channel-owned operator action.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -16588,15 +16308,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[43].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[43].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -16631,15 +16347,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[43].outputSchema.properties.result.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[43].outputSchema.properties.result.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -16655,16 +16367,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.actions.list",
         "title": "List Channel Actions",
         "description": "Return operator actions registered by channel plugins.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -16718,15 +16430,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -16749,15 +16457,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -16783,16 +16487,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.actions.surface.list",
         "title": "List Channel Surface Actions",
         "description": "Return operator actions for a single channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -16853,15 +16557,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -16884,15 +16584,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -16918,16 +16614,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.agent_tools.list",
         "title": "List Channel Agent Tools",
         "description": "Return LLM agent tools exposed through channel plugins.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -16972,15 +16668,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[46].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[46].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -17018,16 +16710,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.agent_tools.surface.list",
         "title": "List Channel Surface Agent Tools",
         "description": "Return LLM agent tools for a single channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -17079,15 +16771,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[47].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[47].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -17125,16 +16813,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.allowlist.edit",
         "title": "Edit Channel Allowlist",
         "description": "Apply allowlist additions or removals for a channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -17187,15 +16875,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[48].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[48].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -17337,15 +17021,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -17378,15 +17058,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -17453,15 +17129,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.resolved.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.resolved.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -17501,15 +17173,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -17541,15 +17209,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[48].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[48].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -17566,16 +17230,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.allowlist.resolve",
         "title": "Resolve Channel Allowlist",
         "description": "Resolve allowlist candidates into stable channel identities.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -17628,15 +17292,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[49].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[49].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -17685,15 +17345,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[49].outputSchema.properties.resolved.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[49].outputSchema.properties.resolved.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -17733,15 +17389,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[49].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[49].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -17758,16 +17410,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.authorize",
         "title": "Authorize Channel Action",
         "description": "Evaluate channel authorization and availability for a requested action.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -17808,15 +17460,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[50].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[50].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -17949,15 +17597,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -18004,15 +17648,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -18035,16 +17675,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.capabilities.list",
         "title": "List Channel Capabilities",
         "description": "Return capability posture for all registered channel surfaces.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -18101,15 +17741,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[51].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[51].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18136,16 +17772,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.capabilities.surface.list",
         "title": "List Channel Surface Capabilities",
         "description": "Return capability posture for a single surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -18209,15 +17845,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[52].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[52].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18244,16 +17876,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.directory.query",
         "title": "Query Channel Directory",
         "description": "Query a channel directory surface for users, groups, threads, or services.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -18371,15 +18003,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[53].outputSchema.properties.entries.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[53].outputSchema.properties.entries.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18404,16 +18032,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.doctor.get",
         "title": "Get Channel Doctor Report",
         "description": "Return doctor checks and repair posture for a channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -18489,15 +18117,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[54].outputSchema.properties.checks.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[54].outputSchema.properties.checks.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18547,15 +18171,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18578,15 +18198,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18620,15 +18236,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[54].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[54].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -18648,16 +18260,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.lifecycle.get",
         "title": "Get Channel Lifecycle State",
         "description": "Return lifecycle migration posture for a channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -18733,15 +18345,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[55].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[55].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18776,15 +18384,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[55].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[55].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -18802,16 +18406,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.lifecycle.migrate",
         "title": "Migrate Channel Lifecycle",
         "description": "Apply lifecycle migrations for a channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -18843,15 +18447,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[56].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[56].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -18915,15 +18515,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[56].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[56].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -18958,15 +18554,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[56].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[56].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -18984,16 +18576,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.policies.audit",
         "title": "List Channel Policy Audit",
         "description": "Return channel ingress policy audit records.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -19072,15 +18664,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[57].outputSchema.properties.audit.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[57].outputSchema.properties.audit.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -19106,16 +18694,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.policies.list",
         "title": "List Channel Policies",
         "description": "Return ingress policy configuration for channels.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -19261,15 +18849,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -19302,15 +18886,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -19346,16 +18926,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.policies.update",
         "title": "Update Channel Policy",
         "description": "Update ingress policy configuration for a channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -19488,15 +19068,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[59].inputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[59].inputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -19526,15 +19102,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[59].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[59].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -19670,15 +19242,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[59].outputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[59].outputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -19711,15 +19279,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[59].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[59].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -19748,16 +19312,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.repairs.list",
         "title": "List Channel Repair Actions",
         "description": "Return repair actions exposed by a channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -19815,15 +19379,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -19846,15 +19406,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -19879,16 +19435,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.setup.get",
         "title": "Get Channel Setup Schema",
         "description": "Return the versioned setup schema, secret targets, and external steps for a channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -19971,15 +19527,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.defaultValue"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.defaultValue"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -20020,15 +19572,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -20106,15 +19654,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[61].outputSchema.properties.secretTargets.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[61].outputSchema.properties.secretTargets.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -20155,15 +19699,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[61].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[61].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -20185,16 +19725,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.status",
         "title": "Channel Status",
         "description": "Return status for channel plugins and provider-backed channels.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -20251,15 +19791,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[62].outputSchema.properties.channels.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[62].outputSchema.properties.channels.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -20285,16 +19821,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.targets.resolve",
         "title": "Resolve Channel Target",
         "description": "Resolve a typed channel target for outbound delivery or routing.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -20350,15 +19886,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[63].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[63].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -20444,15 +19976,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[63].outputSchema.properties.target.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[63].outputSchema.properties.target.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -20479,16 +20007,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "channels.tools.invoke",
         "title": "Run Channel Tool",
         "description": "Run a channel-owned operator tool.",
         "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:channels"
         ],
@@ -20520,15 +20048,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[64].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[64].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -20563,15 +20087,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[64].outputSchema.properties.result.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[64].outputSchema.properties.result.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -20587,16 +20107,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.tools.list",
         "title": "List Channel Tools",
         "description": "Return operator tools registered by channel plugins.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -20653,15 +20173,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -20684,15 +20200,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -20718,16 +20230,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "channels.tools.surface.list",
         "title": "List Channel Surface Tools",
         "description": "Return operator tools for a single channel surface.",
         "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:channels"
         ],
@@ -20791,15 +20303,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -20822,15 +20330,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -20856,16 +20360,440 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "companion.chat.events.stream",
+        "title": "Stream Companion Chat Events",
+        "description": "Server-Sent Events stream of turn and agent events scoped to a single companion-chat session.",
+        "category": "companion",
         "source": "builtin",
+        "access": "authenticated",
         "transport": [
           "http",
           "ws"
         ],
-        "access": "admin",
+        "scopes": [
+          "read:sessions"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/companion/chat/sessions/{sessionId}/events"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.messages.create",
+        "title": "Send Companion Chat Message",
+        "description": "Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/companion/chat/sessions/{sessionId}/messages"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "messageId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "messageId"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.messages.list",
+        "title": "List Companion Chat Messages",
+        "description": "Return the message list for a companion-chat session. Restored in SDK 0.21.36 (F21) after it was briefly reachable only via the session-detail endpoint.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/companion/chat/sessions/{sessionId}/messages"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "messages"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.sessions.create",
+        "title": "Create Companion Chat Session",
+        "description": "Create a new companion-chat session. Optional `provider` / `model` override the registry default; `title` and `systemPrompt` are stored on the session record.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/companion/chat/sessions"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "systemPrompt": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "sessionId",
+            "createdAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.sessions.delete",
+        "title": "Close Companion Chat Session",
+        "description": "Close a companion-chat session. The session record is preserved in closed state.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/companion/chat/sessions/{sessionId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.sessions.get",
+        "title": "Get Companion Chat Session",
+        "description": "Return a companion-chat session record together with its full message history.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/companion/chat/sessions/{sessionId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "closed"
+                  ]
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "lastMessageAt": {
+                  "type": "number"
+                },
+                "closedAt": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "pendingInputCount": {
+                  "type": "number"
+                },
+                "routeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "surfaceKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "participants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "surfaceKind": {
+                        "type": "string"
+                      },
+                      "surfaceId": {
+                        "type": "string"
+                      },
+                      "externalId": {
+                        "type": "string"
+                      },
+                      "userId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "routeId": {
+                        "type": "string"
+                      },
+                      "lastSeenAt": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "surfaceKind",
+                      "surfaceId",
+                      "lastSeenAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "activeAgentId": {
+                  "type": "string"
+                },
+                "lastAgentId": {
+                  "type": "string"
+                },
+                "lastError": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "status",
+                "createdAt",
+                "updatedAt",
+                "messageCount",
+                "pendingInputCount",
+                "routeIds",
+                "surfaceKinds",
+                "participants",
+                "metadata"
+              ],
+              "additionalProperties": false
+            },
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "session",
+            "messages"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "config.get",
         "title": "Get Config",
         "description": "Return the resolved GoodVibes config snapshot.",
         "category": "config",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:config"
         ],
@@ -20899,15 +20827,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.danger.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.danger.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -20930,15 +20854,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.controlPlane.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.controlPlane.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -20961,15 +20881,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.web.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.web.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -20992,15 +20908,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.network.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.network.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -21023,15 +20935,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.service.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.service.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -21054,15 +20962,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.providers.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.providers.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -21085,15 +20989,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.ui.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.ui.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -21116,15 +21016,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.channels.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.channels.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -21147,15 +21043,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.watchers.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.watchers.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -21178,15 +21070,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.memory.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[67].outputSchema.properties.memory.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -21197,16 +21085,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "config.set",
         "title": "Set Config Value",
         "description": "Set a config value through the daemon API.",
         "category": "config",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:config"
         ],
@@ -21251,15 +21139,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[68].outputSchema.properties.value"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[68].outputSchema.properties.value"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -21273,16 +21157,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "continuity.snapshot",
         "title": "Continuity Snapshot",
         "description": "Return the continuity integration snapshot.",
         "category": "continuity",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:continuity"
         ],
@@ -21446,16 +21330,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "public",
         "id": "control.auth.current",
         "title": "Current Auth Context",
         "description": "Return the current control-plane principal, granted scopes, and authentication mode.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "public",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [],
         "http": {
           "method": "GET",
@@ -21546,23 +21430,23 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/control-plane/whoami"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http"
-        ],
-        "access": "public",
         "id": "control.auth.login",
         "title": "Login",
         "description": "Authenticate a local control-plane user and create a session token.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "public",
+        "transport": [
+          "http"
+        ],
         "scopes": [],
         "http": {
           "method": "POST",
@@ -21611,16 +21495,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": false
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.clients.list",
         "title": "List Control-Plane Clients",
         "description": "Return authenticated and recently connected control-plane clients.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -21679,16 +21563,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.contract",
         "title": "Operator Contract",
         "description": "Return the operator-facing control-plane contract manifest, including auth, transport, method, and event metadata.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -22142,14 +22026,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 {
                                   "type": "null"
                                 },
-                                {
-                                  "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.inputSchema"
-                                },
+                                {},
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.inputSchema.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -22170,14 +22050,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 {
                                   "type": "null"
                                 },
-                                {
-                                  "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.outputSchema"
-                                },
+                                {},
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.outputSchema.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -22207,14 +22083,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 {
                                   "type": "null"
                                 },
-                                {
-                                  "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.metadata"
-                                },
+                                {},
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.metadata.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -22293,14 +22165,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 {
                                   "type": "null"
                                 },
-                                {
-                                  "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.outputSchema"
-                                },
+                                {},
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.outputSchema.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -22324,14 +22192,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 {
                                   "type": "null"
                                 },
-                                {
-                                  "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.metadata"
-                                },
+                                {},
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.metadata.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -22449,16 +22313,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.events.catalog",
         "title": "List Gateway Events",
         "description": "Return the event catalog for SSE and WebSocket control-plane subscriptions.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane",
           "read:events"
@@ -22542,14 +22406,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.outputSchema"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.outputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22573,14 +22433,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.metadata"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22607,15 +22463,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http"
-        ],
-        "access": "authenticated",
         "id": "control.events.stream",
         "title": "Open Control-Plane Event Stream",
         "description": "Open the SSE control-plane event stream.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http"
+        ],
         "scopes": [
           "read:events"
         ],
@@ -22655,16 +22511,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.messages.list",
         "title": "List Control-Plane Messages",
         "description": "Return recent surface messages published through the control plane.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -22789,15 +22645,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -22835,15 +22687,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22868,16 +22716,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.methods.get",
         "title": "Get Gateway Method",
         "description": "Return a single gateway method descriptor.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -22971,14 +22819,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       {
                         "type": "null"
                       },
-                      {
-                        "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.inputSchema"
-                      },
+                      {},
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.inputSchema.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -22999,14 +22843,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       {
                         "type": "null"
                       },
-                      {
-                        "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.outputSchema"
-                      },
+                      {},
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.outputSchema.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -23036,14 +22876,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       {
                         "type": "null"
                       },
-                      {
-                        "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.metadata"
-                      },
+                      {},
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -23070,16 +22906,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.methods.list",
         "title": "List Gateway Methods",
         "description": "Return the gateway method catalog.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -23175,14 +23011,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.inputSchema"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -23203,14 +23035,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.outputSchema"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.outputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -23240,14 +23068,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.metadata"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -23275,16 +23099,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.snapshot",
         "title": "Control-Plane Snapshot",
         "description": "Return the current control-plane gateway snapshot.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -23514,15 +23338,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -23560,15 +23380,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -23614,15 +23430,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[79].outputSchema.properties.recentEvents.items.properties.payload"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[79].outputSchema.properties.recentEvents.items.properties.payload"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -23649,16 +23461,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "control.status",
         "title": "Daemon Status",
         "description": "Return daemon status and version.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -23690,15 +23502,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http"
-        ],
-        "access": "authenticated",
         "id": "control.web",
         "title": "Control-Plane Web Shell",
         "description": "Return the built-in control-plane HTML shell for external clients.",
         "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http"
+        ],
         "scopes": [
           "read:control-plane"
         ],
@@ -23729,16 +23541,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "deliveries.get",
         "title": "Get Delivery",
         "description": "Return a single delivery record.",
         "category": "deliveries",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:deliveries"
         ],
@@ -23863,16 +23675,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "deliveries.list",
         "title": "List Deliveries",
         "description": "Return delivery records and integration snapshot data.",
         "category": "deliveries",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:deliveries"
         ],
@@ -24025,16 +23837,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "health.snapshot",
         "title": "Health Snapshot",
         "description": "Return the health integration snapshot.",
         "category": "health",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:health"
         ],
@@ -24336,16 +24148,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "intelligence.snapshot",
         "title": "Intelligence Snapshot",
         "description": "Return the intelligence integration snapshot.",
         "category": "intelligence",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:intelligence"
         ],
@@ -24401,16 +24213,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.candidate.decide",
         "title": "Decide Consolidation Candidate",
         "description": "Accept, reject, or supersede a knowledge consolidation candidate.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -24453,15 +24265,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[86].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[86].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -24538,15 +24346,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[86].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[86].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -24582,16 +24386,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.candidate.get",
         "title": "Get Consolidation Candidate",
         "description": "Return a single consolidation candidate.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -24677,15 +24481,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[87].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[87].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -24721,16 +24521,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.candidates.list",
         "title": "List Consolidation Candidates",
         "description": "Return scored consolidation candidates for durable memory promotion, review, or source refresh.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -24824,15 +24624,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[88].outputSchema.properties.candidates.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[88].outputSchema.properties.candidates.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -24869,16 +24665,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.connector.doctor",
         "title": "Doctor Knowledge Connector",
         "description": "Return readiness and setup diagnostics for a knowledge connector.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -24953,15 +24749,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.checks.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.checks.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -25000,15 +24792,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -25033,16 +24821,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.connector.get",
         "title": "Get Knowledge Connector",
         "description": "Return a single knowledge connector manifest.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -25112,15 +24900,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.inputSchema.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.inputSchema.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -25143,13 +24927,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.examples.items"
-                        }
+                        "additionalProperties": {}
                       },
-                      {
-                        "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.examples"
-                      }
+                      {}
                     ]
                   }
                 },
@@ -25247,15 +25027,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.setup.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.setup.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -25285,15 +25061,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -25315,16 +25087,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.connectors.list",
         "title": "List Knowledge Connectors",
         "description": "Return discoverable knowledge ingest connectors with input metadata and examples.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -25389,15 +25161,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.inputSchema.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -25420,13 +25188,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.examples.items"
-                          }
+                          "additionalProperties": {}
                         },
-                        {
-                          "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.examples"
-                        }
+                        {}
                       ]
                     }
                   },
@@ -25524,15 +25288,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.setup.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.setup.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -25562,15 +25322,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -25593,16 +25349,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.extraction.get",
         "title": "Get Knowledge Extraction",
         "description": "Return a single knowledge extraction record.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -25685,15 +25441,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -25716,15 +25468,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -25760,16 +25508,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.extractions.list",
         "title": "List Knowledge Extractions",
         "description": "Return structured extraction records for ingested sources.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -25854,15 +25602,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.structure.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.structure.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -25885,15 +25629,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -25930,16 +25670,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.graphql.execute",
         "title": "Execute Knowledge GraphQL",
         "description": "Execute a GraphQL query or mutation against the dedicated knowledge domain endpoint.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -25974,15 +25714,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[94].inputSchema.properties.variables.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[94].inputSchema.properties.variables.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -26014,15 +25750,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[94].outputSchema.properties.data.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[94].outputSchema.properties.data.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -26045,13 +25777,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[94].outputSchema.properties.errors.items"
-                    }
+                    "additionalProperties": {}
                   },
-                  {
-                    "$ref": "$.operator.methods[94].outputSchema.properties.errors"
-                  }
+                  {}
                 ]
               }
             },
@@ -26073,15 +25801,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[94].outputSchema.properties.extensions.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[94].outputSchema.properties.extensions.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -26092,16 +25816,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.graphql.schema",
         "title": "Knowledge GraphQL Schema",
         "description": "Return the SDL for the dedicated knowledge GraphQL endpoint.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -26137,16 +25861,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.ingest.artifact",
         "title": "Ingest Artifact Into Knowledge",
         "description": "Snapshot a local path, remote URI, or existing artifact into the structured knowledge store and run structured extraction.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -26219,15 +25943,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[96].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[96].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -26321,15 +26041,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[96].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[96].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -26400,15 +26116,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[96].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[96].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -26443,16 +26155,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.ingest.bookmarks",
         "title": "Import Bookmark File",
         "description": "Parse a bookmark export file and ingest its URLs into the structured knowledge store.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -26490,15 +26202,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[97].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[97].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -26603,15 +26311,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[97].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[97].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -26654,16 +26358,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.ingest.connector",
         "title": "Ingest Connector Input",
         "description": "Resolve a knowledge connector against inline input, inline content, or file-backed content.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -26693,15 +26397,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[98].inputSchema.properties.input"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[98].inputSchema.properties.input"
-                  }
+                  "items": {}
                 }
               ]
             },
@@ -26834,15 +26534,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[98].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[98].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -26885,16 +26581,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.ingest.url",
         "title": "Ingest URL Into Knowledge",
         "description": "Fetch, snapshot, and compile a URL into the structured knowledge store.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -26958,15 +26654,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[99].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[99].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -27063,15 +26755,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[99].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[99].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -27142,15 +26830,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[99].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[99].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -27185,16 +26869,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.ingest.urls",
         "title": "Import URL List",
         "description": "Parse a URL list file and ingest its entries into the structured knowledge store.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -27232,15 +26916,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[100].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[100].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -27345,15 +27025,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[100].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[100].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -27396,16 +27072,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.issues.list",
         "title": "List Knowledge Issues",
         "description": "Return current knowledge lint and health issues.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -27469,15 +27145,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[101].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[101].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -27511,16 +27183,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.item.get",
         "title": "Get Knowledge Item",
         "description": "Return a single structured knowledge source, node, or issue with linked relations.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -27626,15 +27298,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[102].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[102].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -27709,15 +27377,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[102].outputSchema.properties.node.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[102].outputSchema.properties.node.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -27785,15 +27449,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[102].outputSchema.properties.issue.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[102].outputSchema.properties.issue.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -27861,15 +27521,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[102].outputSchema.properties.relatedEdges.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[102].outputSchema.properties.relatedEdges.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -27981,15 +27637,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[102].outputSchema.properties.linkedSources.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[102].outputSchema.properties.linkedSources.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -28067,15 +27719,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[102].outputSchema.properties.linkedNodes.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[102].outputSchema.properties.linkedNodes.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -28108,16 +27756,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.job-runs.list",
         "title": "List Knowledge Job Runs",
         "description": "Return recent knowledge job runs.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -28293,15 +27941,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[103].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[103].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -28336,16 +27980,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.job.get",
         "title": "Get Knowledge Job",
         "description": "Return a single knowledge job definition.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -28417,15 +28061,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[104].outputSchema.properties.job.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[104].outputSchema.properties.job.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -28450,16 +28090,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.job.run",
         "title": "Run Knowledge Job",
         "description": "Queue or run a structured knowledge maintenance job.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -28646,15 +28286,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[105].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[105].outputSchema.properties.run.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -28688,16 +28324,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.jobs.list",
         "title": "List Knowledge Jobs",
         "description": "Return built-in structured knowledge maintenance jobs.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -28764,15 +28400,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[106].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[106].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -28798,16 +28430,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.lint",
         "title": "Lint Structured Knowledge",
         "description": "Run deterministic knowledge lint checks and return the current issues.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -28867,15 +28499,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[107].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[107].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -28909,16 +28537,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.nodes.list",
         "title": "List Knowledge Nodes",
         "description": "Return compiled knowledge nodes.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -28991,15 +28619,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[108].outputSchema.properties.nodes.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[108].outputSchema.properties.nodes.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -29035,16 +28659,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.packet",
         "title": "Build Knowledge Packet",
         "description": "Build a compact structured knowledge packet for a task and write scope.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -29172,15 +28796,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[109].outputSchema.properties.items.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[109].outputSchema.properties.items.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -29216,16 +28836,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.projection.materialize",
         "title": "Materialize Knowledge Projection",
         "description": "Render and persist a markdown/wiki projection as a derived artifact.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -29302,15 +28922,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.target.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.target.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -29374,15 +28990,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.pages.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.pages.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -29417,15 +29029,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -29495,15 +29103,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[110].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[110].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -29530,16 +29134,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.projection.render",
         "title": "Render Knowledge Projection",
         "description": "Render a markdown/wiki projection from the canonical structured knowledge store.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -29613,15 +29217,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[111].outputSchema.properties.target.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[111].outputSchema.properties.target.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -29685,15 +29285,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[111].outputSchema.properties.pages.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[111].outputSchema.properties.pages.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -29728,15 +29324,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[111].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[111].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -29755,16 +29347,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.projections.list",
         "title": "List Knowledge Projections",
         "description": "Return renderable markdown/wiki projection targets for the knowledge domain.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -29828,15 +29420,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[112].outputSchema.properties.targets.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[112].outputSchema.properties.targets.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -29863,16 +29451,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.reindex",
         "title": "Reindex Structured Knowledge",
         "description": "Rebuild derived knowledge relations and mirror reviewed memory into the structured knowledge store.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -29988,15 +29576,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[113].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[113].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -30031,16 +29615,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.report.get",
         "title": "Get Consolidation Report",
         "description": "Return a single knowledge consolidation report.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -30108,15 +29692,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[114].outputSchema.properties.report.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[114].outputSchema.properties.report.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -30150,16 +29730,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.reports.list",
         "title": "List Consolidation Reports",
         "description": "Return deterministic knowledge consolidation reports.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -30226,15 +29806,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[115].outputSchema.properties.reports.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[115].outputSchema.properties.reports.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -30269,16 +29845,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.schedule.delete",
         "title": "Delete Knowledge Schedule",
         "description": "Delete a managed knowledge schedule.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -30313,16 +29889,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.schedule.enable",
         "title": "Set Knowledge Schedule Enabled",
         "description": "Enable or disable a managed knowledge schedule.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -30454,15 +30030,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[117].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[117].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -30495,16 +30067,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.schedule.get",
         "title": "Get Knowledge Schedule",
         "description": "Return a single managed knowledge schedule.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -30636,15 +30208,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[118].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[118].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -30677,16 +30245,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "knowledge.schedule.save",
         "title": "Save Knowledge Schedule",
         "description": "Create or update a managed schedule for a knowledge maintenance job.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:knowledge"
         ],
@@ -30819,15 +30387,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[119].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[119].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -30951,15 +30515,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[119].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[119].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -30992,16 +30552,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.schedules.list",
         "title": "List Knowledge Schedules",
         "description": "Return managed schedules for background knowledge maintenance jobs.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -31132,15 +30692,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[120].outputSchema.properties.schedules.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[120].outputSchema.properties.schedules.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -31174,16 +30730,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.search",
         "title": "Search Structured Knowledge",
         "description": "Search structured knowledge sources and nodes with compact ranked results.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -31224,15 +30780,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[121].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[121].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -31346,15 +30898,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -31429,15 +30977,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.node.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.node.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -31482,16 +31026,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.source.extraction.get",
         "title": "Get Source Extraction",
         "description": "Return the structured extraction record for a single knowledge source.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -31574,15 +31118,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -31605,15 +31145,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -31649,16 +31185,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.sources.list",
         "title": "List Knowledge Sources",
         "description": "Return ingested structured knowledge sources.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -31763,15 +31299,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[123].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[123].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -31805,16 +31337,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.status",
         "title": "Knowledge Status",
         "description": "Return structured knowledge runtime status and record counts.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -31886,16 +31418,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "knowledge.usage.list",
         "title": "List Knowledge Usage",
         "description": "Return the recent knowledge usage ledger for packet hits, search hits, and item inspection.",
         "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:knowledge"
         ],
@@ -31968,15 +31500,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[125].outputSchema.properties.usage.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[125].outputSchema.properties.usage.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -32005,16 +31533,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "media.analyze",
         "title": "Analyze Media Artifact",
         "description": "Analyze an artifact through a registered media provider.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:media"
         ],
@@ -32073,15 +31601,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[126].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[126].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -32120,15 +31644,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[126].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[126].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32172,15 +31692,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[126].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[126].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32195,16 +31711,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "media.generate",
         "title": "Generate Media Artifact",
         "description": "Generate a media artifact through a registered media provider.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:media"
         ],
@@ -32245,15 +31761,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[127].inputSchema.properties.options.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[127].inputSchema.properties.options.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32276,15 +31788,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[127].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[127].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32366,15 +31874,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[127].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[127].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -32405,15 +31909,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[127].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[127].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32429,16 +31929,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "media.providers.list",
         "title": "List Media Providers",
         "description": "Return registered media provider capabilities.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:media"
         ],
@@ -32489,16 +31989,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "media.transform",
         "title": "Transform Media Artifact",
         "description": "Transform an artifact through a registered media provider.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:media"
         ],
@@ -32557,15 +32057,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[129].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[129].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -32601,15 +32097,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[129].inputSchema.properties.options.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[129].inputSchema.properties.options.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32632,15 +32124,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[129].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[129].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32721,15 +32209,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[129].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[129].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -32759,15 +32243,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[129].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[129].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -32783,16 +32263,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "multimodal.analyze",
         "title": "Run Multimodal Analysis",
         "description": "Analyze an image, audio file, video artifact, or document through the unified multimodal service.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:media"
         ],
@@ -32845,15 +32325,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[130].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[130].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -32926,15 +32402,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[130].inputSchema.properties.writeback.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[130].inputSchema.properties.writeback.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -32963,15 +32435,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[130].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[130].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -33045,15 +32513,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -33135,15 +32599,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -33174,15 +32634,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -33288,15 +32744,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -33334,15 +32786,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -33363,16 +32811,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "multimodal.packet",
         "title": "Build Multimodal Packet",
         "description": "Build a token-efficient packet from an existing multimodal analysis result.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:media"
         ],
@@ -33446,15 +32894,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -33536,15 +32980,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -33575,15 +33015,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -33661,16 +33097,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "multimodal.providers.list",
         "title": "List Multimodal Providers",
         "description": "Return the normalized multimodal provider catalog spanning media understanding, speech-to-text, and extractors.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:media"
         ],
@@ -33727,15 +33163,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[132].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[132].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -33761,16 +33193,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "multimodal.status",
         "title": "Multimodal Status",
         "description": "Return the unified multimodal runtime status across image, audio, video, and document analysis.",
         "category": "media",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:media"
         ],
@@ -33833,15 +33265,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[133].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[133].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -33873,16 +33301,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "multimodal.writeback",
         "title": "Write Back Multimodal Analysis",
         "description": "Persist a multimodal analysis result as an artifact and ingest it into the structured knowledge store.",
         "category": "media",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:media",
           "write:knowledge"
@@ -33957,15 +33385,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -34047,15 +33471,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -34086,15 +33506,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -34145,15 +33561,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[134].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[134].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -34224,15 +33636,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -34270,15 +33678,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -34299,16 +33703,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "memory.doctor",
         "title": "Memory Doctor",
         "description": "Return sqlite-vec and memory embedding-provider diagnostics.",
         "category": "memory",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:memory"
         ],
@@ -34426,15 +33830,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[135].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[135].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -34493,16 +33893,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "memory.embeddings.default.set",
         "title": "Set Default Memory Embedding Provider",
         "description": "Set the active default memory embedding provider.",
         "category": "memory",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:memory"
         ],
@@ -34627,15 +34027,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[136].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[136].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -34694,16 +34090,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "memory.vector.rebuild",
         "title": "Rebuild Memory Vector Index",
         "description": "Rebuild the sqlite-vec vector index.",
         "category": "memory",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:memory"
         ],
@@ -34774,16 +34170,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "memory.vector.stats",
         "title": "Memory Vector Stats",
         "description": "Return the current sqlite-vec vector-store posture.",
         "category": "memory",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:memory"
         ],
@@ -34854,16 +34250,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "panels.list",
         "title": "List Panels",
         "description": "Return integration panel descriptors.",
         "category": "panels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:panels"
         ],
@@ -34919,16 +34315,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "panels.open",
         "title": "Open Panel",
         "description": "Request that a panel be opened in the current TUI session.",
         "category": "panels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:panels"
         ],
@@ -34978,16 +34374,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "providers.get",
         "title": "Provider Snapshot",
         "description": "Return runtime metadata for a single provider.",
         "category": "providers",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:providers"
         ],
@@ -35318,16 +34714,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "providers.list",
         "title": "Providers List",
         "description": "Return runtime provider metadata, policy hooks, and priced model summaries.",
         "category": "providers",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:providers"
         ],
@@ -35663,16 +35059,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "providers.usage.get",
         "title": "Provider Usage",
         "description": "Return usage and pricing posture for a single provider.",
         "category": "providers",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:providers"
         ],
@@ -35840,16 +35236,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "remote.node_host.contract",
         "title": "Node Host Contract",
         "description": "Return the distributed node/device host API contract.",
         "category": "remote",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:remote"
         ],
@@ -35962,15 +35358,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.inputSchema.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.inputSchema.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -35993,15 +35385,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.outputSchema.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.outputSchema.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -36049,15 +35437,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -36084,24 +35468,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/remote/device/contract"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "remote.pair.requests.approve",
         "title": "Approve Remote Pair Request",
         "description": "Approve a pending remote pair request.",
         "category": "remote",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:remote"
         ],
@@ -36139,15 +35523,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[145].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[145].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -36266,15 +35646,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[145].outputSchema.properties.request.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[145].outputSchema.properties.request.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -36438,15 +35814,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[145].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[145].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -36476,16 +35848,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "remote.pair.requests.list",
         "title": "List Remote Pair Requests",
         "description": "Return pending remote pair requests.",
         "category": "remote",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:remote"
         ],
@@ -36608,15 +35980,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[146].outputSchema.properties.requests.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[146].outputSchema.properties.requests.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -36649,16 +36017,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "remote.pair.requests.reject",
         "title": "Reject Remote Pair Request",
         "description": "Reject a pending remote pair request.",
         "category": "remote",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:remote"
         ],
@@ -36696,15 +36064,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[147].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[147].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -36823,15 +36187,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[147].outputSchema.properties.request.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[147].outputSchema.properties.request.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -36863,16 +36223,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "remote.peers.disconnect",
         "title": "Disconnect Remote Peer",
         "description": "Disconnect a remote peer.",
         "category": "remote",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:remote"
         ],
@@ -37042,15 +36402,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[148].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[148].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -37079,16 +36435,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "remote.peers.invoke",
         "title": "Invoke Remote Peer",
         "description": "Invoke a method on a connected remote peer.",
         "category": "remote",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:remote"
         ],
@@ -37121,15 +36477,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[149].inputSchema.properties.payload"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[149].inputSchema.properties.payload"
-                  }
+                  "items": {}
                 }
               ]
             },
@@ -37180,15 +36532,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[149].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[149].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -37267,15 +36615,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.payload"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.payload"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -37334,15 +36678,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -37430,15 +36770,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -37472,16 +36808,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "remote.peers.list",
         "title": "List Remote Peers",
         "description": "Return known remote peers.",
         "category": "remote",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:remote"
         ],
@@ -37640,15 +36976,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[150].outputSchema.properties.peers.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[150].outputSchema.properties.peers.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -37678,16 +37010,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "remote.peers.token.revoke",
         "title": "Revoke Remote Peer Token",
         "description": "Revoke the active token for a remote peer.",
         "category": "remote",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:remote"
         ],
@@ -37857,15 +37189,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[151].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[151].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -37894,16 +37222,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "remote.peers.token.rotate",
         "title": "Rotate Remote Peer Token",
         "description": "Rotate the active token for a remote peer.",
         "category": "remote",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:remote"
         ],
@@ -38076,15 +37404,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[152].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[152].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -38158,16 +37482,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "remote.snapshot",
         "title": "Remote Runtime Snapshot",
         "description": "Return distributed node/device runtime state.",
         "category": "remote",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:remote"
         ],
@@ -38559,15 +37883,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.pairRequests.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.pairRequests.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -38734,15 +38054,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.peers.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.peers.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -38829,15 +38145,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.payload"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.payload"
-                            }
+                            "items": {}
                           }
                         ]
                       },
@@ -38896,15 +38208,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.result"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.result"
-                            }
+                            "items": {}
                           }
                         ]
                       },
@@ -38992,15 +38300,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -39086,15 +38390,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.audit.items.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.audit.items.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -39132,16 +38432,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "remote.work.cancel",
         "title": "Cancel Remote Work",
         "description": "Cancel a remote work item.",
         "category": "remote",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:remote"
         ],
@@ -39231,15 +38531,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.payload"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.payload"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -39298,15 +38594,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -39394,15 +38686,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -39432,16 +38720,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "remote.work.list",
         "title": "List Remote Work",
         "description": "Return queued and leased remote work items.",
         "category": "remote",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:remote"
         ],
@@ -39523,15 +38811,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.payload"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.payload"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -39590,15 +38874,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.result"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.result"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -39686,15 +38966,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -39725,16 +39001,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "review.snapshot",
         "title": "Review Snapshot",
         "description": "Return the integration review snapshot used by external helpers.",
         "category": "review",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:automation"
         ],
@@ -39792,16 +39068,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "routes.bindings.create",
         "title": "Create Route Binding",
         "description": "Create or upsert a route binding.",
         "category": "routes",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:routes"
         ],
@@ -39875,15 +39151,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[157].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[157].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -40007,15 +39279,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[157].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[157].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -40037,16 +39305,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "routes.bindings.delete",
         "title": "Delete Route Binding",
         "description": "Delete an existing route binding.",
         "category": "routes",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:routes"
         ],
@@ -40088,16 +39356,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "routes.bindings.list",
         "title": "List Route Bindings",
         "description": "Return configured route bindings.",
         "category": "routes",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:routes"
         ],
@@ -40228,15 +39496,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[159].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[159].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -40265,16 +39529,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "routes.bindings.patch",
         "title": "Patch Route Binding",
         "description": "Patch an existing route binding.",
         "category": "routes",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:routes"
         ],
@@ -40336,15 +39600,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[160].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[160].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -40462,15 +39722,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[160].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[160].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -40492,16 +39748,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "routes.snapshot",
         "title": "Route Snapshot",
         "description": "Return the route and binding integration snapshot.",
         "category": "routes",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:routes"
         ],
@@ -40641,15 +39897,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[161].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[161].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -40681,16 +39933,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "surfaces.list",
         "title": "List Surfaces",
         "description": "Return registered channel and control surfaces.",
         "category": "routes",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:routes"
         ],
@@ -40765,15 +40017,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[162].outputSchema.properties.surfaces.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[162].outputSchema.properties.surfaces.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -40801,16 +40049,72 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "scheduler.capacity",
+        "title": "Scheduler Capacity",
+        "description": "Return the current automation-scheduler capacity snapshot: total slots, in-use slots, queue depth, and age of the oldest queued run.",
+        "category": "scheduler",
         "source": "builtin",
+        "access": "authenticated",
         "transport": [
           "http",
           "ws"
         ],
-        "access": "admin",
+        "scopes": [
+          "read:automation"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/runtime/scheduler"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "slotsTotal": {
+              "type": "number"
+            },
+            "slotsInUse": {
+              "type": "number"
+            },
+            "queueDepth": {
+              "type": "number"
+            },
+            "oldestQueuedAgeMs": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "slotsTotal",
+            "slotsInUse",
+            "queueDepth",
+            "oldestQueuedAgeMs"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "services.install",
         "title": "Install Service",
         "description": "Install the GoodVibes platform service.",
         "category": "services",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:services"
         ],
@@ -41106,16 +40410,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "services.restart",
         "title": "Restart Service",
         "description": "Restart the GoodVibes platform service.",
         "category": "services",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:services"
         ],
@@ -41411,16 +40715,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "services.start",
         "title": "Start Service",
         "description": "Start the GoodVibes platform service.",
         "category": "services",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:services"
         ],
@@ -41716,16 +41020,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "services.status",
         "title": "Service Status",
         "description": "Return platform service installation and runtime posture.",
         "category": "services",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:services"
         ],
@@ -42021,16 +41325,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "services.stop",
         "title": "Stop Service",
         "description": "Stop the GoodVibes platform service.",
         "category": "services",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:services"
         ],
@@ -42326,16 +41630,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "services.uninstall",
         "title": "Uninstall Service",
         "description": "Uninstall the GoodVibes platform service.",
         "category": "services",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:services"
         ],
@@ -42632,16 +41936,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.close",
         "title": "Close Shared Session",
         "description": "Mark a shared session as closed.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:sessions"
         ],
@@ -42772,15 +42076,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[169].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[169].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -42810,16 +42110,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.create",
         "title": "Create Shared Session",
         "description": "Create a shared session for a surface, route, or web client.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:sessions"
         ],
@@ -42953,15 +42253,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[170].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[170].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -42991,16 +42287,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.followUp",
         "title": "Queue Shared Session Follow-Up",
         "description": "Queue a deferred follow-up for a shared session so it runs after the current agent completes, or spawn immediately when the session is idle.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:sessions"
         ],
@@ -43245,15 +42541,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[171].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[171].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -43338,15 +42630,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[171].outputSchema.properties.message.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[171].outputSchema.properties.message.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -43448,15 +42736,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[171].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[171].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -43616,16 +42900,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.get",
         "title": "Get Shared Session",
         "description": "Return metadata for a shared session.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:sessions"
         ],
@@ -43756,15 +43040,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[172].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[172].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -43846,15 +43126,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[172].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[172].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -43881,16 +43157,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.inputs.cancel",
         "title": "Cancel Shared Session Input",
         "description": "Cancel a queued shared-session input before it is delivered or spawned.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:sessions"
         ],
@@ -44003,15 +43279,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[173].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[173].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -44148,16 +43420,635 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.inputs.create",
+        "title": "Create Shared Session Input",
+        "description": "Create a shared-session input via the intent-dispatching alias. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler. Restored in SDK 0.21.36 for API surface parity after 0.21.35 removed the direct input-create endpoint.",
+        "category": "sessions",
         "source": "builtin",
+        "access": "authenticated",
         "transport": [
           "http",
           "ws"
         ],
-        "access": "authenticated",
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/sessions/{sessionId}/inputs"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "surfaceKind": {
+              "type": "string"
+            },
+            "surfaceId": {
+              "type": "string"
+            },
+            "routing": {
+              "type": "object",
+              "properties": {
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                },
+                "providerSelection": {
+                  "type": "string",
+                  "enum": [
+                    "inherit-current",
+                    "concrete",
+                    "synthetic"
+                  ]
+                },
+                "unresolvedModelPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "fallback-to-current",
+                    "fail"
+                  ]
+                },
+                "providerFailurePolicy": {
+                  "type": "string",
+                  "enum": [
+                    "ordered-fallbacks",
+                    "fail"
+                  ]
+                },
+                "fallbackModels": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "helperModel": {
+                  "type": "object",
+                  "properties": {
+                    "providerId": {
+                      "type": "string"
+                    },
+                    "modelId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "providerId",
+                    "modelId"
+                  ],
+                  "additionalProperties": false
+                },
+                "executionIntent": {
+                  "type": "object",
+                  "properties": {
+                    "riskClass": {
+                      "type": "string",
+                      "enum": [
+                        "safe",
+                        "elevated",
+                        "dangerous"
+                      ]
+                    },
+                    "requiresApproval": {
+                      "type": "boolean"
+                    },
+                    "networkPolicy": {
+                      "type": "string",
+                      "enum": [
+                        "inherit",
+                        "allow",
+                        "deny",
+                        "scoped"
+                      ]
+                    },
+                    "filesystemPolicy": {
+                      "type": "string",
+                      "enum": [
+                        "inherit",
+                        "workspace-write",
+                        "read-only",
+                        "isolated"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "reasoningEffort": {
+                  "type": "string",
+                  "enum": [
+                    "instant",
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "allowSpawnFallback": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "body"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "closed"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "updatedAt": {
+                      "type": "number"
+                    },
+                    "lastMessageAt": {
+                      "type": "number"
+                    },
+                    "closedAt": {
+                      "type": "number"
+                    },
+                    "messageCount": {
+                      "type": "number"
+                    },
+                    "pendingInputCount": {
+                      "type": "number"
+                    },
+                    "routeIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "surfaceKinds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "participants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "surfaceKind": {
+                            "type": "string"
+                          },
+                          "surfaceId": {
+                            "type": "string"
+                          },
+                          "externalId": {
+                            "type": "string"
+                          },
+                          "userId": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "routeId": {
+                            "type": "string"
+                          },
+                          "lastSeenAt": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "surfaceKind",
+                          "surfaceId",
+                          "lastSeenAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "activeAgentId": {
+                      "type": "string"
+                    },
+                    "lastAgentId": {
+                      "type": "string"
+                    },
+                    "lastError": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "status",
+                    "createdAt",
+                    "updatedAt",
+                    "messageCount",
+                    "pendingInputCount",
+                    "routeIds",
+                    "surfaceKinds",
+                    "participants",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "message": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant",
+                    "system"
+                  ]
+                },
+                "body": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "surfaceKind": {
+                  "type": "string"
+                },
+                "surfaceId": {
+                  "type": "string"
+                },
+                "routeId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "role",
+                "body",
+                "createdAt",
+                "metadata"
+              ],
+              "additionalProperties": false
+            },
+            "input": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "intent": {
+                  "type": "string",
+                  "enum": [
+                    "submit",
+                    "steer",
+                    "follow-up"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "delivered",
+                    "spawned",
+                    "completed",
+                    "cancelled",
+                    "failed",
+                    "rejected"
+                  ]
+                },
+                "correlationId": {
+                  "type": "string"
+                },
+                "causationId": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "routeId": {
+                  "type": "string"
+                },
+                "surfaceKind": {
+                  "type": "string"
+                },
+                "surfaceId": {
+                  "type": "string"
+                },
+                "externalId": {
+                  "type": "string"
+                },
+                "threadId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "activeAgentId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "routing": {
+                  "type": "object",
+                  "properties": {
+                    "providerId": {
+                      "type": "string"
+                    },
+                    "modelId": {
+                      "type": "string"
+                    },
+                    "providerSelection": {
+                      "type": "string",
+                      "enum": [
+                        "inherit-current",
+                        "concrete",
+                        "synthetic"
+                      ]
+                    },
+                    "unresolvedModelPolicy": {
+                      "type": "string",
+                      "enum": [
+                        "fallback-to-current",
+                        "fail"
+                      ]
+                    },
+                    "providerFailurePolicy": {
+                      "type": "string",
+                      "enum": [
+                        "ordered-fallbacks",
+                        "fail"
+                      ]
+                    },
+                    "fallbackModels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "helperModel": {
+                      "type": "object",
+                      "properties": {
+                        "providerId": {
+                          "type": "string"
+                        },
+                        "modelId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "providerId",
+                        "modelId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "executionIntent": {
+                      "type": "object",
+                      "properties": {
+                        "riskClass": {
+                          "type": "string",
+                          "enum": [
+                            "safe",
+                            "elevated",
+                            "dangerous"
+                          ]
+                        },
+                        "requiresApproval": {
+                          "type": "boolean"
+                        },
+                        "networkPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "inherit",
+                            "allow",
+                            "deny",
+                            "scoped"
+                          ]
+                        },
+                        "filesystemPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "inherit",
+                            "workspace-write",
+                            "read-only",
+                            "isolated"
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "reasoningEffort": {
+                      "type": "string",
+                      "enum": [
+                        "instant",
+                        "low",
+                        "medium",
+                        "high"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "intent",
+                "state",
+                "correlationId",
+                "body",
+                "createdAt",
+                "updatedAt",
+                "metadata"
+              ],
+              "additionalProperties": false
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "spawn",
+                "continued-live",
+                "queued-follow-up",
+                "rejected"
+              ]
+            },
+            "agentId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "session",
+            "message",
+            "input",
+            "mode",
+            "agentId"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.inputs.list",
         "title": "List Shared Session Inputs",
         "description": "Return explicit session inputs, including queued follow-ups and delivered steering requests.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:sessions"
         ],
@@ -44291,15 +44182,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[174].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[174].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -44408,15 +44295,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[174].outputSchema.properties.inputs.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[174].outputSchema.properties.inputs.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -44555,16 +44438,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.integration.snapshot",
         "title": "Legacy Session Snapshot",
         "description": "Return the legacy integration session snapshot.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:sessions"
         ],
@@ -44629,16 +44512,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.list",
         "title": "List Shared Sessions",
         "description": "Return shared-session integration state.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:sessions"
         ],
@@ -44787,15 +44670,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[176].outputSchema.properties.sessions.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[176].outputSchema.properties.sessions.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -44827,16 +44706,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.messages.create",
         "title": "Post Shared Session Message",
         "description": "Append a user message to a shared session and queue assistant work.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:sessions"
         ],
@@ -45081,15 +44960,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[177].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[177].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -45174,15 +45049,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[177].outputSchema.properties.message.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[177].outputSchema.properties.message.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -45284,15 +45155,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[177].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[177].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -45452,16 +45319,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.messages.list",
         "title": "List Shared Session Messages",
         "description": "Return message history for a shared session.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:sessions"
         ],
@@ -45598,15 +45465,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[178].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[178].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -45688,15 +45551,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[178].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[178].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -45723,16 +45582,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.reopen",
         "title": "Reopen Shared Session",
         "description": "Reopen a previously closed shared session.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:sessions"
         ],
@@ -45863,15 +45722,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[179].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[179].outputSchema.properties.session.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -45901,16 +45756,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "sessions.steer",
         "title": "Steer Shared Session",
         "description": "Deliver a live steering message to the active agent for a shared session, optionally falling back to spawn when explicitly allowed.",
         "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:sessions"
         ],
@@ -46158,15 +46013,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[180].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[180].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -46251,15 +46102,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[180].outputSchema.properties.message.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[180].outputSchema.properties.message.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -46361,15 +46208,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[180].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[180].outputSchema.properties.input.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -46529,16 +46372,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "settings.snapshot",
         "title": "Settings Snapshot",
         "description": "Return the settings integration snapshot.",
         "category": "settings",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:settings"
         ],
@@ -46614,15 +46457,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.localValue"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.localValue"
-                            }
+                            "items": {}
                           }
                         ]
                       },
@@ -46642,15 +46481,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.incomingValue"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.incomingValue"
-                            }
+                            "items": {}
                           }
                         ]
                       },
@@ -46751,15 +46586,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.previousValue"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.previousValue"
-                                }
+                                "items": {}
                               }
                             ]
                           },
@@ -46779,15 +46610,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.nextValue"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.nextValue"
-                                }
+                                "items": {}
                               }
                             ]
                           },
@@ -46869,15 +46696,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.rollbackHistory.items.properties.previousValues.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.rollbackHistory.items.properties.previousValues.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -46912,16 +46735,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "tasks.cancel",
         "title": "Cancel Runtime Task",
         "description": "Cancel an in-flight runtime task.",
         "category": "tasks",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:tasks"
         ],
@@ -47076,15 +46899,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[182].outputSchema.properties.task.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[182].outputSchema.properties.task.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -47119,16 +46938,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "tasks.create",
         "title": "Create Task",
         "description": "Submit a task to the daemon or a shared session.",
         "category": "tasks",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:tasks"
         ],
@@ -47308,15 +47127,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[183].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[183].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -47380,16 +47195,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "tasks.get",
         "title": "Get Runtime Task",
         "description": "Return a single runtime task record.",
         "category": "tasks",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:tasks"
         ],
@@ -47541,15 +47356,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[184].outputSchema.properties.task.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[184].outputSchema.properties.task.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -47581,16 +47392,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "tasks.list",
         "title": "List Runtime Tasks",
         "description": "Return the integration snapshot for runtime tasks.",
         "category": "tasks",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:tasks"
         ],
@@ -47717,16 +47528,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "tasks.retry",
         "title": "Retry Runtime Task",
         "description": "Retry a runtime task through the task action endpoint.",
         "category": "tasks",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:tasks"
         ],
@@ -47881,15 +47692,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[186].outputSchema.properties.task.properties.result"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[186].outputSchema.properties.task.properties.result"
-                      }
+                      "items": {}
                     }
                   ]
                 },
@@ -47924,16 +47731,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "tasks.status",
         "title": "Get Task Status",
         "description": "Return lightweight runtime task status by agent id.",
         "category": "tasks",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:tasks"
         ],
@@ -48024,16 +47831,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.errors.list",
         "title": "List Telemetry Errors",
         "description": "Return telemetry records that include normalized error metadata.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -48175,15 +47982,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.payload"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.payload"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -48205,15 +48008,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -48361,24 +48160,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry/errors"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.events.list",
         "title": "List Telemetry Events",
         "description": "Return a paginated telemetry event feed with cursor-based resume semantics.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -48520,15 +48319,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.payload"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.payload"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -48550,15 +48345,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -48706,24 +48497,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry/events"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.metrics.get",
         "title": "Telemetry Metrics",
         "description": "Return telemetry aggregates and runtime metrics without recent record payloads.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -49022,24 +48813,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry/metrics"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.otlp.logs",
         "title": "OTLP Log Export",
         "description": "Return telemetry events encoded as OTLP-compatible log documents.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -49123,14 +48914,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     {
                       "type": "null"
                     },
-                    {
-                      "$ref": "$.operator.methods[191].outputSchema.properties.resourceLogs.items"
-                    },
+                    {},
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[191].outputSchema.properties.resourceLogs.items.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -49142,24 +48929,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry/otlp/v1/logs"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.otlp.metrics",
         "title": "OTLP Metric Export",
         "description": "Return telemetry metrics encoded as OTLP-compatible metric documents.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -49243,14 +49030,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     {
                       "type": "null"
                     },
-                    {
-                      "$ref": "$.operator.methods[192].outputSchema.properties.resourceMetrics.items"
-                    },
+                    {},
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[192].outputSchema.properties.resourceMetrics.items.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -49262,24 +49045,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry/otlp/v1/metrics"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.otlp.traces",
         "title": "OTLP Trace Export",
         "description": "Return telemetry traces encoded as OTLP-compatible JSON.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -49363,14 +49146,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     {
                       "type": "null"
                     },
-                    {
-                      "$ref": "$.operator.methods[193].outputSchema.properties.resourceSpans.items"
-                    },
+                    {},
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[193].outputSchema.properties.resourceSpans.items.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -49382,24 +49161,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry/otlp/v1/traces"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.snapshot",
         "title": "Telemetry Snapshot",
         "description": "Return the current telemetry snapshot with aggregates, runtime state, and recent records.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -49855,15 +49634,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.payload"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.payload"
-                                }
+                                "items": {}
                               }
                             ]
                           },
@@ -49885,15 +49660,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 },
                                 {
                                   "type": "object",
-                                  "additionalProperties": {
-                                    "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.attributes.additionalProperties"
-                                  }
+                                  "additionalProperties": {}
                                 },
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.attributes.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -50120,15 +49891,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.payload"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.payload"
-                                }
+                                "items": {}
                               }
                             ]
                           },
@@ -50150,15 +49917,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 },
                                 {
                                   "type": "object",
-                                  "additionalProperties": {
-                                    "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.attributes.additionalProperties"
-                                  }
+                                  "additionalProperties": {}
                                 },
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.attributes.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -50383,15 +50146,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 },
                                 {
                                   "type": "object",
-                                  "additionalProperties": {
-                                    "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.attributes.additionalProperties"
-                                  }
+                                  "additionalProperties": {}
                                 },
                                 {
                                   "type": "array",
-                                  "items": {
-                                    "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.attributes.additionalProperties"
-                                  }
+                                  "items": {}
                                 }
                               ]
                             }
@@ -50425,15 +50184,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                       },
                                       {
                                         "type": "object",
-                                        "additionalProperties": {
-                                          "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                                        }
+                                        "additionalProperties": {}
                                       },
                                       {
                                         "type": "array",
-                                        "items": {
-                                          "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                                        }
+                                        "items": {}
                                       }
                                     ]
                                   }
@@ -50539,23 +50294,23 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http"
-        ],
-        "access": "authenticated",
         "id": "telemetry.stream",
         "title": "Telemetry Event Stream",
         "description": "Open the telemetry SSE stream and emit a ready event with resume metadata.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -50728,16 +50483,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "telemetry.traces.list",
         "title": "List Telemetry Traces",
         "description": "Return synthesized readable spans derived from runtime telemetry.",
         "category": "telemetry",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:telemetry"
         ],
@@ -50877,15 +50632,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -50919,15 +50670,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -51010,24 +50757,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true,
         "metadata": {
           "aliasPaths": [
             "/api/telemetry/traces"
           ]
-        },
-        "invokable": true
+        }
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "voice.providers.list",
         "title": "List Voice Providers",
         "description": "Return registered voice providers.",
         "category": "voice",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:voice"
         ],
@@ -51078,16 +50825,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "voice.realtime.session",
         "title": "Open Voice Realtime Session",
         "description": "Open a realtime voice session through a registered voice provider.",
         "category": "voice",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:voice"
         ],
@@ -51134,15 +50881,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[198].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[198].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -51192,15 +50935,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[198].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[198].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -51217,16 +50956,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "voice.status",
         "title": "Voice Status",
         "description": "Return configured voice provider posture and capabilities.",
         "category": "voice",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:voice"
         ],
@@ -51292,15 +51031,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[199].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[199].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -51332,16 +51067,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "voice.stt",
         "title": "Run Speech To Text",
         "description": "Transcribe an audio artifact through a registered voice provider.",
         "category": "voice",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:voice"
         ],
@@ -51394,15 +51129,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[200].inputSchema.properties.audio.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[200].inputSchema.properties.audio.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -51442,15 +51173,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[200].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[200].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -51515,15 +51242,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[200].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[200].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -51539,16 +51262,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "voice.tts",
         "title": "Run Text To Speech",
         "description": "Synthesize audio through a registered voice provider.",
         "category": "voice",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:voice"
         ],
@@ -51595,15 +51318,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[201].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[201].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -51659,15 +51378,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[201].outputSchema.properties.audio.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[201].outputSchema.properties.audio.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -51698,15 +51413,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[201].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[201].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -51722,16 +51433,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "voice.voices.list",
         "title": "List Voices",
         "description": "Return registered voices for a voice provider.",
         "category": "voice",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:voice"
         ],
@@ -51786,15 +51497,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[202].outputSchema.properties.voices.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[202].outputSchema.properties.voices.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -51817,16 +51524,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "watchers.create",
         "title": "Create Watcher",
         "description": "Register a new watcher.",
         "category": "watchers",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:watchers"
         ],
@@ -51876,15 +51583,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[203].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[203].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -51973,15 +51676,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[203].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[203].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -52037,15 +51736,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[203].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[203].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -52064,16 +51759,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "watchers.delete",
         "title": "Delete Watcher",
         "description": "Delete an existing watcher.",
         "category": "watchers",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:watchers"
         ],
@@ -52115,16 +51810,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "watchers.list",
         "title": "List Watchers",
         "description": "Return configured watchers and their runtime posture.",
         "category": "watchers",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:watchers"
         ],
@@ -52199,15 +51894,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.source.properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -52263,15 +51954,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -52297,16 +51984,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "watchers.patch",
         "title": "Patch Watcher",
         "description": "Patch an existing watcher.",
         "category": "watchers",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:watchers"
         ],
@@ -52359,15 +52046,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[206].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[206].inputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -52453,15 +52136,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[206].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[206].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -52517,15 +52196,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[206].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[206].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -52544,16 +52219,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "watchers.run",
         "title": "Run Watcher",
         "description": "Trigger a watcher immediately.",
         "category": "watchers",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:watchers"
         ],
@@ -52630,15 +52305,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[207].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[207].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -52694,15 +52365,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[207].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[207].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -52721,16 +52388,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "watchers.start",
         "title": "Start Watcher",
         "description": "Start a watcher instance.",
         "category": "watchers",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:watchers"
         ],
@@ -52807,15 +52474,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[208].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[208].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -52871,15 +52534,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[208].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[208].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -52898,16 +52557,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "admin",
         "id": "watchers.stop",
         "title": "Stop Watcher",
         "description": "Stop a watcher instance.",
         "category": "watchers",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:watchers"
         ],
@@ -52984,15 +52643,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[209].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[209].outputSchema.properties.source.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -53048,15 +52703,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[209].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[209].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -53075,16 +52726,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "web_search.providers.list",
         "title": "List Web Search Providers",
         "description": "Return registered web search provider capabilities.",
         "category": "web-search",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:web-search"
         ],
@@ -53146,16 +52797,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "web_search.query",
         "title": "Run Web Search",
         "description": "Execute a provider-backed web search and return normalized ranked results.",
         "category": "web-search",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "write:web-search"
         ],
@@ -53267,15 +52918,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -53324,15 +52971,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.evidence.items.properties.metadata.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.evidence.items.properties.metadata.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -53420,15 +53063,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[211].outputSchema.properties.instantAnswer.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[211].outputSchema.properties.instantAnswer.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -53459,15 +53098,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[211].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[211].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -53486,16 +53121,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "source": "builtin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "access": "authenticated",
         "id": "worktrees.snapshot",
         "title": "Worktrees Snapshot",
         "description": "Return the worktree integration snapshot.",
         "category": "worktrees",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
         "scopes": [
           "read:worktrees"
         ],
@@ -53623,11 +53258,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
     ],
     "events": [
       {
-        "source": "builtin",
         "id": "runtime.agents",
         "title": "agents Domain Events",
         "description": "Agent lifecycle, planning, and completion events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53657,25 +53292,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[0].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[0].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.automation",
         "title": "automation Domain Events",
         "description": "Automation job, schedule, and run events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53705,25 +53336,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[1].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[1].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.communication",
         "title": "communication Domain Events",
         "description": "Agent communication and policy events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53753,25 +53380,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[2].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[2].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.compaction",
         "title": "compaction Domain Events",
         "description": "Context compaction and summary events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53801,25 +53424,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[3].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[3].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.control-plane",
         "title": "control-plane Domain Events",
         "description": "Control-plane client, auth, and subscription events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53849,25 +53468,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[4].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[4].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.deliveries",
         "title": "deliveries Domain Events",
         "description": "Delivery queue and outcome events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53897,25 +53512,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[5].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[5].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.forensics",
         "title": "forensics Domain Events",
         "description": "Forensics and incident trail events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53945,25 +53556,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[6].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[6].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.knowledge",
         "title": "knowledge Domain Events",
         "description": "Knowledge ingest, extraction, projection, packet, and job events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -53993,25 +53600,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[7].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[7].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.mcp",
         "title": "mcp Domain Events",
         "description": "MCP server, tool, and connection events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54041,25 +53644,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[8].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[8].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.ops",
         "title": "ops Domain Events",
         "description": "Operational diagnostics and control events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54089,25 +53688,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[9].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[9].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.orchestration",
         "title": "orchestration Domain Events",
         "description": "Higher-level orchestration and planner coordination events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54137,25 +53732,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[10].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[10].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.permissions",
         "title": "permissions Domain Events",
         "description": "Approval and permission prompt events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54185,25 +53776,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[11].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[11].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.planner",
         "title": "planner Domain Events",
         "description": "Planner updates and plan mutation events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54233,25 +53820,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[12].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[12].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.plugins",
         "title": "plugins Domain Events",
         "description": "Plugin registration and lifecycle events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54281,25 +53864,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[13].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[13].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.providers",
         "title": "providers Domain Events",
         "description": "Provider health, selection, and routing events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54329,25 +53908,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[14].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[14].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.routes",
         "title": "routes Domain Events",
         "description": "Route binding and surface-link events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54377,25 +53952,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[15].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[15].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.security",
         "title": "security Domain Events",
         "description": "Security posture and policy events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54425,25 +53996,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[16].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[16].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.session",
         "title": "session Domain Events",
         "description": "Shared-session lifecycle, participant, and message events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54473,25 +54040,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[17].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[17].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.surfaces",
         "title": "surfaces Domain Events",
         "description": "Surface registration and health events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54521,25 +54084,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[18].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[18].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.tasks",
         "title": "tasks Domain Events",
         "description": "Runtime task lifecycle and status events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54569,25 +54128,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[19].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[19].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.tools",
         "title": "tools Domain Events",
         "description": "Tool start, result, and failure events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54617,25 +54172,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[20].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[20].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.transport",
         "title": "transport Domain Events",
         "description": "Transport connect, disconnect, and lifecycle events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54665,25 +54216,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[21].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[21].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.turn",
         "title": "turn Domain Events",
         "description": "Turn submission and completion events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54713,25 +54260,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[22].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[22].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.ui",
         "title": "ui Domain Events",
         "description": "UI-focused state and operational events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54761,25 +54304,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[23].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[23].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.watchers",
         "title": "watchers Domain Events",
         "description": "Watcher state and heartbeat events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54809,25 +54348,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[24].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[24].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
-        "source": "builtin",
         "id": "runtime.workflows",
         "title": "workflows Domain Events",
         "description": "Workflow orchestration events.",
         "category": "runtime-domain",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54857,25 +54392,65 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.events[25].outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.events[25].outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
         }
       },
       {
+        "id": "runtime.workspace",
+        "title": "workspace Domain Events",
+        "description": "Workspace swap lifecycle events (start, complete, refuse).",
+        "category": "runtime-domain",
         "source": "builtin",
+        "transport": [
+          "sse",
+          "ws"
+        ],
+        "scopes": [
+          "read:events"
+        ],
+        "domains": [
+          "workspace"
+        ],
+        "wireEvents": [
+          "workspace"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {},
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      {
         "id": "control.heartbeat",
         "title": "Heartbeat",
         "description": "Keepalive event emitted by the SSE control-plane transport.",
         "category": "transport",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54904,11 +54479,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
-        "source": "builtin",
         "id": "control.ready",
         "title": "Ready Handshake",
         "description": "Initial SSE/WebSocket handshake event emitted after a control-plane subscription is opened.",
         "category": "transport",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -54944,11 +54519,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
-        "source": "builtin",
         "id": "control.surface_message",
         "title": "Surface Message",
         "description": "Out-of-band control-plane surface messages for operators and connected clients.",
         "category": "transport",
+        "source": "builtin",
         "transport": [
           "sse",
           "ws"
@@ -55066,15 +54641,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.events[28].outputSchema.properties.attachments.items.properties.metadata.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.events[28].outputSchema.properties.attachments.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -55112,15 +54683,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.events[28].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.events[28].outputSchema.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -55138,16 +54705,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 213,
-      "typedInputs": 213,
+      "methods": 221,
+      "typedInputs": 221,
       "genericInputs": 0,
-      "typedOutputs": 213,
+      "typedOutputs": 221,
       "genericOutputs": 0
     },
     "eventCoverage": {
-      "events": 29,
-      "withDomains": 26,
-      "withWireEvents": 29
+      "events": 30,
+      "withDomains": 27,
+      "withWireEvents": 30
     }
   },
   "peer": {
@@ -55157,4 +54724,4 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
     ],
     "relationship": "paired device and node-host peers use a separate peer contract surface"
   }
-};
+} as const;

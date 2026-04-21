@@ -1,6 +1,6 @@
 # Runtime Events Reference
 
-Generated from the synced GoodVibes operator event contract. The checked-in contract artifact (`packages/contracts/artifacts/operator-contract.json`) is pinned at product version `0.18.2`; subsequent SDK releases have added new event domains (automation, routes, control-plane, deliveries, surfaces, watchers, ui, security, workspace, knowledge — see `CHANGELOG.md`). Consult `/api/control-plane/events/catalog` on a running daemon for the canonical current inventory.
+Generated from the synced GoodVibes operator event contract for product version `0.21.36`.
 
 ## Transport endpoints
 
@@ -35,14 +35,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[0].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[0].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -72,14 +68,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[1].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[1].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -109,14 +101,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[2].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[2].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -146,14 +134,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[3].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[3].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -183,14 +167,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[4].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[4].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -220,14 +200,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[5].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[5].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -257,14 +233,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[6].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[6].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -294,14 +266,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[7].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[7].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -331,14 +299,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[8].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[8].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -368,14 +332,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[9].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[9].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -405,14 +365,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[10].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[10].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -442,14 +398,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[11].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[11].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -479,14 +431,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[12].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[12].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -516,14 +464,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[13].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[13].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -553,14 +497,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[14].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[14].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -590,14 +530,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[15].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[15].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -627,14 +563,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[16].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[16].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -664,14 +596,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[17].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[17].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -701,14 +629,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[18].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[18].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -738,14 +662,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[19].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[19].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -775,14 +695,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[20].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[20].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -812,14 +728,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[21].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[21].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -849,14 +761,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[22].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[22].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -886,14 +794,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[23].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[23].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -923,14 +827,10 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[24].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[24].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -960,14 +860,43 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[25].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[25].outputSchema.additionalProperties"
-        }
+        "items": {}
+      }
+    ]
+  }
+}
+```
+
+### `workspace`
+
+- `runtime.workspace` -> `workspace`
+
+#### `runtime.workspace` payload schema
+
+```json
+{
+  "type": "object",
+  "additionalProperties": {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      },
+      {
+        "type": "boolean"
+      },
+      {
+        "type": "null"
+      },
+      {},
+      {
+        "type": "array",
+        "items": {}
       }
     ]
   }

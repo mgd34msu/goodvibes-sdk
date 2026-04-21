@@ -1,6 +1,6 @@
 # Peer API Reference
 
-Generated from the synced GoodVibes peer contract. The checked-in peer-contract artifact (`packages/contracts/artifacts/peer-contract.json`) is pinned at product version `0.18.2` and has not been regenerated since; the peer surface is stable across subsequent SDK releases but consult the live daemon's peer contract endpoint for the canonical inventory.
+Generated from the synced GoodVibes peer contract for product version `0.21.36`.
 
 ## Summary
 
