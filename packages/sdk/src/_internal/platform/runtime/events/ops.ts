@@ -85,6 +85,14 @@ export type OpsEvent =
       note?: string;
       outcome: 'success' | 'rejected' | 'error';
       errorMessage?: string;
+    }
+  /** A subscriber threw an error during event dispatch; emitted after dedup threshold. */
+  | {
+      type: 'OPS_LISTENER_MISBEHAVING';
+      listenerId: string;
+      eventType: string;
+      errorMessage: string;
+      errorCount: number;
     };
 
 /** All ops event type literals as a union. */

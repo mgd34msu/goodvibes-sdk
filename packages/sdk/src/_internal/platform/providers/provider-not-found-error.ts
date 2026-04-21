@@ -9,6 +9,7 @@ import { GoodVibesSdkError } from '../../errors/index.js';
  * registry separately.
  */
 export class ProviderNotFoundError extends GoodVibesSdkError {
+  declare readonly code: 'PROVIDER_NOT_FOUND';
   /** The provider ID that was requested. */
   readonly providerId: string;
   /** Sorted list of currently-registered provider IDs at the time of the error. */
@@ -19,7 +20,7 @@ export class ProviderNotFoundError extends GoodVibesSdkError {
     super(
       `Provider '${providerId}' is not registered. ` +
       `Available providers: ${ids}`,
-      { category: 'not_found', source: 'provider', recoverable: false },
+      { code: 'PROVIDER_NOT_FOUND', category: 'not_found', source: 'provider', recoverable: false },
     );
     this.name = 'ProviderNotFoundError';
     this.providerId = providerId;

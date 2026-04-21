@@ -76,6 +76,7 @@ export interface PolicyLoadResult {
  * Managed mode MUST reject bundles with invalid or missing signatures.
  */
 export class PolicySignatureError extends GoodVibesSdkError {
+  declare readonly code: 'POLICY_SIGNATURE_INVALID';
   constructor(
     /** The bundle ID that failed validation. */
     public readonly bundleId: PolicyBundleId,
@@ -83,7 +84,7 @@ export class PolicySignatureError extends GoodVibesSdkError {
     public readonly signatureStatus: SignatureStatus,
     message: string,
   ) {
-    super(message, { category: 'permission', source: 'runtime', recoverable: false });
+    super(message, { code: 'POLICY_SIGNATURE_INVALID', category: 'permission', source: 'runtime', recoverable: false });
     this.name = 'PolicySignatureError';
   }
 }

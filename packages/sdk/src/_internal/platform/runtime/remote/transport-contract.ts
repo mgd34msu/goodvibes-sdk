@@ -139,6 +139,7 @@ export const TRANSPORT_COMPATIBILITY_MATRIX: CompatibilityMatrix = Object.freeze
  * surface diagnostics, and produce a typed HANDSHAKE_REJECT payload.
  */
 export class VersionMismatchError extends GoodVibesSdkError {
+  declare readonly code: 'major_version_mismatch' | 'peer_version_too_old' | 'peer_version_unsupported';
   /** Structured mismatch code (distinct from the generic SDK error code string). */
   public readonly mismatchCode:
     | 'major_version_mismatch'

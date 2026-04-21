@@ -8,8 +8,11 @@
  */
 import { logger } from '../../utils/logger.js';
 import type { RuntimeEventEnvelope } from './envelope.js';
+import { createEventEnvelope } from './envelope.js';
 import type { AnyRuntimeEvent, RuntimeEventDomain, DomainEventMap } from './domain-map.js';
 import { summarizeError } from '../../utils/error-display.js';
+import type { OpsEvent } from './ops.js';
+import { listenerErrorsTotal } from '../metrics.js';
 
 export type { RuntimeEventEnvelope, EnvelopeContext } from './envelope.js';
 export { createEventEnvelope } from './envelope.js';
@@ -58,7 +61,27 @@ export type EnvelopeListener<T extends AnyRuntimeEvent = AnyRuntimeEvent> = (
  * rarely exceeds single-digit listeners. Exceeding this strongly suggests a
  * subscriber is being registered without a corresponding unsubscribe.
  */
-const MAX_LISTENERS = 100;
+export const MAX_LISTENERS = 100;
+
+/**
+ * Options accepted by the RuntimeEventBus constructor.
+ */
+export interface RuntimeEventBusOptions {
+  /**
+   * Override the maximum number of listeners per channel.
+   * Defaults to MAX_LISTENERS (100).
+   * Values above zero are accepted; the cap is applied per event-type channel
+   * and per domain channel independently.
+   */
+  maxListeners?: number;
+}
+
+/** Extract a plain string error message from an unknown thrown value. */
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  return summarizeError(err);
+}
 
 /**
  * RuntimeEventBus — typed event bus for domain-structured runtime events.
@@ -77,6 +100,16 @@ export class RuntimeEventBus {
   private readonly _listeners = new Map<AnyRuntimeEvent['type'], Set<EnvelopeListener>>();
   /** Per-domain listener sets. Keyed by RuntimeEventDomain. */
   private readonly _domainListeners = new Map<RuntimeEventDomain, Set<EnvelopeListener>>();
+  /** Effective listener cap for this instance. */
+  private readonly _maxListeners: number;
+  /** Track per-listener error counts for misbehaving-listener dedup. */
+  private readonly _listenerErrorCounts = new WeakMap<EnvelopeListener, number>();
+  /** Number of errors a listener must throw before OPS_LISTENER_MISBEHAVING is emitted. */
+  private static readonly _MISBEHAVE_DEDUP_THRESHOLD = 1;
+
+  constructor(opts?: RuntimeEventBusOptions) {
+    this._maxListeners = opts?.maxListeners ?? MAX_LISTENERS;
+  }
 
   /**
    * Subscribe to a specific event type.
@@ -94,11 +127,19 @@ export class RuntimeEventBus {
     }
     const set = this._listeners.get(eventType)!;
     set.add(callback as EnvelopeListener);
-    if (set.size > MAX_LISTENERS) {
+    if (set.size > this._maxListeners) {
+      if (process.env['NODE_ENV'] === 'development') {
+        // Remove the just-added listener before throwing to maintain state consistency.
+        set.delete(callback as EnvelopeListener);
+        if (set.size === 0) this._listeners.delete(eventType);
+        throw new RangeError(
+          `[RuntimeEventBus] listener cap exceeded — maxListeners=${this._maxListeners} eventType=${String(eventType)}`
+        );
+      }
       logger.warn('[RuntimeEventBus] possible listener leak detected', {
         eventType,
         count: set.size,
-        max: MAX_LISTENERS,
+        max: this._maxListeners,
       });
     }
     return () => this._off(eventType, callback as EnvelopeListener);
@@ -120,11 +161,19 @@ export class RuntimeEventBus {
     }
     const set = this._domainListeners.get(domain)!;
     set.add(callback as EnvelopeListener);
-    if (set.size > MAX_LISTENERS) {
+    if (set.size > this._maxListeners) {
+      if (process.env['NODE_ENV'] === 'development') {
+        // Remove the just-added listener before throwing to maintain state consistency.
+        set.delete(callback as EnvelopeListener);
+        if (set.size === 0) this._domainListeners.delete(domain);
+        throw new RangeError(
+          `[RuntimeEventBus] domain listener cap exceeded — maxListeners=${this._maxListeners} domain=${String(domain)}`
+        );
+      }
       logger.warn('[RuntimeEventBus] possible domain listener leak detected', {
         domain,
         count: set.size,
-        max: MAX_LISTENERS,
+        max: this._maxListeners,
       });
     }
     return () => this._offDomain(domain, callback as EnvelopeListener);
@@ -176,10 +225,7 @@ export class RuntimeEventBus {
         try {
           h(ev);
         } catch (err) {
-          logger.error('[RuntimeEventBus] listener error', {
-            eventType: evType,
-            error: summarizeError(err),
-          });
+          this._recordListenerError(h, evType, err);
         }
       });
     }
@@ -193,13 +239,87 @@ export class RuntimeEventBus {
         try {
           h(ev);
         } catch (err) {
-          logger.error('[RuntimeEventBus] domain listener error', {
-            domain: d,
-            eventType: evType,
-            error: summarizeError(err),
-          });
+          this._recordListenerError(h, evType, err, String(d));
         }
       });
+    }
+  }
+
+  /**
+   * Record a listener error: increment metrics, update error count, emit
+   * OPS_LISTENER_MISBEHAVING once the dedup threshold is reached, and log.
+   *
+   * @param listener - The misbehaving listener function.
+   * @param eventType - The event type that triggered the listener.
+   * @param err - The thrown value caught from the listener.
+   * @param domain - Optional domain name, present when the listener was a domain subscriber.
+   */
+  private _recordListenerError(
+    listener: EnvelopeListener,
+    eventType: AnyRuntimeEvent['type'],
+    err: unknown,
+    domain?: string
+  ): void {
+    const errMsg = extractErrorMessage(err);
+    listenerErrorsTotal.add(1, { event_type: eventType });
+    const prev = this._listenerErrorCounts.get(listener) ?? 0;
+    const next = prev + 1;
+    this._listenerErrorCounts.set(listener, next);
+    if (next === RuntimeEventBus._MISBEHAVE_DEDUP_THRESHOLD) {
+      this._emitListenerMisbehaving(listener, String(eventType), errMsg, next);
+    }
+    if (domain !== undefined) {
+      logger.error('[RuntimeEventBus] domain listener error', {
+        domain,
+        eventType,
+        error: summarizeError(err),
+      });
+    } else {
+      logger.error('[RuntimeEventBus] listener error', {
+        eventType,
+        error: summarizeError(err),
+      });
+    }
+  }
+
+  /**
+   * Directly dispatch an OPS_LISTENER_MISBEHAVING envelope to any registered
+   * OPS_LISTENER_MISBEHAVING and 'ops' domain listeners.
+   *
+   * Bypasses emit() to avoid potential recursion: a listener watching for
+   * misbehaving events itself misbehaving would otherwise cause infinite loops.
+   */
+  private _emitListenerMisbehaving(
+    listener: EnvelopeListener,
+    eventType: string,
+    errorMessage: string,
+    errorCount: number
+  ): void {
+    const payload: OpsEvent & { type: 'OPS_LISTENER_MISBEHAVING' } = {
+      type: 'OPS_LISTENER_MISBEHAVING',
+      listenerId: listener.name || '(anonymous)',
+      eventType,
+      errorMessage,
+      errorCount,
+    };
+    const envelope = createEventEnvelope(
+      'OPS_LISTENER_MISBEHAVING',
+      payload,
+      { sessionId: 'runtime-bus', source: 'runtime-bus' }
+    ) as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>;
+
+    // Dispatch directly — no queueMicrotask, no recursion path through emit().
+    const typeListeners = this._listeners.get('OPS_LISTENER_MISBEHAVING');
+    if (typeListeners) {
+      for (const h of Array.from(typeListeners)) {
+        try { h(envelope); } catch { /* suppress secondary errors */ }
+      }
+    }
+    const domainListeners = this._domainListeners.get('ops');
+    if (domainListeners) {
+      for (const h of Array.from(domainListeners)) {
+        try { h(envelope); } catch { /* suppress secondary errors */ }
+      }
     }
   }
 

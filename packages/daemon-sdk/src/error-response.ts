@@ -1,5 +1,5 @@
 import {
-  type DaemonErrorCategory,
+  DaemonErrorCategory,
   type DaemonErrorSource,
   GoodVibesSdkError,
   isStructuredDaemonErrorBody,
@@ -34,17 +34,17 @@ interface StructuredErrorLike {
 const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: DaemonErrorCategory; message: (provider?: string) => string }> = [
   {
     pattern: /ECONNREFUSED/i,
-    category: 'network',
+    category: DaemonErrorCategory.NETWORK,
     message: (provider) => `Cannot connect to ${provider ?? 'the provider'}. Check whether the service is reachable.`,
   },
   {
     pattern: /ETIMEDOUT|ECONNABORTED|timed?[\s_-]?out/i,
-    category: 'timeout',
+    category: DaemonErrorCategory.TIMEOUT,
     message: () => 'Connection timed out before the request completed.',
   },
   {
     pattern: /ENOTFOUND|EAI_AGAIN/i,
-    category: 'network',
+    category: DaemonErrorCategory.NETWORK,
     message: (provider) => `DNS lookup failed for ${provider ?? 'the provider'}. Check the base URL and network.`,
   },
 ];
@@ -97,25 +97,25 @@ function readMessage(error: unknown, fallbackMessage?: string): string {
 
 function inferCategory(message: string, status?: number): DaemonErrorCategory {
   const msg = message.toLowerCase();
-  if (status === 401) return 'authentication';
-  if (status === 402) return 'billing';
-  if (status === 403) return 'authorization';
-  if (status === 404) return 'not_found';
-  if (status === 408) return 'timeout';
-  if (status === 429) return 'rate_limit';
-  if (status === 400) return 'bad_request';
-  if (status !== undefined && status >= 500) return 'service';
+  if (status === 401) return DaemonErrorCategory.AUTHENTICATION;
+  if (status === 402) return DaemonErrorCategory.BILLING;
+  if (status === 403) return DaemonErrorCategory.AUTHORIZATION;
+  if (status === 404) return DaemonErrorCategory.NOT_FOUND;
+  if (status === 408) return DaemonErrorCategory.TIMEOUT;
+  if (status === 429) return DaemonErrorCategory.RATE_LIMIT;
+  if (status === 400) return DaemonErrorCategory.BAD_REQUEST;
+  if (status !== undefined && status >= 500) return DaemonErrorCategory.SERVICE;
 
-  if (/api[_\s-]?key|auth|token|credential|jwt|unauthoriz/.test(msg)) return 'authentication';
-  if (/forbidden|access denied|permission denied|not allowed/.test(msg)) return 'authorization';
-  if (/billing|payment required|credits?|quota|depleted|insufficient balance/.test(msg)) return 'billing';
-  if (/rate.limit|too many requests|throttl/.test(msg)) return 'rate_limit';
-  if (/timed?[\s_-]?out|etimedout|deadline exceeded/.test(msg)) return 'timeout';
-  if (/econnrefused|enotfound|ehostunreach|econnreset|socket hang up|fetch failed|dns|tls|ssl|certificate/.test(msg)) return 'network';
-  if (/not found|unknown model|no such model|unsupported model|unknown endpoint/.test(msg)) return 'not_found';
-  if (/invalid request|bad request|invalid argument|schema|malformed|unsupported parameter/.test(msg)) return 'bad_request';
-  if (/invalid json|parse|no response body|unexpected eof|stream ended|malformed response/.test(msg)) return 'protocol';
-  return 'unknown';
+  if (/api[_\s-]?key|auth|token|credential|jwt|unauthoriz/.test(msg)) return DaemonErrorCategory.AUTHENTICATION;
+  if (/forbidden|access denied|permission denied|not allowed/.test(msg)) return DaemonErrorCategory.AUTHORIZATION;
+  if (/billing|payment required|credits?|quota|depleted|insufficient balance/.test(msg)) return DaemonErrorCategory.BILLING;
+  if (/rate.limit|too many requests|throttl/.test(msg)) return DaemonErrorCategory.RATE_LIMIT;
+  if (/timed?[\s_-]?out|etimedout|deadline exceeded/.test(msg)) return DaemonErrorCategory.TIMEOUT;
+  if (/econnrefused|enotfound|ehostunreach|econnreset|socket hang up|fetch failed|dns|tls|ssl|certificate/.test(msg)) return DaemonErrorCategory.NETWORK;
+  if (/not found|unknown model|no such model|unsupported model|unknown endpoint/.test(msg)) return DaemonErrorCategory.NOT_FOUND;
+  if (/invalid request|bad request|invalid argument|schema|malformed|unsupported parameter/.test(msg)) return DaemonErrorCategory.BAD_REQUEST;
+  if (/invalid json|parse|no response body|unexpected eof|stream ended|malformed response/.test(msg)) return DaemonErrorCategory.PROTOCOL;
+  return DaemonErrorCategory.UNKNOWN;
 }
 
 function inferHint(category: DaemonErrorCategory, status?: number): string | undefined {

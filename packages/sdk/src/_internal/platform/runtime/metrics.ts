@@ -57,6 +57,11 @@ export const transportRetriesTotal = platformMeter.counter('transport.retries_to
 /** Gauge: fill level of the telemetry buffer (0..1). */
 export const telemetryBufferFill = platformMeter.gauge('telemetry.buffer.fill');
 
+// ── Listener error metrics (OBS-13) ──────────────────────────────────────────
+
+/** Counter: total listener errors caught during event dispatch. */
+export const listenerErrorsTotal = platformMeter.counter('listener_errors_total');
+
 /**
  * OBS-12: Snapshot all metric instruments as a JSON-serialisable object.
  * Used by the GET /api/runtime/metrics endpoint.
@@ -78,6 +83,7 @@ export function snapshotMetrics(): Record<string, unknown> {
       'auth.success.total': authSuccessTotal.value(),
       'auth.failure.total': authFailureTotal.value(),
       'transport.retries_total': transportRetriesTotal.value(),
+      'listener_errors_total': listenerErrorsTotal.value(),
     },
     gauges: {
       'sessions.active': sessionsActive.value(),

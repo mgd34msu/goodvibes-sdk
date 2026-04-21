@@ -16,6 +16,24 @@ export type DaemonErrorCategory =
   | 'internal'
   | 'unknown';
 
+export const DaemonErrorCategory = {
+  AUTHENTICATION: 'authentication',
+  AUTHORIZATION: 'authorization',
+  BILLING: 'billing',
+  RATE_LIMIT: 'rate_limit',
+  TIMEOUT: 'timeout',
+  NETWORK: 'network',
+  BAD_REQUEST: 'bad_request',
+  NOT_FOUND: 'not_found',
+  PERMISSION: 'permission',
+  TOOL: 'tool',
+  CONFIG: 'config',
+  PROTOCOL: 'protocol',
+  SERVICE: 'service',
+  INTERNAL: 'internal',
+  UNKNOWN: 'unknown',
+} as const satisfies Record<string, DaemonErrorCategory>;
+
 export type DaemonErrorSource =
   | 'provider'
   | 'tool'

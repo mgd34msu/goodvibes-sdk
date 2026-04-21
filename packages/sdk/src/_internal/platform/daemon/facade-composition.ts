@@ -1,31 +1,16 @@
 import { AgentManager } from '../tools/agent/index.js';
 import { resolveHostBinding } from './host-resolver.js';
 import { ConfigManager } from '../config/manager.js';
-import { ServiceRegistry } from '../config/service-registry.js';
-import { UserAuthManager } from '../security/user-auth.js';
-import {
-  AutomationDeliveryManager,
-  AutomationManager,
-} from '../automation/index.js';
-import { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
-import { GatewayMethodCatalog } from '../control-plane/index.js';
+import { RuntimeEventBus } from '../runtime/events/index.js';
+import { createRuntimeStore } from '../runtime/store/index.js';
+import { setTelemetryIncludeRawPrompts } from '../runtime/telemetry/redaction-config.js';
 import {
   BuiltinChannelRuntime,
   ChannelReplyPipeline,
   ChannelProviderRuntimeManager,
-  ChannelPluginRegistry,
-  ChannelPolicyManager,
-  RouteBindingManager,
-  SurfaceRegistry,
 } from '../channels/index.js';
-import { RuntimeEventBus } from '../runtime/events/index.js';
-import { createRuntimeStore } from '../runtime/store/index.js';
-import { setTelemetryIncludeRawPrompts } from '../runtime/telemetry/redaction-config.js';
-import { PlatformServiceManager } from './service-manager.js';
-import { WatcherRegistry } from '../watchers/index.js';
-import { type DistributedPeerAuth } from '../runtime/remote/index.js';
-import { KnowledgeGraphqlService, KnowledgeService } from '../knowledge/index.js';
-import type { IntegrationHelperService } from '../runtime/integration/helpers.js';
+import { ControlPlaneGateway } from '../control-plane/index.js';
+import { KnowledgeGraphqlService } from '../knowledge/index.js';
 import { DaemonControlPlaneHelper } from './control-plane.js';
 import { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
 import { DaemonSurfaceActionHelper } from './surface-actions.js';
@@ -39,7 +24,19 @@ import { CATALOG_PROVIDER_NAME_ALIASES } from '../providers/builtin-registry.js'
 import type { ProviderRegistry } from '../providers/registry.js';
 import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
 import type { DaemonConfig, PendingSurfaceReply } from './types.js';
+import { PlatformServiceManager } from './service-manager.js';
 import type { ResolvedInboundTlsContext } from '../runtime/network/index.js';
+// Re-export type definitions from the dedicated types module.
+export type {
+  ResolvedDaemonFacadeRuntime,
+  DaemonFacadeCollaborators,
+  CreateDaemonFacadeCollaboratorsOptions,
+} from './facade-types.js';
+import type {
+  ResolvedDaemonFacadeRuntime,
+  DaemonFacadeCollaborators,
+  CreateDaemonFacadeCollaboratorsOptions,
+} from './facade-types.js';
 
 type JsonBody = Record<string, unknown>;
 
@@ -153,43 +150,6 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
       }
     },
   };
-}
-
-export interface ResolvedDaemonFacadeRuntime {
-  readonly configManager: ConfigManager;
-  readonly runtimeServices: RuntimeServices;
-  readonly integrationHelpers: IntegrationHelperService;
-  readonly port: number;
-  readonly host: string;
-  readonly agentManager: AgentManager;
-  readonly userAuth: UserAuthManager;
-  readonly automationManager: AutomationManager;
-  readonly runtimeBus: RuntimeEventBus;
-  readonly runtimeStore: RuntimeServices['runtimeStore'];
-  readonly runtimeDispatch: RuntimeServices['runtimeDispatch'];
-  readonly controlPlaneGateway: ControlPlaneGateway;
-  readonly gatewayMethods: GatewayMethodCatalog;
-  readonly sessionBroker: SharedSessionBroker;
-  readonly approvalBroker: ApprovalBroker;
-  readonly routeBindings: RouteBindingManager;
-  readonly deliveryManager: AutomationDeliveryManager;
-  readonly surfaceRegistry: SurfaceRegistry;
-  readonly channelPolicy: ChannelPolicyManager;
-  readonly channelPlugins: ChannelPluginRegistry;
-  readonly watcherRegistry: WatcherRegistry;
-  readonly platformServiceManager: PlatformServiceManager;
-  readonly distributedRuntime: RuntimeServices['distributedRuntime'];
-  readonly voiceService: RuntimeServices['voiceService'];
-  readonly webSearchService: RuntimeServices['webSearchService'];
-  readonly knowledgeService: KnowledgeService;
-  readonly knowledgeGraphqlService: KnowledgeGraphqlService;
-  readonly mediaProviders: RuntimeServices['mediaProviders'];
-  readonly multimodalService: RuntimeServices['multimodalService'];
-  readonly artifactStore: RuntimeServices['artifactStore'];
-  readonly serviceRegistry: ServiceRegistry;
-  readonly serveFactory: typeof Bun.serve;
-  readonly githubWebhookSecret: string | null;
-  readonly companionChatManager: CompanionChatManager;
 }
 
 export function resolveDaemonFacadeRuntime(
@@ -325,69 +285,6 @@ export function resolveDaemonFacadeRuntime(
     githubWebhookSecret: config.githubWebhookSecret ?? process.env.GITHUB_WEBHOOK_SECRET ?? null,
     companionChatManager,
   };
-}
-
-export interface DaemonFacadeCollaborators {
-  readonly channelReplyPipeline: ChannelReplyPipeline;
-  readonly controlPlaneHelper: DaemonControlPlaneHelper;
-  readonly surfaceDeliveryHelper: DaemonSurfaceDeliveryHelper;
-  readonly surfaceActionHelper: DaemonSurfaceActionHelper;
-  readonly transportEventsHelper: DaemonTransportEventsHelper;
-  readonly httpRouter: DaemonHttpRouter;
-  readonly providerRuntime: ChannelProviderRuntimeManager;
-  readonly builtinChannels: BuiltinChannelRuntime;
-}
-
-export interface CreateDaemonFacadeCollaboratorsOptions {
-  readonly runtime: ResolvedDaemonFacadeRuntime;
-  readonly pendingSurfaceReplies: Map<string, PendingSurfaceReply>;
-  readonly authToken: () => string | null;
-  readonly trustProxyEnabled: () => boolean;
-  readonly dispatchApiRoutes: (req: Request) => Promise<Response | null>;
-  readonly parseJsonBody: (req: Request) => Promise<JsonBody | Response>;
-  readonly requireAuthenticatedSession: (req: Request) => { username: string; roles: readonly string[] } | null;
-  readonly trySpawnAgent: (input: Parameters<AgentManager['spawn']>[0], logLabel?: string, sessionId?: string) => import('../tools/agent/index.js').AgentRecord | Response;
-  readonly checkAuth: (req: Request) => boolean;
-  readonly extractAuthToken: (req: Request) => string;
-  readonly requireAdmin: (req: Request) => Response | null;
-  readonly requireRemotePeer: (req: Request, scope?: string) => Promise<DistributedPeerAuth | Response>;
-  readonly describeAuthenticatedPrincipal: (token: string) => {
-    principalId: string;
-    principalKind: 'user' | 'bot' | 'service' | 'token';
-    admin: boolean;
-    scopes: readonly string[];
-  } | null;
-  readonly invokeGatewayMethodCall: (input: {
-    readonly authToken: string;
-    readonly methodId: string;
-    readonly query?: Record<string, unknown>;
-    readonly body?: unknown;
-    readonly context?: {
-      readonly principalId?: string;
-      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
-      readonly admin?: boolean;
-      readonly scopes?: readonly string[];
-      readonly clientKind?: string;
-    };
-  }) => Promise<{ status: number; ok: boolean; body: unknown }>;
-  readonly syncSpawnedAgentTask: (record: import('../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
-  readonly syncFinishedAgentTask: (record: import('../tools/agent/index.js').AgentRecord) => void;
-  readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
-  readonly signWebhookPayload: (body: string, secret: string) => string;
-  readonly handleApprovalAction: (approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request) => Promise<Response>;
-  readonly tlsState: () => ResolvedInboundTlsContext | null;
-  /**
-   * WorkspaceSwapManager instance, forwarded from DaemonConfig.swapManager.
-   * Null in embedded/test contexts that don't support live workspace swaps.
-   */
-  readonly swapManager: import('../../daemon/system-route-types.js').WorkspaceSwapManagerLike | null;
-  /**
-   * F16b: Resolve the current default provider/model from the provider registry.
-   * Forwarded into DaemonHttpRouterContext so that companion-chat session-create
-   * can fill in provider/model when the request body does not supply them.
-   * Optional — when absent the legacy (null provider/model allowed) behavior is preserved.
-   */
-  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
 }
 
 export function createDaemonFacadeCollaborators(
@@ -549,7 +446,7 @@ export function createDaemonFacadeCollaborators(
 }
 
 export function configureDaemonSessionContinuation(options: {
-  readonly sessionBroker: SharedSessionBroker;
+  readonly sessionBroker: import('../control-plane/index.js').SharedSessionBroker;
   readonly trySpawnAgent: (input: Parameters<AgentManager['spawn']>[0], logLabel?: string, sessionId?: string) => import('../tools/agent/index.js').AgentRecord | Response;
   readonly queueSurfaceReplyFromBinding: (binding: import('@pellux/goodvibes-sdk/platform/automation/routes').AutomationRouteBinding | undefined, input: {
     readonly agentId: string;

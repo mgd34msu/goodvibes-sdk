@@ -62,6 +62,8 @@ export const METRIC_LABEL_ALLOWLIST = new Set<string>([
   'error_source',
   // Stream labels
   'stream_type',
+  // Listener/event labels (OBS-13)
+  'event_type',
 ]);
 export const DEFAULT_ERROR_LIMIT = 250;
 export const DEFAULT_SPAN_LIMIT = 250;

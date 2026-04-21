@@ -42,6 +42,7 @@ import {
 
 /** Thrown when a requested task lifecycle transition is not permitted. */
 export class TaskTransitionError extends GoodVibesSdkError {
+  declare readonly code: 'TASK_TRANSITION_ERROR';
   public readonly taskId: string;
   public readonly from: TaskLifecycleState;
   public readonly to: TaskLifecycleState;
@@ -53,7 +54,7 @@ export class TaskTransitionError extends GoodVibesSdkError {
   ) {
     super(
       `[TaskManager] Invalid transition ${from} → ${to} for task ${taskId}`,
-      { category: 'internal', source: 'runtime', recoverable: false },
+      { code: 'TASK_TRANSITION_ERROR', category: 'internal', source: 'runtime', recoverable: false },
     );
     this.name = 'TaskTransitionError';
     this.taskId = taskId;
@@ -64,12 +65,13 @@ export class TaskTransitionError extends GoodVibesSdkError {
 
 /** Thrown when a task ID cannot be found in the registry. */
 export class TaskNotFoundError extends GoodVibesSdkError {
+  declare readonly code: 'TASK_NOT_FOUND';
   public readonly taskId: string;
 
   public constructor(taskId: string) {
     super(
       `[TaskManager] Task not found: ${taskId}`,
-      { category: 'not_found', source: 'runtime', recoverable: false },
+      { code: 'TASK_NOT_FOUND', category: 'not_found', source: 'runtime', recoverable: false },
     );
     this.name = 'TaskNotFoundError';
     this.taskId = taskId;
@@ -78,12 +80,13 @@ export class TaskNotFoundError extends GoodVibesSdkError {
 
 /** Thrown when cancellation is attempted on a non-cancellable task. */
 export class TaskNotCancellableError extends GoodVibesSdkError {
+  declare readonly code: 'TASK_NOT_CANCELLABLE';
   public readonly taskId: string;
 
   public constructor(taskId: string) {
     super(
       `[TaskManager] Task ${taskId} is not cancellable`,
-      { category: 'internal', source: 'runtime', recoverable: false },
+      { code: 'TASK_NOT_CANCELLABLE', category: 'internal', source: 'runtime', recoverable: false },
     );
     this.name = 'TaskNotCancellableError';
     this.taskId = taskId;

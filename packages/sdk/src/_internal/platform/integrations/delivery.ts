@@ -79,12 +79,13 @@ export function classifyDeliveryError(error: unknown): DeliveryFailureClass {
 
 /** Typed delivery error that carries an explicit failure classification. */
 export class DeliveryError extends GoodVibesSdkError {
+  declare readonly code: 'DELIVERY_ERROR';
   constructor(
     message: string,
     public readonly failureClass: DeliveryFailureClass,
     public readonly statusCode?: number,
   ) {
-    super(message, { category: 'internal', source: 'runtime', recoverable: false });
+    super(message, { code: 'DELIVERY_ERROR', category: 'internal', source: 'runtime', recoverable: false });
     this.name = 'DeliveryError';
   }
 }

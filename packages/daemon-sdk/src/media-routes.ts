@@ -1,6 +1,7 @@
 import type { DaemonApiRouteHandlers } from './context.js';
 import { resolvePrivateHostFetchOptions } from './http-policy.js';
 import { jsonErrorResponse } from './error-response.js';
+import { DaemonErrorCategory } from '@pellux/goodvibes-errors';
 import type {
   ArtifactKind,
   DaemonMediaRouteContext,
@@ -118,7 +119,7 @@ async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): P
   } catch (error) {
     if (isProviderNotConfiguredError(error)) {
       return Response.json(
-        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: 'config', source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
         { status: 409 },
       );
     }
@@ -147,7 +148,7 @@ async function handleVoiceStt(context: DaemonMediaRouteContext, req: Request): P
   } catch (error) {
     if (isProviderNotConfiguredError(error)) {
       return Response.json(
-        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: 'config', source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
         { status: 409 },
       );
     }
@@ -174,7 +175,7 @@ async function handleVoiceRealtimeSession(context: DaemonMediaRouteContext, req:
   } catch (error) {
     if (isProviderNotConfiguredError(error)) {
       return Response.json(
-        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: 'config', source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
         { status: 409 },
       );
     }

@@ -32,6 +32,7 @@ import type { OpsInterventionReason } from '../events/ops.js';
 
 /** Thrown when an ops action is rejected because the state machine disallows it. */
 export class OpsIllegalActionError extends GoodVibesSdkError {
+  declare readonly code: 'OPS_ILLEGAL_ACTION';
   public readonly targetId: string;
   public readonly action: string;
   public readonly currentState: string;
@@ -39,7 +40,7 @@ export class OpsIllegalActionError extends GoodVibesSdkError {
   public constructor(targetId: string, action: string, currentState: string) {
     super(
       `[OpsControlPlane] Action '${action}' is illegal for ${targetId} in state '${currentState}'`,
-      { category: 'permission', source: 'runtime', recoverable: false },
+      { code: 'OPS_ILLEGAL_ACTION', category: 'permission', source: 'runtime', recoverable: false },
     );
     this.name = 'OpsIllegalActionError';
     this.targetId = targetId;
@@ -50,13 +51,14 @@ export class OpsIllegalActionError extends GoodVibesSdkError {
 
 /** Thrown when the target task or agent is not found. */
 export class OpsTargetNotFoundError extends GoodVibesSdkError {
+  declare readonly code: 'OPS_TARGET_NOT_FOUND';
   public readonly targetId: string;
   public readonly targetKind: 'task' | 'agent';
 
   public constructor(targetId: string, targetKind: 'task' | 'agent') {
     super(
       `[OpsControlPlane] ${targetKind} not found: ${targetId}`,
-      { category: 'not_found', source: 'runtime', recoverable: false },
+      { code: 'OPS_TARGET_NOT_FOUND', category: 'not_found', source: 'runtime', recoverable: false },
     );
     this.name = 'OpsTargetNotFoundError';
     this.targetId = targetId;

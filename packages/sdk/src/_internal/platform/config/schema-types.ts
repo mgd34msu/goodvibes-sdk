@@ -250,6 +250,9 @@ export interface RuntimeConfig {
   companionChatLimiter: {
     perSessionLimit: number;
   };
+  eventBus: {
+    maxListeners: number;
+  };
 }
 
 export interface TelemetryConfig {
@@ -583,6 +586,7 @@ export type ConfigKey =
   | 'network.outboundTls.allowInsecureLocalhost'
   | 'network.remoteFetch.allowPrivateHosts'
   | 'runtime.companionChatLimiter.perSessionLimit'
+  | 'runtime.eventBus.maxListeners'
   | 'telemetry.includeRawPrompts';
 
 /** Maps a ConfigKey to its value type. */
@@ -783,5 +787,6 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'network.outboundTls.allowInsecureLocalhost' ? boolean :
   K extends 'network.remoteFetch.allowPrivateHosts' ? boolean :
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
+  K extends 'runtime.eventBus.maxListeners' ? number :
   K extends 'telemetry.includeRawPrompts' ? boolean :
   never;

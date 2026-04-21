@@ -360,13 +360,14 @@ export class PermissionSimulator {
  * Thrown when `enforce` mode is active and the divergence gate fails.
  */
 export class SimulationEnforcementError extends GoodVibesSdkError {
+  declare readonly code: 'SIMULATION_ENFORCEMENT_BLOCKED';
   /** Current divergence rate (0–1). */
   readonly divergenceRate: number;
   /** Configured divergence threshold (0–1). */
   readonly threshold: number;
 
   constructor(message: string, divergenceRate: number, threshold: number) {
-    super(message, { category: 'permission', source: 'runtime', recoverable: false });
+    super(message, { code: 'SIMULATION_ENFORCEMENT_BLOCKED', category: 'permission', source: 'runtime', recoverable: false });
     this.name = 'SimulationEnforcementError';
     this.divergenceRate = divergenceRate;
     this.threshold = threshold;

@@ -157,6 +157,7 @@ export class AppError extends GoodVibesSdkError {
 
 /** Thrown when configuration is invalid or cannot be loaded. Non-recoverable. */
 export class ConfigError extends AppError {
+  declare readonly code: 'CONFIG_ERROR';
   constructor(message: string) {
     super(message, 'CONFIG_ERROR', false, {
       category: 'config',
@@ -167,6 +168,7 @@ export class ConfigError extends AppError {
 
 /** Thrown when an LLM provider API call fails. Recoverable when statusCode is in RETRYABLE_STATUS_CODES. */
 export class ProviderError extends AppError {
+  declare readonly code: 'PROVIDER_ERROR';
   constructor(message: string, statusCode?: number);
   constructor(message: string, options?: ProviderErrorOptions);
   constructor(message: string, statusCodeOrOptions?: number | ProviderErrorOptions, maybeOptions: ProviderErrorOptions = {}) {
@@ -192,6 +194,7 @@ export class ProviderError extends AppError {
 
 /** Thrown when a tool execution fails. Recoverable by default. */
 export class ToolError extends AppError {
+  declare readonly code: 'TOOL_ERROR';
   constructor(message: string, public readonly toolName: string) {
     super(message, 'TOOL_ERROR', true, {
       category: 'tool',
@@ -202,6 +205,7 @@ export class ToolError extends AppError {
 
 /** Thrown for ACP (Agent Control Protocol) errors. Recoverable by default. */
 export class AcpError extends AppError {
+  declare readonly code: 'ACP_ERROR';
   constructor(message: string) {
     super(message, 'ACP_ERROR', true, {
       source: 'acp',
@@ -211,6 +215,7 @@ export class AcpError extends AppError {
 
 /** Thrown when an operation is denied due to insufficient permissions. Non-recoverable. */
 export class PermissionError extends AppError {
+  declare readonly code: 'PERMISSION_DENIED';
   constructor(message: string) {
     super(message, 'PERMISSION_DENIED', false, {
       category: 'permission',
@@ -221,6 +226,7 @@ export class PermissionError extends AppError {
 
 /** Thrown when the renderer encounters a failure. Recoverable by default. */
 export class RenderError extends AppError {
+  declare readonly code: 'RENDER_ERROR';
   constructor(message: string) {
     super(message, 'RENDER_ERROR', true, {
       source: 'render',

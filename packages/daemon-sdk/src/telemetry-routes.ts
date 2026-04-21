@@ -1,6 +1,7 @@
 import type { DaemonApiRouteHandlers } from './context.js';
 import { buildMissingScopeBody, type AuthenticatedPrincipal } from './http-policy.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
+import { DaemonErrorCategory } from '@pellux/goodvibes-errors';
 
 type TelemetrySeverity = 'debug' | 'info' | 'warn' | 'error';
 type TelemetryViewMode = 'safe' | 'raw';
@@ -149,7 +150,7 @@ async function parseOtlpBody(
       {
         error: `Unsupported Content-Type '${contentType}' for OTLP ingest`,
         code: 'UNSUPPORTED_MEDIA_TYPE',
-        category: 'bad_request',
+        category: DaemonErrorCategory.BAD_REQUEST,
         hint: `Use 'application/json'. Protobuf decoding is not implemented in this release — planned for a future release.`,
       },
       { status: 415 },
@@ -162,7 +163,7 @@ async function parseOtlpBody(
       {
         error: `OTLP ingest payload too large (${raw.byteLength} > ${OTLP_INGEST_MAX_BODY_BYTES} bytes)`,
         code: 'PAYLOAD_TOO_LARGE',
-        category: 'bad_request',
+        category: DaemonErrorCategory.BAD_REQUEST,
       },
       { status: 413 },
     );
@@ -173,14 +174,14 @@ async function parseOtlpBody(
     const parsed = JSON.parse(text) as unknown;
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return Response.json(
-        { error: 'OTLP ingest body must be a JSON object', code: 'INVALID_PAYLOAD', category: 'bad_request' },
+        { error: 'OTLP ingest body must be a JSON object', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
         { status: 400 },
       );
     }
     return parsed as Record<string, unknown>;
   } catch {
     return Response.json(
-      { error: 'OTLP ingest body is not valid JSON', code: 'INVALID_PAYLOAD', category: 'bad_request' },
+      { error: 'OTLP ingest body is not valid JSON', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
       { status: 400 },
     );
   }
@@ -196,7 +197,7 @@ function unavailable(): Response {
   return Response.json({
     error: 'Telemetry API unavailable',
     code: 'TELEMETRY_UNAVAILABLE',
-    category: 'service',
+    category: DaemonErrorCategory.SERVICE,
     source: 'runtime',
     recoverable: true,
     hint: 'Start the daemon runtime and ensure the runtime store is available before reading telemetry.',
@@ -208,7 +209,7 @@ function invalidCursor(error: unknown): Response {
   return Response.json({
     error: error instanceof Error ? error.message : 'Invalid telemetry cursor',
     code: 'INVALID_CURSOR',
-    category: 'bad_request',
+    category: DaemonErrorCategory.BAD_REQUEST,
     source: 'runtime',
     recoverable: false,
     hint: 'Use the nextCursor returned by the previous telemetry page, or omit cursor to start from the newest records.',
@@ -226,7 +227,7 @@ function authenticateTelemetryRequest(
     return Response.json({
       error: 'Authentication required for telemetry access',
       code: 'AUTH_REQUIRED',
-      category: 'authentication',
+      category: DaemonErrorCategory.AUTHENTICATION,
       source: 'runtime',
       recoverable: false,
       hint: 'Authenticate with the operator shared token or an authenticated user session before calling telemetry APIs.',
@@ -239,7 +240,7 @@ function authenticateTelemetryRequest(
     return Response.json({
       error: missingRead.error,
       code: 'MISSING_SCOPE',
-      category: 'authorization',
+      category: DaemonErrorCategory.AUTHORIZATION,
       source: 'permission',
       recoverable: false,
       hint: 'Use a token or session with the read:telemetry scope, or elevate to an admin/shared-token session.',
@@ -253,7 +254,7 @@ function authenticateTelemetryRequest(
     return Response.json({
       error: 'Raw telemetry view requires elevated telemetry scope',
       code: 'MISSING_SCOPE',
-      category: 'authorization',
+      category: DaemonErrorCategory.AUTHORIZATION,
       source: 'permission',
       recoverable: false,
       hint: 'Use an admin/shared-token session or a token granted read:telemetry-sensitive to access raw telemetry payloads.',
@@ -387,7 +388,7 @@ export function createDaemonTelemetryRouteHandlers(
       const auth = context.resolveAuthenticatedPrincipal(req);
       if (!auth) {
         return Response.json(
-          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: 'authentication', status: 401 },
+          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: DaemonErrorCategory.AUTHENTICATION, status: 401 },
           { status: 401 },
         );
       }
@@ -400,7 +401,7 @@ export function createDaemonTelemetryRouteHandlers(
       const auth = context.resolveAuthenticatedPrincipal(req);
       if (!auth) {
         return Response.json(
-          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: 'authentication', status: 401 },
+          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: DaemonErrorCategory.AUTHENTICATION, status: 401 },
           { status: 401 },
         );
       }
@@ -413,7 +414,7 @@ export function createDaemonTelemetryRouteHandlers(
       const auth = context.resolveAuthenticatedPrincipal(req);
       if (!auth) {
         return Response.json(
-          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: 'authentication', status: 401 },
+          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: DaemonErrorCategory.AUTHENTICATION, status: 401 },
           { status: 401 },
         );
       }
