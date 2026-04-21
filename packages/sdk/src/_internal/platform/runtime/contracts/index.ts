@@ -24,11 +24,13 @@ import { MigrationRegistry } from './migrations/index.js';
 import type { SchemaContract } from './types.js';
 import { SCHEMA_VERSIONS, MIN_SUPPORTED_VERSIONS } from './version.js';
 import type { ContractName } from './version.js';
-import { getRuntimeStateMigrationSteps } from './migrations/runtime-state.js';
-import { getEventEnvelopeMigrationSteps } from './migrations/event-envelope.js';
-import { getSessionMigrationSteps } from './migrations/session.js';
-import { getPluginManifestMigrationSteps } from './migrations/plugin-manifest.js';
-import { getTaskRecordMigrationSteps } from './migrations/task-record.js';
+import {
+  getRuntimeStateMigrationSteps,
+  getEventEnvelopeMigrationSteps,
+  getSessionMigrationSteps,
+  getPluginManifestMigrationSteps,
+  getTaskRecordMigrationSteps,
+} from './migrations/schemas.js';
 import { validateRuntimeState } from './validators/runtime-state.js';
 import { validateEventEnvelope } from './validators/event-envelope.js';
 import { validateSession } from './validators/session.js';
