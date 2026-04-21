@@ -1,6 +1,6 @@
 # Operator API Reference
 
-Generated from the synced GoodVibes operator contract for product version `0.18.2`.
+Generated from the synced GoodVibes operator contract. The checked-in contract artifact (`packages/contracts/artifacts/operator-contract.json`) is pinned at product version `0.18.2` and has not been regenerated since; the live runtime reports its current SDK version via `/api/control-plane/contract`. Routes, scopes, and shapes below reflect the 0.18.2 contract snapshot — consult `/api/control-plane/methods` on a running daemon for the canonical inventory against the current SDK.
 
 ## Summary
 

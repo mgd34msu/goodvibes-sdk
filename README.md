@@ -15,7 +15,7 @@ This package has two surfaces with different runtime requirements. See [Runtime 
 
 This is one npm package with subpath exports.
 
-> **0.21.0 is the soak-period release.** If you are integrating the SDK, this is the stable target. The next version jump is to 1.0.0 pending owner sign-off. See [the roadmap](./docs/tracking/road-to-1.0.md).
+> **Current version: `0.21.36`.** The 0.21.x line is the stable pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The next version jump is to 1.0.0 pending owner sign-off. See [the roadmap](./docs/tracking/road-to-1.0.md).
 
 
 ```bash
@@ -129,11 +129,11 @@ For the full walkthrough — login flows, token persistence, realtime transports
 
 ## Contract Reference
 
-- operator methods: `213`
-- operator events: `29`
-- peer endpoints: `6`
+- [Operator API reference](./docs/reference-operator.md) — every method, scope, schema, and event exposed by the operator contract.
+- [Peer API reference](./docs/reference-peer.md) — every endpoint exposed by the peer/distributed-runtime contract.
+- [Runtime events reference](./docs/reference-runtime-events.md) — every runtime event domain and payload shape.
 
-See [Operator API reference](./docs/reference-operator.md) and [Peer API reference](./docs/reference-peer.md) for full contract details.
+These three documents are generated from the checked-in contract artifact under `packages/contracts/artifacts/` and are the canonical method/event/endpoint inventory. For live inspection against a running daemon, fetch `/api/control-plane/methods` and `/api/control-plane/events/catalog`.
 
 ## Realtime
 

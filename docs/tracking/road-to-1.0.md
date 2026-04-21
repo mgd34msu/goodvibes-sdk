@@ -4,7 +4,7 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 
 ## Status
 
-- **Current released version**: `0.21.0` (soak-period release; published to npm, `latest` tag)
+- **Current released version**: `0.21.36` (soak period continues; hotfixes and consumer-adoption hardening landing as patch releases pending 1.0.0 owner sign-off)
 - **Current score**: 9.0 / 10
 - **Eligibility**: NOT eligible for 1.0.0 — soak period in progress (started 2026-04-18); owner sign-off pending
 

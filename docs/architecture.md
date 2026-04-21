@@ -419,7 +419,7 @@ The pairing system lets companion apps (mobile, web) establish an authenticated 
 
 ### Flow
 
-1. **Token generation** — `getOrCreateCompanionToken(surface)` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `.goodvibes/<surface>/companion-token.json`. Tokens are stable across restarts and regenerated only on explicit request.
+1. **Token generation** — `getOrCreateCompanionToken(surface, { daemonHomeDir })` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`) at mode `0600`. Tokens are stable across restarts and regenerated only on explicit request. The `surface` parameter is retained for API compatibility but the token path is global since SDK 0.21.28.
 
 2. **Connection info encoding** — `buildCompanionConnectionInfo()` assembles the `CompanionConnectionInfo` payload: daemon URL, token, username, version, and surface name. `encodeConnectionPayload()` serializes it to JSON.
 
@@ -427,7 +427,7 @@ The pairing system lets companion apps (mobile, web) establish an authenticated 
 
 4. **Connection** — the companion app decodes the QR payload, extracts the URL and token, and connects using `transport-http` with the token as a bearer credential.
 
-5. **Revocation** — `regenerateCompanionToken(surface)` replaces the stored token, invalidating all existing companion connections for that surface.
+5. **Revocation** — `regenerateCompanionToken(surface, { daemonHomeDir })` replaces the stored token, invalidating all existing companion/operator connections on that host.
 
 ### CompanionConnectionInfo
 

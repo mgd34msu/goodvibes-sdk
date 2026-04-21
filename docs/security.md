@@ -123,7 +123,7 @@ On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to 
 
 ### Token Storage Recommendations
 
-- **Companion tokens** are stored at `.goodvibes/<surface>/companion-token.json`. Ensure this path is excluded from version control (add `.goodvibes/` to `.gitignore`).
+- **Companion/operator tokens** are stored at `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`). The file is written at mode `0600`. Consumers should keep the daemon-home directory outside any project tree.
 - **Session tokens** are in-memory only; they are not persisted to disk.
 - **Spawn tokens** are in-memory per session; they expire automatically.
 - **API keys and provider credentials** should be stored via `SecretsManager` in secure (encrypted) mode, not plaintext. See [Secret Management](#secret-management) below.
@@ -140,14 +140,14 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 
 1. **Token generation** — companion tokens are generated with `randomBytes(24)` (192 bits of entropy), base64url-encoded, and prefixed with `gv_`. The `gv_` prefix makes tokens machine-identifiable in logs and secret scanners.
 
-2. **Persistence** — tokens are stored on disk at `.goodvibes/<surface>/companion-token.json`. The file is created with standard user permissions. The token is stable across daemon restarts.
+2. **Persistence** — tokens are stored on disk at `<daemonHomeDir>/operator-tokens.json` (canonical global location since SDK 0.21.28). The file is created at mode `0600`. The token is stable across daemon restarts.
 
 3. **QR payload** — `encodeConnectionPayload()` serializes the connection info (URL, token, username, version, surface) as JSON. This JSON is what gets encoded into the QR matrix. The QR is displayed in a trusted UI context (TUI screen or authenticated web page); it should not be left visible in shared screen recordings.
 
 4. **No challenge-response** — the pairing is a direct token transfer. Security relies on:
    - The QR being displayed only in a trusted environment
    - The transport using TLS when the daemon is accessed over a network
-   - The token being revocable: `regenerateCompanionToken(surface)` instantly invalidates all existing companion connections
+   - The token being revocable: `regenerateCompanionToken(surface, { daemonHomeDir })` instantly invalidates all existing companion connections
 
 5. **Connection** — after scanning, the companion app connects using `transport-http` with `Authorization: Bearer gv_<token>`. The daemon validates this through the normal `authenticateOperatorToken()` path.
 
@@ -155,10 +155,10 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 
 | Event | Action |
 |---|---|
-| First QR display | `getOrCreateCompanionToken()` — generates and persists token |
+| First QR display | `getOrCreateCompanionToken(surface, { daemonHomeDir })` — generates and persists token |
 | Companion connects | Token validated against stored record |
 | Companion disconnects | Token remains valid; reconnection requires no re-scan |
-| Revocation needed | `regenerateCompanionToken()` — replaces stored token; all current sessions using old token are rejected on next request |
+| Revocation needed | `regenerateCompanionToken(surface, { daemonHomeDir })` — replaces stored token; all current sessions using old token are rejected on next request |
 | Daemon restart | Token is loaded from disk; companion reconnects without re-scan |
 
 ---

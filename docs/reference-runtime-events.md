@@ -1,6 +1,6 @@
 # Runtime Events Reference
 
-Generated from the synced GoodVibes operator event contract for product version `0.18.2`.
+Generated from the synced GoodVibes operator event contract. The checked-in contract artifact (`packages/contracts/artifacts/operator-contract.json`) is pinned at product version `0.18.2`; subsequent SDK releases have added new event domains (automation, routes, control-plane, deliveries, surfaces, watchers, ui, security, workspace, knowledge — see `CHANGELOG.md`). Consult `/api/control-plane/events/catalog` on a running daemon for the canonical current inventory.
 
 ## Transport endpoints
 
