@@ -19,6 +19,8 @@ run('bun run types:check');
 run('bun scripts/browser-compat-check.ts');
 run('bun scripts/package-metadata-check.ts');
 run('bun run any:check');
-run('bun run test');
+// Test execution is owned by the CI platform-matrix (bun) job; removing it
+// from validate eliminates the duplicate test run that used to execute on
+// every push. Local callers can still run `bun run test` explicitly.
 run('bun run pack:check');
 run('bun run install:smoke');
