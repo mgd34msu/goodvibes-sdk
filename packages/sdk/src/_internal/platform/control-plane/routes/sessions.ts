@@ -12,6 +12,7 @@ export async function dispatchSessionRoutes(
     | 'getSharedSessionMessages'
     | 'postSharedSessionMessage'
     | 'getSharedSessionInputs'
+    | 'postSharedSessionInput'
     | 'postSharedSessionSteer'
     | 'postSharedSessionFollowUp'
     | 'cancelSharedSessionInput'
@@ -40,6 +41,8 @@ export async function dispatchSessionRoutes(
 
   const sharedSessionInputsMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/inputs$/);
   if (sharedSessionInputsMatch && method === 'GET') return handlers.getSharedSessionInputs(sharedSessionInputsMatch[1], url);
+  // F20 restoration (SDK 0.21.36): intent-dispatching input create endpoint.
+  if (sharedSessionInputsMatch && method === 'POST') return handlers.postSharedSessionInput(sharedSessionInputsMatch[1], req);
 
   const sharedSessionSteerMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/steer$/);
   if (sharedSessionSteerMatch && method === 'POST') return handlers.postSharedSessionSteer(sharedSessionSteerMatch[1], req);

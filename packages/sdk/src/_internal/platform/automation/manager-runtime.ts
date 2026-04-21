@@ -6,6 +6,7 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { AgentManager } from '../tools/agent/index.js';
 import { AgentMessageBus } from '../agents/message-bus.js';
 import { migrateLegacySchedules, type LegacySchedulerSnapshot } from './migration.js';
+import { computeSchedulerCapacity, type SchedulerCapacityReport } from './scheduler-capacity.js';
 import { AutomationJobStore } from './store/jobs.js';
 import { AutomationRunStore } from './store/runs.js';
 import { resolveAutomationStorePath } from './store/paths.js';
@@ -635,15 +636,13 @@ export class AutomationManager {
     return total;
   }
 
-  getSchedulerCapacity(): { slots_total: number; slots_in_use: number; queue_depth: number; oldest_queued_age_ms: number | null } {
-    const slots_total = this.maxConcurrentRuns();
-    const slots_in_use = this.activeRunCount();
-    const queuedRuns = [...this.runs.values()].filter((r) => r.status === 'queued');
-    const queue_depth = queuedRuns.length;
-    const oldest_queued_age_ms = queuedRuns.length > 0
-      ? Date.now() - Math.min(...queuedRuns.map((r) => r.queuedAt))
-      : null;
-    return { slots_total, slots_in_use, queue_depth, oldest_queued_age_ms };
+  getSchedulerCapacity(): SchedulerCapacityReport {
+    // QA-05 follow-up: delegate to the pure `computeSchedulerCapacity` function so
+    // the HTTP surface emits the canonical camelCase report shape. Prior versions
+    // returned snake_case fields from this method directly, which left
+    // `/api/runtime/scheduler` emitting snake_case even after QA-05 migrated the
+    // pure function to camelCase.
+    return computeSchedulerCapacity(this.maxConcurrentRuns(), this.runs.values());
   }
 
   private pruneRunHistory(jobId?: string): void {

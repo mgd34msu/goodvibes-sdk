@@ -312,10 +312,10 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     http: { method: 'GET', path: '/api/runtime/scheduler' },
     inputSchema: EMPTY_OBJECT_SCHEMA,
     outputSchema: objectSchema({
-      slots_total: NUMBER_SCHEMA,
-      slots_in_use: NUMBER_SCHEMA,
-      queue_depth: NUMBER_SCHEMA,
-      oldest_queued_age_ms: nullableSchema(NUMBER_SCHEMA),
-    }, ['slots_total', 'slots_in_use', 'queue_depth', 'oldest_queued_age_ms']),
+      slotsTotal: NUMBER_SCHEMA,
+      slotsInUse: NUMBER_SCHEMA,
+      queueDepth: NUMBER_SCHEMA,
+      oldestQueuedAgeMs: nullableSchema(NUMBER_SCHEMA),
+    }, ['slotsTotal', 'slotsInUse', 'queueDepth', 'oldestQueuedAgeMs']),
   }),
 ];

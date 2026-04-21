@@ -100,8 +100,20 @@ export interface ProviderEntry {
 export interface ListProvidersResponse {
   readonly providers: ProviderEntry[];
   readonly currentModel: ProviderModelRef | null;
-  /** F-PROV-009: true when secretsManager was absent — secrets-tier providers will show configured:false */
-  readonly secretsResolutionSkipped?: boolean;
+  /**
+   * F-PROV-009: **always present** in responses from SDK 0.21.36 onwards.
+   * `true` when the secretsManager was absent — secrets-tier providers will show
+   * `configured:false` because the secrets layer was not consulted to resolve their
+   * env-var-equivalent keys.
+   * `false` when a secretsManager was provided (regardless of whether any keys were
+   * actually resolved — see `configuredVia` on individual providers for that signal).
+   *
+   * Prior to 0.21.36 the field was emitted only when `true`, which made it
+   * indistinguishable from "field was never introduced" for consumers that only
+   * checked `'secretsResolutionSkipped' in response`. Always emitting the boolean
+   * unambiguously answers "did the daemon attempt secrets resolution for this response".
+   */
+  readonly secretsResolutionSkipped: boolean;
 }
 
 export interface CurrentModelResponse {
@@ -281,10 +293,13 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
 
   const currentModel = buildCurrentModelResponse(providerRegistry, secretKeys).model;
 
+  // F-PROV-009 (SDK 0.21.36): always emit `secretsResolutionSkipped` as a boolean so
+  // consumers can reliably distinguish "secrets layer not consulted" from "no such field"
+  // (prior optional-spread emission was undetectable from the consumer side).
   const body: ListProvidersResponse = {
     providers,
     currentModel,
-    ...(!secretsManager ? { secretsResolutionSkipped: true } : {}),
+    secretsResolutionSkipped: !secretsManager,
   };
   return Response.json(body);
 }

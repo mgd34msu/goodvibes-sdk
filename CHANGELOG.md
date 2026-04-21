@@ -8,6 +8,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.36] - 2026-04-21
+
+F3 / F20 / F21 / F22 / F-PROV-009 resolutions from UAT Validation Run 5. Five targeted fixes behind the HTTP surface of the operator daemon; all landed with dedicated tests (18 new unit tests) and reviewer-approved at 9.9/10.
+
+### Added
+- **F3** — `pruneStaleOperatorTokens(options)` exported from `@pellux/goodvibes-sdk/platform/pairing`. Idempotent cleanup helper that removes legacy workspace-scoped `operator-tokens.json` files whose token value does not match the canonical `<daemonHomeDir>/operator-tokens.json`. Returns `{ canonicalPath, canonicalToken, prunedPaths, matchedPaths, absentPaths, failedPaths }`. Safe to call on every daemon startup. Also exports `PruneStaleOperatorTokensResult` type.
+- **F20** — `POST /api/sessions/:id/inputs` restored as an intent-dispatching alias. Accepts optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler. Non-string intent values coerce to `submit` defensively; invalid strings return `400 INVALID_INTENT`. Registered in the method catalog as `sessions.inputs.create`.
+- **F21** — `GET /api/companion/chat/sessions/:id/messages` restored. Returns `{ sessionId, messages }` with the full message list. All six companion-chat HTTP routes (`sessions.create`, `sessions.get`, `sessions.delete`, `messages.create`, `messages.list`, `events.stream`) now registered in `/api/control-plane/methods` under the `companion` category. The surface itself has been functional; only the method catalog entries were missing.
+- **F22** — `/api/runtime/scheduler` now returns camelCase (`slotsTotal`, `slotsInUse`, `queueDepth`, `oldestQueuedAgeMs`), completing the QA-05 migration at the HTTP boundary. `AutomationManagerRuntime.getSchedulerCapacity()` now delegates to the pure `computeSchedulerCapacity()` function that has emitted camelCase since 0.21.33 — the route was previously wired to a legacy snake_case method that was not part of the QA-05 scope.
+
+### Fixed
+- **F-PROV-009** — `GET /api/providers` response now always includes `secretsResolutionSkipped: boolean` (previously emitted only when `true`, which was indistinguishable from "never introduced" to consumers that only checked `'secretsResolutionSkipped' in response`). Returns `true` when no `SecretsManager` was provided and `false` when one was available — independent of whether any keys were actually resolved (use individual provider `configuredVia` values for that signal).
+
+### Breaking
+- **F-PROV-009** — `ListProvidersResponse.secretsResolutionSkipped` is now a **required** boolean instead of `?: boolean`. TypeScript consumers that construct this object literal directly (typically mocks, fakes, or test fixtures) must now set the field explicitly. Runtime consumers reading the field are unaffected. Recommended migration: `secretsResolutionSkipped: !secretsManager` (or `false` for tests that inject a secretsManager). Pre-1.0 policy permits breaking changes in a patch bump per the project's versioning agreement.
+
+### Tests
+- `test/shared-session-inputs-post.test.ts` — 7 tests for F20 (default intent, all three explicit intents, bogus intent rejection, non-string intent coercion, missing body rejection).
+- `test/companion-chat-f21-messages-get.test.ts` — 4 tests for F21 (200 happy path, 404 when session absent, all 6 `companion.chat.*` method-catalog IDs present, `companion.chat.messages.list` descriptor path).
+- `test/prune-stale-operator-tokens.test.ts` — 7 tests for F3 (canonical-absent, candidate-absent, matching-token preservation, differing-token pruning, self-reference skip, malformed-JSON pruning, mixed set bucketing).
+
+### Migration
+No consumer code changes are required for F20, F21, F22, or F3 unless you construct `ListProvidersResponse` literals directly (see Breaking above). TUI 0.19.20+ consumes this SDK and calls `pruneStaleOperatorTokens` from its bootstrap paths automatically.
+
+---
+
 ## [0.21.35] - 2026-04-21
 
 Republish of 0.21.34 with corrected build artifact. 0.21.34 was published with a stale dist that did not include the PERF-08 HWM change; on-disk TypeScript source was correct but the tarball contained the pre-fix compiled JS. No additional source changes — this is a rebuild-and-republish.
