@@ -13,3 +13,6 @@ temp/
 
 # wrangler dev --local cache — created inside test/workers-wrangler/ on first run
 test/workers-wrangler/.wrangler/
+
+# Test leak: code that passes literal ':memory:' as a filesystem path instead of SQLite's in-memory sentinel
+:memory:
