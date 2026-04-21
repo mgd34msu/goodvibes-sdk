@@ -45,6 +45,7 @@ const OPERATOR_TS_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/ope
 const OPERATOR_METHOD_IDS_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/operator-method-ids.ts');
 const PEER_TS_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/peer-contract.ts');
 const PEER_ENDPOINT_IDS_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/peer-endpoint-ids.ts');
+const FOUNDATION_METADATA_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/foundation-metadata.ts');
 
 /**
  * Stringify that preserves shared DAG references (duplicates them in the
@@ -150,6 +151,16 @@ drifted = writeIfChanged(OPERATOR_TS_PATH, renderOperatorContractTs(operatorCont
 drifted = writeIfChanged(OPERATOR_METHOD_IDS_PATH, renderMethodIdsTs(operatorMethodIds)) || drifted;
 drifted = writeIfChanged(PEER_TS_PATH, renderPeerContractTs(PEER_CONTRACT)) || drifted;
 drifted = writeIfChanged(PEER_ENDPOINT_IDS_PATH, renderEndpointIdsTs(peerEndpointIds)) || drifted;
+drifted = writeIfChanged(
+  FOUNDATION_METADATA_PATH,
+  `export const FOUNDATION_METADATA = ${JSON.stringify({
+    productId: operatorContract.product.id,
+    productVersion: operatorContract.product.version,
+    operatorMethodCount: operatorMethodIds.length,
+    operatorEventCount: operatorContract.operator.events.length,
+    peerEndpointCount: peerEndpointIds.length,
+  }, null, 2)} as const;\n`,
+) || drifted;
 
 console.log(`[refresh:contracts] product version: ${operatorContract.product.version}`);
 console.log(`[refresh:contracts] operator methods: ${operatorMethodIds.length}`);
