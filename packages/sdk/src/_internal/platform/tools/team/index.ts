@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import type { Tool } from '../../types/tools.js';
 import { resolveScopedDirectory } from '../../runtime/surface-root.js';
 import { TEAM_TOOL_SCHEMA, type TeamToolInput } from './schema.js';
+import { toRecord } from '../../utils/record-coerce.js';
 
 interface TeamMember {
   readonly id: string;
@@ -67,7 +68,7 @@ export function createTeamTool(options?: { readonly surfaceRoot?: string }): Too
     definition: {
       name: 'team',
       description: 'Manage durable team definitions, roles, and communication lanes.',
-      parameters: TEAM_TOOL_SCHEMA as unknown as Record<string, unknown>,
+      parameters: toRecord(TEAM_TOOL_SCHEMA),
       sideEffects: ['workflow', 'state'],
       concurrency: 'serial',
     },

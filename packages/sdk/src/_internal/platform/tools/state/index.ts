@@ -10,6 +10,7 @@ import { logger } from '../../utils/logger.js';
 import type { Tool, ToolDefinition } from '../../types/tools.js';
 import { STATE_TOOL_SCHEMA } from './schema.js';
 import type { StateInput } from './schema.js';
+import { toRecord } from '../../utils/record-coerce.js';
 import { summarizeError } from '../../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
@@ -108,7 +109,7 @@ export function createStateTool(
       + ' Discovery: use mode=list to see existing KV keys, mode=hooks hookAction=list to see registered hooks,'
       + ' mode=mode modeAction=get to see the current output mode.'
       + ' Also: mode=memory memoryAction=list to list persistent memory keys, mode=analytics analyticsAction=summary for session metrics.',
-    parameters: STATE_TOOL_SCHEMA as unknown as Record<string, unknown>,
+    parameters: toRecord(STATE_TOOL_SCHEMA),
     sideEffects: ['state'],
     concurrency: 'serial',
   };

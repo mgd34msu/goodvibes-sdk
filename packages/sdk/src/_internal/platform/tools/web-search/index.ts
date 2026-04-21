@@ -1,6 +1,7 @@
 import type { Tool } from '../../types/tools.js';
 import type { WebSearchService } from '../../web-search/index.js';
 import { WEB_SEARCH_TOOL_SCHEMA } from './schema.js';
+import { toRecord } from '../../utils/record-coerce.js';
 
 export function createWebSearchTool(service: WebSearchService): Tool {
   return {
@@ -9,7 +10,7 @@ export function createWebSearchTool(service: WebSearchService): Tool {
       description:
         'Search the web through a provider-backed search layer.'
         + ' Returns normalized ranked results, optional instant-answer data, and optional fetched evidence.',
-      parameters: WEB_SEARCH_TOOL_SCHEMA as unknown as Record<string, unknown>,
+      parameters: toRecord(WEB_SEARCH_TOOL_SCHEMA),
       sideEffects: ['network'],
       concurrency: 'parallel',
       supportsProgress: true,

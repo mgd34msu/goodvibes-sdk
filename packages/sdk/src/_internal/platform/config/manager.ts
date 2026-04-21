@@ -9,6 +9,7 @@ import type { HookEvent } from '../hooks/types.js';
 import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
+import { toRecord } from '../utils/record-coerce.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {
@@ -390,7 +391,7 @@ export class ConfigManager {
       const schema = CONFIG_SCHEMA.find(s => s.key === key);
       if (!schema) throw new ConfigError(`Unknown config key: ${key}`);
       const livePath = this.resolvePath(key);
-      const defaultPath = resolveArbitraryPath(DEFAULT_CONFIG_SNAPSHOT as unknown as Record<string, unknown>, key);
+      const defaultPath = resolveArbitraryPath(toRecord(DEFAULT_CONFIG_SNAPSHOT), key);
       livePath.parent[livePath.field] = structuredClone(defaultPath.parent[defaultPath.field]);
     }
     this.save();

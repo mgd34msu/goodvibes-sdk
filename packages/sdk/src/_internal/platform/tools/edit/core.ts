@@ -27,6 +27,7 @@ import type {
 } from './types.js';
 import { executeNotebookEdit } from './notebook.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { toRecord } from '../../utils/record-coerce.js';
 
 const DIFF_TRUNCATE_THRESHOLD = 5000;
 const DIFF_PREVIEW_LENGTH = 500;
@@ -581,7 +582,7 @@ export function createEditTool(fileCache: FileStateCache, options?: EditToolOpti
       'Handles multiple edits in one call with atomic or partial transaction semantics. ' +
       'Detects OCC conflicts when files have been modified externally. ' +
       'Also supports Jupyter notebook (.ipynb) cell operations via notebook_operations field.',
-    parameters: editSchema as unknown as Record<string, unknown>,
+    parameters: toRecord(editSchema),
     sideEffects: ['write_fs'],
     concurrency: 'serial',
     supportsProgress: true,

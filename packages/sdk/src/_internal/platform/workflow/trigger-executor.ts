@@ -3,6 +3,7 @@ import type { HookEvent } from '../hooks/types.js';
 import type { TriggerDefinition } from '../tools/workflow/index.js';
 import { matchesEventPath } from '../hooks/matcher.js';
 import { summarizeError } from '../utils/error-display.js';
+import { toRecord } from '../utils/record-coerce.js';
 
 // ---------------------------------------------------------------------------
 // TriggerExecutor
@@ -165,7 +166,7 @@ function parseValue(token: string, event: HookEvent): ConditionValue {
   if (/^-?[0-9]+(\.[0-9]+)?$/.test(token)) return Number(token);
   // Property path — only event.* and payload.*
   if (token.startsWith('event.')) {
-    return resolvePath(event as unknown as Record<string, unknown>, token.slice(6));
+    return resolvePath(toRecord(event), token.slice(6));
   }
   if (token.startsWith('payload.')) {
     return resolvePath((event.payload ?? {}) as Record<string, unknown>, token.slice(8));

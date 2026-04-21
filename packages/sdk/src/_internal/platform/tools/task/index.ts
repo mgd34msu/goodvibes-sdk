@@ -1,6 +1,7 @@
 import type { Tool } from '../../types/tools.js';
 import type { CrossSessionTaskRef, CrossSessionTaskRegistry } from '../../sessions/orchestration/index.js';
 import { TASK_TOOL_SCHEMA, type TaskToolInput } from './schema.js';
+import { toRecord } from '../../utils/record-coerce.js';
 
 const DEFAULT_SESSION_ID = 'local';
 
@@ -22,7 +23,7 @@ export function createTaskTool(registry: CrossSessionTaskRegistry): Tool {
     definition: {
       name: 'task',
       description: 'Manage durable cross-session task refs, dependencies, cancellations, and handoffs.',
-      parameters: TASK_TOOL_SCHEMA as unknown as Record<string, unknown>,
+      parameters: toRecord(TASK_TOOL_SCHEMA),
       sideEffects: ['workflow', 'state'],
       concurrency: 'serial',
     },
