@@ -6,10 +6,10 @@ import type {
 } from './daemon-error-contract.js';
 
 export type {
-  DaemonErrorCategory,
   DaemonErrorSource,
   StructuredDaemonErrorBody,
 } from './daemon-error-contract.js';
+export { DaemonErrorCategory } from './daemon-error-contract.js';
 
 export type ErrorCategory = DaemonErrorCategory | 'contract';
 

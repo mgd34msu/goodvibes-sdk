@@ -5,6 +5,9 @@ export const runtimeConfigDefaults = {
     companionChatLimiter: {
       perSessionLimit: 10,
     },
+    eventBus: {
+      maxListeners: 100,
+    },
   },
   telemetry: {
     includeRawPrompts: false,
@@ -386,6 +389,15 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
       'Max companion chat messages per 60-second window per session. ' +
       'Overrides the GOODVIBES_CHAT_LIMITER_THRESHOLD env var (env is read once at daemon startup; ' +
       'this config key is read on each check() call and takes precedence when set to a positive integer).',
+  },
+  {
+    key: 'runtime.eventBus.maxListeners',
+    type: 'number',
+    default: 100,
+    description:
+      'Maximum number of listeners per event channel (per-type and per-domain) before a warning is emitted in production ' +
+      'or a RangeError is thrown in development mode. Raise this only if you have verified there is no subscriber leak.',
+    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 100_000,
   },
   {
     key: 'telemetry.includeRawPrompts',

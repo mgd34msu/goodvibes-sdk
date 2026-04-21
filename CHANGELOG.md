@@ -8,6 +8,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.33] - 2026-04-20
+
+Waves 4 closeout + Wave 5 of the enterprise-adoption hardening series. All 24 targeted findings (3 Wave-4 closeout refixes + 21 Wave-5 findings) at 10.0/10 review threshold. No breaking runtime changes; one narrowing-API change (VersionMismatchError.code exposed as typed union alongside mismatchCode) and one wire-format change (scheduler-capacity fields → camelCase).
+
+### Wave 4 closeout (10.0-push refixes)
+- **ARCH-01**: NOTE comment in `packages/sdk/src/_internal/platform/daemon/http/runtime-route-types.ts` rewritten to accurately separate Like-view types (AgentRecordLike/AutomationJobLike/AutomationRunLike/RuntimeTaskLike) from `AutomationRouteBinding` (distinct binding interface), naming the 5 canonical AgentRecord fields that block collapse (template, orchestrationDepth, executionProtocol, reviewMode, communicationLane).
+- **QA-01**: Added deferral comment above `record.routeBinding` cast in `daemon-http-client.ts` documenting that deep structural validation of AutomationRouteBinding is deferred to the upstream daemon-sdk contract.
+
+### Wave 5 — Quality & architecture
+- **QA-04**: Split `providers/registry.ts` (823 → 263 LOC) god-object along 4 axes. New sibling modules: `catalogue.ts` (184 LOC, RegistryCatalogue class with callback-based state sharing), `credentials.ts` (67 LOC, pure `getConfiguredProviderIds()`), `health.ts` (43 LOC, pure `describeProviderRuntime()`). Registry class preserved as thin delegation facade. Zero test modifications, zero public-surface regressions.
+- **QA-05**: Extracted scheduler capacity reporting into `automation/scheduler-capacity.ts` with pure `computeSchedulerCapacity()` function (nowMs injectable for testability). Wire-format field names migrated snake_case → camelCase: `slots_total`→`slotsTotal`, `slots_in_use`→`slotsInUse`, `queue_depth`→`queueDepth`, `oldest_queued_age_ms`→`oldestQueuedAgeMs`. All consumers (method-catalog, 3 runtime-route-types mirrors, 3 test stubs) migrated.
+- **QA-07**: New `test/scan-modes.test.ts` — 4 substantive tests for `runSecurity` + `runDeadCode` (2 positive + 2 negative with real tmp-dir fixtures).
+- **QA-08**: New `test/wrfc-controller.test.ts` — 7 tests covering WRFC controller lifecycle (happy path, gate failure, escalation, agent-failure, chain/list semantics, state transitions) with real RuntimeEventBus + inline mocks.
+- **QA-09**: New `test/gateway.test.ts` — 13 tests for ControlPlaneGateway (construction, end-to-end emit, ring-buffer invariants at 200/500 caps).
+- **QA-10**: Flattened `tools/write/index.ts` control flow (max indent 22 → 12 spaces) by extracting 5 helpers: `captureBeforeContent`, `performAtomicRollback`, `runAutoHeal`, `updateStateAfterWrite`, `runPostWriteValidation`. Pure refactor, zero behavior change.
+- **QA-11**: Added `providers/well-known-endpoints.ts` (`WELL_KNOWN_LOCAL_ENDPOINTS` + `WELL_KNOWN_LOCAL_PORTS` frozen maps). Migrated 3 consumers.
+- **QA-12**: Added `void` operator to 7 fire-and-forget async call sites (bootstrap-background, custom-loader, mcp/client, lsp/client, hooks/dispatcher, tools/workflow).
+- **QA-13**: Collapsed 5 migration stub files in `runtime/contracts/migrations/` into single `schemas.ts` + `README.md`.
+- **QA-14**: Added `declare readonly code: '<LITERAL>'` narrowings to 17 concrete error subclasses across 9 files; added `code:` literal to 10 super() options bags so runtime matches the type narrowing. New `_internal/errors/README.md` documents hierarchy + authoring guide. `test/arch03-error-hierarchy.test.ts` strengthened with `.toBe()` assertions on code literals (19 → 25 tests).
+- **QA-17**: Eliminated `tokenStore!` non-null assertions in `client.ts` — narrowed via `const ts = options.tokenStore` capture + `if (coordinator && tokenStore)` local narrowing (zero casts).
+- **ARCH-04**: Investigated facade/router/schema-types split. Honest "no split needed" verdict — files are already decomposed per ARCH-08 (facade.ts is 803 LOC of thin delegators to 5 extracted helpers; router.ts is single-responsibility 10-way dispatch).
+- **ARCH-06**: Added 6 router-level E2E test files (`test/router-e2e-{control,automation,session,telemetry,remote,tasks}.test.ts`) + shared `test/_helpers/daemon-stub-handlers.ts` helper (eliminates ~350 LOC duplication).
+- **ARCH-11**: Migrated daemon-sdk error categories to `DaemonErrorCategory` typed constants. Added `export const DaemonErrorCategory` (declaration-merged with type) in `packages/errors/src/daemon-error-contract.ts` + mirror. 40 call-site migrations across error-response/telemetry-routes/media-routes/knowledge-routes (canonical + mirror).
+
+### Wave 5 — Performance
+- **PERF-08**: Removed 2 redundant `[...arr].filter()` spreads in telemetry `applyRecordFilter` / `applySpanFilter` (already committed in 0.21.31 follow-up).
+- **PERF-10**: Runtime event bus MAX_LISTENERS cap (default 100). `export const MAX_LISTENERS`, `RuntimeEventBusOptions.maxListeners` override, config-wired via `runtime.eventBus.maxListeners` (range 1..100000). Dev mode (`NODE_ENV === 'development'`) throws `RangeError` on overflow (with pre-throw listener removal for state consistency); production mode warns. 11 tests.
+- **PERF-12**: Replaced `gateway.recentMessages` O(n) `unshift`+trim with O(1) `RingBuffer<ControlPlaneSurfaceMessage>(200)`. New reusable `utils/ring-buffer.ts` utility (push/toArray/takeLast/takeLastReversed/clear/size/isEmpty/capacity). 17 tests.
+- **PERF-13**: Added `insertSortedInput` binary-search O(log n + n-splice) helper to `session-broker-state.ts`; hot-path `recordInput()` now uses it instead of O(n log n) `sortInputs(bucket)` on every insert. Cold paths (load/snapshot) keep `sortInputs`. 7 tests (incl. N=50 random vs reference fuzz).
+
+### Wave 5 — Observability
+- **OBS-13**: Runtime event bus `listener_errors_total` counter + `OPS_LISTENER_MISBEHAVING` OpsEvent emission on listener failure (first-occurrence dedup via WeakMap keyed by listener). New `'event_type'` allowlist entry in telemetry api-helpers. DRY helper `_recordListenerError()` captures both catch blocks. 7 tests.
+- **OBS-23**: Paired emissions audit — added `ROUTE_BINDING_REMOVED` and `SURFACE_POLICY_UPDATED` event types + emitters + validators. `ChannelPolicyManager.upsertPolicy` now emits `SURFACE_POLICY_UPDATED` via `attachRuntimeBus` pattern; `RouteBindingManager.removeBinding` now emits `ROUTE_BINDING_REMOVED` after successful deletion. 17 tests. `toEventSurfaceKind` exhaustive mapper (ChannelSurface → SurfaceKind) replaces inline cast; sentinel-sessionId convention documented in both managers.
+
+### Wave 5 — Security
+- **SEC-11**: Replaced naive `trigger.action.split(/\s+/)` in trigger-executor with POSIX-compatible `shellSplit()` tokenizer (~62 LOC, supports double-quoted / single-quoted / backslash-escape). Output passed to `Bun.spawn(parts, ...)` as argv (not shell). 9 tests. Already committed in 0.21.31 follow-up.
+
+### Verification
+- tsc: `bunx tsc -b --force` exit 0
+- sync:check: all mirrors in sync (all subsystems)
+- Test suite: **1398 tests across 137 files, 0 fail** (17 skip — MSW browser-only).
+
+---
+
 ## [0.21.31] - 2026-04-20
 
 Wave 3 of the enterprise-adoption hardening series. Completes observability findings OBS-01 through OBS-24 (full set) from `docs/audit/0.21.28-master-triage.md`, making the SDK SIEM-ingestable. Includes end-to-end wiring of 12 platform metric instruments to real emit sites, correlation context consumed in every emitted event attribute, `instrumentedFetch` as the default nativeFetch in all three local providers (ollama, llama-cpp, lm-studio), `filterMetricLabels` double-cast cleanup in meter primitives, histogram snapshots in `snapshotMetrics()`, and a `GET /api/runtime/metrics` endpoint.

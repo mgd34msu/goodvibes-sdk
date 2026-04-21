@@ -4,7 +4,7 @@ import {
   buildMissingScopeBody,
   resolvePrivateHostFetchOptions,
 } from './http-policy.js';
-import { GoodVibesSdkError } from '../errors/index.js';
+import { GoodVibesSdkError, DaemonErrorCategory } from '../errors/index.js';
 import { jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
 import type {
   AutomationScheduleDefinition,
@@ -251,10 +251,10 @@ function readKnowledgeSchedule(
             typeof schedule.anchorAt === 'number' ? schedule.anchorAt : undefined,
           );
         }
-        throw new GoodVibesSdkError('Invalid schedule: every schedule requires intervalMs or an interval object. Set schedule.intervalMs (number, in milliseconds) or schedule.interval.', { category: 'bad_request', source: 'contract', recoverable: false });
+        throw new GoodVibesSdkError('Invalid schedule: every schedule requires intervalMs or an interval object. Set schedule.intervalMs (number, in milliseconds) or schedule.interval.', { category: DaemonErrorCategory.BAD_REQUEST, source: 'contract', recoverable: false });
       case 'cron':
         if (typeof schedule.expression !== 'string' || !schedule.expression.trim()) {
-          throw new GoodVibesSdkError('Invalid schedule: cron schedule requires a cron expression string in schedule.expression (e.g. "0 9 * * 1-5").', { category: 'bad_request', source: 'contract', recoverable: false });
+          throw new GoodVibesSdkError('Invalid schedule: cron schedule requires a cron expression string in schedule.expression (e.g. "0 9 * * 1-5").', { category: DaemonErrorCategory.BAD_REQUEST, source: 'contract', recoverable: false });
         }
         return context.normalizeCronSchedule(
           schedule.expression,
@@ -262,10 +262,10 @@ function readKnowledgeSchedule(
           schedule.staggerMs,
         );
       case 'at':
-        if (typeof schedule.at !== 'number') throw new GoodVibesSdkError('Invalid schedule: at schedule requires schedule.at as a Unix timestamp in milliseconds.', { category: 'bad_request', source: 'contract', recoverable: false });
+        if (typeof schedule.at !== 'number') throw new GoodVibesSdkError('Invalid schedule: at schedule requires schedule.at as a Unix timestamp in milliseconds.', { category: DaemonErrorCategory.BAD_REQUEST, source: 'contract', recoverable: false });
         return context.normalizeAtSchedule(schedule.at);
       default:
-        throw new GoodVibesSdkError('Invalid schedule kind. Expected schedule.kind to be one of: "at", "every", or "cron".', { category: 'bad_request', source: 'contract', recoverable: false });
+        throw new GoodVibesSdkError('Invalid schedule kind. Expected schedule.kind to be one of: "at", "every", or "cron".', { category: DaemonErrorCategory.BAD_REQUEST, source: 'contract', recoverable: false });
     }
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });

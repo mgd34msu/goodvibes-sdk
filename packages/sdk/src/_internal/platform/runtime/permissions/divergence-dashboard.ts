@@ -320,11 +320,12 @@ export class DivergenceDashboard {
  * gate is in `blocked` state.
  */
 export class DivergenceGateError extends GoodVibesSdkError {
+  declare readonly code: 'DIVERGENCE_GATE_BLOCKED';
   /** The full gate result at the time the error was thrown. */
   readonly gate: EnforceGateResult;
 
   constructor(message: string, gate: EnforceGateResult) {
-    super(message, { category: 'permission', source: 'runtime', recoverable: false });
+    super(message, { code: 'DIVERGENCE_GATE_BLOCKED', category: 'permission', source: 'runtime', recoverable: false });
     this.name = 'DivergenceGateError';
     this.gate = gate;
   }
