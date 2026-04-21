@@ -8,6 +8,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.22.0] - 2026-04-21
+
+Documentation, tooling, and test-suite maintenance release. Accumulated improvements from an audit pass across the SDK. No breaking changes to the public API surface; all changes are additive or editorial. Per the pre-1.0 policy, this bumps minor to signal the scale of the doc + pipeline updates, not an API break.
+
+### Added
+- **Contract-artifact refresh pipeline** — `scripts/refresh-contract-artifacts.ts` rebuilds `packages/contracts/artifacts/{operator,peer}-contract.json`, the generated `.ts` contract constants, the method/endpoint ID lists, and `foundation-metadata.ts` from live source of truth (`buildOperatorContract(new GatewayMethodCatalog())` for operator; the authoritative `PEER_CONTRACT` constant for peer). Three npm scripts wire it up:
+  - `bun run refresh:contracts` — regenerate all artifacts
+  - `bun run refresh:contracts:check` — CI drift gate (exit 1 on any mismatch)
+  - `bun run refresh:docs` — combined `refresh:contracts` + `sync:internal --scope=contracts` + `docs:generate`
+  
+  Closes a long-standing gap where the checked-in artifacts were frozen at `0.18.2` product version while the live catalog was emitting 221 methods / 30 events at 0.21.36. After refresh, `reference-operator.md`, `reference-peer.md`, and `reference-runtime-events.md` reflect the current catalog instead of the pinned snapshot.
+- **Active-early-development banner** on both the SDK and TUI READMEs near the top. Signals that APIs, contracts, routes, event shapes, and config defaults can change across patch releases pre-1.0; no legacy/compat shims; documentation reflects current behavior only.
+- **Subject-matter coverage** in reference docs for feature additions from the 0.20.x–0.21.36 line that were only mentioned in `CHANGELOG.md` / `migration.md` but had no home in the docs where someone new would look:
+  - `observability.md` — `ToolResultSummary` payload on `TOOL_SUCCEEDED` / `TOOL_FAILED` (OBS-05), `contentSummary` on `LLM_RESPONSE_RECEIVED` (OBS-06), microtask async dispatch ordering guarantees on `RuntimeEventBus` (OBS-14)
+  - `performance.md` — SSE gateway backpressure via `CountQueuingStrategy({ highWaterMark: 256 })` (PERF-08)
+  - `error-kinds.md` — typed literal `readonly code: '<LITERAL>'` on `AppError` subclasses for exhaustive `switch (err.code)` discrimination (QA-14)
+  - `companion-message-routing.md` — adjacent session routes table covering the restored `POST /api/sessions/:id/inputs` intent-dispatch alias (F20) and the companion-chat routes registered in the method catalog (F21)
+- **Doctrine: no legacy documentation pre-1.0.** Every doc reflects the **current** source-of-truth behavior. No "pinned at X.Y.Z" disclaimers on auto-generated docs — the pipeline rebuilds them against live state. `migration.md` remains the one place version-conditional wording belongs.
+
+### Changed
+- **Reference docs regenerated at 0.22.0** from refreshed artifacts. Operator reference now lists 221 methods / 30 events (previously frozen display at 213 / 29 against 0.18.2). Peer reference unchanged (6 endpoints).
+- **Documentation audit completed** against source of truth for the whole SDK docs tree — every user-facing doc reflects current behavior as of 0.22.0. Pairing, security, provider-model-api, release-and-publishing, roadmap-to-1.0, architecture, and the three reference docs were updated. Other docs were verified current with no changes needed.
+- **`pairing.md`** — expanded with canonical `<daemonHomeDir>/operator-tokens.json` path story, full `CompanionConnectionInfo` shape, correct `getOrCreateCompanionToken(surface, { daemonHomeDir })` and `regenerateCompanionToken(surface, { daemonHomeDir })` signatures, and a dedicated `pruneStaleOperatorTokens` section (F3).
+- **`migration.md`** — substantial new section for 0.20.x–0.21.x upgrades covering F3, OBS-05/06, OBS-14, QA-05/14, PERF-08, F3/F20/F21/F22/F-PROV-009.
+- **`provider-model-api.md`** — added `secretsResolutionSkipped` always-present boolean (F-PROV-009) to the `GET /api/providers` response example and field reference.
+- **CI: dropped duplicate test run from `validate.ts`** — the platform-matrix (bun) job already owned test execution, so running the ~1300-test suite again inside validate doubled CI wallclock for no benefit. `validate.ts` now covers docs / typecheck / browser-compat / metadata / no-any / pack check / install smoke only; the matrix owns tests.
+
+### Removed
+- **Dead/rubber-stamp tests** flagged by audit:
+  - `packages/sdk/src/_internal/platform/channels/__tests__/policy-manager-emissions.test.ts` — entire file. 9 tests asserted against a `ChannelPolicyManager` event-emission feature that doesn't exist in source (no `runtimeBus` constructor parameter, no `attachRuntimeBus` method). Source was either never built or was deleted; tests "passed" only because the expected behavior was never reachable.
+  - `test/browser/sdk-init.test.ts` — typeof-tautology on an imported function (TS enforces), plus a weak `toBeDefined()` test already covered by the subsequent facade-shape tests.
+  - `test/obs-01-http-access-log.test.ts` — placeholder test whose comment acknowledged it couldn't actually verify the behavior it claimed to test.
+- **`:memory:` tracked file** — a 451-byte session-index JSON accidentally committed via 0.21.31 when some test code passed the literal string `:memory:` as a filesystem path instead of using SQLite's in-memory sentinel. Untracked and gitignored to prevent regression.
+
+### Fixed
+- **`FOUNDATION_METADATA` sync** — the contract-refresh pipeline now regenerates `foundation-metadata.ts` alongside the operator artifacts. Prior to this release the metadata file was hand-edited and drifted (still reporting 0.18.2 / 213 / 29 while the rest of the contract stack moved forward). The `contracts package > foundation metadata matches synced artifacts` CI test now stays green because both sides flow from the same refresh.
+
+### Internal
+- `memory/feedback_no_legacy_docs_pre_1_0.md` memory saved so the "current behavior only" doctrine persists across sessions.
+- Scripts added:
+  - `bun scripts/refresh-contract-artifacts.ts` (+ `--check` mode)
+
+---
+
 ## [0.21.36] - 2026-04-21
 
 F3 / F20 / F21 / F22 / F-PROV-009 resolutions from UAT Validation Run 5. Five targeted fixes behind the HTTP surface of the operator daemon; all landed with dedicated tests (18 new unit tests) and reviewer-approved at 9.9/10.
