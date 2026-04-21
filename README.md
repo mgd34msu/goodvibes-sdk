@@ -1,5 +1,7 @@
 # GoodVibes SDK
 
+> ⚠️ **Active early development — pre-1.0.** This project is under active early development. APIs, contracts, file layouts, route paths, event shapes, and config defaults can and do change quickly — sometimes across patch releases. There are no legacy/compat shims. Documentation always describes the **current** behavior, not historical behavior. When 1.0.0 ships the project freezes to enterprise-grade stability guarantees (semver, deprecation windows, migration guides). Until then: pin exact versions and read `CHANGELOG.md` before upgrading.
+
 > **What this SDK is:** `@pellux/goodvibes-sdk` is a client SDK for the GoodVibes daemon.
 > It does **not** call Anthropic, OpenAI, Gemini, or any other AI provider directly — the daemon
 > orchestrates those on your behalf. If you need to call a provider directly, use their official
