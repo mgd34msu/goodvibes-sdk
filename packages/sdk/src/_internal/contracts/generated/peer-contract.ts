@@ -2384,4 +2384,4 @@ export const PEER_CONTRACT: PeerContractManifest = {
   "metadata": {
     "note": "Node/device hosts are external processes. GoodVibes owns the pair/token/work protocol and can be controlled from web, channel, or daemon clients."
   }
-};
+} as const;

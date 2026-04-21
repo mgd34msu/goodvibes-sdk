@@ -1,11 +1,11 @@
 # Operator API Reference
 
-Generated from the synced GoodVibes operator contract. The checked-in contract artifact (`packages/contracts/artifacts/operator-contract.json`) is pinned at product version `0.18.2` and has not been regenerated since; the live runtime reports its current SDK version via `/api/control-plane/contract`. Routes, scopes, and shapes below reflect the 0.18.2 contract snapshot — consult `/api/control-plane/methods` on a running daemon for the canonical inventory against the current SDK.
+Generated from the synced GoodVibes operator contract for product version `0.21.36`.
 
 ## Summary
 
-- Methods: `213`
-- Events: `29`
+- Methods: `221`
+- Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
 - Methods catalog path: `/api/control-plane/methods`
@@ -385,15 +385,11 @@ Approve a pending approval.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -547,15 +543,11 @@ Approve a pending approval.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[1].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -719,15 +711,11 @@ Cancel a pending approval.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -881,15 +869,11 @@ Cancel a pending approval.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[2].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -1047,15 +1031,11 @@ Claim a pending approval for operator handling.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -1209,15 +1189,11 @@ Claim a pending approval for operator handling.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[3].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -1381,15 +1357,11 @@ Deny a pending approval.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.request.properties.args.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -1543,15 +1515,11 @@ Deny a pending approval.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[4].outputSchema.properties.approval.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -1831,15 +1799,11 @@ Return pending and historical approval records.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.request.properties.args.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.request.properties.args.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -1993,15 +1957,11 @@ Return pending and historical approval records.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[5].outputSchema.properties.approvals.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -2198,15 +2158,11 @@ Store a file or attachment artifact for later delivery or analysis.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[7].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[7].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -2276,15 +2232,11 @@ Store a file or attachment artifact for later delivery or analysis.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[7].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[7].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -2400,15 +2352,11 @@ Return metadata for a stored artifact.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[8].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[8].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -2519,15 +2467,11 @@ Return stored artifact metadata for files and attachments.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[9].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[9].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -3145,15 +3089,11 @@ Process automation jobs queued for the next heartbeat.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -3504,15 +3444,11 @@ Process automation jobs queued for the next heartbeat.
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -3679,15 +3615,11 @@ Process automation jobs queued for the next heartbeat.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.route.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.route.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -3933,15 +3865,11 @@ Process automation jobs queued for the next heartbeat.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.result"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.result"
-                }
+                "items": {}
               }
             ]
           },
@@ -3969,15 +3897,11 @@ Process automation jobs queued for the next heartbeat.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[17].outputSchema.properties.processed.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -4732,15 +4656,11 @@ Create a durable automation job.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[19].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[19].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -5133,15 +5053,11 @@ Create a durable automation job.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[19].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[19].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -5445,15 +5361,11 @@ Create a durable automation job.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[19].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[19].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -5515,15 +5427,11 @@ Create a durable automation job.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[19].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[19].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -6115,15 +6023,11 @@ Return automation jobs and recent runs.
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -6427,15 +6331,11 @@ Return automation jobs and recent runs.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -6497,15 +6397,11 @@ Return automation jobs and recent runs.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[23].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -7016,15 +6912,11 @@ Patch a durable automation job.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[24].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[24].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -7414,15 +7306,11 @@ Patch a durable automation job.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[24].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[24].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -7726,15 +7614,11 @@ Patch a durable automation job.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[24].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[24].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -7796,15 +7680,11 @@ Patch a durable automation job.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[24].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[24].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -8141,15 +8021,11 @@ Cancel an active automation run.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -8500,15 +8376,11 @@ Cancel an active automation run.
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -8675,15 +8547,11 @@ Cancel an active automation run.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -8929,15 +8797,11 @@ Cancel an active automation run.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -8965,15 +8829,11 @@ Cancel an active automation run.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[28].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -9151,15 +9011,11 @@ Return a single automation run record.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -9510,15 +9366,11 @@ Return a single automation run record.
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -9685,15 +9537,11 @@ Return a single automation run record.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -9939,15 +9787,11 @@ Return a single automation run record.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -9975,15 +9819,11 @@ Return a single automation run record.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[29].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -10253,15 +10093,11 @@ Return automation run history.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -10612,15 +10448,11 @@ Return automation run history.
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -10787,15 +10619,11 @@ Return automation run history.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -11041,15 +10869,11 @@ Return automation run history.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.result"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.result"
-                }
+                "items": {}
               }
             ]
           },
@@ -11077,15 +10901,11 @@ Return automation run history.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[30].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -11264,15 +11084,11 @@ Retry a completed or failed automation run.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.triggeredBy.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -11623,15 +11439,11 @@ Retry a completed or failed automation run.
                           },
                           {
                             "type": "object",
-                            "additionalProperties": {
-                              "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                            }
+                            "additionalProperties": {}
                           },
                           {
                             "type": "array",
-                            "items": {
-                              "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                            }
+                            "items": {}
                           }
                         ]
                       }
@@ -11798,15 +11610,11 @@ Retry a completed or failed automation run.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.route.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -12052,15 +11860,11 @@ Retry a completed or failed automation run.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -12088,15 +11892,11 @@ Retry a completed or failed automation run.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[31].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -12881,15 +12681,11 @@ Create a legacy schedule record.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[32].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[32].outputSchema.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -13193,15 +12989,11 @@ Create a legacy schedule record.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[32].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[32].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -13263,15 +13055,11 @@ Create a legacy schedule record.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[32].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[32].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -13863,15 +13651,11 @@ Return legacy schedule records.
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -14175,15 +13959,11 @@ Return legacy schedule records.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -14245,15 +14025,11 @@ Return legacy schedule records.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[36].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -14391,15 +14167,11 @@ Return legacy schedule records.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.triggeredBy.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -14750,15 +14522,11 @@ Return legacy schedule records.
                             },
                             {
                               "type": "object",
-                              "additionalProperties": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "additionalProperties": {}
                             },
                             {
                               "type": "array",
-                              "items": {
-                                "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.execution.properties.externalContentSource.anyOf[1].properties.metadata.additionalProperties"
-                              }
+                              "items": {}
                             }
                           ]
                         }
@@ -14925,15 +14693,11 @@ Return legacy schedule records.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.route.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -15179,15 +14943,11 @@ Return legacy schedule records.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.result"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.result"
-                }
+                "items": {}
               }
             ]
           },
@@ -15215,15 +14975,11 @@ Return legacy schedule records.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[36].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -15359,15 +15115,11 @@ Run a lifecycle action on the default channel account for a surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[38].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[38].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -15520,15 +15272,11 @@ Run a lifecycle action on the default channel account for a surface.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -15599,15 +15347,11 @@ Run a lifecycle action on the default channel account for a surface.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[38].outputSchema.properties.result.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -15672,15 +15416,11 @@ Run a lifecycle action on a specific channel account.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[39].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[39].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -15833,15 +15573,11 @@ Run a lifecycle action on a specific channel account.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -15912,15 +15648,11 @@ Run a lifecycle action on a specific channel account.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[39].outputSchema.properties.result.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -16087,15 +15819,11 @@ Return a single channel account record.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[40].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[40].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -16255,15 +15983,11 @@ Return channel account lifecycle posture.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[41].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[41].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -16437,15 +16161,11 @@ Return account posture for a single channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[42].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[42].outputSchema.properties.accounts.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -16516,15 +16236,11 @@ Run a channel-owned operator action.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[43].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[43].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -16564,15 +16280,11 @@ Run a channel-owned operator action.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[43].outputSchema.properties.result.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[43].outputSchema.properties.result.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -16655,15 +16367,11 @@ Return operator actions registered by channel plugins.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -16686,15 +16394,11 @@ Return operator actions registered by channel plugins.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[44].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -16794,15 +16498,11 @@ Return operator actions for a single channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -16825,15 +16525,11 @@ Return operator actions for a single channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[45].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -16917,15 +16613,11 @@ Return LLM agent tools exposed through channel plugins.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[46].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[46].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -17028,15 +16720,11 @@ Return LLM agent tools for a single channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[47].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[47].outputSchema.properties.tools.items.properties.parameters.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -17135,15 +16823,11 @@ Apply allowlist additions or removals for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[48].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[48].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -17290,15 +16974,11 @@ Apply allowlist additions or removals for a channel surface.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -17331,15 +17011,11 @@ Apply allowlist additions or removals for a channel surface.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[48].outputSchema.properties.updatedPolicy.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -17406,15 +17082,11 @@ Apply allowlist additions or removals for a channel surface.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.resolved.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.resolved.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -17454,15 +17126,11 @@ Apply allowlist additions or removals for a channel surface.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[48].outputSchema.properties.resolution.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -17494,15 +17162,11 @@ Apply allowlist additions or removals for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[48].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[48].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -17580,15 +17244,11 @@ Resolve allowlist candidates into stable channel identities.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[49].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[49].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -17642,15 +17302,11 @@ Resolve allowlist candidates into stable channel identities.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[49].outputSchema.properties.resolved.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[49].outputSchema.properties.resolved.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -17690,15 +17346,11 @@ Resolve allowlist candidates into stable channel identities.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[49].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[49].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -17764,15 +17416,11 @@ Evaluate channel authorization and availability for a requested action.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[50].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[50].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -17910,15 +17558,11 @@ Evaluate channel authorization and availability for a requested action.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.account.anyOf[0].properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -17965,15 +17609,11 @@ Evaluate channel authorization and availability for a requested action.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[50].outputSchema.properties.result.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -18066,15 +17706,11 @@ Return capability posture for all registered channel surfaces.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[51].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[51].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18178,15 +17814,11 @@ Return capability posture for a single surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[52].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[52].outputSchema.properties.capabilities.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18344,15 +17976,11 @@ Query a channel directory surface for users, groups, threads, or services.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[53].outputSchema.properties.entries.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[53].outputSchema.properties.entries.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18466,15 +18094,11 @@ Return doctor checks and repair posture for a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[54].outputSchema.properties.checks.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[54].outputSchema.properties.checks.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18524,15 +18148,11 @@ Return doctor checks and repair posture for a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18555,15 +18175,11 @@ Return doctor checks and repair posture for a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[54].outputSchema.properties.repairActions.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18597,15 +18213,11 @@ Return doctor checks and repair posture for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[54].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[54].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -18714,15 +18326,11 @@ Return lifecycle migration posture for a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[55].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[55].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18757,15 +18365,11 @@ Return lifecycle migration posture for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[55].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[55].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -18823,15 +18427,11 @@ Apply lifecycle migrations for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[56].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[56].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -18900,15 +18500,11 @@ Apply lifecycle migrations for a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[56].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[56].outputSchema.properties.migrations.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -18943,15 +18539,11 @@ Apply lifecycle migrations for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[56].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[56].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -19061,15 +18653,11 @@ Return channel ingress policy audit records.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[57].outputSchema.properties.audit.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[57].outputSchema.properties.audit.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -19254,15 +18842,11 @@ Return ingress policy configuration for channels.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -19295,15 +18879,11 @@ Return ingress policy configuration for channels.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[58].outputSchema.properties.policies.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -19480,15 +19060,11 @@ Update ingress policy configuration for a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[59].inputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[59].inputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -19518,15 +19094,11 @@ Update ingress policy configuration for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[59].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[59].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -19667,15 +19239,11 @@ Update ingress policy configuration for a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[59].outputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[59].outputSchema.properties.groupPolicies.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -19708,15 +19276,11 @@ Update ingress policy configuration for a channel surface.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[59].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[59].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -19816,15 +19380,11 @@ Return repair actions exposed by a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -19847,15 +19407,11 @@ Return repair actions exposed by a channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[60].outputSchema.properties.actions.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -19976,15 +19532,11 @@ Return the versioned setup schema, secret targets, and external steps for a chan
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.defaultValue"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.defaultValue"
-                }
+                "items": {}
               }
             ]
           },
@@ -20025,15 +19577,11 @@ Return the versioned setup schema, secret targets, and external steps for a chan
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[61].outputSchema.properties.fields.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -20111,15 +19659,11 @@ Return the versioned setup schema, secret targets, and external steps for a chan
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[61].outputSchema.properties.secretTargets.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[61].outputSchema.properties.secretTargets.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -20160,15 +19704,11 @@ Return the versioned setup schema, secret targets, and external steps for a chan
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[61].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[61].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -20260,15 +19800,11 @@ Return status for channel plugins and provider-backed channels.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[62].outputSchema.properties.channels.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[62].outputSchema.properties.channels.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -20358,15 +19894,11 @@ Resolve a typed channel target for outbound delivery or routing.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[63].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[63].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -20457,15 +19989,11 @@ Resolve a typed channel target for outbound delivery or routing.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[63].outputSchema.properties.target.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[63].outputSchema.properties.target.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -20532,15 +20060,11 @@ Run a channel-owned operator tool.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[64].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[64].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -20580,15 +20104,11 @@ Run a channel-owned operator tool.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[64].outputSchema.properties.result.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[64].outputSchema.properties.result.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -20674,15 +20194,11 @@ Return operator tools registered by channel plugins.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -20705,15 +20221,11 @@ Return operator tools registered by channel plugins.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[65].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -20816,15 +20328,11 @@ Return operator tools for a single channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -20847,15 +20355,11 @@ Return operator tools for a single channel surface.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[66].outputSchema.properties.tools.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -20875,6 +20379,456 @@ Return operator tools for a single channel surface.
   },
   "required": [
     "tools"
+  ],
+  "additionalProperties": false
+}
+```
+
+### companion
+
+#### `companion.chat.events.stream`
+
+Server-Sent Events stream of turn and agent events scoped to a single companion-chat session.
+
+- Title: `Stream Companion Chat Events`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/companion/chat/sessions/{sessionId}/events`
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.messages.create`
+
+Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided.
+
+- Title: `Send Companion Chat Message`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/companion/chat/sessions/{sessionId}/messages`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "messageId"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.messages.list`
+
+Return the message list for a companion-chat session. Restored in SDK 0.21.36 (F21) after it was briefly reachable only via the session-detail endpoint.
+
+- Title: `List Companion Chat Messages`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/companion/chat/sessions/{sessionId}/messages`
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "messages"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.sessions.create`
+
+Create a new companion-chat session. Optional `provider` / `model` override the registry default; `title` and `systemPrompt` are stored on the session record.
+
+- Title: `Create Companion Chat Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/companion/chat/sessions`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "systemPrompt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "sessionId",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.sessions.delete`
+
+Close a companion-chat session. The session record is preserved in closed state.
+
+- Title: `Close Companion Chat Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/companion/chat/sessions/{sessionId}`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "status"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.sessions.get`
+
+Return a companion-chat session record together with its full message history.
+
+- Title: `Get Companion Chat Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/companion/chat/sessions/{sessionId}`
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "closed"
+          ]
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "lastMessageAt": {
+          "type": "number"
+        },
+        "closedAt": {
+          "type": "number"
+        },
+        "messageCount": {
+          "type": "number"
+        },
+        "pendingInputCount": {
+          "type": "number"
+        },
+        "routeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "surfaceKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "surfaceKind": {
+                "type": "string"
+              },
+              "surfaceId": {
+                "type": "string"
+              },
+              "externalId": {
+                "type": "string"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "routeId": {
+                "type": "string"
+              },
+              "lastSeenAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "surfaceKind",
+              "surfaceId",
+              "lastSeenAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "activeAgentId": {
+          "type": "string"
+        },
+        "lastAgentId": {
+          "type": "string"
+        },
+        "lastError": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "messageCount",
+        "pendingInputCount",
+        "routeIds",
+        "surfaceKinds",
+        "participants",
+        "metadata"
+      ],
+      "additionalProperties": false
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "session",
+    "messages"
   ],
   "additionalProperties": false
 }
@@ -20930,15 +20884,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.danger.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.danger.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -20961,15 +20911,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.controlPlane.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.controlPlane.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -20992,15 +20938,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.web.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.web.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21023,15 +20965,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.network.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.network.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21054,15 +20992,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.service.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.service.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21085,15 +21019,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.providers.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.providers.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21116,15 +21046,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.ui.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.ui.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21147,15 +21073,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.channels.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.channels.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21178,15 +21100,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.watchers.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.watchers.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21209,15 +21127,11 @@ Return the resolved GoodVibes config snapshot.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.memory.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[67].outputSchema.properties.memory.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -21286,15 +21200,11 @@ Set a config value through the daemon API.
         },
         {
           "type": "object",
-          "additionalProperties": {
-            "$ref": "$.operator.methods[68].outputSchema.properties.value"
-          }
+          "additionalProperties": {}
         },
         {
           "type": "array",
-          "items": {
-            "$ref": "$.operator.methods[68].outputSchema.properties.value"
-          }
+          "items": {}
         }
       ]
     }
@@ -22201,14 +22111,10 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.inputSchema"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.inputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22229,14 +22135,10 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.outputSchema"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.outputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22266,14 +22168,10 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.metadata"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.methods.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22352,14 +22250,10 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.outputSchema"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.outputSchema.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22383,14 +22277,10 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                         {
                           "type": "null"
                         },
-                        {
-                          "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.metadata"
-                        },
+                        {},
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[73].outputSchema.properties.contract.properties.operator.properties.events.items.properties.metadata.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -22604,14 +22494,10 @@ Return the event catalog for SSE and WebSocket control-plane subscriptions.
                 {
                   "type": "null"
                 },
-                {
-                  "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.outputSchema"
-                },
+                {},
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.outputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -22635,14 +22521,10 @@ Return the event catalog for SSE and WebSocket control-plane subscriptions.
                 {
                   "type": "null"
                 },
-                {
-                  "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.metadata"
-                },
+                {},
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[74].outputSchema.properties.events.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -22856,15 +22738,11 @@ Return recent surface messages published through the control plane.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -22902,15 +22780,11 @@ Return recent surface messages published through the control plane.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[76].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -23042,14 +22916,10 @@ Return a single gateway method descriptor.
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.inputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.inputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -23070,14 +22940,10 @@ Return a single gateway method descriptor.
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.outputSchema"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.outputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -23107,14 +22973,10 @@ Return a single gateway method descriptor.
               {
                 "type": "null"
               },
-              {
-                "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.metadata"
-              },
+              {},
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[77].outputSchema.properties.method.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -23250,14 +23112,10 @@ Return the gateway method catalog.
                 {
                   "type": "null"
                 },
-                {
-                  "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.inputSchema"
-                },
+                {},
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -23278,14 +23136,10 @@ Return the gateway method catalog.
                 {
                   "type": "null"
                 },
-                {
-                  "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.outputSchema"
-                },
+                {},
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.outputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -23315,14 +23169,10 @@ Return the gateway method catalog.
                 {
                   "type": "null"
                 },
-                {
-                  "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.metadata"
-                },
+                {},
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[78].outputSchema.properties.methods.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -23590,15 +23440,11 @@ Return the current control-plane gateway snapshot.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.attachments.items.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -23636,15 +23482,11 @@ Return the current control-plane gateway snapshot.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[79].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -23690,15 +23532,11 @@ Return the current control-plane gateway snapshot.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[79].outputSchema.properties.recentEvents.items.properties.payload"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[79].outputSchema.properties.recentEvents.items.properties.payload"
-                }
+                "items": {}
               }
             ]
           }
@@ -24555,15 +24393,11 @@ Accept, reject, or supersede a knowledge consolidation candidate.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[86].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[86].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -24645,15 +24479,11 @@ Accept, reject, or supersede a knowledge consolidation candidate.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[86].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[86].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -24788,15 +24618,11 @@ Return a single consolidation candidate.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[87].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[87].outputSchema.properties.candidate.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -24939,15 +24765,11 @@ Return scored consolidation candidates for durable memory promotion, review, or 
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[88].outputSchema.properties.candidates.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[88].outputSchema.properties.candidates.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -25072,15 +24894,11 @@ Return readiness and setup diagnostics for a knowledge connector.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.checks.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.checks.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -25119,15 +24937,11 @@ Return readiness and setup diagnostics for a knowledge connector.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[89].outputSchema.properties.report.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -25235,15 +25049,11 @@ Return a single knowledge connector manifest.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.inputSchema.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.inputSchema.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -25266,13 +25076,9 @@ Return a single knowledge connector manifest.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.examples.items"
-                }
+                "additionalProperties": {}
               },
-              {
-                "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.examples"
-              }
+              {}
             ]
           }
         },
@@ -25370,15 +25176,11 @@ Return a single knowledge connector manifest.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.setup.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.setup.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -25408,15 +25210,11 @@ Return a single knowledge connector manifest.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[90].outputSchema.properties.connector.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -25516,15 +25314,11 @@ Return discoverable knowledge ingest connectors with input metadata and examples
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.inputSchema.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.inputSchema.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -25547,13 +25341,9 @@ Return discoverable knowledge ingest connectors with input metadata and examples
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.examples.items"
-                  }
+                  "additionalProperties": {}
                 },
-                {
-                  "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.examples"
-                }
+                {}
               ]
             }
           },
@@ -25651,15 +25441,11 @@ Return discoverable knowledge ingest connectors with input metadata and examples
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.setup.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.setup.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -25689,15 +25475,11 @@ Return discoverable knowledge ingest connectors with input metadata and examples
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[91].outputSchema.properties.connectors.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -25816,15 +25598,11 @@ Return a single knowledge extraction record.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -25847,15 +25625,11 @@ Return a single knowledge extraction record.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[92].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -25989,15 +25763,11 @@ Return structured extraction records for ingested sources.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.structure.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.structure.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -26020,15 +25790,11 @@ Return structured extraction records for ingested sources.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[93].outputSchema.properties.extractions.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -26108,15 +25874,11 @@ Execute a GraphQL query or mutation against the dedicated knowledge domain endpo
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[94].inputSchema.properties.variables.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[94].inputSchema.properties.variables.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -26153,15 +25915,11 @@ Execute a GraphQL query or mutation against the dedicated knowledge domain endpo
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[94].outputSchema.properties.data.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[94].outputSchema.properties.data.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -26184,13 +25942,9 @@ Execute a GraphQL query or mutation against the dedicated knowledge domain endpo
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[94].outputSchema.properties.errors.items"
-            }
+            "additionalProperties": {}
           },
-          {
-            "$ref": "$.operator.methods[94].outputSchema.properties.errors"
-          }
+          {}
         ]
       }
     },
@@ -26212,15 +25966,11 @@ Execute a GraphQL query or mutation against the dedicated knowledge domain endpo
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[94].outputSchema.properties.extensions.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[94].outputSchema.properties.extensions.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -26358,15 +26108,11 @@ Snapshot a local path, remote URI, or existing artifact into the structured know
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[96].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[96].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -26465,15 +26211,11 @@ Snapshot a local path, remote URI, or existing artifact into the structured know
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[96].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[96].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -26544,15 +26286,11 @@ Snapshot a local path, remote URI, or existing artifact into the structured know
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[96].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[96].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -26633,15 +26371,11 @@ Parse a bookmark export file and ingest its URLs into the structured knowledge s
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[97].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[97].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -26751,15 +26485,11 @@ Parse a bookmark export file and ingest its URLs into the structured knowledge s
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[97].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[97].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -26840,15 +26570,11 @@ Resolve a knowledge connector against inline input, inline content, or file-back
         },
         {
           "type": "object",
-          "additionalProperties": {
-            "$ref": "$.operator.methods[98].inputSchema.properties.input"
-          }
+          "additionalProperties": {}
         },
         {
           "type": "array",
-          "items": {
-            "$ref": "$.operator.methods[98].inputSchema.properties.input"
-          }
+          "items": {}
         }
       ]
     },
@@ -26986,15 +26712,11 @@ Resolve a knowledge connector against inline input, inline content, or file-back
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[98].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[98].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -27109,15 +26831,11 @@ Fetch, snapshot, and compile a URL into the structured knowledge store.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[99].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[99].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -27219,15 +26937,11 @@ Fetch, snapshot, and compile a URL into the structured knowledge store.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[99].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[99].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -27298,15 +27012,11 @@ Fetch, snapshot, and compile a URL into the structured knowledge store.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[99].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[99].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -27387,15 +27097,11 @@ Parse a URL list file and ingest its entries into the structured knowledge store
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[100].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[100].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -27505,15 +27211,11 @@ Parse a URL list file and ingest its entries into the structured knowledge store
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[100].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[100].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -27633,15 +27335,11 @@ Return current knowledge lint and health issues.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[101].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[101].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -27794,15 +27492,11 @@ Return a single structured knowledge source, node, or issue with linked relation
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[102].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[102].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -27877,15 +27571,11 @@ Return a single structured knowledge source, node, or issue with linked relation
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[102].outputSchema.properties.node.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[102].outputSchema.properties.node.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -27953,15 +27643,11 @@ Return a single structured knowledge source, node, or issue with linked relation
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[102].outputSchema.properties.issue.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[102].outputSchema.properties.issue.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -28029,15 +27715,11 @@ Return a single structured knowledge source, node, or issue with linked relation
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[102].outputSchema.properties.relatedEdges.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[102].outputSchema.properties.relatedEdges.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -28149,15 +27831,11 @@ Return a single structured knowledge source, node, or issue with linked relation
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[102].outputSchema.properties.linkedSources.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[102].outputSchema.properties.linkedSources.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -28235,15 +27913,11 @@ Return a single structured knowledge source, node, or issue with linked relation
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[102].outputSchema.properties.linkedNodes.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[102].outputSchema.properties.linkedNodes.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -28465,15 +28139,11 @@ Return recent knowledge job runs.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[103].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[103].outputSchema.properties.runs.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -28593,15 +28263,11 @@ Return a single knowledge job definition.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[104].outputSchema.properties.job.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[104].outputSchema.properties.job.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -28823,15 +28489,11 @@ Queue or run a structured knowledge maintenance job.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[105].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[105].outputSchema.properties.run.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -28945,15 +28607,11 @@ Return built-in structured knowledge maintenance jobs.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[106].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[106].outputSchema.properties.jobs.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -29052,15 +28710,11 @@ Run deterministic knowledge lint checks and return the current issues.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[107].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[107].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -29180,15 +28834,11 @@ Return compiled knowledge nodes.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[108].outputSchema.properties.nodes.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[108].outputSchema.properties.nodes.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -29365,15 +29015,11 @@ Build a compact structured knowledge packet for a task and write scope.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[109].outputSchema.properties.items.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[109].outputSchema.properties.items.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -29499,15 +29145,11 @@ Render and persist a markdown/wiki projection as a derived artifact.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.target.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.target.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -29571,15 +29213,11 @@ Render and persist a markdown/wiki projection as a derived artifact.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.pages.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.pages.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -29614,15 +29252,11 @@ Render and persist a markdown/wiki projection as a derived artifact.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[110].outputSchema.properties.bundle.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -29692,15 +29326,11 @@ Render and persist a markdown/wiki projection as a derived artifact.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[110].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[110].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -29814,15 +29444,11 @@ Render a markdown/wiki projection from the canonical structured knowledge store.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[111].outputSchema.properties.target.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[111].outputSchema.properties.target.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -29886,15 +29512,11 @@ Render a markdown/wiki projection from the canonical structured knowledge store.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[111].outputSchema.properties.pages.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[111].outputSchema.properties.pages.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -29929,15 +29551,11 @@ Render a markdown/wiki projection from the canonical structured knowledge store.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[111].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[111].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -30033,15 +29651,11 @@ Return renderable markdown/wiki projection targets for the knowledge domain.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[112].outputSchema.properties.targets.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[112].outputSchema.properties.targets.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -30197,15 +29811,11 @@ Rebuild derived knowledge relations and mirror reviewed memory into the structur
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[113].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[113].outputSchema.properties.issues.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -30321,15 +29931,11 @@ Return a single knowledge consolidation report.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[114].outputSchema.properties.report.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[114].outputSchema.properties.report.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -30443,15 +30049,11 @@ Return deterministic knowledge consolidation reports.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[115].outputSchema.properties.reports.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[115].outputSchema.properties.reports.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -30679,15 +30281,11 @@ Enable or disable a managed knowledge schedule.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[117].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[117].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -30865,15 +30463,11 @@ Return a single managed knowledge schedule.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[118].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[118].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -31047,15 +30641,11 @@ Create or update a managed schedule for a knowledge maintenance job.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[119].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[119].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -31184,15 +30774,11 @@ Create or update a managed schedule for a knowledge maintenance job.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[119].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[119].outputSchema.properties.schedule.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -31369,15 +30955,11 @@ Return managed schedules for background knowledge maintenance jobs.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[120].outputSchema.properties.schedules.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[120].outputSchema.properties.schedules.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -31460,15 +31042,11 @@ Search structured knowledge sources and nodes with compact ranked results.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[121].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[121].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -31587,15 +31165,11 @@ Search structured knowledge sources and nodes with compact ranked results.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -31670,15 +31244,11 @@ Search structured knowledge sources and nodes with compact ranked results.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.node.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[121].outputSchema.properties.results.items.properties.node.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -31819,15 +31389,11 @@ Return the structured extraction record for a single knowledge source.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.structure.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -31850,15 +31416,11 @@ Return the structured extraction record for a single knowledge source.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[122].outputSchema.properties.extraction.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -32012,15 +31574,11 @@ Return ingested structured knowledge sources.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[123].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[123].outputSchema.properties.sources.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -32225,15 +31783,11 @@ Return the recent knowledge usage ledger for packet hits, search hits, and item 
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[125].outputSchema.properties.usage.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[125].outputSchema.properties.usage.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -32331,15 +31885,11 @@ Analyze an artifact through a registered media provider.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[126].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[126].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -32378,15 +31928,11 @@ Analyze an artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[126].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[126].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -32435,15 +31981,11 @@ Analyze an artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[126].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[126].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -32507,15 +32049,11 @@ Generate a media artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[127].inputSchema.properties.options.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[127].inputSchema.properties.options.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -32538,15 +32076,11 @@ Generate a media artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[127].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[127].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -32633,15 +32167,11 @@ Generate a media artifact through a registered media provider.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[127].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[127].outputSchema.properties.artifacts.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -32672,15 +32202,11 @@ Generate a media artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[127].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[127].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -32827,15 +32353,11 @@ Transform an artifact through a registered media provider.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[129].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[129].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -32871,15 +32393,11 @@ Transform an artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[129].inputSchema.properties.options.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[129].inputSchema.properties.options.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -32902,15 +32420,11 @@ Transform an artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[129].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[129].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -32996,15 +32510,11 @@ Transform an artifact through a registered media provider.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[129].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[129].outputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -33034,15 +32544,11 @@ Transform an artifact through a registered media provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[129].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[129].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -33119,15 +32625,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[130].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[130].inputSchema.properties.artifact.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -33200,15 +32702,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[130].inputSchema.properties.writeback.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[130].inputSchema.properties.writeback.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -33237,15 +32735,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[130].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[130].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -33324,15 +32818,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -33414,15 +32904,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -33453,15 +32939,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[130].outputSchema.properties.analysis.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -33567,15 +33049,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -33613,15 +33091,11 @@ Analyze an image, audio file, video artifact, or document through the unified mu
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[130].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -33724,15 +33198,11 @@ Build a token-efficient packet from an existing multimodal analysis result.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -33814,15 +33284,11 @@ Build a token-efficient packet from an existing multimodal analysis result.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -33853,15 +33319,11 @@ Build a token-efficient packet from an existing multimodal analysis result.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[131].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -34014,15 +33476,11 @@ Return the normalized multimodal provider catalog spanning media understanding, 
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[132].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[132].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -34124,15 +33582,11 @@ Return the unified multimodal runtime status across image, audio, video, and doc
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[133].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[133].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -34246,15 +33700,11 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.artifact.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -34336,15 +33786,11 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.segments.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -34375,15 +33821,11 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[134].inputSchema.properties.analysis.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -34434,15 +33876,11 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[134].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[134].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -34518,15 +33956,11 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.analysisArtifact.properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -34564,15 +33998,11 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[134].outputSchema.properties.writeback.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -34726,15 +34156,11 @@ Return sqlite-vec and memory embedding-provider diagnostics.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[135].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[135].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -34931,15 +34357,11 @@ Set the active default memory embedding provider.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[136].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[136].outputSchema.properties.embeddings.properties.providers.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -36304,15 +35726,11 @@ Return the distributed node/device host API contract.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.inputSchema.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.inputSchema.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -36335,15 +35753,11 @@ Return the distributed node/device host API contract.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.outputSchema.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.endpoints.items.properties.outputSchema.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -36391,15 +35805,11 @@ Return the distributed node/device host API contract.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[144].outputSchema.properties.contract.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -36475,15 +35885,11 @@ Approve a pending remote pair request.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[145].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[145].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -36607,15 +36013,11 @@ Approve a pending remote pair request.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[145].outputSchema.properties.request.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[145].outputSchema.properties.request.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -36779,15 +36181,11 @@ Approve a pending remote pair request.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[145].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[145].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -36953,15 +36351,11 @@ Return pending remote pair requests.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[146].outputSchema.properties.requests.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[146].outputSchema.properties.requests.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -37040,15 +36434,11 @@ Reject a pending remote pair request.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[147].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[147].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -37172,15 +36562,11 @@ Reject a pending remote pair request.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[147].outputSchema.properties.request.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[147].outputSchema.properties.request.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -37395,15 +36781,11 @@ Disconnect a remote peer.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[148].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[148].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -37473,15 +36855,11 @@ Invoke a method on a connected remote peer.
         },
         {
           "type": "object",
-          "additionalProperties": {
-            "$ref": "$.operator.methods[149].inputSchema.properties.payload"
-          }
+          "additionalProperties": {}
         },
         {
           "type": "array",
-          "items": {
-            "$ref": "$.operator.methods[149].inputSchema.properties.payload"
-          }
+          "items": {}
         }
       ]
     },
@@ -37532,15 +36910,11 @@ Invoke a method on a connected remote peer.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[149].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[149].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -37624,15 +36998,11 @@ Invoke a method on a connected remote peer.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.payload"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.payload"
-              }
+              "items": {}
             }
           ]
         },
@@ -37691,15 +37061,11 @@ Invoke a method on a connected remote peer.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -37787,15 +37153,11 @@ Invoke a method on a connected remote peer.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[149].outputSchema.properties.work.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -38001,15 +37363,11 @@ Return known remote peers.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[150].outputSchema.properties.peers.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[150].outputSchema.properties.peers.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -38222,15 +37580,11 @@ Revoke the active token for a remote peer.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[151].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[151].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -38445,15 +37799,11 @@ Rotate the active token for a remote peer.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[152].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[152].outputSchema.properties.peer.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -38929,15 +38279,11 @@ Return distributed node/device runtime state.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.pairRequests.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.pairRequests.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -39104,15 +38450,11 @@ Return distributed node/device runtime state.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.peers.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.peers.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -39199,15 +38541,11 @@ Return distributed node/device runtime state.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.payload"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.payload"
-                    }
+                    "items": {}
                   }
                 ]
               },
@@ -39266,15 +38604,11 @@ Return distributed node/device runtime state.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.result"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.result"
-                    }
+                    "items": {}
                   }
                 ]
               },
@@ -39362,15 +38696,11 @@ Return distributed node/device runtime state.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.work.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -39456,15 +38786,11 @@ Return distributed node/device runtime state.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.audit.items.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[153].outputSchema.properties.distributed.properties.audit.items.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -39605,15 +38931,11 @@ Cancel a remote work item.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.payload"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.payload"
-              }
+              "items": {}
             }
           ]
         },
@@ -39672,15 +38994,11 @@ Cancel a remote work item.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -39768,15 +39086,11 @@ Cancel a remote work item.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[154].outputSchema.properties.work.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -39901,15 +39215,11 @@ Return queued and leased remote work items.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.payload"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.payload"
-                }
+                "items": {}
               }
             ]
           },
@@ -39968,15 +39278,11 @@ Return queued and leased remote work items.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.result"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.result"
-                }
+                "items": {}
               }
             ]
           },
@@ -40064,15 +39370,11 @@ Return queued and leased remote work items.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[155].outputSchema.properties.work.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -40257,15 +39559,11 @@ Create or upsert a route binding.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[157].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[157].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -40394,15 +39692,11 @@ Create or upsert a route binding.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[157].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[157].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -40616,15 +39910,11 @@ Return configured route bindings.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[159].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[159].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -40720,15 +40010,11 @@ Patch an existing route binding.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[160].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[160].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -40851,15 +40137,11 @@ Patch an existing route binding.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[160].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[160].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -41031,15 +40313,11 @@ Return the route and binding integration snapshot.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[161].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[161].outputSchema.properties.bindings.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -41156,15 +40434,11 @@ Return registered channel and control surfaces.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[162].outputSchema.properties.surfaces.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[162].outputSchema.properties.surfaces.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -41186,6 +40460,68 @@ Return registered channel and control surfaces.
   },
   "required": [
     "surfaces"
+  ],
+  "additionalProperties": false
+}
+```
+
+### scheduler
+
+#### `scheduler.capacity`
+
+Return the current automation-scheduler capacity snapshot: total slots, in-use slots, queue depth, and age of the oldest queued run.
+
+- Title: `Scheduler Capacity`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/runtime/scheduler`
+- Scopes: `read:automation`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "slotsTotal": {
+      "type": "number"
+    },
+    "slotsInUse": {
+      "type": "number"
+    },
+    "queueDepth": {
+      "type": "number"
+    },
+    "oldestQueuedAgeMs": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "slotsTotal",
+    "slotsInUse",
+    "queueDepth",
+    "oldestQueuedAgeMs"
   ],
   "additionalProperties": false
 }
@@ -43194,15 +42530,11 @@ Mark a shared session as closed.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[169].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[169].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -43379,15 +42711,11 @@ Create a shared session for a surface, route, or web client.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[170].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[170].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -43675,15 +43003,11 @@ Queue a deferred follow-up for a shared session so it runs after the current age
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[171].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[171].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -43768,15 +43092,11 @@ Queue a deferred follow-up for a shared session so it runs after the current age
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[171].outputSchema.properties.message.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[171].outputSchema.properties.message.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -43878,15 +43198,11 @@ Queue a deferred follow-up for a shared session so it runs after the current age
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[171].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[171].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -44190,15 +43506,11 @@ Return metadata for a shared session.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[172].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[172].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -44280,15 +43592,11 @@ Return metadata for a shared session.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[172].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[172].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -44441,15 +43749,11 @@ Cancel a queued shared-session input before it is delivered or spawned.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[173].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[173].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -44580,6 +43884,629 @@ Cancel a queued shared-session input before it is delivered or spawned.
   },
   "required": [
     "input"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `sessions.inputs.create`
+
+Create a shared-session input via the intent-dispatching alias. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler. Restored in SDK 0.21.36 for API surface parity after 0.21.35 removed the direct input-create endpoint.
+
+- Title: `Create Shared Session Input`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/sessions/{sessionId}/inputs`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "intent": {
+      "type": "string"
+    },
+    "surfaceKind": {
+      "type": "string"
+    },
+    "surfaceId": {
+      "type": "string"
+    },
+    "routing": {
+      "type": "object",
+      "properties": {
+        "providerId": {
+          "type": "string"
+        },
+        "modelId": {
+          "type": "string"
+        },
+        "providerSelection": {
+          "type": "string",
+          "enum": [
+            "inherit-current",
+            "concrete",
+            "synthetic"
+          ]
+        },
+        "unresolvedModelPolicy": {
+          "type": "string",
+          "enum": [
+            "fallback-to-current",
+            "fail"
+          ]
+        },
+        "providerFailurePolicy": {
+          "type": "string",
+          "enum": [
+            "ordered-fallbacks",
+            "fail"
+          ]
+        },
+        "fallbackModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "helperModel": {
+          "type": "object",
+          "properties": {
+            "providerId": {
+              "type": "string"
+            },
+            "modelId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "providerId",
+            "modelId"
+          ],
+          "additionalProperties": false
+        },
+        "executionIntent": {
+          "type": "object",
+          "properties": {
+            "riskClass": {
+              "type": "string",
+              "enum": [
+                "safe",
+                "elevated",
+                "dangerous"
+              ]
+            },
+            "requiresApproval": {
+              "type": "boolean"
+            },
+            "networkPolicy": {
+              "type": "string",
+              "enum": [
+                "inherit",
+                "allow",
+                "deny",
+                "scoped"
+              ]
+            },
+            "filesystemPolicy": {
+              "type": "string",
+              "enum": [
+                "inherit",
+                "workspace-write",
+                "read-only",
+                "isolated"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reasoningEffort": {
+          "type": "string",
+          "enum": [
+            "instant",
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "allowSpawnFallback": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "body"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "closed"
+              ]
+            },
+            "createdAt": {
+              "type": "number"
+            },
+            "updatedAt": {
+              "type": "number"
+            },
+            "lastMessageAt": {
+              "type": "number"
+            },
+            "closedAt": {
+              "type": "number"
+            },
+            "messageCount": {
+              "type": "number"
+            },
+            "pendingInputCount": {
+              "type": "number"
+            },
+            "routeIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "surfaceKinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "participants": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "surfaceKind": {
+                    "type": "string"
+                  },
+                  "surfaceId": {
+                    "type": "string"
+                  },
+                  "externalId": {
+                    "type": "string"
+                  },
+                  "userId": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "routeId": {
+                    "type": "string"
+                  },
+                  "lastSeenAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "surfaceKind",
+                  "surfaceId",
+                  "lastSeenAt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "activeAgentId": {
+              "type": "string"
+            },
+            "lastAgentId": {
+              "type": "string"
+            },
+            "lastError": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "status",
+            "createdAt",
+            "updatedAt",
+            "messageCount",
+            "pendingInputCount",
+            "routeIds",
+            "surfaceKinds",
+            "participants",
+            "metadata"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "message": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant",
+            "system"
+          ]
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "surfaceKind": {
+          "type": "string"
+        },
+        "surfaceId": {
+          "type": "string"
+        },
+        "routeId": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "role",
+        "body",
+        "createdAt",
+        "metadata"
+      ],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string",
+          "enum": [
+            "submit",
+            "steer",
+            "follow-up"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "delivered",
+            "spawned",
+            "completed",
+            "cancelled",
+            "failed",
+            "rejected"
+          ]
+        },
+        "correlationId": {
+          "type": "string"
+        },
+        "causationId": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "routeId": {
+          "type": "string"
+        },
+        "surfaceKind": {
+          "type": "string"
+        },
+        "surfaceId": {
+          "type": "string"
+        },
+        "externalId": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "activeAgentId": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "providerId": {
+              "type": "string"
+            },
+            "modelId": {
+              "type": "string"
+            },
+            "providerSelection": {
+              "type": "string",
+              "enum": [
+                "inherit-current",
+                "concrete",
+                "synthetic"
+              ]
+            },
+            "unresolvedModelPolicy": {
+              "type": "string",
+              "enum": [
+                "fallback-to-current",
+                "fail"
+              ]
+            },
+            "providerFailurePolicy": {
+              "type": "string",
+              "enum": [
+                "ordered-fallbacks",
+                "fail"
+              ]
+            },
+            "fallbackModels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "helperModel": {
+              "type": "object",
+              "properties": {
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "providerId",
+                "modelId"
+              ],
+              "additionalProperties": false
+            },
+            "executionIntent": {
+              "type": "object",
+              "properties": {
+                "riskClass": {
+                  "type": "string",
+                  "enum": [
+                    "safe",
+                    "elevated",
+                    "dangerous"
+                  ]
+                },
+                "requiresApproval": {
+                  "type": "boolean"
+                },
+                "networkPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "inherit",
+                    "allow",
+                    "deny",
+                    "scoped"
+                  ]
+                },
+                "filesystemPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "inherit",
+                    "workspace-write",
+                    "read-only",
+                    "isolated"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "reasoningEffort": {
+              "type": "string",
+              "enum": [
+                "instant",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "intent",
+        "state",
+        "correlationId",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "metadata"
+      ],
+      "additionalProperties": false
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "spawn",
+        "continued-live",
+        "queued-follow-up",
+        "rejected"
+      ]
+    },
+    "agentId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "session",
+    "message",
+    "input",
+    "mode",
+    "agentId"
   ],
   "additionalProperties": false
 }
@@ -44733,15 +44660,11 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[174].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[174].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -44850,15 +44773,11 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[174].outputSchema.properties.inputs.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[174].outputSchema.properties.inputs.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -45234,15 +45153,11 @@ Return shared-session integration state.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[176].outputSchema.properties.sessions.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[176].outputSchema.properties.sessions.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -45532,15 +45447,11 @@ Append a user message to a shared session and queue assistant work.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[177].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[177].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -45625,15 +45536,11 @@ Append a user message to a shared session and queue assistant work.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[177].outputSchema.properties.message.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[177].outputSchema.properties.message.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -45735,15 +45642,11 @@ Append a user message to a shared session and queue assistant work.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[177].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[177].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -46053,15 +45956,11 @@ Return message history for a shared session.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[178].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[178].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -46143,15 +46042,11 @@ Return message history for a shared session.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[178].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[178].outputSchema.properties.messages.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -46322,15 +46217,11 @@ Reopen a previously closed shared session.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[179].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[179].outputSchema.properties.session.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -46621,15 +46512,11 @@ Deliver a live steering message to the active agent for a shared session, option
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[180].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[180].outputSchema.properties.session.anyOf[0].properties.metadata.additionalProperties"
-                    }
+                    "items": {}
                   }
                 ]
               }
@@ -46714,15 +46601,11 @@ Deliver a live steering message to the active agent for a shared session, option
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[180].outputSchema.properties.message.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[180].outputSchema.properties.message.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -46824,15 +46707,11 @@ Deliver a live steering message to the active agent for a shared session, option
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[180].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[180].outputSchema.properties.input.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -47083,15 +46962,11 @@ Return the settings integration snapshot.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.localValue"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.localValue"
-                    }
+                    "items": {}
                   }
                 ]
               },
@@ -47111,15 +46986,11 @@ Return the settings integration snapshot.
                   },
                   {
                     "type": "object",
-                    "additionalProperties": {
-                      "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.incomingValue"
-                    }
+                    "additionalProperties": {}
                   },
                   {
                     "type": "array",
-                    "items": {
-                      "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.conflicts.items.properties.incomingValue"
-                    }
+                    "items": {}
                   }
                 ]
               },
@@ -47220,15 +47091,11 @@ Return the settings integration snapshot.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.previousValue"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.previousValue"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -47248,15 +47115,11 @@ Return the settings integration snapshot.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.nextValue"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.stagedManagedBundle.properties.changes.items.properties.nextValue"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -47338,15 +47201,11 @@ Return the settings integration snapshot.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.rollbackHistory.items.properties.previousValues.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[181].outputSchema.anyOf[1].properties.rollbackHistory.items.properties.previousValues.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -47551,15 +47410,11 @@ Cancel an in-flight runtime task.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[182].outputSchema.properties.task.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[182].outputSchema.properties.task.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -47779,15 +47634,11 @@ Submit a task to the daemon or a shared session.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[183].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[183].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -48021,15 +47872,11 @@ Return a single runtime task record.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[184].outputSchema.properties.task.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[184].outputSchema.properties.task.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -48369,15 +48216,11 @@ Retry a runtime task through the task action endpoint.
             },
             {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "$.operator.methods[186].outputSchema.properties.task.properties.result"
-              }
+              "additionalProperties": {}
             },
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[186].outputSchema.properties.task.properties.result"
-              }
+              "items": {}
             }
           ]
         },
@@ -48673,15 +48516,11 @@ Return telemetry records that include normalized error metadata.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.payload"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.payload"
-                }
+                "items": {}
               }
             ]
           },
@@ -48703,15 +48542,11 @@ Return telemetry records that include normalized error metadata.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[188].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -49017,15 +48852,11 @@ Return a paginated telemetry event feed with cursor-based resume semantics.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.payload"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.payload"
-                }
+                "items": {}
               }
             ]
           },
@@ -49047,15 +48878,11 @@ Return a paginated telemetry event feed with cursor-based resume semantics.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[189].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -49618,14 +49445,10 @@ Return telemetry events encoded as OTLP-compatible log documents.
             {
               "type": "null"
             },
-            {
-              "$ref": "$.operator.methods[191].outputSchema.properties.resourceLogs.items"
-            },
+            {},
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[191].outputSchema.properties.resourceLogs.items.additionalProperties"
-              }
+              "items": {}
             }
           ]
         }
@@ -49737,14 +49560,10 @@ Return telemetry metrics encoded as OTLP-compatible metric documents.
             {
               "type": "null"
             },
-            {
-              "$ref": "$.operator.methods[192].outputSchema.properties.resourceMetrics.items"
-            },
+            {},
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[192].outputSchema.properties.resourceMetrics.items.additionalProperties"
-              }
+              "items": {}
             }
           ]
         }
@@ -49856,14 +49675,10 @@ Return telemetry traces encoded as OTLP-compatible JSON.
             {
               "type": "null"
             },
-            {
-              "$ref": "$.operator.methods[193].outputSchema.properties.resourceSpans.items"
-            },
+            {},
             {
               "type": "array",
-              "items": {
-                "$ref": "$.operator.methods[193].outputSchema.properties.resourceSpans.items.additionalProperties"
-              }
+              "items": {}
             }
           ]
         }
@@ -50347,15 +50162,11 @@ Return the current telemetry snapshot with aggregates, runtime state, and recent
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.payload"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.payload"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -50377,15 +50188,11 @@ Return the current telemetry snapshot with aggregates, runtime state, and recent
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.events.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -50612,15 +50419,11 @@ Return the current telemetry snapshot with aggregates, runtime state, and recent
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.payload"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.payload"
-                        }
+                        "items": {}
                       }
                     ]
                   },
@@ -50642,15 +50445,11 @@ Return the current telemetry snapshot with aggregates, runtime state, and recent
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.errors.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -50875,15 +50674,11 @@ Return the current telemetry snapshot with aggregates, runtime state, and recent
                         },
                         {
                           "type": "object",
-                          "additionalProperties": {
-                            "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "additionalProperties": {}
                         },
                         {
                           "type": "array",
-                          "items": {
-                            "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.attributes.additionalProperties"
-                          }
+                          "items": {}
                         }
                       ]
                     }
@@ -50917,15 +50712,11 @@ Return the current telemetry snapshot with aggregates, runtime state, and recent
                               },
                               {
                                 "type": "object",
-                                "additionalProperties": {
-                                  "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                                }
+                                "additionalProperties": {}
                               },
                               {
                                 "type": "array",
-                                "items": {
-                                  "$ref": "$.operator.methods[194].outputSchema.properties.recent.properties.spans.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                                }
+                                "items": {}
                               }
                             ]
                           }
@@ -51365,15 +51156,11 @@ Return synthesized readable spans derived from runtime telemetry.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.attributes.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -51407,15 +51194,11 @@ Return synthesized readable spans derived from runtime telemetry.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[196].outputSchema.properties.items.items.properties.events.items.properties.attributes.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -51622,15 +51405,11 @@ Open a realtime voice session through a registered voice provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[198].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[198].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -51685,15 +51464,11 @@ Open a realtime voice session through a registered voice provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[198].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[198].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -51789,15 +51564,11 @@ Return configured voice provider posture and capabilities.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[199].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[199].outputSchema.properties.providers.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -51890,15 +51661,11 @@ Transcribe an audio artifact through a registered voice provider.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[200].inputSchema.properties.audio.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[200].inputSchema.properties.audio.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -51938,15 +51705,11 @@ Transcribe an audio artifact through a registered voice provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[200].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[200].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -52016,15 +51779,11 @@ Transcribe an audio artifact through a registered voice provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[200].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[200].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -52095,15 +51854,11 @@ Synthesize audio through a registered voice provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[201].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[201].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -52164,15 +51919,11 @@ Synthesize audio through a registered voice provider.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[201].outputSchema.properties.audio.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[201].outputSchema.properties.audio.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -52203,15 +51954,11 @@ Synthesize audio through a registered voice provider.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[201].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[201].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -52295,15 +52042,11 @@ Return registered voices for a voice provider.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[202].outputSchema.properties.voices.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[202].outputSchema.properties.voices.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -52383,15 +52126,11 @@ Register a new watcher.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[203].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[203].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -52485,15 +52224,11 @@ Register a new watcher.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[203].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[203].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -52549,15 +52284,11 @@ Register a new watcher.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[203].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[203].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -52712,15 +52443,11 @@ Return configured watchers and their runtime posture.
                     },
                     {
                       "type": "object",
-                      "additionalProperties": {
-                        "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "additionalProperties": {}
                     },
                     {
                       "type": "array",
-                      "items": {
-                        "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.source.properties.metadata.additionalProperties"
-                      }
+                      "items": {}
                     }
                   ]
                 }
@@ -52776,15 +52503,11 @@ Return configured watchers and their runtime posture.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[205].outputSchema.properties.watchers.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -52868,15 +52591,11 @@ Patch an existing watcher.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[206].inputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[206].inputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -52967,15 +52686,11 @@ Patch an existing watcher.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[206].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[206].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -53031,15 +52746,11 @@ Patch an existing watcher.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[206].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[206].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -53145,15 +52856,11 @@ Trigger a watcher immediately.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[207].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[207].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -53209,15 +52916,11 @@ Trigger a watcher immediately.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[207].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[207].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -53323,15 +53026,11 @@ Start a watcher instance.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[208].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[208].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -53387,15 +53086,11 @@ Start a watcher instance.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[208].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[208].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -53501,15 +53196,11 @@ Stop a watcher instance.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[209].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[209].outputSchema.properties.source.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -53565,15 +53256,11 @@ Stop a watcher instance.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[209].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[209].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -53794,15 +53481,11 @@ Execute a provider-backed web search and return normalized ranked results.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -53851,15 +53534,11 @@ Execute a provider-backed web search and return normalized ranked results.
                       },
                       {
                         "type": "object",
-                        "additionalProperties": {
-                          "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.evidence.items.properties.metadata.additionalProperties"
-                        }
+                        "additionalProperties": {}
                       },
                       {
                         "type": "array",
-                        "items": {
-                          "$ref": "$.operator.methods[211].outputSchema.properties.results.items.properties.evidence.items.properties.metadata.additionalProperties"
-                        }
+                        "items": {}
                       }
                     ]
                   }
@@ -53947,15 +53626,11 @@ Execute a provider-backed web search and return normalized ranked results.
               },
               {
                 "type": "object",
-                "additionalProperties": {
-                  "$ref": "$.operator.methods[211].outputSchema.properties.instantAnswer.properties.metadata.additionalProperties"
-                }
+                "additionalProperties": {}
               },
               {
                 "type": "array",
-                "items": {
-                  "$ref": "$.operator.methods[211].outputSchema.properties.instantAnswer.properties.metadata.additionalProperties"
-                }
+                "items": {}
               }
             ]
           }
@@ -53986,15 +53661,11 @@ Execute a provider-backed web search and return normalized ranked results.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.methods[211].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.methods[211].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
@@ -54187,14 +53858,10 @@ Agent lifecycle, planning, and completion events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[0].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[0].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54231,14 +53898,10 @@ Automation job, schedule, and run events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[1].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[1].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54275,14 +53938,10 @@ Agent communication and policy events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[2].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[2].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54319,14 +53978,10 @@ Context compaction and summary events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[3].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[3].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54363,14 +54018,10 @@ Control-plane client, auth, and subscription events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[4].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[4].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54407,14 +54058,10 @@ Delivery queue and outcome events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[5].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[5].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54451,14 +54098,10 @@ Forensics and incident trail events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[6].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[6].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54495,14 +54138,10 @@ Knowledge ingest, extraction, projection, packet, and job events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[7].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[7].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54539,14 +54178,10 @@ MCP server, tool, and connection events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[8].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[8].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54583,14 +54218,10 @@ Operational diagnostics and control events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[9].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[9].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54627,14 +54258,10 @@ Higher-level orchestration and planner coordination events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[10].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[10].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54671,14 +54298,10 @@ Approval and permission prompt events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[11].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[11].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54715,14 +54338,10 @@ Planner updates and plan mutation events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[12].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[12].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54759,14 +54378,10 @@ Plugin registration and lifecycle events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[13].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[13].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54803,14 +54418,10 @@ Provider health, selection, and routing events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[14].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[14].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54847,14 +54458,10 @@ Route binding and surface-link events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[15].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[15].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54891,14 +54498,10 @@ Security posture and policy events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[16].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[16].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54935,14 +54538,10 @@ Shared-session lifecycle, participant, and message events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[17].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[17].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -54979,14 +54578,10 @@ Surface registration and health events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[18].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[18].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -55023,14 +54618,10 @@ Runtime task lifecycle and status events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[19].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[19].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -55067,14 +54658,10 @@ Tool start, result, and failure events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[20].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[20].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -55111,14 +54698,10 @@ Transport connect, disconnect, and lifecycle events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[21].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[21].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -55155,14 +54738,10 @@ Turn submission and completion events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[22].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[22].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -55199,14 +54778,10 @@ UI-focused state and operational events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[23].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[23].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -55243,14 +54818,10 @@ Watcher state and heartbeat events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[24].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[24].outputSchema.additionalProperties"
-        }
+        "items": {}
       }
     ]
   }
@@ -55287,14 +54858,50 @@ Workflow orchestration events.
       {
         "type": "null"
       },
-      {
-        "$ref": "$.operator.events[25].outputSchema"
-      },
+      {},
       {
         "type": "array",
-        "items": {
-          "$ref": "$.operator.events[25].outputSchema.additionalProperties"
-        }
+        "items": {}
+      }
+    ]
+  }
+}
+```
+
+#### `runtime.workspace`
+
+Workspace swap lifecycle events (start, complete, refuse).
+
+- Title: `workspace Domain Events`
+- Source: `builtin`
+- Transport: `sse`, `ws`
+- Scopes: `read:events`
+- Domains: `workspace`
+- Wire events: `workspace`
+
+##### Payload schema
+
+```json
+{
+  "type": "object",
+  "additionalProperties": {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      },
+      {
+        "type": "boolean"
+      },
+      {
+        "type": "null"
+      },
+      {},
+      {
+        "type": "array",
+        "items": {}
       }
     ]
   }
@@ -55495,15 +55102,11 @@ Out-of-band control-plane surface messages for operators and connected clients.
                 },
                 {
                   "type": "object",
-                  "additionalProperties": {
-                    "$ref": "$.operator.events[28].outputSchema.properties.attachments.items.properties.metadata.additionalProperties"
-                  }
+                  "additionalProperties": {}
                 },
                 {
                   "type": "array",
-                  "items": {
-                    "$ref": "$.operator.events[28].outputSchema.properties.attachments.items.properties.metadata.additionalProperties"
-                  }
+                  "items": {}
                 }
               ]
             }
@@ -55541,15 +55144,11 @@ Out-of-band control-plane surface messages for operators and connected clients.
           },
           {
             "type": "object",
-            "additionalProperties": {
-              "$ref": "$.operator.events[28].outputSchema.properties.metadata.additionalProperties"
-            }
+            "additionalProperties": {}
           },
           {
             "type": "array",
-            "items": {
-              "$ref": "$.operator.events[28].outputSchema.properties.metadata.additionalProperties"
-            }
+            "items": {}
           }
         ]
       }
