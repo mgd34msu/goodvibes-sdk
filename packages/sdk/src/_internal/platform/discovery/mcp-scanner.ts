@@ -11,7 +11,7 @@
  *
  * Returns suggested McpServerConfig[] for servers not already in the registry.
  */
-import { existsSync, readdirSync, statSync } from 'fs';
+import { readdir, stat } from 'node:fs/promises';
 import { join } from 'path';
 import { logger } from '../utils/logger.js';
 import type { McpServerConfig } from '../mcp/config.js';
@@ -66,15 +66,15 @@ function deriveServerName(nameOrPath: string): string {
  * Check if a given package is installed locally (in node_modules).
  * Returns the bin path if found, null otherwise.
  */
-function findLocalNpxBin(cwd: string, packageName: string): string | null {
+async function findLocalNpxBin(cwd: string, packageName: string): Promise<string | null> {
   // Check project-local node_modules/.bin
   const binName = packageName.replace(/^@[^/]+\//, '');
   const localBin = join(cwd, 'node_modules', '.bin', binName);
-  if (existsSync(localBin)) return localBin;
+  if (await stat(localBin).then(() => true).catch(() => false)) return localBin;
 
   // Also check if the package itself exists in node_modules
   const localPkg = join(cwd, 'node_modules', packageName, 'package.json');
-  if (existsSync(localPkg)) return packageName;
+  if (await stat(localPkg).then(() => true).catch(() => false)) return packageName;
 
   return null;
 }
@@ -85,28 +85,28 @@ function findLocalNpxBin(cwd: string, packageName: string): string | null {
  *   - .mcp/mcp.json (already handled by loadMcpConfig, skip)
  *   - .mcp/<name>/index.js or .mcp/<name>/index.ts or .mcp/<name>/server.js
  */
-function scanProjectMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): McpServerConfig[] {
+async function scanProjectMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): Promise<McpServerConfig[]> {
   const mcpDir = join(roots.workingDirectory, '.mcp');
-  if (!existsSync(mcpDir)) return [];
+  if (!await stat(mcpDir).then(() => true).catch(() => false)) return [];
 
   const suggestions: McpServerConfig[] = [];
 
   try {
-    const entries = readdirSync(mcpDir);
+    const entries = await readdir(mcpDir);
     for (const entry of entries) {
       // Skip mcp.json — already read by loadMcpConfig
       if (entry === 'mcp.json') continue;
 
       const entryPath = join(mcpDir, entry);
       try {
-        const stat = statSync(entryPath);
-        if (!stat.isDirectory()) continue;
+        const entryStat = await stat(entryPath);
+        if (!entryStat.isDirectory()) continue;
 
         // Look for a server entry point inside the subdirectory
         const candidates = ['index.js', 'index.ts', 'server.js', 'server.ts', 'main.js', 'main.ts'];
         for (const candidate of candidates) {
           const candidatePath = join(entryPath, candidate);
-          if (existsSync(candidatePath)) {
+          if (await stat(candidatePath).then(() => true).catch(() => false)) {
             if (knownNames.has(entry)) break; // already registered
             const runtime = candidate.endsWith('.ts') ? 'bun' : 'node';
             suggestions.push({
@@ -134,31 +134,31 @@ function scanProjectMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): M
  *   - <name>/index.js, <name>/server.js, etc.
  *   - <name>.js, <name>.ts standalone scripts
  */
-function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): McpServerConfig[] {
+async function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>): Promise<McpServerConfig[]> {
   const mcpDir = join(roots.homeDirectory, '.goodvibes', requireSurfaceRoot(roots.surfaceRoot, 'MCP discovery surfaceRoot'), 'mcp');
-  if (!existsSync(mcpDir)) return [];
+  if (!await stat(mcpDir).then(() => true).catch(() => false)) return [];
 
   const suggestions: McpServerConfig[] = [];
 
   try {
-    const entries = readdirSync(mcpDir);
+    const entries = await readdir(mcpDir);
     for (const entry of entries) {
       const entryPath = join(mcpDir, entry);
       try {
-        const stat = statSync(entryPath);
+        const entryStat = await stat(entryPath);
 
-        if (stat.isDirectory()) {
+        if (entryStat.isDirectory()) {
           const candidates = ['index.js', 'index.ts', 'server.js', 'server.ts'];
           for (const candidate of candidates) {
             const candidatePath = join(entryPath, candidate);
-            if (existsSync(candidatePath)) {
+            if (await stat(candidatePath).then(() => true).catch(() => false)) {
               if (knownNames.has(entry)) break;
               const runtime = candidate.endsWith('.ts') ? 'bun' : 'node';
               suggestions.push({ name: entry, command: runtime, args: [candidatePath] });
               break;
             }
           }
-        } else if (stat.isFile()) {
+        } else if (entryStat.isFile()) {
           // Standalone script: name.js or name.ts
           if (!entry.endsWith('.js') && !entry.endsWith('.ts')) continue;
           const baseName = entry.replace(/\.(js|ts)$/, '');
@@ -180,11 +180,11 @@ function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<string>):
 /**
  * Check for locally-installed npx MCP packages not already registered.
  */
-function scanNpxMcpPackages(roots: McpDiscoveryRoots, knownNames: Set<string>): McpServerConfig[] {
+async function scanNpxMcpPackages(roots: McpDiscoveryRoots, knownNames: Set<string>): Promise<McpServerConfig[]> {
   const suggestions: McpServerConfig[] = [];
 
   for (const pkg of KNOWN_NPX_MCP_PACKAGES) {
-    const binPath = findLocalNpxBin(roots.workingDirectory, pkg);
+    const binPath = await findLocalNpxBin(roots.workingDirectory, pkg);
     if (!binPath) continue;
 
     const serverName = deriveServerName(pkg);
@@ -225,17 +225,24 @@ export async function scanMcpServers(
     }
   };
 
+  // Run all three scanners in parallel — they are independent
+  const [projectResults, goodvibesResults, npxResults] = await Promise.all([
+    scanProjectMcpDir(roots, registeredNames),
+    scanGoodvibesMcpDir(roots, registeredNames),
+    scanNpxMcpPackages(roots, registeredNames),
+  ]);
+
   // 1. Project .mcp/ directory
   locationsScanned++;
-  addSuggestions(scanProjectMcpDir(roots, registeredNames));
+  addSuggestions(projectResults);
 
   // 2. ~/.goodvibes/<surface>/mcp/ user-global directory
   locationsScanned++;
-  addSuggestions(scanGoodvibesMcpDir(roots, registeredNames));
+  addSuggestions(goodvibesResults);
 
   // 3. Locally installed npx MCP packages
   locationsScanned++;
-  addSuggestions(scanNpxMcpPackages(roots, registeredNames));
+  addSuggestions(npxResults);
 
   logger.debug('[mcp-scanner] Scan complete', {
     locationsScanned,
