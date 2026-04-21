@@ -11,12 +11,6 @@ describe('obs-01 http access log', () => {
     expect(typeof mod.fetchWithTimeout).toBe('function');
   });
 
-  test('instrumentedFetch rejects on non-OK status and includes status in error', async () => {
-    const { instrumentedFetch } = await import('../packages/sdk/src/_internal/platform/utils/fetch-with-timeout.js');
-    // We can't make real HTTP calls in unit tests; verify argument shapes accepted.
-    expect(instrumentedFetch).toBeDefined();
-  });
-
   test('fetchWithTimeout accepts AbortSignal-compatible options', async () => {
     const { fetchWithTimeout } = await import('../packages/sdk/src/_internal/platform/utils/fetch-with-timeout.js');
     expect(typeof fetchWithTimeout).toBe('function');

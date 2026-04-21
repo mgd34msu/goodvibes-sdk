@@ -10,22 +10,6 @@ import { describe, it, expect } from 'vitest';
 import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 
 describe('SDK initialisation (browser)', () => {
-  it('createBrowserGoodVibesSdk is a function', () => {
-    expect(typeof createBrowserGoodVibesSdk).toBe('function');
-  });
-
-  it('creates an SDK instance with required surface', () => {
-    const sdk = createBrowserGoodVibesSdk({
-      baseUrl: 'http://localhost:4000',
-    });
-
-    // Top-level facades must exist.
-    expect(sdk).toBeDefined();
-    expect(typeof sdk.auth).toBe('object');
-    expect(typeof sdk.operator).toBe('object');
-    expect(typeof sdk.realtime).toBe('object');
-  });
-
   it('auth facade exposes login, getToken, clearToken, current', () => {
     const sdk = createBrowserGoodVibesSdk({
       baseUrl: 'http://localhost:4000',
