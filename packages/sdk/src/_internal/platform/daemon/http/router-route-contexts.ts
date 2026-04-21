@@ -10,6 +10,7 @@ import type { WebSearchService } from '../../web-search/index.js';
 import type { IntegrationHelperService } from '../../runtime/integration/helpers.js';
 import type { ApprovalBroker } from '../../control-plane/index.js';
 import type { PlatformServiceManager } from '../service-manager.js';
+import { toRecord } from '../../utils/record-coerce.js';
 import type { JsonRecord } from '../helpers.js';
 import type { WatcherRegistry } from '../../watchers/index.js';
 import type { DaemonChannelRouteContext } from './channel-route-types.js';
@@ -168,7 +169,7 @@ export function buildSystemRouteContext(input: {
     parseJsonBody: input.parseJsonBody,
     parseOptionalJsonBody: input.parseOptionalJsonBody,
     platformServiceManager: {
-      status: () => input.platformServiceManager.status() as unknown as Record<string, unknown>,
+      status: () => toRecord(input.platformServiceManager.status()),
       install: () => input.platformServiceManager.install(),
       start: () => input.platformServiceManager.start(),
       stop: () => input.platformServiceManager.stop(),

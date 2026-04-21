@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import type { Tool } from '../../types/tools.js';
 import { resolveScopedDirectory } from '../../runtime/surface-root.js';
 import { WORKLIST_TOOL_SCHEMA, type WorklistToolInput } from './schema.js';
+import { toRecord } from '../../utils/record-coerce.js';
 
 interface WorklistItem {
   readonly id: string;
@@ -70,7 +71,7 @@ export function createWorklistTool(options?: { readonly surfaceRoot?: string }):
     definition: {
       name: 'worklist',
       description: 'Manage durable worklists and checklist items for execution planning and follow-up.',
-      parameters: WORKLIST_TOOL_SCHEMA as unknown as Record<string, unknown>,
+      parameters: toRecord(WORKLIST_TOOL_SCHEMA),
       sideEffects: ['workflow', 'state'],
       concurrency: 'serial',
     },

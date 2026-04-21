@@ -7,6 +7,7 @@ import type {
   MediaProvider,
   MediaProviderStatus,
 } from './provider-registry.js';
+import { toRecord } from '../utils/record-coerce.js';
 
 interface StructuredImageAnalysis {
   description?: string;
@@ -99,18 +100,18 @@ async function resolveModel(
       if (!explicit.capabilities.multimodal) {
         throw new Error(`Model does not support image input: ${explicit.displayName}`);
       }
-      if (!await modelMatchesScope(providerRegistry, explicit as unknown as Record<string, unknown>, scope)) {
+      if (!await modelMatchesScope(providerRegistry, toRecord(explicit), scope)) {
         throw new Error(`Model does not match media provider scope ${scope.label}: ${explicit.displayName}`);
       }
       return explicit;
     }
     const current = providerRegistry.getCurrentModel();
-    if (current.capabilities.multimodal && await modelMatchesScope(providerRegistry, current as unknown as Record<string, unknown>, scope)) {
+    if (current.capabilities.multimodal && await modelMatchesScope(providerRegistry, toRecord(current), scope)) {
       return current;
     }
     for (const candidate of models) {
       if (!candidate.selectable || !candidate.capabilities.multimodal) continue;
-      if (await modelMatchesScope(providerRegistry, candidate as unknown as Record<string, unknown>, scope)) {
+      if (await modelMatchesScope(providerRegistry, toRecord(candidate), scope)) {
         return candidate;
       }
     }
@@ -227,7 +228,7 @@ function createScopedImageUnderstandingProvider(
       let available = false;
       for (const model of providerRegistry.listModels()) {
         if (!model.selectable || !model.capabilities.multimodal) continue;
-        if (await modelMatchesScope(providerRegistry, model as unknown as Record<string, unknown>, scope)) {
+        if (await modelMatchesScope(providerRegistry, toRecord(model), scope)) {
           available = true;
           break;
         }

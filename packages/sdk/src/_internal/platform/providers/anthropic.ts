@@ -16,6 +16,7 @@ import {
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { toProviderError } from '../utils/error-display.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { toRecord } from '../utils/record-coerce.js';
 
 const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 const ANTHROPIC_API_VERSION = '2023-06-01';
@@ -146,7 +147,7 @@ export class AnthropicProvider implements LLMProvider {
         const bp1 = strategy.breakpoints.find(b => b.position === 'system_and_tools');
         if (bp1) {
           if (anthropicTools && anthropicTools.length > 0) {
-            const lastTool = anthropicTools[anthropicTools.length - 1] as unknown as Record<string, unknown>;
+            const lastTool = toRecord(anthropicTools[anthropicTools.length - 1]);
             lastTool['cache_control'] = bp1.ttl !== '5m'
               ? { type: 'ephemeral', ttl: bp1.ttl }
               : { type: 'ephemeral' };
@@ -167,7 +168,7 @@ export class AnthropicProvider implements LLMProvider {
         let bp2MessageIdx = -1;
         if (bp2 && anthropicMessages.length >= 3) {
           for (let i = anthropicMessages.length - 2; i >= 0; i--) {
-            const msg = anthropicMessages[i] as unknown as Record<string, unknown>;
+            const msg = toRecord(anthropicMessages[i]);
             if (msg.role === 'assistant') {
               const content = msg.content as Array<Record<string, unknown>>;
               if (content?.length) {
@@ -190,7 +191,7 @@ export class AnthropicProvider implements LLMProvider {
           for (let i = 0; i < anthropicMessages.length - 1; i++) {
             // Skip messages too close to BP2 to avoid proximity waste.
             if (bp2MessageIdx >= 0 && Math.abs(i - bp2MessageIdx) <= 2) continue;
-            const msg = anthropicMessages[i] as unknown as Record<string, unknown>;
+            const msg = toRecord(anthropicMessages[i]);
             if (msg.role === 'user') {
               const content = msg.content as Array<Record<string, unknown>>;
               if (content) {
@@ -215,7 +216,7 @@ export class AnthropicProvider implements LLMProvider {
           }
           // Only place BP3 if the tool result is substantial (>500 chars ~ 125 tokens).
           if (largestIdx >= 0 && largestBlockIdx >= 0 && largestSize > 500) {
-            const msg = anthropicMessages[largestIdx] as unknown as Record<string, unknown>;
+            const msg = toRecord(anthropicMessages[largestIdx]);
             const content = msg.content as Array<Record<string, unknown>>;
             // Target the specific tool_result block, not the last block in the message.
             content[largestBlockIdx]['cache_control'] = { type: 'ephemeral' };

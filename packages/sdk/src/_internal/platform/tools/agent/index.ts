@@ -8,6 +8,7 @@ import type { WrfcController } from '../../agents/wrfc-controller.js';
 import { AGENT_TEMPLATES, AgentManager } from './manager.js';
 import { evaluateOrchestrationSpawn } from '../../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { toRecord } from '../../utils/record-coerce.js';
 export type { AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 
@@ -592,7 +593,7 @@ export function createAgentTool(config: {
               wrfcId: input.wrfcId,
               events: detail === 'full'
                 ? events
-                : events.map((event) => summarizeWrfcEvent(event as unknown as Record<string, unknown>)),
+                : events.map((event) => summarizeWrfcEvent(toRecord(event))),
               count: events.length,
             }),
           };

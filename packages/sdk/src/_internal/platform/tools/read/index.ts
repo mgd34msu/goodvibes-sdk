@@ -1,5 +1,6 @@
 import type { Tool, ToolDefinition } from '../../types/tools.js';
 import { READ_TOOL_SCHEMA } from './schema.js';
+import { toRecord } from '../../utils/record-coerce.js';
 import type { ReadInput, ReadFileInput, ExtractMode, OutputFormat } from './schema.js';
 import { FileStateCache } from '../../state/file-cache.js';
 import { ProjectIndex } from '../../state/project-index.js';
@@ -21,7 +22,7 @@ export class ReadTool implements Tool {
     description:
       'Read one or more files from disk. Supports extract modes (content, outline, symbols, lines, ast)'
       + ' for token-efficient reading, per-file caching, pagination via token_budget, and batch processing.',
-    parameters: READ_TOOL_SCHEMA as unknown as Record<string, unknown>,
+    parameters: toRecord(READ_TOOL_SCHEMA),
     sideEffects: ['read_fs'],
     concurrency: 'parallel',
     supportsProgress: true,

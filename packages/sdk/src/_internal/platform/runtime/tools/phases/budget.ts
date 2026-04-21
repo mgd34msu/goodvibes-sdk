@@ -1,4 +1,5 @@
 import type { Tool, ToolCall } from '../../../types/tools.js';
+import { toRecord } from '../../../utils/record-coerce.js';
 import type { ToolRuntimeContext } from '../context.js';
 import type { BudgetExceedReason, PhaseResult, ToolExecutionPhase, ToolExecutionRecord } from '../types.js';
 
@@ -114,7 +115,7 @@ function getTokenCount(record: ToolExecutionRecord): number | undefined {
   if (!record.result) return undefined;
   // Double cast needed: ToolResult has no index signature, but tool implementations
   // may annotate results with extra numeric fields like `tokenCount`.
-  const raw = (record.result as unknown as Record<string, unknown>)['tokenCount'];
+  const raw = toRecord(record.result)['tokenCount'];
   return typeof raw === 'number' ? raw : undefined;
 }
 
@@ -125,6 +126,6 @@ function getTokenCount(record: ToolExecutionRecord): number | undefined {
 function getCostUsd(record: ToolExecutionRecord): number | undefined {
   if (!record.result) return undefined;
   // Double cast needed: same reason as getTokenCount above.
-  const raw = (record.result as unknown as Record<string, unknown>)['costUsd'];
+  const raw = toRecord(record.result)['costUsd'];
   return typeof raw === 'number' ? raw : undefined;
 }

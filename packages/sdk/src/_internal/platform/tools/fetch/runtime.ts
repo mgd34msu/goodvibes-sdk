@@ -16,6 +16,7 @@ import { applyExtract, sniffContentType } from './extract.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+import { toRecord } from '../../utils/record-coerce.js';
 
 export interface FetchRuntimeDeps {
   readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null;
@@ -474,7 +475,7 @@ export function createFetchTool(
         + ' readable, code_blocks, links, metadata, structured, tables, pdf, summary),'
         + ' per-URL timeouts, caching, rate limiting, auth refresh, content-length limits,'
         + ' redirect tracking, timing metrics, token estimation, and verbosity control.',
-      parameters: FETCH_TOOL_SCHEMA as unknown as Record<string, unknown>,
+      parameters: toRecord(FETCH_TOOL_SCHEMA),
       sideEffects: ['network'],
       concurrency: 'parallel',
       supportsProgress: true,

@@ -13,6 +13,7 @@ import {
 import type { Tool, ToolDefinition } from '../../types/tools.js';
 import type { ToolRegistry } from '../registry.js';
 import { REGISTRY_TOOL_SCHEMA } from './schema.js';
+import { toRecord } from '../../utils/record-coerce.js';
 import type { RegistryInput } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
 
@@ -187,7 +188,7 @@ export function createRegistryTool(toolRegistry: ToolRegistry, roots: RegistryTo
       'Discover and inspect skills, agents, and tools.'
       + ' Modes: search finds items by keyword; recommend lists items sorted by relevance;'
       + ' dependencies reads a skill\'s dependency chain; content returns full markdown file.',
-    parameters: REGISTRY_TOOL_SCHEMA as unknown as Record<string, unknown>,
+    parameters: toRecord(REGISTRY_TOOL_SCHEMA),
     sideEffects: ['read_fs'],
     concurrency: 'parallel',
   };
