@@ -120,6 +120,38 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ---
 
+## Typed error codes
+
+As of 0.21.33 (QA-14), concrete `AppError` subclasses declare a **literal `code`** via `declare readonly code: '<LITERAL>'`. This lets TypeScript narrow on `err.code` exhaustively — each subclass advertises exactly one code.
+
+```ts
+export class ConfigError extends AppError {
+  declare readonly code: 'CONFIG_ERROR';
+  // ...
+}
+
+export class ProviderError extends AppError {
+  declare readonly code: 'PROVIDER_ERROR';
+  // ...
+}
+```
+
+Because the field is a literal string type, a `switch (err.code)` over the declared codes is exhaustive and the compiler will flag added subclasses that introduce new codes:
+
+```ts
+switch (err.code) {
+  case 'CONFIG_ERROR':    /* ... */ break;
+  case 'PROVIDER_ERROR':  /* ... */ break;
+  // etc.
+  default: {
+    const _exhaustive: never = err.code;
+    throw new Error(`unhandled error code: ${_exhaustive}`);
+  }
+}
+```
+
+Prefer `err.kind` for coarse handling (retry / auth / validation), and `err.code` when you need to disambiguate *which* concrete subclass a given `kind` came from.
+
 ## Useful fields on every `GoodVibesSdkError`
 
 | Field | Type | Description |

@@ -150,6 +150,46 @@ feed.turn.onEnvelope('TURN_COMPLETED', (envelope) => {
 });
 ```
 
+### Payload Summaries
+
+Two high-cardinality payload fields are emitted as **structured summaries** rather than raw content to keep the event stream safe for external subscribers, on-disk traces, and OTel export.
+
+**`ToolResultSummary` on `TOOL_SUCCEEDED` / `TOOL_FAILED`** (added 0.21.31, OBS-05). The `result` field on these events is a `ToolResultSummary` describing the raw tool output without embedding it:
+
+```ts
+export interface ToolResultSummary {
+  /** Discriminant for the result shape: 'text' | 'json' | 'error' | 'binary' | ... */
+  kind: string;
+  /** Approximate byte size of the raw result. */
+  byteSize: number;
+  /** Optional short preview (first N chars, never credentials). */
+  preview?: string;
+}
+```
+
+Do not rely on `payload.result` being the raw tool return value — downstream consumers that need the full result should read it from the tool-call ledger, not the event stream.
+
+**`contentSummary` on `LLM_RESPONSE_RECEIVED`** (added 0.21.31, OBS-06). The provider response is surfaced as a redacted summary by default:
+
+```ts
+promptSummary: { length: number; sha256: string; first100chars: string } | string;
+contentSummary: { length: number; sha256: string; first100chars: string } | string;
+```
+
+Raw prompts and responses are only emitted when `telemetry.includeRawPrompts` is explicitly enabled. In all other configurations the summary object is emitted — subscribers branch on `typeof` to handle both shapes.
+
+### Dispatch Ordering
+
+`RuntimeEventBus.emit` dispatches listener callbacks **asynchronously via `queueMicrotask`** (0.21.32, OBS-14). Emitters return synchronously before any listener runs, so listeners cannot reorder or re-enter the emitter on the current stack frame.
+
+Guarantees:
+- Emit order matches dispatch order — microtasks are FIFO within the current task.
+- An error thrown by one listener does not prevent subsequent listeners from running.
+- Listeners registered during an in-flight dispatch do not receive that dispatch; they are picked up on the next emit.
+- Tests that assert on side effects from a listener must `await` a microtask flush (e.g. `await Promise.resolve()`) before asserting.
+
+The `_emitOps` internal fast-path dispatches synchronously — it is reserved for `ops.*` bus-self-reporting events and must not be used by application code.
+
 ### RuntimeEventFeed API
 
 ```ts

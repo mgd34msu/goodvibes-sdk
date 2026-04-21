@@ -139,6 +139,18 @@ const sdk = createReactNativeGoodVibesSdk({
 });
 ```
 
+### SSE Backpressure
+
+The control-plane gateway's SSE `ReadableStream` is constructed with a bounded `CountQueuingStrategy` to prevent slow subscribers from consuming unbounded memory (0.21.35, PERF-08):
+
+```ts
+new ReadableStream(..., new CountQueuingStrategy({ highWaterMark: 256 }));
+```
+
+When a subscriber falls behind, the stream stops pulling new chunks from the producer rather than buffering indefinitely. Producers (the event bus) are not blocked — the back-pressure is isolated to the per-subscriber stream. A subscriber that stays behind long enough to drop events will surface as a `TRANSPORT_STALE` or disconnect event; reconnect with `Last-Event-ID` replays missed events where the server retains them.
+
+Startup events (initial snapshot, recent-event replay) are delivered before the `highWaterMark` gate engages in practice, but high-volume workloads should still prefer domain-filtered subscriptions to reduce the event rate per subscriber.
+
 ### Token Rotation on Long-Lived Connections
 
 For long-lived clients where tokens expire, use `tokenStore` or `getAuthToken` instead of a static `authToken`. Reconnects automatically pick up the latest token:

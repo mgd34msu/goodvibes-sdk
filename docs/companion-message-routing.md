@@ -68,3 +68,17 @@ The `ConversationMessageEnvelope` shape is shared between chat-mode events (`tur
 
 Problem-2 follow-ups use `source: 'companion-followup'`. The TUI client can discriminate on
 the `source` field to render each type appropriately.
+
+## Related session routes
+
+Two other session routes cover adjacent use cases. Use the one that matches your intent:
+
+| Route | Purpose | Triggers agent turn? |
+|---|---|---|
+| `POST /api/sessions/:id/messages` | Inject a companion follow-up message visible to the operator | No — see above |
+| `POST /api/sessions/:id/inputs` | Dispatch a structured intent (tool call, steer, cancel-input, etc.) into the active turn | Depends on the intent kind |
+| `GET  /api/sessions/:id/messages` | Fetch the full conversation history for the session | n/a |
+
+`POST /api/sessions/:id/inputs` was restored as an intent-dispatching alias in 0.21.36 (F20) — callers should route structured intents through this endpoint rather than building ad-hoc bodies for `/messages`.
+
+All companion-chat routes (`POST /api/companion/chat/sessions`, `POST /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/events`, `GET /api/companion/chat/sessions/:id`, `DELETE /api/companion/chat/sessions/:id`) are registered in the live method catalog as of 0.21.36 (F21). Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.
