@@ -7,21 +7,50 @@ on:
     branches: [main]
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Kitchen-sink gate: docs check, typecheck, browser compat, metadata,
+  # no-any, pack check, install smoke. Deliberately self-contained — this is
+  # the 'everything works atomically' integration check that mirrors what a
+  # local developer runs via `bun run validate`.
+  # ---------------------------------------------------------------------------
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
       - name: Validate workspace
         run: bun run validate
 
+  # ---------------------------------------------------------------------------
+  # Single build job. Uploads packages/sdk/dist as an artifact so downstream
+  # consumers test the exact same bytes. Ensures build determinism across
+  # all typed-surface and packaging checks; matches the release pipeline which
+  # builds once and publishes that artifact to npm.
+  # ---------------------------------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Build SDK
+        run: bun run build
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-dist
+          path: packages/sdk/dist
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Sync mirror guard for the transport-http package. Cheap.
+  # ---------------------------------------------------------------------------
   mirror-drift:
     name: Mirror drift guard (transport-http)
     runs-on: ubuntu-latest
@@ -29,15 +58,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
       - name: Check transport-http mirror parity
         run: bun run sync:check
 
+  # ---------------------------------------------------------------------------
+  # Platform matrix — each platform builds and runs its test suite. Isolated
+  # because rn-bundle, workers, and workers-wrangler each exercise a distinct
+  # runtime target that the consolidated artifact would not cover.
+  # ---------------------------------------------------------------------------
   platform-matrix:
     name: Platform matrix (${{ matrix.platform }})
     runs-on: ubuntu-latest
@@ -70,39 +100,27 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
       - name: Run test suite (${{ matrix.platform }})
         run: ${{ matrix.test-cmd }}
 
-  zero-any:
-    name: Zero-any type gate
+  # ---------------------------------------------------------------------------
+  # Consolidated lint-style gates. Previously three separate jobs
+  # (throw-guard, changelog-check, version-consistency); merged here to cut
+  # cold-start overhead. Each step is independent, so one failure still shows
+  # up distinctly in the logs.
+  # ---------------------------------------------------------------------------
+  lint-gates:
+    name: Lint gates (throw / changelog / version)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
-      - name: Check for any types
-        run: bun run any:check
-
-  throw-guard:
-    name: Raw throw guard
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Check for raw throws in public source
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Raw throw guard
         run: |
           set -euo pipefail
           # Scan canonical package source (exclude _internal mirror, errors package, tests)
@@ -139,52 +157,31 @@ jobs:
             exit 1
           fi
           echo "throw-guard: no raw throws found in public source."
-
-  changelog-check:
-    name: Changelog gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
-      - name: Check CHANGELOG.md has section for current SDK version
+      - name: Changelog gate
         run: bun run changelog:check
-
-  version-consistency:
-    name: Version consistency gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
-      - name: Check all workspace packages are at the same version
+      - name: Version consistency
         run: bun run version:check
 
+  # ---------------------------------------------------------------------------
+  # Consumer jobs that share the build artifact. Each tests the exact same
+  # bytes produced by the `build` job — eliminates the 4-parallel-builds
+  # non-determinism window the old CI had.
+  # ---------------------------------------------------------------------------
   types-check:
     name: Public type surface check
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
         with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
-      - name: Build SDK (generates dist/*.d.ts consumed by type tests)
-        run: bun run build
+          name: sdk-dist
+          path: packages/sdk/dist
       - name: Check public type signatures
         run: bun run types:check
 
@@ -192,39 +189,39 @@ jobs:
     name: Are the types wrong? (exports map resolution)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: bun install
-      - name: Build SDK
-        run: bun run build
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sdk-dist
+          path: packages/sdk/dist
       - name: Run are-the-types-wrong check
-        run: bun run types:resolution-check
+        run: bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm
 
   publint-check:
     name: publint (package.json hygiene)
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
         with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
-      - name: Build SDK
-        run: bun run build
+          name: sdk-dist
+          path: packages/sdk/dist
       - name: Run publint
         run: bun run publint:check
 
@@ -232,19 +229,21 @@ jobs:
     name: SBOM generation + validation (CycloneDX)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: bun install
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sdk-dist
+          path: packages/sdk/dist
       - name: Generate SBOM
         run: bun run sbom:generate
       - name: Assert SBOM is non-empty
@@ -263,7 +262,6 @@ jobs:
       - name: Validate SBOM schema (CycloneDX)
         run: |
           set -euo pipefail
-          # Validate that the SBOM has required CycloneDX 1.x top-level fields
           node -e "
             const sbom = JSON.parse(require('fs').readFileSync('sbom.cdx.json', 'utf8'));
             if (!sbom.bomFormat || sbom.bomFormat !== 'CycloneDX') {
@@ -284,6 +282,11 @@ jobs:
           path: sbom.cdx.json
           retention-days: 30
 
+  # ---------------------------------------------------------------------------
+  # PR-only guard: detects mass deletions of mirrored files that `sync --scope=all`
+  # would remove. Intentionally skipped on push-to-main — post-merge drift is
+  # caught by mirror-drift; this job exists to block the PR before merge.
+  # ---------------------------------------------------------------------------
   sync-safety-check:
     name: Sync safety check (mirror drift + deletion guard)
     runs-on: ubuntu-latest
@@ -292,12 +295,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
       - name: Check all mirrors are in sync
         run: bun run sync:check
       - name: Guard against mass deletions
