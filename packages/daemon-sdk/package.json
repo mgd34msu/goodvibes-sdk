@@ -1,7 +1,7 @@
 {
   "name": "@pellux/goodvibes-daemon-sdk",
   "private": true,
-  "version": "0.21.34",
+  "version": "0.21.35",
   "description": "Embeddable GoodVibes daemon route contracts, dispatchers, and server-side handler builders.",
   "type": "module",
   "main": "./dist/index.js",
