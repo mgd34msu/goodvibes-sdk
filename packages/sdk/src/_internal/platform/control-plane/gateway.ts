@@ -625,6 +625,10 @@ export class ControlPlaneGateway {
     }
 
     let teardown = (): void => {};
+    // PERF-08: ReadableStream default HWM is 1, which causes startup `ready` + replay
+    // enqueues to drop subsequent chunks before any consumer has pulled. Raise HWM to
+    // 256 chunks so initial handshake + recent-traffic replay + live events fit without
+    // tripping the backpressure guard for a healthy consumer.
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         const send = (event: string, payload: unknown, id?: string): void => {
@@ -708,7 +712,7 @@ export class ControlPlaneGateway {
       cancel: () => {
         teardown();
       },
-    });
+    }, new CountQueuingStrategy({ highWaterMark: 256 }));
 
     return new Response(stream, {
       headers: {

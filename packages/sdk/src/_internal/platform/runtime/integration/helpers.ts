@@ -606,6 +606,8 @@ export class IntegrationHelperService {
     const encoder = new TextEncoder();
     let teardown = (): void => {};
 
+    // PERF-08: raise ReadableStream HWM so startup `ready` + live events aren't
+    // dropped by the backpressure guard before a consumer has pulled the first chunk.
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         const unsubs = selectedDomains.map((domain) => this.context.runtimeBus.onDomain(domain, (envelope) => {
@@ -631,7 +633,7 @@ export class IntegrationHelperService {
       cancel: () => {
         teardown();
       },
-    });
+    }, new CountQueuingStrategy({ highWaterMark: 256 }));
 
     return new Response(stream, {
       headers: {
