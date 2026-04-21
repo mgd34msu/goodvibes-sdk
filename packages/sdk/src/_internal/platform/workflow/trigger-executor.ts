@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js';
+import { shellSplit } from '../utils/shell-split.js';
 import type { HookEvent } from '../hooks/types.js';
 import type { TriggerDefinition } from '../tools/workflow/index.js';
 import { matchesEventPath } from '../hooks/matcher.js';
@@ -300,8 +301,8 @@ async function executeAction(
     action: trigger.action,
   };
 
-  // Parse the action string as a shell command
-  const parts = trigger.action.split(/\s+/).filter(Boolean);
+  // Parse the action string as a shell command (POSIX shellwords tokenizer)
+  const parts = shellSplit(trigger.action);
   if (parts.length === 0) {
     return { ...base, executed: false, error: 'Empty action command' };
   }
