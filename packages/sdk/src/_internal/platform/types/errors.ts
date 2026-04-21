@@ -1,3 +1,5 @@
+import { GoodVibesSdkError } from '../../errors/index.js';
+
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /** HTTP status codes that indicate transient failures eligible for retry. Single source of truth. */
@@ -114,19 +116,14 @@ function inferRetryAfterMs(message: string, statusCode?: number, explicitRetryAf
 }
 
 /** Base class for all application errors. Provides a machine-readable code and recoverability hint. */
-export class AppError extends Error {
+export class AppError extends GoodVibesSdkError {
+  /** HTTP status code (backward-compat alias for `status`). */
   public readonly statusCode?: number;
-  public readonly category?: ErrorCategory;
+  /** Human-readable guidance (backward-compat alias for `hint`). */
   public readonly guidance?: string;
+  /** Additional detail string not present on GoodVibesSdkError. */
   public readonly detail?: string;
-  public readonly source?: ErrorSource;
-  public readonly provider?: string;
-  public readonly operation?: string;
-  public readonly phase?: string;
-  public readonly requestId?: string;
-  public readonly providerCode?: string;
-  public readonly providerType?: string;
-  public readonly retryAfterMs?: number;
+  /** Raw provider message before normalisation. */
   public readonly rawMessage?: string;
 
   constructor(
@@ -135,20 +132,25 @@ export class AppError extends Error {
     public readonly recoverable: boolean,
     options: AppErrorOptions = {},
   ) {
-    super(message);
+    super(message, {
+      code,
+      recoverable,
+      category: options.category,
+      source: options.source,
+      status: options.statusCode,
+      hint: options.guidance,
+      provider: options.provider,
+      operation: options.operation,
+      phase: options.phase,
+      requestId: options.requestId,
+      providerCode: options.providerCode,
+      providerType: options.providerType,
+      retryAfterMs: options.retryAfterMs,
+    });
     this.name = this.constructor.name;
     this.statusCode = options.statusCode;
-    this.category = options.category;
     this.guidance = options.guidance;
     this.detail = options.detail;
-    this.source = options.source;
-    this.provider = options.provider;
-    this.operation = options.operation;
-    this.phase = options.phase;
-    this.requestId = options.requestId;
-    this.providerCode = options.providerCode;
-    this.providerType = options.providerType;
-    this.retryAfterMs = options.retryAfterMs;
     this.rawMessage = options.rawMessage;
   }
 }

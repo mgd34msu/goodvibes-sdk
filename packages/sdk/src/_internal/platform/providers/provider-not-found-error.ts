@@ -1,3 +1,5 @@
+import { GoodVibesSdkError } from '../../errors/index.js';
+
 /**
  * Thrown by {@link ProviderRegistry.require} when no provider with the given ID
  * is registered.
@@ -6,7 +8,7 @@
  * so callers can quickly see what is available without having to inspect the
  * registry separately.
  */
-export class ProviderNotFoundError extends Error {
+export class ProviderNotFoundError extends GoodVibesSdkError {
   /** The provider ID that was requested. */
   readonly providerId: string;
   /** Sorted list of currently-registered provider IDs at the time of the error. */
@@ -17,11 +19,10 @@ export class ProviderNotFoundError extends Error {
     super(
       `Provider '${providerId}' is not registered. ` +
       `Available providers: ${ids}`,
+      { category: 'not_found', source: 'provider', recoverable: false },
     );
     this.name = 'ProviderNotFoundError';
     this.providerId = providerId;
     this.availableIds = available;
-    // Maintains proper prototype chain for instanceof checks
-    Object.setPrototypeOf(this, new.target.prototype);
   }
 }

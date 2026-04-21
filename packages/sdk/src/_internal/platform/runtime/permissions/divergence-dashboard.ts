@@ -18,6 +18,7 @@
  * is exercised only via `DivergencePanel` in the diagnostics layer.
  */
 
+import { GoodVibesSdkError } from '../../../errors/index.js';
 import type {
   DivergenceReport,
   SimulationMode,
@@ -318,12 +319,12 @@ export class DivergenceDashboard {
  * Thrown by `DivergenceDashboard.setMode('enforce')` when the divergence
  * gate is in `blocked` state.
  */
-export class DivergenceGateError extends Error {
+export class DivergenceGateError extends GoodVibesSdkError {
   /** The full gate result at the time the error was thrown. */
   readonly gate: EnforceGateResult;
 
   constructor(message: string, gate: EnforceGateResult) {
-    super(message);
+    super(message, { category: 'permission', source: 'runtime', recoverable: false });
     this.name = 'DivergenceGateError';
     this.gate = gate;
   }

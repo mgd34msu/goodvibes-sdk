@@ -121,7 +121,152 @@ async function withNullOnNotFound<T>(run: () => Promise<T>): Promise<T | null> {
 }
 
 function asContractInput(input: object | undefined): Record<string, unknown> | undefined {
-  return input as unknown as Record<string, unknown> | undefined;
+  return input as Record<string, unknown> | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Runtime validators — replace `as unknown as X` casts with checked coercions
+// ---------------------------------------------------------------------------
+
+function assertObjectField<T extends object>(
+  container: unknown,
+  field: string,
+  endpoint: string,
+): T {
+  if (
+    container === null
+    || typeof container !== 'object'
+    || !(field in (container as object))
+    || (container as Record<string, unknown>)[field] === null
+    || typeof (container as Record<string, unknown>)[field] !== 'object'
+  ) {
+    throw new Error(`[${endpoint}] Expected response to contain object field "${field}"`);
+  }
+  return (container as Record<string, unknown>)[field] as T;
+}
+
+function assertObjectOrNullField<T extends object>(
+  container: unknown,
+  field: string,
+  endpoint: string,
+): T | null {
+  if (container === null || typeof container !== 'object') {
+    throw new Error(`[${endpoint}] Expected response to be an object`);
+  }
+  const value = (container as Record<string, unknown>)[field];
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'object') {
+    throw new Error(`[${endpoint}] Expected field "${field}" to be an object or null`);
+  }
+  return value as T;
+}
+
+function assertArrayField<T>(
+  container: unknown,
+  field: string,
+  endpoint: string,
+): readonly T[] {
+  if (container === null || typeof container !== 'object') {
+    throw new Error(`[${endpoint}] Expected response to be an object`);
+  }
+  const value = (container as Record<string, unknown>)[field];
+  if (!Array.isArray(value)) {
+    throw new Error(`[${endpoint}] Expected field "${field}" to be an array`);
+  }
+  return value as readonly T[];
+}
+
+function assertRuntimeTaskArray(tasks: unknown, endpoint: string): readonly RuntimeTask[] {
+  if (!Array.isArray(tasks)) {
+    throw new Error(`[${endpoint}] Expected "tasks" to be an array`);
+  }
+  for (const task of tasks) {
+    if (task === null || typeof task !== 'object' || typeof (task as Record<string, unknown>).id !== 'string') {
+      throw new Error(`[${endpoint}] Task entry missing required "id" field`);
+    }
+  }
+  return tasks as readonly RuntimeTask[];
+}
+
+function assertSharedApprovalArray(approvals: unknown, endpoint: string): readonly SharedApprovalRecord[] {
+  if (!Array.isArray(approvals)) {
+    throw new Error(`[${endpoint}] Expected "approvals" to be an array`);
+  }
+  return approvals as readonly SharedApprovalRecord[];
+}
+
+function assertProviderRuntimeSnapshotArray(providers: unknown, endpoint: string): readonly ProviderRuntimeSnapshot[] {
+  if (!Array.isArray(providers)) {
+    throw new Error(`[${endpoint}] Expected "providers" to be an array`);
+  }
+  for (const provider of providers) {
+    if (
+      provider === null
+      || typeof provider !== 'object'
+      || typeof (provider as Record<string, unknown>).providerId !== 'string'
+    ) {
+      throw new Error(`[${endpoint}] Provider entry missing required "providerId" field`);
+    }
+  }
+  return providers as readonly ProviderRuntimeSnapshot[];
+}
+
+function assertProviderRuntimeSnapshot(value: unknown, endpoint: string): ProviderRuntimeSnapshot {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || typeof (value as Record<string, unknown>).providerId !== 'string'
+  ) {
+    throw new Error(`[${endpoint}] Expected ProviderRuntimeSnapshot with "providerId" field`);
+  }
+  return value as ProviderRuntimeSnapshot;
+}
+
+function assertProviderUsageSnapshot(value: unknown, endpoint: string): ProviderUsageSnapshot {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || typeof (value as Record<string, unknown>).providerId !== 'string'
+  ) {
+    throw new Error(`[${endpoint}] Expected ProviderUsageSnapshot with "providerId" field`);
+  }
+  return value as ProviderUsageSnapshot;
+}
+
+function assertTelemetrySnapshot(value: unknown, endpoint: string): TelemetrySnapshot {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || (value as Record<string, unknown>).version !== 1
+    || typeof (value as Record<string, unknown>).generatedAt !== 'number'
+  ) {
+    throw new Error(`[${endpoint}] Expected TelemetrySnapshot with version=1 and numeric "generatedAt"`);
+  }
+  return value as TelemetrySnapshot;
+}
+
+function assertTelemetryListResponse<T>(value: unknown, endpoint: string): TelemetryListResponse<T> {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || (value as Record<string, unknown>).version !== 1
+    || !Array.isArray((value as Record<string, unknown>).items)
+  ) {
+    throw new Error(`[${endpoint}] Expected TelemetryListResponse with version=1 and "items" array`);
+  }
+  return value as TelemetryListResponse<T>;
+}
+
+function assertTelemetryMetricsSnapshot(value: unknown, endpoint: string): HttpTransportTelemetryMetricsSnapshot {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || (value as Record<string, unknown>).version !== 1
+    || typeof (value as Record<string, unknown>).generatedAt !== 'number'
+  ) {
+    throw new Error(`[${endpoint}] Expected HttpTransportTelemetryMetricsSnapshot with version=1 and numeric "generatedAt"`);
+  }
+  return value as HttpTransportTelemetryMetricsSnapshot;
 }
 
 function normalizeSharedSessionRecord(record: SharedSessionRecord | Record<string, unknown>): SharedSessionRecord {
@@ -252,28 +397,32 @@ function createOperatorClient(
       current: async (): Promise<UiSessionSnapshot> =>
         await requestJson(fetchImpl, buildTransportUrl(paths.controlPlaneUrl, '/api/session'), createJsonRequestInit(token)),
       list: async (limit = 100): Promise<readonly SharedSessionRecord[]> =>
-        (await operatorApi.sessions.list({ limit })).sessions.map((entry) => normalizeSharedSessionRecord(entry as unknown as Record<string, unknown>)),
+        (await operatorApi.sessions.list({ limit })).sessions.map((entry) => normalizeSharedSessionRecord(entry as Record<string, unknown>)),
       get: async (sessionId): Promise<SharedSessionRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.sessions.get(sessionId));
-        return response?.session ? normalizeSharedSessionRecord(response.session as unknown as Record<string, unknown>) : null;
+        return response?.session ? normalizeSharedSessionRecord(response.session as Record<string, unknown>) : null;
       },
       messages: async (sessionId, limit = 100): Promise<readonly SharedSessionMessage[]> =>
         (await operatorApi.sessions.messages.list(sessionId, { limit })).messages.map((entry) =>
-          normalizeSharedSessionMessage(entry as unknown as Record<string, unknown>),
+          normalizeSharedSessionMessage(entry as Record<string, unknown>),
         ),
       inputs: async (sessionId, limit = 100): Promise<readonly SharedSessionInputRecord[]> => {
         const response = await operatorApi.invoke<{ inputs: readonly Record<string, unknown>[] }>('sessions.inputs.list', { sessionId, limit });
         return (response.inputs ?? []).map((entry) => normalizeSharedSessionInput(entry));
       },
       ensureSession: async (input: HttpSessionEnsureInput = {}): Promise<SharedSessionRecord> =>
-        normalizeSharedSessionRecord((await operatorApi.sessions.create(buildSessionEnsureBody(input))).session as unknown as Record<string, unknown>),
+        normalizeSharedSessionRecord(assertObjectField<Record<string, unknown>>(
+          await operatorApi.sessions.create(buildSessionEnsureBody(input)),
+          'session',
+          'sessions.create',
+        )),
       close: async (sessionId): Promise<SharedSessionRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.sessions.close(sessionId));
-        return response?.session ? normalizeSharedSessionRecord(response.session as unknown as Record<string, unknown>) : null;
+        return response?.session ? normalizeSharedSessionRecord(response.session as Record<string, unknown>) : null;
       },
       reopen: async (sessionId): Promise<SharedSessionRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.sessions.reopen(sessionId));
-        return response?.session ? normalizeSharedSessionRecord(response.session as unknown as Record<string, unknown>) : null;
+        return response?.session ? normalizeSharedSessionRecord(response.session as Record<string, unknown>) : null;
       },
       submitMessage: async (sessionId, input): Promise<SharedSessionSubmission> =>
         normalizeSharedSessionSubmission(await operatorApi.invoke<Record<string, unknown>>(
@@ -292,22 +441,23 @@ function createOperatorClient(
         )),
       cancelInput: async (sessionId, inputId): Promise<SharedSessionInputRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.sessions.inputs.cancel(sessionId, inputId));
-        return response?.input ? normalizeSharedSessionInput(response.input as unknown as Record<string, unknown>) : null;
+        return response?.input ? normalizeSharedSessionInput(response.input as Record<string, unknown>) : null;
       },
     },
     tasks: {
       snapshot: async (): Promise<UiTasksSnapshot> => {
         const { tasks } = await operatorApi.tasks.list();
-        return { tasks: tasks as unknown as readonly RuntimeTask[] };
+        return { tasks: assertRuntimeTaskArray(tasks, 'tasks.list') };
       },
       list: async (limit = 100): Promise<readonly RuntimeTask[]> =>
-        (await operatorApi.tasks.list({ limit })).tasks as unknown as readonly RuntimeTask[],
+        assertRuntimeTaskArray((await operatorApi.tasks.list({ limit })).tasks, 'tasks.list'),
       get: async (taskId): Promise<RuntimeTask | null> => {
         const response = await withNullOnNotFound(() => operatorApi.tasks.get(taskId));
-        return (response?.task ?? null) as unknown as RuntimeTask | null;
+        if (response?.task == null) return null;
+        return assertRuntimeTaskArray([response.task], 'tasks.get')[0] ?? null;
       },
       running: async (): Promise<readonly RuntimeTask[]> =>
-        ((await operatorApi.tasks.list()).tasks as unknown as readonly RuntimeTask[]).filter((task) => task.status === 'running'),
+        assertRuntimeTaskArray((await operatorApi.tasks.list()).tasks, 'tasks.list').filter((task) => task.status === 'running'),
       submit: async (input): Promise<HttpTaskSubmitResponse> =>
         await operatorApi.invoke<HttpTaskSubmitResponse>('tasks.create', buildTaskSubmitBody(input)),
       cancel: async (taskId): Promise<HttpTaskActionResponse> =>
@@ -317,10 +467,10 @@ function createOperatorClient(
     },
     approvals: {
       list: async (limit = 100): Promise<readonly SharedApprovalRecord[]> =>
-        (await operatorApi.approvals.list({ limit })).approvals as unknown as readonly SharedApprovalRecord[],
+        assertSharedApprovalArray((await operatorApi.approvals.list({ limit })).approvals, 'approvals.list'),
       get: async (approvalId): Promise<SharedApprovalRecord | null> => {
         const approvals = await operatorApi.approvals.list({ limit: 200 });
-        return ((approvals.approvals as unknown as readonly SharedApprovalRecord[]).find((entry) => entry.id === approvalId) ?? null);
+        return (assertSharedApprovalArray(approvals.approvals, 'approvals.list').find((entry) => entry.id === approvalId) ?? null);
       },
       claim: async (approvalId, actor, actorSurface = 'transport', note): Promise<SharedApprovalRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.invoke<{ approval?: SharedApprovalRecord | null }>(
@@ -353,13 +503,20 @@ function createOperatorClient(
     },
     providers: {
       listIds: async (): Promise<readonly string[]> =>
-        (await operatorApi.providers.list()).providers.map((provider) => provider.providerId),
+        assertProviderRuntimeSnapshotArray((await operatorApi.providers.list()).providers, 'providers.list')
+          .map((provider) => provider.providerId),
       runtimeSnapshots: async (): Promise<readonly ProviderRuntimeSnapshot[]> =>
-        (await operatorApi.providers.list()).providers as unknown as readonly ProviderRuntimeSnapshot[],
-      runtimeSnapshot: async (providerId): Promise<ProviderRuntimeSnapshot | null> =>
-        await withNullOnNotFound(() => operatorApi.providers.get(providerId)) as unknown as ProviderRuntimeSnapshot | null,
-      usageSnapshot: async (providerId): Promise<ProviderUsageSnapshot | null> =>
-        await withNullOnNotFound(() => operatorApi.providers.usage(providerId)) as unknown as ProviderUsageSnapshot | null,
+        assertProviderRuntimeSnapshotArray((await operatorApi.providers.list()).providers, 'providers.list'),
+      runtimeSnapshot: async (providerId): Promise<ProviderRuntimeSnapshot | null> => {
+        const response = await withNullOnNotFound(() => operatorApi.providers.get(providerId));
+        if (response == null) return null;
+        return assertProviderRuntimeSnapshot(response, 'providers.get');
+      },
+      usageSnapshot: async (providerId): Promise<ProviderUsageSnapshot | null> => {
+        const response = await withNullOnNotFound(() => operatorApi.providers.usage(providerId));
+        if (response == null) return null;
+        return assertProviderUsageSnapshot(response, 'providers.usage');
+      },
       accountSnapshot: async (): Promise<Record<string, unknown>> =>
         await operatorApi.accounts.snapshot() as Record<string, unknown>,
       localAuthSnapshot: async (): Promise<UiLocalAuthSnapshot> =>
@@ -370,7 +527,7 @@ function createOperatorClient(
           operatorApi.accounts.snapshot(),
           operatorApi.localAuth.status(),
         ]);
-        const runtimeSnapshots = providerResponse.providers as unknown as readonly ProviderRuntimeSnapshot[];
+        const runtimeSnapshots = assertProviderRuntimeSnapshotArray(providerResponse.providers, 'providers.list');
         return {
           providerIds: runtimeSnapshots.map((provider: ProviderRuntimeSnapshot) => provider.providerId),
           runtimeSnapshots,
@@ -388,15 +545,15 @@ function createOperatorClient(
     },
     telemetry: {
       snapshot: async (query: HttpTransportTelemetryQuery = 20): Promise<TelemetrySnapshot> =>
-        await operatorApi.telemetry.snapshot(normalizeTelemetryQueryForSdk(query, 20)) as unknown as TelemetrySnapshot,
+        assertTelemetrySnapshot(await operatorApi.telemetry.snapshot(normalizeTelemetryQueryForSdk(query, 20)), 'telemetry.snapshot'),
       events: async (query: HttpTransportTelemetryQuery = 100): Promise<TelemetryListResponse<TelemetryRecord>> =>
-        await operatorApi.telemetry.events(normalizeTelemetryQueryForSdk(query, 100)) as unknown as TelemetryListResponse<TelemetryRecord>,
+        assertTelemetryListResponse<TelemetryRecord>(await operatorApi.telemetry.events(normalizeTelemetryQueryForSdk(query, 100)), 'telemetry.events'),
       errors: async (query: HttpTransportTelemetryQuery = 100): Promise<TelemetryListResponse<TelemetryRecord>> =>
-        await operatorApi.telemetry.errors(normalizeTelemetryQueryForSdk(query, 100)) as unknown as TelemetryListResponse<TelemetryRecord>,
+        assertTelemetryListResponse<TelemetryRecord>(await operatorApi.telemetry.errors(normalizeTelemetryQueryForSdk(query, 100)), 'telemetry.errors'),
       traces: async (query: HttpTransportTelemetryQuery = 100): Promise<TelemetryListResponse<ReadableSpan>> =>
-        await operatorApi.telemetry.traces(normalizeTelemetryQueryForSdk(query, 100)) as unknown as TelemetryListResponse<ReadableSpan>,
+        assertTelemetryListResponse<ReadableSpan>(await operatorApi.telemetry.traces(normalizeTelemetryQueryForSdk(query, 100)), 'telemetry.traces'),
       metrics: async (query: HttpTransportTelemetryQuery = 100): Promise<HttpTransportTelemetryMetricsSnapshot> =>
-        await operatorApi.telemetry.metrics(normalizeTelemetryQueryForSdk(query, 100)) as unknown as HttpTransportTelemetryMetricsSnapshot,
+        assertTelemetryMetricsSnapshot(await operatorApi.telemetry.metrics(normalizeTelemetryQueryForSdk(query, 100)), 'telemetry.metrics'),
       otlpTraces: async (query: HttpTransportTelemetryQuery = 100) =>
         await operatorApi.telemetry.otlp.traces(normalizeTelemetryQueryForSdk(query, 100)) as Record<string, unknown>,
       otlpLogs: async (query: HttpTransportTelemetryQuery = 100) =>

@@ -252,23 +252,33 @@ export class KnowledgeStore {
         ? this.getSourceByCanonicalUri(input.canonicalUri)
         : null;
     const now = nowMs();
+    const _title = stableText(input.title);
+    const _sourceUri = stableText(input.sourceUri);
+    const _canonicalUri = stableText(input.canonicalUri);
+    const _summary = stableText(input.summary);
+    const _description = stableText(input.description);
+    const _folderPath = stableText(input.folderPath);
+    const _artifactId = stableText(input.artifactId);
+    const _contentHash = stableText(input.contentHash);
+    const _crawlError = stableText(input.crawlError);
+    const _sessionId = stableText(input.sessionId);
     const record: KnowledgeSourceRecord = {
       id: existing?.id ?? input.id ?? `source-${randomUUID().slice(0, 8)}`,
       connectorId: input.connectorId,
       sourceType: input.sourceType,
-      ...(stableText(input.title) ? { title: input.title!.trim() } : {}),
-      ...(stableText(input.sourceUri) ? { sourceUri: input.sourceUri!.trim() } : {}),
-      ...(stableText(input.canonicalUri) ? { canonicalUri: input.canonicalUri!.trim() } : {}),
-      ...(stableText(input.summary) ? { summary: input.summary!.trim() } : {}),
-      ...(stableText(input.description) ? { description: input.description!.trim() } : {}),
+      ...(_title !== null ? { title: _title } : {}),
+      ...(_sourceUri !== null ? { sourceUri: _sourceUri } : {}),
+      ...(_canonicalUri !== null ? { canonicalUri: _canonicalUri } : {}),
+      ...(_summary !== null ? { summary: _summary } : {}),
+      ...(_description !== null ? { description: _description } : {}),
       tags: uniq(input.tags ?? existing?.tags),
-      ...(stableText(input.folderPath) ? { folderPath: input.folderPath!.trim() } : existing?.folderPath ? { folderPath: existing.folderPath } : {}),
+      ...(_folderPath !== null ? { folderPath: _folderPath } : existing?.folderPath ? { folderPath: existing.folderPath } : {}),
       status: input.status,
-      ...(stableText(input.artifactId) ? { artifactId: input.artifactId!.trim() } : existing?.artifactId ? { artifactId: existing.artifactId } : {}),
-      ...(stableText(input.contentHash) ? { contentHash: input.contentHash!.trim() } : existing?.contentHash ? { contentHash: existing.contentHash } : {}),
+      ...(_artifactId !== null ? { artifactId: _artifactId } : existing?.artifactId ? { artifactId: existing.artifactId } : {}),
+      ...(_contentHash !== null ? { contentHash: _contentHash } : existing?.contentHash ? { contentHash: existing.contentHash } : {}),
       ...(typeof input.lastCrawledAt === 'number' ? { lastCrawledAt: input.lastCrawledAt } : existing?.lastCrawledAt ? { lastCrawledAt: existing.lastCrawledAt } : {}),
-      ...(stableText(input.crawlError) ? { crawlError: input.crawlError!.trim() } : existing?.crawlError && input.status !== 'indexed' ? { crawlError: existing.crawlError } : {}),
-      ...(stableText(input.sessionId) ? { sessionId: input.sessionId!.trim() } : existing?.sessionId ? { sessionId: existing.sessionId } : {}),
+      ...(_crawlError !== null ? { crawlError: _crawlError } : existing?.crawlError && input.status !== 'indexed' ? { crawlError: existing.crawlError } : {}),
+      ...(_sessionId !== null ? { sessionId: _sessionId } : existing?.sessionId ? { sessionId: existing.sessionId } : {}),
       metadata: {
         ...(existing?.metadata ?? {}),
         ...(input.metadata ?? {}),
@@ -314,16 +324,18 @@ export class KnowledgeStore {
       ? this.nodes.get(input.id)
       : this.getNodeByKindAndSlug(input.kind, input.slug);
     const now = nowMs();
+    const _summary = stableText(input.summary);
+    const _sourceId = stableText(input.sourceId);
     const record: KnowledgeNodeRecord = {
       id: existing?.id ?? input.id ?? `node-${randomUUID().slice(0, 8)}`,
       kind: input.kind,
       slug: input.slug,
       title: input.title.trim(),
-      ...(stableText(input.summary) ? { summary: input.summary!.trim() } : existing?.summary ? { summary: existing.summary } : {}),
+      ...(_summary !== null ? { summary: _summary } : existing?.summary ? { summary: existing.summary } : {}),
       aliases: uniq(input.aliases ?? existing?.aliases),
       status: input.status ?? existing?.status ?? 'active',
       confidence: Math.max(0, Math.min(100, input.confidence ?? existing?.confidence ?? 70)),
-      ...(stableText(input.sourceId) ? { sourceId: input.sourceId!.trim() } : existing?.sourceId ? { sourceId: existing.sourceId } : {}),
+      ...(_sourceId !== null ? { sourceId: _sourceId } : existing?.sourceId ? { sourceId: existing.sourceId } : {}),
       metadata: {
         ...(existing?.metadata ?? {}),
         ...(input.metadata ?? {}),
@@ -423,14 +435,16 @@ export class KnowledgeStore {
     await this.init();
     const existing = input.id ? this.issues.get(input.id) : null;
     const now = nowMs();
+    const _sourceId = stableText(input.sourceId);
+    const _nodeId = stableText(input.nodeId);
     const record: KnowledgeIssueRecord = {
       id: existing?.id ?? input.id ?? `issue-${randomUUID().slice(0, 8)}`,
       severity: input.severity,
       code: input.code,
       message: input.message.trim(),
       status: input.status ?? existing?.status ?? 'open',
-      ...(stableText(input.sourceId) ? { sourceId: input.sourceId!.trim() } : {}),
-      ...(stableText(input.nodeId) ? { nodeId: input.nodeId!.trim() } : {}),
+      ...(_sourceId !== null ? { sourceId: _sourceId } : {}),
+      ...(_nodeId !== null ? { nodeId: _nodeId } : {}),
       metadata: {
         ...(existing?.metadata ?? {}),
         ...(input.metadata ?? {}),
@@ -465,15 +479,19 @@ export class KnowledgeStore {
       ? this.extractions.get(input.id)
       : this.getExtractionBySourceId(input.sourceId);
     const now = nowMs();
+    const _artifactId = stableText(input.artifactId);
+    const _title = stableText(input.title);
+    const _summary = stableText(input.summary);
+    const _excerpt = stableText(input.excerpt);
     const record: KnowledgeExtractionRecord = {
       id: existing?.id ?? input.id ?? `extract-${randomUUID().slice(0, 8)}`,
       sourceId: input.sourceId,
-      ...(stableText(input.artifactId) ? { artifactId: input.artifactId!.trim() } : existing?.artifactId ? { artifactId: existing.artifactId } : {}),
+      ...(_artifactId !== null ? { artifactId: _artifactId } : existing?.artifactId ? { artifactId: existing.artifactId } : {}),
       extractorId: input.extractorId,
       format: input.format,
-      ...(stableText(input.title) ? { title: input.title!.trim() } : existing?.title ? { title: existing.title } : {}),
-      ...(stableText(input.summary) ? { summary: input.summary!.trim() } : existing?.summary ? { summary: existing.summary } : {}),
-      ...(stableText(input.excerpt) ? { excerpt: input.excerpt!.trim() } : existing?.excerpt ? { excerpt: existing.excerpt } : {}),
+      ...(_title !== null ? { title: _title } : existing?.title ? { title: existing.title } : {}),
+      ...(_summary !== null ? { summary: _summary } : existing?.summary ? { summary: existing.summary } : {}),
+      ...(_excerpt !== null ? { excerpt: _excerpt } : existing?.excerpt ? { excerpt: existing.excerpt } : {}),
       sections: uniq(input.sections ?? existing?.sections),
       links: uniq(input.links ?? existing?.links),
       estimatedTokens: Math.max(0, Number(input.estimatedTokens ?? existing?.estimatedTokens ?? 0)),
@@ -519,6 +537,7 @@ export class KnowledgeStore {
     await this.init();
     const existing = input.id ? this.jobRuns.get(input.id) : null;
     const now = nowMs();
+    const _error = stableText(input.error);
     const record: KnowledgeJobRunRecord = {
       id: existing?.id ?? input.id ?? `kjr-${randomUUID().slice(0, 8)}`,
       jobId: input.jobId,
@@ -527,7 +546,7 @@ export class KnowledgeStore {
       requestedAt: input.requestedAt ?? existing?.requestedAt ?? now,
       ...(typeof input.startedAt === 'number' ? { startedAt: input.startedAt } : existing?.startedAt ? { startedAt: existing.startedAt } : {}),
       ...(typeof input.completedAt === 'number' ? { completedAt: input.completedAt } : existing?.completedAt ? { completedAt: existing.completedAt } : {}),
-      ...(stableText(input.error) ? { error: input.error!.trim() } : existing?.error ? { error: existing.error } : {}),
+      ...(_error !== null ? { error: _error } : existing?.error ? { error: existing.error } : {}),
       result: {
         ...(existing?.result ?? {}),
         ...(input.result ?? {}),
@@ -564,13 +583,15 @@ export class KnowledgeStore {
 
   async upsertUsageRecord(input: KnowledgeUsageUpsertInput): Promise<KnowledgeUsageRecord> {
     await this.init();
+    const _task = stableText(input.task);
+    const _sessionId = stableText(input.sessionId);
     const record: KnowledgeUsageRecord = {
       id: input.id ?? `kuse-${randomUUID().slice(0, 8)}`,
       targetKind: input.targetKind,
       targetId: input.targetId,
       usageKind: input.usageKind,
-      ...(stableText(input.task) ? { task: input.task!.trim() } : {}),
-      ...(stableText(input.sessionId) ? { sessionId: input.sessionId!.trim() } : {}),
+      ...(_task !== null ? { task: _task } : {}),
+      ...(_sessionId !== null ? { sessionId: _sessionId } : {}),
       ...(typeof input.score === 'number' && Number.isFinite(input.score) ? { score: Number(input.score) } : {}),
       metadata: { ...(input.metadata ?? {}) },
       createdAt: nowMs(),
@@ -603,6 +624,10 @@ export class KnowledgeStore {
       ? this.consolidationCandidates.get(input.id)
       : this.getConsolidationCandidateBySubject(input.subjectKind, input.subjectId, input.candidateType);
     const now = nowMs();
+    const _summary = stableText(input.summary);
+    const _suggestedMemoryClass = stableText(input.suggestedMemoryClass);
+    const _suggestedScope = stableText(input.suggestedScope);
+    const _decidedBy = stableText(input.decidedBy);
     const record: KnowledgeConsolidationCandidateRecord = {
       id: existing?.id ?? input.id ?? `kcand-${randomUUID().slice(0, 8)}`,
       candidateType: input.candidateType,
@@ -610,13 +635,13 @@ export class KnowledgeStore {
       subjectKind: input.subjectKind,
       subjectId: input.subjectId,
       title: input.title.trim(),
-      ...(stableText(input.summary) ? { summary: input.summary!.trim() } : existing?.summary ? { summary: existing.summary } : {}),
+      ...(_summary !== null ? { summary: _summary } : existing?.summary ? { summary: existing.summary } : {}),
       score: Number(input.score),
       evidence: uniq(input.evidence ?? existing?.evidence),
-      ...(stableText(input.suggestedMemoryClass) ? { suggestedMemoryClass: input.suggestedMemoryClass!.trim() } : existing?.suggestedMemoryClass ? { suggestedMemoryClass: existing.suggestedMemoryClass } : {}),
-      ...(stableText(input.suggestedScope) ? { suggestedScope: input.suggestedScope!.trim() } : existing?.suggestedScope ? { suggestedScope: existing.suggestedScope } : {}),
+      ...(_suggestedMemoryClass !== null ? { suggestedMemoryClass: _suggestedMemoryClass } : existing?.suggestedMemoryClass ? { suggestedMemoryClass: existing.suggestedMemoryClass } : {}),
+      ...(_suggestedScope !== null ? { suggestedScope: _suggestedScope } : existing?.suggestedScope ? { suggestedScope: existing.suggestedScope } : {}),
       ...(typeof input.decidedAt === 'number' ? { decidedAt: input.decidedAt } : existing?.decidedAt ? { decidedAt: existing.decidedAt } : {}),
-      ...(stableText(input.decidedBy) ? { decidedBy: input.decidedBy!.trim() } : existing?.decidedBy ? { decidedBy: existing.decidedBy } : {}),
+      ...(_decidedBy !== null ? { decidedBy: _decidedBy } : existing?.decidedBy ? { decidedBy: existing.decidedBy } : {}),
       metadata: {
         ...(existing?.metadata ?? {}),
         ...(input.metadata ?? {}),
