@@ -1,6 +1,14 @@
 import type { DaemonApiRouteHandlers } from '../../control-plane/routes/context.js';
 import type { DaemonRuntimeRouteContext as SdkDaemonRuntimeRouteContext, JsonBody } from '../../../daemon.js';
 import type { ExecutionIntent } from '../../runtime/execution-intents.js';
+// NOTE (ARCH-01 audit follow-up): Local Like-view types below (AgentRecordLike,
+// AutomationJobLike, AutomationRunLike, RuntimeTaskLike, AutomationRouteBinding)
+// intentionally mirror the minimal-shape view types used by the parent
+// SdkDaemonRuntimeRouteContext interface. Collapsing them to canonical records
+// (AgentRecord, AutomationJob, AutomationRun, RuntimeTask) breaks subtype
+// compatibility via TS2430 because parent handler signatures are contravariant
+// over these narrower shapes. Audit finding was a false positive — duck-types
+// are coherent view types, not true duplicates.
 
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {

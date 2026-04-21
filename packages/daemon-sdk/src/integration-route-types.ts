@@ -1,6 +1,7 @@
 import type { JsonRecord } from './route-helpers.js';
+import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 
-export type RuntimeEventDomain = string;
+export type { RuntimeEventDomain };
 
 export interface IntegrationRuntimeStoreLike {
   getState(): {

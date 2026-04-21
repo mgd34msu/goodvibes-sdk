@@ -1,4 +1,6 @@
 import { logger } from '../utils/logger.js';
+import { GoodVibesSdkError } from '../../errors/index.js';
+
 import { summarizeError } from '../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
@@ -76,13 +78,13 @@ export function classifyDeliveryError(error: unknown): DeliveryFailureClass {
 // ---------------------------------------------------------------------------
 
 /** Typed delivery error that carries an explicit failure classification. */
-export class DeliveryError extends Error {
+export class DeliveryError extends GoodVibesSdkError {
   constructor(
     message: string,
     public readonly failureClass: DeliveryFailureClass,
     public readonly statusCode?: number,
   ) {
-    super(message);
+    super(message, { category: 'internal', source: 'runtime', recoverable: false });
     this.name = 'DeliveryError';
   }
 }

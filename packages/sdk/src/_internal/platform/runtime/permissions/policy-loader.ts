@@ -10,6 +10,7 @@
  * `SignedPolicyBundle` so callers control the loading strategy.
  */
 
+import { GoodVibesSdkError } from '../../../errors/index.js';
 import type { PolicyRule } from './types.js';
 import type {
   PolicyBundleId,
@@ -74,7 +75,7 @@ export interface PolicyLoadResult {
  *
  * Managed mode MUST reject bundles with invalid or missing signatures.
  */
-export class PolicySignatureError extends Error {
+export class PolicySignatureError extends GoodVibesSdkError {
   constructor(
     /** The bundle ID that failed validation. */
     public readonly bundleId: PolicyBundleId,
@@ -82,7 +83,7 @@ export class PolicySignatureError extends Error {
     public readonly signatureStatus: SignatureStatus,
     message: string,
   ) {
-    super(message);
+    super(message, { category: 'permission', source: 'runtime', recoverable: false });
     this.name = 'PolicySignatureError';
   }
 }

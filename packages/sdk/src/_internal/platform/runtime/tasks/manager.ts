@@ -12,6 +12,7 @@
  * - Support retry policies
  */
 
+import { GoodVibesSdkError } from '../../../errors/index.js';
 import { createDomainDispatch } from '../store/index.js';
 import type { RuntimeStore, DomainDispatch } from '../store/index.js';
 import type { RuntimeEventBus } from '../events/index.js';
@@ -40,7 +41,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Thrown when a requested task lifecycle transition is not permitted. */
-export class TaskTransitionError extends Error {
+export class TaskTransitionError extends GoodVibesSdkError {
   public readonly taskId: string;
   public readonly from: TaskLifecycleState;
   public readonly to: TaskLifecycleState;
@@ -51,7 +52,8 @@ export class TaskTransitionError extends Error {
     to: TaskLifecycleState
   ) {
     super(
-      `[TaskManager] Invalid transition ${from} → ${to} for task ${taskId}`
+      `[TaskManager] Invalid transition ${from} → ${to} for task ${taskId}`,
+      { category: 'internal', source: 'runtime', recoverable: false },
     );
     this.name = 'TaskTransitionError';
     this.taskId = taskId;
@@ -61,22 +63,28 @@ export class TaskTransitionError extends Error {
 }
 
 /** Thrown when a task ID cannot be found in the registry. */
-export class TaskNotFoundError extends Error {
+export class TaskNotFoundError extends GoodVibesSdkError {
   public readonly taskId: string;
 
   public constructor(taskId: string) {
-    super(`[TaskManager] Task not found: ${taskId}`);
+    super(
+      `[TaskManager] Task not found: ${taskId}`,
+      { category: 'not_found', source: 'runtime', recoverable: false },
+    );
     this.name = 'TaskNotFoundError';
     this.taskId = taskId;
   }
 }
 
 /** Thrown when cancellation is attempted on a non-cancellable task. */
-export class TaskNotCancellableError extends Error {
+export class TaskNotCancellableError extends GoodVibesSdkError {
   public readonly taskId: string;
 
   public constructor(taskId: string) {
-    super(`[TaskManager] Task ${taskId} is not cancellable`);
+    super(
+      `[TaskManager] Task ${taskId} is not cancellable`,
+      { category: 'internal', source: 'runtime', recoverable: false },
+    );
     this.name = 'TaskNotCancellableError';
     this.taskId = taskId;
   }

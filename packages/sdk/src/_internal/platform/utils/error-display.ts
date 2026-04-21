@@ -154,7 +154,7 @@ function inferHint(category: ErrorCategory, statusCode?: number): string | undef
 
 function inferSource(error: unknown, override?: ErrorSource): ErrorSource {
   if (override) return override;
-  if (error instanceof AppError && error.source) return error.source;
+  if (error instanceof AppError && error.source) return error.source as ErrorSource;
   if (error instanceof Error && error.name === 'TypeError' && /fetch/i.test(error.message)) return 'transport';
   return 'unknown';
 }
@@ -210,9 +210,9 @@ export function normalizeError(error: unknown, options: ErrorNormalizationOption
   const provider = options.provider ?? (error instanceof AppError ? error.provider : undefined);
   const cleanedMessage = cleanMessage(rawMessage, options.fallbackMessage);
   const network = getNetworkErrorMessage(rawMessage, provider);
-  const category = error instanceof AppError && error.category
+  const category = (error instanceof AppError && error.category
     ? error.category
-    : network?.category ?? inferCategory(cleanedMessage, statusCode);
+    : network?.category ?? inferCategory(cleanedMessage, statusCode)) as ErrorCategory;
   const source = inferSource(error, options.source);
   const summary = buildSummary(network?.summary ?? cleanedMessage, {
     requestId: error instanceof AppError ? error.requestId : undefined,
@@ -283,7 +283,7 @@ export function toProviderError(error: unknown, options: ProviderErrorNormalizat
   if (error instanceof ProviderError) {
     return new ProviderError(error.message, {
       statusCode: error.statusCode ?? options.statusCode,
-      category: error.category ?? options.category,
+      category: (error.category ?? options.category) as ErrorCategory | undefined,
       guidance: error.guidance ?? options.guidance,
       detail: error.detail ?? options.detail,
       source: 'provider',

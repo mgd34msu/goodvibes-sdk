@@ -9,6 +9,7 @@
  * This is the single integration point for the /ops commands and Ctrl+O panel.
  */
 import { randomUUID } from 'node:crypto';
+import { GoodVibesSdkError } from '../../../errors/index.js';
 import type { TaskManager } from '../tasks/types.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import { createDomainDispatch } from '../store/index.js';
@@ -30,14 +31,15 @@ import type { OpsInterventionReason } from '../events/ops.js';
 // ---------------------------------------------------------------------------
 
 /** Thrown when an ops action is rejected because the state machine disallows it. */
-export class OpsIllegalActionError extends Error {
+export class OpsIllegalActionError extends GoodVibesSdkError {
   public readonly targetId: string;
   public readonly action: string;
   public readonly currentState: string;
 
   public constructor(targetId: string, action: string, currentState: string) {
     super(
-      `[OpsControlPlane] Action '${action}' is illegal for ${targetId} in state '${currentState}'`
+      `[OpsControlPlane] Action '${action}' is illegal for ${targetId} in state '${currentState}'`,
+      { category: 'permission', source: 'runtime', recoverable: false },
     );
     this.name = 'OpsIllegalActionError';
     this.targetId = targetId;
@@ -47,12 +49,15 @@ export class OpsIllegalActionError extends Error {
 }
 
 /** Thrown when the target task or agent is not found. */
-export class OpsTargetNotFoundError extends Error {
+export class OpsTargetNotFoundError extends GoodVibesSdkError {
   public readonly targetId: string;
   public readonly targetKind: 'task' | 'agent';
 
   public constructor(targetId: string, targetKind: 'task' | 'agent') {
-    super(`[OpsControlPlane] ${targetKind} not found: ${targetId}`);
+    super(
+      `[OpsControlPlane] ${targetKind} not found: ${targetId}`,
+      { category: 'not_found', source: 'runtime', recoverable: false },
+    );
     this.name = 'OpsTargetNotFoundError';
     this.targetId = targetId;
     this.targetKind = targetKind;

@@ -1,7 +1,8 @@
 // Synced from packages/daemon-sdk/src/integration-route-types.ts
 import type { JsonRecord } from './route-helpers.js';
+import type { RuntimeEventDomain } from '../contracts/index.js';
 
-export type RuntimeEventDomain = string;
+export type { RuntimeEventDomain };
 
 export interface IntegrationRuntimeStoreLike {
   getState(): {

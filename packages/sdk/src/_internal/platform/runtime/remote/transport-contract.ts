@@ -7,6 +7,7 @@
  * This module defines the full structural contract for all messages that cross
  * the remote transport boundary. No raw strings — all messages are typed.
  */
+import { GoodVibesSdkError } from '../../../errors/index.js';
 import { logger } from '../../utils/logger.js';
 
 import { randomUUID } from 'node:crypto';
@@ -137,8 +138,9 @@ export const TRANSPORT_COMPATIBILITY_MATRIX: CompatibilityMatrix = Object.freeze
  * Carries the structured incompatibility details so callers can log,
  * surface diagnostics, and produce a typed HANDSHAKE_REJECT payload.
  */
-export class VersionMismatchError extends Error {
-  public readonly code:
+export class VersionMismatchError extends GoodVibesSdkError {
+  /** Structured mismatch code (distinct from the generic SDK error code string). */
+  public readonly mismatchCode:
     | 'major_version_mismatch'
     | 'peer_version_too_old'
     | 'peer_version_unsupported';
@@ -146,14 +148,14 @@ export class VersionMismatchError extends Error {
   public readonly peerVersion: Readonly<ProtocolVersion>;
 
   constructor(
-    code: 'major_version_mismatch' | 'peer_version_too_old' | 'peer_version_unsupported',
+    mismatchCode: 'major_version_mismatch' | 'peer_version_too_old' | 'peer_version_unsupported',
     offeredVersion: Readonly<ProtocolVersion>,
     peerVersion: Readonly<ProtocolVersion>,
     message: string,
   ) {
-    super(message);
+    super(message, { code: mismatchCode, category: 'protocol', source: 'transport', recoverable: false });
     this.name = 'VersionMismatchError';
-    this.code = code;
+    this.mismatchCode = mismatchCode;
     this.offeredVersion = offeredVersion;
     this.peerVersion = peerVersion;
   }
