@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.21.35] - 2026-04-21
+
+Republish of 0.21.34 with corrected build artifact. 0.21.34 was published with a stale dist that did not include the PERF-08 HWM change; on-disk TypeScript source was correct but the tarball contained the pre-fix compiled JS. No additional source changes — this is a rebuild-and-republish.
+
+### Fixed
+- **PERF-08 (rebuild)**: Ensure `CountQueuingStrategy({ highWaterMark: 256 })` is present in the shipped `dist/_internal/platform/control-plane/gateway.js` and `dist/_internal/platform/runtime/integration/helpers.js`.
+
+### Migration
+Consumers on 0.21.34 that still observed SSE event drop should upgrade to 0.21.35 to pick up the compiled fix.
+
+---
+
 ## [0.21.34] - 2026-04-21
 
 Patch fix for `ControlPlaneGateway.createEventStream` + `IntegrationHelpers.createEventStream` SSE backpressure.
