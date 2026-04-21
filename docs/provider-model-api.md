@@ -1,6 +1,6 @@
 # Provider & Model API Reference
 
-**Version**: `@pellux/goodvibes-sdk` ≥ 0.21.3
+**Version**: `@pellux/goodvibes-sdk` ≥ 0.21.3 (current: 0.21.36 — see SDK `CHANGELOG.md` for incremental provider-API changes through F-PROV-009 and the always-present `secretsResolutionSkipped` boolean added in 0.21.36)
 **Base path**: all routes are under `/api/providers`
 **Authentication**: all routes require the standard daemon bearer token (`Authorization: Bearer <token>` or the operator session cookie).
 
@@ -54,7 +54,8 @@ List all registered providers and their models. Returns configured status and en
     "registryKey": "inception:mercury-2",
     "provider": "inception",
     "id": "mercury-2"
-  }
+  },
+  "secretsResolutionSkipped": false
 }
 ```
 
@@ -70,6 +71,7 @@ List all registered providers and their models. Returns configured status and en
 | `providers[].models` | `ProviderModelEntry[]` | All models exposed by this provider |
 | `providers[].models[].registryKey` | `string` | Compound key to pass to `PATCH /api/providers/current` |
 | `currentModel` | `ProviderModelRef \| null` | Currently-selected model; `null` if none configured |
+| `secretsResolutionSkipped` | `boolean` | **Required since 0.21.36 (F-PROV-009)**: `true` when no `SecretsManager` was available during this response (secrets-tier providers will show `configured:false`); `false` when a secrets manager was consulted regardless of whether it resolved any keys. Always present. |
 
 **curl example**
 

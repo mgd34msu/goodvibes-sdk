@@ -4,8 +4,10 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.19.x (latest) | :white_check_mark: |
-| < 0.19.0 | :x: |
+| 0.21.x (latest) | :white_check_mark: |
+| < 0.21.0 | :x: |
+
+Pre-1.0 policy: security fixes land in the 0.21.x line. Earlier minor lines (0.19.x, 0.20.x) are not patched; upgrade to the latest 0.21.x release to receive security updates.
 
 ## Reporting a Vulnerability
 

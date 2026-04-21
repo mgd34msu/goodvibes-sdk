@@ -101,15 +101,15 @@ Repository setup required for publishing:
   - package name `@mgd34msu/goodvibes-sdk`
   - `.npmrc` line `@mgd34msu:registry=https://npm.pkg.github.com`
   - auth line `//npm.pkg.github.com/:_authToken=TOKEN`
-- tags that match the package version, for example `v0.18.14`
+- tags that match the package version, for example `v0.21.36`
 
 Recommended first-release sequence:
 
 ```bash
 bun run validate
 bun run release:dry-run
-git tag v0.18.14
-git push origin v0.18.14
+git tag v0.21.36
+git push origin v0.21.36
 ```
 
 Then watch the `Release` workflow and verify that:
@@ -173,7 +173,7 @@ Before bumping the version and running `bun run release:publish`, add the CHANGE
 3. Fill in `Breaking`, `Added`, `Fixed`, `Migration`. Use `- none` for empty sections.
 4. Run `bun run changelog:check` to confirm.
 
-Long-form per-release notes remain in `docs/releases/<version>.md` — the CHANGELOG entry is the machine-verifiable summary.
+As of 0.19.0, long-form per-release notes live **directly in `CHANGELOG.md`** — each `## [X.Y.Z]` section contains the full release write-up. Pre-0.19 release notes are archived under `docs/archive/releases/0.18.x/`. The CHANGELOG entry is the machine-verifiable summary; no separate `docs/releases/<version>.md` file is expected.
 
 ## Version Consistency
 

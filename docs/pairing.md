@@ -34,33 +34,37 @@ Companion tokens are persistent. Unlike session tokens, they do not expire autom
 
 ### Storage
 
-Companion tokens are stored on disk under the surface's scoped directory:
+As of SDK 0.21.28, the companion/operator token is stored in a single global location under the daemon-home directory:
 
 ```
-.goodvibes/<surfaceRoot>/companion-token
+<daemonHomeDir>/operator-tokens.json
 ```
 
-If no `surfaceRoot` is configured, the token lands in the shared `.goodvibes/` root. Surfaces that use `surfaceRoot` (recommended) keep their companion token isolated from other surfaces.
+The canonical default is `~/.goodvibes/daemon/operator-tokens.json`. The file is written at mode `0600` and contains `{ token, peerId, createdAt }`. The surface name (`'tui'`, etc.) is retained on the API for forward compatibility but does **not** partition the token path — all surfaces on a given host share one companion/operator token. Legacy workspace-scoped token files from pre-0.21.28 releases are removed automatically by `pruneStaleOperatorTokens` on daemon startup (see [F3 in the 0.21.36 CHANGELOG entry](../CHANGELOG.md)).
 
 ### Connection payload
 
-The QR code encodes a JSON object containing everything the companion app needs to connect:
+The QR code encodes a `CompanionConnectionInfo` JSON object containing everything the companion app needs to connect:
 
 ```json
 {
   "url": "http://192.168.1.42:3210",
-  "token": "gvt_abc123...",
+  "token": "gv_abc123...",
+  "username": "admin",
+  "version": "0.21.36",
   "surface": "tui",
-  "version": 1
+  "password": "<bootstrap-password, optional>"
 }
 ```
 
 | Field | Description |
 | --- | --- |
 | `url` | Base URL of the daemon HTTP endpoint |
-| `token` | Pre-generated bearer token for all API calls |
-| `surface` | The `surfaceRoot` that generated the token |
-| `version` | Payload schema version (currently `1`) |
+| `token` | Pre-generated bearer token for all API calls (prefix `gv_`) |
+| `username` | Default operator principal name (defaults to `admin`) |
+| `version` | Host product version (SDK/TUI semver at time of issue) |
+| `surface` | Surface name that generated the token, e.g. `tui` or `daemon` |
+| `password` | Optional bootstrap password when local auth is active; omitted otherwise |
 
 ---
 
@@ -68,18 +72,19 @@ The QR code encodes a JSON object containing everything the companion app needs 
 
 ### Step 1: Host generates a companion token
 
-The host surface calls `getOrCreateCompanionToken(surfaceRoot)` to get an existing persistent token, or generate one if none exists:
+The host surface calls `getOrCreateCompanionToken(surface, options)` to get an existing persistent token, or generate one if none exists:
 
 ```ts
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { getOrCreateCompanionToken } from '@pellux/goodvibes-sdk/platform/pairing';
 
-const token = await getOrCreateCompanionToken({
-  surfaceRoot: 'tui',
-  homeDir: os.homedir(),
-});
+const daemonHomeDir = join(homedir(), '.goodvibes', 'daemon');
+const record = getOrCreateCompanionToken('tui', { daemonHomeDir });
+// record: { token, peerId, createdAt }
 ```
 
-This is idempotent — calling it multiple times with the same `surfaceRoot` returns the same token until `regenerateCompanionToken` is called.
+This is synchronous and idempotent — calling it repeatedly returns the same record until `regenerateCompanionToken` is called. The `surface` argument is retained for API compatibility and audit log context; it does not partition the token path (see [Storage](#storage)).
 
 ### Step 2: Host builds the connection payload
 
@@ -88,12 +93,15 @@ import { buildCompanionConnectionInfo } from '@pellux/goodvibes-sdk/platform/pai
 
 const payload = buildCompanionConnectionInfo({
   daemonUrl: 'http://192.168.1.42:3210',
-  token,
-  surfaceRoot: 'tui',
+  token: record.token,
+  username: 'admin',      // optional; defaults to 'admin'
+  version: '0.21.36',      // optional; host product version
+  surface: 'tui',          // optional; defaults to 'daemon'
+  // password: 'bootstrap-pw',  // optional; include when local auth is active
 });
 
-// payload is a plain JSON-serializable object
-// { url, token, surface, version }
+// payload is a plain JSON-serializable CompanionConnectionInfo:
+// { url, token, username, version, surface, password? }
 ```
 
 The `daemonUrl` should be the address reachable by the companion device. For local-only use, `http://127.0.0.1:3210` works. For cross-device pairing, use the host machine's LAN address.
@@ -179,19 +187,16 @@ const sdk = createGoodVibesSdk({
 
 ### Creating a token
 
-`getOrCreateCompanionToken` creates a token if none exists and returns it. Tokens are stored as plain text files under the surface's scoped directory.
+`getOrCreateCompanionToken(surface, { daemonHomeDir })` creates a JSON record (`{ token, peerId, createdAt }`) if none exists at `<daemonHomeDir>/operator-tokens.json` and returns it. The file is written at mode `0600`.
 
 ### Regenerating a token
 
-Calling `regenerateCompanionToken` issues a new token and writes it to disk, replacing the previous one. Any companion app holding the old token will receive `401 Unauthorized` on its next API call and must re-pair.
+Calling `regenerateCompanionToken(surface, { daemonHomeDir })` (equivalent to `getOrCreateCompanionToken` with `regenerate: true`) issues a new token and replaces the stored record. Any companion app holding the old token will receive `401 Unauthorized` on its next API call and must re-pair.
 
 ```ts
 import { regenerateCompanionToken } from '@pellux/goodvibes-sdk/platform/pairing';
 
-const newToken = await regenerateCompanionToken({
-  surfaceRoot: 'tui',
-  homeDir: os.homedir(),
-});
+const newRecord = regenerateCompanionToken('tui', { daemonHomeDir });
 ```
 
 Rotate tokens proactively if:
@@ -199,17 +204,26 @@ Rotate tokens proactively if:
 - You believe the token may have been observed by a third party.
 - You are decommissioning a companion app.
 
-### Reading a stored token
+### Pruning stale workspace tokens
+
+Hosts that ran pre-0.21.28 builds may still have legacy workspace-scoped token files on disk. Call `pruneStaleOperatorTokens({ daemonHomeDir, candidatePaths })` on daemon startup to remove any candidates whose token does not match the canonical `<daemonHomeDir>/operator-tokens.json`:
 
 ```ts
-import { readCompanionToken } from '@pellux/goodvibes-sdk/platform/pairing';
+import { pruneStaleOperatorTokens } from '@pellux/goodvibes-sdk/platform/pairing';
 
-const token = await readCompanionToken({
-  surfaceRoot: 'tui',
-  homeDir: os.homedir(),
+const result = pruneStaleOperatorTokens({
+  daemonHomeDir,
+  candidatePaths: [
+    join(workingDir, '.goodvibes', 'operator-tokens.json'),
+    join(workingDir, '.goodvibes', 'tui', 'operator-tokens.json'),
+  ],
 });
-// Returns null if no token has been generated yet
+// result: { canonicalPath, canonicalToken, prunedPaths, matchedPaths, absentPaths, failedPaths }
 ```
+
+### Reading a stored token
+
+There is no dedicated `readCompanionToken` export. To inspect the stored record without regenerating, read `<daemonHomeDir>/operator-tokens.json` directly, or call `getOrCreateCompanionToken(surface, { daemonHomeDir })` — it is idempotent and returns the existing record if present.
 
 ---
 
@@ -217,7 +231,7 @@ const token = await readCompanionToken({
 
 ### Token storage on the host
 
-The companion token is stored as a plaintext file under `.goodvibes/<surfaceRoot>/companion-token`. This file should have user-only read permissions. The SDK sets `0600` on creation. Do not commit this file to source control; it should be in `.gitignore`.
+The companion/operator token is stored as a plaintext JSON file at `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`). This file should have user-only read permissions. The SDK sets `0600` on creation and re-enforces it via `chmodSync` after write. Do not commit this file to source control; the daemon home directory should be outside any project tree.
 
 ### Token storage on the companion
 
@@ -258,10 +272,11 @@ The TUI exposes a `/qrcode` command that generates and displays the pairing QR c
 ```
 
 Internally this:
-1. Calls `getOrCreateCompanionToken({ surfaceRoot: 'tui', homeDir })`.
-2. Calls `buildCompanionConnectionInfo({ daemonUrl, token, surfaceRoot: 'tui' })`.
-3. Calls `generateQrMatrix(JSON.stringify(payload))`.
-4. Calls `renderQrToString(matrix)` and renders the result as a fixed-width block in the message view.
+1. Calls `getOrCreateCompanionToken('tui', { daemonHomeDir })`.
+2. Calls `buildCompanionConnectionInfo({ daemonUrl, token, surface: 'tui', version, password? })`.
+3. Calls `encodeConnectionPayload(info)` to serialize the JSON payload.
+4. Calls `generateQrMatrix(payload)`.
+5. Calls `renderQrToString(matrix)` and renders the result as a fixed-width block in the message view.
 
 ### Daemon standalone QR output
 
