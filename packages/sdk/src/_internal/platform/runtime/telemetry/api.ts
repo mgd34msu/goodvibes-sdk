@@ -690,7 +690,7 @@ export class TelemetryApiService {
     filter: TelemetryFilter,
     view: TelemetryViewMode,
   ): { items: readonly TelemetryRecord[]; pageInfo: TelemetryPageInfo } {
-    const filtered = [...records].filter((record) => this.recordMatches(record, filter));
+    const filtered = records.filter((record) => this.recordMatches(record, filter));
     filtered.sort((left, right) => {
       const timestampDelta = right.timestamp - left.timestamp;
       if (timestampDelta !== 0) return timestampDelta;
@@ -717,7 +717,7 @@ export class TelemetryApiService {
     view: TelemetryViewMode,
   ): { items: readonly ReadableSpan[]; pageInfo: TelemetryPageInfo } {
     const normalizedTraceId = filter.traceId ? normalizeTraceId(filter.traceId) : undefined;
-    const filtered = [...this.spans].filter((span) => {
+    const filtered = this.spans.filter((span) => {
       if (filter.since !== undefined && span.startTimeMs < filter.since) return false;
       if (filter.until !== undefined && span.endTimeMs > filter.until) return false;
       if (normalizedTraceId && span.spanContext.traceId !== normalizedTraceId) return false;
