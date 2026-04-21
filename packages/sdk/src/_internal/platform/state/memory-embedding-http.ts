@@ -1,4 +1,5 @@
 import { DEFAULT_MEMORY_EMBEDDING_DIMS } from './memory-embeddings.js';
+import { WELL_KNOWN_LOCAL_ENDPOINTS } from '../providers/well-known-endpoints.js';
 import { summarizeError } from '../utils/error-display.js';
 import type {
   MemoryEmbeddingProvider,
@@ -44,9 +45,9 @@ type EmbeddingFetchLike = (input: string | URL | Request, init?: RequestInit) =>
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_OPENAI_MODEL = 'text-embedding-3-small';
-const DEFAULT_OPENAI_COMPATIBLE_BASE_URL = 'http://127.0.0.1:1234/v1';
+const DEFAULT_OPENAI_COMPATIBLE_BASE_URL = `${WELL_KNOWN_LOCAL_ENDPOINTS.lmStudio}/v1`;
 const DEFAULT_OPENAI_COMPATIBLE_MODEL = 'nomic-embed-text';
-const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
+const DEFAULT_OLLAMA_BASE_URL = WELL_KNOWN_LOCAL_ENDPOINTS.ollama;
 const DEFAULT_OLLAMA_MODEL = 'embeddinggemma';
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_GEMINI_MODEL = 'gemini-embedding-001';
