@@ -40,6 +40,10 @@
 
 - [Daemon embedding](./daemon-embedding.md)
 
+## Agentic Workflows
+
+- [WRFC constraint propagation](./wrfc-constraint-propagation.md) — how Work-Review-Fix-Commit chains enforce user-declared constraints
+
 ## Operability
 
 - [Error handling](./error-handling.md)

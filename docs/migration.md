@@ -2,6 +2,22 @@
 
 Since 0.19.0, per-release migration guidance lives directly in `CHANGELOG.md` under each version's `### Migration` subsection. This is the canonical source; consumers upgrading from any pre-0.21.x version should read the relevant `## [X.Y.Z]` entries in order.
 
+## Upgrading to 0.23.0
+
+**Additive — no consumer action required.**
+
+0.23.0 adds WRFC constraint propagation. Every schema addition is optional or defaulted; the parser tolerates absence and malformed entries. Pre-0.23 consumers compile unchanged.
+
+- New `WORKFLOW_CONSTRAINTS_ENUMERATED` runtime event on the `workflows` domain. Consumers that filter by event type will see this new type. Consumers with catch-all `workflows` handlers receive it automatically.
+- `WORKFLOW_REVIEW_COMPLETED` gains three optional fields (`constraintsSatisfied`, `constraintsTotal`, `unsatisfiedConstraintIds`). These are absent when the chain has no constraints — pre-0.23 payload shape is unchanged on unconstrained chains.
+- `WORKFLOW_FIX_ATTEMPTED` gains one optional field (`targetConstraintIds`). Absent when the chain has no constraints.
+- `EngineerReport.constraints` is an optional `Constraint[]` (defaults to `[]` via `applyConstraintDefaults` normalizer).
+- `ReviewerReport.constraintFindings` is an optional `ConstraintFinding[]` (defaults to `[]`).
+
+For the full feature description, see [WRFC Constraint Propagation](./wrfc-constraint-propagation.md).
+
+---
+
 ## Upgrading from 0.18.x to 0.19.x
 
 0.19.x introduced several breaking changes. In order:

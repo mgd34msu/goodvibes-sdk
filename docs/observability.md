@@ -113,7 +113,7 @@ Available runtime domains:
 | `turn` | Turn lifecycle (submitted, streaming, completed, cancelled) |
 | `ui` | UI interaction events |
 | `watchers` | File/resource watcher state |
-| `workflows` | Workflow step transitions |
+| `workflows` | WRFC workflow lifecycle: chain created/passed/failed, state transitions, review completed, fix attempted, constraints enumerated |
 
 ### Subscribing via SSE
 
@@ -726,10 +726,63 @@ Both functions are no-ops when `@opentelemetry/api` is not installed or no activ
 
 ---
 
+## WRFC Workflow Events
+
+WRFC (Work-Review-Fix-Commit) chains emit structured events on the `workflows` domain. The constraint-related events added in 0.23.0 are documented here.
+
+### `WORKFLOW_CONSTRAINTS_ENUMERATED`
+
+Emitted once per chain on initial engineer completion. Carries the authoritative constraint list extracted from the task prompt.
+
+```ts
+feed.workflows.on('WORKFLOW_CONSTRAINTS_ENUMERATED', (event) => {
+  console.log(event.chainId, event.constraints);
+  // event.constraints: Constraint[]
+  // { id: string; text: string; source: 'prompt' | 'inherited' }[]
+});
+```
+
+An empty `constraints` array signals the zero-constraint (unconstrained) path — no constraint enforcement follows for this chain.
+
+### `WORKFLOW_REVIEW_COMPLETED` — constraint fields (0.23.0+)
+
+When the chain has user-declared constraints, three additional fields are present:
+
+```ts
+feed.workflows.on('WORKFLOW_REVIEW_COMPLETED', (event) => {
+  const { score, passed } = event;
+  // constraint fields (present only when chain has constraints):
+  const { constraintsSatisfied, constraintsTotal, unsatisfiedConstraintIds } = event;
+});
+```
+
+| Field | Type | When present |
+|-------|------|--------------|
+| `constraintsSatisfied` | `number` | chain has `constraints.length > 0` |
+| `constraintsTotal` | `number` | chain has `constraints.length > 0` |
+| `unsatisfiedConstraintIds` | `string[]` | chain has `constraints.length > 0` |
+
+Pre-0.23 consumers see no new fields when the chain has no constraints.
+
+### `WORKFLOW_FIX_ATTEMPTED` — constraint fields (0.23.0+)
+
+```ts
+feed.workflows.on('WORKFLOW_FIX_ATTEMPTED', (event) => {
+  const { attempt, maxAttempts } = event;
+  // optional: IDs of constraints this fix iteration is targeting
+  const { targetConstraintIds } = event; // string[] | undefined
+});
+```
+
+For full details on the constraint propagation lifecycle, see [WRFC Constraint Propagation](./wrfc-constraint-propagation.md).
+
+---
+
 ## Related
 
 - [Performance and Tuning](./performance.md)
 - [Realtime and telemetry](./realtime-and-telemetry.md)
 - [Runtime events reference](./reference-runtime-events.md)
+- [WRFC Constraint Propagation](./wrfc-constraint-propagation.md)
 - [Error handling](./error-handling.md)
 - [Troubleshooting](./troubleshooting.md)
