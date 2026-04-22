@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.23.1] - 2026-04-22
+
+### Removed
+- **Opt-in `wrfc-constraint-golden.test.ts` suite + fixtures deleted.** The Phase-5 golden-prompt suite was env-gated behind `WRFC_GOLDEN_LLM=1` and skipped in CI. An opt-in test doesn't prove anything in the default test run, and the feature's live-LLM discernment is already exercised by the WRFC chain integration tests that run against real agents in downstream environments. The addendum *content* is still asserted unconditionally by `wrfc-prompt-addenda.test.ts`, the propagation mechanics by `wrfc-constraint-propagation.test.ts`, and parser tolerance by `completion-report-constraints.test.ts` — those are always-on. Removing the opt-in suite eliminates the "passes because it didn't run" failure mode. Files deleted: `test/wrfc-constraint-golden.test.ts`, `test/fixtures/wrfc-constraints/*.md`.
+
+No production code or published-surface changes. `@pellux/goodvibes-sdk` npm tarball was already `files`-gated to `dist/` + `sbom.cdx.json`; the deleted test files were never shipped. 0.23.1 republishes against an identical `dist/`.
+
+---
+
 ## [0.23.0] - 2026-04-21
 
 ### Added
