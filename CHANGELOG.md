@@ -8,6 +8,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.23.2] - 2026-04-22
+
+### Documentation
+- **Complete WRFC constraint-propagation docs** shipped alongside the release, not after it:
+  - New long-form guide `docs/wrfc-constraint-propagation.md` covers engineer enumeration + discernment rule with the four calibration examples, reviewer verification (findings, severity taxonomy, exact ambiguous-escape text), fixer preservation (continuity validation, SATISFIED/UNSATISFIED/UNVERIFIED markers), gate-retry inheritance (`source: 'inherited'`), pass/fail semantics (`passed = score >= threshold && !constraintFailure`), zero-constraint no-op guarantee, and the ~16 soft cap.
+  - `docs/reference-runtime-events.md` regenerated with a named "WRFC workflow events" section: `WORKFLOW_CONSTRAINTS_ENUMERATED`, plus the extended optional fields on `WORKFLOW_REVIEW_COMPLETED` (`constraintsSatisfied`, `constraintsTotal`, `unsatisfiedConstraintIds`) and `WORKFLOW_FIX_ATTEMPTED` (`targetConstraintIds`).
+  - `docs/observability.md` — new "WRFC Workflow Events" section with `feed.workflows.on(...)` subscription examples and field tables; workflows domain table row updated.
+  - `docs/error-kinds.md` — new "WRFC synthetic critical issues" section explicitly distinguishing these from `GoodVibesSdkError` instances.
+  - `docs/migration.md` — "Upgrading to 0.23.0" entry marked additive / no consumer action required, with pointer to the feature doc.
+  - `docs/README.md` + root `README.md` — "Agentic Workflows" sections pointing to the feature doc.
+- Generator extension: `scripts/generate-api-docs.ts` `renderRuntimeEventReference` emits the named WRFC workflow-events section idempotently (running `docs:check` twice produces no drift).
+
+No production code or test changes. SDK runtime surface identical to 0.23.1; this release exists to bundle the now-shipped docs (commit `42237d7` on main) into a proper versioned release so downstream consumers can pin a single coherent version that ships with its own complete documentation. Per the pre-1.0 policy, docs ship WITH the feature, not after.
+
+Review gate: 10.0/10 on all 10 dimensions (goodvibes:reviewer against runtime config `wrfc.score_threshold=10`).
+
+---
+
 ## [0.23.1] - 2026-04-22
 
 ### Removed
