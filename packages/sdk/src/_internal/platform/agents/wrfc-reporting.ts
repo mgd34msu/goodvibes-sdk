@@ -1,6 +1,6 @@
-import type { CompletionReport, Constraint, EngineerReport, ReviewerReport } from './completion-report.js';
+import type { CompletionReport, Constraint, ConstraintFinding, EngineerReport, ReviewerReport } from './completion-report.js';
 import { parseCompletionReport } from './completion-report.js';
-import { buildReviewerConstraintAddendum } from './wrfc-prompt-addenda.js';
+import { buildFixerConstraintAddendum, buildReviewerConstraintAddendum } from './wrfc-prompt-addenda.js';
 import type { QualityGateResult } from './wrfc-types.js';
 import { logger } from '../utils/logger.js';
 
@@ -257,6 +257,8 @@ export function buildFixTask(
   review: ReviewerReport,
   threshold: number,
   fixAttempts: number,
+  constraints: Constraint[] = [],
+  constraintFindings: ConstraintFinding[] = [],
 ): string {
   const issueList = review.issues
     .map((issue) => {
@@ -264,7 +266,7 @@ export function buildFixTask(
       return `- [${issue.severity.toUpperCase()}] ${issue.description}${location} (-${issue.pointValue} pts)`;
     })
     .join('\n');
-  return [
+  const base = [
     `WRFC Fix Request`,
     `Chain ID: ${chainId}`,
     ``,
@@ -282,6 +284,37 @@ export function buildFixTask(
     `3. Re-run Gather, Plan, Apply explicitly before writing your final answer.`,
     `4. Return a structured EngineerReport JSON block including gatheredContext, plannedActions, and appliedChanges in your final response.`,
   ].join('\n');
+
+  if (constraints.length === 0) {
+    return base;
+  }
+
+  // Build a finding-lookup map: constraintId -> ConstraintFinding
+  const findingMap = new Map<string, ConstraintFinding>();
+  for (const finding of constraintFindings) {
+    findingMap.set(finding.constraintId, finding);
+  }
+
+  const visible = constraints.slice(0, CONSTRAINTS_TASK_LIMIT);
+  const overflow = constraints.length - visible.length;
+  const constraintLines = visible.map((c) => {
+    const finding = findingMap.get(c.id);
+    const marker = finding === undefined ? 'UNVERIFIED' : finding.satisfied ? 'SATISFIED' : 'UNSATISFIED';
+    return `- ${c.id} [${marker}]: ${c.text}`;
+  });
+  if (overflow > 0) {
+    constraintLines.push(`(+${overflow} more)`);
+  }
+
+  const constraintSection = [
+    `## Constraints (authoritative — preserve through fix)`,
+    ``,
+    `These are the user-declared constraints for this chain. They are binding on every fix iteration.`,
+    ``,
+    ...constraintLines,
+  ].join('\n');
+
+  return base + '\n\n---\n\n' + constraintSection + '\n\n---\n\n' + buildFixerConstraintAddendum();
 }
 
 export function buildGateFailureTask(

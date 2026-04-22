@@ -70,6 +70,8 @@ export class WrfcController {
   private unsubscribers: Array<() => void> = [];
   private activeChainCount = 0;
   private readonly pendingParentChainIds = new Map<string, string>();
+  /** Constraints to inherit when a gate-retry child chain is created via the pending path. */
+  private readonly pendingParentConstraints = new Map<string, Constraint[]>();
   private readonly sessionId: string;
   private readonly workmap: WrfcWorkmap;
   private readonly projectRoot: string;
@@ -240,10 +242,24 @@ export class WrfcController {
 
   private startReview(chain: WrfcChain, report: CompletionReport): void {
     this.transition(chain, 'reviewing');
+
+    // Prepend any synthetic issues from the controller (e.g. fixer constraint-continuity
+    // violations) to the review task body, then clear them so they fire only once.
+    let reviewTask = buildReviewTask(chain.id, report, getWrfcScoreThreshold(this.configManager), chain.constraints);
+    if (chain.syntheticIssues && chain.syntheticIssues.length > 0) {
+      const syntheticBlock = [
+        `## Synthetic issues from controller`,
+        ``,
+        ...chain.syntheticIssues.map((issue) => `- [${issue.severity.toUpperCase()}] ${issue.description}`),
+      ].join('\n');
+      reviewTask = syntheticBlock + '\n\n---\n\n' + reviewTask;
+      chain.syntheticIssues = [];
+    }
+
     const reviewerRecord = this.spawnWrfcAgent(
       chain,
       'reviewer',
-      buildReviewTask(chain.id, report, getWrfcScoreThreshold(this.configManager), chain.constraints),
+      reviewTask,
       true,
     );
 
@@ -366,7 +382,14 @@ export class WrfcController {
     const fixerRecord = this.spawnWrfcAgent(
       chain,
       'engineer',
-      buildFixTask(chain.id, review, getWrfcScoreThreshold(this.configManager), chain.fixAttempts),
+      buildFixTask(
+        chain.id,
+        review,
+        getWrfcScoreThreshold(this.configManager),
+        chain.fixAttempts,
+        chain.constraints,
+        review.constraintFindings ?? [],
+      ),
       true,
     );
 
@@ -494,8 +517,28 @@ export class WrfcController {
     const followUpChain = this.findChainByAgentId(followUpRecord.id);
     if (followUpChain) {
       followUpChain.parentChainId = chain.id;
+      // Inherit constraints from the parent chain as source: 'inherited'.
+      // Phase 4 limitation: the child engineer's returned constraints are ignored
+      // (constraintsEnumerated starts true), so the child cannot ADD new constraints
+      // from a different prompt. The inherited list is treated as authoritative.
+      if (chain.constraints.length > 0) {
+        followUpChain.constraints = chain.constraints.map((c) => ({
+          id: c.id,
+          text: c.text,
+          source: 'inherited' as const,
+        }));
+        followUpChain.constraintsEnumerated = true;
+      }
     } else {
       this.pendingParentChainIds.set(followUpRecord.id, chain.id);
+      // Store parent constraints for inheritance when the child chain is registered later.
+      if (chain.constraints.length > 0) {
+        this.pendingParentConstraints.set(followUpRecord.id, chain.constraints.map((c) => ({
+          id: c.id,
+          text: c.text,
+          source: 'inherited' as const,
+        })));
+      }
     }
 
     logger.debug('WrfcController.processGateResults: gate failure — spawned follow-up agent', {
@@ -702,6 +745,16 @@ export class WrfcController {
       chain.gateRetryDepth = parent.gateRetryDepth + (parent.gateFailureFingerprint ? 1 : 0);
     }
     this.pendingParentChainIds.delete(agentId);
+
+    // Inherit constraints from parent when they were queued via the pending path.
+    // Phase 4 limitation: constraintsEnumerated is set true so the child engineer's
+    // returned constraints are ignored — the inherited list is authoritative.
+    const inherited = this.pendingParentConstraints.get(agentId);
+    if (inherited && inherited.length > 0) {
+      chain.constraints = inherited;
+      chain.constraintsEnumerated = true;
+    }
+    this.pendingParentConstraints.delete(agentId);
   }
 
   private startEngineeringChain(chain: WrfcChain, emitCreated: boolean): void {
@@ -740,9 +793,27 @@ export class WrfcController {
       chain.constraints = report.archetype === 'engineer' ? (report.constraints ?? []) : [];
       chain.constraintsEnumerated = true;
       emitWrfcConstraintsEnumerated(this.runtimeBus, this.sessionId, chain.id, chain.constraints);
+    } else {
+      // Fixer continuity validation: verify the fixer returned the same constraint id-set.
+      // If it diverged, inject a synthetic critical issue for the next review pass.
+      const fixerConstraints = report.archetype === 'engineer' ? (report.constraints ?? []) : [];
+      const expectedIds = new Set(chain.constraints.map((c) => c.id));
+      const actualIds = new Set(fixerConstraints.map((c) => c.id));
+      const missing = [...expectedIds].filter((id) => !actualIds.has(id));
+      const extra = [...actualIds].filter((id) => !expectedIds.has(id));
+      if (missing.length > 0 || extra.length > 0) {
+        const description = `Fixer regressed constraint continuity: missing=[${missing.join(',')}] extra=[${extra.join(',')}]`;
+        logger.warn('WrfcController: fixer constraint-continuity violation', {
+          chainId: chain.id,
+          missing,
+          extra,
+        });
+        chain.syntheticIssues ??= [];
+        chain.syntheticIssues.push({ severity: 'critical', description });
+      }
+      // The authoritative constraint list is NOT overwritten — chain.constraints remains the
+      // original enumeration from the initial engineer turn.
     }
-    // On fixer re-runs (constraintsEnumerated === true), the fixer's returned constraints
-    // are intentionally ignored — the authoritative list is preserved on chain.constraints.
 
     this.startReview(chain, report);
   }
