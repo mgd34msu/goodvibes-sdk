@@ -73,7 +73,7 @@ export function emitWrfcCascadeAbort(
 
 /**
  * Thin wrapper for WORKFLOW_CONSTRAINTS_ENUMERATED.
- * DO NOT CALL YET — declaration only for Phase 1. Emission is wired in Phase 2.
+ * Wired in Phase 2 — emitted once per chain on initial engineer completion.
  */
 export function emitWrfcConstraintsEnumerated(
   runtimeBus: RuntimeEventBus,

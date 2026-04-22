@@ -51,6 +51,12 @@ export interface WrfcChain {
   bufferedCompletion?: { agentId: string; fullOutput?: string };
   /** Constraints propagated for this chain. Initialized to [] on construction. */
   constraints: Constraint[];
+  /**
+   * Internal bookkeeping flag — true once constraints have been captured and
+   * WORKFLOW_CONSTRAINTS_ENUMERATED has been emitted for this chain.
+   * Prevents duplicate emission on fixer re-runs.
+   */
+  constraintsEnumerated: boolean;
 }
 
 /** Quality gate definition. */
