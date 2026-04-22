@@ -431,6 +431,191 @@ describe('WrfcController — escalation', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Phase 5 integration: constraint propagation anchors
+// ---------------------------------------------------------------------------
+
+/** Encode a JSON report in a ```json block for the parser. */
+function constraintJsonBlock(obj: Record<string, unknown>): string {
+  return '```json\n' + JSON.stringify(obj, null, 2) + '\n```';
+}
+
+/** Get the inner payload data from a stored workflow event (envelope.payload). */
+function p5EventData(event: { type: string; payload: Record<string, unknown> }): Record<string, unknown> {
+  return event.payload['payload'] as Record<string, unknown>;
+}
+
+function makeEngineerOutput(constraints: Array<{ id: string; text: string; source: string }>): string {
+  return constraintJsonBlock({
+    version: 1,
+    archetype: 'engineer',
+    summary: 'Done.',
+    gatheredContext: [],
+    plannedActions: [],
+    appliedChanges: [],
+    filesCreated: [],
+    filesModified: [],
+    filesDeleted: [],
+    decisions: [],
+    issues: [],
+    uncertainties: [],
+    constraints,
+  });
+}
+
+function makeReviewerOutput(
+  score: number,
+  findings: Array<{ constraintId: string; satisfied: boolean; evidence: string }>,
+): string {
+  return constraintJsonBlock({
+    version: 1,
+    archetype: 'reviewer',
+    summary: score >= 9.9 ? 'Looks great.' : 'Needs fixes.',
+    score,
+    passed: score >= 9.9,
+    dimensions: [],
+    issues: [],
+    constraintFindings: findings,
+  });
+}
+
+describe('WrfcController — Phase 5 constraint integration', () => {
+  test('C1: full chain with constraints ending in pass', async () => {
+    const h = createHarness();
+
+    const engRecord = h.addAgent('eng-c1', 'implement with constraints');
+    const chain = h.controller.createChain(engRecord);
+
+    h.setOutput('eng-c1', makeEngineerOutput([
+      { id: 'c1', text: 'must be pure', source: 'prompt' },
+      { id: 'c2', text: 'no deps', source: 'prompt' },
+    ]));
+    emitAgentCompleted(h.bus, 'eng-c1');
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('reviewing');
+    expect(chain.constraints).toHaveLength(2);
+    expect(chain.constraintsEnumerated).toBe(true);
+
+    const reviewerRecord = h.spawnedRecords[0]!;
+    h.setOutput(reviewerRecord.id, makeReviewerOutput(10.0, [
+      { constraintId: 'c1', satisfied: true, evidence: 'pure function verified' },
+      { constraintId: 'c2', satisfied: true, evidence: 'zero imports' },
+    ]));
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('passed');
+
+    const types = h.workflowEvents.map((e) => e.type);
+    expect(types).toContain('WORKFLOW_CONSTRAINTS_ENUMERATED');
+    expect(types).toContain('WORKFLOW_REVIEW_COMPLETED');
+    expect(types).toContain('WORKFLOW_CHAIN_PASSED');
+
+    const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
+    expect(p5EventData(reviewEvent!)['passed']).toBe(true);
+
+    h.controller.dispose();
+  });
+
+  test('C2: full chain without constraints (regression anchor)', async () => {
+    const h = createHarness();
+
+    const engRecord = h.addAgent('eng-c2', 'implement unconstrained feature');
+    const chain = h.controller.createChain(engRecord);
+
+    h.setOutput('eng-c2', makeEngineerOutput([]));
+    emitAgentCompleted(h.bus, 'eng-c2');
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('reviewing');
+    expect(chain.constraints).toHaveLength(0);
+
+    const reviewerRecord = h.spawnedRecords[0]!;
+    h.setOutput(reviewerRecord.id, makeReviewerOutput(10.0, []));
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('passed');
+
+    const types = h.workflowEvents.map((e) => e.type);
+    expect(types).toContain('WORKFLOW_CHAIN_CREATED');
+    expect(types).toContain('WORKFLOW_REVIEW_COMPLETED');
+    expect(types).toContain('WORKFLOW_CHAIN_PASSED');
+
+    // Review event must NOT have constraint fields (no-op path)
+    const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
+    expect(reviewEvent).toBeDefined();
+    const reviewPayload = p5EventData(reviewEvent!);
+    expect(reviewPayload['passed']).toBe(true);
+    expect(reviewPayload['constraintsSatisfied']).toBeUndefined();
+    expect(reviewPayload['constraintsTotal']).toBeUndefined();
+    expect(reviewPayload['unsatisfiedConstraintIds']).toBeUndefined();
+
+    h.controller.dispose();
+  });
+
+  test('C3: constraint-forced fail → fix → pass — full state sequence', async () => {
+    const h = createHarness({ maxFixAttempts: 3 });
+
+    const engRecord = h.addAgent('eng-c3', 'implement with one constraint');
+    const chain = h.controller.createChain(engRecord);
+
+    h.setOutput('eng-c3', makeEngineerOutput([
+      { id: 'c1', text: 'must be pure', source: 'prompt' },
+    ]));
+    emitAgentCompleted(h.bus, 'eng-c3');
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('reviewing');
+    const reviewer1 = h.spawnedRecords[0]!;
+
+    // Score 10 but c1 unsatisfied → constraint-forced fail
+    h.setOutput(reviewer1.id, makeReviewerOutput(10.0, [
+      { constraintId: 'c1', satisfied: false, evidence: 'has side effect' },
+    ]));
+    emitAgentCompleted(h.bus, reviewer1.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('fixing');
+    expect(chain.fixAttempts).toBe(1);
+
+    const fixerRecord = h.spawnedRecords[1]!;
+    h.setOutput(fixerRecord.id, makeEngineerOutput([
+      { id: 'c1', text: 'must be pure', source: 'prompt' },
+    ]));
+    emitAgentCompleted(h.bus, fixerRecord.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('reviewing');
+    const reviewer2 = h.spawnedRecords[2]!;
+
+    h.setOutput(reviewer2.id, makeReviewerOutput(10.0, [
+      { constraintId: 'c1', satisfied: true, evidence: 'pure function confirmed' },
+    ]));
+    emitAgentCompleted(h.bus, reviewer2.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('passed');
+
+    // Verify the full state sequence
+    const stateChanges = h.workflowEvents
+      .filter((e) => e.type === 'WORKFLOW_STATE_CHANGED')
+      .map((e) => p5EventData(e)['to'] as string);
+
+    expect(stateChanges).toContain('engineering');
+    expect(stateChanges).toContain('reviewing');
+    expect(stateChanges).toContain('fixing');
+    expect(stateChanges).toContain('awaiting_gates');
+    expect(stateChanges).toContain('passed');
+
+    const reviewingTransitions = stateChanges.filter((s) => s === 'reviewing');
+    expect(reviewingTransitions.length).toBeGreaterThanOrEqual(2);
+
+    h.controller.dispose();
+  });
+});
+
 describe('WrfcController — state machine', () => {
   test('createChain returns chain in engineering state with correct task', () => {
     const h = createHarness();
