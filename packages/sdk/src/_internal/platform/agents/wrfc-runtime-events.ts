@@ -1,4 +1,5 @@
 import type { RuntimeEventBus } from '../runtime/events/index.js';
+import type { Constraint } from './completion-report.js';
 import type { WrfcState } from './wrfc-types.js';
 import {
   emitOrchestrationGraphCreated,
@@ -10,6 +11,7 @@ import {
   emitWorkflowCascadeAborted,
   emitWorkflowChainCreated,
   emitWorkflowChainPassed,
+  emitWorkflowConstraintsEnumerated,
   emitWorkflowGateResult,
   emitWorkflowStateChanged,
 } from '../runtime/emitters/index.js';
@@ -67,6 +69,19 @@ export function emitWrfcCascadeAbort(
   reason: string,
 ): void {
   emitWorkflowCascadeAborted(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId, reason });
+}
+
+/**
+ * Thin wrapper for WORKFLOW_CONSTRAINTS_ENUMERATED.
+ * DO NOT CALL YET — declaration only for Phase 1. Emission is wired in Phase 2.
+ */
+export function emitWrfcConstraintsEnumerated(
+  runtimeBus: RuntimeEventBus,
+  sessionId: string,
+  chainId: string,
+  constraints: Constraint[],
+): void {
+  emitWorkflowConstraintsEnumerated(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId, constraints });
 }
 
 export function emitWrfcGraphCreated(

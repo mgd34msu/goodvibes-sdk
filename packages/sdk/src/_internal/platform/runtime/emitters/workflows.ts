@@ -3,6 +3,7 @@
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
+import type { Constraint } from '../../agents/completion-report.js';
 import type { WrfcState } from '../../agents/wrfc-types.js';
 import type { EmitterContext } from './index.js';
 
@@ -25,7 +26,14 @@ export function emitWorkflowStateChanged(
 export function emitWorkflowReviewCompleted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { chainId: string; score: number; passed: boolean }
+  data: {
+    chainId: string;
+    score: number;
+    passed: boolean;
+    constraintsSatisfied?: number;
+    constraintsTotal?: number;
+    unsatisfiedConstraintIds?: string[];
+  }
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_REVIEW_COMPLETED', { type: 'WORKFLOW_REVIEW_COMPLETED', ...data }, ctx));
 }
@@ -33,7 +41,7 @@ export function emitWorkflowReviewCompleted(
 export function emitWorkflowFixAttempted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { chainId: string; attempt: number; maxAttempts: number }
+  data: { chainId: string; attempt: number; maxAttempts: number; targetConstraintIds?: string[] }
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_FIX_ATTEMPTED', { type: 'WORKFLOW_FIX_ATTEMPTED', ...data }, ctx));
 }
@@ -76,4 +84,16 @@ export function emitWorkflowCascadeAborted(
   data: { chainId: string; reason: string }
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_CASCADE_ABORTED', { type: 'WORKFLOW_CASCADE_ABORTED', ...data }, ctx));
+}
+
+/**
+ * Emit WORKFLOW_CONSTRAINTS_ENUMERATED when an engineer agent has reported its constraints.
+ * DO NOT CALL YET — declaration only for Phase 1. Emission is wired in Phase 2.
+ */
+export function emitWorkflowConstraintsEnumerated(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { chainId: string; constraints: Constraint[] }
+): void {
+  bus.emit('workflows', createEventEnvelope('WORKFLOW_CONSTRAINTS_ENUMERATED', { type: 'WORKFLOW_CONSTRAINTS_ENUMERATED', ...data }, ctx));
 }
