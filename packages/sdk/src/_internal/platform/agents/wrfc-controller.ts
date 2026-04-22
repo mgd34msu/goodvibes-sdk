@@ -651,6 +651,7 @@ export class WrfcController {
       reviewCycles: 0,
       gateRetryDepth: 0,
       reviewScores: [],
+      constraints: [],
       createdAt: Date.now(),
     };
     this.chains.set(chain.id, chain);

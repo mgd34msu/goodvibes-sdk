@@ -13,6 +13,25 @@ export interface BaseCompletionReport {
   wrfcId?: string;
 }
 
+/**
+ * A single constraint extracted from the task prompt or inherited from a parent chain.
+ */
+export interface Constraint {
+  id: string;                        // e.g. "c1", "c2"
+  text: string;                      // quoted/near-quoted user phrasing
+  source: 'prompt' | 'inherited';    // 'prompt' = engineer enumerated from this prompt; 'inherited' = from parent chain / gate-retry
+}
+
+/**
+ * A reviewer's finding about whether a specific constraint was satisfied.
+ */
+export interface ConstraintFinding {
+  constraintId: string;
+  satisfied: boolean;
+  evidence: string;
+  severity?: 'critical' | 'major' | 'minor';  // only when !satisfied
+}
+
 /** Engineer agent completion report. */
 export interface EngineerReport extends BaseCompletionReport {
   archetype: 'engineer';
@@ -25,6 +44,8 @@ export interface EngineerReport extends BaseCompletionReport {
   decisions: Array<{ what: string; why: string }>;
   issues: string[];
   uncertainties: string[];
+  /** Constraints enumerated from the task prompt (or inherited from parent chain). Defaults to [] when absent. */
+  constraints?: Constraint[];
 }
 
 /** Reviewer agent completion report. */
@@ -45,6 +66,8 @@ export interface ReviewerReport extends BaseCompletionReport {
     line?: number;
     pointValue: number;
   }>;
+  /** Per-constraint satisfaction findings from the reviewer. Defaults to [] when absent. */
+  constraintFindings?: ConstraintFinding[];
 }
 
 /** Tester agent completion report. */
@@ -66,19 +89,35 @@ export interface GenericReport extends BaseCompletionReport {
 
 export type CompletionReport = EngineerReport | ReviewerReport | TesterReport | GenericReport;
 
-/**
- * Parse a completion report from raw LLM output.
- * Looks for a JSON block delimited by ```json\n{...}\n``` or a bare JSON object
- * with a "version": 1 field.
- * Returns null if no valid report found.
- */
+/** Returns true if a Constraint entry is well-formed. */
+function isWellFormedConstraint(c: unknown): c is Constraint {
+  if (typeof c !== 'object' || c === null) return false;
+  const obj = c as Record<string, unknown>;
+  return (
+    typeof obj['id'] === 'string' && obj['id'].length > 0 &&
+    typeof obj['text'] === 'string' && obj['text'].length > 0 &&
+    (obj['source'] === 'prompt' || obj['source'] === 'inherited')
+  );
+}
+
+/** Returns true if a ConstraintFinding entry is well-formed. */
+function isWellFormedConstraintFinding(f: unknown): f is ConstraintFinding {
+  if (typeof f !== 'object' || f === null) return false;
+  const obj = f as Record<string, unknown>;
+  return (
+    typeof obj['constraintId'] === 'string' && obj['constraintId'].length > 0 &&
+    typeof obj['satisfied'] === 'boolean' &&
+    typeof obj['evidence'] === 'string' && obj['evidence'].length > 0
+  );
+}
+
 export function parseCompletionReport(rawOutput: string): CompletionReport | null {
   // Strategy 1: Find ```json ... ``` block
   const jsonBlockMatch = rawOutput.match(/```json\s*\n(\{[\s\S]*?\})\s*\n```/);
   if (jsonBlockMatch) {
     try {
       const parsed = JSON.parse(jsonBlockMatch[1]);
-      if (parsed.version === 1 && parsed.archetype) return parsed as CompletionReport;
+      if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as CompletionReport;
     } catch { /* fall through */ }
   }
 
@@ -106,11 +145,28 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
         const candidate = rawOutput.slice(openBrace, closeBrace + 1);
         try {
           const parsed = JSON.parse(candidate);
-          if (parsed.version === 1 && parsed.archetype) return parsed as CompletionReport;
+          if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as CompletionReport;
         } catch { /* fall through */ }
       }
     }
   }
 
   return null;
+}
+
+/**
+ * Normalize constraint-related fields on a parsed report:
+ * - defaults `constraints` and `constraintFindings` to []
+ * - silently filters out malformed entries
+ */
+function applyConstraintDefaults(parsed: Record<string, unknown>): Record<string, unknown> {
+  if (parsed['archetype'] === 'engineer') {
+    const raw = parsed['constraints'];
+    parsed['constraints'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraint) : [];
+  }
+  if (parsed['archetype'] === 'reviewer') {
+    const raw = parsed['constraintFindings'];
+    parsed['constraintFindings'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraintFinding) : [];
+  }
+  return parsed;
 }

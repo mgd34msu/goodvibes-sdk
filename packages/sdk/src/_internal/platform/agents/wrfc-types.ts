@@ -1,4 +1,4 @@
-import type { CompletionReport, ReviewerReport } from './completion-report.js';
+import type { CompletionReport, Constraint, ReviewerReport } from './completion-report.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 
 /** Queued chain waiting to start. */
@@ -49,6 +49,8 @@ export interface WrfcChain {
   error?: string;
   /** Buffered agent completion — set when agent finishes while chain is still queued/pending. */
   bufferedCompletion?: { agentId: string; fullOutput?: string };
+  /** Constraints propagated for this chain. Initialized to [] on construction. */
+  constraints: Constraint[];
 }
 
 /** Quality gate definition. */
