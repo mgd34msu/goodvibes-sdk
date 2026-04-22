@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentMessageBus } from './message-bus.js';
-import { type CompletionReport, type ReviewerReport } from './completion-report.js';
+import { type CompletionReport, type Constraint, type ReviewerReport } from './completion-report.js';
 import {
   buildGateFailureTask,
   buildFixTask,
@@ -31,12 +31,16 @@ import {
   type AgentManagerLike,
 } from './wrfc-config.js';
 import {
+  buildEngineerConstraintAddendum,
+} from './wrfc-prompt-addenda.js';
+import {
   completeWrfcOrchestrationNode,
   createWrfcWorkflowContext,
   emitWrfcAutoCommitted,
   emitWrfcCascadeAbort,
   emitWrfcChainCreated,
   emitWrfcChainPassed,
+  emitWrfcConstraintsEnumerated,
   emitWrfcGraphCreated,
   emitWrfcStateChanged,
   failWrfcOrchestrationNode,
@@ -641,6 +645,11 @@ export class WrfcController {
   }
 
   private createBaseChain(engineerRecord: AgentRecord): WrfcChain {
+    // Inject the engineer constraint addendum before the runner reads the system prompt.
+    // createBaseChain is called synchronously inside manager.spawn() before
+    // executor.runAgent(record), so the field is visible to the runner.
+    engineerRecord.systemPromptAddendum = '\n\n---\n\n' + buildEngineerConstraintAddendum();
+
     const chain: WrfcChain = {
       id: this.generateWrfcId(),
       state: 'pending',
@@ -652,6 +661,7 @@ export class WrfcController {
       gateRetryDepth: 0,
       reviewScores: [],
       constraints: [],
+      constraintsEnumerated: false,
       createdAt: Date.now(),
     };
     this.chains.set(chain.id, chain);
@@ -706,6 +716,17 @@ export class WrfcController {
         task: chain.task,
       });
     }
+
+    // Capture constraints from the engineer report and emit the enumeration event.
+    // Only emit once per chain — the initial engineer completion, not fixer re-runs.
+    if (!chain.constraintsEnumerated) {
+      chain.constraints = report.archetype === 'engineer' ? (report.constraints ?? []) : [];
+      chain.constraintsEnumerated = true;
+      emitWrfcConstraintsEnumerated(this.runtimeBus, this.sessionId, chain.id, chain.constraints);
+    }
+    // On fixer re-runs (constraintsEnumerated === true), the fixer's returned constraints
+    // are intentionally ignored — the authoritative list is preserved on chain.constraints.
+
     this.startReview(chain, report);
   }
 

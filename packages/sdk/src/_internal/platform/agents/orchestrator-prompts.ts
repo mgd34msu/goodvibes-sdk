@@ -290,6 +290,11 @@ The report format depends on your role:
   // --- Layer 5: Task ---
   parts.push(`## Task\n${record.task}`);
 
+  // --- Layer 6: System prompt addendum (WRFC constraint injection) ---
+  if (record.systemPromptAddendum) {
+    parts.push(record.systemPromptAddendum);
+  }
+
   return parts.join('\n\n');
 }
 

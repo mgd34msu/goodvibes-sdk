@@ -99,6 +99,8 @@ export interface AgentRecord {
   executionProtocol: 'direct' | 'gather-plan-apply';
   reviewMode: 'none' | 'wrfc';
   communicationLane: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
+  /** Appended verbatim to the system prompt when the agent runs. Used by WRFC to inject constraint addenda. */
+  systemPromptAddendum?: string;
   knowledgeInjections?: Array<{
     id: string;
     cls: string;
@@ -266,6 +268,7 @@ export class AgentManager {
       },
       dangerously_disable_wrfc: input.dangerously_disable_wrfc,
       cohort: input.cohort,
+
       ...(input.orchestrationGraphId ?? input.cohort ? {
         orchestrationGraphId: input.orchestrationGraphId ?? parentRecord?.orchestrationGraphId ?? `cohort:${input.cohort}`,
         orchestrationNodeId: input.orchestrationNodeId ?? id,
