@@ -117,7 +117,7 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
   if (jsonBlockMatch) {
     try {
       const parsed = JSON.parse(jsonBlockMatch[1]);
-      if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as CompletionReport;
+      if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as unknown as CompletionReport;
     } catch { /* fall through */ }
   }
 
@@ -145,7 +145,7 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
         const candidate = rawOutput.slice(openBrace, closeBrace + 1);
         try {
           const parsed = JSON.parse(candidate);
-          if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as CompletionReport;
+          if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as unknown as CompletionReport;
         } catch { /* fall through */ }
       }
     }

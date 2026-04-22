@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentMessageBus } from './message-bus.js';
-import { type CompletionReport, type Constraint, type ReviewerReport } from './completion-report.js';
+import { type CompletionReport, type Constraint, type EngineerReport, type ReviewerReport } from './completion-report.js';
 import {
   buildGateFailureTask,
   buildFixTask,
@@ -789,14 +789,22 @@ export class WrfcController {
 
     // Capture constraints from the engineer report and emit the enumeration event.
     // Only emit once per chain — the initial engineer completion, not fixer re-runs.
+    //
+    // Note on narrowing: EngineerReport.archetype is the literal 'engineer', but
+    // GenericReport.archetype is a wide `string`. A bare `report.archetype === 'engineer'`
+    // check does NOT narrow away GenericReport under strict TS because 'engineer'
+    // is assignable to `string`. We use a type predicate to force the narrow.
+    const isEngineerReportShape = (r: CompletionReport): r is EngineerReport =>
+      r.archetype === 'engineer';
+
     if (!chain.constraintsEnumerated) {
-      chain.constraints = report.archetype === 'engineer' ? (report.constraints ?? []) : [];
+      chain.constraints = isEngineerReportShape(report) ? (report.constraints ?? []) : [];
       chain.constraintsEnumerated = true;
       emitWrfcConstraintsEnumerated(this.runtimeBus, this.sessionId, chain.id, chain.constraints);
     } else {
       // Fixer continuity validation: verify the fixer returned the same constraint id-set.
       // If it diverged, inject a synthetic critical issue for the next review pass.
-      const fixerConstraints = report.archetype === 'engineer' ? (report.constraints ?? []) : [];
+      const fixerConstraints: Constraint[] = isEngineerReportShape(report) ? (report.constraints ?? []) : [];
       const expectedIds = new Set(chain.constraints.map((c) => c.id));
       const actualIds = new Set(fixerConstraints.map((c) => c.id));
       const missing = [...expectedIds].filter((id) => !actualIds.has(id));
