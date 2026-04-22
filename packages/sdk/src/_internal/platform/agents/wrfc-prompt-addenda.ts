@@ -43,12 +43,36 @@ These constraints become your self-declared acceptance criteria. The reviewer wi
   return _engineerAddendumCache;
 }
 
+let _reviewerAddendumCache: string | null = null;
 /**
- * Addendum for reviewer spawns — not yet implemented.
- * Will be wired in Phase 3.
+ * Addendum appended to the reviewer system prompt in every WRFC chain.
+ *
+ * Instructs the reviewer to verify each enumerated constraint from the
+ * engineer's report independently of the 10-dimension rubric.
+ *
+ * Memoized — the string is static and built once per process.
  */
 export function buildReviewerConstraintAddendum(): string {
-  throw new Error('buildReviewerConstraintAddendum: not yet implemented — Phase 3');
+  if (_reviewerAddendumCache !== null) return _reviewerAddendumCache;
+  _reviewerAddendumCache = `## Constraint verification (runs alongside the 10-dimension rubric, NOT instead of it)
+
+The engineer's \`EngineerReport.constraints\` is the authoritative list of user-declared requirements for this task. In the review task payload you will receive this list explicitly — verify it against the applied changes.
+
+**For each constraint:**
+1. Judge whether the applied changes satisfy it (\`satisfied: true\` / \`false\`).
+2. Cite concrete evidence — a file and line, a diff observation, or a test behavior. "Looks fine" is not evidence.
+3. Emit a \`constraintFindings[]\` entry referencing \`constraintId\`.
+
+**Severity rules for unsatisfied constraints**:
+- A violated hard limit (size, perf target, explicitly forbidden API) → **critical**.
+- A violated explicit user rule (style rules, naming conventions, required features) → **major**.
+- An ambiguous or partially-satisfied constraint → **minor** with evidence explaining the partial satisfaction.
+- If the constraint phrasing is ambiguous enough that verification is impossible, emit \`satisfied: false, severity: 'minor', evidence: 'constraint ambiguous, cannot verify'\` — surfaces the issue without failing the chain on a technicality.
+
+**If the constraint list is empty** (non-build prompt → engineer emitted \`[]\`), emit \`constraintFindings: []\` and skip this section entirely. Do NOT invent findings. Do NOT penalize the score for "missing constraints".
+
+**Constraint findings are INDEPENDENT of the rubric dimensions.** A run can score 10/10 on the rubric and still fail because a constraint is unsatisfied. Conversely, all constraints can be satisfied while the rubric flags quality issues elsewhere.`;
+  return _reviewerAddendumCache;
 }
 
 /**

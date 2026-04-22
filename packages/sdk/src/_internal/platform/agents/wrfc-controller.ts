@@ -243,7 +243,7 @@ export class WrfcController {
     const reviewerRecord = this.spawnWrfcAgent(
       chain,
       'reviewer',
-      buildReviewTask(chain.id, report, getWrfcScoreThreshold(this.configManager)),
+      buildReviewTask(chain.id, report, getWrfcScoreThreshold(this.configManager), chain.constraints),
       true,
     );
 
@@ -273,12 +273,27 @@ export class WrfcController {
 
   private async processReview(chain: WrfcChain, review: ReviewerReport): Promise<void> {
     const threshold = getWrfcScoreThreshold(this.configManager);
-    this.completeCurrentNode(chain, `Score ${review.score}/10${review.passed ? ' passed' : ' needs fixes'}`);
+
+    const allFindings = review.constraintFindings ?? [];
+    const unsatisfied = allFindings.filter((f) => !f.satisfied);
+    const constraintsSatisfied = allFindings.filter((f) => f.satisfied).length;
+    const constraintsTotal = allFindings.length;
+    const constraintFailure = unsatisfied.length > 0;
+    const passed = review.score >= threshold && !constraintFailure;
+
+    this.completeCurrentNode(chain, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
     emitWorkflowReviewCompleted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
       chainId: chain.id,
       score: review.score,
-      passed: review.passed,
+      passed,
+      ...(chain.constraints.length > 0
+        ? {
+            constraintsSatisfied,
+            constraintsTotal,
+            unsatisfiedConstraintIds: unsatisfied.map((f) => f.constraintId),
+          }
+        : {}),
     });
 
     this.workmap.append({
@@ -300,10 +315,12 @@ export class WrfcController {
       score: review.score,
       threshold,
       fixAttempts: chain.fixAttempts,
+      constraintFailure,
+      unsatisfiedCount: unsatisfied.length,
     });
 
     chain.reviewScores.push(review.score);
-    if (review.score >= threshold) {
+    if (passed) {
       this.transition(chain, 'awaiting_gates');
       await this.checkAndRunGatesForAll();
       return;
