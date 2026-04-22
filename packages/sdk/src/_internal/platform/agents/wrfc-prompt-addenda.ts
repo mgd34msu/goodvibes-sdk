@@ -75,10 +75,30 @@ The engineer's \`EngineerReport.constraints\` is the authoritative list of user-
   return _reviewerAddendumCache;
 }
 
+let _fixerAddendumCache: string | null = null;
 /**
- * Addendum for fixer spawns — not yet implemented.
- * Will be wired in Phase 4.
+ * Addendum appended to fixer spawns in WRFC chains with non-empty constraints.
+ *
+ * Instructs the fixer to preserve every satisfied constraint and satisfy any
+ * unsatisfied ones, while avoiding silent regressions. Also mandates that the
+ * returned EngineerReport carries the exact same constraints[] list.
+ *
+ * Memoized — the string is static and built once per process.
  */
 export function buildFixerConstraintAddendum(): string {
-  throw new Error('buildFixerConstraintAddendum: not yet implemented — Phase 4');
+  if (_fixerAddendumCache !== null) return _fixerAddendumCache;
+  _fixerAddendumCache = `## Constraint preservation during fix
+
+The chain's authoritative constraint list is fixed — the engineer declared it on the first turn and it does not change across fix iterations. Every constraint that was declared is still binding on your fix.
+
+**Your job is to resolve the reviewer's issues WITHOUT regressing any satisfied constraint, and to satisfy any constraints the reviewer marked unsatisfied.**
+
+**Before APPLY, for each constraint in the list:**
+- If the reviewer marked it \`satisfied: true\`, your fix must keep it satisfied. Do not change code in ways that break it.
+- If the reviewer marked it \`satisfied: false\`, your fix must satisfy it AND resolve whichever rubric issues the reviewer flagged.
+- If the reviewer marked it \`UNVERIFIED\` (no finding was recorded), treat it as a constraint you must verify and satisfy before returning.
+- If a reviewer issue can only be resolved by violating a constraint, STOP. Record the conflict under \`issues[]\` with both the \`constraintId\` and the reviewer issue id/description. Do NOT silently regress the constraint.
+
+**Return protocol:** Your output must be an \`EngineerReport\` carrying the exact same \`constraints[]\` array you received — same ids, same text, same order. The controller will verify continuity. Renaming, dropping, reordering, or adding constraints will be treated as a regression and surface as a synthetic critical issue in the next review cycle.`;
+  return _fixerAddendumCache;
 }

@@ -57,6 +57,12 @@ export interface WrfcChain {
    * Prevents duplicate emission on fixer re-runs.
    */
   constraintsEnumerated: boolean;
+  /**
+   * Synthetic critical issues injected by the controller (e.g. fixer constraint-continuity
+   * violations). Prepended to the next review task body, then cleared so they fire once per cycle.
+   * Internal only — not surfaced on events.
+   */
+  syntheticIssues?: Array<{ severity: 'critical'; description: string }>;
 }
 
 /** Quality gate definition. */
