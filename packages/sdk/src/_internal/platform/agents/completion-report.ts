@@ -158,15 +158,19 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
  * Normalize constraint-related fields on a parsed report:
  * - defaults `constraints` and `constraintFindings` to []
  * - silently filters out malformed entries
+ *
+ * Pure: returns a new object rather than mutating the input, so callers can
+ * share references without surprise writes.
  */
 function applyConstraintDefaults(parsed: Record<string, unknown>): Record<string, unknown> {
-  if (parsed['archetype'] === 'engineer') {
-    const raw = parsed['constraints'];
-    parsed['constraints'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraint) : [];
+  const next: Record<string, unknown> = { ...parsed };
+  if (next['archetype'] === 'engineer') {
+    const raw = next['constraints'];
+    next['constraints'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraint) : [];
   }
-  if (parsed['archetype'] === 'reviewer') {
-    const raw = parsed['constraintFindings'];
-    parsed['constraintFindings'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraintFinding) : [];
+  if (next['archetype'] === 'reviewer') {
+    const raw = next['constraintFindings'];
+    next['constraintFindings'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraintFinding) : [];
   }
-  return parsed;
+  return next;
 }
