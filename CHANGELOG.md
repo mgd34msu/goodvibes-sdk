@@ -8,6 +8,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.23.0] - 2026-04-21
+
+### Added
+- **WRFC constraint propagation.** Work-Review-Fix-Commit chains now extract user-declared constraints from the task prompt, ride them through every state transition, and enforce them as independent pass/fail criteria. New `Constraint`/`ConstraintFinding` types, `WrfcChain.constraints`, `WrfcChain.constraintsEnumerated`, and `WrfcChain.syntheticIssues` fields. New `WORKFLOW_CONSTRAINTS_ENUMERATED` runtime event, emitted exactly once per chain on engineer completion. Additive optional fields on `WORKFLOW_REVIEW_COMPLETED` (`constraintsSatisfied`, `constraintsTotal`, `unsatisfiedConstraintIds`) and `WORKFLOW_FIX_ATTEMPTED` (`targetConstraintIds`). Pre-0.23 consumers compile unchanged — every new field is optional or defaulted.
+- **Engineer archetype addendum** (`buildEngineerConstraintAddendum`, memoized). Appends to the engineer's system prompt on initial WRFC spawn only — fixer re-spawns do not re-enumerate. Owns the build-vs-non-build discernment with four calibration examples (`"Write a function that adds two numbers"` → `[]`, `"...must be pure, no external deps, under 20 lines"` → three constraints, etc.), explicit guards against fabricating constraints or splitting single requirements, and a `~16` hard cap. Non-build prompts emit `constraints: []` and skip the whole downstream constraint path as a clean no-op.
+- **Reviewer archetype addendum** (`buildReviewerConstraintAddendum`, memoized). Runs alongside the existing 10-dimension rubric, not instead of it. Per-constraint `{satisfied, evidence, severity}` findings with explicit severity taxonomy (critical = hard limit, major = explicit rule, minor = ambiguous/partial). Ambiguous constraints surface via `satisfied: false, severity: 'minor', evidence: 'constraint ambiguous, cannot verify'` rather than failing the chain on a technicality.
+- **Fixer archetype addendum** (`buildFixerConstraintAddendum`, memoized). Fix-task payload lists every constraint with per-id `SATISFIED` / `UNSATISFIED` / `UNVERIFIED` markers resolved from the reviewer's findings. Fixer must return the same `constraints[]` ids, text, and order; the controller validates continuity and surfaces any missing/extra ids as a synthetic critical issue in the next review cycle. If a reviewer issue can only be resolved by regressing a constraint, the fixer is instructed to STOP and record the conflict under `issues[]`.
+- **Hard-fail enforcement in `processReview`.** New decision expression `passed = review.score >= threshold && !constraintFailure`. Any unsatisfied constraint forces chain fail regardless of score. Score-below-threshold still fails as before — constraint satisfaction never overrides score.
+- **Gate-failure retry inheritance.** Retry chains created after a quality-gate failure inherit the parent chain's constraints as `source: 'inherited'` and start with `constraintsEnumerated: true`, so the child engineer does not re-enumerate from scratch. Works for both the immediate (`followUpChain`) and pending (`pendingParentConstraints` map) retry paths.
+- **55 new tests** across `wrfc-constraint-propagation.test.ts`, `wrfc-prompt-addenda.test.ts`, `completion-report-constraints.test.ts`, plus C1/C2/C3 scenarios in `wrfc-controller.test.ts`. Coverage includes engineer→review→fix propagation, continuity-clean/missing/extra, synthetic-issue consumption, empty-list no-op (reviewer and fixer paths are byte-identical to pre-0.23 when `chain.constraints === []`), gate-retry inheritance immediate + pending + zero-constraint, score-vs-constraint conflict matrix, and `WORKFLOW_REVIEW_COMPLETED` payload shape.
+- **Opt-in golden-prompt suite** (`wrfc-constraint-golden.test.ts`, gated by `WRFC_GOLDEN_LLM=1`) with 6 hand-authored fixtures for calibrating the engineer addendum's discernment against live LLMs. Skipped by default — CI-safe.
+
+### Parser
+- `applyConstraintDefaults` normalizer on `parseCompletionReport` silently filters malformed constraint entries (missing id, empty text, invalid source enum, non-boolean `satisfied`) rather than rejecting the whole report. Returns a new object; the caller's passed-in parsed data is not mutated.
+
+### Internal
+- `AgentRecord.systemPromptAddendum?: string` field (internal only — `AgentInput` schema deliberately not widened; WRFC injection uses direct record mutation in `createBaseChain`).
+- `buildOrchestratorSystemPrompt` appends `AgentRecord.systemPromptAddendum` as a final additive layer when present. Non-WRFC spawns are unaffected.
+- `CONSTRAINTS_TASK_LIMIT` constant (20) shared between review and fix task builders.
+
+### Compatibility
+- No breaking changes. Every schema addition is optional or defaulted; parser tolerates absence and malformed entries. Consumers (TUI 0.19.22 verified) recompile unchanged.
+
+---
+
 ## [0.22.0] - 2026-04-21
 
 Documentation, tooling, and test-suite maintenance release. Accumulated improvements from an audit pass across the SDK. No breaking changes to the public API surface; all changes are additive or editorial. Per the pre-1.0 policy, this bumps minor to signal the scale of the doc + pipeline updates, not an API break.
