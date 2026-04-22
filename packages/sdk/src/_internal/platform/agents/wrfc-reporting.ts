@@ -1,5 +1,6 @@
-import type { CompletionReport, EngineerReport, ReviewerReport } from './completion-report.js';
+import type { CompletionReport, Constraint, EngineerReport, ReviewerReport } from './completion-report.js';
 import { parseCompletionReport } from './completion-report.js';
+import { buildReviewerConstraintAddendum } from './wrfc-prompt-addenda.js';
 import type { QualityGateResult } from './wrfc-types.js';
 import { logger } from '../utils/logger.js';
 
@@ -108,13 +109,16 @@ export function parseReviewerCompletionReport(
   };
 }
 
+const CONSTRAINTS_TASK_LIMIT = 20;
+
 export function buildReviewTask(
   chainId: string,
   report: CompletionReport,
   threshold: number,
+  constraints: Constraint[] = [],
 ): string {
   const lines = buildReviewBrief(report);
-  return [
+  const base = [
     `WRFC Review Request`,
     `Chain ID: ${chainId}`,
     ``,
@@ -136,7 +140,28 @@ export function buildReviewTask(
     `- passed: <boolean>`,
     `- dimensions: array of { name, score, maxScore, issues[] }`,
     `- issues: array of { severity, description, file?, line?, pointValue }`,
+  ];
+
+  if (constraints.length === 0) {
+    return base.join('\n');
+  }
+
+  const visible = constraints.slice(0, CONSTRAINTS_TASK_LIMIT);
+  const overflow = constraints.length - visible.length;
+  const constraintLines = visible.map((c) => `- ${c.id}: ${c.text}`);
+  if (overflow > 0) {
+    constraintLines.push(`(+${overflow} more)`);
+  }
+
+  const constraintSection = [
+    `## Constraints to verify`,
+    ``,
+    `The engineer enumerated the following user-declared constraints from the task prompt. Verify each one in your review. Unsatisfied constraints are independent of the quality rubric and will force chain failure regardless of score.`,
+    ``,
+    ...constraintLines,
   ].join('\n');
+
+  return base.join('\n') + '\n\n---\n\n' + constraintSection + '\n\n---\n\n' + buildReviewerConstraintAddendum();
 }
 
 function truncateReviewText(text: string, max = REVIEW_BRIEF_TEXT_LIMIT): string {
