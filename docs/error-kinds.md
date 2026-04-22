@@ -120,6 +120,20 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ---
 
+## WRFC synthetic critical issues
+
+WRFC chains can produce **synthetic critical issues** when the fixer violates constraint continuity (returning a `constraints[]` array with missing or extra IDs compared to the initial engineer enumeration). These are not `GoodVibesSdkError` instances — they are injected directly into the next review cycle's task payload as `[CRITICAL]` block entries and consumed once.
+
+Synthetic critical issues surface under the reviewer's `issues[]` array with `severity: 'critical'` and a description like:
+
+```
+Fixer regressed constraint continuity: missing=[c2] extra=[c3]
+```
+
+They do not propagate as thrown errors and are not reachable via the error handler or `SDKObserver.onError`. To observe them, subscribe to reviewer `issues` in the `WORKFLOW_REVIEW_COMPLETED` event payload or read the reviewer's `ReviewerReport` from the chain.
+
+---
+
 ## Typed error codes
 
 As of 0.21.33 (QA-14), concrete `AppError` subclasses declare a **literal `code`** via `declare readonly code: '<LITERAL>'`. This lets TypeScript narrow on `err.code` exhaustively — each subclass advertises exactly one code.

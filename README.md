@@ -129,6 +129,10 @@ For the full walkthrough — login flows, token persistence, realtime transports
 
 > **Note on `/contracts/node`:** this entry exports filesystem path helpers for locating the JSON contract artifacts on disk. It is a build/tooling convenience, not a runtime surface. It does not indicate Node.js runtime support.
 
+## Agentic Workflows
+
+- **WRFC (Work-Review-Fix-Commit)** — Chains that run an engineer agent, review its output against a 10-dimension rubric, optionally fix, and gate on quality before committing. As of 0.23.0, WRFC chains also extract and enforce user-declared constraints from the task prompt as independent pass/fail criteria. See [WRFC Constraint Propagation](./docs/wrfc-constraint-propagation.md).
+
 ## Contract Reference
 
 - [Operator API reference](./docs/reference-operator.md) — every method, scope, schema, and event exposed by the operator contract.
