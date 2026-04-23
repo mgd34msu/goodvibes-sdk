@@ -299,7 +299,7 @@ Secrets are stored across four candidate stores: project-secure, project-plainte
 | `bitwarden` / `vaultwarden` | Bitwarden CLI (`bw`) |
 | `bitwarden-secrets-manager` / `bws` | Bitwarden Secrets Manager CLI |
 
-References are expressed as `secret://source/...` URIs or `secretref:` JSON objects. `resolveSecretRef()` dispatches to the appropriate resolver at runtime.
+References are expressed as `goodvibes://secrets/source/...` URIs or `secretref:` JSON objects. `resolveSecretRef()` dispatches to the appropriate resolver at runtime.
 
 ### Service Registry
 

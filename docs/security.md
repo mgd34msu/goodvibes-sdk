@@ -229,11 +229,13 @@ Instead of storing secret values directly in config files, use secret references
 
 **URI syntax:**
 ```
-secret://env/OPENAI_API_KEY
-secret://file/~/.credentials/key.json?selector=openai.api_key
-secret://exec/op?item=openai&field=api_key
-secret://1password?vault=Development&item=OpenAI&field=api_key
-secret://bitwarden?item=openai-prod&field=password
+goodvibes://secrets/env/OPENAI_API_KEY
+goodvibes://secrets/goodvibes/OPENAI_API_KEY
+goodvibes://secrets/file/~/.credentials/key.json?selector=openai.api_key
+goodvibes://secrets/exec/op?arg=read&arg=op%3A%2F%2FDevelopment%2FOpenAI%2Fapi_key
+goodvibes://secrets/1password?vault=Development&item=OpenAI&field=api_key
+goodvibes://secrets/bitwarden?item=openai-prod&field=password
+goodvibes://secrets/bws/<secret-id>?field=value
 ```
 
 **JSON object syntax:**
@@ -259,7 +261,7 @@ Supported sources:
 - Prefer `1password` or `bitwarden-secrets-manager` for production deployments
 - Use `env` refs for CI/CD pipelines
 - Use `exec` refs sparingly and validate the command does not echo secrets to stderr
-- Never commit `secret://goodvibes/...` refs that point to keys only present in a plaintext local store
+- Never commit `goodvibes://secrets/goodvibes/...` refs that point to keys only present in a plaintext local store
 
 ---
 

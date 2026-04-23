@@ -8,6 +8,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.24.0] - 2026-04-23
+
+### Breaking
+- SecretRef URI syntax is now GoodVibes-owned: `goodvibes://secrets/<source>/...`. The previous generic `secret://...` wrapper is no longer accepted. This is intentional pre-1.0 behavior so the SDK does not reserve or imply ownership of a generic URI scheme.
+
+### Added
+- `goodvibes://secrets/...` parsing for all existing SecretRef sources: `env`, `goodvibes`, `file`, `exec`, `1password` / `onepassword` / `op`, `bitwarden`, `vaultwarden`, `bitwarden-secrets-manager`, and `bws`.
+- Focused SecretRef tests covering the new URI forms, local GoodVibes secret resolution, env resolution, Bitwarden/Vaultwarden/BWS provider metadata, and explicit rejection of `secret://`.
+
+### Fixed
+- SecretRef documentation now shows the canonical `goodvibes://secrets/...` namespace and removes the old `secret://` examples.
+
+### Migration
+- Replace `secret://env/OPENAI_API_KEY` with `goodvibes://secrets/env/OPENAI_API_KEY`.
+- Replace `secret://goodvibes/OPENAI_API_KEY` with `goodvibes://secrets/goodvibes/OPENAI_API_KEY`.
+- Replace `secret://file/~/.credentials/key.json?selector=openai.api_key` with `goodvibes://secrets/file/~/.credentials/key.json?selector=openai.api_key`.
+- Replace `secret://1password?vault=Development&item=OpenAI&field=api_key` with `goodvibes://secrets/1password?vault=Development&item=OpenAI&field=api_key`.
+- Replace `secret://bitwarden?item=openai-prod&field=password` with `goodvibes://secrets/bitwarden?item=openai-prod&field=password`.
+
+---
+
 ## [0.23.2] - 2026-04-22
 
 ### Documentation

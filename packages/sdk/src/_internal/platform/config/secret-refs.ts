@@ -140,7 +140,9 @@ export const BUILTIN_SECRET_PROVIDER_SOURCES: readonly SecretProviderSource[] = 
 ];
 
 const JSON_REF_PREFIX = 'secretref:';
-const SECRET_URI_PREFIX = 'secret://';
+const GOODVIBES_URI_PREFIX = 'goodvibes://';
+const GOODVIBES_URI_PROTOCOL = 'goodvibes:';
+const GOODVIBES_SECRETS_HOST = 'secrets';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -158,6 +160,29 @@ function readBoolean(value: unknown): boolean | undefined {
 
 function readNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readSearchString(params: URLSearchParams, ...keys: readonly string[]): string | undefined {
+  for (const key of keys) {
+    const value = params.get(key);
+    if (value && value.length > 0) return value;
+  }
+  return undefined;
+}
+
+function readSearchBoolean(params: URLSearchParams, key: string): boolean | undefined {
+  const value = params.get(key);
+  if (value === null) return undefined;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return undefined;
+}
+
+function readSearchNumber(params: URLSearchParams, key: string): number | undefined {
+  const value = params.get(key);
+  if (value === null) return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
 }
 
 function readStringArray(value: unknown): readonly string[] | undefined {
@@ -213,12 +238,121 @@ function parseJsonRef(value: string): SecretRef | null {
   }
 }
 
+function parseGoodVibesSecretsUri(url: URL): SecretRef | null {
+  if (url.protocol !== GOODVIBES_URI_PROTOCOL || url.hostname !== GOODVIBES_SECRETS_HOST) return null;
+
+  let rawSegments: string[];
+  let segments: string[];
+  try {
+    rawSegments = url.pathname.split('/').filter(Boolean);
+    segments = rawSegments.map((segment) => decodeURIComponent(segment));
+  } catch {
+    return null;
+  }
+
+  const source = normalizeSource(segments[0] ?? '');
+  if (!source) return null;
+
+  const rest = segments.slice(1);
+  const params = url.searchParams;
+
+  if (source === 'env') {
+    const id = rest[0] ?? readSearchString(params, 'id', 'key', 'name');
+    return id ? { source: 'env', id } : null;
+  }
+
+  if (source === 'goodvibes') {
+    const id = rest[0] ?? readSearchString(params, 'id', 'key', 'name');
+    return id ? { source: 'goodvibes', id } : null;
+  }
+
+  if (source === 'file') {
+    let path = readSearchString(params, 'path');
+    if (!path && rawSegments.length > 1) {
+      try {
+        path = decodeURIComponent(rawSegments.slice(1).join('/'));
+      } catch {
+        return null;
+      }
+    }
+    return path ? { source: 'file', path, selector: readSearchString(params, 'selector', 'jsonPointer', 'field') } : null;
+  }
+
+  if (source === 'exec') {
+    const command = rest[0] ?? readSearchString(params, 'command', 'cmd');
+    if (!command) return null;
+    const args = [...rest.slice(1), ...params.getAll('arg').filter((entry) => entry.length > 0)];
+    return {
+      source: 'exec',
+      command,
+      args: args.length > 0 ? args : undefined,
+      stdin: readSearchString(params, 'stdin'),
+      timeoutMs: readSearchNumber(params, 'timeoutMs'),
+    };
+  }
+
+  if (source === '1password' || source === 'onepassword') {
+    const ref = readSearchString(params, 'ref', 'uri');
+    const vault = readSearchString(params, 'vault') ?? rest[0];
+    const item = readSearchString(params, 'item', 'id') ?? rest[1];
+    const field = readSearchString(params, 'field') ?? rest[2];
+    if (!ref && (!vault || !item || !field)) return null;
+    return {
+      source,
+      ref,
+      vault,
+      item,
+      field,
+      account: readSearchString(params, 'account'),
+      cli: readSearchString(params, 'cli'),
+      timeoutMs: readSearchNumber(params, 'timeoutMs'),
+    };
+  }
+
+  if (source === 'bitwarden' || source === 'vaultwarden') {
+    const item = rest[0] ?? readSearchString(params, 'item', 'id', 'name');
+    if (!item) return null;
+    return {
+      source,
+      item,
+      field: rest[1] ?? readSearchString(params, 'field') ?? 'password',
+      customField: readSearchString(params, 'customField'),
+      cli: readSearchString(params, 'cli'),
+      appDataDir: readSearchString(params, 'appDataDir'),
+      sessionEnv: readSearchString(params, 'sessionEnv'),
+      server: readSearchString(params, 'server', 'serverUrl'),
+      serverEnv: readSearchString(params, 'serverEnv'),
+      validateServer: readSearchBoolean(params, 'validateServer'),
+      syncBeforeRead: readSearchBoolean(params, 'syncBeforeRead'),
+      timeoutMs: readSearchNumber(params, 'timeoutMs'),
+    };
+  }
+
+  if (source === 'bitwarden-secrets-manager' || source === 'bws') {
+    const id = rest[0] ?? readSearchString(params, 'id', 'secretId', 'secret');
+    if (!id) return null;
+    return {
+      source,
+      id,
+      field: rest[1] ?? readSearchString(params, 'field') ?? 'value',
+      cli: readSearchString(params, 'cli'),
+      accessTokenEnv: readSearchString(params, 'accessTokenEnv'),
+      profile: readSearchString(params, 'profile'),
+      configFile: readSearchString(params, 'configFile'),
+      serverUrl: readSearchString(params, 'serverUrl'),
+      timeoutMs: readSearchNumber(params, 'timeoutMs'),
+    };
+  }
+
+  return null;
+}
+
 function parseProviderUri(value: string): SecretRef | null {
   if (value.startsWith('op://')) {
     return { source: '1password', ref: value };
   }
 
-  if (!value.startsWith(SECRET_URI_PREFIX) && !value.startsWith('bw://') && !value.startsWith('vaultwarden://') && !value.startsWith('bws://')) {
+  if (!value.startsWith(GOODVIBES_URI_PREFIX) && !value.startsWith('bw://') && !value.startsWith('vaultwarden://') && !value.startsWith('bws://')) {
     return null;
   }
 
@@ -228,6 +362,11 @@ function parseProviderUri(value: string): SecretRef | null {
   } catch {
     return null;
   }
+
+  if (url.protocol === GOODVIBES_URI_PROTOCOL) {
+    return parseGoodVibesSecretsUri(url);
+  }
+
   const host = decodeURIComponent(url.hostname);
   const segments = url.pathname.split('/').filter(Boolean).map((segment) => decodeURIComponent(segment));
 
