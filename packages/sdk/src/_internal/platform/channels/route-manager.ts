@@ -6,6 +6,7 @@ import type { RouteSurfaceKind } from '../runtime/events/routes.js';
 import {
   emitRouteBindingCreated,
   emitRouteBindingFailed,
+  emitRouteBindingRemoved,
   emitRouteBindingResolved,
   emitRouteBindingUpdated,
   emitRouteReplyTargetCaptured,
@@ -13,6 +14,7 @@ import {
 import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { AutomationSurfaceKind } from '../automation/types.js';
 import { AutomationRouteStore } from '../automation/store/routes.js';
+import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 
 export interface UpsertRouteBindingInput {
   readonly id?: string;
@@ -44,6 +46,8 @@ export interface PatchRouteBindingInput {
   readonly title?: string;
   readonly metadata?: Record<string, unknown>;
 }
+
+type RouteBindingFeatureFlags = Pick<FeatureFlagManager, 'isEnabled'>;
 
 function toEventSurfaceKind(surfaceKind: AutomationSurfaceKind): RouteSurfaceKind {
   switch (surfaceKind) {
@@ -92,16 +96,28 @@ export class RouteBindingManager {
   private readonly bindings = new Map<string, AutomationRouteBinding>();
   private runtimeDispatch: DomainDispatch | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
+  private readonly featureFlags: RouteBindingFeatureFlags | null;
   private loaded = false;
 
   constructor(config: {
     readonly store?: AutomationRouteStore;
     readonly runtimeStore?: RuntimeStore;
     readonly runtimeBus?: RuntimeEventBus;
+    readonly featureFlags?: RouteBindingFeatureFlags | null;
   } = {}) {
     this.store = config.store ?? new AutomationRouteStore();
     if (config.runtimeStore) this.runtimeDispatch = createDomainDispatch(config.runtimeStore);
     this.runtimeBus = config.runtimeBus ?? null;
+    this.featureFlags = config.featureFlags ?? null;
+  }
+
+  private isEnabled(): boolean {
+    return this.featureFlags?.isEnabled('route-binding') ?? true;
+  }
+
+  private requireEnabled(operation: string): void {
+    if (this.isEnabled()) return;
+    throw new Error(`route-binding feature flag is disabled; cannot ${operation}`);
   }
 
   attachRuntime(config: {
@@ -120,6 +136,7 @@ export class RouteBindingManager {
   }
 
   async start(): Promise<void> {
+    if (!this.isEnabled()) return;
     if (this.loaded) return;
     const snapshot = await this.store.load();
     this.bindings.clear();
@@ -131,14 +148,17 @@ export class RouteBindingManager {
   }
 
   listBindings(): AutomationRouteBinding[] {
+    if (!this.isEnabled()) return [];
     return sortBindings(this.bindings.values());
   }
 
   getBinding(bindingId: string): AutomationRouteBinding | undefined {
+    if (!this.isEnabled()) return undefined;
     return this.bindings.get(bindingId);
   }
 
   resolve(surfaceKind: AutomationSurfaceKind, externalId: string, threadId?: string): AutomationRouteBinding | undefined {
+    if (!this.isEnabled()) return undefined;
     const binding = this.listBindings().find((entry) => {
       if (entry.surfaceKind !== surfaceKind) return false;
       if (entry.externalId !== externalId) return false;
@@ -168,6 +188,7 @@ export class RouteBindingManager {
   }
 
   async upsertBinding(input: UpsertRouteBindingInput): Promise<AutomationRouteBinding> {
+    this.requireEnabled('upsert route bindings');
     await this.start();
     const now = Date.now();
     const previous = input.id
@@ -232,6 +253,7 @@ export class RouteBindingManager {
   }
 
   async captureReplyTarget(bindingId: string, replyTargetId: string, threadId?: string): Promise<AutomationRouteBinding | null> {
+    this.requireEnabled('capture route reply targets');
     await this.start();
     const binding = this.bindings.get(bindingId);
     if (!binding) return null;
@@ -266,6 +288,7 @@ export class RouteBindingManager {
   }
 
   async patchBinding(bindingId: string, patch: PatchRouteBindingInput): Promise<AutomationRouteBinding | null> {
+    this.requireEnabled('patch route bindings');
     await this.start();
     const binding = this.bindings.get(bindingId);
     if (!binding) return null;
@@ -315,14 +338,29 @@ export class RouteBindingManager {
   }
 
   async removeBinding(bindingId: string): Promise<boolean> {
+    this.requireEnabled('remove route bindings');
     await this.start();
-    const removed = this.bindings.delete(bindingId);
-    if (!removed) return false;
+    const binding = this.bindings.get(bindingId);
+    if (!binding) return false;
+    this.bindings.delete(bindingId);
     await this.store.save(sortBindings(this.bindings.values()));
+    const eventSurfaceKind = toEventSurfaceKind(binding.surfaceKind);
+    if (this.runtimeBus) {
+      emitRouteBindingRemoved(this.runtimeBus, {
+        sessionId: binding.sessionId ?? 'routes',
+        source: 'route-binding-manager',
+        traceId: binding.id,
+      }, {
+        bindingId: binding.id,
+        surfaceKind: eventSurfaceKind,
+        externalId: binding.externalId,
+      });
+    }
     return true;
   }
 
   recordFailure(surfaceKind: AutomationSurfaceKind, externalId: string, error: string): void {
+    if (!this.isEnabled()) return;
     this.runtimeDispatch?.recordRouteBindingFailure(surfaceKind, externalId, 'routes.failure');
     const eventSurfaceKind = toEventSurfaceKind(surfaceKind);
     if (this.runtimeBus) {

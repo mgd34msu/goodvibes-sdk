@@ -42,5 +42,9 @@ const DEFAULTS: ExecutorConfig = {
  * @returns A fully configured PhasedToolExecutor instance.
  */
 export function createPhasedExecutor(config?: Partial<ExecutorConfig>): PhasedToolExecutor {
-  return new PhasedToolExecutor({ ...DEFAULTS, ...config });
+  const enableBudgetEnforcement =
+    config?.enableBudgetEnforcement
+    ?? config?.featureFlags?.isEnabled('runtime-tools-budget-enforcement')
+    ?? false;
+  return new PhasedToolExecutor({ ...DEFAULTS, ...config, enableBudgetEnforcement });
 }

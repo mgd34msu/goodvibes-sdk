@@ -52,6 +52,7 @@ export { DEFAULT_RECONNECT_CONFIG } from './types.js';
 
 import { McpLifecycleManager } from './manager.js';
 import type { McpLifecycleManagerOptions } from './manager.js';
+import type { FeatureFlagManager } from '../feature-flags/index.js';
 
 /**
  * Factory function for creating a `McpLifecycleManager`.
@@ -63,6 +64,10 @@ import type { McpLifecycleManagerOptions } from './manager.js';
  */
 export function createMcpLifecycleManager(
   options?: McpLifecycleManagerOptions,
+  flagManager?: Pick<FeatureFlagManager, 'isEnabled'> | null,
 ): McpLifecycleManager {
+  if (flagManager && !flagManager.isEnabled('mcp-lifecycle')) {
+    throw new Error('Feature flag "mcp-lifecycle" is not enabled');
+  }
   return new McpLifecycleManager(options);
 }

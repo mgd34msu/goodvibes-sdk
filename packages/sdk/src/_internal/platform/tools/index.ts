@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { ToolRegistry } from './registry.js';
+import type { Tool } from '../types/tools.js';
 import { FileStateCache } from '../state/file-cache.js';
 import { ProjectIndex } from '../state/project-index.js';
 import { ModeManager } from '../state/mode-manager.js';
@@ -46,6 +47,25 @@ import type { ServiceRegistry } from '../config/service-registry.js';
 import { OverflowHandler } from './shared/overflow.js';
 import type { SessionChangeTracker } from '../sessions/change-tracker.js';
 import type { ArchetypeLoader } from '../agents/archetypes.js';
+
+type ToolContractFeatureFlags = Pick<FeatureFlagManager, 'isEnabled'>;
+
+export function registerToolWithContractGate(
+  registry: ToolRegistry,
+  tool: Tool,
+  featureFlags?: ToolContractFeatureFlags | null,
+): void {
+  const verifyContracts = featureFlags?.isEnabled('tool-contract-verification') ?? true;
+  if (!verifyContracts) {
+    registry.register(tool);
+    return;
+  }
+
+  registry.registerWithContract(tool, {
+    strictIdempotency: false,
+    strictPermissionClass: false,
+  });
+}
 
 /**
  * Register all built-in tools into the given registry.
@@ -122,9 +142,12 @@ export function registerAllTools(
     throw new Error('registerAllTools requires surfaceRoot');
   }
   const projectIndex = deps?.projectIndex ?? new ProjectIndex(workingDirectory);
+  const registerTool = (tool: Tool): void => {
+    registerToolWithContractGate(registry, tool, deps.featureFlags);
+  };
 
-  registry.register(new ReadTool(projectIndex, fileCache));
-  registry.register(createWriteTool({
+  registerTool(new ReadTool(projectIndex, fileCache));
+  registerTool(createWriteTool({
     projectRoot: workingDirectory,
     fileCache,
     projectIndex,
@@ -133,20 +156,20 @@ export function registerAllTools(
     toolLLM: deps.toolLLM,
     changeTracker: deps?.changeTracker,
   }));
-  registry.register(createEditTool(fileCache, {
+  registerTool(createEditTool(fileCache, {
     fileUndoManager,
     configManager: deps.configManager,
     toolLLM: deps.toolLLM,
     changeTracker: deps?.changeTracker,
   }));
-  registry.register(createFindTool(workingDirectory, deps.featureFlags));
-  registry.register(createExecTool(processManager, {
+  registerTool(createFindTool(workingDirectory, deps.featureFlags));
+  registerTool(createExecTool(processManager, {
     featureFlags: deps.featureFlags,
     overflowHandler: deps.overflowHandler,
   }));
-  registry.register(createAnalyzeTool(deps.toolLLM, deps.featureFlags, workingDirectory));
-  registry.register(new InspectTool(deps.featureFlags, workingDirectory));
-  registry.register(createAgentTool({
+  registerTool(createAnalyzeTool(deps.toolLLM, deps.featureFlags, workingDirectory));
+  registerTool(new InspectTool(deps.featureFlags, workingDirectory));
+  registerTool(createAgentTool({
     manager: agentManager,
     messageBus: agentMessageBus,
     configManager: deps.configManager,
@@ -155,38 +178,38 @@ export function registerAllTools(
   }));
   const kvState = new KVState(undefined, workingDirectory);
   const hookDispatcher = new HookDispatcher();
-  registry.register(createStateTool(kvState, projectIndex, {
+  registerTool(createStateTool(kvState, projectIndex, {
     memoryDir: join(workingDirectory, '.goodvibes', 'memory'),
     hookDispatcher,
     modeManager,
   }));
-  registry.register(createWorkflowTool(workflowServices));
-  registry.register(createFetchTool({
+  registerTool(createWorkflowTool(workflowServices));
+  registerTool(createFetchTool({
     serviceRegistry: deps.serviceRegistry,
     featureFlags: deps.featureFlags,
   }));
   if (webSearchService) {
-    registry.register(createWebSearchTool(webSearchService));
+    registerTool(createWebSearchTool(webSearchService));
   }
-  registry.register(createRegistryTool(registry, {
+  registerTool(createRegistryTool(registry, {
     workingDirectory,
     homeDirectory: deps.configManager.getHomeDirectory() ?? undefined,
   }));
-  registry.register(createTaskTool(sessionOrchestration));
-  registry.register(createTeamTool({ surfaceRoot: deps.surfaceRoot }));
-  registry.register(createWorklistTool({ surfaceRoot: deps.surfaceRoot }));
+  registerTool(createTaskTool(sessionOrchestration));
+  registerTool(createTeamTool({ surfaceRoot: deps.surfaceRoot }));
+  registerTool(createWorklistTool({ surfaceRoot: deps.surfaceRoot }));
   if (mcpRegistry) {
-    registry.register(createMcpTool(mcpRegistry));
+    registerTool(createMcpTool(mcpRegistry));
   }
-  registry.register(createPacketTool({ workingDirectory, surfaceRoot: deps.surfaceRoot }));
-  registry.register(createQueryTool({ workingDirectory, surfaceRoot: deps.surfaceRoot }));
+  registerTool(createPacketTool({ workingDirectory, surfaceRoot: deps.surfaceRoot }));
+  registerTool(createQueryTool({ workingDirectory, surfaceRoot: deps.surfaceRoot }));
   if (remoteRunnerRegistry) {
-    registry.register(createRemoteTool(remoteRunnerRegistry));
+    registerTool(createRemoteTool(remoteRunnerRegistry));
   }
-  registry.register(createReplTool(deps.configManager, deps.sandboxSessionRegistry, {
+  registerTool(createReplTool(deps.configManager, deps.sandboxSessionRegistry, {
     surfaceRoot: deps.surfaceRoot,
   }));
-  registry.register(controlTool);
-  registry.register(createChannelTool(channelRegistry));
+  registerTool(controlTool);
+  registerTool(createChannelTool(channelRegistry));
   return { fileCache, projectIndex };
 }

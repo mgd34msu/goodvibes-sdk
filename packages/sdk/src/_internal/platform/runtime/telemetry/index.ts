@@ -22,6 +22,7 @@
 import { RuntimeTracer } from './tracer.js';
 import { RuntimeMeter } from './meter.js';
 import type { TelemetryProviderConfig } from './types.js';
+import type { FeatureFlagManager } from '../feature-flags/index.js';
 
 // Re-export all public types
 export type {
@@ -146,6 +147,10 @@ export { DomainBridge, createInstrumentation } from './instrumentation/index.js'
 /** Alias for TelemetryProviderConfig to match the factory parameter name. */
 export type TelemetryConfig = TelemetryProviderConfig;
 
+export interface TelemetryProviderOptions {
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+}
+
 /**
  * Create a telemetry provider — a paired RuntimeTracer and RuntimeMeter.
  *
@@ -156,14 +161,14 @@ export type TelemetryConfig = TelemetryProviderConfig;
  * @param config - Optional telemetry provider configuration.
  * @returns An object with `tracer` and `meter` instances.
  */
-export function createTelemetryProvider(config?: TelemetryConfig): {
+export function createTelemetryProvider(config?: TelemetryConfig, options: TelemetryProviderOptions = {}): {
   tracer: RuntimeTracer;
   meter: RuntimeMeter;
 } {
   const tracer = new RuntimeTracer(
     config?.tracer ?? {
       scope: 'goodvibes-sdk',
-      enabled: false,
+      enabled: options.featureFlags?.isEnabled('otel-foundation') ?? false,
       exporters: [],
     },
   );

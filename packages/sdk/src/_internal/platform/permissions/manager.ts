@@ -5,6 +5,7 @@ import { analyzePermissionRequest } from './analysis.js';
 import type { PolicyRuntimeState } from '../runtime/permissions/policy-runtime.js';
 import { LayeredPolicyEvaluator } from '../runtime/permissions/evaluator.js';
 import type { PermissionDecision as LayeredPermissionDecision } from '../runtime/permissions/types.js';
+import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 import type { HookDispatcher } from '../hooks/index.js';
 import type { HookCategory, HookEventPath, HookPhase } from '../hooks/types.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -98,17 +99,20 @@ export class PermissionManager {
   private readonly configReader: PermissionConfigReader;
   private readonly hookDispatcher: Pick<HookDispatcher, 'fire'> | null;
   private readonly policyRuntimeState: Pick<PolicyRuntimeState, 'recordPermissionRequest' | 'recordPermissionDecision' | 'getRegistry'>;
+  private readonly featureFlags: Pick<FeatureFlagManager, 'isEnabled'> | null;
 
   constructor(
     requestPermission: PermissionRequestHandler = async () => ({ approved: false, remember: false }),
     configReader: PermissionConfigReader,
     policyRuntimeState: Pick<PolicyRuntimeState, 'recordPermissionRequest' | 'recordPermissionDecision' | 'getRegistry'>,
     hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null,
+    featureFlags: Pick<FeatureFlagManager, 'isEnabled'> | null = null,
   ) {
     this.requestPermission = requestPermission;
     this.configReader = configReader;
     this.policyRuntimeState = policyRuntimeState;
     this.hookDispatcher = hookDispatcher;
+    this.featureFlags = featureFlags;
   }
 
   /**
@@ -149,10 +153,12 @@ export class PermissionManager {
       return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'runtime_mode', 'mode_allow_all', analysis));
     }
 
-    const evaluatorDecision = this.evaluateRuntimePolicy(toolName, args, mode);
-    const mappedDecision = this.mapEvaluatorDecision(evaluatorDecision, analysis);
-    if (mappedDecision) {
-      return this.emitAndReturn(callId, toolName, category, mappedDecision);
+    if (this.featureFlags?.isEnabled('permissions-policy-engine') === true) {
+      const evaluatorDecision = this.evaluateRuntimePolicy(toolName, args, mode);
+      const mappedDecision = this.mapEvaluatorDecision(evaluatorDecision, analysis);
+      if (mappedDecision) {
+        return this.emitAndReturn(callId, toolName, category, mappedDecision);
+      }
     }
 
     // 3. custom mode: check per-tool setting

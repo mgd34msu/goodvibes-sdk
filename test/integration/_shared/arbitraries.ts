@@ -136,7 +136,7 @@ export const KNOWN_EVENT_TYPES = new Set<string>([
   'AUTOMATION_RUN_COMPLETED', 'AUTOMATION_RUN_FAILED', 'AUTOMATION_RUN_CANCELLED',
   'AUTOMATION_SCHEDULE_ERROR', 'AUTOMATION_JOB_AUTO_DISABLED',
   // routes
-  'ROUTE_BINDING_CREATED', 'ROUTE_BINDING_UPDATED', 'ROUTE_BINDING_RESOLVED',
+  'ROUTE_BINDING_CREATED', 'ROUTE_BINDING_UPDATED', 'ROUTE_BINDING_REMOVED', 'ROUTE_BINDING_RESOLVED',
   'ROUTE_REPLY_TARGET_CAPTURED', 'ROUTE_BINDING_FAILED',
   // control-plane
   'CONTROL_PLANE_CLIENT_CONNECTED', 'CONTROL_PLANE_CLIENT_DISCONNECTED',
@@ -328,6 +328,7 @@ export const REQUIRED_FIELDS_BY_TYPE: Partial<Record<string, readonly string[]>>
   AUTOMATION_JOB_AUTO_DISABLED: ['jobId', 'reason', 'consecutiveFailures'],
   ROUTE_BINDING_CREATED: ['bindingId', 'surfaceKind', 'externalId', 'targetKind', 'targetId'],
   ROUTE_BINDING_UPDATED: ['bindingId', 'changedFields'],
+  ROUTE_BINDING_REMOVED: ['bindingId', 'surfaceKind', 'externalId'],
   ROUTE_BINDING_RESOLVED: ['bindingId', 'surfaceKind', 'externalId', 'targetKind', 'targetId'],
   ROUTE_REPLY_TARGET_CAPTURED: ['bindingId', 'surfaceKind', 'externalId', 'replyTargetId', 'threadId'],
   ROUTE_BINDING_FAILED: ['surfaceKind', 'externalId', 'error'],
@@ -553,6 +554,7 @@ export const FIXTURE_EVENTS: ReadonlyArray<{ type: string } & Record<string, unk
   // routes
   { type: 'ROUTE_BINDING_CREATED', bindingId: 'b1', surfaceKind: 'slack', externalId: 'C123', targetKind: 'session', targetId: 's1' } satisfies RouteEvent,
   { type: 'ROUTE_BINDING_UPDATED', bindingId: 'b1', changedFields: ['targetId'] } satisfies RouteEvent,
+  { type: 'ROUTE_BINDING_REMOVED', bindingId: 'b1', surfaceKind: 'slack', externalId: 'C123' } satisfies RouteEvent,
   { type: 'ROUTE_BINDING_RESOLVED', bindingId: 'b1', surfaceKind: 'slack', externalId: 'C123', targetKind: 'session', targetId: 's1' } satisfies RouteEvent,
   { type: 'ROUTE_REPLY_TARGET_CAPTURED', bindingId: 'b1', surfaceKind: 'slack', externalId: 'C123', replyTargetId: 'msg1', threadId: 'th1' } satisfies RouteEvent,
   { type: 'ROUTE_BINDING_FAILED', surfaceKind: 'slack', externalId: 'C123', error: 'not found' } satisfies RouteEvent,

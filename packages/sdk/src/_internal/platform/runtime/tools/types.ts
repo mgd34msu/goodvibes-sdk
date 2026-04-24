@@ -1,4 +1,5 @@
 import type { ToolResult } from '../../types/tools.js';
+import type { FeatureFlagManager } from '../feature-flags/index.js';
 
 /**
  * BudgetExceedReason — typed discriminant for budget breach events.
@@ -122,6 +123,11 @@ export interface ExecutorConfig {
    * ignored. Controlled by the `runtime-tools-budget-enforcement` feature flag.
    */
   enableBudgetEnforcement?: boolean;
+  /**
+   * Optional feature-flag manager used by createPhasedExecutor() to derive
+   * runtime-backed defaults. Explicit ExecutorConfig booleans still win.
+   */
+  featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
   /**
    * Optional idempotency store.
    *

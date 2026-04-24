@@ -7,7 +7,7 @@ export type PermissionAction = 'allow' | 'prompt' | 'deny';
 export type LineNumberMode = 'all' | 'code' | 'off';
 
 /** Persisted feature flag override state stored in config file. */
-export type PersistedFlagState = 'enabled' | 'disabled';
+export type PersistedFlagState = 'enabled' | 'disabled' | 'killed';
 
 export interface PermissionsToolConfig {
   read?: PermissionAction;        // default: 'allow'

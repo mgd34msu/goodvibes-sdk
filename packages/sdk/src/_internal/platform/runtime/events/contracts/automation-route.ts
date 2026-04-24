@@ -139,6 +139,14 @@ export function validateRouteBindingUpdated(v: unknown): ContractResult {
   ]);
 }
 
+export function validateRouteBindingRemoved(v: unknown): ContractResult {
+  return validateEventFields('ROUTE_BINDING_REMOVED', v, [
+    { key: 'bindingId', kind: 'string' },
+    { key: 'surfaceKind', kind: 'enum', values: ROUTE_SURFACE_KINDS },
+    { key: 'externalId', kind: 'string' },
+  ]);
+}
+
 export function validateRouteBindingResolved(v: unknown): ContractResult {
   return validateEventFields('ROUTE_BINDING_RESOLVED', v, [
     { key: 'bindingId', kind: 'string' },

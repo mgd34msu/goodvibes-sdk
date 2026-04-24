@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger.js';
 import { GoodVibesSdkError } from '../../errors/index.js';
+import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 
 import { summarizeError } from '../utils/error-display.js';
 
@@ -164,6 +165,10 @@ export interface DeliveryQueueConfig {
   sloEnforced: boolean;
 }
 
+export interface DeliveryQueueOptions extends Partial<DeliveryQueueConfig> {
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+}
+
 const DEFAULT_CONFIG: DeliveryQueueConfig = {
   maxRetries: 3,
   initialDelayMs: 1_000,
@@ -219,8 +224,15 @@ export class DeliveryQueue {
   private _retrying = 0;
   private _deadLettered = 0;
 
-  constructor(config: Partial<DeliveryQueueConfig> = {}) {
-    this._config = { ...DEFAULT_CONFIG, ...config };
+  constructor(config: DeliveryQueueOptions = {}) {
+    const { featureFlags, ...queueConfig } = config;
+    this._config = {
+      ...DEFAULT_CONFIG,
+      ...queueConfig,
+      sloEnforced: queueConfig.sloEnforced
+        ?? featureFlags?.isEnabled('integration-delivery-slo')
+        ?? DEFAULT_CONFIG.sloEnforced,
+    };
   }
 
   // -------------------------------------------------------------------------

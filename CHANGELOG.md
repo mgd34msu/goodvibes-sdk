@@ -8,6 +8,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.0] - 2026-04-24
+
+### Breaking
+- none
+
+### Added
+- Feature flag ownership guide documenting SDK safe defaults versus host application policy, including recommended safe-browsing, developer, and headless automation profiles.
+- Runtime gates and focused tests for the previously weak feature-flag paths: tool contract verification, runtime tool budget enforcement, integration delivery SLOs, route binding, provider optimizer routing, permissions policy engine, plugin lifecycle, MCP lifecycle, adaptive execution planner exposure, and OTel foundation tracing defaults.
+- Persisted feature flag state now accepts `killed` so host applications can store emergency-disable policy explicitly.
+- `ROUTE_BINDING_REMOVED` runtime event, emitter, contract validator, and integration fixture coverage.
+
+### Fixed
+- Default runtime service construction now loads persisted `featureFlags` config when the host does not inject its own `FeatureFlagManager`.
+- Permission checks now apply the layered runtime policy only when `permissions-policy-engine` is enabled, preserving legacy config/prompt behavior when disabled.
+- Provider optimizer enablement now follows runtime flag transitions and agent routing consumes optimizer decisions only when the optimizer is active and non-manual.
+- Delivery queue SLO enforcement now derives from `integration-delivery-slo` unless explicitly overridden by queue configuration, including the notifier factory path.
+
+### Migration
+- Host applications that validate persisted feature flag config should include `killed` in the allowed state enum.
+- TUI/profile code can treat the SDK registry defaults as safe defaults, but should still pass an explicit feature-flag policy for each surface profile.
+- No import-path or SecretRef migration is required for this release.
+
+---
+
 ## [0.24.0] - 2026-04-23
 
 ### Breaking
