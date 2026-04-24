@@ -8,7 +8,7 @@ import type { RouteBindingManager, ChannelPolicyManager } from '../channels/inde
 import type { GenericWebhookAdapterContext, SurfaceAdapterContext } from '../adapters/index.js';
 import type { AutomationManager } from '../automation/index.js';
 import type { ChannelPolicyDecision, ChannelIngressPolicyInput } from '../channels/index.js';
-import type { RuntimeEventBus, TurnEvent } from '../runtime/events/index.js';
+import type { RuntimeEventBus, TurnEvent, TurnInputOrigin } from '../runtime/events/index.js';
 import { emitCompanionMessageReceived } from '../runtime/emitters/index.js';
 import { NtfyIntegration } from '../integrations/ntfy.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
@@ -23,6 +23,7 @@ interface PendingNtfyChatReply {
   readonly messageId: string;
   readonly createdAt: number;
   turnId?: string;
+  turnSessionId?: string;
 }
 
 interface DaemonSurfaceActionContext {
@@ -227,6 +228,7 @@ export class DaemonSurfaceActionHelper {
         body: envelope.body,
         source: envelope.source,
         timestamp: envelope.timestamp,
+        ...(envelope.metadata ? { metadata: envelope.metadata } : {}),
       },
     );
   }
@@ -251,6 +253,7 @@ export class DaemonSurfaceActionHelper {
           envelope.sessionId,
           envelope.payload.turnId,
           envelope.payload.prompt,
+          envelope.payload.origin,
         ),
       ),
       this.context.runtimeBus.on<Extract<TurnEvent, { type: 'TURN_COMPLETED' }>>(
@@ -276,15 +279,38 @@ export class DaemonSurfaceActionHelper {
     ];
   }
 
-  private matchNtfyChatReplyTurn(sessionId: string, turnId: string, prompt: string): void {
+  private matchNtfyChatReplyTurn(
+    sessionId: string,
+    turnId: string,
+    prompt: string,
+    origin?: TurnInputOrigin,
+  ): void {
     this.cleanupExpiredNtfyChatReplies();
-    const bucket = this.pendingNtfyChatReplies.get(sessionId);
-    if (!bucket) return;
-    const normalizedPrompt = prompt.trim();
-    const pending = bucket.find((entry) => !entry.turnId && entry.body.trim() === normalizedPrompt);
-    if (pending) {
-      pending.turnId = turnId;
+    const originMessageId = this.readNtfyOriginMessageId(origin);
+    const matchByMessageId = originMessageId
+      ? this.findPendingNtfyChatReplyForMessageId(originMessageId)
+      : null;
+    if (matchByMessageId) {
+      matchByMessageId.pending.turnId = turnId;
+      matchByMessageId.pending.turnSessionId = sessionId;
+      return;
     }
+    const normalizedPrompt = prompt.trim();
+    const match = this.findPendingNtfyChatReplyForPrompt(sessionId, normalizedPrompt);
+    if (!match) return;
+    match.pending.turnId = turnId;
+    match.pending.turnSessionId = sessionId;
+  }
+
+  private readNtfyOriginMessageId(origin?: TurnInputOrigin): string | null {
+    if (!origin) return null;
+    if (typeof origin.messageId === 'string' && origin.messageId.trim()) {
+      return origin.messageId.trim();
+    }
+    const metadataMessageId = origin.metadata?.['ntfyMessageId'] ?? origin.metadata?.['messageId'];
+    return typeof metadataMessageId === 'string' && metadataMessageId.trim()
+      ? metadataMessageId.trim()
+      : null;
   }
 
   private async deliverNtfyChatReply(sessionId: string, turnId: string, message: string): Promise<void> {
@@ -306,16 +332,49 @@ export class DaemonSurfaceActionHelper {
     }
   }
 
-  private takeNtfyChatReply(sessionId: string, turnId: string): PendingNtfyChatReply | null {
-    const bucket = this.pendingNtfyChatReplies.get(sessionId);
-    if (!bucket) return null;
-    const index = bucket.findIndex((entry) => entry.turnId === turnId);
-    if (index < 0) return null;
-    const [pending] = bucket.splice(index, 1);
-    if (bucket.length === 0) {
-      this.pendingNtfyChatReplies.delete(sessionId);
+  private findPendingNtfyChatReplyForPrompt(
+    preferredSessionId: string,
+    normalizedPrompt: string,
+  ): { readonly pending: PendingNtfyChatReply; readonly bucketSessionId: string } | null {
+    const preferredBucket = this.pendingNtfyChatReplies.get(preferredSessionId);
+    const preferred = preferredBucket?.find((entry) => !entry.turnId && entry.body.trim() === normalizedPrompt);
+    if (preferred) return { pending: preferred, bucketSessionId: preferredSessionId };
+
+    let fallback: { readonly pending: PendingNtfyChatReply; readonly bucketSessionId: string } | null = null;
+    for (const [bucketSessionId, bucket] of this.pendingNtfyChatReplies.entries()) {
+      if (bucketSessionId === preferredSessionId) continue;
+      const candidate = bucket.find((entry) => !entry.turnId && entry.body.trim() === normalizedPrompt);
+      if (!candidate) continue;
+      if (!fallback || candidate.createdAt < fallback.pending.createdAt) {
+        fallback = { pending: candidate, bucketSessionId };
+      }
     }
-    return pending ?? null;
+    return fallback;
+  }
+
+  private findPendingNtfyChatReplyForMessageId(
+    messageId: string,
+  ): { readonly pending: PendingNtfyChatReply; readonly bucketSessionId: string } | null {
+    for (const [bucketSessionId, bucket] of this.pendingNtfyChatReplies.entries()) {
+      const pending = bucket.find((entry) => !entry.turnId && entry.messageId === messageId);
+      if (pending) return { pending, bucketSessionId };
+    }
+    return null;
+  }
+
+  private takeNtfyChatReply(sessionId: string, turnId: string): PendingNtfyChatReply | null {
+    for (const [bucketSessionId, bucket] of this.pendingNtfyChatReplies.entries()) {
+      const index = bucket.findIndex((entry) =>
+        entry.turnId === turnId && (!entry.turnSessionId || entry.turnSessionId === sessionId)
+      );
+      if (index < 0) continue;
+      const [pending] = bucket.splice(index, 1);
+      if (bucket.length === 0) {
+        this.pendingNtfyChatReplies.delete(bucketSessionId);
+      }
+      return pending ?? null;
+    }
+    return null;
   }
 
   private cleanupExpiredNtfyChatReplies(now = Date.now()): void {

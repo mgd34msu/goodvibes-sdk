@@ -28,7 +28,7 @@ import { CacheHitTracker } from '../providers/cache-strategy.js';
 import { IdempotencyStore } from '../runtime/idempotency/index.js';
 import { type ReconciliationReason } from './tool-reconciliation.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
-import type { RuntimeEventBus } from '../runtime/events/index.js';
+import type { RuntimeEventBus, TurnInputOrigin } from '../runtime/events/index.js';
 import { HelperModel } from '../config/helper-model.js';
 import {
   emitStreamEnd,
@@ -77,6 +77,10 @@ interface LowPrioritySystemMessageSink {
   low(message: string): void;
 }
 
+export interface OrchestratorUserInputOptions {
+  readonly origin?: TurnInputOrigin;
+}
+
 /**
  * Options for constructing an {@link Orchestrator}.
  *
@@ -118,6 +122,11 @@ export interface OrchestratorOptions {
   requestRender?: (() => void) | null;
   /** Optional runtime event bus for cross-system event propagation. */
   runtimeBus?: RuntimeEventBus | null;
+  /**
+   * Stable session id used in runtime events, hook events, idempotency keys,
+   * plans, and reply correlation. Defaults to a generated private id.
+   */
+  sessionId?: string;
   /** Required runtime service dependencies. */
   services: {
     readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
@@ -145,7 +154,7 @@ export class Orchestrator {
   public streamingInputTokens = 0;
   /** Output tokens received so far in the current streaming turn (one per delta chunk). */
   public streamingOutputTokens = 0;
-  public messageQueue: { text: string; content?: ContentPart[] }[] = [];
+  public messageQueue: { text: string; content?: ContentPart[]; options?: OrchestratorUserInputOptions }[] = [];
 
   private animInterval: ReturnType<typeof setInterval> | null = null;
   private abortController: AbortController | null = null;
@@ -160,8 +169,8 @@ export class Orchestrator {
   /** Whether auto-compaction is currently in progress (prevents re-entry). */
   private isCompacting = false;
 
-  /** Session ID for hook events — unique per Orchestrator instance */
-  private readonly sessionId = randomUUID();
+  /** Session ID for runtime and hook events. */
+  private readonly sessionId: string;
 
   /**
    * Submission key for the currently active turn.
@@ -255,8 +264,10 @@ export class Orchestrator {
       flagManager = null,
       requestRender = null,
       runtimeBus = null,
+      sessionId,
       services,
     } = options;
+    this.sessionId = sessionId?.trim() || randomUUID();
     this.conversation = conversation;
     this.getViewportHeight = getViewportHeight;
     this.scrollToEnd = scrollToEnd;
@@ -433,12 +444,17 @@ export class Orchestrator {
    * Queues if already thinking, otherwise kicks off the LLM turn.
    * @param text - Plain text representation (for display and queuing).
    * @param content - Optional ContentPart[] for multimodal messages.
+   * @param options - Optional origin metadata for external surfaces.
    */
-  public async handleUserInput(text: string, content?: ContentPart[]): Promise<void> {
+  public async handleUserInput(
+    text: string,
+    content?: ContentPart[],
+    options?: OrchestratorUserInputOptions,
+  ): Promise<void> {
     if (!text.trim() && !content?.length) return;
 
     if (this.isThinking || this.isCompacting) {
-      this.messageQueue.push({ text, content });
+      this.messageQueue.push({ text, content, options });
       this.requestRender();
       return;
     }
@@ -446,12 +462,12 @@ export class Orchestrator {
     // Set the original task on the first user message (idempotent — subsequent calls are no-ops)
     getSessionLineageTracker(this.coreServices, this.ownedSessionLineageTracker).setOriginalTask(text.slice(0, 200));
 
-    await this.runTurn(text, content);
+    await this.runTurn(text, content, options);
 
     // Process any messages queued while the LLM was thinking (iterative, not recursive)
     while (this.messageQueue.length > 0) {
       const next = this.messageQueue.shift()!;
-      await this.runTurn(next.text, next.content);
+      await this.runTurn(next.text, next.content, next.options);
     }
 
     this.followUpRuntime.scheduleFlush();
@@ -484,7 +500,11 @@ export class Orchestrator {
     this.requestRender();
   }
 
-  private async runTurn(text: string, content?: ContentPart[]): Promise<void> {
+  private async runTurn(
+    text: string,
+    content?: ContentPart[],
+    options?: OrchestratorUserInputOptions,
+  ): Promise<void> {
     const turnStartTime = Date.now();
     const configManager = requireConfigManager(this.coreServices);
     const providerRegistry = requireProviderRegistry(this.coreServices);
@@ -525,7 +545,11 @@ export class Orchestrator {
     // We just let it proceed; the prior record will be overwritten.
 
     if (this.runtimeBus) {
-      emitTurnSubmitted(this.runtimeBus, createEmitterContext(this.sessionId, turnId), { turnId, prompt: text });
+      emitTurnSubmitted(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
+        turnId,
+        prompt: text,
+        ...(options?.origin ? { origin: options.origin } : {}),
+      });
     }
 
     // Adaptive Execution Planner.

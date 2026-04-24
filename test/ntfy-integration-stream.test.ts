@@ -15,6 +15,9 @@ import {
 } from '../packages/sdk/src/_internal/platform/integrations/ntfy.js';
 import { handleNtfySurfacePayload } from '../packages/sdk/src/_internal/platform/adapters/ntfy/index.js';
 import type { SurfaceAdapterContext } from '../packages/sdk/src/_internal/platform/adapters/types.js';
+import { DaemonSurfaceActionHelper } from '../packages/sdk/src/_internal/platform/daemon/surface-actions.js';
+import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
+import { emitTurnCompleted, emitTurnSubmitted } from '../packages/sdk/src/_internal/platform/runtime/emitters/index.js';
 
 describe('NtfyIntegration.subscribeJsonStream()', () => {
   test('streams newline-delimited JSON with auth and exits cleanly on abort', async () => {
@@ -132,6 +135,176 @@ describe('ntfy topic routing', () => {
       title: 'phone',
     });
     expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
+  });
+
+  test('goodvibes-chat publishes the reply by ntfy message id when turn events use the orchestrator session id', async () => {
+    const runtimeBus = new RuntimeEventBus();
+    const publishCalls: Array<{ url: string; body: string; headers: IncomingHttpHeaders }> = [];
+    let resolvePublish!: () => void;
+    const published = new Promise<void>((resolve) => {
+      resolvePublish = resolve;
+    });
+    const server = createServer((req, res) => {
+      if (req.method !== 'POST' || req.url !== `/${GOODVIBES_NTFY_CHAT_TOPIC}`) {
+        res.writeHead(404).end();
+        return;
+      }
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      req.on('end', () => {
+        publishCalls.push({
+          url: req.url ?? '',
+          body: Buffer.concat(chunks).toString('utf-8'),
+          headers: req.headers,
+        });
+        resolvePublish();
+        res.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
+      });
+    });
+    const baseUrl = await listen(server);
+    try {
+      const helper = new DaemonSurfaceActionHelper({
+        serviceRegistry: { resolveSecret: async () => null },
+        configManager: {
+          get: (key: string) => key === 'surfaces.ntfy.baseUrl' ? baseUrl : '',
+        },
+        routeBindings: {},
+        sessionBroker: {
+          findPreferredSession: async () => ({ id: 'shared-tui-session' }),
+          appendCompanionMessage: async () => ({}),
+        },
+        channelPolicy: { evaluateIngress: async () => ({ allowed: true }) },
+        controlPlaneGateway: { publishEvent: () => {} },
+        runtimeBus,
+        companionChatManager: null,
+        automationManager: {},
+        agentManager: {},
+        trySpawnAgent: () => ({ id: 'agent-1', status: 'running', task: '', tools: [], startedAt: Date.now() }),
+        queueSurfaceReplyFromBinding: () => {},
+        queueWebhookReply: () => {},
+        surfaceDeliveryEnabled: () => true,
+        signWebhookPayload: () => '',
+        handleApprovalAction: async () => Response.json({ ok: true }),
+      } as unknown as ConstructorParameters<typeof DaemonSurfaceActionHelper>[0]);
+      const response = await handleNtfySurfacePayload({
+        event: 'message',
+        topic: GOODVIBES_NTFY_CHAT_TOPIC,
+        message: 'hi',
+        title: 'phone',
+      }, helper.buildSurfaceAdapterContext());
+
+      expect(response.status).toBe(202);
+      const routed = await response.json() as { messageId: string };
+      emitTurnSubmitted(
+        runtimeBus,
+        { sessionId: 'orchestrator-private-session', traceId: 'turn-1', source: 'test' },
+        {
+          turnId: 'turn-1',
+          prompt: 'different text is still correlated by origin id',
+          origin: {
+            source: 'ntfy-chat',
+            surface: 'ntfy',
+            topic: GOODVIBES_NTFY_CHAT_TOPIC,
+            messageId: routed.messageId,
+          },
+        },
+      );
+      emitTurnCompleted(
+        runtimeBus,
+        { sessionId: 'orchestrator-private-session', traceId: 'turn-1', source: 'test' },
+        { turnId: 'turn-1', response: 'hello from model', stopReason: 'completed' },
+      );
+
+      await withTimeout(published, 1_000, 'timed out waiting for ntfy chat reply publish');
+      expect(publishCalls).toHaveLength(1);
+      expect(publishCalls[0]).toMatchObject({
+        url: `/${GOODVIBES_NTFY_CHAT_TOPIC}`,
+        body: 'hello from model',
+      });
+      expect(publishCalls[0]?.headers['x-goodvibes-origin']).toBe(GOODVIBES_NTFY_ORIGIN);
+    } finally {
+      await close(server);
+    }
+  });
+
+  test('goodvibes-chat keeps a prompt fallback for clients that have not forwarded origin metadata yet', async () => {
+    const runtimeBus = new RuntimeEventBus();
+    const publishCalls: Array<{ url: string; body: string; headers: IncomingHttpHeaders }> = [];
+    let resolvePublish!: () => void;
+    const published = new Promise<void>((resolve) => {
+      resolvePublish = resolve;
+    });
+    const server = createServer((req, res) => {
+      if (req.method !== 'POST' || req.url !== `/${GOODVIBES_NTFY_CHAT_TOPIC}`) {
+        res.writeHead(404).end();
+        return;
+      }
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      req.on('end', () => {
+        publishCalls.push({
+          url: req.url ?? '',
+          body: Buffer.concat(chunks).toString('utf-8'),
+          headers: req.headers,
+        });
+        resolvePublish();
+        res.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
+      });
+    });
+    const baseUrl = await listen(server);
+    try {
+      const helper = new DaemonSurfaceActionHelper({
+        serviceRegistry: { resolveSecret: async () => null },
+        configManager: {
+          get: (key: string) => key === 'surfaces.ntfy.baseUrl' ? baseUrl : '',
+        },
+        routeBindings: {},
+        sessionBroker: {
+          findPreferredSession: async () => ({ id: 'shared-tui-session' }),
+          appendCompanionMessage: async () => ({}),
+        },
+        channelPolicy: { evaluateIngress: async () => ({ allowed: true }) },
+        controlPlaneGateway: { publishEvent: () => {} },
+        runtimeBus,
+        companionChatManager: null,
+        automationManager: {},
+        agentManager: {},
+        trySpawnAgent: () => ({ id: 'agent-1', status: 'running', task: '', tools: [], startedAt: Date.now() }),
+        queueSurfaceReplyFromBinding: () => {},
+        queueWebhookReply: () => {},
+        surfaceDeliveryEnabled: () => true,
+        signWebhookPayload: () => '',
+        handleApprovalAction: async () => Response.json({ ok: true }),
+      } as unknown as ConstructorParameters<typeof DaemonSurfaceActionHelper>[0]);
+      const response = await handleNtfySurfacePayload({
+        event: 'message',
+        topic: GOODVIBES_NTFY_CHAT_TOPIC,
+        message: 'hi',
+        title: 'phone',
+      }, helper.buildSurfaceAdapterContext());
+
+      expect(response.status).toBe(202);
+      emitTurnSubmitted(
+        runtimeBus,
+        { sessionId: 'orchestrator-private-session', traceId: 'turn-1', source: 'test' },
+        { turnId: 'turn-1', prompt: 'hi' },
+      );
+      emitTurnCompleted(
+        runtimeBus,
+        { sessionId: 'orchestrator-private-session', traceId: 'turn-1', source: 'test' },
+        { turnId: 'turn-1', response: 'hello from fallback', stopReason: 'completed' },
+      );
+
+      await withTimeout(published, 1_000, 'timed out waiting for ntfy chat reply publish');
+      expect(publishCalls).toHaveLength(1);
+      expect(publishCalls[0]).toMatchObject({
+        url: `/${GOODVIBES_NTFY_CHAT_TOPIC}`,
+        body: 'hello from fallback',
+      });
+      expect(publishCalls[0]?.headers['x-goodvibes-origin']).toBe(GOODVIBES_NTFY_ORIGIN);
+    } finally {
+      await close(server);
+    }
   });
 
   test('configured chat topic overrides the default ntfy chat topic', async () => {

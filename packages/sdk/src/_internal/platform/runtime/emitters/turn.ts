@@ -11,13 +11,14 @@
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { EmitterContext } from './index.js';
+import type { TurnInputOrigin } from '../events/turn.js';
 import type { PartialToolCall } from '../../providers/interface.js';
 
 /** Emit TURN_SUBMITTED when a user prompt is submitted. */
 export function emitTurnSubmitted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { turnId: string; prompt: string }
+  data: { turnId: string; prompt: string; origin?: TurnInputOrigin }
 ): void {
   bus.emit('turn', createEventEnvelope('TURN_SUBMITTED', { type: 'TURN_SUBMITTED', ...data }, ctx));
 }

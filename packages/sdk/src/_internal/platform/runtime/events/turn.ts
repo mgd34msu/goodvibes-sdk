@@ -5,6 +5,14 @@
  */
 import type { PartialToolCall } from '../../providers/interface.js';
 
+export interface TurnInputOrigin {
+  readonly source?: string;
+  readonly surface?: string;
+  readonly messageId?: string;
+  readonly topic?: string;
+  readonly metadata?: Readonly<Record<string, unknown>>;
+}
+
 export type TurnStopReason =
   | 'completed'
   | 'empty_response'
@@ -19,7 +27,7 @@ export type TurnStopReason =
 
 export type TurnEvent =
   /** User prompt has been submitted for processing. */
-  | { type: 'TURN_SUBMITTED'; turnId: string; prompt: string }
+  | { type: 'TURN_SUBMITTED'; turnId: string; prompt: string; origin?: TurnInputOrigin }
   /** Preflight checks (context, rate limits, etc.) passed. */
   | { type: 'PREFLIGHT_OK'; turnId: string }
   /** Preflight checks failed; turn will not proceed. */

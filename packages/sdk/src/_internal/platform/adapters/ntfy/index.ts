@@ -140,7 +140,7 @@ async function handleNtfyChatPayload(
     body: message,
     source: 'ntfy-chat',
     timestamp,
-    metadata: { surface: 'ntfy', topic },
+    metadata: { surface: 'ntfy', topic, ntfyMessageId: messageId },
   });
   return Response.json({
     acknowledged: true,

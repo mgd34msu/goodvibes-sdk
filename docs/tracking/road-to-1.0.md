@@ -4,7 +4,7 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 
 ## Status
 
-- **Current version target**: `0.25.1` (current pre-1.0 hardening line; 0.25.0 is already published and 0.25.1 carries dependency-audit remediation)
+- **Current version target**: `0.25.5` (current pre-1.0 hardening line; 0.25.x carries dependency-audit remediation, ntfy route hardening, and ntfy chat reply-correlation fixes)
 - **Current score**: pending recalibration after the 0.23.x–0.25.x feature and hardening releases (last recorded roadmap score: 9.0 / 10 at 0.21.36)
 - **Eligibility**: NOT eligible for 1.0.0 — owner sign-off pending and the soak criteria must be redefined after feature-bearing 0.23.x, 0.24.x, and 0.25.x releases landed after the original 0.21.0 soak start
 
@@ -13,7 +13,7 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 ```
 0.19.9          previous (Waves 1–9 consolidated + pipeline hardening + zero-any gate)
   → 0.21.0            original soak signal (started 2026-04-18)
-  → 0.25.1            current hardening line [CURRENT]
+  → 0.25.5            current hardening line [CURRENT]
   → 1.0.0            owner-approved release
 ```
 

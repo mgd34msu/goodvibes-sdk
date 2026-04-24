@@ -87,7 +87,14 @@ export function emitSessionReady(
 export function emitCompanionMessageReceived(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { sessionId: string; messageId: string; body: string; source: string; timestamp: number }
+  data: {
+    sessionId: string;
+    messageId: string;
+    body: string;
+    source: string;
+    timestamp: number;
+    metadata?: Readonly<Record<string, unknown>>;
+  }
 ): void {
   bus.emit('session', sessionEvent('COMPANION_MESSAGE_RECEIVED', data, ctx));
 }
