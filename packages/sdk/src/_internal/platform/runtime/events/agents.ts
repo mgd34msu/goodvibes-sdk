@@ -8,7 +8,15 @@
 
 export type AgentEvent =
   /** Agent is being initialised and configured. */
-  | { type: 'AGENT_SPAWNING'; agentId: string; taskId?: string; task: string }
+  | {
+      type: 'AGENT_SPAWNING';
+      agentId: string;
+      taskId?: string;
+      task: string;
+      parentAgentId?: string;
+      orchestrationGraphId?: string;
+      parentNodeId?: string;
+    }
   /** Agent is actively running and processing. */
   | { type: 'AGENT_RUNNING'; agentId: string; taskId?: string }
   /** Agent emitted a textual progress update. */

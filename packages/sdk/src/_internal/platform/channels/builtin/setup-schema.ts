@@ -126,11 +126,11 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
         version: CHANNEL_SETUP_VERSION,
         label: 'ntfy',
         setupMode: 'webhook',
-        description: 'ntfy is a notification surface backed by a topic, optional token, and subscription URLs.',
+        description: 'ntfy is a notification and remote-control surface backed by SDK-owned inbound topics, optional delivery topics, and optional authentication.',
         fields: [
           setupField('enabled', 'Enabled', 'boolean', false, { configKey: 'surfaces.ntfy.enabled', defaultValue: false }),
           setupField('baseUrl', 'Base URL', 'url', false, { configKey: 'surfaces.ntfy.baseUrl', placeholder: 'https://ntfy.sh' }),
-          setupField('topic', 'Topic', 'string', true, { configKey: 'surfaces.ntfy.topic' }),
+          setupField('topic', 'Default delivery topic', 'string', false, { configKey: 'surfaces.ntfy.topic' }),
           setupField('token', 'Access token', 'secret', false, { configKey: 'surfaces.ntfy.token', secretTargetId: 'primary' }),
         ],
         secretTargets: [
@@ -142,7 +142,8 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
           }),
         ],
         externalSteps: [
-          'Choose or create an ntfy topic.',
+          'Subscribe the daemon to the SDK-owned goodvibes-chat, goodvibes-agent, and goodvibes-ntfy topics.',
+          'Optionally configure a default delivery topic for outbound notifications.',
           'Optionally configure an authenticated ntfy token.',
           'Use provider actions to inspect subscribe and poll URLs.',
         ],

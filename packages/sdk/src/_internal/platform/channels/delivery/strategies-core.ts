@@ -178,6 +178,7 @@ export function createNtfyDeliveryStrategy(
         title: request.target.label ?? titleFromBody(request.body),
         ...(request.includeLinks && baseUrlHint ? { click: `${baseUrlHint.replace(/\/+$/, '')}/api/control-plane/web` } : {}),
         ...(primaryAttachment?.contentUrl ? { attach: primaryAttachment.contentUrl } : {}),
+        markGoodVibesOrigin: true,
       });
       return success(topic);
     },

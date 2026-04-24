@@ -4,6 +4,7 @@ import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { AutomationSurfaceKind } from '../automation/types.js';
 import type { ChannelConversationKind, ChannelPolicyDecision, RouteBindingManager } from '../channels/index.js';
 import type { SharedSessionBroker } from '../control-plane/index.js';
+import type { ConversationMessageEnvelope } from '../control-plane/conversation-message.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
 
 export interface SurfaceControlCommand {
@@ -15,6 +16,21 @@ export interface QueueSurfaceReplyInput {
   readonly agentId: string;
   readonly task: string;
   readonly sessionId?: string;
+}
+
+export interface QueueNtfyChatReplyInput {
+  readonly sessionId: string;
+  readonly topic: string;
+  readonly body: string;
+  readonly title?: string;
+  readonly messageId: string;
+}
+
+export interface NtfyRemoteChatResult {
+  readonly sessionId: string;
+  readonly messageId: string;
+  readonly delivered: boolean;
+  readonly error?: string;
 }
 
 export type TrySpawnAgentInput = Parameters<AgentManager['spawn']>[0];
@@ -58,6 +74,16 @@ export interface SurfaceAdapterContext {
     binding: AutomationRouteBinding | undefined,
     input: QueueSurfaceReplyInput,
   ) => void;
+  readonly publishConversationFollowup?: (
+    sessionId: string,
+    envelope: Omit<ConversationMessageEnvelope, 'sessionId'>,
+  ) => void;
+  readonly queueNtfyChatReply?: (input: QueueNtfyChatReplyInput) => void;
+  readonly postNtfyRemoteChatMessage?: (input: {
+    readonly topic: string;
+    readonly body: string;
+    readonly title?: string;
+  }) => Promise<NtfyRemoteChatResult>;
 }
 
 export interface GenericWebhookReplyInput {

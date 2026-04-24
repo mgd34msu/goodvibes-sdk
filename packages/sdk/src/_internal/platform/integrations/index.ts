@@ -30,7 +30,17 @@ export { Notifier } from './notifier.js';
 export { GitHubIntegration } from './github.js';
 export type { GitHubWebhookEvent } from './github.js';
 export { DeliveryQueue, DeliveryError, classifyDeliveryError, snapshotQueueStatus } from './delivery.js';
-export { NtfyIntegration } from './ntfy.js';
+export {
+  GOODVIBES_NTFY_ORIGIN,
+  GOODVIBES_NTFY_ORIGIN_HEADER,
+  GOODVIBES_NTFY_OUTBOUND_TAG,
+  GOODVIBES_NTFY_AGENT_TOPIC,
+  GOODVIBES_NTFY_CHAT_TOPIC,
+  GOODVIBES_NTFY_DEFAULT_TOPICS,
+  GOODVIBES_NTFY_REMOTE_TOPIC,
+  NtfyIntegration,
+  isGoodVibesNtfyDeliveryEcho,
+} from './ntfy.js';
 export type {
   DeliveryOutcome,
   DeliveryFailureClass,

@@ -204,7 +204,7 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     key: 'surfaces.ntfy.topic',
     type: 'string',
     default: '',
-    description: 'Default ntfy topic for notifications',
+    description: 'Optional default ntfy topic for outbound notifications; inbound runtime also subscribes to SDK-owned goodvibes-chat, goodvibes-agent, and goodvibes-ntfy topics',
   },
   {
     key: 'surfaces.ntfy.token',

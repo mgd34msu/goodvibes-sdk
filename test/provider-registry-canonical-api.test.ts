@@ -7,9 +7,18 @@
  * tests remain fast and isolated.
  */
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
 import { ProviderNotFoundError } from '../packages/sdk/src/_internal/platform/providers/provider-not-found-error.js';
 import type { LLMProvider } from '../packages/sdk/src/_internal/platform/providers/interface.js';
+import {
+  getCatalogCachePath,
+  getCatalogTmpPath,
+  saveCatalogCache,
+  type CatalogModel,
+} from '../packages/sdk/src/_internal/platform/providers/model-catalog.js';
 
 // ---------------------------------------------------------------------------
 // Minimal stubs
@@ -24,11 +33,11 @@ function makeProvider(name: string): LLMProvider {
 }
 
 /** Build a ProviderRegistry with the minimum required options stubbed out. */
-function makeRegistry(): ProviderRegistry {
+function makeRegistry(root = '/tmp/test-registry'): ProviderRegistry {
   const configManager = {
     get: () => undefined,
     getCategory: () => ({}),
-    getControlPlaneConfigDir: () => '/tmp/test-registry',
+    getControlPlaneConfigDir: () => root,
   } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['configManager'];
 
   const subscriptionManager = {
@@ -72,6 +81,20 @@ function makeRegistry(): ProviderRegistry {
     featureFlags: null,
     runtimeBus: null,
   });
+}
+
+function makeCatalogModel(id: string, providerId: string): CatalogModel {
+  return {
+    id,
+    name: id,
+    provider: providerId,
+    providerId,
+    providerEnvVars: [],
+    pricing: { input: 1, output: 1 },
+    tier: 'paid',
+    contextWindow: 128_000,
+    maxOutputTokens: 16_384,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -228,5 +251,33 @@ describe('ProviderRegistry.require()', () => {
     expect(err instanceof Error).toBe(true);
     expect(err.name).toBe('ProviderNotFoundError');
     expect(err.availableIds).toEqual(['alpha', 'beta']);
+  });
+});
+
+describe('ProviderRegistry model catalog cache', () => {
+  test('initCatalog invalidates model registry built before cached catalog load', () => {
+    const root = mkdtempSync(join(tmpdir(), 'goodvibes-provider-registry-'));
+    try {
+      const registry = makeRegistry(root);
+      expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-5.4')).toBe(false);
+      saveCatalogCache(
+        [makeCatalogModel('gpt-5.4', 'openai')],
+        getCatalogCachePath(root),
+        getCatalogTmpPath(root),
+      );
+      registry.initCatalog();
+      expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-5.4')).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('explicit OpenAI selection can use provider when local catalog is stale', () => {
+    const registry = makeRegistry();
+    const provider = registry.getForModel('gpt-5.4', 'openai');
+    expect(provider.name).toBe('openai');
+    expect(() => registry.getForModel('gpt-5.4', 'anthropic')).toThrow(
+      "No model 'gpt-5.4' for provider 'anthropic' in registry.",
+    );
   });
 });

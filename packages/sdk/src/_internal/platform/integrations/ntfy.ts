@@ -1,6 +1,21 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
+import { request as httpRequest } from 'node:http';
+import { connect as http2Connect } from 'node:http2';
+import { request as httpsRequest } from 'node:https';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+
+export const GOODVIBES_NTFY_ORIGIN = 'goodvibes-sdk';
+export const GOODVIBES_NTFY_ORIGIN_HEADER = 'X-Goodvibes-Origin';
+export const GOODVIBES_NTFY_OUTBOUND_TAG = 'goodvibes-sdk-outbound';
+export const GOODVIBES_NTFY_CHAT_TOPIC = 'goodvibes-chat';
+export const GOODVIBES_NTFY_AGENT_TOPIC = 'goodvibes-agent';
+export const GOODVIBES_NTFY_REMOTE_TOPIC = 'goodvibes-ntfy';
+export const GOODVIBES_NTFY_DEFAULT_TOPICS = [
+  GOODVIBES_NTFY_CHAT_TOPIC,
+  GOODVIBES_NTFY_AGENT_TOPIC,
+  GOODVIBES_NTFY_REMOTE_TOPIC,
+] as const;
 
 export interface NtfyPublishOptions {
   readonly title?: string;
@@ -9,6 +24,7 @@ export interface NtfyPublishOptions {
   readonly click?: string;
   readonly attach?: string;
   readonly actions?: readonly string[];
+  readonly markGoodVibesOrigin?: boolean;
 }
 
 export interface NtfyMessage {
@@ -31,6 +47,8 @@ export interface NtfySubscribeOptions {
   readonly poll?: boolean;
   readonly filters?: Record<string, string | number | boolean | readonly string[]>;
   readonly signal?: AbortSignal;
+  readonly reconnect?: boolean;
+  readonly reconnectDelayMs?: number;
 }
 
 export interface NtfyWebSocketOptions extends NtfySubscribeOptions {
@@ -50,10 +68,14 @@ export class NtfyIntegration {
     });
     if (options.title) headers.set('Title', options.title);
     if (options.priority) headers.set('Priority', String(options.priority));
-    if (options.tags?.length) headers.set('Tags', options.tags.join(','));
+    const tags = options.markGoodVibesOrigin
+      ? [...new Set([...(options.tags ?? []), GOODVIBES_NTFY_OUTBOUND_TAG])]
+      : options.tags ?? [];
+    if (tags.length) headers.set('Tags', tags.join(','));
     if (options.click) headers.set('Click', options.click);
     if (options.attach) headers.set('Attach', options.attach);
     if (options.actions?.length) headers.set('Actions', options.actions.join(';'));
+    if (options.markGoodVibesOrigin) headers.set(GOODVIBES_NTFY_ORIGIN_HEADER, GOODVIBES_NTFY_ORIGIN);
     if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
 
     const response = await fetchWithTimeout(target, {
@@ -107,34 +129,17 @@ export class NtfyIntegration {
     onMessage: (message: NtfyMessage) => void | Promise<void>,
     options: NtfySubscribeOptions = {},
   ): Promise<void> {
-    const url = this.buildSubscribeUrl(topic, 'json', options);
-    const response = await instrumentedFetch(url, {
-      method: 'GET',
-      headers: this.buildAuthHeaders(),
-      signal: options.signal,
-    });
-    if (!response.ok || !response.body) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`NtfyIntegration.subscribeJsonStream failed (${response.status}): ${body}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        await onMessage(JSON.parse(trimmed) as NtfyMessage);
+    const reconnect = options.reconnect ?? !options.poll;
+    while (!options.signal?.aborted) {
+      const url = this.buildSubscribeUrl(topic, 'json', options);
+      try {
+        await readNtfyJsonStreamWithNodeTransport(url, this.buildAuthHeaders(), onMessage, options.signal);
+      } catch (error) {
+        if (options.signal?.aborted) return;
+        if (!reconnect || isFatalNtfyStreamError(error)) throw error;
       }
-    }
-    if (buffer.trim()) {
-      await onMessage(JSON.parse(buffer.trim()) as NtfyMessage);
+      if (!reconnect || options.signal?.aborted) return;
+      await waitForNtfyReconnectDelay(options.signal, options.reconnectDelayMs ?? 1_000);
     }
   }
 
@@ -164,4 +169,250 @@ export class NtfyIntegration {
     if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
     return headers;
   }
+}
+
+export function isGoodVibesNtfyDeliveryEcho(message: Record<string, unknown>): boolean {
+  if (message.event !== 'message') return false;
+  const tags = message.tags;
+  if (Array.isArray(tags) && tags.includes(GOODVIBES_NTFY_OUTBOUND_TAG)) return true;
+  const headers = readRecord(message.headers);
+  const originHeader = headers ? readCaseInsensitiveHeader(headers, GOODVIBES_NTFY_ORIGIN_HEADER) : undefined;
+  return originHeader === GOODVIBES_NTFY_ORIGIN;
+}
+
+class NtfyStreamHttpError extends Error {
+  constructor(readonly status: number, body: string) {
+    super(`NtfyIntegration.subscribeJsonStream failed (${status}): ${body}`);
+    this.name = 'NtfyStreamHttpError';
+  }
+}
+
+interface NtfyJsonStreamState {
+  buffer: string;
+  queue: Promise<void>;
+}
+
+async function readNtfyJsonStreamWithNodeTransport(
+  url: string,
+  headers: Headers,
+  onMessage: (message: NtfyMessage) => void | Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const parsed = new URL(url);
+  if (parsed.protocol === 'http:') {
+    return readNtfyJsonStreamWithHttp1(url, headers, onMessage, signal, httpRequest);
+  }
+  if (parsed.protocol === 'https:') {
+    try {
+      await readNtfyJsonStreamWithHttp2(url, headers, onMessage, signal);
+      return;
+    } catch (error) {
+      if (signal?.aborted || error instanceof NtfyStreamHttpError) throw error;
+      return readNtfyJsonStreamWithHttp1(url, headers, onMessage, signal, httpsRequest);
+    }
+  }
+  throw new Error(`Unsupported ntfy stream protocol: ${parsed.protocol}`);
+}
+
+function readNtfyJsonStreamWithHttp1(
+  url: string,
+  headers: Headers,
+  onMessage: (message: NtfyMessage) => void | Promise<void>,
+  signal: AbortSignal | undefined,
+  requestImpl: typeof httpRequest,
+): Promise<void> {
+  if (signal?.aborted) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let aborted = false;
+    const state: NtfyJsonStreamState = { buffer: '', queue: Promise.resolve() };
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener('abort', abort);
+      callback();
+    };
+    const fail = (error: unknown) => settle(() => reject(error));
+    const finish = () => settle(resolve);
+    const abort = () => {
+      aborted = true;
+      req.destroy();
+      finish();
+    };
+    const req = requestImpl(url, {
+      method: 'GET',
+      headers: headersToRecord(headers),
+    }, (res) => {
+      res.setEncoding('utf8');
+      const status = res.statusCode ?? 0;
+      if (status < 200 || status >= 300) {
+        let body = '';
+        res.on('data', (chunk: string) => {
+          if (body.length < 4096) body += chunk;
+        });
+        res.on('end', () => fail(new NtfyStreamHttpError(status, body)));
+        res.on('error', fail);
+        return;
+      }
+      res.on('data', (chunk: string) => {
+        state.queue = state.queue
+          .then(() => consumeNtfyJsonChunk(state, chunk, onMessage))
+          .catch(fail);
+      });
+      res.on('end', () => {
+        state.queue
+          .then(() => flushNtfyJsonBuffer(state, onMessage))
+          .then(finish, fail);
+      });
+      res.on('error', (error) => {
+        if (aborted) finish();
+        else fail(error);
+      });
+    });
+    signal?.addEventListener('abort', abort, { once: true });
+    req.on('error', (error) => {
+      if (aborted) finish();
+      else fail(error);
+    });
+    req.end();
+  });
+}
+
+function readNtfyJsonStreamWithHttp2(
+  url: string,
+  headers: Headers,
+  onMessage: (message: NtfyMessage) => void | Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const client = http2Connect(parsed.origin);
+    const path = `${parsed.pathname}${parsed.search}`;
+    const state: NtfyJsonStreamState = { buffer: '', queue: Promise.resolve() };
+    let settled = false;
+    let aborted = false;
+    let status = 0;
+    let errorBody = '';
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener('abort', abort);
+      client.close();
+      callback();
+    };
+    const fail = (error: unknown) => settle(() => reject(error));
+    const finish = () => settle(resolve);
+    const abort = () => {
+      aborted = true;
+      stream.close();
+      finish();
+    };
+    const stream = client.request({
+      ':method': 'GET',
+      ':path': path,
+      ...headersToRecord(headers),
+    });
+    signal?.addEventListener('abort', abort, { once: true });
+    stream.setEncoding('utf8');
+    stream.on('response', (responseHeaders) => {
+      status = Number(responseHeaders[':status'] ?? 0);
+    });
+    stream.on('data', (chunk: string) => {
+      if (status !== 0 && (status < 200 || status >= 300)) {
+        if (errorBody.length < 4096) errorBody += chunk;
+        return;
+      }
+      state.queue = state.queue
+        .then(() => consumeNtfyJsonChunk(state, chunk, onMessage))
+        .catch(fail);
+    });
+    stream.on('end', () => {
+      if (status < 200 || status >= 300) {
+        fail(new NtfyStreamHttpError(status, errorBody));
+        return;
+      }
+      state.queue
+        .then(() => flushNtfyJsonBuffer(state, onMessage))
+        .then(finish, fail);
+    });
+    stream.on('error', (error) => {
+      if (aborted) finish();
+      else fail(error);
+    });
+    client.on('error', (error) => {
+      if (aborted) finish();
+      else fail(error);
+    });
+    stream.end();
+  });
+}
+
+function headersToRecord(headers: Headers): Record<string, string> {
+  const record: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    record[key.toLowerCase()] = value;
+  });
+  return record;
+}
+
+async function consumeNtfyJsonChunk(
+  state: NtfyJsonStreamState,
+  chunk: string,
+  onMessage: (message: NtfyMessage) => void | Promise<void>,
+): Promise<void> {
+  state.buffer += chunk;
+  const lines = state.buffer.split(/\r?\n/);
+  state.buffer = lines.pop() ?? '';
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    await onMessage(JSON.parse(trimmed) as NtfyMessage);
+  }
+}
+
+async function flushNtfyJsonBuffer(
+  state: NtfyJsonStreamState,
+  onMessage: (message: NtfyMessage) => void | Promise<void>,
+): Promise<void> {
+  const trimmed = state.buffer.trim();
+  state.buffer = '';
+  if (trimmed) await onMessage(JSON.parse(trimmed) as NtfyMessage);
+}
+
+function isFatalNtfyStreamError(error: unknown): boolean {
+  return error instanceof NtfyStreamHttpError
+    && error.status >= 400
+    && error.status < 500
+    && error.status !== 408
+    && error.status !== 429;
+}
+
+function waitForNtfyReconnectDelay(signal: AbortSignal | undefined, delayMs: number): Promise<void> {
+  if (signal?.aborted || delayMs <= 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let timeout: ReturnType<typeof setTimeout>;
+    const done = () => {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', abort);
+      resolve();
+    };
+    const abort = () => done();
+    timeout = setTimeout(done, delayMs);
+    signal?.addEventListener('abort', abort, { once: true });
+  });
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function readCaseInsensitiveHeader(headers: Record<string, unknown>, name: string): string | undefined {
+  const wanted = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() !== wanted) continue;
+    return typeof value === 'string' ? value : undefined;
+  }
+  return undefined;
 }

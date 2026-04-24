@@ -296,6 +296,9 @@ export class AgentManager {
       }, {
         agentId: id,
         task,
+        ...(record.parentAgentId ? { parentAgentId: record.parentAgentId } : {}),
+        ...(record.orchestrationGraphId ? { orchestrationGraphId: record.orchestrationGraphId } : {}),
+        ...(record.parentNodeId ? { parentNodeId: record.parentNodeId } : {}),
       });
       const contract: OrchestrationTaskContract = {
         allowedTools: [...record.tools],

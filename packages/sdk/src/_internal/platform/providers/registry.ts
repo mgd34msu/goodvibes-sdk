@@ -167,9 +167,9 @@ export class ProviderRegistry {
     return getSyntheticModelDefinitions(this.catalogModels, this.syntheticCanonicalModels) as ModelDefinition[];
   }
 
-  private updateCatalogState(models: readonly CatalogModel[]): void {
+  private updateCatalogState(models: readonly CatalogModel[], fetchedAt = Date.now()): void {
     this.catalogModels = [...models];
-    this.pricingCatalog = { fetchedAt: Date.now(), models: this.catalogModels };
+    this.pricingCatalog = { fetchedAt, models: this.catalogModels };
     this.syntheticCanonicalModels = buildSyntheticCanonicalModels(this.catalogModels);
     this._invalidateModelRegistry();
   }
@@ -395,10 +395,20 @@ export class ProviderRegistry {
       ? findModelDefinitionForProvider(modelId, provider, registry, CATALOG_PROVIDER_NAME_ALIASES)
       : findModelDefinition(modelId, registry);
     if (!def) {
+      const explicitOpenAIProvider = this.getExplicitOpenAIProviderForStaleCatalog(modelId, provider);
+      if (explicitOpenAIProvider) return explicitOpenAIProvider;
       if (provider) throw new Error(`No model '${modelId}' for provider '${provider}' in registry.`);
       throw new Error(`No model '${modelId}' in registry.`);
     }
     return this.require(def.provider);
+  }
+
+  private getExplicitOpenAIProviderForStaleCatalog(modelId: string, provider?: string): LLMProvider | null {
+    const explicitProviderId = provider ?? (modelId.includes(':') ? splitModelRegistryKey(modelId).providerId : '');
+    if (explicitProviderId !== 'openai' && explicitProviderId !== 'openai-subscriber') return null;
+    const resolvedModelId = provider ? modelId : splitModelRegistryKey(modelId).resolvedModelId;
+    if (!resolvedModelId.trim()) return null;
+    return this.tryGet(explicitProviderId) ?? null;
   }
 
   /** All registered model definitions. */
@@ -790,9 +800,7 @@ export class ProviderRegistry {
   initCatalog(): void {
     const cached = loadCatalogCache(this.getCatalogCachePaths().cachePath);
     if (cached) {
-      this.catalogModels = [...cached.models];
-      this.pricingCatalog = { fetchedAt: cached.fetchedAt, models: this.catalogModels };
-      this.syntheticCanonicalModels = buildSyntheticCanonicalModels(this.catalogModels);
+      this.updateCatalogState(cached.models, cached.fetchedAt);
     }
     if (!cached || isCatalogCacheStale(cached)) {
       void this.refreshCatalog().catch((err) => {
