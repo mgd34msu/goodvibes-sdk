@@ -1,6 +1,6 @@
 import { existsSync } from 'fs';
-import { join } from 'path';
-import { pathToFileURL } from 'url';
+import { dirname, join, resolve } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { logger } from '../../utils/logger.js';
 import { LspClient } from './client.js';
 import { getBinaryPath, ensureBinary } from './binary-downloader.js';
@@ -9,15 +9,27 @@ import { summarizeError } from '../../utils/error-display.js';
 
 type LspRoots = Pick<ShellPathService, 'workingDirectory' | 'resolveProjectPath'>;
 
+const SDK_PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
+
+function bundledCommandPath(command: string, workingDirectory: string): string | null {
+  const candidates = [
+    join(workingDirectory, 'node_modules', '.bin', command),
+    join(SDK_PACKAGE_ROOT, 'node_modules', '.bin', command),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
 /**
  * Resolve a server command: check node_modules/.bin/ first (bundled),
  * then fall back to system PATH via Bun.which().
  * Returns the resolved command path, or the original command if neither found.
  */
 function resolveCommand(command: string, workingDirectory: string): string {
-  // Try node_modules/.bin in project root
-  const bundled = join(workingDirectory, 'node_modules', '.bin', command);
-  if (existsSync(bundled)) return bundled;
+  const bundled = bundledCommandPath(command, workingDirectory);
+  if (bundled) return bundled;
   // Try .goodvibes/bin/ (downloaded binaries)
   const downloaded = getBinaryPath(join(workingDirectory, '.goodvibes', 'bin'), command);
   if (existsSync(downloaded)) return downloaded;
@@ -120,8 +132,7 @@ export class LspService {
     const config = this.configs.get(langId);
     if (!config) return false;
     // Check bundled first
-    const bundled = join(this.roots.workingDirectory, 'node_modules', '.bin', config.command);
-    if (existsSync(bundled)) return true;
+    if (bundledCommandPath(config.command, this.roots.workingDirectory)) return true;
     // Check downloaded binaries
     const downloaded = getBinaryPath(this.roots.resolveProjectPath('bin'), config.command);
     if (existsSync(downloaded)) return true;
@@ -171,8 +182,7 @@ export class LspService {
     for (const { command, langIds, args } of WELL_KNOWN_SERVERS) {
       let found = false;
       // Check bundled first, then .goodvibes/bin/, then system PATH
-      const bundledPath = join(this.roots.workingDirectory, 'node_modules', '.bin', command);
-      if (existsSync(bundledPath)) {
+      if (bundledCommandPath(command, this.roots.workingDirectory)) {
         found = true;
       }
       // Check .goodvibes/bin/ (downloaded binaries)

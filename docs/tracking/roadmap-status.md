@@ -1,9 +1,9 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.21.36
-**Current score**: 9.0 / 10
-**Last updated**: 2026-04-21 (soak period continues with consumer-adoption hardening hotfixes)
+**Current version**: 0.25.1
+**Current score**: pending recalibration after 0.23.x-0.25.x feature and hardening releases (last recorded: 9.0 / 10 at 0.21.36)
+**Last updated**: 2026-04-24 (0.25.1 dependency-audit hardening; 1.0 soak criteria need reset)
 
 ---
 
@@ -16,11 +16,11 @@
 | S-γ | Mirror-drift guard | 0.19.0 | **shipped** | 8.0 → 8.3 | 0.19.0 `d5e2f04` (S-γ scripts from `2ed2853`) | Follow-up WRFC needed to run `bun run sync` for 8 tracked drifts before CI goes green on main. |
 | S-δ | Per-release migration notes | 0.19.1 | **shipped** | 8.3 → 8.5 | 0.19.1 `d5b99e0` | Changelog gate live, CI job `changelog-check` armed. |
 | S-ε | Multi-platform test matrix | 0.19.1 | **shipped (partial)** | 8.5 → 8.5 | 0.19.1 `d5b99e0` | 4 dimensions wired (Bun + bun-on-nodeN + RN). Real Node/Browser/Workers deferred to S-ε.2. Partial — score effect withheld until full delivery. |
-| S-ε.2 | Platform matrix — real Node + Browser + Workers | 0.19.8 | **shipped (partial)** | 8.5 → 8.8 | 0.19.8 `f86123b` (browser) / `8262775` (hermes) / `47d870a` (workers) / `001455d` + `f428e84` (wrangler harness) | Browser + Hermes + Workers (Miniflare) + wrangler-CLI harnesses all landed. **Real-Node matrix dimension still open.** Wrangler harness landed but `wrangler dev --local` uses Miniflare 4 internally — production-workerd parity (e.g. `EventSource === false`) is out of scope for 1.0 (requires live Cloudflare deploy). |
+| S-ε.2 | Platform matrix — real runtime checks | 0.19.8 | **needs-current-CI-review** | 8.5 → 8.8 | 0.19.8 `f86123b` (browser) / `8262775` (hermes) / `47d870a` (workers) / `001455d` + `f428e84` (wrangler harness) | Historical browser/Hermes/Workers harnesses landed, but current `.github/workflows/ci.yml` only runs `bun`, `rn-bundle`, `workers`, and `workers-wrangler` as platform-matrix dimensions. Browser compatibility is currently a static `validate` check; Hermes is not an explicit CI lane. |
 | S-θ.2 | Observer seams — onEvent + onError + onTransportActivity | 0.19.8 | **shipped** | 9.0 → 9.2 | 0.19.8 `60a2a06` | All three callbacks wired at transport + SDKError sites; OTel adapter covered. |
-| Wave 5 | Package hygiene + SBOM + provenance | 0.19.8 | **shipped** | no score effect (hygiene) | 0.19.8 `83009b5` | attw + publint + provenance + signed tags + SBOM (CycloneDX). |
+| Wave 5 | Package hygiene + SBOM + provenance | 0.19.8 | **shipped** | no score effect (hygiene) | 0.19.8 `83009b5` | attw + publint + provenance + release-tag helper + SBOM (CycloneDX). Current release workflow validates tag/version sync but does not enforce tag signatures cryptographically. |
 | Wave 6 | Policy & UX — error audit, timeout bounds, producer queue | 0.19.8 | **shipped** | no score effect (hygiene) | 0.19.8 `23c4292` | `docs/semver-policy.md` + `docs/defaults.md`; bounded realtime queue replaces unbounded. |
-| Wave 7 | Verification — Zod validation + bundle budgets + Verdaccio | 0.19.8 | **shipped** | no score effect (hygiene) | 0.19.8 `3fb64e2` + `9cd9558` | Zod v4 modular adopted at transport boundary; bundle-budget gate; Verdaccio dry-run. |
+| Wave 7 | Verification — Zod validation + bundle budgets + Verdaccio | 0.19.8 | **partially-current** | no score effect (hygiene) | 0.19.8 `3fb64e2` + `9cd9558` | Zod v4 modular adopted at transport boundary; Verdaccio dry-run remains available. `bun run bundle:check` exists, but current CI does not run it as a standalone gate. |
 | Wave 8 | Hardening — coverage backfill, flake, API extractor, no-todo | 0.19.8 | **shipped** | 9.2 → 9.5 | 0.19.8 `552f8d4` + `487a84d` + `25fe936` | 195-test coverage backfill; flake-detect, api-extractor baseline (`etc/goodvibes-sdk.api.md`), no-todo-markers CI; companion TODOs + sql.js shim cleaned. |
 | Wave 9 (features) | SDK enhancements — auto-refresh + middleware + idempotency + traceparent + platform stores | 0.19.8 | **shipped** | no score effect (features) | 0.19.8 `4965939` (+ `b3e2984` test fix) | Auth auto-refresh middleware, idempotency keys, W3C traceparent, iOS Keychain / Android Keystore / Expo SecureStore token stores. Distinct from the "Wave 9 soak period" tracked in `road-to-1.0.md`. |
 | S-γ-cleanup | Transport-http drift cleanup (narrow) | 0.19.2 | **shipped** | no score effect (infra) | 0.19.2 `c7c561e` | `--scope=<subsystem>` flag added; 8 transport-http drifts resolved; `mirror-drift` CI can now pass on main. |
@@ -28,8 +28,8 @@
 | S-θ | Observability hooks | 0.19.5 | **shipped (partial)** | 9.2 → 9.5 | 0.19.5 | SDKObserver interface + onEvent/onError adapters; OTel adapter deferred |
 | honest-runtime-posture | Honest runtime posture | 0.19.6 | **shipped** | no score effect (hygiene) | 0.19.6 | Stripped theater CI labels; runtime reporting now accurately reflects actual execution |
 | Wave M | Metadata / polish | 0.19.6 | **shipped** | no score effect (docs) | 0.19.6 | CONTRIBUTING.md CI gates, roadmap-status refresh, stale docs cleanup |
-| Wave D | Dependency audit + hardening prep | — | **shipped** | — | — | minimatch ReDoS override applied (root + packages/sdk package.json); consumer note documented in CHANGELOG |
-| Wave 9 (soak) | Soak period | 0.21.0–0.21.36+ | **in-progress** | — | 0.21.36 | Started 2026-04-18. Consumer-adoption hardening hotfixes landing as patch releases (0.21.1 → 0.21.36). Owner sign-off pending for 1.0.0. |
+| Wave D | Dependency audit + hardening | 0.25.1 | **shipped** | — | 0.25.1 | Root/package overrides now force fixed `ajv`, `fast-xml-parser`, `google-auth-library`, `lodash`, and `minimatch`; Bash LSP remains bundled through `vendor/bash-language-server`, patched to use `editorconfig@3.0.2`; the Vertex SDK transitive path was replaced; Verdaccio's `uuid@8` dry-run path is redirected to `vendor/uuid-cjs`. |
+| Wave 9 (soak) | Soak period | 0.21.0–0.25.1+ | **reset-needed** | — | 0.25.1 | Started 2026-04-18, but feature-bearing 0.23.x, 0.24.0, and 0.25.x releases landed after that. Owner sign-off pending and soak criteria need a fresh definition before 1.0.0. |
 | S-ι | Hardening gates | 0.19.8 / 0.20.x | **shipped (partial)** | 9.5 → 10.0 | 0.19.8 (Waves 5–8) | Waves 5–8 landed (hygiene, policy, verification, API-extractor/flake/no-todo). Remaining S-ι scope from `docs/roadmap-to-1.0.md`: mutation testing ≥85% kill rate, branch-coverage ≥95% on error paths, JSDoc `@throws` contract lint, public-surface file-size cap, `no-any-leak` lint. Score-effect withheld until full S-ι lands. |
 | 1.0.0 cut | Owner approval gate | 1.0.0 | **blocked on owner approval** | — | — | **Requires explicit owner approval. Not automatic.** |
 
@@ -113,7 +113,7 @@ Consolidated Waves 5–9 into the 0.19.8 cut. Ten engineer-stream commits landed
 - **Wave 2 (browser)** `f86123b` — `@vitest/browser` + Playwright harness against MSW mock; `dist/browser.js` exercised via `./browser` subpath; CI matrix dimension added.
 - **Wave 3 (hermes)** `488b615` + `8262775` — `hermes-engine` harness + CI matrix dimension.
 - **Wave 4 (workers, perfection fix)** `47d870a` — M-1 + m-1..m-6 + n-1..n-3 defects closed on the Miniflare harness. Wrangler-CLI harness subsequently landed in `001455d` + `f428e84` (9 tests, dedicated CI lane) to exercise wrangler's esbuild/`wrangler.toml` pipeline. Production-workerd parity remains an open MIN (would require live Cloudflare deploy) because `wrangler dev --local` shares Miniflare 4's runtime layer.
-- **Wave 5 (hygiene + SBOM + provenance)** `83009b5` — attw + publint CI gates, OIDC `npm publish --provenance`, signed tags, SECURITY.md, CycloneDX SBOM generation.
+- **Wave 5 (hygiene + SBOM + provenance)** `83009b5` — attw + publint CI gates, OIDC `npm publish --provenance`, release-tag helper, SECURITY.md, CycloneDX SBOM generation.
 - **Wave 6 (policy & UX)** `23c4292` — `docs/semver-policy.md`, `docs/defaults.md`, error-message audit across `SDKError` throw sites, timeout/retry/backoff defaults audit, bounded producer queue in `transport-realtime/runtime-events.ts` (replaces unbounded prod-hang risk).
 - **Wave 7 (verification)** `3fb64e2` (bundle budgets + Verdaccio dry-run) + `9cd9558` (Zod v4 modular runtime validation at transport boundary; validation failures throw `SDKError{kind:'contract'}` with field-level detail).
 - **Wave 8 (S-ι hardening)** `552f8d4` (195-test coverage backfill) + `487a84d` (flake-detect + api-extractor + no-todo-markers CI gates; `etc/goodvibes-sdk.api.md` 14805-line public-API baseline) + `25fe936` (companion TODOs cleaned: session persistence, rate-limiting, ToolRegistry DI; sql.js shim replaces `@ts-ignore`).

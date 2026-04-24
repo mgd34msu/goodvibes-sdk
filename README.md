@@ -17,7 +17,7 @@ This package has two surfaces with different runtime requirements. See [Runtime 
 
 This is one npm package with subpath exports.
 
-> **Current version: `0.23.2`.** The 0.21.x line is the stable pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The next version jump is to 1.0.0 pending owner sign-off. See [the roadmap](./docs/tracking/road-to-1.0.md).
+> **Current version: `0.25.1`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
 
 
 ```bash
@@ -37,23 +37,32 @@ GitHub Packages requires a scoped registry mapping:
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
-### Security: postinstall patcher
+### Security: dependency audit posture
 
-This package ships a `postinstall` script that automatically upgrades a vulnerable `minimatch` transitive dependency in your `node_modules`. The patcher remediates three ReDoS advisories (GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74) that stem from `bash-language-server → editorconfig → minimatch@10.0.1`. It exits 0 on all errors and never breaks your install.
+The SDK keeps Bash LSP bundled. Because upstream `bash-language-server@5.6.0`
+still pins `editorconfig@2.0.1 -> minimatch@10.0.1`, the release tarball
+vendors a patched `bash-language-server` package at
+`vendor/bash-language-server`. The patch changes only its `editorconfig`
+dependency to `3.0.2`, which resolves to the fixed `minimatch@10.2.5` line.
 
-**If your environment uses `--ignore-scripts`** (e.g., CI hardening, Yarn PnP strict mode), the patcher will not run. Add this to your own `package.json` as a fallback:
+If your root audit policy needs explicit transitive pins for the SDK source
+workspace, use root-level overrides:
 
 ```json
-"overrides": { "minimatch": "^10.2.5" }
+{
+  "overrides": {
+    "ajv": "8.18.0",
+    "fast-xml-parser": "5.7.1",
+    "google-auth-library": "10.6.2",
+    "lodash": "4.18.1",
+    "minimatch": "^10.2.5"
+  }
+}
 ```
 
-**Bun users:** if your project's trust policy restricts lifecycle scripts, run:
-
-```bash
-bun pm trust @pellux/goodvibes-sdk
-```
-
-Or add the `overrides` block above instead.
+The source workspace also carries root-level dependency-audit overrides,
+including repo-local Bash LSP and Verdaccio `uuid` vendor patches. See
+[Security Policy](./SECURITY.md) for the current disclosure.
 
 ## Quick Start
 

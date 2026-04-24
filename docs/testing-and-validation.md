@@ -8,21 +8,19 @@ Every push and PR to `main` must pass these gates:
 
 | Gate | Command | Purpose |
 |------|---------|---------|
-| `validate` | `bun run validate` | Full workspace validation: API docs sync, docs/examples completeness, TypeScript build, type-level checks, tests, pack, install smoke |
+| `validate` | `bun run validate` | Kitchen-sink validation: API docs sync, docs/examples completeness, TypeScript build, type-level checks, browser compatibility, package metadata, no-any, pack, install smoke |
+| `build` | `bun run build` | Builds `packages/sdk/dist` once and uploads it for downstream CI jobs |
 | `mirror-drift` | `bun run sync:check` | Ensures `_internal` transport-http mirror is byte-for-byte in sync with its canonical source |
-| `platform-matrix (bun)` | `bun run build && bun test test` | Runs full test suite on Bun |
-| `platform-matrix (rn-bundle)` | `bun test test/rn-bundle-node-imports.test.ts` | Verifies companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports |
-| `throw-guard` | inline `rg` scan | Prevents raw `throw new Error(` / `throw Error(` in public SDK source |
-| `changelog-check` | `bun run changelog:check` | Blocks releases when `CHANGELOG.md` is missing a `## [X.Y.Z]` section for the current version |
-| `version-consistency` | `bun run version:check` | Ensures all workspace `package.json` files carry the same version |
-| `types-check` | `bun run types:check` | Compiles type-level usage tests against the public API surface to catch type regressions |
-| `bundle-budgets` | `bun run bundle:check` | Enforces per-entry gzip size budgets from `bundle-budgets.json`; a budget failure means an entry point grew beyond its 20% headroom allowance |
+| `platform-matrix (bun)` | `bun run build && bun run test` | Runs the full Bun test suite |
+| `platform-matrix (rn-bundle)` | `bun run build && bun run test:rn` | Verifies companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports |
+| `lint-gates` | inline raw-throw scan + `bun run changelog:check` + `bun run version:check` | Prevents raw public throws, missing changelog sections, and workspace version drift |
+| `types-check` | `bun run types:check` | Compiles type-level usage tests against the uploaded build artifact to catch type regressions |
 | `sbom-check` | `bun run sbom:generate` + CI-inline size + schema assertions | Generates the CycloneDX SBOM (`sbom.cdx.json`) and asserts non-empty + valid schema (no standalone `sbom:check` script — validation is inlined in `.github/workflows/ci.yml`) |
 | `platform-matrix (workers)` | `bun run test:workers` | Runs the `./web` entry under Miniflare 4 (workerd V8 isolate, in-process) — 9 tests validate Worker-runtime compatibility (no `node:*`, no `Bun.*`, no client `EventSource`/`WebSocket` dependence) |
 | `platform-matrix (workers-wrangler)` | `bun run test:workers:wrangler` | Runs the `./web` entry under `wrangler dev --local` — exercises wrangler's esbuild bundling pipeline and wrangler.toml config. NOTE: wrangler dev --local shares the Miniflare 4 runtime, so this is **not** a production-workerd verification (see `test/workers/FINDINGS.md`) |
-| `zero-any` | `bun run any:check` | Scans `packages/`, `test/`, `scripts/` for TypeScript `any` types in real type positions. Zero tolerance — fails the build on any occurrence outside vendored third-party code (`packages/*/vendor/`). See `scripts/no-any-types.ts` |
-| `attw` (are-the-types-wrong) | `bunx @arethetypeswrong/cli --pack` | Validates the `exports` map resolves cleanly under `node16` and `bundler` conditions for every published subpath |
-| `publint` | `bunx publint` | Detects common `package.json` packaging hygiene issues before release |
+| `types-resolution-check` | `bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm` | Validates the `exports` map resolves cleanly for every published subpath |
+| `publint-check` | `bun run publint:check` | Detects common `package.json` packaging hygiene issues before release |
+| `sync-safety-check` | `bun run sync:check` + inline stale-delete guard | PR-only guard against mirror drift and accidental mass deletion |
 
 ## Portable Validation
 
@@ -30,7 +28,10 @@ Every push and PR to `main` must pass these gates:
 bun run validate
 ```
 
-Covers: API docs sync, docs/examples completeness, TypeScript build, type-level checks, tests, pack, install smoke.
+Covers: API docs sync, docs/examples completeness, TypeScript build,
+type-level checks, browser compatibility, package metadata, no-any, pack, and
+install smoke. Test execution is owned by the `platform-matrix` jobs; run
+`bun run test` locally when you need the full Bun test suite.
 
 ## Internal Refresh
 
@@ -59,7 +60,11 @@ This is opt-in per call — there is no global schema enforcement. Schema mismat
 
 ## Bundle Budget Enforcement
 
-`bundle-budgets.json` at the repo root defines per-entry gzip size ceilings with 20% growth headroom over the last measured size. The `bun run bundle:check` command is what the CI `bundle-budgets` job runs.
+`bundle-budgets.json` at the repo root defines per-entry gzip size ceilings with
+20% growth headroom over the last measured size. `bun run bundle:check` remains
+the local budget check. It is not wired as a standalone job in the current
+`.github/workflows/ci.yml`; add a workflow step before treating it as a required
+CI gate again.
 
 To see current actual sizes:
 
@@ -85,5 +90,7 @@ The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatibl
 - **mirror-drift** — `packages/transport-http/src/` is mirrored into `packages/sdk/src/_internal/transport-http/`. Without this gate, a source edit in the canonical package silently diverges from the inlined copy.
 - **throw-guard** — All consumer-reachable errors must be `GoodVibesSdkError` instances with a typed `kind` discriminant. Raw `throw new Error` bypasses the error contract.
 - **rn-bundle** — Static bundle scan. Companion surface (React Native, Expo, browser, web) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers. (Runtime verification of `./web` under workerd lives in the separate `workers` and `workers-wrangler` lanes above.)
-- **bundle-budgets** — Prevents accidental bundle size growth. Each entry has a ceiling; the 20% headroom prevents transient-spike failures.
+- **bundle:check** — Prevents accidental bundle size growth when run locally or
+  reintroduced as a CI gate. Each entry has a ceiling; the 20% headroom prevents
+  transient-spike failures.
 - **types-check** — TypeScript type inference is non-trivial for discriminated union returns. Type tests validate at compile time without runtime overhead.

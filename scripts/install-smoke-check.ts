@@ -150,9 +150,8 @@ function installWithBun(specs) {
   const projectDir = createSdkTempDir('goodvibes-sdk-bun-smoke-');
   try {
     writeConsumerFiles(projectDir);
-    // Pin zod@^4 explicitly so Bun hoists zod v4 over the transitive zod@3.24.2 brought in
-    // by bash-language-server (a dep of the SDK). Without this explicit pin, Bun 1.3.10
-    // resolves zod@3.24.2 from that subtree and the dist's `zod/v4` subpath import fails.
+    // Pin zod@^4 explicitly so Bun resolves the dist's `zod/v4` subpath import
+    // even when another dependency tree brings an older zod.
     const bunSpecs = [...specs, 'zod@^4'];
     retryOnNetworkError(() => {
       run('bun', ['add', '--force', '--no-cache', ...bunSpecs], projectDir, {

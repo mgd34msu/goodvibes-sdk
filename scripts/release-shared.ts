@@ -79,6 +79,17 @@ function shouldCopyPath(path) {
   return !path.split('/').includes('node_modules');
 }
 
+function stageSdkSecurityMitigationAssets(stageDir) {
+  const vendorDir = resolve(stageDir, 'vendor');
+  mkdirSync(vendorDir, { recursive: true });
+  rmSync(resolve(vendorDir, 'bash-language-server'), { recursive: true, force: true });
+  cpSync(
+    resolve(SDK_ROOT, 'vendor/bash-language-server'),
+    resolve(vendorDir, 'bash-language-server'),
+    { recursive: true },
+  );
+}
+
 function normalizeDependencyGroup(group, rootVersion) {
   if (!group || typeof group !== 'object') {
     return group;
@@ -100,6 +111,27 @@ function stripInternalDependencies(group) {
     Object.entries(group).filter(([name]) => !INTERNAL_PACKAGE_NAMES.has(name)),
   );
   return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function addUniqueFiles(files, entries) {
+  const next = Array.isArray(files) ? [...files] : [];
+  for (const entry of entries) {
+    if (!next.includes(entry)) next.push(entry);
+  }
+  return next;
+}
+
+function addSdkSecurityMitigationManifestFields(manifest) {
+  return {
+    ...manifest,
+    dependencies: {
+      ...(manifest.dependencies ?? {}),
+      'bash-language-server': 'file:vendor/bash-language-server',
+    },
+    files: addUniqueFiles(manifest.files, [
+      'vendor/bash-language-server',
+    ]),
+  };
 }
 
 function normalizeRepository(repository) {
@@ -140,9 +172,15 @@ export function stagePackages() {
       const sourceDir = getPackageDirectoryPath(dir);
       const stageDir = resolve(tempRoot, dir);
       cpSync(sourceDir, stageDir, { recursive: true, filter: shouldCopyPath });
+      if (dir === 'packages/sdk') {
+        stageSdkSecurityMitigationAssets(stageDir);
+      }
       const manifest = normalizeManifest(readPackage(dir), rootVersion);
       if (dir === 'packages/sdk' && publicPackageNameOverride) {
         manifest.name = publicPackageNameOverride;
+      }
+      if (dir === 'packages/sdk') {
+        Object.assign(manifest, addSdkSecurityMitigationManifestFields(manifest));
       }
       if (publicPackageDirs.includes(dir)) {
         manifest.dependencies = stripInternalDependencies(manifest.dependencies);

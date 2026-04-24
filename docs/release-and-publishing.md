@@ -27,7 +27,9 @@ bun run release:verify
 - docs/examples are complete
 - TypeScript build passes
 - type-level usage checks pass
-- tests pass
+- browser/runtime-neutral compatibility checks pass
+- package metadata checks pass
+- `any` type-position checks pass
 - every package can be packed cleanly
 - the staged tarballs can be installed into a clean npm consumer
 
@@ -86,8 +88,12 @@ The release workflow can be triggered:
 - or by pushing a `v*` tag
 
 Workflow behavior:
-- `CI` runs `bun run validate`
-- `Release` runs `bun run validate` again before any publish step
+- `CI` runs the full gate set from `.github/workflows/ci.yml`, including
+  `validate`, `build`, `mirror-drift`, `platform-matrix`, `lint-gates`,
+  `types-check`, `types-resolution-check`, `publint-check`, `sbom-check`, and
+  the PR-only `sync-safety-check`
+- `Release` verifies tag/version sync and mirror sync, generates the SBOM, then
+  runs `bun run validate` again before any publish step
 - manual dispatch defaults to dry-run mode
 - tag pushes publish the umbrella SDK to npmjs and GitHub Packages, verify both, then run registry install smoke checks
 - the registry install smoke checks cover both `npm install` and `bun add`
@@ -101,15 +107,14 @@ Repository setup required for publishing:
   - package name `@mgd34msu/goodvibes-sdk`
   - `.npmrc` line `@mgd34msu:registry=https://npm.pkg.github.com`
   - auth line `//npm.pkg.github.com/:_authToken=TOKEN`
-- tags that match the package version, for example `v0.21.36`
+- tags that match the package version, for example `v0.25.1`
 
 Recommended first-release sequence:
 
 ```bash
 bun run validate
 bun run release:dry-run
-git tag v0.21.36
-git push origin v0.21.36
+bun run release:tag -- --push
 ```
 
 Then watch the `Release` workflow and verify that:
@@ -161,7 +166,7 @@ bun run changelog:check
 This reads the version from `packages/sdk/package.json` and greps `CHANGELOG.md` for a matching `## [X.Y.Z]` header. Exit 0 when found; exit 1 with a descriptive error when missing.
 
 The check runs automatically:
-- In CI via the `changelog-check` job on every push/PR to `main`.
+- In CI as the `Changelog gate` step of the `lint-gates` job on every push/PR to `main`.
 - In the publish script (`scripts/publish-packages.ts`) before any staging or npm publish call.
 
 ### Adding an entry
@@ -202,19 +207,22 @@ bun run version:check
 
 This reads the version from root `package.json` and checks every `packages/*/package.json` against it. Exit 0 when all match; exit 1 with a divergence report when any differ.
 
-The check runs automatically in CI via the `version-consistency` job on every push/PR to `main`.
+The check runs automatically in CI as the `Version consistency` step of the `lint-gates` job on every push/PR to `main`.
 
 ## CI Gates
 
 | Job | Command | Purpose |
 |-----|---------|----------|
-| `validate` | `bun run validate` | Full workspace validation: docs, TypeScript build, type-level checks, tests, pack, install smoke |
+| `validate` | `bun run validate` | Kitchen-sink workspace validation: docs, build, type-level checks, browser compatibility, metadata, no-any, pack check, install smoke |
+| `build` | `bun run build` | Builds `packages/sdk/dist` once and uploads it as the artifact consumed by downstream checks |
 | `mirror-drift` | `bun run sync:check` | Ensures transport-http mirror parity — catches body divergence between source and mirror |
-| `platform-matrix` | `bun run build && bun test test` / `bun run test:rn` / `bun run test:workers` / `bun run test:workers:wrangler` | Runs test suite on bun, rn-bundle, workers (Miniflare 4), and workers-wrangler platforms |
-| `throw-guard` | inline rg scan | Prevents raw throws from shipping in public SDK source |
-| `changelog-check` | `bun run changelog:check` | Blocks releases when CHANGELOG.md is missing a section for the current version |
-| `version-consistency` | `bun run version:check` | Ensures all workspace package.json files carry the same version |
-| `types-check` | `bun run types:check` | Compiles type-level usage tests to catch public API type regressions |
+| `platform-matrix` | `bun run build && bun run test` / `bun run test:rn` / `bun run test:workers` / `bun run test:workers:wrangler` | Runs Bun, RN bundle-scan, Miniflare Workers, and wrangler-local Workers lanes |
+| `lint-gates` | inline raw-throw scan + `bun run changelog:check` + `bun run version:check` | Prevents raw public throws, missing changelog sections, and workspace version drift |
+| `types-check` | `bun run types:check` | Compiles type-level usage tests against the uploaded build artifact |
+| `types-resolution-check` | `bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm` | Checks exports-map type resolution against the uploaded build artifact |
+| `publint-check` | `bun run publint:check` | Checks package metadata and export hygiene |
+| `sbom-check` | `bun run sbom:generate` + inline size/schema checks | Generates and validates the CycloneDX SBOM artifact |
+| `sync-safety-check` | `bun run sync:check` + inline stale-delete guard | PR-only guard against mirror drift and accidental mass deletion |
 
 ### Root cause of the 0.19.6 divergence
 
@@ -250,9 +258,12 @@ bun run sync:check
 
 The hook is opt-in and not installed automatically. Omit it if you prefer to rely solely on the CI gate.
 
-## Signed Git Tags
+## Release Tags
 
-All release tags **MUST** be signed with the repo owner's GPG key. Unsigned tags will not be accepted as valid release artifacts.
+Use signed release tags when possible. The local `release:tag` helper creates a
+GPG-signed tag and is the preferred path. The GitHub Release workflow verifies
+that pushed `v*` tags match `packages/sdk/package.json`; it does not currently
+perform cryptographic tag-signature enforcement.
 
 ### Prerequisites
 
@@ -271,7 +282,7 @@ gpg --list-secret-keys --keyid-format=long
 
 ### Creating a release tag
 
-Use the `release:tag` script to create a signed tag automatically:
+Use the `release:tag` script to create a signed tag:
 
 ```bash
 bun run release:tag
@@ -303,7 +314,9 @@ git tag -s v<version> -m 'release <version>'
 git push origin v<version>
 ```
 
-**Do not use unsigned tags** (`git tag v<version>`) — the release checklist requires GPG-signed tags on all production releases.
+Unsigned tags can still trigger the workflow if the tag name matches the package
+version. Treat that as a fallback for environments where local GPG signing is
+not available, not the normal release path.
 
 ## SBOM (Software Bill of Materials)
 
@@ -343,9 +356,9 @@ This is equivalent to:
 bun run validate && bun run types:check && bun run sync:check
 ```
 
-- `validate` — TypeScript build + tests + pack smoke
-- `types:check` — standalone TypeScript type-level usage checks (`bun x tsc -b --force`)
-- `sync:check` — verifies the `_internal/daemon/` mirror is in sync with `packages/daemon-sdk/src/`
+- `validate` — docs, build, type-level checks, browser compatibility, metadata, no-any, pack check, install smoke
+- `types:check` — standalone TypeScript type-level usage checks (`bun x tsc --project tsconfig.type-tests.json`)
+- `sync:check` — verifies the `transport-http` mirror is in sync with its canonical source
 
 Run `validate:strict` before every release tag. CI enforces all three gates independently.
 

@@ -192,7 +192,11 @@ jobs:
           if [ -f "$RELEASE_DOC" ]; then
             cp "$RELEASE_DOC" /tmp/release_notes.md
           else
-            EXCERPT=$(awk "/^## ${VERSION}$/,/^## /{if (/^## ${VERSION}$/) next; if (/^## /) exit; print}" CHANGELOG.md)
+            EXCERPT=$(awk -v version="$VERSION" '
+              $0 ~ "^## \\[" version "\\]([[:space:]]|-|$)" { in_section = 1; next }
+              in_section && /^## / { exit }
+              in_section { print }
+            ' CHANGELOG.md)
             if [ -z "$EXCERPT" ]; then
               EXCERPT="Release ${VERSION}"
             fi

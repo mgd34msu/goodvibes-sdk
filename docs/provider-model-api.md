@@ -1,6 +1,6 @@
 # Provider & Model API Reference
 
-**Version**: `@pellux/goodvibes-sdk` ≥ 0.21.3 (current: 0.21.36 — see SDK `CHANGELOG.md` for incremental provider-API changes through F-PROV-009 and the always-present `secretsResolutionSkipped` boolean added in 0.21.36)
+**Version**: `@pellux/goodvibes-sdk` ≥ 0.21.3 (current: 0.25.1 — see SDK `CHANGELOG.md` for incremental provider-API changes; `secretsResolutionSkipped` has been always present since 0.21.36)
 **Base path**: all routes are under `/api/providers`
 **Authentication**: all routes require the standard daemon bearer token (`Authorization: Bearer <token>` or the operator session cookie).
 

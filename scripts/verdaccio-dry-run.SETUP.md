@@ -5,7 +5,7 @@
 Add to root `package.json` → `devDependencies`:
 
 ```json
-"verdaccio": "^6.5.1"
+"verdaccio": "^6.5.2"
 ```
 
 Then run `bun install`.
@@ -54,3 +54,6 @@ It should run after the `build` job succeeds.
 - Adjust `needs:` to match the actual build job name in your workflow.
 - The script self-cleans all tmp dirs and the Verdaccio process on both success
   and failure — no manual teardown step needed.
+- The repo overrides Verdaccio's legacy `@cypress/request -> uuid@8` dry-run
+  path to the checked-in `vendor/uuid-cjs` shim. Keep the root `package.json`
+  override in place until Verdaccio drops that transitive dependency.

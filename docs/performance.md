@@ -100,7 +100,7 @@ Choose based on runtime environment:
 
 | Scenario | Recommendation |
 |---|---|
-| Node/Bun service | SSE (`realtime.viaSse()`) |
+| Bun service | SSE (`realtime.viaSse()`) |
 | Browser dashboard | SSE (`realtime.viaSse()`) |
 | React Native / Expo | WebSocket (`realtime.viaWebSocket()`) |
 | Android / iOS native | WebSocket |
@@ -258,7 +258,11 @@ const estimate = estimateConversationTokens(messages); // number
 
 The SDK defines two categories of performance budgets: **bundle size budgets** and **runtime SLO gates**.
 
-**Bundle size budgets** are enforced per entry point via `bundle-budgets.json` at the repo root. Each entry has a gzip ceiling (measured actual × 1.2 headroom). CI fails when an entry grows beyond its ceiling:
+**Bundle size budgets** are defined per entry point via `bundle-budgets.json` at
+the repo root. Each entry has a gzip ceiling (measured actual × 1.2 headroom).
+The current CI workflow does not run this as a standalone gate; run the local
+check before releases or add the workflow step back before treating it as
+required CI:
 
 ```bash
 bun run bundle:check  # prints actual vs. budget for every entry point

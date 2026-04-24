@@ -51,7 +51,7 @@ The QR code encodes a `CompanionConnectionInfo` JSON object containing everythin
   "url": "http://192.168.1.42:3210",
   "token": "gv_abc123...",
   "username": "admin",
-  "version": "0.21.36",
+  "version": "0.25.1",
   "surface": "tui",
   "password": "<bootstrap-password, optional>"
 }
@@ -95,7 +95,7 @@ const payload = buildCompanionConnectionInfo({
   daemonUrl: 'http://192.168.1.42:3210',
   token: record.token,
   username: 'admin',      // optional; defaults to 'admin'
-  version: '0.21.36',      // optional; host product version
+  version: '0.25.1',       // optional; host product version
   surface: 'tui',          // optional; defaults to 'daemon'
   // password: 'bootstrap-pw',  // optional; include when local auth is active
 });
@@ -303,7 +303,7 @@ A companion app requires:
 3. **An HTTP client** — for all request/response interactions. The SDK handles this when used as a client library. For native Kotlin/Swift apps without the SDK, use standard `fetch`/`URLSession`/`OkHttp` with the `Authorization: Bearer <token>` header.
 
 4. **An SSE or WebSocket connection** — for realtime event delivery. The daemon exposes both:
-   - SSE: suitable for Node/Bun and browser clients.
+   - SSE: suitable for Bun and browser clients.
    - WebSocket: recommended for React Native and Expo because it has broader React Native support.
 
 ### Minimal integration pattern (React Native / Expo)
