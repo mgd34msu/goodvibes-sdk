@@ -6,6 +6,7 @@ import { DeliveryQueue } from './delivery.js';
 import type { DeliveryQueueConfig, IntegrationQueueStatus } from './delivery.js';
 import { snapshotQueueStatus } from './delivery.js';
 import { ServiceRegistry } from '../config/service-registry.js';
+import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 
 // ---------------------------------------------------------------------------
 // Notifier
@@ -30,16 +31,23 @@ export class Notifier {
     slack?: SlackIntegration;
     discord?: DiscordIntegration;
     delivery?: Partial<DeliveryQueueConfig>;
+    featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
   }) {
     this.slack = options?.slack;
     this.discord = options?.discord;
-    this._queue = new DeliveryQueue(options?.delivery ?? {});
+    this._queue = new DeliveryQueue({
+      ...(options?.delivery ?? {}),
+      featureFlags: options?.featureFlags,
+    });
   }
 
   /**
    * Create a Notifier pre-wired from configured services and environment variables.
    */
-  static async fromConfig(serviceRegistry: Pick<ServiceRegistry, 'resolveSecret'>): Promise<Notifier> {
+  static async fromConfig(
+    serviceRegistry: Pick<ServiceRegistry, 'resolveSecret'>,
+    options: { featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null } = {},
+  ): Promise<Notifier> {
     const [
       slackWebhookFromService,
       slackTokenFromService,
@@ -67,7 +75,7 @@ export class Notifier {
         ? new DiscordIntegration(discordWebhook, discordToken)
         : undefined;
 
-    return new Notifier({ slack, discord });
+    return new Notifier({ slack, discord, featureFlags: options.featureFlags });
   }
 
   // -------------------------------------------------------------------------

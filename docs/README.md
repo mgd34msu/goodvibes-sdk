@@ -33,6 +33,7 @@
 
 - [Architecture](./architecture.md)
 - [Platform layer architecture](./architecture-platform.md)
+- [Feature flags](./feature-flags.md)
 - [Security](./security.md)
 - [Tool safety](./tool-safety.md)
 

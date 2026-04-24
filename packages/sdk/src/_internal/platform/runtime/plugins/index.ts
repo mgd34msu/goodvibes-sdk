@@ -45,6 +45,7 @@ export {
 
 export { PluginLifecycleManager } from './manager.js';
 import { PluginLifecycleManager } from './manager.js';
+import type { FeatureFlagManager } from '../feature-flags/index.js';
 
 // Trust framework.
 export type {
@@ -79,6 +80,10 @@ export { runHotReload } from './hot-reload.js';
  */
 export function createPluginLifecycleManager(
   options: import('./types.js').PluginLifecycleManagerOptions = {},
+  flagManager?: Pick<FeatureFlagManager, 'isEnabled'> | null,
 ): PluginLifecycleManager {
+  if (flagManager && !flagManager.isEnabled('plugin-lifecycle')) {
+    throw new Error('Feature flag "plugin-lifecycle" is not enabled');
+  }
   return new PluginLifecycleManager(options);
 }

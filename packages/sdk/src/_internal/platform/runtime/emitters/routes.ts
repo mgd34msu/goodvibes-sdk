@@ -32,6 +32,14 @@ export function emitRouteBindingUpdated(
   bus.emit('routes', routeEvent('ROUTE_BINDING_UPDATED', data, ctx));
 }
 
+export function emitRouteBindingRemoved(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { bindingId: string; surfaceKind: RouteSurfaceKind; externalId: string },
+): void {
+  bus.emit('routes', routeEvent('ROUTE_BINDING_REMOVED', data, ctx));
+}
+
 export function emitRouteBindingResolved(
   bus: RuntimeEventBus,
   ctx: EmitterContext,

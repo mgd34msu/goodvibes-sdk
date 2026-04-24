@@ -43,6 +43,12 @@ export type RouteEvent =
       changedFields: string[];
     }
   | {
+      type: 'ROUTE_BINDING_REMOVED';
+      bindingId: string;
+      surfaceKind: RouteSurfaceKind;
+      externalId: string;
+    }
+  | {
       type: 'ROUTE_BINDING_RESOLVED';
       bindingId: string;
       surfaceKind: RouteSurfaceKind;

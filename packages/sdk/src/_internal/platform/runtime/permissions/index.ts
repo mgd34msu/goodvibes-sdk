@@ -143,7 +143,11 @@ import type { BundleProvenance } from './policy-loader.js';
 export function createPermissionEvaluator(
   config: PermissionsConfig = {},
   provenance?: BundleProvenance,
+  flagManager?: Pick<FeatureFlagManager, 'isEnabled'> | null,
 ): LayeredPolicyEvaluator {
+  if (flagManager && !flagManager.isEnabled('permissions-policy-engine')) {
+    throw new Error('Feature flag "permissions-policy-engine" is not enabled');
+  }
   return new LayeredPolicyEvaluator(config, provenance);
 }
 

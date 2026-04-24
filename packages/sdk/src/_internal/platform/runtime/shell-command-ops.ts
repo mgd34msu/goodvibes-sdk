@@ -4,6 +4,7 @@ import type { SubagentTask } from '../acp/protocol.js';
 import { exportRemoteArtifactForAgent } from './remote/runner-registry.js';
 import type { RuntimeEventBus } from './events/index.js';
 import type { RuntimeStore } from './store/index.js';
+import type { FeatureFlagManager } from './feature-flags/index.js';
 import type { AgentInput } from '../tools/agent/schema.js';
 import type { AgentRecord } from '../tools/agent/manager.js';
 import type { AcpConnection } from './store/domains/acp.js';
@@ -200,8 +201,12 @@ export function createShellRemoteCommandService(options: {
 export function createShellPlanRuntime(options: {
   readonly adaptivePlanner?: AdaptivePlanner;
   readonly runtimeBus?: RuntimeEventBus;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
 }): PlanRuntimeService | undefined {
-  const { adaptivePlanner, runtimeBus } = options;
+  const { adaptivePlanner, runtimeBus, featureFlags } = options;
   if (!adaptivePlanner) return undefined;
+  if (featureFlags && !featureFlags.isEnabled('adaptive-execution-planner')) {
+    return undefined;
+  }
   return (subcommand, args) => handlePlanCommand({ adaptivePlanner, runtimeBus }, subcommand, args);
 }

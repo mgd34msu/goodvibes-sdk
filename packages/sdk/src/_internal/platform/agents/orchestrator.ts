@@ -12,6 +12,7 @@ import { ProjectIndex } from '../state/project-index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { ToolLLM } from '../config/tool-llm.js';
 import type { LLMProvider } from '../providers/interface.js';
+import type { RequestProfile } from '../providers/capabilities.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {
@@ -258,6 +259,9 @@ export class AgentOrchestrator {
     record: AgentRecord,
     currentModel: { id: string; provider: string },
   ): { provider: LLMProvider; modelId: string; requestedModelId: string } {
+    const optimizedRoute = this.resolveOptimizedProviderRoute(providerRegistry, record);
+    if (optimizedRoute) return optimizedRoute;
+
     const routing = this.resolveProviderRouting(record, currentModel);
     const scopedModelId = this.normalizeRequestedModelId(routing.requestedModelId, routing.providerOverride);
 
@@ -293,6 +297,44 @@ export class AgentOrchestrator {
         }`,
       );
     }
+  }
+
+  private resolveOptimizedProviderRoute(
+    providerRegistry: Pick<ProviderRegistry, 'getForModel' | 'listModels'>,
+    record: AgentRecord,
+  ): { provider: LLMProvider; modelId: string; requestedModelId: string } | null {
+    const optimizer = this.toolDeps?.providerOptimizer;
+    if (!optimizer?.enabled || optimizer.mode === 'manual') return null;
+    if (record.model || record.provider) return null;
+    if (record.routing?.providerSelection === 'concrete' || record.routing?.providerSelection === 'synthetic') {
+      return null;
+    }
+
+    const decision = optimizer.selectRoute(this.buildOptimizerRequestProfile(record));
+    if (!decision?.explanation.accepted) return null;
+
+    try {
+      return {
+        provider: providerRegistry.getForModel(decision.modelId, decision.providerId),
+        modelId: this.resolveChatModelId(providerRegistry, decision.modelId, decision.providerId),
+        requestedModelId: `${decision.providerId}:${decision.modelId}`,
+      };
+    } catch (error) {
+      logger.warn('[AgentOrchestrator] provider optimizer selected an unresolved route; falling back to legacy routing', {
+        agentId: record.id,
+        providerId: decision.providerId,
+        modelId: decision.modelId,
+        error: summarizeError(error),
+      });
+      return null;
+    }
+  }
+
+  private buildOptimizerRequestProfile(record: AgentRecord): RequestProfile {
+    return {
+      requiresToolCalling: record.tools.length > 0,
+      requiresReasoningControls: record.reasoningEffort !== undefined,
+    };
   }
 
   private resolveProviderRouting(

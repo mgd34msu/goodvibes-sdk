@@ -195,6 +195,18 @@ export interface RuntimeServices {
   rerootStores(newWorkingDir: string): Promise<void>;
 }
 
+export function bindProviderOptimizerFeatureFlag(
+  featureFlags: Pick<FeatureFlagManager, 'isEnabled' | 'subscribe'>,
+  providerOptimizer: Pick<ProviderOptimizer, 'setEnabled'>,
+): () => void {
+  providerOptimizer.setEnabled(featureFlags.isEnabled('provider-optimizer'));
+  return featureFlags.subscribe((flagId, state) => {
+    if (flagId === 'provider-optimizer') {
+      providerOptimizer.setEnabled(state === 'enabled');
+    }
+  });
+}
+
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
   const workingDirectory = options.workingDir;
   const homeDirectory = options.homeDirectory;
@@ -205,6 +217,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const configManager = options.configManager;
   const featureFlags = options.featureFlags ?? createFeatureFlagManager();
+  if (options.featureFlags === undefined) {
+    featureFlags.loadFromConfig({ flags: { ...configManager.getCategory('featureFlags') } });
+  }
   const runtimeDispatch = createDomainDispatch(options.runtimeStore);
   const gatewayMethods = new GatewayMethodCatalog();
   const panelManager = options.panelManager ?? createNoopPanelManager();
@@ -213,6 +228,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     store: new AutomationRouteStore({ configManager }),
     runtimeStore: options.runtimeStore,
     runtimeBus: options.runtimeBus,
+    featureFlags,
   });
   const surfaceRegistry = new SurfaceRegistry(configManager, options.runtimeStore);
   const channelPlugins = new ChannelPluginRegistry();
@@ -426,7 +442,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
   const webhookNotifier = new WebhookNotifier();
   const replayEngine = new DeterministicReplayEngine(workingDirectory);
-  const providerOptimizer = new ProviderOptimizer(providerRegistry, providerCapabilityRegistry, false);
+  const providerOptimizer = new ProviderOptimizer(
+    providerRegistry,
+    providerCapabilityRegistry,
+    false,
+  );
+  bindProviderOptimizerFeatureFlag(featureFlags, providerOptimizer);
   const sessionMemoryStore = new SessionMemoryStore();
   const sessionLineageTracker = new SessionLineageTracker();
   const sessionChangeTracker = new SessionChangeTracker();
