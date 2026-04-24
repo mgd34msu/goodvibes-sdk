@@ -182,6 +182,7 @@ export function resolveDaemonFacadeRuntime(
   const controlPlaneGateway = new ControlPlaneGateway({
     runtimeBus,
     runtimeStore,
+    featureFlags: runtimeServices.featureFlags,
     server: {
       enabled: false,
       ...resolveHostBinding(
@@ -271,6 +272,7 @@ export function resolveDaemonFacadeRuntime(
       binaryBaseName: 'goodvibes',
       defaultServiceName: 'goodvibes',
       defaultServiceDescription: 'goodvibes omnichannel daemon host',
+      featureFlags: runtimeServices.featureFlags,
     }),
     distributedRuntime: runtimeServices.distributedRuntime,
     voiceService: runtimeServices.voiceService,

@@ -52,52 +52,56 @@ Status values in this table are intentionally direct:
 - `informational` means the flag is useful for UI/status display but is not the
   behavior gate.
 
+SDK-created runtime services inject the feature manager and therefore follow
+the safe defaults below. Direct construction without a feature manager preserves
+legacy active behavior for embedders that have not opted into SDK-managed gates.
+
 | Flag | Default | Runtime toggle | Status | Guidance |
 |---|---:|---:|---|---|
 | `permissions-policy-engine` | disabled | no | ready | PermissionManager only applies layered runtime policy when this startup flag is enabled; factory use also enforces the flag when supplied. |
 | `permissions-simulation` | disabled | no | ready | Enable only in controlled policy-evaluation environments; it is startup-only. |
-| `hitl-ux-modes` | disabled | yes | informational | Display status only; HITL mode behavior is applied from config outside this flag. |
-| `unified-runtime-task` | disabled | no | registry-only | Roadmap marker; do not expose as an operator control yet. |
+| `hitl-ux-modes` | disabled | yes | ready | ModeManager only allows HITL preset changes, domain overrides, and router application when this flag is enabled. |
+| `unified-runtime-task` | disabled | no | ready | Task manager creation remains available, but task mutation/read APIs fail closed or return empty results when the flag is supplied and disabled. |
 | `plugin-lifecycle` | disabled | no | ready | Startup-only lifecycle factory enforces this flag when a manager is supplied; baseline plugin manager remains separate. |
 | `mcp-lifecycle` | disabled | no | ready | Startup-only lifecycle factory enforces this flag when a manager is supplied; baseline MCP registry remains separate. |
 | `otel-foundation` | disabled | no | ready | Telemetry provider defaults tracing on when this flag is supplied and enabled; explicit telemetry config still wins. |
-| `otel-remote-export` | disabled | yes | registry-only | Requires `otel-foundation`; do not expose until export wiring is finished. |
+| `otel-remote-export` | disabled | yes | ready | Requires `otel-foundation`; when both are enabled, telemetry provider wires the configured OTLP exporter. |
 | `tool-result-reconciliation` | enabled | yes | ready | Keep enabled for normal hosts; disabling reverts unresolved tool calls to warning-only behavior. |
-| `policy-signing` | disabled | no | informational | Signing is driven by policy loader options; use this as status only until the flag gates behavior. |
+| `policy-signing` | disabled | no | ready | Policy loader validates signatures and enforces managed-mode rejection only when this startup flag is enabled. |
 | `session-compaction` | disabled | yes | ready | Enable for hosts that want structured runtime compaction; safe to expose as a runtime toggle. |
 | `fetch-sanitization` | disabled | yes | ready | Strong candidate for TUI safe-browsing profiles; enables response sanitization, unknown-host safe-text fallback, and SSRF-risk blocking. |
 | `runtime-tools-budget-enforcement` | disabled | yes | ready | Phased executor factory derives budget enforcement from the flag; explicit executor config can still override host policy. |
-| `overflow-spill-backends` | disabled | yes | registry-only | Do not expose until alternate spill backends are fully wired. |
-| `permission-divergence-dashboard` | disabled | yes | registry-only | Depends on simulation evidence; keep hidden until dashboard/enforce gate is wired. |
+| `overflow-spill-backends` | disabled | yes | ready | OverflowHandler forces the file backend while disabled; ledger/diagnostics backends require this flag. |
+| `permission-divergence-dashboard` | disabled | yes | ready | Divergence dashboard factory is gated; disabled hosts cannot create the dashboard/enforce gate through the SDK factory. |
 | `shell-ast-normalization` | disabled | yes | ready | Strong candidate for developer and safe-exec profiles; enables AST command verdicts and obfuscation denial. |
 | `local-provider-context-ingestion` | enabled | yes | ready | Keep enabled unless a host needs static context-window configuration only. |
 | `agent-context-window-awareness` | enabled | yes | ready | Keep enabled for normal agent orchestration; disabling removes context-window safeguards. |
 | `output-schema-fingerprint` | disabled | yes | ready | Useful for diagnostics and schema drift detection; low-risk opt-in. |
-| `policy-as-code` | disabled | yes | registry-only | Roadmap marker; do not expose as active behavior yet. |
+| `policy-as-code` | disabled | yes | ready | Policy registry factory is gated; promote/rollback registry creation requires explicit host opt-in. |
 | `adaptive-execution-planner` | disabled | yes | ready | Orchestrator decision emission and `/plan` runtime exposure are both gated by the flag. |
 | `provider-optimizer` | disabled | yes | ready | Runtime service follows flag transitions; agent routing consumes optimizer decisions when the optimizer is active and not in manual mode. |
 | `integration-delivery-slo` | disabled | yes | ready | Delivery queues derive SLO enforcement from the flag unless a host explicitly overrides queue config. |
-| `automation-runtime` | disabled | no | registry-only | Legacy roadmap flag; prefer the newer domain flags for future work. |
-| `gateway-control-plane` | disabled | no | registry-only | Legacy roadmap flag; prefer `control-plane-gateway` for future work. |
-| `omnichannel-route-binding` | disabled | no | registry-only | Legacy roadmap flag; prefer `route-binding` for future work. |
-| `omnichannel-surface-adapters` | disabled | no | registry-only | Legacy roadmap flag; surface-specific flags are clearer. |
-| `embedded-web-control-ui` | disabled | no | registry-only | Legacy roadmap flag; prefer `web-surface` for future work. |
-| `managed-watcher-services` | disabled | no | registry-only | Legacy roadmap flag; prefer `watcher-framework` for future work. |
-| `service-installation` | disabled | no | registry-only | Legacy roadmap flag; prefer `service-management` for future work. |
+| `automation-runtime` | disabled | no | ready | Legacy startup alias for `automation-domain`; prefer the newer flag in new host config. |
+| `gateway-control-plane` | disabled | no | ready | Legacy startup alias for `control-plane-gateway`; prefer the newer flag in new host config. |
+| `omnichannel-route-binding` | disabled | no | ready | Legacy startup alias for `route-binding`; prefer the newer flag in new host config. |
+| `omnichannel-surface-adapters` | disabled | no | ready | Legacy startup alias that enables all non-TUI channel surface gates; prefer surface-specific flags. |
+| `embedded-web-control-ui` | disabled | no | ready | Legacy startup alias for `web-surface`; prefer the newer flag in new host config. |
+| `managed-watcher-services` | disabled | no | ready | Legacy startup alias for `watcher-framework`; prefer the newer flag in new host config. |
+| `service-installation` | disabled | no | ready | Legacy startup alias for `service-management`; prefer the newer flag in new host config. |
 | `adaptive-notification-suppression` | disabled | yes | ready | Safe to expose as a host UX toggle; suppresses noisy operational notifications. |
-| `token-scope-rotation-audit` | disabled | yes | registry-only | Security-relevant, but not wired as an active gate yet. |
+| `token-scope-rotation-audit` | disabled | yes | ready | Audits always report findings, but managed-mode token blocking only happens when this flag is enabled. |
 | `tool-contract-verification` | enabled | yes | ready | Built-in tool registration now passes through contract verification by default; hosts can explicitly disable it for legacy compatibility. |
-| `automation-domain` | disabled | yes | registry-only | Target flag for durable automation records and scheduling; finish before exposure. |
-| `control-plane-gateway` | disabled | yes | registry-only | Target flag for shared gateway/control-plane hosting; finish before exposure. |
+| `automation-domain` | disabled | yes | ready | AutomationManager read/mutation/scheduling APIs are gated; disabled SDK services expose empty reads and fail closed on mutations. |
+| `control-plane-gateway` | disabled | yes | ready | ControlPlaneGateway snapshots, live streams, Web UI, and websocket clients are gated. |
 | `route-binding` | disabled | yes | ready | Runtime route binding manager is gated by the flag; durable writes fail closed when disabled. |
-| `delivery-engine` | disabled | yes | registry-only | Target flag for delivery tracking; finish before exposure. |
-| `slack-surface` | disabled | yes | registry-only | Surface marker; expose only after adapter lifecycle is complete. |
-| `discord-surface` | disabled | yes | registry-only | Surface marker; expose only after adapter lifecycle is complete. |
-| `ntfy-surface` | disabled | yes | registry-only | Surface marker; expose only after adapter lifecycle is complete. |
-| `webhook-surface` | disabled | yes | registry-only | Surface marker; expose only after ingress/egress behavior is complete. |
-| `web-surface` | disabled | yes | registry-only | Surface marker; expose only after browser control UI behavior is complete. |
-| `watcher-framework` | disabled | yes | registry-only | Target flag for watcher/listener services; finish before exposure. |
-| `service-management` | disabled | yes | registry-only | Target flag for install/start/stop/status management; finish before exposure. |
+| `delivery-engine` | disabled | yes | ready | AutomationDeliveryManager returns no attempts while disabled and also respects surface-specific gates. |
+| `slack-surface` | disabled | yes | ready | Slack surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `discord-surface` | disabled | yes | ready | Discord surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `ntfy-surface` | disabled | yes | ready | ntfy surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `webhook-surface` | disabled | yes | ready | Webhook surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `web-surface` | disabled | yes | ready | Web control surface records and plugins require this flag unless the embedded web alias is enabled. |
+| `watcher-framework` | disabled | yes | ready | WatcherRegistry list/read APIs return empty while disabled; registration/start/stop/run/remove fail closed. |
+| `service-management` | disabled | yes | ready | PlatformServiceManager status reports disabled state; install/start/stop/restart/uninstall fail closed. |
 
 ## Recommended Host Profiles
 
@@ -144,7 +148,10 @@ side effects are expected:
 {
   "featureFlags": {
     "shell-ast-normalization": "enabled",
-    "runtime-tools-budget-enforcement": "enabled"
+    "runtime-tools-budget-enforcement": "enabled",
+    "automation-domain": "enabled",
+    "delivery-engine": "enabled",
+    "route-binding": "enabled"
   },
   "permissions": {
     "mode": "custom"
@@ -160,6 +167,7 @@ side effects are expected:
    command and user-facing denial-output fixtures.
 3. Tighten `tool-contract-verification` metadata over time by adding explicit
    categories and idempotency declarations to side-effecting tools.
-4. Collapse or retire legacy roadmap flags that duplicate newer tier-10 flags.
+4. Collapse or retire legacy aliases once downstream hosts have migrated to the
+   newer domain/surface flags.
 5. Keep new feature flags out of the table until they have either a tested
    runtime gate or a clear `registry-only` roadmap classification.

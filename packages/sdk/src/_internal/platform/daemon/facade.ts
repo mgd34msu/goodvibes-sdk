@@ -47,6 +47,7 @@ import {
   type ResolvedInboundTlsContext,
 } from '../runtime/network/index.js';
 import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
+import { isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 import {
   readAutomationReasoningEffort,
   readAutomationWakeMode,
@@ -788,7 +789,8 @@ export class DaemonServer {
     }, 'daemon.server.agent-finish');
   }
   private surfaceDeliveryEnabled(surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix'): boolean {
-    return isSurfaceDeliveryEnabled(this.configManager, surface);
+    return isSurfaceFeatureGateEnabled(this.runtimeServices.featureFlags, surface)
+      && isSurfaceDeliveryEnabled(this.configManager, surface);
   }
   private async pollPendingSurfaceReplies(): Promise<void> {
     await this.surfaceDeliveryHelper.pollPendingSurfaceReplies((record) => this.syncFinishedAgentTask(record));

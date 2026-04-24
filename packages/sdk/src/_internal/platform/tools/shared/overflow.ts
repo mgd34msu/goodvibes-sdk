@@ -2,6 +2,8 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, unlinkSync, statSy
 import { join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
+import type { FeatureFlagReader } from '../../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled } from '../../runtime/feature-flags/index.js';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -309,6 +311,8 @@ export interface OverflowHandlerConfig {
   retention?: RetentionPolicyConfig;
   /** Inject a custom backend directly (takes precedence over spillBackend). */
   backend?: SpillBackend;
+  /** Feature flags gate alternate spill backends when supplied by SDK runtime services. */
+  featureFlags?: FeatureFlagReader;
 }
 
 // ─── OverflowHandler ────────────────────────────────────────────────────────
@@ -329,10 +333,13 @@ export class OverflowHandler {
   private readonly retention: RetentionPolicyConfig;
 
   constructor(config: OverflowHandlerConfig = {}) {
-    if (!config.backend && (config.spillBackend ?? 'file') === 'file' && !config.baseDir) {
+    const alternateBackendsEnabled = isFeatureGateEnabled(config.featureFlags, 'overflow-spill-backends');
+    const backend = alternateBackendsEnabled ? config.backend : undefined;
+    const spillBackend = alternateBackendsEnabled ? (config.spillBackend ?? 'file') : 'file';
+    if (!backend && spillBackend === 'file' && !config.baseDir) {
       throw new Error('OverflowHandler requires an explicit baseDir when using the file spill backend');
     }
-    this.backend = config.backend ?? createSpillBackend(config.spillBackend ?? 'file', config.baseDir);
+    this.backend = backend ?? createSpillBackend(spillBackend, config.baseDir);
     this.retention = { ...DEFAULT_RETENTION, ...config.retention };
   }
 

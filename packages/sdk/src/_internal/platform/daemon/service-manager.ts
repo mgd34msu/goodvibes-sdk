@@ -3,6 +3,8 @@ import { dirname, join, resolve } from 'node:path';
 import { spawnSync, spawn, type SpawnOptions } from 'node:child_process';
 import { ConfigManager } from '../config/manager.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
 
 export type ManagedServicePlatform = 'systemd' | 'launchd' | 'windows' | 'manual';
 
@@ -49,6 +51,7 @@ export interface ManagedServiceManagerOptions extends ManagedServicePaths {
   readonly binaryBaseName?: string;
   readonly defaultServiceName?: string;
   readonly defaultServiceDescription?: string;
+  readonly featureFlags?: FeatureFlagReader;
 }
 
 function detectPlatform(platform: string): ManagedServicePlatform {
@@ -238,6 +241,7 @@ export class PlatformServiceManager {
   private readonly binaryBaseName?: string;
   private readonly defaultServiceName?: string;
   private readonly defaultServiceDescription?: string;
+  private readonly featureFlags: FeatureFlagReader;
 
   constructor(configManager: ConfigManager, options: ManagedServiceManagerOptions) {
     this.configManager = configManager;
@@ -249,6 +253,15 @@ export class PlatformServiceManager {
     this.binaryBaseName = options.binaryBaseName;
     this.defaultServiceName = options.defaultServiceName;
     this.defaultServiceDescription = options.defaultServiceDescription;
+    this.featureFlags = options.featureFlags ?? null;
+  }
+
+  private isEnabled(): boolean {
+    return isFeatureGateEnabled(this.featureFlags, 'service-management', ['service-installation']);
+  }
+
+  private requireEnabled(operation: string): void {
+    requireFeatureGate(this.featureFlags, 'service-management', operation, ['service-installation']);
   }
 
   private getPaths(): ManagedServicePaths {
@@ -262,6 +275,21 @@ export class PlatformServiceManager {
     const platform = detectPlatform(String(this.configManager.get('service.platform')));
     const serviceName = resolveServiceName(this.configManager, this.defaultServiceName);
     const path = definitionPath(platform, serviceName, this.getPaths(), this.surfaceRoot);
+    if (!this.isEnabled()) {
+      const definition = this.resolveDefinition();
+      return {
+        platform,
+        path,
+        installed: false,
+        autostart: false,
+        running: false,
+        logPath: resolveLogPath(this.configManager, platform, this.workingDirectory, this.surfaceRoot),
+        commandPreview: [definition.command, ...definition.args].join(' '),
+        suggestedCommands: [],
+        lastAction: 'status',
+        actionError: 'service-management feature flag is disabled',
+      };
+    }
     const installed = existsSync(path);
     const pidPath = pidFilePath(platform, this.workingDirectory, this.surfaceRoot);
     const pid = existsSync(pidPath) ? this.readPid(pidPath) : undefined;
@@ -286,6 +314,7 @@ export class PlatformServiceManager {
   }
 
   install(): ManagedServiceStatus {
+    this.requireEnabled('install service');
     const platform = detectPlatform(String(this.configManager.get('service.platform')));
     const serviceName = resolveServiceName(this.configManager, this.defaultServiceName);
     const definition = this.resolveDefinition();
@@ -306,6 +335,7 @@ export class PlatformServiceManager {
   }
 
   uninstall(): ManagedServiceStatus {
+    this.requireEnabled('uninstall service');
     const status = this.status();
     if (existsSync(status.path)) {
       rmSync(status.path, { force: true });
@@ -321,6 +351,7 @@ export class PlatformServiceManager {
   }
 
   start(): ManagedServiceStatus {
+    this.requireEnabled('start service');
     const platform = detectPlatform(String(this.configManager.get('service.platform')));
     if (platform === 'manual') {
       return this.startManual(platform);
@@ -329,6 +360,7 @@ export class PlatformServiceManager {
   }
 
   stop(): ManagedServiceStatus {
+    this.requireEnabled('stop service');
     const platform = detectPlatform(String(this.configManager.get('service.platform')));
     if (platform === 'manual') {
       return this.stopManual(platform);
@@ -337,6 +369,7 @@ export class PlatformServiceManager {
   }
 
   restart(): ManagedServiceStatus {
+    this.requireEnabled('restart service');
     const platform = detectPlatform(String(this.configManager.get('service.platform')));
     if (platform === 'manual') {
       this.stopManual(platform);

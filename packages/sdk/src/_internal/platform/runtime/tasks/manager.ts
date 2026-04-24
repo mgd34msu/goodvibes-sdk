@@ -35,6 +35,8 @@ import {
   emitTaskFailed,
   emitTaskCancelled,
 } from '../emitters/tasks.js';
+import type { FeatureFlagReader } from '../feature-flags/index.js';
+import { isFeatureGateEnabled, requireFeatureGate } from '../feature-flags/index.js';
 
 // ---------------------------------------------------------------------------
 // Error types
@@ -109,6 +111,7 @@ export class UnifiedTaskManager implements TaskManager {
   private readonly _bus: RuntimeEventBus;
   /** Session ID for emitter context. */
   private readonly _sessionId: string;
+  private readonly _featureFlags: FeatureFlagReader;
 
   /**
    * @param store - The Zustand runtime store to dispatch state updates to.
@@ -118,17 +121,28 @@ export class UnifiedTaskManager implements TaskManager {
   public constructor(
     store: RuntimeStore,
     bus: RuntimeEventBus,
-    sessionId: string
+    sessionId: string,
+    featureFlags?: FeatureFlagReader,
   ) {
     this._store = store;
     this._dispatch = createDomainDispatch(store);
     this._bus = bus;
     this._sessionId = sessionId;
+    this._featureFlags = featureFlags ?? null;
+  }
+
+  private _isEnabled(): boolean {
+    return isFeatureGateEnabled(this._featureFlags, 'unified-runtime-task');
+  }
+
+  private _requireEnabled(operation: string): void {
+    requireFeatureGate(this._featureFlags, 'unified-runtime-task', operation);
   }
 
   // ── TaskManager interface ────────────────────────────────────────────────
 
   public createTask(params: TaskCreateParams): RuntimeTask {
+    this._requireEnabled('create runtime task');
     const now = Date.now();
     const id = crypto.randomUUID();
 
@@ -170,6 +184,7 @@ export class UnifiedTaskManager implements TaskManager {
   }
 
   public startTask(taskId: string): RuntimeTask {
+    this._requireEnabled('start runtime task');
     const task = this._requireTask(taskId);
     this._requireTransition(task, 'running');
 
@@ -182,6 +197,7 @@ export class UnifiedTaskManager implements TaskManager {
   }
 
   public blockTask(taskId: string, reason: string): RuntimeTask {
+    this._requireEnabled('block runtime task');
     const task = this._requireTask(taskId);
     this._requireTransition(task, 'blocked');
 
@@ -192,6 +208,7 @@ export class UnifiedTaskManager implements TaskManager {
   }
 
   public completeTask(taskId: string, result?: unknown): RuntimeTask {
+    this._requireEnabled('complete runtime task');
     const task = this._requireTask(taskId);
     this._requireTransition(task, 'completed');
 
@@ -208,6 +225,7 @@ export class UnifiedTaskManager implements TaskManager {
   }
 
   public failTask(taskId: string, params: TaskFailParams): RuntimeTask {
+    this._requireEnabled('fail runtime task');
     const task = this._requireTask(taskId);
     this._requireTransition(task, 'failed');
 
@@ -266,6 +284,7 @@ export class UnifiedTaskManager implements TaskManager {
   }
 
   public cancelTask(taskId: string, params?: TaskCancelParams): RuntimeTask {
+    this._requireEnabled('cancel runtime task');
     const task = this._requireTask(taskId);
 
     if (!task.cancellable) {
@@ -288,6 +307,7 @@ export class UnifiedTaskManager implements TaskManager {
   }
 
   public updateTask(taskId: string, params: TaskUpdateParams): RuntimeTask {
+    this._requireEnabled('update runtime task');
     const task = this._requireTask(taskId);
 
     const updated: RuntimeTask = {
@@ -304,30 +324,37 @@ export class UnifiedTaskManager implements TaskManager {
   }
 
   public getTask(taskId: string): RuntimeTask | undefined {
+    if (!this._isEnabled()) return undefined;
     return this._registry.get(taskId);
   }
 
   public getTasksByKind(kind: TaskKind): RuntimeTask[] {
+    if (!this._isEnabled()) return [];
     return this._registry.getByKind(kind);
   }
 
   public getRunningTasks(): RuntimeTask[] {
+    if (!this._isEnabled()) return [];
     return this._registry.getRunning();
   }
 
   public getRunningCount(kind: TaskKind): number {
+    if (!this._isEnabled()) return 0;
     return this._registry.getByKind(kind).filter((t) => t.status === 'running').length;
   }
 
   public getChildTasks(parentTaskId: string): RuntimeTask[] {
+    if (!this._isEnabled()) return [];
     return this._registry.getChildren(parentTaskId);
   }
 
   public getTaskStatus(taskId: string): TaskLifecycleState | undefined {
+    if (!this._isEnabled()) return undefined;
     return this._registry.get(taskId)?.status;
   }
 
   public retryTask(taskId: string): RuntimeTask {
+    this._requireEnabled('retry runtime task');
     const task = this._requireTask(taskId);
 
     if (task.status !== 'failed' && task.status !== 'cancelled') {

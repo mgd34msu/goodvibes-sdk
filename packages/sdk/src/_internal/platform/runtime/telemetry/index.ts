@@ -23,6 +23,8 @@ import { RuntimeTracer } from './tracer.js';
 import { RuntimeMeter } from './meter.js';
 import type { TelemetryProviderConfig } from './types.js';
 import type { FeatureFlagManager } from '../feature-flags/index.js';
+import { OtlpExporter } from './exporters/index.js';
+import type { OtlpConfig } from './exporters/index.js';
 
 // Re-export all public types
 export type {
@@ -137,8 +139,8 @@ export {
 } from './spans/index.js';
 
 // Re-export exporters
-export type { LocalLedgerConfig, ConsoleVerbosity, ConsoleExporterConfig } from './exporters/index.js';
-export { LocalLedgerExporter, ConsoleExporter } from './exporters/index.js';
+export type { LocalLedgerConfig, ConsoleVerbosity, ConsoleExporterConfig, OtlpConfig } from './exporters/index.js';
+export { LocalLedgerExporter, ConsoleExporter, OtlpExporter } from './exporters/index.js';
 
 // Re-export instrumentation
 export type { InstrumentationHandle } from './instrumentation/index.js';
@@ -149,6 +151,7 @@ export type TelemetryConfig = TelemetryProviderConfig;
 
 export interface TelemetryProviderOptions {
   readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+  readonly otlp?: OtlpConfig;
 }
 
 /**
@@ -165,11 +168,13 @@ export function createTelemetryProvider(config?: TelemetryConfig, options: Telem
   tracer: RuntimeTracer;
   meter: RuntimeMeter;
 } {
+  const foundationEnabled = options.featureFlags?.isEnabled('otel-foundation') ?? false;
+  const remoteExportEnabled = foundationEnabled && (options.featureFlags?.isEnabled('otel-remote-export') ?? false);
   const tracer = new RuntimeTracer(
     config?.tracer ?? {
       scope: 'goodvibes-sdk',
-      enabled: options.featureFlags?.isEnabled('otel-foundation') ?? false,
-      exporters: [],
+      enabled: foundationEnabled,
+      exporters: remoteExportEnabled && options.otlp ? [new OtlpExporter(options.otlp)] : [],
     },
   );
 

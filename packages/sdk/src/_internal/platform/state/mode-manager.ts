@@ -1,4 +1,6 @@
 import type { DomainVerbosity } from '../runtime/notifications/types.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
 
 // ---------------------------------------------------------------------------
 // Precision tool verbosity modes (original API, preserved)
@@ -108,9 +110,22 @@ const HITL_PRESETS: HITLModeDefinition[] = [HITL_QUIET, HITL_BALANCED, HITL_OPER
 export class ModeManager {
   private currentMode: ModePreset = 'default';
   private modes: ModeDefinition[] = [...BUILT_IN_MODES];
+  private readonly featureFlags: FeatureFlagReader;
 
   private hitlMode: HITLMode = 'balanced';
   private domainOverrides: Map<string, DomainVerbosity> = new Map();
+
+  constructor(options: { readonly featureFlags?: FeatureFlagReader } = {}) {
+    this.featureFlags = options.featureFlags ?? null;
+  }
+
+  private hitlEnabled(): boolean {
+    return isFeatureGateEnabled(this.featureFlags, 'hitl-ux-modes');
+  }
+
+  private requireHitlEnabled(operation: string): void {
+    requireFeatureGate(this.featureFlags, 'hitl-ux-modes', operation);
+  }
 
   // -------------------------------------------------------------------------
   // Precision tool verbosity mode API
@@ -155,10 +170,12 @@ export class ModeManager {
   // -------------------------------------------------------------------------
 
   getHITLMode(): HITLMode {
+    if (!this.hitlEnabled()) return 'balanced';
     return this.hitlMode;
   }
 
   getHITLPreset(): HITLModeDefinition {
+    if (!this.hitlEnabled()) return HITL_BALANCED;
     return HITL_PRESETS.find((p) => p.name === this.hitlMode) ?? HITL_BALANCED;
   }
 
@@ -171,6 +188,7 @@ export class ModeManager {
    * any domain-specific overrides.
    */
   setHITLMode(mode: HITLMode): void {
+    this.requireHitlEnabled('set HITL UX mode');
     const found = HITL_PRESETS.find((p) => p.name === mode);
     if (!found) {
       const available = HITL_PRESETS.map((p) => `"${p.name}"`).join(', ');
@@ -181,18 +199,22 @@ export class ModeManager {
   }
 
   listHITLPresets(): HITLModeDefinition[] {
+    if (!this.hitlEnabled()) return [];
     return [...HITL_PRESETS];
   }
 
   setDomainVerbosity(domain: string, verbosity: DomainVerbosity): void {
+    this.requireHitlEnabled('set HITL domain verbosity');
     this.domainOverrides.set(domain, verbosity);
   }
 
   getDomainVerbosity(domain: string): DomainVerbosity {
+    if (!this.hitlEnabled()) return HITL_BALANCED.defaultDomainVerbosity;
     return this.domainOverrides.get(domain) ?? this.getHITLPreset().defaultDomainVerbosity;
   }
 
   getDomainOverrides(): Record<string, DomainVerbosity> {
+    if (!this.hitlEnabled()) return {};
     return Object.fromEntries(this.domainOverrides);
   }
 
@@ -202,6 +224,7 @@ export class ModeManager {
     setDefaultDomainVerbosity?(verbosity: DomainVerbosity): void;
     setDomainVerbosity(domain: string, verbosity: DomainVerbosity): void;
   }): void {
+    if (!this.hitlEnabled()) return;
     const preset = this.getHITLPreset();
     router.setQuietWhileTyping(preset.quietWhileTyping);
     router.setBatchWindowMs?.(preset.batchWindowMs);

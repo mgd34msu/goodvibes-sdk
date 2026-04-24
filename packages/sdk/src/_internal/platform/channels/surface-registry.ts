@@ -3,6 +3,8 @@ import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { SurfaceRecord } from '../runtime/store/domains/surfaces.js';
 import { ConfigManager } from '../config/manager.js';
 import type { ChannelPluginRegistry } from './plugin-registry.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 
 function now(): number {
   return Date.now();
@@ -10,12 +12,14 @@ function now(): number {
 
 export class SurfaceRegistry {
   private readonly configManager: ConfigManager;
+  private readonly featureFlags: FeatureFlagReader;
   private readonly surfaces = new Map<string, SurfaceRecord>();
   private runtimeDispatch: DomainDispatch | null = null;
   private pluginRegistry: ChannelPluginRegistry | null = null;
 
-  constructor(configManager: ConfigManager, runtimeStore?: RuntimeStore) {
+  constructor(configManager: ConfigManager, runtimeStore?: RuntimeStore, featureFlags?: FeatureFlagReader) {
     this.configManager = configManager;
+    this.featureFlags = featureFlags ?? null;
     if (runtimeStore) this.runtimeDispatch = createDomainDispatch(runtimeStore);
   }
 
@@ -34,6 +38,7 @@ export class SurfaceRegistry {
     const configuredAt = now();
     const pluginDescriptors = this.pluginRegistry?.listDescriptors() ?? [];
     const enabledForSurface = (surface: string): boolean => {
+      if (!isSurfaceFeatureGateEnabled(this.featureFlags, surface)) return false;
       if (surface === 'tui') return (this.configManager.getCategory('surfaces') as Record<string, { enabled?: boolean } | undefined>).tui?.enabled !== false;
       if (surface === 'web') return Boolean(this.configManager.get('web.enabled') || this.configManager.get('controlPlane.enabled'));
       if (surface === 'slack') return Boolean(this.configManager.get('surfaces.slack.enabled'));
@@ -100,8 +105,8 @@ export class SurfaceRegistry {
         id: 'surface:web',
         kind: 'web',
         label: 'Web control plane',
-        enabled: Boolean(this.configManager.get('web.enabled') || this.configManager.get('controlPlane.enabled')),
-        state: this.configManager.get('web.enabled') || this.configManager.get('controlPlane.enabled') ? 'healthy' : 'disabled',
+        enabled: enabledForSurface('web'),
+        state: enabledForSurface('web') ? 'healthy' : 'disabled',
         configuredAt,
         capabilities: ['ingress', 'egress', 'threaded_reply'],
         metadata: {
@@ -113,8 +118,8 @@ export class SurfaceRegistry {
         id: 'surface:slack',
         kind: 'slack',
         label: 'Slack',
-        enabled: Boolean(this.configManager.get('surfaces.slack.enabled')),
-        state: this.configManager.get('surfaces.slack.enabled') ? 'healthy' : 'disabled',
+        enabled: enabledForSurface('slack'),
+        state: enabledForSurface('slack') ? 'healthy' : 'disabled',
         configuredAt,
         accountId: String(this.configManager.get('surfaces.slack.workspaceId') || ''),
         capabilities: ['ingress', 'egress', 'threaded_reply', 'interactive_actions'],
@@ -126,8 +131,8 @@ export class SurfaceRegistry {
         id: 'surface:discord',
         kind: 'discord',
         label: 'Discord',
-        enabled: Boolean(this.configManager.get('surfaces.discord.enabled')),
-        state: this.configManager.get('surfaces.discord.enabled') ? 'healthy' : 'disabled',
+        enabled: enabledForSurface('discord'),
+        state: enabledForSurface('discord') ? 'healthy' : 'disabled',
         configuredAt,
         accountId: String(this.configManager.get('surfaces.discord.applicationId') || ''),
         capabilities: ['ingress', 'egress', 'interactive_actions'],
@@ -140,8 +145,8 @@ export class SurfaceRegistry {
         id: 'surface:ntfy',
         kind: 'ntfy',
         label: 'ntfy',
-        enabled: Boolean(this.configManager.get('surfaces.ntfy.enabled')),
-        state: this.configManager.get('surfaces.ntfy.enabled') ? 'healthy' : 'disabled',
+        enabled: enabledForSurface('ntfy'),
+        state: enabledForSurface('ntfy') ? 'healthy' : 'disabled',
         configuredAt,
         capabilities: ['ingress', 'egress', 'delivery_only'],
         metadata: {
@@ -153,16 +158,8 @@ export class SurfaceRegistry {
         id: 'surface:webhook',
         kind: 'webhook',
         label: 'Generic webhook',
-        enabled: Boolean(
-          this.configManager.get('surfaces.webhook.enabled')
-          || this.configManager.get('surfaces.webhook.defaultTarget')
-          || this.configManager.get('surfaces.webhook.secret'),
-        ),
-        state: this.configManager.get('surfaces.webhook.enabled')
-          || this.configManager.get('surfaces.webhook.defaultTarget')
-          || this.configManager.get('surfaces.webhook.secret')
-          ? 'healthy'
-          : 'disabled',
+        enabled: enabledForSurface('webhook'),
+        state: enabledForSurface('webhook') ? 'healthy' : 'disabled',
         configuredAt,
         capabilities: ['ingress', 'egress', 'delivery_only'],
         metadata: {

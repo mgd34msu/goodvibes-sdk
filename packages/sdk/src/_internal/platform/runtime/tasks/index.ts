@@ -44,6 +44,7 @@ import type { RuntimeStore } from '../store/index.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { TaskManager } from './types.js';
 import { UnifiedTaskManager } from './manager.js';
+import type { FeatureFlagReader } from '../feature-flags/index.js';
 
 /**
  * Creates a fully initialized UnifiedTaskManager bound to the given
@@ -62,7 +63,8 @@ import { UnifiedTaskManager } from './manager.js';
 export function createTaskManager(
   store: RuntimeStore,
   bus: RuntimeEventBus,
-  sessionId: string
+  sessionId: string,
+  featureFlags?: FeatureFlagReader,
 ): TaskManager {
-  return new UnifiedTaskManager(store, bus, sessionId);
+  return new UnifiedTaskManager(store, bus, sessionId, featureFlags);
 }

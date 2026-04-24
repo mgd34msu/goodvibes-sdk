@@ -230,8 +230,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
     featureFlags,
   });
-  const surfaceRegistry = new SurfaceRegistry(configManager, options.runtimeStore);
-  const channelPlugins = new ChannelPluginRegistry();
+  const surfaceRegistry = new SurfaceRegistry(configManager, options.runtimeStore, featureFlags);
+  const channelPlugins = new ChannelPluginRegistry({ featureFlags });
   surfaceRegistry.attachPluginRegistry(channelPlugins);
   const secretsManager = new SecretsManager({
     projectRoot: workingDirectory,
@@ -284,6 +284,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const hookActivityTracker = new HookActivityTracker();
   const watcherRegistry = new WatcherRegistry({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'watchers.json'),
+    featureFlags,
   });
   watcherRegistry.attachRuntime({
     runtimeStore: options.runtimeStore,
@@ -361,6 +362,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeStore: options.runtimeStore,
     routeBindings,
     artifactStore,
+    featureFlags,
   });
   const automationManager = new AutomationManager({
     configManager,
@@ -371,6 +373,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeStore: options.runtimeStore,
     runtimeBus: options.runtimeBus,
     deliveryManager,
+    featureFlags,
     spawnTask: (input) => {
       const record = agentManager.spawn({
         mode: 'spawn',
@@ -437,7 +440,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   mcpRegistry.setRuntimeBus(options.runtimeBus);
   mcpRegistry.setSandboxRuntime(configManager, sandboxSessionRegistry);
-  const tokenAuditor = new ApiTokenAuditor({ managed: false });
+  const tokenAuditor = new ApiTokenAuditor({ managed: false, featureFlags });
   const componentHealthMonitor = new ComponentHealthMonitor();
   const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
   const webhookNotifier = new WebhookNotifier();
@@ -454,7 +457,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const planManager = new ExecutionPlanManager(workingDirectory);
   const adaptivePlanner = new AdaptivePlanner();
   const idempotencyStore = new IdempotencyStore();
-  const overflowHandler = new OverflowHandler({ baseDir: workingDirectory });
+  const overflowHandler = new OverflowHandler({ baseDir: workingDirectory, featureFlags });
   const policyRuntimeState = new PolicyRuntimeState();
   const fileCache = new FileStateCache();
   const projectIndex = new ProjectIndex(workingDirectory);
@@ -464,7 +467,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     artifactStore,
   });
   const processManager = new ProcessManager();
-  const modeManager = new ModeManager();
+  const modeManager = new ModeManager({ featureFlags });
   const fileUndoManager = new FileUndoManager();
   const integrationHelpers = new IntegrationHelperService({
     workingDirectory,
