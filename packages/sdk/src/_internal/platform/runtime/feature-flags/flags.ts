@@ -45,10 +45,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       'Enables the HITL UX mode system (quiet/balanced/operator) for notification verbosity '
       + 'control. When enabled, ModeManager applies the configured HITL preset to the '
       + 'notification router at startup and on mode change. '
-      + 'Disable to keep the router on its baseline delivery policy. '
-      + '@remarks This flag is informational for dashboard display only. '
-      + 'HITL modes are always applied from config at startup regardless of this flag — '
-      + 'it does not gate the runtime behaviour of ModeManager.',
+      + 'Disable to keep the router on its baseline delivery policy and reject HITL mode changes.',
     defaultState: 'disabled',
     tier: 3,
     runtimeToggleable: true,
@@ -120,10 +117,6 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
   },
 
   // ── Tier 7 (continued) ──────────────────────────────────────────────────
-  // @remarks policy-signing: this flag is informational for UI/ops status display only —
-  // it is NOT a runtime gate. Signing always runs when a signing key is provided via
-  // `signingKey` in `PolicyLoaderOptions`; the flag does not suppress or bypass that
-  // behaviour. Use this flag to surface signing status in dashboards or operational tooling.
   {
     id: 'policy-signing',
     name: 'Policy Signing',
@@ -317,9 +310,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'automation-runtime',
     name: 'Automation Runtime',
     description:
-      'Enables the first-class automation job and run model, including durable scheduling, '
-      + 'run history, catch-up behavior, and execution policies. Disable to keep the legacy '
-      + 'scheduler as the active execution path.',
+      'Legacy startup alias for automation-domain. Enables the first-class automation job '
+      + 'and run model, including durable scheduling, run history, catch-up behavior, '
+      + 'and execution policies.',
     defaultState: 'disabled',
     tier: 6,
     runtimeToggleable: false,
@@ -328,8 +321,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'gateway-control-plane',
     name: 'Gateway Control Plane',
     description:
-      'Enables the unified control-plane server that exposes shared automation, session, '
-      + 'task, and integration state over authenticated APIs and live event streams.',
+      'Legacy startup alias for control-plane-gateway. Enables the unified control-plane '
+      + 'server that exposes shared automation, session, task, and integration state over '
+      + 'authenticated APIs and live event streams.',
     defaultState: 'disabled',
     tier: 6,
     runtimeToggleable: false,
@@ -338,8 +332,8 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'omnichannel-route-binding',
     name: 'Omnichannel Route Binding',
     description:
-      'Enables route binding and reply-context preservation across terminal, web, Slack, Discord, '
-      + 'ntfy, and generic webhook surfaces.',
+      'Legacy startup alias for route-binding. Enables route binding and reply-context '
+      + 'preservation across terminal, web, Slack, Discord, ntfy, and generic webhook surfaces.',
     defaultState: 'disabled',
     tier: 6,
     runtimeToggleable: false,
@@ -348,7 +342,8 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'omnichannel-surface-adapters',
     name: 'Omnichannel Surface Adapters',
     description:
-      'Enables the channel adapter layer for interactive Slack and Discord surfaces plus '
+      'Legacy startup alias that enables all non-TUI channel surface gates. Enables the '
+      + 'channel adapter layer for interactive Slack and Discord surfaces plus '
       + 'notification-oriented ntfy and generic webhook delivery.',
     defaultState: 'disabled',
     tier: 7,
@@ -358,7 +353,8 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'embedded-web-control-ui',
     name: 'Embedded Web Control UI',
     description:
-      'Enables the embedded browser operator surface served by the control plane.',
+      'Legacy startup alias for web-surface. Enables the embedded browser operator surface '
+      + 'served by the control plane.',
     defaultState: 'disabled',
     tier: 7,
     runtimeToggleable: false,
@@ -367,8 +363,8 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'managed-watcher-services',
     name: 'Managed Watcher Services',
     description:
-      'Enables the watcher registry and managed long-running source listeners for external '
-      + 'automation triggers and integration health.',
+      'Legacy startup alias for watcher-framework. Enables the watcher registry and managed '
+      + 'long-running source listeners for external automation triggers and integration health.',
     defaultState: 'disabled',
     tier: 7,
     runtimeToggleable: false,
@@ -377,8 +373,8 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'service-installation',
     name: 'Service Installation',
     description:
-      'Enables platform service install, autostart, and status management for daemonized '
-      + 'Goodvibes deployments.',
+      'Legacy startup alias for service-management. Enables platform service install, '
+      + 'autostart, and status management for daemonized Goodvibes deployments.',
     defaultState: 'disabled',
     tier: 7,
     runtimeToggleable: false,

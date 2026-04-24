@@ -30,6 +30,8 @@ import type {
   ChannelTargetResolveOptions,
   ChannelToolDescriptor,
 } from './types.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 
 export interface ChannelPlugin {
   readonly id: string;
@@ -87,7 +89,16 @@ export class ChannelPluginRegistry {
   private readonly plugins = new Map<string, ChannelPlugin>();
   private readonly pluginsBySurface = new Map<ChannelSurface, ChannelPlugin>();
   private readonly pluginsByPath = new Map<string, ChannelPlugin>();
+  private readonly featureFlags: FeatureFlagReader;
   private version = 0;
+
+  constructor(options: { readonly featureFlags?: FeatureFlagReader } = {}) {
+    this.featureFlags = options.featureFlags ?? null;
+  }
+
+  private isPluginEnabled(plugin: ChannelPlugin): boolean {
+    return isSurfaceFeatureGateEnabled(this.featureFlags, plugin.surface);
+  }
 
   register(plugin: ChannelPlugin): void {
     const existingById = this.plugins.get(plugin.id);
@@ -129,7 +140,9 @@ export class ChannelPluginRegistry {
   }
 
   list(): ChannelPlugin[] {
-    return [...this.plugins.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return [...this.plugins.values()]
+      .filter((plugin) => this.isPluginEnabled(plugin))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 
   listDescriptors(): ChannelAdapterDescriptor[] {
@@ -143,15 +156,18 @@ export class ChannelPluginRegistry {
   }
 
   getBySurface(surface: ChannelSurface): ChannelPlugin | null {
-    return this.pluginsBySurface.get(surface) ?? null;
+    const plugin = this.pluginsBySurface.get(surface);
+    return plugin && this.isPluginEnabled(plugin) ? plugin : null;
   }
 
   get(pluginId: string): ChannelPlugin | null {
-    return this.plugins.get(pluginId) ?? null;
+    const plugin = this.plugins.get(pluginId);
+    return plugin && this.isPluginEnabled(plugin) ? plugin : null;
   }
 
   getByPath(pathname: string): ChannelPlugin | null {
-    return this.pluginsByPath.get(pathname) ?? null;
+    const plugin = this.pluginsByPath.get(pathname);
+    return plugin && this.isPluginEnabled(plugin) ? plugin : null;
   }
 
   async handleInbound(pathname: string, req: Request): Promise<Response | null> {

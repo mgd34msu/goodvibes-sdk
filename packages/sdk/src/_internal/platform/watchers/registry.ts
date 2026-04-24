@@ -18,6 +18,8 @@ import {
   saveWatcherSnapshotToPath,
 } from './store.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
 
 export interface RegisterWatcherInput {
   readonly id: string;
@@ -39,6 +41,7 @@ export interface RegisterPollingWatcherInput {
 
 export interface WatcherRegistryOptions {
   readonly storePath?: string;
+  readonly featureFlags?: FeatureFlagReader;
 }
 
 interface RegisteredWatcher {
@@ -134,10 +137,29 @@ export class WatcherRegistry {
   private readonly storePath: string;
   private runtimeDispatch: DomainDispatch | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
+  private readonly featureFlags: FeatureFlagReader;
   private loaded = false;
 
   constructor(options: WatcherRegistryOptions = {}) {
     this.storePath = resolveWatcherStorePath(options.storePath);
+    this.featureFlags = options.featureFlags ?? null;
+  }
+
+  private isEnabled(): boolean {
+    const enabled = isFeatureGateEnabled(this.featureFlags, 'watcher-framework', ['managed-watcher-services']);
+    if (!enabled) this.clearTimers();
+    return enabled;
+  }
+
+  private requireEnabled(operation: string): void {
+    requireFeatureGate(this.featureFlags, 'watcher-framework', operation, ['managed-watcher-services']);
+  }
+
+  private clearTimers(): void {
+    for (const timer of this.timers.values()) {
+      clearInterval(timer);
+    }
+    this.timers.clear();
   }
 
   attachRuntime(config: {
@@ -156,6 +178,7 @@ export class WatcherRegistry {
   }
 
   registerWatcher(input: RegisterWatcherInput): WatcherRecord {
+    this.requireEnabled('register watcher');
     this.ensureLoaded();
     const existing = this.watchers.get(input.id)?.record;
     const wasRunning = existing?.state === 'running' || existing?.state === 'starting' || existing?.state === 'degraded';
@@ -210,6 +233,10 @@ export class WatcherRegistry {
   }
 
   list(): WatcherRecord[] {
+    if (!this.isEnabled()) {
+      this.clearTimers();
+      return [];
+    }
     this.ensureLoaded();
     const refreshed: WatcherRecord[] = [];
     let changed = false;
@@ -228,6 +255,10 @@ export class WatcherRegistry {
   }
 
   getWatcher(id: string): WatcherRecord | null {
+    if (!this.isEnabled()) {
+      this.clearTimers();
+      return null;
+    }
     this.ensureLoaded();
     const watcher = this.watchers.get(id);
     if (!watcher) return null;
@@ -241,6 +272,7 @@ export class WatcherRegistry {
   }
 
   startWatcher(id: string): WatcherRecord | null {
+    this.requireEnabled('start watcher');
     this.ensureLoaded();
     const watcher = this.watchers.get(id);
     if (!watcher) return null;
@@ -280,6 +312,7 @@ export class WatcherRegistry {
   }
 
   stopWatcher(id: string, reason = 'stopped'): WatcherRecord | null {
+    this.requireEnabled('stop watcher');
     this.ensureLoaded();
     const watcher = this.watchers.get(id);
     if (!watcher) return null;
@@ -310,6 +343,7 @@ export class WatcherRegistry {
   }
 
   async runWatcherNow(id: string): Promise<WatcherRecord | null> {
+    this.requireEnabled('run watcher');
     this.ensureLoaded();
     const watcher = this.watchers.get(id);
     if (!watcher) return null;
@@ -318,6 +352,7 @@ export class WatcherRegistry {
   }
 
   removeWatcher(id: string): boolean {
+    this.requireEnabled('remove watcher');
     this.ensureLoaded();
     const watcher = this.watchers.get(id);
     if (!watcher) return false;
@@ -338,6 +373,7 @@ export class WatcherRegistry {
   }
 
   private ensureLoaded(): void {
+    if (!this.isEnabled()) return;
     if (this.loaded) return;
     const snapshot = loadWatcherSnapshotFromPath(this.storePath);
     if (snapshot) {
@@ -384,6 +420,7 @@ export class WatcherRegistry {
   }
 
   private async runWatcher(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
     if (this.inFlight.has(id)) return;
     const watcher = this.watchers.get(id);
     if (!watcher) return;

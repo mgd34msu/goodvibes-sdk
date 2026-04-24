@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { registerToolWithContractGate } from '../packages/sdk/src/_internal/platform/tools/index.js';
 import { ToolRegistry } from '../packages/sdk/src/_internal/platform/tools/registry.js';
 import { executeFetchInput } from '../packages/sdk/src/_internal/platform/tools/fetch/index.js';
@@ -7,20 +10,41 @@ import { createPhasedExecutor } from '../packages/sdk/src/_internal/platform/run
 import { DeliveryQueue } from '../packages/sdk/src/_internal/platform/integrations/delivery.js';
 import { Notifier } from '../packages/sdk/src/_internal/platform/integrations/notifier.js';
 import { RouteBindingManager } from '../packages/sdk/src/_internal/platform/channels/route-manager.js';
+import { ChannelPluginRegistry, SurfaceRegistry } from '../packages/sdk/src/_internal/platform/channels/index.js';
 import { bindProviderOptimizerFeatureFlag } from '../packages/sdk/src/_internal/platform/runtime/services.js';
-import { createPermissionEvaluator } from '../packages/sdk/src/_internal/platform/runtime/permissions/index.js';
+import {
+  createDivergenceDashboard,
+  createPermissionEvaluator,
+  createPolicyRegistry,
+  loadPolicyBundle,
+  PermissionSimulator,
+  signBundle,
+} from '../packages/sdk/src/_internal/platform/runtime/permissions/index.js';
 import { PermissionManager } from '../packages/sdk/src/_internal/platform/permissions/manager.js';
 import { createPluginLifecycleManager } from '../packages/sdk/src/_internal/platform/runtime/plugins/index.js';
 import { createMcpLifecycleManager } from '../packages/sdk/src/_internal/platform/runtime/mcp/index.js';
 import { createShellPlanRuntime } from '../packages/sdk/src/_internal/platform/runtime/shell-command-ops.js';
 import { AdaptivePlanner } from '../packages/sdk/src/_internal/platform/core/adaptive-planner.js';
 import { createTelemetryProvider } from '../packages/sdk/src/_internal/platform/runtime/telemetry/index.js';
+import { createRuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
+import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
+import { createTaskManager } from '../packages/sdk/src/_internal/platform/runtime/tasks/index.js';
 import { AgentOrchestrator } from '../packages/sdk/src/_internal/platform/agents/orchestrator.js';
 import { AgentMessageBus } from '../packages/sdk/src/_internal/platform/agents/message-bus.js';
+import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
+import { WatcherRegistry } from '../packages/sdk/src/_internal/platform/watchers/index.js';
+import { PlatformServiceManager } from '../packages/sdk/src/_internal/platform/daemon/service-manager.js';
+import { AutomationDeliveryManager, AutomationManager } from '../packages/sdk/src/_internal/platform/automation/index.js';
+import { ControlPlaneGateway } from '../packages/sdk/src/_internal/platform/control-plane/index.js';
+import { OverflowHandler } from '../packages/sdk/src/_internal/platform/tools/shared/overflow.js';
+import { ApiTokenAuditor } from '../packages/sdk/src/_internal/platform/security/token-audit.js';
+import { ModeManager } from '../packages/sdk/src/_internal/platform/state/mode-manager.js';
 import type { Tool, ToolResult } from '../packages/sdk/src/_internal/platform/types/tools.js';
 import type { ToolRuntimeContext } from '../packages/sdk/src/_internal/platform/runtime/tools/index.js';
 import type { AutomationRouteStore } from '../packages/sdk/src/_internal/platform/automation/store/routes.js';
 import type { AutomationRouteBinding } from '../packages/sdk/src/_internal/platform/automation/routes.js';
+import type { AutomationJob } from '../packages/sdk/src/_internal/platform/automation/jobs.js';
+import type { AutomationRun } from '../packages/sdk/src/_internal/platform/automation/runs.js';
 import type { LLMProvider } from '../packages/sdk/src/_internal/platform/providers/interface.js';
 import type { AgentRecord } from '../packages/sdk/src/_internal/platform/tools/agent/manager.js';
 
@@ -29,6 +53,41 @@ const flags = (enabledIds: readonly string[]) => ({
     return enabledIds.includes(id);
   },
 });
+
+function withTempDir<T>(fn: (dir: string) => T): T {
+  const dir = mkdtempSync(join(tmpdir(), 'goodvibes-flags-'));
+  try {
+    const result = fn(dir);
+    if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+      return (result as Promise<unknown>).finally(() => {
+        rmSync(dir, { recursive: true, force: true });
+      }) as T;
+    }
+    rmSync(dir, { recursive: true, force: true });
+    return result;
+  } catch (error) {
+    rmSync(dir, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function testConfigManager(dir: string): ConfigManager {
+  return new ConfigManager({ configDir: dir });
+}
+
+function automationSource(overrides: Record<string, unknown> = {}) {
+  const now = Date.now();
+  return {
+    id: 'source-1',
+    kind: 'manual',
+    label: 'Test source',
+    enabled: true,
+    createdAt: now,
+    updatedAt: now,
+    metadata: {},
+    ...overrides,
+  };
+}
 
 function mutableFlags(initial: readonly string[]) {
   const enabled = new Set(initial);
@@ -167,6 +226,68 @@ function makeAgentRecord(overrides: Partial<AgentRecord> = {}): AgentRecord {
     executionProtocol: 'direct',
     reviewMode: 'none',
     communicationLane: 'parent-only',
+    ...overrides,
+  };
+}
+
+function makeAutomationJob(overrides: Partial<AutomationJob> = {}): AutomationJob {
+  const now = Date.now();
+  const source = automationSource() as AutomationJob['source'];
+  return {
+    id: 'job-1',
+    labels: [],
+    createdAt: now,
+    updatedAt: now,
+    name: 'Test job',
+    status: 'enabled',
+    enabled: true,
+    schedule: { kind: 'at', at: now },
+    execution: { target: { kind: 'background' }, prompt: 'run test' },
+    delivery: {
+      mode: 'surface',
+      targets: [{ kind: 'surface', surfaceKind: 'webhook', address: 'https://example.test/hook' }],
+      fallbackTargets: [],
+      includeSummary: false,
+      includeTranscript: false,
+      includeLinks: false,
+    },
+    failure: {
+      action: 'retry',
+      maxConsecutiveFailures: 1,
+      cooldownMs: 0,
+      retryPolicy: {
+        maxAttempts: 1,
+        delayMs: 0,
+        strategy: 'fixed',
+      },
+    },
+    source,
+    runCount: 0,
+    successCount: 0,
+    failureCount: 0,
+    deleteAfterRun: false,
+    ...overrides,
+  };
+}
+
+function makeAutomationRun(overrides: Partial<AutomationRun> = {}): AutomationRun {
+  const now = Date.now();
+  const source = automationSource() as AutomationRun['triggeredBy'];
+  return {
+    id: 'run-1',
+    labels: [],
+    createdAt: now,
+    updatedAt: now,
+    jobId: 'job-1',
+    status: 'completed',
+    triggeredBy: source,
+    target: { kind: 'background' },
+    execution: { target: { kind: 'background' }, prompt: 'run test' },
+    queuedAt: now,
+    forceRun: false,
+    dueRun: false,
+    attempt: 1,
+    deliveryIds: [],
     ...overrides,
   };
 }
@@ -539,5 +660,268 @@ describe('feature flag safe-default gates', () => {
 
     expect(disabled.tracer.startSpan('disabled').spanContext.isValid).toBe(false);
     expect(enabled.tracer.startSpan('enabled').spanContext.isValid).toBe(true);
+  });
+
+  test('otel-remote-export wires OTLP export only when both telemetry flags are enabled', () => {
+    const disabled = createTelemetryProvider(undefined, {
+      featureFlags: flags(['otel-foundation']),
+      otlp: { endpoint: 'http://127.0.0.1:4318/v1/traces', batchSize: 1, timeoutMs: 10 },
+    });
+    const enabled = createTelemetryProvider(undefined, {
+      featureFlags: flags(['otel-foundation', 'otel-remote-export']),
+      otlp: { endpoint: 'http://127.0.0.1:4318/v1/traces', batchSize: 1, timeoutMs: 10 },
+    });
+
+    const disabledExporters = (disabled.tracer as unknown as { config: { exporters: Array<{ name: string }> } }).config.exporters;
+    const enabledExporters = (enabled.tracer as unknown as { config: { exporters: Array<{ name: string }> } }).config.exporters;
+
+    expect(disabledExporters).toHaveLength(0);
+    expect(enabledExporters.map((exporter) => exporter.name)).toEqual(['otlp']);
+  });
+
+  test('overflow-spill-backends forces file backend until alternate backends are enabled', () => withTempDir((dir) => {
+    const disabled = new OverflowHandler({ baseDir: dir, spillBackend: 'ledger', featureFlags: flags([]) });
+    const enabled = new OverflowHandler({ baseDir: dir, spillBackend: 'ledger', featureFlags: flags(['overflow-spill-backends']) });
+
+    expect(disabled.backendType).toBe('file');
+    expect(enabled.backendType).toBe('ledger');
+  }));
+
+  test('watcher-framework gates watcher registry operations and honors legacy alias', () => withTempDir((dir) => {
+    const disabled = new WatcherRegistry({
+      storePath: join(dir, 'disabled-watchers.json'),
+      featureFlags: flags([]),
+    });
+    expect(disabled.list()).toEqual([]);
+    expect(() => disabled.registerPollingWatcher({
+      id: 'watcher-1',
+      label: 'Watcher 1',
+      source: automationSource({ kind: 'watcher' }) as never,
+      intervalMs: 1000,
+      run: () => 'ok',
+    })).toThrow(/watcher-framework feature flag is disabled/);
+
+    const aliasEnabled = new WatcherRegistry({
+      storePath: join(dir, 'enabled-watchers.json'),
+      featureFlags: flags(['managed-watcher-services']),
+    });
+    aliasEnabled.registerPollingWatcher({
+      id: 'watcher-1',
+      label: 'Watcher 1',
+      source: automationSource({ kind: 'watcher' }) as never,
+      intervalMs: 1000,
+      run: () => 'ok',
+    });
+    expect(aliasEnabled.list()).toHaveLength(1);
+    aliasEnabled.stopWatcher('watcher-1');
+  }));
+
+  test('service-management gates daemon service mutations and honors legacy alias', () => withTempDir((dir) => {
+    const configManager = testConfigManager(join(dir, 'config'));
+    const disabled = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      featureFlags: flags([]),
+    });
+    const aliasEnabled = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      featureFlags: flags(['service-installation']),
+    });
+
+    expect(disabled.status().actionError).toMatch(/service-management feature flag is disabled/);
+    expect(() => disabled.install()).toThrow(/service-management feature flag is disabled/);
+    expect(aliasEnabled.status().actionError).toBeUndefined();
+  }));
+
+  test('surface flags gate configured surfaces and channel plugins', () => withTempDir((dir) => {
+    const configManager = testConfigManager(join(dir, 'config'));
+    configManager.set('surfaces.slack.enabled', true);
+
+    const disabledSurfaces = new SurfaceRegistry(configManager, undefined, flags([]));
+    const enabledSurfaces = new SurfaceRegistry(configManager, undefined, flags(['slack-surface']));
+    expect(disabledSurfaces.syncConfiguredSurfaces().find((surface) => surface.kind === 'slack')?.enabled).toBe(false);
+    expect(enabledSurfaces.syncConfiguredSurfaces().find((surface) => surface.kind === 'slack')?.enabled).toBe(true);
+
+    const disabledPlugins = new ChannelPluginRegistry({ featureFlags: flags([]) });
+    const enabledPlugins = new ChannelPluginRegistry({ featureFlags: flags(['slack-surface']) });
+    const plugin = {
+      id: 'slack',
+      surface: 'slack' as const,
+      displayName: 'Slack',
+      capabilities: ['egress' as const],
+    };
+    disabledPlugins.register(plugin);
+    enabledPlugins.register(plugin);
+
+    expect(disabledPlugins.list()).toEqual([]);
+    expect(disabledPlugins.getBySurface('slack')).toBeNull();
+    expect(enabledPlugins.getBySurface('slack')?.id).toBe('slack');
+  }));
+
+  test('embedded-web-control-ui legacy alias enables the web surface gate', () => withTempDir((dir) => {
+    const configManager = testConfigManager(join(dir, 'config'));
+    configManager.set('web.enabled', true);
+    const registry = new SurfaceRegistry(configManager, undefined, flags(['embedded-web-control-ui']));
+
+    expect(registry.syncConfiguredSurfaces().find((surface) => surface.kind === 'web')?.enabled).toBe(true);
+  }));
+
+  test('control-plane-gateway gates gateway traffic and honors legacy alias', () => {
+    const disabled = new ControlPlaneGateway({ featureFlags: flags([]) });
+    const aliasEnabled = new ControlPlaneGateway({ featureFlags: flags(['gateway-control-plane']) });
+
+    expect(disabled.getSnapshot()).toEqual(expect.objectContaining({ disabled: true, featureFlag: 'control-plane-gateway' }));
+    expect(disabled.createEventStream(new Request('http://localhost/events')).status).toBe(503);
+    expect(aliasEnabled.getSnapshot()).not.toEqual(expect.objectContaining({ disabled: true }));
+  });
+
+  test('delivery-engine gates automation deliveries and surface-specific targets', async () => {
+    let delivered = 0;
+    const routeBindings = {
+      start: async () => undefined,
+      getBinding: () => undefined,
+      captureReplyTarget: async () => undefined,
+    } as unknown as RouteBindingManager;
+    const deliveryRouter = {
+      setControlPlaneGateway() {},
+      deliver: async () => {
+        delivered += 1;
+        return 'delivered';
+      },
+    };
+    const job = makeAutomationJob();
+    const run = makeAutomationRun();
+
+    const disabled = new AutomationDeliveryManager({
+      routeBindings,
+      deliveryRouter: deliveryRouter as never,
+      featureFlags: flags([]),
+    });
+    expect(await disabled.deliverJobRun(job, run)).toEqual([]);
+
+    const engineOnly = new AutomationDeliveryManager({
+      routeBindings,
+      deliveryRouter: deliveryRouter as never,
+      featureFlags: flags(['delivery-engine']),
+    });
+    expect(await engineOnly.deliverJobRun(job, run)).toEqual([]);
+
+    const enabled = new AutomationDeliveryManager({
+      routeBindings,
+      deliveryRouter: deliveryRouter as never,
+      featureFlags: flags(['delivery-engine', 'webhook-surface']),
+    });
+    const attempts = await enabled.deliverJobRun(job, run);
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]?.status).toBe('sent');
+    expect(delivered).toBe(1);
+  });
+
+  test('automation-domain gates automation manager operations and honors legacy alias', async () => withTempDir(async (dir) => {
+    const disabled = new AutomationManager({
+      configManager: testConfigManager(join(dir, 'config-disabled')),
+      routeBindings: {} as RouteBindingManager,
+      sessionBroker: {} as never,
+      featureFlags: flags([]),
+    });
+    const aliasEnabled = new AutomationManager({
+      configManager: testConfigManager(join(dir, 'config-enabled')),
+      routeBindings: {} as RouteBindingManager,
+      sessionBroker: {} as never,
+      featureFlags: flags(['automation-runtime']),
+    });
+
+    expect(disabled.listJobs()).toEqual([]);
+    await expect(disabled.createJob({} as never)).rejects.toThrow(/automation-domain feature flag is disabled/);
+    expect(aliasEnabled.listJobs()).toEqual([]);
+  }));
+
+  test('unified-runtime-task gates task manager creation and mutation', () => {
+    const store = createRuntimeStore();
+    const bus = new RuntimeEventBus();
+    const disabled = createTaskManager(store, bus, 'session-1', flags([]));
+    const enabled = createTaskManager(store, bus, 'session-1', flags(['unified-runtime-task']));
+
+    expect(() => disabled.createTask({ kind: 'exec', title: 'blocked', owner: 'test' })).toThrow(/unified-runtime-task/);
+    expect(enabled.createTask({ kind: 'exec', title: 'allowed', owner: 'test' }).status).toBe('queued');
+  });
+
+  test('permission-divergence-dashboard and policy-as-code gate factories', () => {
+    const simulator = new PermissionSimulator({}, {}, 'warn-on-divergence');
+
+    expect(() => createDivergenceDashboard(simulator, 'warn-on-divergence', {}, flags([]))).toThrow(/permission-divergence-dashboard/);
+    expect(() => createDivergenceDashboard(simulator, 'warn-on-divergence', {}, flags(['permission-divergence-dashboard']))).not.toThrow();
+    expect(() => createPolicyRegistry({}, flags([]))).toThrow(/policy-as-code/);
+    expect(() => createPolicyRegistry({}, flags(['policy-as-code']))).not.toThrow();
+  });
+
+  test('policy-signing gates managed signature enforcement when supplied', () => {
+    const key = Buffer.from('0123456789abcdef0123456789abcdef');
+    const signed = signBundle('bundle-1', { version: 1, rules: [] }, key);
+    const tampered = {
+      ...signed,
+      payload: {
+        version: 1,
+        rules: [{
+          id: 'allow-read',
+          type: 'prefix' as const,
+          origin: 'user' as const,
+          effect: 'allow' as const,
+          toolPattern: 'read',
+        }],
+      },
+    };
+
+    const disabled = loadPolicyBundle(tampered, {
+      signingKey: key,
+      managed: true,
+      featureFlags: flags([]),
+    });
+    const enabled = loadPolicyBundle(tampered, {
+      signingKey: key,
+      managed: true,
+      featureFlags: flags(['policy-signing']),
+    });
+
+    expect(disabled.ok).toBe(true);
+    expect(disabled.provenance.signatureStatus).toBe('skipped');
+    expect(enabled.ok).toBe(false);
+    expect(enabled.provenance.signatureStatus).toBe('invalid');
+  });
+
+  test('token-scope-rotation-audit gates managed blocking while preserving audit findings', () => {
+    const oldIssuedAt = Date.now() - 10_000;
+    const disabled = new ApiTokenAuditor({ managed: true, featureFlags: flags([]) });
+    const enabled = new ApiTokenAuditor({ managed: true, featureFlags: flags(['token-scope-rotation-audit']) });
+    for (const auditor of [disabled, enabled]) {
+      auditor.registerPolicy({
+        id: 'test-policy',
+        name: 'Test policy',
+        allowedScopes: ['read'],
+        rotationCadenceMs: 1,
+      });
+      auditor.registerToken({
+        id: 'token-1',
+        label: 'TEST_TOKEN',
+        issuedAt: oldIssuedAt,
+        grantedScopes: ['read', 'write'],
+        policyId: 'test-policy',
+      });
+    }
+
+    expect(disabled.auditAll().scopeViolations).toEqual(['token-1']);
+    expect(disabled.auditAll().blocked).toEqual([]);
+    expect(enabled.auditAll().blocked).toEqual(['token-1']);
+  });
+
+  test('hitl-ux-modes gates HITL mode application', () => {
+    const disabled = new ModeManager({ featureFlags: flags([]) });
+    const enabled = new ModeManager({ featureFlags: flags(['hitl-ux-modes']) });
+
+    expect(disabled.listHITLPresets()).toEqual([]);
+    expect(() => disabled.setHITLMode('operator')).toThrow(/hitl-ux-modes/);
+    enabled.setHITLMode('operator');
+    expect(enabled.getHITLMode()).toBe('operator');
   });
 });

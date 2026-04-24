@@ -15,6 +15,7 @@ import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { AutomationSurfaceKind } from '../automation/types.js';
 import { AutomationRouteStore } from '../automation/store/routes.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 
 export interface UpsertRouteBindingInput {
   readonly id?: string;
@@ -112,7 +113,7 @@ export class RouteBindingManager {
   }
 
   private isEnabled(): boolean {
-    return this.featureFlags?.isEnabled('route-binding') ?? true;
+    return isFeatureGateEnabled(this.featureFlags, 'route-binding', ['omnichannel-route-binding']);
   }
 
   private requireEnabled(operation: string): void {

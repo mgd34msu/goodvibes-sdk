@@ -75,6 +75,8 @@ import {
   toggleAutomationJobEnabled,
   updateAutomationJobRecord,
 } from './manager-runtime-job-mutations.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
 
 export type {
   CreateAutomationJobInput,
@@ -98,6 +100,7 @@ interface AutomationManagerConfig {
   readonly sessionBroker: SharedSessionBroker;
   readonly defaultSurfaceKind?: AutomationSurfaceKind;
   readonly defaultSurfaceId?: string;
+  readonly featureFlags?: FeatureFlagReader;
 }
 
 export interface AutomationHeartbeatResult {
@@ -131,6 +134,7 @@ export class AutomationManager {
   private readonly deliveryInFlight = new Set<string>();
   private runtimeDispatch: DomainDispatch | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
+  private readonly featureFlags: FeatureFlagReader;
   private loaded = false;
   private running = false;
   private startPromise: Promise<void> | null = null;
@@ -155,6 +159,15 @@ export class AutomationManager {
     }
     this.runtimeBus = config.runtimeBus ?? null;
     this.deliveryManager = config.deliveryManager ?? null;
+    this.featureFlags = config.featureFlags ?? null;
+  }
+
+  private isEnabled(): boolean {
+    return isFeatureGateEnabled(this.featureFlags, 'automation-domain', ['automation-runtime']);
+  }
+
+  private requireEnabled(operation: string): void {
+    requireFeatureGate(this.featureFlags, 'automation-domain', operation, ['automation-runtime']);
   }
 
   private requireSpawnTask(): (input: SpawnAutomationTaskInput) => string {
@@ -212,6 +225,10 @@ export class AutomationManager {
   }
 
   async start(): Promise<void> {
+    if (!this.isEnabled()) {
+      this.stop();
+      return;
+    }
     if (this.running) return;
     if (this.startPromise) return await this.startPromise;
     this.startPromise = this.load()
@@ -269,11 +286,13 @@ export class AutomationManager {
   }
 
   listJobs(): AutomationJob[] {
+    if (!this.isEnabled()) return [];
     this.reconcileActiveRuns();
     return sortJobs(this.jobs.values());
   }
 
   listRuns(jobId?: string): AutomationRun[] {
+    if (!this.isEnabled()) return [];
     this.reconcileActiveRuns();
     const runs = jobId
       ? [...this.runs.values()].filter((run) => run.jobId === jobId)
@@ -282,26 +301,31 @@ export class AutomationManager {
   }
 
   listHeartbeatWakes(): AutomationHeartbeatWake[] {
+    if (!this.isEnabled()) return [];
     this.queueDueHeartbeatJobs('inspect');
     return [...this.heartbeatWakes.values()].sort((a, b) => a.queuedAt - b.queuedAt || a.jobId.localeCompare(b.jobId));
   }
 
   getRun(runId: string): AutomationRun | undefined {
+    if (!this.isEnabled()) return undefined;
     this.reconcileActiveRuns();
     return this.runs.get(runId);
   }
 
   getJob(jobId: string): AutomationJob | undefined {
+    if (!this.isEnabled()) return undefined;
     this.reconcileActiveRuns();
     return this.jobs.get(jobId);
   }
 
   async createJob(input: CreateAutomationJobInput): Promise<AutomationJob> {
+    this.requireEnabled('create automation job');
     await this.start();
     return await createAutomationJobRecord(this.jobMutationContext(), input);
   }
 
   async removeJob(jobId: string): Promise<boolean> {
+    this.requireEnabled('remove automation job');
     await this.start();
     this.cancelTimer(jobId);
     const removed = this.jobs.delete(jobId);
@@ -311,6 +335,7 @@ export class AutomationManager {
   }
 
   async setEnabled(jobId: string, enabled: boolean): Promise<AutomationJob | null> {
+    this.requireEnabled('set automation job enabled state');
     await this.start();
     const updated = await toggleAutomationJobEnabled(this.jobMutationContext(), jobId, enabled);
     if (!enabled) this.cancelTimer(jobId);
@@ -318,11 +343,13 @@ export class AutomationManager {
   }
 
   async updateJob(jobId: string, patch: UpdateAutomationJobInput): Promise<AutomationJob | null> {
+    this.requireEnabled('update automation job');
     await this.start();
     return await updateAutomationJobRecord(this.jobMutationContext(), jobId, patch);
   }
 
   async runNow(jobId: string): Promise<AutomationRun> {
+    this.requireEnabled('run automation job');
     await this.start();
     const job = this.jobs.get(jobId);
     if (!job) throw new Error(`Automation job not found: ${jobId}`);
@@ -333,6 +360,7 @@ export class AutomationManager {
   }
 
   async triggerHeartbeat(_input: { readonly source?: string } = {}): Promise<AutomationHeartbeatResult> {
+    this.requireEnabled('trigger automation heartbeat');
     await this.start();
     this.queueDueHeartbeatJobs('heartbeat');
     const queued = this.listHeartbeatWakes();
@@ -363,6 +391,7 @@ export class AutomationManager {
   }
 
   async retryRun(runId: string): Promise<AutomationRun> {
+    this.requireEnabled('retry automation run');
     await this.start();
     const run = this.runs.get(runId);
     if (!run) throw new Error(`Automation run not found: ${runId}`);
@@ -375,6 +404,7 @@ export class AutomationManager {
   }
 
   async cancelRun(runId: string, reason = 'operator-cancelled'): Promise<AutomationRun | null> {
+    this.requireEnabled('cancel automation run');
     await this.start();
     const run = this.runs.get(runId);
     if (!run) return null;
@@ -432,6 +462,7 @@ export class AutomationManager {
       readonly metadata?: Record<string, unknown>;
     },
   ): Promise<AutomationRun | null> {
+    this.requireEnabled('record automation run result');
     await this.start();
     const run = this.runs.get(runId);
     if (!run) return null;

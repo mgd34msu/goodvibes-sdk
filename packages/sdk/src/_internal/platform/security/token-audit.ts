@@ -14,6 +14,8 @@
 
 import { logger } from '../utils/logger.js';
 import type { SecurityEvent } from '../runtime/events/security.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -137,6 +139,11 @@ export interface TokenAuditorConfig {
    * When false, violations are reported but tokens remain usable.
    */
   managed: boolean;
+  /**
+   * Feature flags gate managed blocking when supplied by SDK runtime services.
+   * Audits still report violations while disabled.
+   */
+  featureFlags?: FeatureFlagReader;
 }
 
 /**
@@ -184,6 +191,10 @@ export class ApiTokenAuditor {
   ) {
     this._config = config;
     this._emitter = options?.emitter ?? ((_event: SecurityEvent) => {});
+  }
+
+  private _managedBlockingEnabled(): boolean {
+    return isFeatureGateEnabled(this._config.featureFlags, 'token-scope-rotation-audit');
   }
 
   // -------------------------------------------------------------------------
@@ -341,7 +352,7 @@ export class ApiTokenAuditor {
       const isWarning = rotation.outcome === 'warning';
 
       // In managed mode: block tokens with scope violations or overdue rotation
-      const isBlocked = this._config.managed && (hasViolation || isOverdue);
+      const isBlocked = this._config.managed && this._managedBlockingEnabled() && (hasViolation || isOverdue);
 
       const result: TokenAuditResult = {
         tokenId,
@@ -418,7 +429,7 @@ export class ApiTokenAuditor {
    * Returns false when not in managed mode or when the token is not registered.
    */
   isBlocked(tokenId: string, now: number = Date.now()): boolean {
-    if (!this._config.managed) return false;
+    if (!this._config.managed || !this._managedBlockingEnabled()) return false;
     const scope = this.auditScope(tokenId);
     if (!scope) return false;
     const rotation = this.auditRotation(tokenId, now);

@@ -18,6 +18,8 @@ import type { AutomationRouteBinding } from './routes.js';
 import type { AutomationRun } from './runs.js';
 import { classifyDeliveryError } from '../integrations/delivery.js';
 import { summarizeError } from '../utils/error-display.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled, isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -100,6 +102,7 @@ interface ResolvedDeliveryTarget {
 export class AutomationDeliveryManager {
   private readonly routeBindings: RouteBindingManager;
   private readonly deliveryRouter: ChannelDeliveryRouter;
+  private readonly featureFlags: FeatureFlagReader;
   private runtimeDispatch: DomainDispatch | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
 
@@ -111,8 +114,10 @@ export class AutomationDeliveryManager {
     readonly artifactStore?: ArtifactStore;
     readonly runtimeStore?: RuntimeStore;
     readonly runtimeBus?: RuntimeEventBus;
+    readonly featureFlags?: FeatureFlagReader;
   }) {
     this.routeBindings = config.routeBindings;
+    this.featureFlags = config.featureFlags ?? null;
     if (config.deliveryRouter) {
       this.deliveryRouter = config.deliveryRouter;
     } else {
@@ -147,11 +152,20 @@ export class AutomationDeliveryManager {
     return this.deliveryRouter;
   }
 
+  private isEnabled(): boolean {
+    return isFeatureGateEnabled(this.featureFlags, 'delivery-engine');
+  }
+
+  private isTargetEnabled(target: AutomationDeliveryTarget): boolean {
+    return isSurfaceFeatureGateEnabled(this.featureFlags, target.surfaceKind ?? 'webhook');
+  }
+
   setControlPlaneGateway(gateway: import('../control-plane/gateway.js').ControlPlaneGateway | null): void {
     this.deliveryRouter.setControlPlaneGateway(gateway);
   }
 
   async deliverJobRun(job: AutomationJob, run: AutomationRun): Promise<readonly AutomationDeliveryAttempt[]> {
+    if (!this.isEnabled()) return [];
     if (job.delivery.mode === 'none') return [];
 
     await this.routeBindings.start();
@@ -176,8 +190,9 @@ export class AutomationDeliveryManager {
     body: string,
     targets: readonly AutomationDeliveryTarget[],
   ): Promise<readonly AutomationDeliveryAttempt[]> {
+    if (!this.isEnabled()) return [];
     await this.routeBindings.start();
-    const resolvedTargets = this.resolveTargets(targets);
+    const resolvedTargets = this.resolveTargets(targets).filter((entry) => this.isTargetEnabled(entry.target));
     if (resolvedTargets.length === 0) return [];
 
     const attempts: AutomationDeliveryAttempt[] = [];

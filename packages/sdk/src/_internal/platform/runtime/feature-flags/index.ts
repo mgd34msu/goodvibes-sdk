@@ -20,3 +20,10 @@ export type { FlagState, FeatureFlag, FlagConfig, FlagTransition } from './types
 export type { FlagSubscriber } from './manager.js';
 export { FeatureFlagManager, createFeatureFlagManager } from './manager.js';
 export { FEATURE_FLAGS, FEATURE_FLAG_MAP } from './flags.js';
+export type { FeatureFlagReader } from './gates.js';
+export {
+  isFeatureGateEnabled,
+  isSurfaceFeatureGateEnabled,
+  requireFeatureGate,
+  surfaceFeatureGateId,
+} from './gates.js';

@@ -112,9 +112,15 @@ export type {
 
 import { LayeredPolicyEvaluator } from './evaluator.js';
 import { PermissionSimulator } from './simulation.js';
+import { DivergenceDashboard } from './divergence-dashboard.js';
+import { PolicyRegistry } from './policy-registry.js';
 import type { PermissionsConfig, SimulationMode, PermissionSimulatorConfig } from './types.js';
 import type { FeatureFlagManager } from '../feature-flags/manager.js';
+import type { FeatureFlagReader } from '../feature-flags/index.js';
+import { requireFeatureGate } from '../feature-flags/index.js';
 import type { BundleProvenance } from './policy-loader.js';
+import type { DivergenceDashboardConfig } from './divergence-dashboard.js';
+import type { PolicyRegistryConfig } from './policy-registry.js';
 
 /**
  * createPermissionEvaluator — Factory function for the runtime permission evaluator.
@@ -191,4 +197,34 @@ export function createPermissionSimulator(
     simulationMode,
     config,
   );
+}
+
+/**
+ * createDivergenceDashboard — Factory for the permissions divergence dashboard.
+ *
+ * Requires the `permission-divergence-dashboard` feature flag when a flag manager
+ * is supplied. Without a flag manager, legacy direct construction remains active.
+ */
+export function createDivergenceDashboard(
+  simulator: PermissionSimulator,
+  mode: SimulationMode,
+  config: DivergenceDashboardConfig = {},
+  flagManager?: FeatureFlagReader,
+): DivergenceDashboard {
+  requireFeatureGate(flagManager, 'permission-divergence-dashboard', 'create divergence dashboard');
+  return new DivergenceDashboard(simulator, mode, config);
+}
+
+/**
+ * createPolicyRegistry — Factory for the policy-as-code registry.
+ *
+ * Requires the `policy-as-code` feature flag when a flag manager is supplied.
+ * Without a flag manager, legacy direct construction remains active.
+ */
+export function createPolicyRegistry(
+  config: PolicyRegistryConfig = {},
+  flagManager?: FeatureFlagReader,
+): PolicyRegistry {
+  requireFeatureGate(flagManager, 'policy-as-code', 'create policy registry');
+  return new PolicyRegistry(config);
 }

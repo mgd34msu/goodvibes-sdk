@@ -19,6 +19,8 @@ import type {
   SignedPolicyBundle,
 } from './policy-signer.js';
 import { verifyBundle } from './policy-signer.js';
+import type { FeatureFlagReader } from '../feature-flags/index.js';
+import { isFeatureGateEnabled } from '../feature-flags/index.js';
 
 // ── Loader types ──────────────────────────────────────────────────────────────
 
@@ -126,6 +128,12 @@ export interface PolicyLoaderOptions {
    * Defaults to false.
    */
   throwOnRejection?: boolean;
+
+  /**
+   * Feature flags gate signature validation when supplied by SDK runtime services.
+   * When omitted, legacy explicit loader options are preserved.
+   */
+  featureFlags?: FeatureFlagReader;
 }
 
 // ── Core loader ───────────────────────────────────────────────────────────────
@@ -165,6 +173,7 @@ export function loadPolicyBundle(
     provenanceSource = 'inline',
     throwOnRejection = false,
   } = options;
+  const signingEnabled = isFeatureGateEnabled(options.featureFlags, 'policy-signing');
 
   const baseProv: BundleProvenance = {
     policyBundleId: bundle.bundleId,
@@ -177,7 +186,9 @@ export function loadPolicyBundle(
   // ── Signature validation ────────────────────────────────────────────────────
   let signatureStatus: SignatureStatus;
 
-  if (!signingKey) {
+  if (!signingEnabled) {
+    signatureStatus = 'skipped';
+  } else if (!signingKey) {
     // No key supplied — skip verification (permitted in non-managed mode)
     signatureStatus = 'skipped';
   } else if (!bundle.signature) {
@@ -191,7 +202,7 @@ export function loadPolicyBundle(
   const provenance: BundleProvenance = { ...baseProv, signatureStatus };
 
   // ── Managed-mode enforcement ────────────────────────────────────────────────
-  if (managed) {
+  if (managed && signingEnabled) {
     const rejected =
       signatureStatus === 'invalid'
       || signatureStatus === 'missing'

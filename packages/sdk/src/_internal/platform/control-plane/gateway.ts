@@ -16,6 +16,8 @@ import type {
   ControlPlaneServerConfig,
   ControlPlaneSurfaceMessage,
 } from './types.js';
+import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
+import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
 
 const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
   'session',
@@ -46,6 +48,7 @@ export interface ControlPlaneGatewayConfig {
   readonly runtimeBus?: RuntimeEventBus | null;
   readonly runtimeStore?: RuntimeStore | null;
   readonly server?: Partial<ControlPlaneServerConfig>;
+  readonly featureFlags?: FeatureFlagReader;
 }
 
 export interface ControlPlaneEventStreamOptions {
@@ -144,6 +147,7 @@ export class ControlPlaneGateway {
   private runtimeBus: RuntimeEventBus | null;
   private dispatch: DomainDispatch | null;
   private readonly serverConfig: ControlPlaneServerConfig;
+  private readonly featureFlags: FeatureFlagReader;
   private readonly clients = new Map<string, ControlPlaneClientRecord>();
   private readonly liveClients = new Map<string, LiveControlPlaneClient>();
   private readonly websocketClients = new Map<string, WebSocketControlPlaneClient>();
@@ -180,18 +184,27 @@ export class ControlPlaneGateway {
     this._recentEventsRing = new Array(this._recentEventsCapacity);
     this.runtimeBus = config.runtimeBus ?? null;
     this.dispatch = config.runtimeStore ? createDomainDispatch(config.runtimeStore) : null;
+    this.featureFlags = config.featureFlags ?? null;
     this.serverConfig = {
       ...DEFAULT_SERVER_CONFIG,
       ...config.server,
     };
     if (this.dispatch) {
       this.dispatch.syncControlPlaneState({
-        enabled: this.serverConfig.enabled,
+        enabled: this.isEnabled() && this.serverConfig.enabled,
         host: this.serverConfig.host,
         port: this.serverConfig.port,
-        connectionState: this.serverConfig.enabled ? 'disconnected' : 'disabled',
+        connectionState: this.isEnabled() && this.serverConfig.enabled ? 'disconnected' : 'disabled',
       }, 'control-plane.gateway.init');
     }
+  }
+
+  private isEnabled(): boolean {
+    return isFeatureGateEnabled(this.featureFlags, 'control-plane-gateway', ['gateway-control-plane']);
+  }
+
+  private requireEnabled(operation: string): void {
+    requireFeatureGate(this.featureFlags, 'control-plane-gateway', operation, ['gateway-control-plane']);
   }
 
   attachRuntime(config: {
@@ -204,10 +217,10 @@ export class ControlPlaneGateway {
     if (config.runtimeStore) {
       this.dispatch = createDomainDispatch(config.runtimeStore);
       this.dispatch.syncControlPlaneState({
-        enabled: this.serverConfig.enabled,
+        enabled: this.isEnabled() && this.serverConfig.enabled,
         host: this.serverConfig.host,
         port: this.serverConfig.port,
-        connectionState: this.serverConfig.enabled ? 'disconnected' : 'disabled',
+        connectionState: this.isEnabled() && this.serverConfig.enabled ? 'disconnected' : 'disabled',
       }, 'control-plane.gateway.attach');
       for (const client of this.clients.values()) {
         this.dispatch.syncControlPlaneClient(client, 'control-plane.gateway.attach');
@@ -216,12 +229,31 @@ export class ControlPlaneGateway {
   }
 
   listClients(): ControlPlaneClientDescriptor[] {
+    if (!this.isEnabled()) return [];
     return [...this.clients.values()]
       .sort((a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0) || a.id.localeCompare(b.id))
       .map(toClientDescriptor);
   }
 
   getSnapshot(): Record<string, unknown> {
+    if (!this.isEnabled()) {
+      return {
+        server: { ...this.serverConfig, enabled: false },
+        disabled: true,
+        featureFlag: 'control-plane-gateway',
+        totals: {
+          clients: 0,
+          activeClients: 0,
+          surfaceMessages: 0,
+          recentEvents: 0,
+          requests: 0,
+          errors: 0,
+        },
+        clients: [],
+        messages: [],
+        recentEvents: [],
+      };
+    }
     const active = [...this.clients.values()].filter((client) => client.connected);
     return {
       server: this.serverConfig,
@@ -240,14 +272,17 @@ export class ControlPlaneGateway {
   }
 
   listSurfaceMessages(limit = 50): ControlPlaneSurfaceMessage[] {
+    if (!this.isEnabled()) return [];
     return this.recentMessages.slice(0, Math.max(1, limit));
   }
 
   listRecentEvents(limit = 100): ControlPlaneRecentEvent[] {
+    if (!this.isEnabled()) return [];
     return this.recentEvents.slice(0, Math.max(1, limit));
   }
 
   publishSurfaceMessage(input: Omit<ControlPlaneSurfaceMessage, 'id' | 'createdAt'>): ControlPlaneSurfaceMessage {
+    this.requireEnabled('publish surface message');
     const message: ControlPlaneSurfaceMessage = {
       id: `cpmsg-${randomUUID().slice(0, 8)}`,
       createdAt: Date.now(),
@@ -274,6 +309,7 @@ export class ControlPlaneGateway {
     readonly routeId?: string;
     readonly surfaceId?: string;
   }): void {
+    if (!this.isEnabled()) return;
     const record = this.rememberEvent(event, payload);
     for (const client of this.liveClients.values()) {
       if (filter?.clientKind && client.kind !== filter.clientKind) continue;
@@ -291,6 +327,7 @@ export class ControlPlaneGateway {
     readonly clientKind?: ControlPlaneEventStreamOptions['clientKind'];
     readonly error?: string;
   }): void {
+    if (!this.isEnabled()) return;
     this.requestCount += 1;
     this.lastRequestAt = Date.now();
     if (input.status >= 400 || input.error) {
@@ -312,6 +349,16 @@ export class ControlPlaneGateway {
   }
 
   setServerState(patch: Partial<ControlPlaneServerConfig>): void {
+    if (!this.isEnabled()) {
+      Object.assign(this.serverConfig, { ...patch, enabled: false });
+      this.dispatch?.syncControlPlaneState({
+        enabled: false,
+        host: this.serverConfig.host,
+        port: this.serverConfig.port,
+        connectionState: 'disabled',
+      }, 'control-plane.gateway.state.disabled');
+      return;
+    }
     Object.assign(this.serverConfig, patch);
     const hasActiveClient = [...this.clients.values()].some((client) => client.connected);
     this.dispatch?.syncControlPlaneState({
@@ -329,6 +376,7 @@ export class ControlPlaneGateway {
     options: ControlPlaneEventStreamOptions,
     send: (event: string, payload: unknown, id?: string) => void,
   ): { clientId: string; domains: readonly RuntimeEventDomain[] } {
+    this.requireEnabled('open websocket client');
     if (!this.runtimeBus) {
       throw new Error('Runtime event bus unavailable');
     }
@@ -417,6 +465,7 @@ export class ControlPlaneGateway {
   }
 
   touchWebSocketClient(clientId: string, metadata: Record<string, unknown> = {}): void {
+    if (!this.isEnabled()) return;
     const existing = this.clients.get(clientId);
     if (!existing) return;
     const updated: ControlPlaneClientRecord = {
@@ -438,6 +487,7 @@ export class ControlPlaneGateway {
     readonly label?: string;
     readonly capabilities?: readonly string[];
   }): void {
+    if (!this.isEnabled()) return;
     const existing = this.clients.get(clientId);
     if (!existing || !this.runtimeBus) return;
     const updated: ControlPlaneClientRecord = {
@@ -466,6 +516,7 @@ export class ControlPlaneGateway {
   }
 
   subscribeWebSocketClient(clientId: string, domains: readonly RuntimeEventDomain[]): void {
+    if (!this.isEnabled()) return;
     const wsClient = this.websocketClients.get(clientId);
     if (!wsClient || !this.runtimeBus) return;
     const liveClient = this.liveClients.get(clientId);
@@ -486,6 +537,7 @@ export class ControlPlaneGateway {
   }
 
   unsubscribeWebSocketClient(clientId: string, domains?: readonly RuntimeEventDomain[]): void {
+    if (!this.isEnabled()) return;
     const wsClient = this.websocketClients.get(clientId);
     if (!wsClient) return;
     const targetDomains = domains?.length ? [...new Set(domains)] : [...wsClient.domains];
@@ -499,6 +551,7 @@ export class ControlPlaneGateway {
   }
 
   closeWebSocketClient(clientId: string, reason = 'socket-closed'): void {
+    if (!this.isEnabled()) return;
     const wsClient = this.websocketClients.get(clientId);
     if (!wsClient) return;
     if (this.runtimeBus) {
@@ -553,6 +606,9 @@ export class ControlPlaneGateway {
   }
 
   createEventStream(request: Request, options: ControlPlaneEventStreamOptions = {}): Response {
+    if (!this.isEnabled()) {
+      return Response.json({ error: 'control-plane-gateway feature flag is disabled' }, { status: 503 });
+    }
     if (!this.runtimeBus) {
       return Response.json({ error: 'Runtime event bus unavailable' }, { status: 503 });
     }
@@ -724,6 +780,9 @@ export class ControlPlaneGateway {
   }
 
   renderWebUi(authTokenHint = ''): Response {
+    if (!this.isEnabled()) {
+      return Response.json({ error: 'control-plane-gateway feature flag is disabled' }, { status: 503 });
+    }
     return renderControlPlaneGatewayWebUi(authTokenHint);
   }
 
