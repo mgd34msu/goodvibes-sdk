@@ -1,5 +1,6 @@
 import type { DaemonApiRouteHandlers } from './context.js';
 import { buildMissingScopeBody, type AuthenticatedPrincipal } from './http-policy.js';
+import { decodeOtlpProtobuf } from './otlp-protobuf.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import { DaemonErrorCategory } from '@pellux/goodvibes-errors';
 
@@ -119,10 +120,9 @@ function buildFilter(url: URL): TelemetryFilter {
 /** Max ingest payload (4 MiB) — reject larger bodies with 413 */
 const OTLP_INGEST_MAX_BODY_BYTES = 4 * 1024 * 1024;
 
-/** Accepted content-types for OTLP/HTTP — JSON only; protobuf returns 415 */
-const OTLP_ACCEPTED_CONTENT_TYPES = [
-  'application/json',
-] as const;
+/** Accepted content-types for OTLP/HTTP ingest. */
+const OTLP_JSON_CONTENT_TYPE = 'application/json';
+const OTLP_PROTOBUF_CONTENT_TYPES = new Set(['application/x-protobuf', 'application/protobuf']);
 
 type OtlpIngestKind = 'logs' | 'traces' | 'metrics';
 
@@ -136,22 +136,24 @@ const OTLP_PARTIAL_SUCCESS_KEYS: Record<OtlpIngestKind, string> = {
  * Validate and parse an OTLP HTTP ingest request body.
  * Returns a parsed JSON Record on success, or a Response (error) on failure.
  *
- * Protocol: OTLP/HTTP spec §4.2 — only application/json is accepted in this
- * release. application/x-protobuf returns 415; protobuf decoding is planned
- * for a future release.
+ * Protocol: OTLP/HTTP spec §4.2 — supports JSON and binary protobuf service
+ * requests for logs, traces, and metrics.
  */
 async function parseOtlpBody(
   req: Request,
+  kind: OtlpIngestKind,
 ): Promise<Record<string, unknown> | Response> {
   const contentType = (req.headers.get('content-type') ?? '').toLowerCase().split(';')[0].trim();
 
-  if (!OTLP_ACCEPTED_CONTENT_TYPES.some((ct) => contentType === ct)) {
+  const acceptsJson = contentType === OTLP_JSON_CONTENT_TYPE;
+  const acceptsProtobuf = OTLP_PROTOBUF_CONTENT_TYPES.has(contentType);
+  if (!acceptsJson && !acceptsProtobuf) {
     return Response.json(
       {
         error: `Unsupported Content-Type '${contentType}' for OTLP ingest`,
         code: 'UNSUPPORTED_MEDIA_TYPE',
         category: DaemonErrorCategory.BAD_REQUEST,
-        hint: `Use 'application/json'. Protobuf decoding is not implemented in this release — planned for a future release.`,
+        hint: `Use '${OTLP_JSON_CONTENT_TYPE}' or 'application/x-protobuf'.`,
       },
       { status: 415 },
     );
@@ -167,6 +169,17 @@ async function parseOtlpBody(
       },
       { status: 413 },
     );
+  }
+
+  if (acceptsProtobuf) {
+    try {
+      return decodeOtlpProtobuf(kind, new Uint8Array(raw));
+    } catch {
+      return Response.json(
+        { error: 'OTLP ingest body is not valid protobuf', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
+        { status: 400 },
+      );
+    }
   }
 
   try {
@@ -392,7 +405,7 @@ export function createDaemonTelemetryRouteHandlers(
           { status: 401 },
         );
       }
-      const bodyOrErr = await parseOtlpBody(req);
+      const bodyOrErr = await parseOtlpBody(req, 'logs');
       if (bodyOrErr instanceof Response) return bodyOrErr;
       context.ingestSink?.ingestLogs(bodyOrErr);
       return otlpIngestSuccess('logs');
@@ -405,7 +418,7 @@ export function createDaemonTelemetryRouteHandlers(
           { status: 401 },
         );
       }
-      const bodyOrErr = await parseOtlpBody(req);
+      const bodyOrErr = await parseOtlpBody(req, 'traces');
       if (bodyOrErr instanceof Response) return bodyOrErr;
       context.ingestSink?.ingestTraces(bodyOrErr);
       return otlpIngestSuccess('traces');
@@ -418,7 +431,7 @@ export function createDaemonTelemetryRouteHandlers(
           { status: 401 },
         );
       }
-      const bodyOrErr = await parseOtlpBody(req);
+      const bodyOrErr = await parseOtlpBody(req, 'metrics');
       if (bodyOrErr instanceof Response) return bodyOrErr;
       context.ingestSink?.ingestMetrics(bodyOrErr);
       return otlpIngestSuccess('metrics');
