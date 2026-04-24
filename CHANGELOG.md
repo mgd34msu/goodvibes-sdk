@@ -8,6 +8,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.2] - 2026-04-24
+
+### Breaking
+- Removed the unused internal runtime contract migration scaffold under
+  `platform/runtime/contracts`; it was not wired into runtime loading and carried
+  no real migration steps.
+
+### Added
+- OTLP/HTTP ingest now accepts binary protobuf service requests for logs, traces,
+  and metrics in addition to JSON payloads.
+
+### Fixed
+- Replaced the previous `application/x-protobuf` 415 response with a local OTLP
+  protobuf decoder that maps service requests into the existing telemetry ingest
+  sink shape.
+
+### Migration
+- No public SDK import-path migration is required.
+- OTLP exporters may now use either `application/json` or
+  `application/x-protobuf` against the existing `/api/v1/telemetry/otlp/v1/*`
+  ingest endpoints.
+
+---
+
 ## [0.25.1] - 2026-04-24
 
 ### Breaking

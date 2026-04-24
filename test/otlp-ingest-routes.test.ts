@@ -68,6 +68,79 @@ function protobufRequest(url: string, bytes: Uint8Array = new Uint8Array([0x0a, 
   });
 }
 
+const encoder = new TextEncoder();
+
+function concatBytes(...chunks: readonly Uint8Array[]): Uint8Array {
+  const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const out = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
+}
+
+function varint(value: number | bigint): Uint8Array {
+  let next = BigInt(value);
+  const bytes: number[] = [];
+  do {
+    let byte = Number(next & 0x7fn);
+    next >>= 7n;
+    if (next !== 0n) byte |= 0x80;
+    bytes.push(byte);
+  } while (next !== 0n);
+  return new Uint8Array(bytes);
+}
+
+function fieldTag(fieldNumber: number, wireType: number): Uint8Array {
+  return varint((fieldNumber << 3) | wireType);
+}
+
+function lengthDelimited(fieldNumber: number, body: Uint8Array): Uint8Array {
+  return concatBytes(fieldTag(fieldNumber, 2), varint(body.length), body);
+}
+
+function stringField(fieldNumber: number, value: string): Uint8Array {
+  return lengthDelimited(fieldNumber, encoder.encode(value));
+}
+
+function bytesField(fieldNumber: number, value: Uint8Array): Uint8Array {
+  return lengthDelimited(fieldNumber, value);
+}
+
+function protobufLogsPayload(): Uint8Array {
+  const anyBody = stringField(1, 'hello from protobuf');
+  const logRecord = lengthDelimited(5, anyBody);
+  const scopeLogs = lengthDelimited(2, logRecord);
+  const resourceLogs = lengthDelimited(2, scopeLogs);
+  return lengthDelimited(1, resourceLogs);
+}
+
+function protobufTracesPayload(): Uint8Array {
+  const traceId = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+  const spanId = new Uint8Array([16, 17, 18, 19, 20, 21, 22, 23]);
+  const span = concatBytes(
+    bytesField(1, traceId),
+    bytesField(2, spanId),
+    stringField(5, 'protobuf-span'),
+  );
+  const scopeSpans = lengthDelimited(2, span);
+  const resourceSpans = lengthDelimited(2, scopeSpans);
+  return lengthDelimited(1, resourceSpans);
+}
+
+function protobufMetricsPayload(): Uint8Array {
+  const gauge = lengthDelimited(1, new Uint8Array());
+  const metric = concatBytes(
+    stringField(1, 'protobuf.metric'),
+    lengthDelimited(5, gauge),
+  );
+  const scopeMetrics = lengthDelimited(2, metric);
+  const resourceMetrics = lengthDelimited(2, scopeMetrics);
+  return lengthDelimited(1, resourceMetrics);
+}
+
 // ---------------------------------------------------------------------------
 // Happy path — JSON
 // ---------------------------------------------------------------------------
@@ -102,44 +175,71 @@ describe('F7 — OTLP POST ingest: happy path (application/json)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Protobuf — must return 415 (not implemented in this release)
+// Happy path — Protobuf
 // ---------------------------------------------------------------------------
 
-describe('F7 — OTLP POST ingest: protobuf returns 415 (not implemented)', () => {
-  test('POST logs with protobuf body → 415 UNSUPPORTED_MEDIA_TYPE', async () => {
-    const h = makeHandlers({ authenticated: true });
+describe('F7 — OTLP POST ingest: happy path (application/x-protobuf)', () => {
+  test('POST logs with protobuf body → 200 and decoded payload forwarded', async () => {
+    const received: Record<string, unknown>[] = [];
+    const h = makeHandlers({
+      authenticated: true,
+      ingestSink: {
+        ingestLogs: (p) => { received.push(p); },
+        ingestTraces: () => {},
+        ingestMetrics: () => {},
+      },
+    });
     const res = await h.postTelemetryOtlpLogs(
-      protobufRequest('http://localhost/api/v1/telemetry/otlp/v1/logs'),
+      protobufRequest('http://localhost/api/v1/telemetry/otlp/v1/logs', protobufLogsPayload()),
     );
-    expect(res.status).toBe(415);
+    expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
-    expect(body['code']).toBe('UNSUPPORTED_MEDIA_TYPE');
-    expect(typeof body['hint']).toBe('string');
-    expect((body['hint'] as string).toLowerCase()).toContain('protobuf');
+    expect(body).toHaveProperty('partialSuccess');
+    expect(received[0]).toMatchObject({
+      resourceLogs: [{ scopeLogs: [{ logRecords: [{ body: { stringValue: 'hello from protobuf' } }] }] }],
+    });
   });
 
-  test('POST traces with protobuf body → 415 UNSUPPORTED_MEDIA_TYPE', async () => {
-    const h = makeHandlers({ authenticated: true });
+  test('POST traces with protobuf body → 200 and decoded payload forwarded', async () => {
+    const received: Record<string, unknown>[] = [];
+    const h = makeHandlers({
+      authenticated: true,
+      ingestSink: {
+        ingestLogs: () => {},
+        ingestTraces: (p) => { received.push(p); },
+        ingestMetrics: () => {},
+      },
+    });
     const res = await h.postTelemetryOtlpTraces(
-      protobufRequest('http://localhost/api/v1/telemetry/otlp/v1/traces'),
+      protobufRequest('http://localhost/api/v1/telemetry/otlp/v1/traces', protobufTracesPayload()),
     );
-    expect(res.status).toBe(415);
+    expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
-    expect(body['code']).toBe('UNSUPPORTED_MEDIA_TYPE');
-    expect(typeof body['hint']).toBe('string');
-    expect((body['hint'] as string).toLowerCase()).toContain('protobuf');
+    expect(body).toHaveProperty('partialSuccess');
+    expect(received[0]).toMatchObject({
+      resourceSpans: [{ scopeSpans: [{ spans: [{ name: 'protobuf-span' }] }] }],
+    });
   });
 
-  test('POST metrics with protobuf body → 415 UNSUPPORTED_MEDIA_TYPE', async () => {
-    const h = makeHandlers({ authenticated: true });
+  test('POST metrics with protobuf body → 200 and decoded payload forwarded', async () => {
+    const received: Record<string, unknown>[] = [];
+    const h = makeHandlers({
+      authenticated: true,
+      ingestSink: {
+        ingestLogs: () => {},
+        ingestTraces: () => {},
+        ingestMetrics: (p) => { received.push(p); },
+      },
+    });
     const res = await h.postTelemetryOtlpMetrics(
-      protobufRequest('http://localhost/api/v1/telemetry/otlp/v1/metrics'),
+      protobufRequest('http://localhost/api/v1/telemetry/otlp/v1/metrics', protobufMetricsPayload()),
     );
-    expect(res.status).toBe(415);
+    expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
-    expect(body['code']).toBe('UNSUPPORTED_MEDIA_TYPE');
-    expect(typeof body['hint']).toBe('string');
-    expect((body['hint'] as string).toLowerCase()).toContain('protobuf');
+    expect(body).toHaveProperty('partialSuccess');
+    expect(received[0]).toMatchObject({
+      resourceMetrics: [{ scopeMetrics: [{ metrics: [{ name: 'protobuf.metric', gauge: { dataPoints: [{}] } }] }] }],
+    });
   });
 });
 
