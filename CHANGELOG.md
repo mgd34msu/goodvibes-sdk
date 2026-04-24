@@ -8,6 +8,43 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.3] - 2026-04-24
+
+### Breaking
+- ntfy inbound routing now handles only SDK-owned topics by default. Use
+  `goodvibes-agent` for agent work instead of relying on an arbitrary configured
+  ntfy topic to spawn WRFC work.
+
+### Added
+- `goodvibes-chat` ntfy topic for sending messages into the active terminal TUI
+  session and receiving the assistant response back on ntfy.
+- `goodvibes-agent` ntfy topic for session-attached agent work.
+- `goodvibes-ntfy` ntfy topic for daemon-owned remote chat sessions that do not
+  touch the TUI.
+- Child-agent ntfy replies now inherit the parent reply target so spawned agents
+  can report their final output back to ntfy.
+
+### Fixed
+- ntfy JSON subscriptions now use streaming-safe Node HTTP/HTTP2 transports for
+  long-lived streams, preserving auth headers and caller abort signals without
+  applying the finite fetch timeout path.
+- Outbound GoodVibes ntfy deliveries carry an SDK-owned self-echo marker and are
+  ignored on inbound ingestion, preventing same-topic notification loops.
+- Provider catalog initialization now invalidates stale model-registry caches, and
+  explicit OpenAI provider selection is no longer blocked solely by a stale local
+  catalog.
+
+### Migration
+- Move remote ntfy agent requests to `goodvibes-agent`.
+- Move ntfy-to-terminal chat to `goodvibes-chat`.
+- Move ntfy-only remote sessions to `goodvibes-ntfy`; this path runs through the
+  daemon companion chat manager and does not attach to the TUI.
+- `surfaces.ntfy.topic` remains an optional default outbound delivery topic and
+  an additional subscribed topic, but arbitrary inbound topics are ignored unless
+  the SDK adapter explicitly handles them.
+
+---
+
 ## [0.25.2] - 2026-04-24
 
 ### Breaking

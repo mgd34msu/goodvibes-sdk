@@ -108,6 +108,18 @@ type MutableSessionMeta = {
   -readonly [K in keyof CompanionChatSession]: CompanionChatSession[K];
 };
 
+export interface CompanionChatReplyResult {
+  readonly messageId: string;
+  readonly assistantMessageId?: string;
+  readonly response?: string;
+  readonly error?: string;
+}
+
+interface PendingReply {
+  readonly resolve: (result: CompanionChatReplyResult) => void;
+  readonly timeout: ReturnType<typeof setTimeout>;
+}
+
 // ---------------------------------------------------------------------------
 // CompanionChatManager
 // ---------------------------------------------------------------------------
@@ -153,6 +165,7 @@ export class CompanionChatManager {
   private gcTimer: ReturnType<typeof setInterval> | null = null;
   /** Tracks whether the async init() has completed. */
   private initCompleted = false;
+  private readonly pendingReplies = new Map<string, PendingReply>();
   /**
    * Serializes persistence writes per session to prevent write-after-write
    * races where two concurrent saves could result in an older snapshot
@@ -331,6 +344,41 @@ export class CompanionChatManager {
     content: string,
     clientId = '',
   ): Promise<string> {
+    return await this._postMessageInternal(sessionId, content, clientId);
+  }
+
+  async postMessageAndWaitForReply(
+    sessionId: string,
+    content: string,
+    clientId = '',
+    options: { readonly timeoutMs?: number } = {},
+  ): Promise<CompanionChatReplyResult> {
+    let messageId = '';
+    const result = new Promise<CompanionChatReplyResult>((resolve) => {
+      const timeout = setTimeout(() => {
+        if (messageId) this.pendingReplies.delete(messageId);
+        resolve({ messageId, error: 'Timed out waiting for companion chat reply' });
+      }, options.timeoutMs ?? 120_000);
+      timeout.unref?.();
+      void this._postMessageInternal(sessionId, content, clientId, { resolve, timeout })
+        .then((id) => { messageId = id; })
+        .catch((error: unknown) => {
+          clearTimeout(timeout);
+          resolve({
+            messageId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    });
+    return result;
+  }
+
+  private async _postMessageInternal(
+    sessionId: string,
+    content: string,
+    clientId: string,
+    pendingReply?: PendingReply,
+  ): Promise<string> {
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
@@ -363,6 +411,10 @@ export class CompanionChatManager {
 
     // Persist async (non-blocking)
     void this._persist(sessionId);
+
+    if (pendingReply) {
+      this.pendingReplies.set(messageId, pendingReply);
+    }
 
     // Fire-and-forget: run the turn without blocking the HTTP response
     void this._runTurn(session, messageId);
@@ -530,10 +582,14 @@ export class CompanionChatManager {
       };
 
       publish({ type: 'turn.completed', sessionId, turnId, assistantMessageId, envelope: completedEnvelope });
+      this.resolvePendingReply(userMessageId, { messageId: userMessageId, assistantMessageId, response: assistantContent });
     } catch (err: unknown) {
       if (!abortSignal.aborted) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         publish({ type: 'turn.error', sessionId, turnId, error: errorMessage });
+        this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: errorMessage });
+      } else {
+        this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: 'Turn cancelled' });
       }
     }
   }
@@ -606,5 +662,13 @@ export class CompanionChatManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
     await this.persistence.save({ meta: session.meta, messages: session.messages });
+  }
+
+  private resolvePendingReply(messageId: string, result: CompanionChatReplyResult): void {
+    const pending = this.pendingReplies.get(messageId);
+    if (!pending) return;
+    this.pendingReplies.delete(messageId);
+    clearTimeout(pending.timeout);
+    pending.resolve(result);
   }
 }

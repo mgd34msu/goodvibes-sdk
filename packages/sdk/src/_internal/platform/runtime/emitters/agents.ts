@@ -9,7 +9,14 @@ import type { EmitterContext } from './index.js';
 export function emitAgentSpawning(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { agentId: string; taskId?: string; task: string }
+  data: {
+    agentId: string;
+    taskId?: string;
+    task: string;
+    parentAgentId?: string;
+    orchestrationGraphId?: string;
+    parentNodeId?: string;
+  }
 ): void {
   bus.emit('agents', createEventEnvelope('AGENT_SPAWNING', { type: 'AGENT_SPAWNING', ...data }, ctx));
 }

@@ -263,6 +263,7 @@ export class DaemonSurfaceDeliveryHelper {
             ],
           }
         : {}),
+      markGoodVibesOrigin: true,
     });
   }
 
@@ -499,6 +500,7 @@ export class DaemonSurfaceDeliveryHelper {
     await ntfy.publish(topic, `${isPending ? 'Approval required' : `Approval ${approval.status}`}: ${summary}`, {
       title: approval.request.tool,
       ...(webUrl ? { click: webUrl } : {}),
+      markGoodVibesOrigin: true,
     }).catch(() => {});
   }
 

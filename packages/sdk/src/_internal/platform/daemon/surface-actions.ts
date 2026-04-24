@@ -2,11 +2,28 @@ import type { ConfigManager } from '../config/manager.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { AgentManager } from '../tools/agent/index.js';
-import type { SharedSessionBroker } from '../control-plane/index.js';
+import type { ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
+import type { ConversationMessageEnvelope } from '../control-plane/conversation-message.js';
 import type { RouteBindingManager, ChannelPolicyManager } from '../channels/index.js';
 import type { GenericWebhookAdapterContext, SurfaceAdapterContext } from '../adapters/index.js';
 import type { AutomationManager } from '../automation/index.js';
 import type { ChannelPolicyDecision, ChannelIngressPolicyInput } from '../channels/index.js';
+import type { RuntimeEventBus, TurnEvent } from '../runtime/events/index.js';
+import { emitCompanionMessageReceived } from '../runtime/emitters/index.js';
+import { NtfyIntegration } from '../integrations/ntfy.js';
+import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
+
+interface PendingNtfyChatReply {
+  readonly sessionId: string;
+  readonly topic: string;
+  readonly body: string;
+  readonly title?: string;
+  readonly messageId: string;
+  readonly createdAt: number;
+  turnId?: string;
+}
 
 interface DaemonSurfaceActionContext {
   readonly serviceRegistry: ServiceRegistry;
@@ -14,6 +31,9 @@ interface DaemonSurfaceActionContext {
   readonly routeBindings: RouteBindingManager;
   readonly sessionBroker: SharedSessionBroker;
   readonly channelPolicy: ChannelPolicyManager;
+  readonly controlPlaneGateway: ControlPlaneGateway;
+  readonly runtimeBus: RuntimeEventBus;
+  readonly companionChatManager: CompanionChatManager | null;
   readonly automationManager: AutomationManager;
   readonly agentManager: AgentManager;
   readonly trySpawnAgent: (
@@ -46,6 +66,11 @@ interface DaemonSurfaceActionContext {
 }
 
 export class DaemonSurfaceActionHelper {
+  private static readonly NTFY_CHAT_REPLY_TTL_MS = 10 * 60_000;
+  private readonly pendingNtfyChatReplies = new Map<string, PendingNtfyChatReply[]>();
+  private ntfyChatReplyUnsubscribers: Array<() => void> = [];
+  private ntfyRemoteSessionId: string | null = null;
+
   constructor(private readonly context: DaemonSurfaceActionContext) {}
 
   buildSurfaceAdapterContext(): SurfaceAdapterContext {
@@ -60,6 +85,9 @@ export class DaemonSurfaceActionHelper {
       performInteractiveSurfaceAction: (actionId, surface, request) => this.performInteractiveSurfaceAction(actionId, surface, request),
       trySpawnAgent: (input, logLabel, sessionId) => this.context.trySpawnAgent(input, logLabel, sessionId),
       queueSurfaceReplyFromBinding: (binding, input) => this.context.queueSurfaceReplyFromBinding(binding, input),
+      publishConversationFollowup: (sessionId, envelope) => this.publishConversationFollowup(sessionId, envelope),
+      queueNtfyChatReply: (input) => this.queueNtfyChatReply(input),
+      postNtfyRemoteChatMessage: (input) => this.postNtfyRemoteChatMessage(input),
     };
   }
 
@@ -179,5 +207,234 @@ export class DaemonSurfaceActionHelper {
       }
     }
     return `No handler for ${surface} action ${actionId}`;
+  }
+
+  private publishConversationFollowup(
+    sessionId: string,
+    envelope: Omit<ConversationMessageEnvelope, 'sessionId'>,
+  ): void {
+    this.context.controlPlaneGateway.publishEvent(
+      'conversation.followup.companion',
+      { sessionId, ...envelope },
+      { clientKind: 'tui' },
+    );
+    emitCompanionMessageReceived(
+      this.context.runtimeBus,
+      { sessionId, traceId: `ntfy:${envelope.messageId}`, source: 'ntfy-chat' },
+      {
+        sessionId,
+        messageId: envelope.messageId,
+        body: envelope.body,
+        source: envelope.source,
+        timestamp: envelope.timestamp,
+      },
+    );
+  }
+
+  private queueNtfyChatReply(input: Omit<PendingNtfyChatReply, 'createdAt'>): void {
+    this.ensureNtfyChatReplyListeners();
+    this.cleanupExpiredNtfyChatReplies();
+    const bucket = this.pendingNtfyChatReplies.get(input.sessionId) ?? [];
+    bucket.push({
+      ...input,
+      createdAt: Date.now(),
+    });
+    this.pendingNtfyChatReplies.set(input.sessionId, bucket);
+  }
+
+  private ensureNtfyChatReplyListeners(): void {
+    if (this.ntfyChatReplyUnsubscribers.length > 0) return;
+    this.ntfyChatReplyUnsubscribers = [
+      this.context.runtimeBus.on<Extract<TurnEvent, { type: 'TURN_SUBMITTED' }>>(
+        'TURN_SUBMITTED',
+        (envelope) => this.matchNtfyChatReplyTurn(
+          envelope.sessionId,
+          envelope.payload.turnId,
+          envelope.payload.prompt,
+        ),
+      ),
+      this.context.runtimeBus.on<Extract<TurnEvent, { type: 'TURN_COMPLETED' }>>(
+        'TURN_COMPLETED',
+        (envelope) => {
+          void this.deliverNtfyChatReply(
+            envelope.sessionId,
+            envelope.payload.turnId,
+            envelope.payload.response,
+          );
+        },
+      ),
+      this.context.runtimeBus.on<Extract<TurnEvent, { type: 'TURN_ERROR' }>>(
+        'TURN_ERROR',
+        (envelope) => {
+          void this.deliverNtfyChatReply(
+            envelope.sessionId,
+            envelope.payload.turnId,
+            `Error: ${envelope.payload.error}`,
+          );
+        },
+      ),
+    ];
+  }
+
+  private matchNtfyChatReplyTurn(sessionId: string, turnId: string, prompt: string): void {
+    this.cleanupExpiredNtfyChatReplies();
+    const bucket = this.pendingNtfyChatReplies.get(sessionId);
+    if (!bucket) return;
+    const normalizedPrompt = prompt.trim();
+    const pending = bucket.find((entry) => !entry.turnId && entry.body.trim() === normalizedPrompt);
+    if (pending) {
+      pending.turnId = turnId;
+    }
+  }
+
+  private async deliverNtfyChatReply(sessionId: string, turnId: string, message: string): Promise<void> {
+    const pending = this.takeNtfyChatReply(sessionId, turnId);
+    if (!pending) return;
+    try {
+      await this.publishNtfyReply(
+        pending.topic,
+        message.trim() || '(empty response)',
+        pending.title ?? 'GoodVibes chat',
+      );
+    } catch (error) {
+      logger.warn('DaemonSurfaceActionHelper: failed to publish ntfy chat reply', {
+        sessionId,
+        turnId,
+        topic: pending.topic,
+        error: summarizeError(error),
+      });
+    }
+  }
+
+  private takeNtfyChatReply(sessionId: string, turnId: string): PendingNtfyChatReply | null {
+    const bucket = this.pendingNtfyChatReplies.get(sessionId);
+    if (!bucket) return null;
+    const index = bucket.findIndex((entry) => entry.turnId === turnId);
+    if (index < 0) return null;
+    const [pending] = bucket.splice(index, 1);
+    if (bucket.length === 0) {
+      this.pendingNtfyChatReplies.delete(sessionId);
+    }
+    return pending ?? null;
+  }
+
+  private cleanupExpiredNtfyChatReplies(now = Date.now()): void {
+    for (const [sessionId, bucket] of this.pendingNtfyChatReplies.entries()) {
+      const fresh = bucket.filter((entry) => now - entry.createdAt < DaemonSurfaceActionHelper.NTFY_CHAT_REPLY_TTL_MS);
+      if (fresh.length === 0) {
+        this.pendingNtfyChatReplies.delete(sessionId);
+      } else if (fresh.length !== bucket.length) {
+        this.pendingNtfyChatReplies.set(sessionId, fresh);
+      }
+    }
+  }
+
+  private async postNtfyRemoteChatMessage(input: {
+    readonly topic: string;
+    readonly body: string;
+    readonly title?: string;
+  }): Promise<{ readonly sessionId: string; readonly messageId: string; readonly delivered: boolean; readonly error?: string }> {
+    const manager = this.context.companionChatManager;
+    if (!manager) {
+      return {
+        sessionId: '',
+        messageId: '',
+        delivered: false,
+        error: 'ntfy remote chat manager is unavailable',
+      };
+    }
+
+    let sessionId = this.ntfyRemoteSessionId ?? '';
+    try {
+      await manager.init();
+      let session = sessionId ? manager.getSession(sessionId) : null;
+      if (!session || session.status === 'closed') {
+        session = manager.createSession({
+          title: input.title ?? 'GoodVibes ntfy',
+        });
+        this.ntfyRemoteSessionId = session.id;
+      }
+      sessionId = session.id;
+      void this.runNtfyRemoteChatTurn(manager, sessionId, input).catch((error: unknown) => {
+        logger.warn('DaemonSurfaceActionHelper: ntfy remote chat turn failed', {
+          sessionId,
+          topic: input.topic,
+          error: summarizeError(error),
+        });
+      });
+      return {
+        sessionId,
+        messageId: '',
+        delivered: true,
+      };
+    } catch (error) {
+      const errorMessage = summarizeError(error);
+      try {
+        await this.publishNtfyReply(input.topic, `Error: ${errorMessage}`, input.title ?? 'GoodVibes ntfy');
+      } catch (publishError) {
+        logger.warn('DaemonSurfaceActionHelper: failed to publish ntfy remote chat error', {
+          topic: input.topic,
+          error: summarizeError(publishError),
+        });
+      }
+      return {
+        sessionId,
+        messageId: '',
+        delivered: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  private async runNtfyRemoteChatTurn(
+    manager: CompanionChatManager,
+    sessionId: string,
+    input: {
+      readonly topic: string;
+      readonly body: string;
+      readonly title?: string;
+    },
+  ): Promise<void> {
+    try {
+      const result = await manager.postMessageAndWaitForReply(
+        sessionId,
+        input.body,
+        `ntfy:${input.topic}`,
+        { timeoutMs: 120_000 },
+      );
+      const response = result.response?.trim();
+      const resultError = result.error ?? (response ? undefined : 'No response from ntfy remote chat');
+      const outbound = response || `Error: ${resultError}`;
+      await this.publishNtfyReply(input.topic, outbound, input.title ?? 'GoodVibes ntfy');
+    } catch (error) {
+      const errorMessage = summarizeError(error);
+      try {
+        await this.publishNtfyReply(input.topic, `Error: ${errorMessage}`, input.title ?? 'GoodVibes ntfy');
+      } catch (publishError) {
+        logger.warn('DaemonSurfaceActionHelper: failed to publish ntfy remote chat error', {
+          topic: input.topic,
+          error: summarizeError(publishError),
+        });
+      }
+    }
+  }
+
+  private async publishNtfyReply(topic: string, message: string, title: string): Promise<void> {
+    if (!topic || !message.trim()) return;
+    const ntfy = new NtfyIntegration(
+      String(this.context.configManager.get('surfaces.ntfy.baseUrl') || 'https://ntfy.sh'),
+      await this.resolveNtfyToken() ?? undefined,
+    );
+    await ntfy.publish(topic, message, {
+      title,
+      markGoodVibesOrigin: true,
+    });
+  }
+
+  private async resolveNtfyToken(): Promise<string | null> {
+    return await this.context.serviceRegistry.resolveSecret('ntfy', 'primary')
+      || String(this.context.configManager.get('surfaces.ntfy.token') || '')
+      || process.env.NTFY_ACCESS_TOKEN
+      || null;
   }
 }

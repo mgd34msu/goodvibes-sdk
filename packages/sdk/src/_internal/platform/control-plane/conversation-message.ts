@@ -17,6 +17,7 @@ export type MessageSource =
   | 'companion-chat-user'   // companion sent a message in its own chat session
   | 'companion-chat-assistant'  // orchestrator replied in a companion chat session
   | 'companion-followup'    // companion injected into operator's live conversation
+  | 'ntfy-chat'             // ntfy injected into the operator's live terminal conversation
   | 'system'                // system-generated (tool output, hook, etc.)
   | 'tool';                 // tool-call result
 

@@ -3,6 +3,7 @@ import type { ServiceRegistry } from '../config/service-registry.js';
 import {
   DiscordGatewayClient,
   DiscordIntegration,
+  GOODVIBES_NTFY_DEFAULT_TOPICS,
   NtfyIntegration,
   SlackIntegration,
   SlackSocketModeClient,
@@ -78,7 +79,7 @@ export class ChannelProviderRuntimeManager {
     if (this.deps.configManager.get('surfaces.discord.enabled') && await this.resolveDiscordBotToken()) {
       results.push(await this.start('discord'));
     }
-    if (this.deps.configManager.get('surfaces.ntfy.enabled') && this.resolveNtfyTopic()) {
+    if (this.deps.configManager.get('surfaces.ntfy.enabled') && this.resolveNtfyTopics().length > 0) {
       results.push(await this.start('ntfy'));
     }
     return results;
@@ -199,8 +200,8 @@ export class ChannelProviderRuntimeManager {
     if (this.ntfyAbort) {
       return this.result('ntfy', true, 'ntfy JSON stream runtime is already running.');
     }
-    const topic = this.resolveNtfyTopic();
-    if (!topic) {
+    const topics = this.resolveNtfyTopics();
+    if (topics.length === 0) {
       this.markError('ntfy', 'ntfy topic is required for subscription runtime.');
       return this.result('ntfy', false, 'ntfy topic is required for subscription runtime.');
     }
@@ -210,8 +211,9 @@ export class ChannelProviderRuntimeManager {
       String(this.deps.configManager.get('surfaces.ntfy.baseUrl') || 'https://ntfy.sh'),
       await this.resolveNtfyToken() ?? undefined,
     );
-    this.markStarted('ntfy', { topic });
-    void ntfy.subscribeJsonStream(topic, (message) => this.handleNtfyMessage(message), {
+    const topicList = topics.join(',');
+    this.markStarted('ntfy', { topics });
+    void ntfy.subscribeJsonStream(topicList, (message) => this.handleNtfyMessage(message), {
       since: 'latest',
       signal: abort.signal,
     }).catch((error: unknown) => {
@@ -281,8 +283,12 @@ export class ChannelProviderRuntimeManager {
       || null;
   }
 
-  private resolveNtfyTopic(): string {
-    return String(this.deps.configManager.get('surfaces.ntfy.topic') || '').trim();
+  private resolveNtfyTopics(): string[] {
+    const configured = String(this.deps.configManager.get('surfaces.ntfy.topic') || '')
+      .split(',')
+      .map((topic) => topic.trim())
+      .filter((topic) => topic.length > 0);
+    return [...new Set([...GOODVIBES_NTFY_DEFAULT_TOPICS, ...configured])];
   }
 
   private isConfigured(surface: ProviderRuntimeSurface): boolean {
@@ -292,7 +298,7 @@ export class ChannelProviderRuntimeManager {
     if (surface === 'discord') {
       return Boolean(this.deps.configManager.get('surfaces.discord.botToken') || process.env.DISCORD_BOT_TOKEN);
     }
-    return Boolean(this.resolveNtfyTopic());
+    return this.resolveNtfyTopics().length > 0;
   }
 
   private markStarted(surface: ProviderRuntimeSurface, metadata: Record<string, unknown>): void {

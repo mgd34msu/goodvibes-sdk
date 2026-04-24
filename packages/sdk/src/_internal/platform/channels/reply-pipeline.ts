@@ -262,6 +262,12 @@ function renderEvent(
   };
 }
 
+function resolveEnvelopeAgentId(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): string | null {
+  if (envelope.agentId) return envelope.agentId;
+  const payload = envelope.payload as { readonly agentId?: unknown };
+  return typeof payload.agentId === 'string' ? payload.agentId : null;
+}
+
 export function normalizeChannelRenderEventFromRuntime(
   envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
 ): ChannelRenderEvent[] {
@@ -454,7 +460,18 @@ export class ChannelReplyPipeline {
   private async handleEnvelope(
     envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
   ): Promise<void> {
-    const agentId = envelope.agentId;
+    if (
+      envelope.payload.type === 'AGENT_SPAWNING'
+      && typeof envelope.payload.parentAgentId === 'string'
+      && envelope.payload.parentAgentId.length > 0
+    ) {
+      this.trackChildPendingReply(
+        envelope.payload.agentId,
+        envelope.payload.parentAgentId,
+        envelope.payload.task,
+      );
+    }
+    const agentId = resolveEnvelopeAgentId(envelope);
     if (!agentId) return;
     const state = this.buffers.get(agentId);
     if (!state) return;
@@ -476,6 +493,25 @@ export class ChannelReplyPipeline {
       return;
     }
     await this.deliverProgress(agentId);
+  }
+
+  private trackChildPendingReply(agentId: string, parentAgentId: string, task: string): void {
+    if (this.buffers.has(agentId)) return;
+    const parentState = this.buffers.get(parentAgentId);
+    if (!parentState) return;
+    const rootAgentId = typeof parentState.pending.rootAgentId === 'string'
+      ? parentState.pending.rootAgentId
+      : parentAgentId;
+    this.buffers.set(agentId, {
+      pending: {
+        ...parentState.pending,
+        agentId,
+        task,
+        parentAgentId,
+        rootAgentId,
+      },
+      events: [],
+    });
   }
 
   private async resolvePolicy(surface: ChannelSurface): Promise<ChannelRenderPolicy> {
