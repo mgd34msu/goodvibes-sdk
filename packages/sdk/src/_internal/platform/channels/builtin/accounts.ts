@@ -94,6 +94,9 @@ export async function buildBuiltinAccount(
         metadata: {
           baseUrl: context.deps.configManager.get('surfaces.ntfy.baseUrl'),
           topic: context.deps.configManager.get('surfaces.ntfy.topic'),
+          chatTopic: context.deps.configManager.get('surfaces.ntfy.chatTopic'),
+          agentTopic: context.deps.configManager.get('surfaces.ntfy.agentTopic'),
+          remoteTopic: context.deps.configManager.get('surfaces.ntfy.remoteTopic'),
           providerRuntime: context.providerRuntimeStatus('ntfy'),
         },
       });

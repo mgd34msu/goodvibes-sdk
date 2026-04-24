@@ -40,6 +40,7 @@ export {
   GOODVIBES_NTFY_REMOTE_TOPIC,
   NtfyIntegration,
   isGoodVibesNtfyDeliveryEcho,
+  resolveGoodVibesNtfyTopics,
 } from './ntfy.js';
 export type {
   DeliveryOutcome,
@@ -49,4 +50,11 @@ export type {
   DeliveryQueueConfig,
   IntegrationQueueStatus,
 } from './delivery.js';
-export type { NtfyMessage, NtfyPublishOptions, NtfySubscribeOptions, NtfyWebSocketOptions } from './ntfy.js';
+export type {
+  GoodVibesNtfyTopicConfig,
+  GoodVibesNtfyTopics,
+  NtfyMessage,
+  NtfyPublishOptions,
+  NtfySubscribeOptions,
+  NtfyWebSocketOptions,
+} from './ntfy.js';

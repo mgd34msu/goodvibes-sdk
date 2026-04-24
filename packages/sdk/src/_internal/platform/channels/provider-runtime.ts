@@ -3,13 +3,13 @@ import type { ServiceRegistry } from '../config/service-registry.js';
 import {
   DiscordGatewayClient,
   DiscordIntegration,
-  GOODVIBES_NTFY_DEFAULT_TOPICS,
   NtfyIntegration,
   SlackIntegration,
   SlackSocketModeClient,
   type DiscordGatewayDispatch,
   type NtfyMessage,
   type SlackSocketModeEnvelope,
+  resolveGoodVibesNtfyTopics,
 } from '../integrations/index.js';
 import {
   type SurfaceAdapterContext,
@@ -284,11 +284,11 @@ export class ChannelProviderRuntimeManager {
   }
 
   private resolveNtfyTopics(): string[] {
-    const configured = String(this.deps.configManager.get('surfaces.ntfy.topic') || '')
-      .split(',')
-      .map((topic) => topic.trim())
-      .filter((topic) => topic.length > 0);
-    return [...new Set([...GOODVIBES_NTFY_DEFAULT_TOPICS, ...configured])];
+    return [...resolveGoodVibesNtfyTopics({
+      chatTopic: String(this.deps.configManager.get('surfaces.ntfy.chatTopic') || ''),
+      agentTopic: String(this.deps.configManager.get('surfaces.ntfy.agentTopic') || ''),
+      remoteTopic: String(this.deps.configManager.get('surfaces.ntfy.remoteTopic') || ''),
+    }).all];
   }
 
   private isConfigured(surface: ProviderRuntimeSurface): boolean {

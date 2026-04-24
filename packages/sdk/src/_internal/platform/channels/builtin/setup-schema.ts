@@ -126,11 +126,14 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
         version: CHANNEL_SETUP_VERSION,
         label: 'ntfy',
         setupMode: 'webhook',
-        description: 'ntfy is a notification and remote-control surface backed by SDK-owned inbound topics, optional delivery topics, and optional authentication.',
+        description: 'ntfy is a notification and remote-control surface backed by configurable inbound topics, optional delivery topics, and optional authentication.',
         fields: [
           setupField('enabled', 'Enabled', 'boolean', false, { configKey: 'surfaces.ntfy.enabled', defaultValue: false }),
           setupField('baseUrl', 'Base URL', 'url', false, { configKey: 'surfaces.ntfy.baseUrl', placeholder: 'https://ntfy.sh' }),
           setupField('topic', 'Default delivery topic', 'string', false, { configKey: 'surfaces.ntfy.topic' }),
+          setupField('chatTopic', 'Chat topic', 'string', false, { configKey: 'surfaces.ntfy.chatTopic', defaultValue: 'goodvibes-chat' }),
+          setupField('agentTopic', 'Agent topic', 'string', false, { configKey: 'surfaces.ntfy.agentTopic', defaultValue: 'goodvibes-agent' }),
+          setupField('remoteTopic', 'Remote topic', 'string', false, { configKey: 'surfaces.ntfy.remoteTopic', defaultValue: 'goodvibes-ntfy' }),
           setupField('token', 'Access token', 'secret', false, { configKey: 'surfaces.ntfy.token', secretTargetId: 'primary' }),
         ],
         secretTargets: [
@@ -142,7 +145,7 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
           }),
         ],
         externalSteps: [
-          'Subscribe the daemon to the SDK-owned goodvibes-chat, goodvibes-agent, and goodvibes-ntfy topics.',
+          'Subscribe the daemon to the configured chat, agent, and remote ntfy topics.',
           'Optionally configure a default delivery topic for outbound notifications.',
           'Optionally configure an authenticated ntfy token.',
           'Use provider actions to inspect subscribe and poll URLs.',
