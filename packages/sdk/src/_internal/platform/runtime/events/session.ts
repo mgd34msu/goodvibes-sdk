@@ -22,7 +22,15 @@ export type SessionEvent =
   /** Session recovery has failed unrecoverably. */
   | { type: 'SESSION_RECOVERY_FAILED'; sessionId: string; error: string }
   /** A companion-app follow-up message was received for the session. */
-  | { type: 'COMPANION_MESSAGE_RECEIVED'; sessionId: string; messageId: string; body: string; source: string; timestamp: number };
+  | {
+    type: 'COMPANION_MESSAGE_RECEIVED';
+    sessionId: string;
+    messageId: string;
+    body: string;
+    source: string;
+    timestamp: number;
+    metadata?: Readonly<Record<string, unknown>>;
+  };
 
 /** All session event type literals as a union. */
 export type SessionEventType = SessionEvent['type'];

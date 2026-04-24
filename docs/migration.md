@@ -2,6 +2,37 @@
 
 Since 0.19.0, per-release migration guidance lives directly in `CHANGELOG.md` under each version's `### Migration` subsection. This is the canonical source; consumers upgrading from any pre-0.21.x version should read the relevant `## [X.Y.Z]` entries in order.
 
+## Upgrading to 0.25.5
+
+**ntfy chat reply correlation — forward companion message ids from live-chat clients.**
+
+0.25.5 fixes `goodvibes-chat` replies when an ntfy message is routed into the
+active terminal session but the orchestrator emits turn events under a private
+runtime session id. The SDK now correlates replies by the SDK-generated
+`messageId` when clients forward it into `Orchestrator.handleUserInput()`.
+
+TUI and other live-chat clients should pass the runtime event metadata through:
+
+```ts
+runtimeBus.on('COMPANION_MESSAGE_RECEIVED', ({ payload }) => {
+  void orchestrator.handleUserInput(payload.body, undefined, {
+    origin: {
+      source: payload.source,
+      messageId: payload.messageId,
+      metadata: payload.metadata,
+    },
+  });
+});
+```
+
+Clients that construct `Orchestrator` directly can also pass
+`OrchestratorOptions.sessionId` to align turn-event envelopes with the shared
+session id. Existing clients that only call `handleUserInput(payload.body)`
+continue to work through a prompt-text fallback, but forwarding `messageId` is
+the durable path.
+
+---
+
 ## Upgrading to 0.25.1
 
 **Security hardening — no SDK import-path or runtime API migration required.**

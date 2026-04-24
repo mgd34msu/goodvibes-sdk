@@ -51,7 +51,7 @@ The QR code encodes a `CompanionConnectionInfo` JSON object containing everythin
   "url": "http://192.168.1.42:3210",
   "token": "gv_abc123...",
   "username": "admin",
-  "version": "0.25.1",
+  "version": "0.25.5",
   "surface": "tui",
   "password": "<bootstrap-password, optional>"
 }
@@ -95,7 +95,7 @@ const payload = buildCompanionConnectionInfo({
   daemonUrl: 'http://192.168.1.42:3210',
   token: record.token,
   username: 'admin',      // optional; defaults to 'admin'
-  version: '0.25.1',       // optional; host product version
+  version: '0.25.5',       // optional; host product version
   surface: 'tui',          // optional; defaults to 'daemon'
   // password: 'bootstrap-pw',  // optional; include when local auth is active
 });

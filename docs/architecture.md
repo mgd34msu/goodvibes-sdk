@@ -252,6 +252,8 @@ When `surfaces.ntfy.enabled` is true, the daemon subscribes to three inbound ntf
 
 `surfaces.ntfy.topic` remains an optional default outbound delivery topic, but it is not an inbound route override and is not subscribed by the provider runtime. Inbound subscription and routing use the configured route topics above, and other ntfy topics are ignored. Outbound GoodVibes ntfy deliveries carry the SDK-owned self-echo marker and are filtered on ingress.
 
+For `goodvibes-chat`, the SDK owns ntfy reply publication. Inbound chat messages queue a one-shot ntfy reply target before the message is injected into the active TUI session. The `COMPANION_MESSAGE_RECEIVED` payload carries the SDK-generated `messageId`, and clients that call `Orchestrator.handleUserInput()` for that event should pass it through as `origin.messageId` so `TURN_SUBMITTED` can correlate the reply by message id instead of prompt text. The reply bridge listens for the resulting turn completion and publishes only that response back to the originating ntfy topic. Matching also tolerates clients whose orchestrator emits turn events under a private runtime session id instead of the shared TUI session id; clients that construct `Orchestrator` directly can pass `sessionId` to align runtime events with their shared session id.
+
 ---
 
 ## Knowledge System

@@ -8,6 +8,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.5] - 2026-04-24
+
+### Breaking
+- none
+
+### Added
+- `Orchestrator.handleUserInput()` now accepts optional turn-origin metadata so
+  surface clients can preserve an SDK message id from inbound chat through
+  `TURN_SUBMITTED`.
+- `OrchestratorOptions.sessionId` lets clients that construct an orchestrator
+  directly align turn events with a shared external session id instead of using
+  a generated private runtime session id.
+
+### Fixed
+- `goodvibes-chat` ntfy replies now correlate by SDK message id when clients
+  forward `COMPANION_MESSAGE_RECEIVED.messageId` into `handleUserInput()`, so
+  assistant responses caused by ntfy-originated chat are published back to the
+  originating ntfy topic.
+- The ntfy chat reply bridge now tolerates clients whose orchestrator emits turn
+  events under a private runtime session id, with a prompt-text fallback for
+  older clients that have not forwarded origin metadata yet.
+- `COMPANION_MESSAGE_RECEIVED` runtime events now preserve optional metadata from
+  the companion message envelope.
+
+### Migration
+- TUI and other live-chat clients should call
+  `orchestrator.handleUserInput(payload.body, undefined, { origin: { source:
+  payload.source, messageId: payload.messageId, metadata: payload.metadata } })`
+  when handling `COMPANION_MESSAGE_RECEIVED`.
+- Existing clients that only call `handleUserInput(payload.body)` continue to
+  work through the SDK fallback, but should forward `messageId` to avoid prompt
+  text as the primary reply-correlation key.
+
+---
+
 ## [0.25.4] - 2026-04-24
 
 ### Breaking

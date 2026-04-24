@@ -1,7 +1,7 @@
 # Roadmap to 1.0
 
 **Status**: Active. Last updated 2026-04-24.
-**Current version**: 0.25.1.
+**Current version**: 0.25.5.
 **Current score**: pending recalibration after 0.23.x-0.25.x feature and hardening releases (last recorded: 9.0 / 10 at 0.21.36).
 **Target for 1.0.0 cut**: 10.0 / 10, plus explicit approval from the project owner.
 

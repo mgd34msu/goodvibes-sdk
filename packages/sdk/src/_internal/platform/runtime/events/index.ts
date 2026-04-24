@@ -17,7 +17,7 @@ import { listenerErrorsTotal } from '../metrics.js';
 export type { RuntimeEventEnvelope, EnvelopeContext } from './envelope.js';
 export { createEventEnvelope } from './envelope.js';
 export type { SessionEvent, SessionEventType } from './session.js';
-export type { TurnEvent, TurnEventType } from './turn.js';
+export type { TurnEvent, TurnEventType, TurnInputOrigin } from './turn.js';
 export type { ProviderEvent, ProviderEventType } from './providers.js';
 export type { ToolEvent, ToolEventType } from './tools.js';
 export type { TaskEvent, TaskEventType } from './tasks.js';
