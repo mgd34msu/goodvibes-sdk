@@ -101,6 +101,9 @@ export interface NtfySurfaceConfig {
   enabled: boolean;
   baseUrl: string;
   topic: string;
+  chatTopic: string;
+  agentTopic: string;
+  remoteTopic: string;
   token: string;
   defaultPriority: number;
   setupVersion: number;
@@ -512,6 +515,9 @@ export type ConfigKey =
   | 'surfaces.ntfy.enabled'
   | 'surfaces.ntfy.baseUrl'
   | 'surfaces.ntfy.topic'
+  | 'surfaces.ntfy.chatTopic'
+  | 'surfaces.ntfy.agentTopic'
+  | 'surfaces.ntfy.remoteTopic'
   | 'surfaces.ntfy.token'
   | 'surfaces.ntfy.defaultPriority'
   | 'surfaces.webhook.enabled'
@@ -713,6 +719,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.ntfy.enabled' ? boolean :
   K extends 'surfaces.ntfy.baseUrl' ? string :
   K extends 'surfaces.ntfy.topic' ? string :
+  K extends 'surfaces.ntfy.chatTopic' ? string :
+  K extends 'surfaces.ntfy.agentTopic' ? string :
+  K extends 'surfaces.ntfy.remoteTopic' ? string :
   K extends 'surfaces.ntfy.token' ? string :
   K extends 'surfaces.ntfy.defaultPriority' ? number :
   K extends 'surfaces.webhook.enabled' ? boolean :

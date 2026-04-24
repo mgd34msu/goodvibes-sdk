@@ -418,22 +418,34 @@ async function runProviderSetupAction(
 
   if (surface === 'ntfy') {
     const topic = readString(input?.topic);
+    const chatTopic = readString(input?.chatTopic);
+    const agentTopic = readString(input?.agentTopic);
+    const remoteTopic = readString(input?.remoteTopic);
     const token = readString(input?.token);
     const baseUrl = readString(input?.baseUrl);
     if (topic) context.deps.configManager.set('surfaces.ntfy.topic', topic);
+    if (chatTopic) context.deps.configManager.set('surfaces.ntfy.chatTopic', chatTopic);
+    if (agentTopic) context.deps.configManager.set('surfaces.ntfy.agentTopic', agentTopic);
+    if (remoteTopic) context.deps.configManager.set('surfaces.ntfy.remoteTopic', remoteTopic);
     if (baseUrl) context.deps.configManager.set('surfaces.ntfy.baseUrl', baseUrl);
     if (token) await context.deps.secretsManager.set('NTFY_ACCESS_TOKEN', token, { scope: readSecretScope(input?.secretScope) });
     context.deps.configManager.set('surfaces.ntfy.enabled', true);
     const refreshed = await context.buildAccount('ntfy');
+    const configured = Boolean(topic || chatTopic || agentTopic || remoteTopic || token || account.configured);
     return {
       ...base,
-      ok: Boolean(topic || account.configured),
+      ok: configured,
       account: refreshed,
       state: refreshed.state,
       authState: refreshed.authState,
       login: { kind: 'none' },
-      message: token || topic ? 'ntfy configuration stored.' : 'ntfy is config-backed; provide topic and optional token to configure it.',
-      metadata: { topic: topic ?? context.deps.configManager.get('surfaces.ntfy.topic') },
+      message: configured ? 'ntfy configuration stored.' : 'ntfy is config-backed; provide topics and optional token to configure it.',
+      metadata: {
+        topic: topic ?? context.deps.configManager.get('surfaces.ntfy.topic'),
+        chatTopic: chatTopic ?? context.deps.configManager.get('surfaces.ntfy.chatTopic'),
+        agentTopic: agentTopic ?? context.deps.configManager.get('surfaces.ntfy.agentTopic'),
+        remoteTopic: remoteTopic ?? context.deps.configManager.get('surfaces.ntfy.remoteTopic'),
+      },
     };
   }
 

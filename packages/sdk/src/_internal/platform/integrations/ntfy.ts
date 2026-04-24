@@ -17,6 +17,31 @@ export const GOODVIBES_NTFY_DEFAULT_TOPICS = [
   GOODVIBES_NTFY_REMOTE_TOPIC,
 ] as const;
 
+export interface GoodVibesNtfyTopicConfig {
+  readonly chatTopic?: string | null;
+  readonly agentTopic?: string | null;
+  readonly remoteTopic?: string | null;
+}
+
+export interface GoodVibesNtfyTopics {
+  readonly chatTopic: string;
+  readonly agentTopic: string;
+  readonly remoteTopic: string;
+  readonly all: readonly string[];
+}
+
+export function resolveGoodVibesNtfyTopics(config: GoodVibesNtfyTopicConfig = {}): GoodVibesNtfyTopics {
+  const chatTopic = normalizeNtfyTopic(config.chatTopic, GOODVIBES_NTFY_CHAT_TOPIC);
+  const agentTopic = normalizeNtfyTopic(config.agentTopic, GOODVIBES_NTFY_AGENT_TOPIC);
+  const remoteTopic = normalizeNtfyTopic(config.remoteTopic, GOODVIBES_NTFY_REMOTE_TOPIC);
+  return {
+    chatTopic,
+    agentTopic,
+    remoteTopic,
+    all: [...new Set([chatTopic, agentTopic, remoteTopic])],
+  };
+}
+
 export interface NtfyPublishOptions {
   readonly title?: string;
   readonly priority?: 1 | 2 | 3 | 4 | 5;
@@ -178,6 +203,11 @@ export function isGoodVibesNtfyDeliveryEcho(message: Record<string, unknown>): b
   const headers = readRecord(message.headers);
   const originHeader = headers ? readCaseInsensitiveHeader(headers, GOODVIBES_NTFY_ORIGIN_HEADER) : undefined;
   return originHeader === GOODVIBES_NTFY_ORIGIN;
+}
+
+function normalizeNtfyTopic(value: string | null | undefined, fallback: string): string {
+  const topic = typeof value === 'string' ? value.trim() : '';
+  return topic || fallback;
 }
 
 class NtfyStreamHttpError extends Error {

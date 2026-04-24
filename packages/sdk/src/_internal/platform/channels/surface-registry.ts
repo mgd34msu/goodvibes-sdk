@@ -152,6 +152,9 @@ export class SurfaceRegistry {
         metadata: {
           baseUrl: this.configManager.get('surfaces.ntfy.baseUrl'),
           topic: this.configManager.get('surfaces.ntfy.topic'),
+          chatTopic: this.configManager.get('surfaces.ntfy.chatTopic'),
+          agentTopic: this.configManager.get('surfaces.ntfy.agentTopic'),
+          remoteTopic: this.configManager.get('surfaces.ntfy.remoteTopic'),
         },
       },
       {

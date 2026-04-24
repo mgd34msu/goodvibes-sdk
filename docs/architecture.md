@@ -242,15 +242,15 @@ Adapters bridge GoodVibes messages to platform-specific APIs:
 
 ### ntfy Runtime Topics
 
-When `surfaces.ntfy.enabled` is true, the daemon subscribes to three SDK-owned ntfy topics:
+When `surfaces.ntfy.enabled` is true, the daemon subscribes to three inbound ntfy route topics. The SDK ships defaults, but clients can override each route with `surfaces.ntfy.chatTopic`, `surfaces.ntfy.agentTopic`, and `surfaces.ntfy.remoteTopic`.
 
-| Topic | Runtime path |
-|---|---|
-| `goodvibes-chat` | Appends the message to the currently active terminal TUI session and emits it as a normal operator chat message. The assistant response is published back to the same ntfy topic. |
-| `goodvibes-agent` | Submits agent work through the active TUI shared session when one exists, preserving the existing agent reply pipeline. Child-agent final outputs inherit the parent ntfy reply target. |
-| `goodvibes-ntfy` | Starts or reuses a daemon-owned remote chat session through `CompanionChatManager`. This path does not touch the TUI session. |
+| Default topic | Config key | Runtime path |
+|---|---|---|
+| `goodvibes-chat` | `surfaces.ntfy.chatTopic` | Appends the message to the currently active terminal TUI session and emits it as a normal operator chat message. The assistant response is published back to the same ntfy topic. |
+| `goodvibes-agent` | `surfaces.ntfy.agentTopic` | Submits agent work through the active TUI shared session when one exists, preserving the existing agent reply pipeline. Child-agent final outputs inherit the parent ntfy reply target. |
+| `goodvibes-ntfy` | `surfaces.ntfy.remoteTopic` | Starts or reuses a daemon-owned remote chat session through `CompanionChatManager`. This path does not touch the TUI session. |
 
-`surfaces.ntfy.topic` remains an optional default outbound delivery topic and an additional subscribed topic, but arbitrary ntfy topics are ignored by inbound routing unless the adapter explicitly handles them. Outbound GoodVibes ntfy deliveries carry the SDK-owned self-echo marker and are filtered on ingress.
+`surfaces.ntfy.topic` remains an optional default outbound delivery topic, but it is not an inbound route override and is not subscribed by the provider runtime. Inbound subscription and routing use the configured route topics above, and other ntfy topics are ignored. Outbound GoodVibes ntfy deliveries carry the SDK-owned self-echo marker and are filtered on ingress.
 
 ---
 

@@ -8,6 +8,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.4] - 2026-04-24
+
+### Breaking
+- `surfaces.ntfy.topic` is now outbound-only and is no longer included in the
+  daemon's inbound ntfy subscription set. Configure inbound routing with the
+  explicit route topic keys instead.
+
+### Added
+- ntfy inbound route topics are now configurable with defaults:
+  `surfaces.ntfy.chatTopic`, `surfaces.ntfy.agentTopic`, and
+  `surfaces.ntfy.remoteTopic`.
+- Channel setup/account metadata now exposes the ntfy route topic configuration
+  so TUI and other SDK clients can present editable route fields without
+  hardcoding the SDK defaults.
+
+### Fixed
+- ntfy inbound routing now resolves configured route topics before dispatching,
+  so custom client topics route correctly and unknown topics are still ignored.
+- ntfy provider runtime subscription now follows the configured chat, agent, and
+  remote route topics instead of subscribing to hardcoded topic names.
+
+### Migration
+- Keep using `goodvibes-chat`, `goodvibes-agent`, and `goodvibes-ntfy` if the
+  defaults are acceptable.
+- Set `surfaces.ntfy.chatTopic`, `surfaces.ntfy.agentTopic`, and
+  `surfaces.ntfy.remoteTopic` in clients that need custom ntfy channel names.
+- Keep `surfaces.ntfy.topic` only for default outbound notification delivery.
+
+---
+
 ## [0.25.3] - 2026-04-24
 
 ### Breaking

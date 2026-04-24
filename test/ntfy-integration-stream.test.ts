@@ -10,6 +10,7 @@ import {
   GOODVIBES_NTFY_REMOTE_TOPIC,
   NtfyIntegration,
   isGoodVibesNtfyDeliveryEcho,
+  resolveGoodVibesNtfyTopics,
   type NtfyMessage,
 } from '../packages/sdk/src/_internal/platform/integrations/ntfy.js';
 import { handleNtfySurfacePayload } from '../packages/sdk/src/_internal/platform/adapters/ntfy/index.js';
@@ -68,6 +69,24 @@ describe('NtfyIntegration.subscribeJsonStream()', () => {
 });
 
 describe('ntfy topic routing', () => {
+  test('resolves default and configured inbound route topics', () => {
+    expect(resolveGoodVibesNtfyTopics()).toMatchObject({
+      chatTopic: GOODVIBES_NTFY_CHAT_TOPIC,
+      agentTopic: GOODVIBES_NTFY_AGENT_TOPIC,
+      remoteTopic: GOODVIBES_NTFY_REMOTE_TOPIC,
+    });
+    expect(resolveGoodVibesNtfyTopics({
+      chatTopic: 'phone-chat',
+      agentTopic: 'phone-agent',
+      remoteTopic: 'phone-remote',
+    })).toEqual({
+      chatTopic: 'phone-chat',
+      agentTopic: 'phone-agent',
+      remoteTopic: 'phone-remote',
+      all: ['phone-chat', 'phone-agent', 'phone-remote'],
+    });
+  });
+
   test('goodvibes-chat appends to the active TUI session without spawning an agent', async () => {
     const calls = { authorize: 0, submit: 0, spawn: 0 };
     const appended: Array<{ sessionId: string; input: Record<string, unknown> }> = [];
@@ -112,6 +131,50 @@ describe('ntfy topic routing', () => {
       body: 'hello tui',
       title: 'phone',
     });
+    expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
+  });
+
+  test('configured chat topic overrides the default ntfy chat topic', async () => {
+    const calls = { authorize: 0, submit: 0, spawn: 0 };
+    const appended: Array<{ sessionId: string; input: Record<string, unknown> }> = [];
+    const context = makeRoutingContext({
+      calls,
+      configValues: {
+        'surfaces.ntfy.chatTopic': 'phone-chat',
+        'surfaces.ntfy.agentTopic': 'phone-agent',
+        'surfaces.ntfy.remoteTopic': 'phone-remote',
+      },
+      sessionBroker: {
+        findPreferredSession: async () => ({ id: 'tui-session-1' }),
+        appendCompanionMessage: async (sessionId: string, input: Record<string, unknown>) => {
+          appended.push({ sessionId, input });
+          return {};
+        },
+      },
+      publishConversationFollowup: () => {},
+    });
+
+    const routed = await handleNtfySurfacePayload({
+      event: 'message',
+      topic: 'phone-chat',
+      message: 'custom chat',
+    }, context);
+    const ignored = await handleNtfySurfacePayload({
+      event: 'message',
+      topic: GOODVIBES_NTFY_CHAT_TOPIC,
+      message: 'default chat',
+    }, context);
+
+    expect(routed.status).toBe(202);
+    expect(await routed.json()).toMatchObject({ routedTo: 'tui-chat', topic: 'phone-chat' });
+    expect(await ignored.json()).toMatchObject({
+      acknowledged: true,
+      queued: false,
+      ignored: 'unknown-ntfy-topic',
+      topic: GOODVIBES_NTFY_CHAT_TOPIC,
+    });
+    expect(appended).toHaveLength(1);
+    expect(appended[0]?.input).toMatchObject({ body: 'custom chat', source: 'ntfy-chat' });
     expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
   });
 
@@ -316,6 +379,7 @@ function makeSurfaceAdapterContext(calls: { authorize: number; upsert: number; s
 
 function makeRoutingContext(options: {
   calls: { authorize: number; submit: number; spawn: number };
+  configValues?: Record<string, unknown>;
   sessionBroker?: Record<string, unknown>;
   publishConversationFollowup?: (sessionId: string, envelope: Record<string, unknown>) => void;
   queueNtfyChatReply?: (input: Record<string, unknown>) => void;
@@ -328,7 +392,7 @@ function makeRoutingContext(options: {
       resolveSecret: async () => null,
     },
     configManager: {
-      get: () => undefined,
+      get: (key: string) => options.configValues?.[key],
     },
     routeBindings: {
       upsertBinding: async () => ({

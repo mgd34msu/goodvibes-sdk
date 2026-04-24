@@ -208,6 +208,9 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
       enabled: context.deps.surfaceDeliveryEnabled('ntfy'),
       metadata: {
         topic: context.deps.configManager.get('surfaces.ntfy.topic'),
+        chatTopic: context.deps.configManager.get('surfaces.ntfy.chatTopic'),
+        agentTopic: context.deps.configManager.get('surfaces.ntfy.agentTopic'),
+        remoteTopic: context.deps.configManager.get('surfaces.ntfy.remoteTopic'),
         baseUrl: context.deps.configManager.get('surfaces.ntfy.baseUrl'),
         providerRuntime: context.providerRuntimeStatus('ntfy'),
       },

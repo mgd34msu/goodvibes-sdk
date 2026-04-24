@@ -2,10 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import {
-  GOODVIBES_NTFY_AGENT_TOPIC,
-  GOODVIBES_NTFY_CHAT_TOPIC,
-  GOODVIBES_NTFY_REMOTE_TOPIC,
   isGoodVibesNtfyDeliveryEcho,
+  resolveGoodVibesNtfyTopics,
 } from '../../integrations/ntfy.js';
 
 export async function handleNtfySurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
@@ -57,16 +55,30 @@ export async function handleNtfySurfacePayload(
   if (!topic) {
     return Response.json({ error: 'Missing ntfy topic' }, { status: 400 });
   }
-  if (topic === GOODVIBES_NTFY_CHAT_TOPIC) {
+  const topics = resolveConfiguredNtfyTopics(context);
+  if (topic === topics.chatTopic) {
     return handleNtfyChatPayload(body, context, topic, message);
   }
-  if (topic === GOODVIBES_NTFY_REMOTE_TOPIC) {
+  if (topic === topics.remoteTopic) {
     return handleNtfyRemoteChatPayload(body, context, topic, message);
   }
-  if (topic !== GOODVIBES_NTFY_AGENT_TOPIC) {
+  if (topic !== topics.agentTopic) {
     return Response.json({ acknowledged: true, queued: false, ignored: 'unknown-ntfy-topic', topic });
   }
   return handleNtfyAgentPayload(body, context, topic, message);
+}
+
+function resolveConfiguredNtfyTopics(context: SurfaceAdapterContext) {
+  return resolveGoodVibesNtfyTopics({
+    chatTopic: readConfigString(context, 'surfaces.ntfy.chatTopic'),
+    agentTopic: readConfigString(context, 'surfaces.ntfy.agentTopic'),
+    remoteTopic: readConfigString(context, 'surfaces.ntfy.remoteTopic'),
+  });
+}
+
+function readConfigString(context: SurfaceAdapterContext, key: string): string {
+  const value = context.configManager.get(key);
+  return typeof value === 'string' ? value : '';
 }
 
 async function authorizeNtfyPayload(
