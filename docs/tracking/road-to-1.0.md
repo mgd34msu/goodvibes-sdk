@@ -4,15 +4,16 @@ Published plan for shipping `@pellux/goodvibes-sdk@1.0.0`. Every item below is a
 
 ## Status
 
-- **Current released version**: `0.21.36` (soak period continues; hotfixes and consumer-adoption hardening landing as patch releases pending 1.0.0 owner sign-off)
-- **Current score**: 9.0 / 10
-- **Eligibility**: NOT eligible for 1.0.0 — soak period in progress (started 2026-04-18); owner sign-off pending
+- **Current version target**: `0.25.1` (current pre-1.0 hardening line; 0.25.0 is already published and 0.25.1 carries dependency-audit remediation)
+- **Current score**: pending recalibration after the 0.23.x–0.25.x feature and hardening releases (last recorded roadmap score: 9.0 / 10 at 0.21.36)
+- **Eligibility**: NOT eligible for 1.0.0 — owner sign-off pending and the soak criteria must be redefined after feature-bearing 0.23.x, 0.24.x, and 0.25.x releases landed after the original 0.21.0 soak start
 
 ## Version plan
 
 ```
 0.19.9          previous (Waves 1–9 consolidated + pipeline hardening + zero-any gate)
-  → 0.21.0            soak period [CURRENT — started 2026-04-18]
+  → 0.21.0            original soak signal (started 2026-04-18)
+  → 0.25.1            current hardening line [CURRENT]
   → 1.0.0            owner-approved release
 ```
 
@@ -38,14 +39,14 @@ Wire the three remaining `SDKObserver` callbacks.
 - [x] `test/browser/` harness using `@vitest/browser` + Playwright
 - [x] Imports built `dist/browser.js` via `./browser` subpath
 - [x] Exercises auth + transport-http + transport-realtime against MSW mock
-- [x] New CI matrix dimension `browser` in `platform-matrix` job
-- [x] `examples-smoke` CI gate added (prevents example rot)
+- [ ] Restore explicit `browser` CI dimension if browser real-runtime execution is still required for 1.0; current CI keeps only the static browser compatibility check inside `bun run validate`
+- [ ] Restore examples smoke as an explicit CI gate if example execution remains a 1.0 requirement; current `docs-completeness-check` only verifies required example files exist and are non-empty
 
 ## Wave 3 — Hermes real-runtime (target: 0.19.8, shipped in `488b615`+`8262775`)
 
 - [x] `test/hermes/` harness using `hermes-engine` binary
 - [x] Imports built `dist/react-native.js` via `./react-native` subpath
-- [x] New CI matrix dimension `hermes`
+- [ ] Restore explicit `hermes` CI dimension if Hermes real-runtime execution is still required for 1.0; current CI relies on the `rn-bundle` static companion-surface check
 - [x] Any Hermes shims land in `sdk/src/_internal/platform/*` following existing runtime-conditional pattern
 
 ## Wave 4 — Workers real-runtime (target: 0.19.7, landed)
@@ -80,7 +81,7 @@ Wire the three remaining `SDKObserver` callbacks.
 - [x] Schemas auto-generated from contract definitions in `packages/contracts/`
 - [x] Validation failures throw `SDKError{kind:'contract'}` with field-level detail
 - [x] Verdaccio dry-run publish + install into scratch project
-- [x] Per-runtime-entry bundle-size budgets enforced in CI (post-Zod measurement)
+- [ ] Per-runtime-entry bundle-size budgets exist as `bun run bundle:check`, but the current CI workflow does not run them as a standalone required gate
 
 ## Wave 8 — S-ι hardening (target: 0.19.14+)
 
@@ -95,16 +96,17 @@ Wire the three remaining `SDKObserver` callbacks.
 ## Wave 9 — Soak period (target: 0.21.0) — IN PROGRESS (started 2026-04-18)
 
 - [x] Bump from `0.19.9` to `0.21.0` (skip `0.20.x`)
-- [ ] No new features during soak — hotfixes only (→ 0.21.1, 0.21.2, …)
+- [ ] Redefine/restart soak after 0.23.x WRFC constraint propagation, 0.24.0 SecretRef URI migration, and 0.25.x feature-flag/dependency-hardening releases
 - [ ] Owner-defined soak duration
 
 ## Wave 10 — 1.0.0
 
 - [ ] **Owner explicit sign-off** (required regardless of gate state)
 - [ ] All gates above green on main
-- [ ] All CI dimensions passing: `bun`, `rn-bundle`, `browser`, `hermes`, `workers`, `workers-wrangler`
-- [ ] All new CI jobs passing: `are-the-types-wrong`, `publint`, `sbom-check`, `bundle-budget`, `api-surface-snapshot`, `flake-watch`, `examples-smoke`, `no-todo-markers`
-- [ ] npm publish as `1.0.0` with `--provenance` and signed tag
+- [ ] Current CI dimensions passing: `bun`, `rn-bundle`, `workers`, `workers-wrangler`; decide whether to restore explicit `browser` and `hermes` real-runtime dimensions before 1.0
+- [ ] Current CI jobs passing: `validate`, `build`, `mirror-drift`, `platform-matrix`, `lint-gates`, `types-check`, `types-resolution-check`, `publint-check`, `sbom-check`, and PR-only `sync-safety-check`
+- [ ] Decide whether `bundle:check`, `api:check`, `flake:check`, `todo:check`, and examples smoke should be restored as required CI gates before 1.0
+- [ ] npm publish as `1.0.0` with provenance and a release tag; signed tags are preferred via `bun run release:tag`
 
 ---
 
@@ -114,10 +116,9 @@ Wire the three remaining `SDKObserver` callbacks.
 - Mirror syncs always scoped: `bun run sync --scope=<subsystem>` — **never** unscoped
 - Bundle guard extended per new runtime entry
 - TUI downstream typecheck before pushing any SDK release
-- CHANGELOG.md and package.json versions are orchestrator-managed — agents do not touch them
+- CHANGELOG.md and package.json versions must be updated together and verified with `bun run changelog:check` and `bun run version:check`
 - All tools default to precision_engine (native Read/Write/Edit/Grep/Glob/WebFetch are deprecated)
 
 ## Owner sign-off
 
 **1.0.0 publish will not occur without explicit owner approval.** Green gates are necessary but not sufficient. This file is the shared reference for what "ready" means.
-

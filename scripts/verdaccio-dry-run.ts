@@ -116,7 +116,7 @@ async function startVerdaccio(): Promise<VerdaccioHandle> {
   if (!existsSync(verdaccioBin)) {
     throw new Error(
       `verdaccio binary not found at ${verdaccioBin}.\n` +
-        `Run: bun add -d verdaccio@^6.5.1 && bun install`,
+        `Run: bun add -d verdaccio@^6.5.2 && bun install`,
     );
   }
 

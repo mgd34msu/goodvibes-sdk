@@ -1,8 +1,8 @@
 # Roadmap to 1.0
 
-**Status**: Active. Last updated 2026-04-17.
-**Current version**: 0.21.36.
-**Current score**: 9.0 / 10.
+**Status**: Active. Last updated 2026-04-24.
+**Current version**: 0.25.1.
+**Current score**: pending recalibration after 0.23.x-0.25.x feature and hardening releases (last recorded: 9.0 / 10 at 0.21.36).
 **Target for 1.0.0 cut**: 10.0 / 10, plus explicit approval from the project owner.
 
 ---
@@ -64,12 +64,18 @@ Ends the "SDK bump → surprise TUI test burn" pattern.
 - Auto-generate the skeleton from conventional commits between tags where feasible. Manual edits still allowed.
 - Each breaking change gets a copy-pasteable before/after snippet.
 
-### Wave S-ε — Multi-platform test matrix ✓ shipped partial 0.19.1, expanded 0.19.8 (S-ε.2 Browser + Hermes + Workers + wrangler-CLI landed; real Node still pending; production-workerd parity out of scope for 1.0)
+### Wave S-ε — Multi-platform test matrix ✓ shipped partial 0.19.1, expanded 0.19.8, needs current-CI review
 **Target release**: 0.19.3 · **Effort**: ~2 days · **Score effect**: 8.5 → 8.8 · **Parallel after S-α**
 
-The existing RN CI gate is a one-off. Extend to full platform parity.
+The historical browser, Hermes, Workers, and wrangler harnesses landed. Current
+CI source of truth is narrower: `.github/workflows/ci.yml` runs
+`platform-matrix` dimensions for `bun`, `rn-bundle`, `workers`, and
+`workers-wrangler`; browser compatibility is a static `validate` check, and
+Hermes is not an explicit current CI lane. Decide whether explicit browser and
+Hermes real-runtime lanes must be restored before 1.0.
 
-- CI jobs per platform against the same test suite: Node 20, Node 22, Bun, React Native (metro bundle + runtime harness), browser (Vitest browser mode), Cloudflare Workers edge runtime.
+- CI jobs per current platform against the same built artifact where possible:
+  Bun, React Native bundle scan, Miniflare Workers, and wrangler-local Workers.
 - Transport-http + auth + runtime-events get explicit per-platform expectations tests.
 - RN bundle check extends to also verify that typed events serialize/deserialize identically across platforms.
 
@@ -96,7 +102,11 @@ Without this, consumers have to monkey-patch to get telemetry. With it, they plu
 ### Wave S-ι — Hardening gates (the last mile) ✓ shipped partial 0.19.8 (Waves 5–8 landed: hygiene, policy, Zod validation, API-extractor/flake/no-todo gates)
 **Target release**: 0.20.x · **Effort**: weeks of grind across the public surface · **Score effect**: 9.5 → 10.0 · **Depends on**: S-α through S-θ
 
-**Landed in 0.19.8**: API surface snapshot via `@microsoft/api-extractor` (`etc/goodvibes-sdk.api.md` baseline + `api:check` CI gate); `no-todo-markers` CI gate; flake-detection CI gate; public-surface file-size discipline via coverage backfill. Still pending:
+**Landed in 0.19.8**: API surface snapshot via `@microsoft/api-extractor`
+(`etc/goodvibes-sdk.api.md` baseline), `no-todo-markers`, flake detection, and
+public-surface file-size discipline via coverage backfill. Current source keeps
+`api:check`, `todo:check`, and `flake:check` scripts available, but the current
+CI workflow does not run them as required standalone jobs. Still pending:
 
 Each gate is enforced in CI; failing any blocks the release.
 

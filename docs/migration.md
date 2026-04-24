@@ -2,6 +2,74 @@
 
 Since 0.19.0, per-release migration guidance lives directly in `CHANGELOG.md` under each version's `### Migration` subsection. This is the canonical source; consumers upgrading from any pre-0.21.x version should read the relevant `## [X.Y.Z]` entries in order.
 
+## Upgrading to 0.25.1
+
+**Security hardening — no SDK import-path or runtime API migration required.**
+
+0.25.1 remediates source-workspace dependency-audit findings with fixed
+transitive versions, a graph-level `vendor/bash-language-server` patch for
+bundled Bash LSP, and a repo-local `uuid` shim for the Verdaccio release dry-run
+path. Application roots that run their own dependency audit against the SDK
+dependency tree should add equivalent root-level overrides for the non-vendored
+packages listed in [Security Policy](../SECURITY.md#dependency-audit-disclosures).
+The `vendor/uuid-cjs` path is repo-local and exists only for this workspace's
+Verdaccio dry-run tooling.
+
+Bash LSP remains bundled as a direct SDK dependency. No host-provided Bash LSP
+migration is required.
+
+---
+
+## Upgrading to 0.25.0
+
+**Feature-flag policy clarification — host applications should be explicit.**
+
+0.25.0 finishes the previously weak feature-flag gates and documents the
+ownership model: the SDK owns conservative safe defaults and runtime gates; host
+applications own deployment profiles. Hosts should pass an explicit
+feature-flag policy for each surface profile instead of relying on implicit
+defaults for side-effecting behavior.
+
+Host applications that validate persisted feature flag config should add
+`killed` to their allowed state enum:
+
+```ts
+type FeatureFlagPersistedState = 'enabled' | 'disabled' | 'killed';
+```
+
+See [Feature Flags](./feature-flags.md) for the current registry, defaults, and
+recommended host profiles.
+
+---
+
+## Upgrading to 0.24.0
+
+**Breaking SecretRef URI migration.**
+
+0.24.0 removes the generic `secret://` URI scheme. Secret references now use the
+GoodVibes-owned namespace:
+
+```text
+goodvibes://secrets/<source>/...
+```
+
+Common replacements:
+
+| Before | After |
+|---|---|
+| `secret://env/OPENAI_API_KEY` | `goodvibes://secrets/env/OPENAI_API_KEY` |
+| `secret://goodvibes/OPENAI_API_KEY` | `goodvibes://secrets/goodvibes/OPENAI_API_KEY` |
+| `secret://file/~/.credentials/key.json?selector=openai.api_key` | `goodvibes://secrets/file/~/.credentials/key.json?selector=openai.api_key` |
+| `secret://1password?vault=Development&item=OpenAI&field=api_key` | `goodvibes://secrets/1password?vault=Development&item=OpenAI&field=api_key` |
+| `secret://bitwarden?item=openai-prod&field=password` | `goodvibes://secrets/bitwarden?item=openai-prod&field=password` |
+
+The parser accepts `env`, `goodvibes`, `file`, `exec`, `1password` /
+`onepassword` / `op`, `bitwarden`, `vaultwarden`,
+`bitwarden-secrets-manager`, and `bws` under `goodvibes://secrets/...`.
+`secret://...` is rejected.
+
+---
+
 ## Upgrading to 0.23.0
 
 **Additive — no consumer action required.**

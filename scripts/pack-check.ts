@@ -25,6 +25,12 @@ function assertNoWorkspaceRanges(manifest, label) {
   }
 }
 
+function assertBundledBashLspMitigationManifest(manifest, label) {
+  if (manifest.dependencies?.['bash-language-server'] !== 'file:vendor/bash-language-server') {
+    throw new Error(`${label} must publish the vendored bash-language-server mitigation`);
+  }
+}
+
 const forbiddenSpecifiers = [
   '@pellux/goodvibes-contracts',
   '@pellux/goodvibes-daemon-sdk',
@@ -41,6 +47,19 @@ function assertFlatPackageLayout(tarball, files) {
   const leakedEntries = files.filter((file) => file.startsWith('package/node_modules/'));
   if (leakedEntries.length > 0) {
     throw new Error(`${tarball} contains nested node_modules entries: ${leakedEntries.slice(0, 5).join(', ')}`);
+  }
+}
+
+function assertSecurityMitigationAssets(tarball, files) {
+  const requiredEntries = [
+    'package/vendor/bash-language-server/package.json',
+    'package/vendor/bash-language-server/GOODVIBES_PATCH.md',
+    'package/vendor/bash-language-server/out/cli.js',
+    'package/vendor/bash-language-server/tree-sitter-bash.wasm',
+  ];
+  const missing = requiredEntries.filter((entry) => !files.includes(entry));
+  if (missing.length > 0) {
+    throw new Error(`${tarball} is missing security mitigation asset(s): ${missing.join(', ')}`);
   }
 }
 
@@ -69,8 +88,10 @@ try {
   tarballs.forEach((tarball) => {
     const manifest = inspectPackedManifest(resolve(tarball));
     assertNoWorkspaceRanges(manifest, tarball);
+    assertBundledBashLspMitigationManifest(manifest, tarball);
     const files = listPackedFiles(resolve(tarball));
     assertFlatPackageLayout(tarball, files);
+    assertSecurityMitigationAssets(tarball, files);
     assertNoLeakedInternalImports(tarball, files);
   });
   console.log('pack check passed');

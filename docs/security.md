@@ -256,6 +256,8 @@ Supported sources:
 | `bitwarden-secrets-manager` | `bws` CLI | Machine secrets; supports access token, profile, server URL |
 
 `resolveSecretRef()` dispatches to the correct resolver at runtime. External CLI resolvers (`exec`, `1password`, `bitwarden`) run subprocesses with a configurable timeout.
+The generic `secret://...` scheme is intentionally not accepted; use
+`goodvibes://secrets/...` for URI refs.
 
 **Best practices:**
 - Prefer `1password` or `bitwarden-secrets-manager` for production deployments

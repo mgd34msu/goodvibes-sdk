@@ -137,8 +137,19 @@ When the SDK falls back to `{}` due to a parse error, a log entry is emitted at 
 
 ---
 
-## Tool Contract Work (Deferred)
+## Tool Contract Verification
 
-A formal tool-contract system (R4 from the Tier 4 roadmap) is planned but not yet implemented. When it lands, tool schemas registered with the SDK will be used to validate arguments automatically before dispatch, making handler-level validation optional for tools that opt in. Until then, handler-level validation as shown above is the recommended approach.
+Tool contract verification is implemented at registration time. Built-in tool
+registration goes through `registerToolWithContractGate`, and the
+`tool-contract-verification` feature flag is enabled by default when no host
+feature manager is supplied.
 
-Cross-reference: the tool contract feature is tracked under the Tier 4 deferred items in the release roadmap.
+The verifier checks the registered tool definition and phased-tool metadata
+before the tool enters the registry: schema shape, timeout/cancellation support,
+permission class, output policy, and idempotency metadata. Error-level
+violations fail closed by throwing from `ToolRegistry.registerWithContract`;
+warning-level violations are returned for diagnostics.
+
+Handler-level argument validation is still required for untrusted runtime input.
+Contract verification prevents malformed tools from being registered; it does
+not replace validation inside a handler for model-provided arguments.

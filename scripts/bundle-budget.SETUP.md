@@ -1,8 +1,11 @@
-# CI Integration: `bundle-budget` Job
+# Optional CI Integration: `bundle-budget` Job
 
 ## Adding to CI
 
-Add the following job to your GitHub Actions workflow (`.github/workflows/ci.yml` or equivalent).
+The repo keeps `bun run bundle:check` available, but the current
+`.github/workflows/ci.yml` does not run it as a standalone gate. Add the
+following job to your GitHub Actions workflow (`.github/workflows/ci.yml` or
+equivalent) if bundle budgets should become required CI again.
 Do **not** run `bun run sync` — it is intentionally excluded from CI.
 
 ```yaml

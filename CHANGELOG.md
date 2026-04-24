@@ -8,6 +8,54 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.1] - 2026-04-24
+
+### Breaking
+- none
+
+### Added
+- Dependency-audit disclosure in `SECURITY.md` documenting the root/package
+  overrides for fixed transitive versions, the checked-in
+  `vendor/bash-language-server` patch for bundled Bash LSP, and the checked-in
+  `vendor/uuid-cjs` patch used for the Verdaccio dry-run path.
+
+### Fixed
+- Remediated the current `bun audit` findings in the source workspace:
+  `fast-xml-parser` is forced to `5.7.1`, `ajv` to `8.18.0`, `lodash` to
+  `4.18.1`, `google-auth-library` to `10.6.2`, and `minimatch` to `^10.2.5`.
+- Upgraded Verdaccio to `^6.5.2` for local release dry-runs and
+  `@anthropic-ai/bedrock-sdk` to `^0.29.0` so the AWS XML builder path resolves
+  to the fixed `fast-xml-parser` line.
+- Kept `bash-language-server` bundled as a direct SDK dependency and preserved
+  Bash LSP wiring. Release staging rewrites the published dependency to
+  `file:vendor/bash-language-server`, a checked-in copy of
+  `bash-language-server@5.6.0` patched to use `editorconfig@3.0.2` so the
+  consumer dependency graph resolves to the fixed `minimatch@10.2.5` line.
+- Replaced the `@anthropic-ai/vertex-sdk` dependency with an in-tree Vertex
+  client backed by `@anthropic-ai/sdk` and `google-auth-library@10.6.2`, avoiding
+  the vulnerable `google-auth-library@9 -> gaxios@6 -> uuid` path in consumer
+  installs.
+- Replaced the vulnerable Verdaccio `@cypress/request -> uuid@8` audit path with
+  a repo-local CommonJS `uuid.v4` compatibility shim at `vendor/uuid-cjs`.
+- Bash LSP minimatch remediation is now represented only by the graph-level
+  `vendor/bash-language-server` patch; the published SDK does not mutate
+  `minimatch` during install.
+- Added a Bash LSP smoke test proving the SDK resolves the bundled
+  `bash-language-server` binary and completes LSP initialization from a project
+  without its own `.bin` entry.
+- Refreshed stale docs against source-of-truth package versions, release
+  scripts, CI workflow jobs, SecretRef URI behavior, and current roadmap status.
+
+### Migration
+- No SDK import-path or runtime API migration is required.
+- Bash LSP remains bundled; no host-provided Bash LSP migration is required.
+- Downstream roots that run their own dependency audit against the SDK dependency
+  tree should apply equivalent root-level overrides for the non-vendored
+  packages because package-manager overrides are evaluated from the application
+  root.
+
+---
+
 ## [0.25.0] - 2026-04-24
 
 ### Breaking
@@ -348,7 +396,7 @@ Gates: bun run build pass (tsc -b --force, exit 0), sync:check pass, version:che
 Wave 1 of the enterprise-adoption security hardening series targeting the bar set in `docs/audit/0.21.28-master-triage.md`. This wave closes all CRITICAL security findings except SEC-10 (deferred to Wave 5 per user decision).
 
 ### Security
-- **W1-1 / SEC-04: vendor minimatch inline; remove install-time fetch** — Rewrote `scripts/postinstall-patch-minimatch.mjs` to copy the minimatch payload from `scripts/vendor/minimatch/` (git-checked-in) rather than fetching from the npm registry. Eliminates the supply-chain MITM/substitution vector at install time. Vendored version is minimatch@10.2.5 (sha512 `sha512-MULk...Mg==`, verified 2026-04-20). Advisories addressed: GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74 (all affect minimatch >=10.0.0 <10.2.3 via bash-language-server transitive pinning).
+- **W1-1 / SEC-04: minimatch supply-chain mitigation** — The original 0.21.29 mitigation removed the network fetch from the install-time minimatch workaround. This has since been superseded by the 0.25.1 graph-level `vendor/bash-language-server` patch, which keeps Bash LSP bundled and avoids install-time `minimatch` mutation entirely.
 - **W1-2 / SEC-01: `writeBootstrapUsers` writes auth-user store at 0600** — Added `{ mode: 0o600 }` to the write call, plus write-to-tmp-then-rename pattern with `chmodSync` applied both before rename and after (defeats filesystem-reset behaviour). Affected file: `packages/sdk/src/_internal/platform/security/user-auth.ts`. Files now under 0600: `auth-users.json`.
 - **W1-3 / SEC-02: `safeCopy` → `safeCopyIdentity` for credential migration** — Added `safeCopyIdentity` helper that calls `chmodSync(dest, 0o600)` after `copyFileSync`, ensuring migrated credential files land at 0600 regardless of source permissions. Affected file: `packages/sdk/src/_internal/platform/workspace/daemon-home.ts`. Files now under 0600: `auth-users.json` (migrated), `auth-bootstrap.txt` (migrated).
 - **W1-4 / SEC-03: `/login` rate-limited and behind origin check** — Reordered `handleRequest` so CORS origin check runs first (before any route dispatch), then `/login` is dispatched with its own tight `loginRateLimiter` (default 5 attempts/min per IP, configurable via `HttpListenerConfig.loginRateLimit`). The general 60/min API rate limiter is independent. Affected file: `packages/sdk/src/_internal/platform/daemon/http-listener.ts`.
@@ -356,12 +404,14 @@ Wave 1 of the enterprise-adoption security hardening series targeting the bar se
 - **W1-6 / SEC-12: `writeDaemonSetting` writes daemon-settings.json at 0600** — Applied `{ mode: 0o600 }` + `chmodSync` post-rename pattern to `writeDaemonSetting`. Affected file: `packages/sdk/src/_internal/platform/workspace/daemon-home.ts`. Files now under 0600: `daemon-settings.json`.
 
 ### Added
-- `scripts/vendor/minimatch/` — vendored minimatch@10.2.5 payload (dist/, package.json, LICENSE.md, README.md). Git-checked-in. Source of truth for postinstall patching.
+- SEC-04 mitigation artifacts from this wave are superseded by the 0.25.1
+  `vendor/bash-language-server` graph patch.
 - `test/sec-01-user-auth-perms.test.ts` — 4 tests asserting `auth-users.json` is created and maintained at mode 0600 across bootstrap, addUser, rotatePassword, deleteUser paths.
 - `test/sec-02-safecopy-perms.test.ts` — 3 tests for SEC-02 safeCopyIdentity behaviour and SEC-12 `writeDaemonSetting` mode enforcement.
 - `test/sec-03-login-ratelimit.test.ts` — 7 tests: first 5 login attempts allowed, 6th returns 429; 10 rapid attempts split 5/5; IPs tracked independently; login budget independent of general API limiter; origin check fires before /login; allowed origin passes through.
 - `test/sec-07-origin-defaults.test.ts` — 6 tests: startup guard throws on hostMode=network+empty allowedOrigins; startup guard accepts network+non-empty allowedOrigins; loopback+empty allowedOrigins+no Origin header passes; loopback+empty allowedOrigins+Origin header returns 403 CORS_NOT_CONFIGURED; network+allowedOrigins set+wrong origin returns 403 ORIGIN_NOT_ALLOWED; network+allowedOrigins set+correct origin passes.
-- `test/sec-04-postinstall-no-network.test.ts` — 3 tests: vendor payload present; postinstall runs exit 0 with no-network env (HTTPS_PROXY=unreachable); vulnerable minimatch is patched from vendor; already-patched is skipped.
+- SEC-04 test coverage from this wave is superseded by the 0.25.1 Bash LSP
+  bundled-resolution and package-audit checks.
 
 ### Note
 - SEC-10 (`Math.random` crypto misuse) moved to Wave 5 per user decision — not in this wave.
@@ -738,18 +788,10 @@ None required. All endpoint additions are additive. The  method is optional on t
 
 ### Fixed
 
-- **Postinstall patcher upgrades `minimatch` transitive to `10.2.5` in consumer installs**, remediating the 3 ReDoS advisories (GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74). A `postinstall` script (`scripts/postinstall-patch-minimatch.mjs`) ships in the published tarball. When consumers run `npm install @pellux/goodvibes-sdk`, the script scans their `node_modules` for any `minimatch@>=10.0.0 <10.2.3` install and upgrades it in place by downloading `minimatch@10.2.5` from the npm registry and extracting it over the vulnerable directory.
-
-**Background:** `bash-language-server@5.6.0` (a direct SDK dependency) hard-pins `editorconfig@2.0.1`, which hard-pins `minimatch@10.0.1`. The SDK's root `overrides` field works for local development and workspace installs but is ignored by npm and Bun when the package is consumed from a registry — npm/bun do not propagate `overrides` fields from installed packages into the consumer's install tree. The postinstall patcher is the mechanism that actually reaches consumer trees.
-
-**Caveats:**
-- If your environment uses `--ignore-scripts`, the patcher will not run. Add the following to your own `package.json` as a fallback:
-  ```json
-  "overrides": { "minimatch": "^10.2.5" }
-  ```
-  Then re-run `npm install`.
-- Bun users: if your project's trust policy does not allow lifecycle scripts from this package, run `bun pm trust @pellux/goodvibes-sdk` before installing, or add the overrides block above.
-- The patcher exits 0 on all errors and never fails your install.
+- **Superseded minimatch remediation note.** Current SDK releases keep Bash LSP
+  bundled through the 0.25.1 graph-level `vendor/bash-language-server` patch,
+  which resolves the consumer dependency graph to the fixed `minimatch@10.2.5`
+  line without install-time mutation.
 
 ## [0.21.0] - 2026-04-18
 

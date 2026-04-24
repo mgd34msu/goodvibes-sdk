@@ -4,10 +4,61 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.21.x (latest) | :white_check_mark: |
-| < 0.21.0 | :x: |
+| 0.25.1 and later 0.25.x (latest pre-1.0 line) | :white_check_mark: |
+| < 0.25.1 | :x: |
 
-Pre-1.0 policy: security fixes land in the 0.21.x line. Earlier minor lines (0.19.x, 0.20.x) are not patched; upgrade to the latest 0.21.x release to receive security updates.
+Pre-1.0 policy: security fixes land in the latest published pre-1.0 line. Earlier minor lines are not patched; upgrade to the latest release to receive security updates.
+
+## Dependency Audit Disclosures
+
+The repo uses package-manager overrides for transitive advisory remediation when
+the upstream dependency range has not yet moved but a compatible fixed package is
+available. Current non-vendored overrides are declared in the root
+`package.json` and `packages/sdk/package.json`:
+
+- `fast-xml-parser@5.7.1` for the AWS XML builder path
+- `ajv@8.18.0` for Verdaccio and documentation tooling paths
+- `lodash@4.18.1` for Verdaccio legacy-storage paths
+- `google-auth-library@10.6.2` for the in-tree Anthropic Vertex authentication path
+- `minimatch@^10.2.5` for source-workspace installs
+
+The published SDK keeps Bash LSP bundled as a first-class feature. The
+`bash-language-server@5.6.0 -> editorconfig@2.0.1 -> minimatch@10.0.1` chain is
+handled as a graph-level vendor patch: `vendor/bash-language-server` copies the
+upstream `bash-language-server@5.6.0` package and changes only
+`dependencies.editorconfig` to `3.0.2`, whose dependency range resolves to the
+fixed `minimatch@10.2.5` line. Release staging rewrites the published SDK
+dependency to `file:vendor/bash-language-server`, so consumer lockfiles and
+`npm audit` see the patched graph directly.
+
+No install-time minimatch mutation is used. The Bash LSP mitigation is carried
+by the published dependency graph itself.
+
+The `uuid` advisory `GHSA-w5hq-g745-h8pq` is also handled with a vendor patch
+because Verdaccio's current stable release still depends on `@cypress/request@3.0.10`,
+which depends on `uuid@^8.3.2`. The root workspace overrides that transitive
+dependency to `file:vendor/uuid-cjs`, a checked-in CommonJS compatibility shim
+that implements only the `v4` surface used by `@cypress/request`. The shim uses
+Node's crypto APIs and includes the same output-buffer bounds check shape used
+by the upstream `uuid@14` fix. This vendored package is dev/tooling scope only
+for the local Verdaccio registry dry-run and must not be treated as a general
+replacement for the upstream `uuid` package.
+
+Application roots that audit the SDK dependency graph should set their own
+root-level overrides for the non-vendored packages if their package manager does
+not inherit dependency-package overrides:
+
+```json
+{
+  "overrides": {
+    "ajv": "8.18.0",
+    "fast-xml-parser": "5.7.1",
+    "google-auth-library": "10.6.2",
+    "lodash": "4.18.1",
+    "minimatch": "^10.2.5"
+  }
+}
+```
 
 ## Reporting a Vulnerability
 

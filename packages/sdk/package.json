@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.25.0",
+  "version": "0.25.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
@@ -8,13 +8,13 @@
   "main": "./dist/index.js",
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.16.1",
-    "@anthropic-ai/bedrock-sdk": "^0.28.1",
+    "@anthropic-ai/bedrock-sdk": "^0.29.0",
     "@anthropic-ai/sdk": "^0.82.0",
-    "@anthropic-ai/vertex-sdk": "^0.16.0",
     "@ast-grep/napi": "^0.42.0",
     "@aws/bedrock-token-generator": "^1.1.0",
     "bash-language-server": "^5.6.0",
     "fuse.js": "^7.1.0",
+    "google-auth-library": "10.6.2",
     "graphql": "^16.13.2",
     "jszip": "^3.10.1",
     "node-edge-tts": "^1.2.10",
@@ -112,8 +112,7 @@
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "files": [
     "dist",
-    "sbom.cdx.json",
-    "scripts/postinstall-patch-minimatch.mjs"
+    "sbom.cdx.json"
   ],
   "homepage": "https://github.com/mgd34msu/goodvibes-sdk",
   "keywords": [
@@ -146,9 +145,10 @@
     }
   },
   "overrides": {
+    "ajv": "8.18.0",
+    "fast-xml-parser": "5.7.1",
+    "google-auth-library": "10.6.2",
+    "lodash": "4.18.1",
     "minimatch": "^10.2.5"
-  },
-  "scripts": {
-    "postinstall": "node scripts/postinstall-patch-minimatch.mjs"
   }
 }
