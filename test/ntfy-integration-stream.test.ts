@@ -9,12 +9,14 @@ import {
   GOODVIBES_NTFY_OUTBOUND_TAG,
   GOODVIBES_NTFY_REMOTE_TOPIC,
   NtfyIntegration,
+  createNtfyLiveSubscriptionSince,
   isGoodVibesNtfyDeliveryEcho,
   resolveGoodVibesNtfyTopics,
   type NtfyMessage,
 } from '../packages/sdk/src/_internal/platform/integrations/ntfy.js';
 import { handleNtfySurfacePayload } from '../packages/sdk/src/_internal/platform/adapters/ntfy/index.js';
 import type { SurfaceAdapterContext } from '../packages/sdk/src/_internal/platform/adapters/types.js';
+import { ChannelProviderRuntimeManager } from '../packages/sdk/src/_internal/platform/channels/provider-runtime.js';
 import { DaemonSurfaceActionHelper } from '../packages/sdk/src/_internal/platform/daemon/surface-actions.js';
 import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
 import { emitTurnCompleted, emitTurnSubmitted } from '../packages/sdk/src/_internal/platform/runtime/emitters/index.js';
@@ -65,6 +67,115 @@ describe('NtfyIntegration.subscribeJsonStream()', () => {
       expect(requestHeaders.authorization).toBe('Bearer token-1');
       expect(messages.map((message) => message.event)).toEqual(['open', 'message']);
       expect(messages[1]?.message).toBe('hello');
+    } finally {
+      await close(server);
+    }
+  });
+
+  test('advances the reconnect cursor and suppresses duplicate cached messages', async () => {
+    const messages: NtfyMessage[] = [];
+    const requestUrls: string[] = [];
+    let requestCount = 0;
+    let resolveSecondMessage!: () => void;
+    const receivedSecondMessage = new Promise<void>((resolve) => {
+      resolveSecondMessage = resolve;
+    });
+    const firstMessage = { id: 'ntfy-message-1', time: 1_700_000_000, event: 'message', topic: 'goodvibes', message: 'first' };
+    const secondMessage = { id: 'ntfy-message-2', time: 1_700_000_001, event: 'message', topic: 'goodvibes', message: 'second' };
+    const server = createServer((req, res) => {
+      if (req.method !== 'GET' || !req.url?.startsWith('/goodvibes/json')) {
+        res.writeHead(404).end();
+        return;
+      }
+      requestUrls.push(req.url);
+      res.writeHead(200, {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      res.write(JSON.stringify({ event: 'open', topic: 'goodvibes' }) + '\n');
+      requestCount++;
+      if (requestCount === 1) {
+        res.write(JSON.stringify(firstMessage) + '\n');
+        res.end();
+        return;
+      }
+      res.write(JSON.stringify(firstMessage) + '\n');
+      res.write(JSON.stringify(secondMessage) + '\n');
+    });
+
+    try {
+      const baseUrl = await listen(server);
+      const abort = new AbortController();
+      const ntfy = new NtfyIntegration(baseUrl);
+      const subscription = ntfy.subscribeJsonStream('goodvibes', (message) => {
+        if (message.event !== 'message') return;
+        messages.push(message);
+        if (message.id === secondMessage.id) {
+          resolveSecondMessage();
+          abort.abort();
+        }
+      }, {
+        since: '1000',
+        signal: abort.signal,
+        reconnectDelayMs: 1,
+      });
+
+      await withTimeout(receivedSecondMessage, 1_000, 'timed out waiting for reconnect ntfy message');
+      await withTimeout(subscription, 1_000, 'timed out waiting for ntfy subscription abort');
+
+      expect(messages.map((message) => message.id)).toEqual([firstMessage.id, secondMessage.id]);
+      expect(new URL(requestUrls[0]!, baseUrl).searchParams.get('since')).toBe('1000');
+      expect(new URL(requestUrls[1]!, baseUrl).searchParams.get('since')).toBe(firstMessage.id);
+    } finally {
+      await close(server);
+    }
+  });
+
+  test('provider runtime starts ntfy from current time instead of replaying the latest cached message', async () => {
+    let resolveRequest!: (url: string) => void;
+    const receivedRequest = new Promise<string>((resolve) => {
+      resolveRequest = resolve;
+    });
+    const server = createServer((req, res) => {
+      if (req.method !== 'GET' || !req.url?.includes('/json')) {
+        res.writeHead(404).end();
+        return;
+      }
+      resolveRequest(req.url);
+      res.writeHead(200, {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      res.write(JSON.stringify({ event: 'open', topic: 'goodvibes-chat,goodvibes-agent,goodvibes-ntfy' }) + '\n');
+    });
+
+    try {
+      const baseUrl = await listen(server);
+      const calls = { authorize: 0, submit: 0, spawn: 0 };
+      const before = Number(createNtfyLiveSubscriptionSince());
+      const manager = new ChannelProviderRuntimeManager({
+        configManager: {
+          get: (key: string) => {
+            if (key === 'surfaces.ntfy.enabled') return true;
+            if (key === 'surfaces.ntfy.baseUrl') return baseUrl;
+            return '';
+          },
+        },
+        serviceRegistry: { resolveSecret: async () => null },
+        buildSurfaceAdapterContext: () => makeRoutingContext({ calls }),
+      } as unknown as ConstructorParameters<typeof ChannelProviderRuntimeManager>[0]);
+
+      const result = await manager.start('ntfy');
+      expect(result.ok).toBe(true);
+      const requestUrl = await withTimeout(receivedRequest, 1_000, 'timed out waiting for ntfy runtime subscription');
+      const after = Number(createNtfyLiveSubscriptionSince());
+      const since = new URL(requestUrl, baseUrl).searchParams.get('since');
+      expect(since).not.toBe('latest');
+      expect(Number(since)).toBeGreaterThanOrEqual(before);
+      expect(Number(since)).toBeLessThanOrEqual(after);
+      manager.stop('ntfy');
     } finally {
       await close(server);
     }

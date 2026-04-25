@@ -1,5 +1,6 @@
 import type { ArtifactReference } from '../../artifacts/index.js';
 import type { ConfigManager } from '../../config/manager.js';
+import type { SecretsManager } from '../../config/secrets.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import type { ArtifactStore } from '../../artifacts/index.js';
 import type { ControlPlaneGateway } from '../../control-plane/gateway.js';
@@ -52,6 +53,7 @@ export interface ChannelDeliveryStrategy {
 
 export interface ChannelDeliveryRouterConfig {
   readonly configManager?: ConfigManager;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
   readonly serviceRegistry?: ServiceRegistry;
   readonly artifactStore?: ArtifactStore;
   readonly controlPlaneGateway?: ControlPlaneGateway | null;

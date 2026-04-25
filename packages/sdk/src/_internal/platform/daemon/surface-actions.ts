@@ -1,4 +1,5 @@
 import type { ConfigManager } from '../config/manager.js';
+import type { SecretsManager } from '../config/secrets.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { AgentManager } from '../tools/agent/index.js';
@@ -28,6 +29,7 @@ interface PendingNtfyChatReply {
 
 interface DaemonSurfaceActionContext {
   readonly serviceRegistry: ServiceRegistry;
+  readonly secretsManager: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
   readonly configManager: ConfigManager;
   readonly routeBindings: RouteBindingManager;
   readonly sessionBroker: SharedSessionBroker;
@@ -77,6 +79,7 @@ export class DaemonSurfaceActionHelper {
   buildSurfaceAdapterContext(): SurfaceAdapterContext {
     return {
       serviceRegistry: this.context.serviceRegistry,
+      secretsManager: this.context.secretsManager,
       configManager: this.context.configManager,
       routeBindings: this.context.routeBindings,
       sessionBroker: this.context.sessionBroker,

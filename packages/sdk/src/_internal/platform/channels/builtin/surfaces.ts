@@ -1,6 +1,7 @@
 import type { ProviderRuntimeSurface } from '../provider-runtime.js';
 import type { ChannelSurface } from '../types.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './shared.js';
+import { resolveSecretInput } from '../../config/secret-refs.js';
 
 export function asProviderRuntimeSurface(surface: ChannelSurface): ProviderRuntimeSurface | null {
   return surface === 'slack' || surface === 'discord' || surface === 'ntfy' ? surface : null;
@@ -34,24 +35,46 @@ export function providerEnvBacked(surface: ProviderRuntimeSurface): boolean {
 
 export async function resolveSlackBotToken(deps: BuiltinChannelRuntimeDeps): Promise<string | null> {
   const serviceValue = await deps.serviceRegistry.resolveSecret('slack', 'primary');
+  const configValue = await resolveBuiltinConfigSecret(deps, deps.configManager.get('surfaces.slack.botToken'));
   return serviceValue
-    || String(deps.configManager.get('surfaces.slack.botToken') || '')
+    || configValue
     || process.env.SLACK_BOT_TOKEN
+    || null;
+}
+
+export async function resolveSlackAppToken(deps: BuiltinChannelRuntimeDeps): Promise<string | null> {
+  const serviceValue = await deps.serviceRegistry.resolveSecret('slack', 'appToken');
+  const configValue = await resolveBuiltinConfigSecret(deps, deps.configManager.get('surfaces.slack.appToken'));
+  return serviceValue
+    || configValue
+    || process.env.SLACK_APP_TOKEN
     || null;
 }
 
 export async function resolveDiscordBotToken(deps: BuiltinChannelRuntimeDeps): Promise<string | null> {
   const serviceValue = await deps.serviceRegistry.resolveSecret('discord', 'primary');
+  const configValue = await resolveBuiltinConfigSecret(deps, deps.configManager.get('surfaces.discord.botToken'));
   return serviceValue
-    || String(deps.configManager.get('surfaces.discord.botToken') || '')
+    || configValue
     || process.env.DISCORD_BOT_TOKEN
     || null;
 }
 
 export async function resolveNtfyToken(deps: BuiltinChannelRuntimeDeps): Promise<string | null> {
   const serviceValue = await deps.serviceRegistry.resolveSecret('ntfy', 'primary');
+  const configValue = await resolveBuiltinConfigSecret(deps, deps.configManager.get('surfaces.ntfy.token'));
   return serviceValue
-    || String(deps.configManager.get('surfaces.ntfy.token') || '')
+    || configValue
     || process.env.NTFY_ACCESS_TOKEN
     || null;
+}
+
+async function resolveBuiltinConfigSecret(
+  deps: BuiltinChannelRuntimeDeps,
+  value: unknown,
+): Promise<string | null> {
+  return resolveSecretInput(value, {
+    resolveLocalSecret: (key) => deps.secretsManager.get(key),
+    homeDirectory: deps.secretsManager.getGlobalHome?.() ?? undefined,
+  });
 }

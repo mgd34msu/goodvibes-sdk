@@ -72,14 +72,16 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
             envKeys: ['SLACK_SIGNING_SECRET'],
             configKeys: ['surfaces.slack.signingSecret'],
           }),
-          secretTarget(surface, 'appToken', 'App token', false, 'Used for Slack app socket/runtime flows.', {
+          secretTarget(surface, 'appToken', 'App token', false, 'Used for Slack Socket Mode runtime flows.', {
+            serviceName: 'slack',
+            serviceField: 'appToken',
             envKeys: ['SLACK_APP_TOKEN'],
             configKeys: ['surfaces.slack.appToken'],
           }),
         ],
         externalSteps: [
           'Create or install the Slack app with the required bot scopes.',
-          'Store the bot token and signing secret in env, GoodVibes secrets, or an external secret reference.',
+          'Store the bot token, app-level Socket Mode token, and signing secret in env, GoodVibes secrets, service registry, or an external secret reference.',
           'Optional: generate an OAuth install URL through the provider channel actions.',
         ],
         metadata: {},

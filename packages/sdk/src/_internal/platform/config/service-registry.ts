@@ -9,7 +9,7 @@
  * {
  *   "openai": { "name": "openai", "baseUrl": "https://api.openai.com", "authType": "bearer", "tokenKey": "OPENAI_API_KEY" },
  *   "github":  { "name": "github",  "baseUrl": "https://api.github.com",  "authType": "bearer", "tokenKey": "GITHUB_TOKEN" },
- *   "slack":   { "name": "slack", "authType": "bearer", "tokenKey": "SLACK_BOT_TOKEN", "tokenRef": { "source": "vaultwarden", "item": "GoodVibes Slack", "field": "password", "server": "https://vault.example.test" } }
+ *   "slack":   { "name": "slack", "authType": "bearer", "tokenKey": "SLACK_BOT_TOKEN", "appTokenKey": "SLACK_APP_TOKEN", "tokenRef": { "source": "vaultwarden", "item": "GoodVibes Slack", "field": "password", "server": "https://vault.example.test" } }
  * }
  */
 
@@ -60,6 +60,10 @@ export interface ServiceConfig {
   publicKeyKey?: string;
   /** Optional external/local secret reference for inbound public-key verification. */
   publicKeyRef?: SecretRefInput;
+  /** Optional Slack-style app-level token key used by socket/client runtimes. */
+  appTokenKey?: string;
+  /** Optional external/local secret reference for app-level socket/client runtimes. */
+  appTokenRef?: SecretRefInput;
   /** Optional provider ID used for subscription token override lookup. */
   providerId?: string;
   /** OAuth metadata for subscription-backed services. */
@@ -71,7 +75,8 @@ export type ServiceSecretField =
   | 'password'
   | 'webhookUrl'
   | 'signingSecret'
-  | 'publicKey';
+  | 'publicKey'
+  | 'appToken';
 
 export interface ServiceInspection {
   readonly config: ServiceConfig;
@@ -80,6 +85,7 @@ export interface ServiceInspection {
   readonly hasWebhookUrl: boolean;
   readonly hasSigningSecret: boolean;
   readonly hasPublicKey: boolean;
+  readonly hasAppToken: boolean;
 }
 
 export interface ServiceConnectionTestResult {
@@ -249,6 +255,8 @@ export class ServiceRegistry {
         return this.resolveConfiguredSecret(serviceName, field, config.signingSecretKey, config.signingSecretRef);
       case 'publicKey':
         return this.resolveConfiguredSecret(serviceName, field, config.publicKeyKey, config.publicKeyRef);
+      case 'appToken':
+        return this.resolveConfiguredSecret(serviceName, field, config.appTokenKey, config.appTokenRef);
     }
   }
 
@@ -262,12 +270,14 @@ export class ServiceRegistry {
       webhookUrl,
       signingSecret,
       publicKey,
+      appToken,
     ] = await Promise.all([
       this.resolveSecret(serviceName, 'primary'),
       this.resolveSecret(serviceName, 'password'),
       this.resolveSecret(serviceName, 'webhookUrl'),
       this.resolveSecret(serviceName, 'signingSecret'),
       this.resolveSecret(serviceName, 'publicKey'),
+      this.resolveSecret(serviceName, 'appToken'),
     ]);
 
     return {
@@ -277,6 +287,7 @@ export class ServiceRegistry {
       hasWebhookUrl: webhookUrl !== null && webhookUrl.length > 0,
       hasSigningSecret: signingSecret !== null && signingSecret.length > 0,
       hasPublicKey: publicKey !== null && publicKey.length > 0,
+      hasAppToken: appToken !== null && appToken.length > 0,
     };
   }
 

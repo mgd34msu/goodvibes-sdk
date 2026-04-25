@@ -1,6 +1,8 @@
 import { ArtifactStore } from '../../artifacts/index.js';
 import { ConfigManager } from '../../config/manager.js';
+import type { SecretsManager } from '../../config/secrets.js';
 import { ServiceRegistry } from '../../config/service-registry.js';
+import { resolveSecretInput } from '../../config/secret-refs.js';
 import { ControlPlaneGateway } from '../../control-plane/gateway.js';
 import { DiscordIntegration, NtfyIntegration, SlackIntegration } from '../../integrations/index.js';
 import { validatePublicWebhookUrl } from '../../utils/url-safety.js';
@@ -62,6 +64,7 @@ export function createSlackDeliveryStrategy(
   serviceRegistry: ServiceRegistry,
   configManager: ConfigManager,
   artifactStore: ArtifactStore,
+  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy {
   return {
     id: 'channel-delivery:slack',
@@ -76,6 +79,10 @@ export function createSlackDeliveryStrategy(
         ?? process.env.SLACK_WEBHOOK_URL;
       const botToken =
         await serviceRegistry.resolveSecret('slack', 'primary')
+        ?? await resolveSecretInput(configManager.get('surfaces.slack.botToken'), {
+          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
+          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+        })
         ?? process.env.SLACK_BOT_TOKEN;
       const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
       const responseUrl = typeof request.binding?.metadata.responseUrl === 'string'

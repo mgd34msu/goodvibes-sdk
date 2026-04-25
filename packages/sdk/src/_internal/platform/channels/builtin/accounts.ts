@@ -44,7 +44,7 @@ export async function buildBuiltinAccount(
       const secrets = await Promise.all([
         describeBuiltinSecret(context.deps, 'primary', 'Bot token', context.deps.configManager.get('surfaces.slack.botToken'), ['SLACK_BOT_TOKEN'], 'slack', 'primary'),
         describeBuiltinSecret(context.deps, 'signingSecret', 'Signing secret', context.deps.configManager.get('surfaces.slack.signingSecret'), ['SLACK_SIGNING_SECRET'], 'slack', 'signingSecret'),
-        describeBuiltinSecret(context.deps, 'appToken', 'App token', context.deps.configManager.get('surfaces.slack.appToken'), ['SLACK_APP_TOKEN']),
+        describeBuiltinSecret(context.deps, 'appToken', 'App token', context.deps.configManager.get('surfaces.slack.appToken'), ['SLACK_APP_TOKEN'], 'slack', 'appToken'),
         describeBuiltinSecret(context.deps, 'webhookUrl', 'Webhook URL', undefined, ['SLACK_WEBHOOK_URL'], 'slack', 'webhookUrl'),
       ]);
       return finalizeBuiltinChannelAccount({

@@ -1,5 +1,6 @@
 import { createHmac } from 'crypto';
 import type { ConfigManager } from '../config/manager.js';
+import type { SecretsManager } from '../config/secrets.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
 import type { AgentManager } from '../tools/agent/index.js';
 import type { SharedSessionBroker } from '../control-plane/index.js';
@@ -12,6 +13,7 @@ import type { SharedApprovalRecord } from '../control-plane/index.js';
 import type { PendingSurfaceReply } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { resolveSecretInput } from '../config/secret-refs.js';
 
 type DeliverySurface =
   | 'slack'
@@ -63,6 +65,7 @@ interface DaemonSurfaceDeliveryContext {
   readonly pendingSurfaceReplies: Map<string, PendingSurfaceReply>;
   readonly channelReplyPipeline: ChannelReplyPipeline;
   readonly configManager: ConfigManager;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
   readonly serviceRegistry: ServiceRegistry;
   readonly agentManager: AgentManager;
   readonly sessionBroker: SharedSessionBroker;
@@ -158,12 +161,8 @@ export class DaemonSurfaceDeliveryHelper {
 
   async deliverSurfaceProgress(pending: PendingSurfaceReply, progress: string): Promise<void> {
     if (pending.surfaceKind === 'slack') {
-      const webhookUrl =
-        await this.context.serviceRegistry.resolveSecret('slack', 'webhookUrl')
-        ?? process.env.SLACK_WEBHOOK_URL;
-      const botToken =
-        await this.context.serviceRegistry.resolveSecret('slack', 'primary')
-        ?? process.env.SLACK_BOT_TOKEN;
+      const webhookUrl = await this.resolveSlackWebhookUrl();
+      const botToken = await this.resolveSlackBotToken();
       const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
       if (pending.responseUrl) {
         await instrumentedFetch(pending.responseUrl, {
@@ -200,12 +199,8 @@ export class DaemonSurfaceDeliveryHelper {
   }
 
   async deliverSlackAgentReply(pending: PendingSurfaceReply, message: string): Promise<void> {
-    const webhookUrl =
-      await this.context.serviceRegistry.resolveSecret('slack', 'webhookUrl')
-      ?? process.env.SLACK_WEBHOOK_URL;
-    const botToken =
-      await this.context.serviceRegistry.resolveSecret('slack', 'primary')
-      ?? process.env.SLACK_BOT_TOKEN;
+    const webhookUrl = await this.resolveSlackWebhookUrl();
+    const botToken = await this.resolveSlackBotToken();
     const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
     if (pending.responseUrl) {
       await instrumentedFetch(pending.responseUrl, {
@@ -425,12 +420,8 @@ export class DaemonSurfaceDeliveryHelper {
     const webUrl = this.controlPlaneWebUrl({ approvalId: approval.id, sessionId: approval.sessionId });
     const isPending = approval.status === 'pending' || approval.status === 'claimed';
     const summary = approval.request.analysis.summary;
-    const webhookUrl =
-      await this.context.serviceRegistry.resolveSecret('slack', 'webhookUrl')
-      ?? process.env.SLACK_WEBHOOK_URL;
-    const botToken =
-      await this.context.serviceRegistry.resolveSecret('slack', 'primary')
-      ?? process.env.SLACK_BOT_TOKEN;
+    const webhookUrl = await this.resolveSlackWebhookUrl();
+    const botToken = await this.resolveSlackBotToken();
     const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
     const blocks = isPending
       ? [
@@ -529,5 +520,27 @@ export class DaemonSurfaceDeliveryHelper {
       headers,
       body: payload,
     }).catch(() => {});
+  }
+
+  private async resolveSlackWebhookUrl(): Promise<string | null> {
+    return await this.context.serviceRegistry.resolveSecret('slack', 'webhookUrl')
+      ?? process.env.SLACK_WEBHOOK_URL
+      ?? null;
+  }
+
+  private async resolveSlackBotToken(): Promise<string | null> {
+    return await this.context.serviceRegistry.resolveSecret('slack', 'primary')
+      ?? await this.resolveConfigSecret(this.context.configManager.get('surfaces.slack.botToken'))
+      ?? process.env.SLACK_BOT_TOKEN
+      ?? null;
+  }
+
+  private async resolveConfigSecret(value: unknown): Promise<string | null> {
+    return resolveSecretInput(value, {
+      resolveLocalSecret: this.context.secretsManager
+        ? (key) => this.context.secretsManager!.get(key)
+        : undefined,
+      homeDirectory: this.context.secretsManager?.getGlobalHome?.() ?? undefined,
+    });
   }
 }

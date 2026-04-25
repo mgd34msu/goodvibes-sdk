@@ -259,6 +259,8 @@ Supported sources:
 The generic `secret://...` scheme is intentionally not accepted; use
 `goodvibes://secrets/...` for URI refs.
 
+Slack setup uses this same URI mechanism. Direct setup writes Slack token values to the GoodVibes secret store and places references such as `goodvibes://secrets/goodvibes/SLACK_BOT_TOKEN` and `goodvibes://secrets/goodvibes/SLACK_APP_TOKEN` in config. Service-registry based Slack setup can use `primary`, `signingSecret`, `webhookUrl`, and `appToken` fields.
+
 **Best practices:**
 - Prefer `1password` or `bitwarden-secrets-manager` for production deployments
 - Use `env` refs for CI/CD pipelines

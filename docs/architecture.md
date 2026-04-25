@@ -231,6 +231,19 @@ Adapters bridge GoodVibes messages to platform-specific APIs:
 | `ntfy` | ntfy push notifications |
 | `webhook` | Generic outbound webhook |
 
+### Slack Credential Resolution
+
+Slack supports signed webhooks, Socket Mode ingress, and Web API reply delivery. The SDK resolves Slack credentials from the service registry, config, GoodVibes secret refs, and environment variables:
+
+| Credential | Service field | Config key | Env key | Used for |
+|---|---|---|---|---|
+| Bot token | `primary` | `surfaces.slack.botToken` | `SLACK_BOT_TOKEN` | Web API replies and live directory calls |
+| App token | `appToken` | `surfaces.slack.appToken` | `SLACK_APP_TOKEN` | Socket Mode runtime startup |
+| Signing secret | `signingSecret` | `surfaces.slack.signingSecret` | `SLACK_SIGNING_SECRET` | Inbound Slack request verification |
+| Webhook URL | `webhookUrl` | n/a | `SLACK_WEBHOOK_URL` | Incoming-webhook style delivery |
+
+Direct Slack setup stores provided secret values in the GoodVibes secret store and writes config references such as `goodvibes://secrets/goodvibes/SLACK_APP_TOKEN`, so the runtime does not persist raw Slack tokens in config.
+
 ### Delivery Strategies
 
 `platform/channels/delivery/` contains three strategy tiers:
@@ -251,6 +264,13 @@ When `surfaces.ntfy.enabled` is true, the daemon subscribes to three inbound ntf
 | `goodvibes-ntfy` | `surfaces.ntfy.remoteTopic` | Starts or reuses a daemon-owned remote chat session through `CompanionChatManager`. This path does not touch the TUI session. |
 
 `surfaces.ntfy.topic` remains an optional default outbound delivery topic, but it is not an inbound route override and is not subscribed by the provider runtime. Inbound subscription and routing use the configured route topics above, and other ntfy topics are ignored. Outbound GoodVibes ntfy deliveries carry the SDK-owned self-echo marker and are filtered on ingress.
+
+The provider runtime treats ntfy route subscriptions as live ingress, not as a
+history replay channel. Startup uses the current Unix timestamp as the
+subscription cursor instead of `since=latest`, because ntfy defines
+`since=latest` as a request for the latest cached message. While the stream is
+running, reconnects advance the cursor to the last successfully handled ntfy
+message id and suppress duplicate ids returned by the server.
 
 For `goodvibes-chat`, the SDK owns ntfy reply publication. Inbound chat messages queue a one-shot ntfy reply target before the message is injected into the active TUI session. The `COMPANION_MESSAGE_RECEIVED` payload carries the SDK-generated `messageId`, and clients that call `Orchestrator.handleUserInput()` for that event should pass it through as `origin.messageId` so `TURN_SUBMITTED` can correlate the reply by message id instead of prompt text. The reply bridge listens for the resulting turn completion and publishes only that response back to the originating ntfy topic. Matching also tolerates clients whose orchestrator emits turn events under a private runtime session id instead of the shared TUI session id; clients that construct `Orchestrator` directly can pass `sessionId` to align runtime events with their shared session id.
 

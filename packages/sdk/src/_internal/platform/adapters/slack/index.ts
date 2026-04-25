@@ -3,6 +3,7 @@ import { SlackIntegration } from '../../integrations/index.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { fetchWithTimeout } from '../../utils/fetch-with-timeout.js';
+import { resolveSecretInput, type SecretRefResolutionOptions } from '../../config/secret-refs.js';
 
 export async function handleSlackSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
   const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
@@ -12,6 +13,7 @@ export async function handleSlackSurfaceWebhook(req: Request, context: SurfaceAd
 
   const signingSecret =
     await context.serviceRegistry.resolveSecret('slack', 'signingSecret')
+    ?? await resolveSlackConfigSecret(context, 'surfaces.slack.signingSecret')
     ?? process.env.SLACK_SIGNING_SECRET;
   if (!signingSecret) {
     logger.warn('handleSlackSurfaceWebhook: SLACK_SIGNING_SECRET not set — rejecting');
@@ -24,7 +26,9 @@ export async function handleSlackSurfaceWebhook(req: Request, context: SurfaceAd
 
   const slack = new SlackIntegration(
     await context.serviceRegistry.resolveSecret('slack', 'webhookUrl') ?? process.env.SLACK_WEBHOOK_URL,
-    await context.serviceRegistry.resolveSecret('slack', 'primary') ?? process.env.SLACK_BOT_TOKEN,
+    await context.serviceRegistry.resolveSecret('slack', 'primary')
+      ?? await resolveSlackConfigSecret(context, 'surfaces.slack.botToken')
+      ?? process.env.SLACK_BOT_TOKEN,
   );
 
   if (!slack.verifySignature(rawBody, timestamp, signature, signingSecret)) {
@@ -321,4 +325,20 @@ export async function handleSlackSurfacePayload(
   }
 
   return new Response(null, { status: 200 });
+}
+
+async function resolveSlackConfigSecret(
+  context: SurfaceAdapterContext,
+  key: 'surfaces.slack.botToken' | 'surfaces.slack.signingSecret',
+): Promise<string | null> {
+  return resolveSecretInput(context.configManager.get(key), slackSecretRefOptions(context));
+}
+
+function slackSecretRefOptions(context: SurfaceAdapterContext): SecretRefResolutionOptions {
+  return {
+    resolveLocalSecret: context.secretsManager
+      ? (key) => context.secretsManager!.get(key)
+      : undefined,
+    homeDirectory: context.secretsManager?.getGlobalHome?.() ?? undefined,
+  };
 }

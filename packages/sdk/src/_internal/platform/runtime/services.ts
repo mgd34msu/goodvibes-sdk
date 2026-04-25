@@ -357,6 +357,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const memoryRegistry = new MemoryRegistry(memoryStore);
   const deliveryManager = new AutomationDeliveryManager({
     configManager,
+    secretsManager,
     serviceRegistry,
     runtimeBus: options.runtimeBus,
     runtimeStore: options.runtimeStore,
@@ -463,6 +464,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const projectIndex = new ProjectIndex(workingDirectory);
   const channelDeliveryRouter = new ChannelDeliveryRouter({
     configManager,
+    secretsManager,
     serviceRegistry,
     artifactStore,
   });

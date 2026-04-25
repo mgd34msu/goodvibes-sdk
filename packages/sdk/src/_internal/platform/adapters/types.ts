@@ -5,6 +5,7 @@ import type { AutomationSurfaceKind } from '../automation/types.js';
 import type { ChannelConversationKind, ChannelPolicyDecision, RouteBindingManager } from '../channels/index.js';
 import type { SharedSessionBroker } from '../control-plane/index.js';
 import type { ConversationMessageEnvelope } from '../control-plane/conversation-message.js';
+import type { SecretsManager } from '../config/secrets.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
 
 export interface SurfaceControlCommand {
@@ -43,6 +44,7 @@ export type TrySpawnAgentFn = (
 
 export interface SurfaceAdapterContext {
   readonly serviceRegistry: ServiceRegistry;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
   readonly configManager: {
     get(key: string): unknown;
   };

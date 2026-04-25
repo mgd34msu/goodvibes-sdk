@@ -108,6 +108,7 @@ export class AutomationDeliveryManager {
 
   constructor(config: {
     readonly serviceRegistry?: ServiceRegistry;
+    readonly secretsManager?: Pick<import('../config/secrets.js').SecretsManager, 'get' | 'getGlobalHome'>;
     readonly configManager?: import('../config/manager.js').ConfigManager;
     readonly routeBindings: RouteBindingManager;
     readonly deliveryRouter?: ChannelDeliveryRouter;
@@ -128,6 +129,7 @@ export class AutomationDeliveryManager {
       }
       this.deliveryRouter = new ChannelDeliveryRouter({
         configManager: config.configManager,
+        secretsManager: config.secretsManager,
         serviceRegistry: config.serviceRegistry,
         artifactStore: config.artifactStore,
       });
