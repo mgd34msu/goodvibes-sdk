@@ -834,3 +834,20 @@ export async function resolveSecretRef(
       return { source: ref.source, value: await resolveBitwardenSecretsManagerRef(ref, options) };
   }
 }
+
+export async function resolveSecretInput(
+  input: unknown,
+  options: SecretRefResolutionOptions = {},
+): Promise<string | null> {
+  const ref = normalizeSecretRef(input);
+  if (ref) {
+    try {
+      return (await resolveSecretRef(ref, options)).value;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}

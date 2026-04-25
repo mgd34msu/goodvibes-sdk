@@ -310,6 +310,7 @@ export function createDaemonFacadeCollaborators(
     pendingSurfaceReplies: options.pendingSurfaceReplies,
     channelReplyPipeline,
     configManager: runtime.configManager,
+    secretsManager: runtime.runtimeServices.secretsManager,
     serviceRegistry: runtime.serviceRegistry,
     agentManager: runtime.agentManager,
     sessionBroker: runtime.sessionBroker,
@@ -320,6 +321,7 @@ export function createDaemonFacadeCollaborators(
   });
   const surfaceActionHelper = new DaemonSurfaceActionHelper({
     serviceRegistry: runtime.serviceRegistry,
+    secretsManager: runtime.runtimeServices.secretsManager,
     configManager: runtime.configManager,
     routeBindings: runtime.routeBindings,
     sessionBroker: runtime.sessionBroker,
@@ -411,6 +413,7 @@ export function createDaemonFacadeCollaborators(
   });
   const providerRuntime = new ChannelProviderRuntimeManager({
     configManager: runtime.configManager,
+    secretsManager: runtime.runtimeServices.secretsManager,
     serviceRegistry: runtime.serviceRegistry,
     buildSurfaceAdapterContext: () => surfaceActionHelper.buildSurfaceAdapterContext(),
   });

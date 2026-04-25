@@ -101,6 +101,11 @@ The SDK retains a prompt-text fallback for older clients that have not forwarded
 origin metadata yet, but new clients should not rely on prompt text as the
 primary correlation key.
 
+The ntfy provider runtime subscribes to route topics as live ingress. It starts
+from the current Unix timestamp rather than `since=latest`, because ntfy uses
+`since=latest` to return a cached message. Reconnects resume from the last
+successfully handled ntfy message id and suppress duplicate ids.
+
 ## Envelope Consistency
 
 The `ConversationMessageEnvelope` shape is shared between chat-mode events (`turn.started`,

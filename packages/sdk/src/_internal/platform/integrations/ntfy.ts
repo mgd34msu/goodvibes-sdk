@@ -42,6 +42,10 @@ export function resolveGoodVibesNtfyTopics(config: GoodVibesNtfyTopicConfig = {}
   };
 }
 
+export function createNtfyLiveSubscriptionSince(nowMs = Date.now()): string {
+  return String(Math.floor(nowMs / 1000));
+}
+
 export interface NtfyPublishOptions {
   readonly title?: string;
   readonly priority?: 1 | 2 | 3 | 4 | 5;
@@ -155,10 +159,22 @@ export class NtfyIntegration {
     options: NtfySubscribeOptions = {},
   ): Promise<void> {
     const reconnect = options.reconnect ?? !options.poll;
+    let resumeSince = options.since;
+    const seenMessageIds = new NtfySeenMessageIds();
     while (!options.signal?.aborted) {
-      const url = this.buildSubscribeUrl(topic, 'json', options);
+      const url = this.buildSubscribeUrl(topic, 'json', { ...options, since: resumeSince });
       try {
-        await readNtfyJsonStreamWithNodeTransport(url, this.buildAuthHeaders(), onMessage, options.signal);
+        await readNtfyJsonStreamWithNodeTransport(url, this.buildAuthHeaders(), async (message) => {
+          const messageId = readNtfyMessageId(message);
+          if (messageId && seenMessageIds.has(messageId)) return;
+          await onMessage(message);
+          if (messageId) {
+            seenMessageIds.add(messageId);
+            resumeSince = messageId;
+          } else if (message.event === 'message' && typeof message.time === 'number' && Number.isFinite(message.time)) {
+            resumeSince = String(Math.floor(message.time));
+          }
+        }, options.signal);
       } catch (error) {
         if (options.signal?.aborted) return;
         if (!reconnect || isFatalNtfyStreamError(error)) throw error;
@@ -194,6 +210,30 @@ export class NtfyIntegration {
     if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
     return headers;
   }
+}
+
+class NtfySeenMessageIds {
+  private readonly ids = new Set<string>();
+  private readonly order: string[] = [];
+
+  has(id: string): boolean {
+    return this.ids.has(id);
+  }
+
+  add(id: string): void {
+    if (this.ids.has(id)) return;
+    this.ids.add(id);
+    this.order.push(id);
+    if (this.order.length <= 1_024) return;
+    const expired = this.order.shift();
+    if (expired) this.ids.delete(expired);
+  }
+}
+
+function readNtfyMessageId(message: NtfyMessage): string | null {
+  return message.event === 'message' && typeof message.id === 'string' && message.id.trim()
+    ? message.id
+    : null;
 }
 
 export function isGoodVibesNtfyDeliveryEcho(message: Record<string, unknown>): boolean {

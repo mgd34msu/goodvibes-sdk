@@ -327,6 +327,55 @@ async function runProviderSetupAction(
   input?: Record<string, unknown>,
 ): Promise<ChannelAccountLifecycleResult> {
   if (surface === 'slack') {
+    const secretScope = readSecretScope(input?.secretScope);
+    const directBotToken = readString(input?.botToken);
+    const directSigningSecret = readString(input?.signingSecret);
+    const directAppToken = readString(input?.appToken);
+    const defaultChannel = readString(input?.defaultChannel);
+    const workspaceId = readString(input?.workspaceId);
+    if (directBotToken) {
+      await context.deps.secretsManager.set('SLACK_BOT_TOKEN', directBotToken, { scope: secretScope });
+      context.deps.configManager.set('surfaces.slack.botToken', goodVibesSecretUri('SLACK_BOT_TOKEN'));
+    }
+    if (directSigningSecret) {
+      await context.deps.secretsManager.set('SLACK_SIGNING_SECRET', directSigningSecret, { scope: secretScope });
+      context.deps.configManager.set('surfaces.slack.signingSecret', goodVibesSecretUri('SLACK_SIGNING_SECRET'));
+    }
+    if (directAppToken) {
+      await context.deps.secretsManager.set('SLACK_APP_TOKEN', directAppToken, { scope: secretScope });
+      context.deps.configManager.set('surfaces.slack.appToken', goodVibesSecretUri('SLACK_APP_TOKEN'));
+    }
+    if (defaultChannel) context.deps.configManager.set('surfaces.slack.defaultChannel', defaultChannel);
+    if (workspaceId) context.deps.configManager.set('surfaces.slack.workspaceId', workspaceId);
+    const hasDirectSlackSecret = Boolean(directBotToken || directSigningSecret || directAppToken);
+    if (hasDirectSlackSecret || defaultChannel || workspaceId) {
+      if (hasDirectSlackSecret || account.configured) {
+        context.deps.configManager.set('surfaces.slack.enabled', true);
+      }
+      const refreshed = await context.buildAccount('slack');
+      const configured = Boolean(hasDirectSlackSecret || account.configured);
+      return {
+        ...base,
+        ok: configured,
+        account: refreshed,
+        state: refreshed.state,
+        authState: refreshed.authState,
+        login: { kind: 'none' },
+        message: configured
+          ? 'Slack configuration stored.'
+          : 'Slack metadata stored; provide botToken, appToken, or signingSecret to enable Slack.',
+        metadata: {
+          storedSecretFields: [
+            ...(directBotToken ? ['botToken'] : []),
+            ...(directSigningSecret ? ['signingSecret'] : []),
+            ...(directAppToken ? ['appToken'] : []),
+          ],
+          defaultChannel: defaultChannel ?? null,
+          workspaceId: workspaceId ?? null,
+        },
+      };
+    }
+
     const clientId = readString(input?.clientId) ?? process.env.SLACK_CLIENT_ID;
     const clientSecret = readString(input?.clientSecret) ?? process.env.SLACK_CLIENT_SECRET;
     const code = readString(input?.code);
@@ -334,7 +383,8 @@ async function runProviderSetupAction(
     if (code && clientId && clientSecret) {
       const exchange = await new SlackIntegration().exchangeOAuthCode({ clientId, clientSecret, code, ...(redirectUri ? { redirectUri } : {}) });
       if (exchange.ok && exchange.access_token) {
-        await context.deps.secretsManager.set('SLACK_BOT_TOKEN', exchange.access_token, { scope: readSecretScope(input?.secretScope) });
+        await context.deps.secretsManager.set('SLACK_BOT_TOKEN', exchange.access_token, { scope: secretScope });
+        context.deps.configManager.set('surfaces.slack.botToken', goodVibesSecretUri('SLACK_BOT_TOKEN'));
         context.deps.configManager.set('surfaces.slack.enabled', true);
         if (exchange.team?.id) context.deps.configManager.set('surfaces.slack.workspaceId', exchange.team.id);
         const refreshed = await context.buildAccount('slack');
@@ -480,6 +530,9 @@ async function runProviderLogoutAction(
   if (surface === 'slack') {
     await secrets.delete('SLACK_BOT_TOKEN');
     await secrets.delete('SLACK_APP_TOKEN');
+    await secrets.delete('SLACK_SIGNING_SECRET');
+    await secrets.delete('SLACK_WEBHOOK_URL');
+    context.deps.configManager.set('surfaces.slack.signingSecret', '');
     context.deps.configManager.set('surfaces.slack.botToken', '');
     context.deps.configManager.set('surfaces.slack.appToken', '');
   } else if (surface === 'discord') {
@@ -499,4 +552,8 @@ async function runProviderLogoutAction(
     message: `${surface} GoodVibes-managed credentials removed. Environment variables, if present, still take precedence.`,
     metadata: { action, envBacked: providerEnvBacked(surface) },
   };
+}
+
+function goodVibesSecretUri(key: string): string {
+  return `goodvibes://secrets/goodvibes/${encodeURIComponent(key)}`;
 }

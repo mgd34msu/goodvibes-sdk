@@ -39,6 +39,7 @@ export {
   GOODVIBES_NTFY_DEFAULT_TOPICS,
   GOODVIBES_NTFY_REMOTE_TOPIC,
   NtfyIntegration,
+  createNtfyLiveSubscriptionSince,
   isGoodVibesNtfyDeliveryEcho,
   resolveGoodVibesNtfyTopics,
 } from './ntfy.js';

@@ -63,6 +63,7 @@ export async function synchronizeConfiguredServices(
           hasWebhookUrl: inspection.hasWebhookUrl,
           hasSigningSecret: inspection.hasSigningSecret,
           hasPublicKey: inspection.hasPublicKey,
+          hasAppToken: inspection.hasAppToken,
         },
       }, 'bootstrap.services');
     }),

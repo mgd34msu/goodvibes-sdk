@@ -1,5 +1,6 @@
 import { ArtifactStore } from '../artifacts/index.js';
 import { ConfigManager } from '../config/manager.js';
+import type { SecretsManager } from '../config/secrets.js';
 import { ServiceRegistry } from '../config/service-registry.js';
 import type { ControlPlaneGateway } from '../control-plane/gateway.js';
 import {
@@ -46,10 +47,11 @@ export function createDefaultChannelDeliveryStrategies(
   serviceRegistry: ServiceRegistry,
   artifactStore: ArtifactStore,
   getControlPlaneGateway: () => ControlPlaneGateway | null,
+  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy[] {
   return [
     createWebhookDeliveryStrategy(configManager, artifactStore),
-    createSlackDeliveryStrategy(serviceRegistry, configManager, artifactStore),
+    createSlackDeliveryStrategy(serviceRegistry, configManager, artifactStore, secretsManager),
     createDiscordDeliveryStrategy(serviceRegistry, configManager, artifactStore),
     createNtfyDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createWebControlPlaneDeliveryStrategy(configManager, artifactStore, getControlPlaneGateway),
@@ -85,6 +87,7 @@ export class ChannelDeliveryRouter {
       config.serviceRegistry,
       config.artifactStore,
       () => this.controlPlaneGateway,
+      config.secretsManager,
     );
   }
 
