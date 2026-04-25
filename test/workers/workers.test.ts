@@ -5,9 +5,10 @@
  * the actual workerd V8 isolate. Each test dispatches a real HTTP fetch to
  * the worker and asserts the JSON response.
  *
- * Architecture decision: ./web entry (dist/web.js) is sufficient.
- * No new ./workers subpath is required — dist/web.js has zero node: imports
- * and zero Bun.* API calls, matching the Workers runtime constraint exactly.
+ * Architecture decision: ./web entry (dist/web.js) is sufficient for normal
+ * Worker-hosted operator HTTP clients. The separate ./workers entry is only
+ * for the optional GoodVibes Worker bridge around daemon batch queue/tick
+ * integration.
  *
  * Module resolution: Miniflare resolves static imports relative to the
  * worker script location. We copy worker.ts into a tmp directory outside

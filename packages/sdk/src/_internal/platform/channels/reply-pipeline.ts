@@ -1,4 +1,4 @@
-import type { RuntimeEventBus, RuntimeEventEnvelope, AnyRuntimeEvent } from '../runtime/events/index.js';
+import type { RuntimeEventBus, RuntimeEventEnvelope, AnyRuntimeEvent, WorkflowEvent } from '../runtime/events/index.js';
 import type {
   ChannelRenderEvent,
   ChannelRenderPhase,
@@ -18,6 +18,8 @@ export interface TrackedChannelReply {
   readonly agentId: string;
   readonly surfaceKind: ChannelSurface;
   readonly task: string;
+  readonly agentTask?: string;
+  readonly workflowChainId?: string;
   readonly createdAt: number;
   readonly sessionId?: string;
   readonly routeId?: string;
@@ -238,7 +240,10 @@ function buildRenderedText(
   if (phase === 'final' && explicitText.trim().length > 0) {
     return trimText(explicitText, policy.maxChunkChars);
   }
-  const lines = events
+  const renderableEvents = policy.surface === 'ntfy'
+    ? events.filter((event) => event.kind !== 'assistant_text' && event.kind !== 'reasoning')
+    : events;
+  const lines = renderableEvents
     .slice(-policy.maxEventsPerUpdate)
     .map((event) => eventLine(event, policy.reasoningVisibility))
     .filter((line): line is string => Boolean(line && line.trim().length > 0));
@@ -266,6 +271,19 @@ function resolveEnvelopeAgentId(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['
   if (envelope.agentId) return envelope.agentId;
   const payload = envelope.payload as { readonly agentId?: unknown };
   return typeof payload.agentId === 'string' ? payload.agentId : null;
+}
+
+function isWorkflowEventPayload(payload: AnyRuntimeEvent): payload is WorkflowEvent {
+  return payload.type.startsWith('WORKFLOW_');
+}
+
+function resolveEnvelopeWorkflowChainId(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): string | null {
+  const payload = envelope.payload as { readonly chainId?: unknown };
+  return typeof payload.chainId === 'string' && payload.chainId.length > 0 ? payload.chainId : null;
+}
+
+function isAgentFinalEvent(type: AnyRuntimeEvent['type']): boolean {
+  return type === 'AGENT_COMPLETED' || type === 'AGENT_FAILED' || type === 'AGENT_CANCELLED';
 }
 
 export function normalizeChannelRenderEventFromRuntime(
@@ -350,6 +368,50 @@ export function normalizeChannelRenderEventFromRuntime(
       return [renderEvent(payload.type === 'COMPACTION_FAILED' ? 'error' : 'compaction', 'progress', envelope, {
         text: payload.type.replace(/^COMPACTION_/, '').toLowerCase().replace(/_/g, ' '),
       })];
+    case 'WORKFLOW_CHAIN_CREATED':
+      return [renderEvent('status', 'progress', envelope, {
+        text: `WRFC chain ${payload.chainId.slice(0, 12)} started: ${trimText(payload.task, 180)}`,
+      })];
+    case 'WORKFLOW_STATE_CHANGED':
+      return [renderEvent('status', 'progress', envelope, {
+        text: `WRFC chain ${payload.chainId.slice(0, 12)} moved from ${payload.from} to ${payload.to}`,
+      })];
+    case 'WORKFLOW_REVIEW_COMPLETED': {
+      const constraintSummary = typeof payload.constraintsSatisfied === 'number' && typeof payload.constraintsTotal === 'number'
+        ? `, constraints ${payload.constraintsSatisfied}/${payload.constraintsTotal}`
+        : '';
+      return [renderEvent(payload.passed ? 'status' : 'error', 'progress', envelope, {
+        text: `WRFC review ${payload.passed ? 'passed' : 'needs fixes'}: score ${payload.score}/10${constraintSummary}`,
+      })];
+    }
+    case 'WORKFLOW_FIX_ATTEMPTED':
+      return [renderEvent('status', 'progress', envelope, {
+        text: `WRFC fix attempt ${payload.attempt}/${payload.maxAttempts} started`,
+      })];
+    case 'WORKFLOW_GATE_RESULT':
+      return [renderEvent(payload.passed ? 'status' : 'error', 'progress', envelope, {
+        text: `WRFC gate ${payload.gate} ${payload.passed ? 'passed' : 'failed'}`,
+      })];
+    case 'WORKFLOW_AUTO_COMMITTED':
+      return [renderEvent('status', 'progress', envelope, {
+        text: `WRFC changes committed${payload.commitHash ? `: ${payload.commitHash}` : ''}`,
+      })];
+    case 'WORKFLOW_CASCADE_ABORTED':
+      return [renderEvent('error', 'progress', envelope, {
+        text: `WRFC cascade warning: ${payload.reason}`,
+      })];
+    case 'WORKFLOW_CONSTRAINTS_ENUMERATED':
+      return [renderEvent('status', 'progress', envelope, {
+        text: `WRFC constraints enumerated: ${payload.constraints.length}`,
+      })];
+    case 'WORKFLOW_CHAIN_PASSED':
+      return [renderEvent('status', 'final', envelope, {
+        text: `WRFC chain ${payload.chainId.slice(0, 12)} passed`,
+      })];
+    case 'WORKFLOW_CHAIN_FAILED':
+      return [renderEvent('error', 'final', envelope, {
+        text: `WRFC chain ${payload.chainId.slice(0, 12)} failed: ${payload.reason}`,
+      })];
     case 'TURN_COMPLETED':
       return payload.response.trim().length > 0
         ? [renderEvent('assistant_text', 'final', envelope, { text: payload.response })]
@@ -366,6 +428,7 @@ export class ChannelReplyPipeline {
   private readonly routeBindings: RouteBindingManager;
   private readonly now: () => number;
   private readonly buffers = new Map<string, ReplyBufferState>();
+  private readonly workflowChains = new Map<string, string>();
   private readonly unsubscribers: Array<() => void> = [];
 
   constructor(deps: ReplyPipelineDeps) {
@@ -386,6 +449,7 @@ export class ChannelReplyPipeline {
       'permissions',
       'providers',
       'compaction',
+      'workflows',
     ];
     for (const domain of domains) {
       this.unsubscribers.push(runtimeBus.onDomain(domain, (envelope) => {
@@ -397,6 +461,7 @@ export class ChannelReplyPipeline {
   dispose(): void {
     this.disposeSubscriptions();
     this.buffers.clear();
+    this.workflowChains.clear();
   }
 
   trackPending(pending: TrackedChannelReply): void {
@@ -404,10 +469,18 @@ export class ChannelReplyPipeline {
       pending,
       events: [],
     });
+    if (typeof pending.workflowChainId === 'string' && pending.workflowChainId.length > 0) {
+      this.workflowChains.set(pending.workflowChainId, pending.agentId);
+    }
   }
 
   untrack(agentId: string): void {
     this.buffers.delete(agentId);
+    for (const [chainId, mappedAgentId] of this.workflowChains.entries()) {
+      if (mappedAgentId === agentId) {
+        this.workflowChains.delete(chainId);
+      }
+    }
   }
 
   has(agentId: string): boolean {
@@ -422,7 +495,7 @@ export class ChannelReplyPipeline {
     const state = this.buffers.get(agentId);
     if (!state) return null;
     const policy = await this.resolvePolicy(state.pending.surfaceKind);
-    const text = buildRenderedText(explicitText ?? '', state.events, policy, 'progress');
+    const text = buildRenderedText(policy.surface === 'ntfy' ? '' : explicitText ?? '', state.events, policy, 'progress');
     if (!text) return null;
     if (!force && state.lastDeliveredText === text && (this.now() - (state.lastDeliveredAt ?? 0)) < DEFAULT_PROGRESS_INTERVAL_MS) {
       return null;
@@ -433,7 +506,11 @@ export class ChannelReplyPipeline {
     return result;
   }
 
-  async deliverFinal(agentId: string, explicitText: string): Promise<ChannelRenderResult | null> {
+  async deliverFinal(
+    agentId: string,
+    explicitText: string,
+    options: { readonly keepTracking?: boolean } = {},
+  ): Promise<ChannelRenderResult | null> {
     const state = this.buffers.get(agentId);
     if (!state) return null;
     const policy = await this.resolvePolicy(state.pending.surfaceKind);
@@ -453,13 +530,19 @@ export class ChannelReplyPipeline {
       buildRenderedText(explicitText, finalEvents.length > 0 ? finalEvents : [...state.events, statusEvent], policy, 'final'),
       finalEvents.length > 0 ? finalEvents : [...state.events.slice(-policy.maxEventsPerUpdate + 1), statusEvent],
     );
-    this.untrack(agentId);
+    if (!options.keepTracking) {
+      this.untrack(agentId);
+    }
     return result;
   }
 
   private async handleEnvelope(
     envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
   ): Promise<void> {
+    if (isWorkflowEventPayload(envelope.payload)) {
+      await this.handleWorkflowEnvelope(envelope as RuntimeEventEnvelope<WorkflowEvent['type'], WorkflowEvent>);
+      return;
+    }
     if (
       envelope.payload.type === 'AGENT_SPAWNING'
       && typeof envelope.payload.parentAgentId === 'string'
@@ -483,8 +566,53 @@ export class ChannelReplyPipeline {
     }
     const hasFinal = events.some((event) => event.phase === 'final');
     if (hasFinal) {
+      const finalKinds = state.pending.surfaceKind === 'ntfy'
+        ? new Set<ChannelRenderEvent['kind']>(['error', 'status'])
+        : new Set<ChannelRenderEvent['kind']>(['assistant_text', 'error', 'status']);
       const text = events
-        .filter((event) => event.kind === 'assistant_text' || event.kind === 'error' || event.kind === 'status')
+        .filter((event) => finalKinds.has(event.kind))
+        .map((event) => event.text ?? '')
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+      await this.deliverFinal(agentId, text, {
+        keepTracking: state.pending.surfaceKind === 'ntfy'
+          && typeof state.pending.workflowChainId === 'string'
+          && isAgentFinalEvent(envelope.payload.type),
+      });
+      return;
+    }
+    await this.deliverProgress(agentId);
+  }
+
+  private async handleWorkflowEnvelope(
+    envelope: RuntimeEventEnvelope<WorkflowEvent['type'], WorkflowEvent>,
+  ): Promise<void> {
+    if (envelope.payload.type === 'WORKFLOW_CHAIN_CREATED') {
+      const matched = this.findPendingForWorkflowTask(envelope.payload.task);
+      if (matched) {
+        this.associateWorkflowChain(matched.pending.agentId, envelope.payload.chainId);
+      }
+    }
+    const chainId = resolveEnvelopeWorkflowChainId(envelope);
+    if (!chainId) return;
+    const agentId = this.workflowChains.get(chainId);
+    if (!agentId) return;
+    const state = this.buffers.get(agentId);
+    if (!state) {
+      this.workflowChains.delete(chainId);
+      return;
+    }
+    const events = normalizeChannelRenderEventFromRuntime(envelope);
+    if (events.length === 0) return;
+    state.events.push(...events);
+    if (state.events.length > MAX_BUFFERED_EVENTS) {
+      state.events.splice(0, state.events.length - MAX_BUFFERED_EVENTS);
+    }
+    const hasFinal = events.some((event) => event.phase === 'final');
+    if (hasFinal) {
+      const text = events
+        .filter((event) => event.kind === 'error' || event.kind === 'status')
         .map((event) => event.text ?? '')
         .filter(Boolean)
         .join('\n')
@@ -492,7 +620,7 @@ export class ChannelReplyPipeline {
       await this.deliverFinal(agentId, text);
       return;
     }
-    await this.deliverProgress(agentId);
+    await this.deliverProgress(agentId, undefined, true);
   }
 
   private trackChildPendingReply(agentId: string, parentAgentId: string, task: string): void {
@@ -511,6 +639,35 @@ export class ChannelReplyPipeline {
         rootAgentId,
       },
       events: [],
+    });
+  }
+
+  private findPendingForWorkflowTask(task: string): ReplyBufferState | null {
+    const normalizedTask = task.trim();
+    if (!normalizedTask) return null;
+    let fallback: ReplyBufferState | null = null;
+    for (const state of this.buffers.values()) {
+      if (typeof state.pending.workflowChainId === 'string') continue;
+      const agentTask = typeof state.pending.agentTask === 'string' ? state.pending.agentTask.trim() : '';
+      const pendingTask = state.pending.task.trim();
+      if (agentTask === normalizedTask) return state;
+      if (!fallback && pendingTask === normalizedTask) {
+        fallback = state;
+      }
+    }
+    return fallback;
+  }
+
+  private associateWorkflowChain(agentId: string, chainId: string): void {
+    const state = this.buffers.get(agentId);
+    if (!state) return;
+    this.workflowChains.set(chainId, agentId);
+    this.buffers.set(agentId, {
+      ...state,
+      pending: {
+        ...state.pending,
+        workflowChainId: chainId,
+      },
     });
   }
 

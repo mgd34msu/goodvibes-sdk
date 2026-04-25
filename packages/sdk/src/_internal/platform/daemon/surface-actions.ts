@@ -46,7 +46,7 @@ interface DaemonSurfaceActionContext {
   ) => AgentRecord | Response;
   readonly queueSurfaceReplyFromBinding: (
     binding: import('@pellux/goodvibes-sdk/platform/automation/routes').AutomationRouteBinding | undefined,
-    input: { readonly agentId: string; readonly task: string; readonly sessionId?: string },
+    input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string },
   ) => void;
   readonly queueWebhookReply: (input: {
     readonly agentId: string;
@@ -66,6 +66,7 @@ interface DaemonSurfaceActionContext {
     action: 'claim' | 'approve' | 'deny' | 'cancel',
     req: Request,
   ) => Promise<Response>;
+  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
 }
 
 export class DaemonSurfaceActionHelper {
@@ -410,11 +411,23 @@ export class DaemonSurfaceActionHelper {
     try {
       await manager.init();
       let session = sessionId ? manager.getSession(sessionId) : null;
+      const defaultProviderModel = this.context.resolveDefaultProviderModel?.() ?? null;
       if (!session || session.status === 'closed') {
         session = manager.createSession({
           title: input.title ?? 'GoodVibes ntfy',
+          ...(defaultProviderModel
+            ? {
+                provider: defaultProviderModel.provider,
+                model: defaultProviderModel.model,
+              }
+            : {}),
         });
         this.ntfyRemoteSessionId = session.id;
+      } else if (defaultProviderModel) {
+        session = manager.updateSession(session.id, {
+          provider: defaultProviderModel.provider,
+          model: defaultProviderModel.model,
+        });
       }
       sessionId = session.id;
       void this.runNtfyRemoteChatTurn(manager, sessionId, input).catch((error: unknown) => {

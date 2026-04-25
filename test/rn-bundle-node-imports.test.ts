@@ -28,6 +28,7 @@ const COMPANION_ENTRIES = [
   'expo.js',
   'browser.js',
   'web.js',
+  'workers.js',
   // The /auth subpath is also consumed by RN/browser consumers for token helpers.
   'auth.js',
 ];

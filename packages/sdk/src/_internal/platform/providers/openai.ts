@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import type {
   LLMProvider,
   ChatRequest,
@@ -6,6 +6,11 @@ import type {
   ChatStopReason,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
+  ProviderBatchAdapter,
+  ProviderBatchCreateInput,
+  ProviderBatchCreateResult,
+  ProviderBatchPollResult,
+  ProviderBatchResult,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
@@ -35,14 +40,25 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
 export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
   readonly models: string[] = [];
+  readonly batch: ProviderBatchAdapter;
 
   private client: OpenAI;
+  private readonly apiKey: string;
   private readonly embeddingModel = 'text-embedding-3-small';
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'>;
 
   constructor(apiKey: string, cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'> = NOOP_CACHE_HIT_TRACKER) {
+    this.apiKey = apiKey;
     this.client = new OpenAI({ apiKey });
     this.cacheHitTracker = cacheHitTracker;
+    this.batch = {
+      kind: 'provider-batch',
+      endpoints: ['/v1/chat/completions'],
+      createChatBatch: (input) => this.createChatBatch(input),
+      retrieveBatch: (providerBatchId) => this.retrieveBatch(providerBatchId),
+      cancelBatch: (providerBatchId) => this.cancelBatch(providerBatchId),
+      getResults: (providerBatchId) => this.getBatchResults(providerBatchId),
+    };
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
@@ -199,6 +215,10 @@ export class OpenAIProvider implements LLMProvider {
     };
   }
 
+  isConfigured(): boolean {
+    return this.apiKey.trim().length > 0;
+  }
+
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
     const configured = Boolean(process.env.OPENAI_API_KEY || process.env.OPENAI_KEY);
     const { buildStandardProviderAuthRoutes } = await import('./runtime-metadata.js');
@@ -225,6 +245,15 @@ export class OpenAIProvider implements LLMProvider {
         streaming: true,
         toolCalling: true,
         parallelTools: true,
+        batch: {
+          supported: true,
+          discount: 'Provider-side Batch API pricing is discounted versus live API pricing where OpenAI offers the discount.',
+          completionWindow: '24h',
+          endpoints: ['/v1/chat/completions'],
+          maxRequestsPerProviderBatch: 50_000,
+          maxInputBytes: 200 * 1024 * 1024,
+          notes: ['Batch requests are asynchronous and non-streaming. Results are correlated by custom_id.'],
+        },
         notes: ['Embeddings use the OpenAI embeddings API.'],
       },
       policy: {
@@ -236,4 +265,173 @@ export class OpenAIProvider implements LLMProvider {
       },
     };
   }
+
+  private async createChatBatch(input: ProviderBatchCreateInput): Promise<ProviderBatchCreateResult> {
+    const lines = input.requests.map((request) => JSON.stringify({
+      custom_id: request.customId,
+      method: 'POST',
+      url: '/v1/chat/completions',
+      body: this.toOpenAIBatchChatBody(request.params),
+    })).join('\n') + '\n';
+    const file = await this.client.files.create({
+      file: await toFile(new Blob([lines], { type: 'application/jsonl' }), 'goodvibes-openai-chat-batch.jsonl'),
+      purpose: 'batch',
+    });
+    const metadata = input.metadata && Object.keys(input.metadata).length > 0 ? input.metadata : undefined;
+    const batch = await this.client.batches.create({
+      input_file_id: file.id,
+      endpoint: '/v1/chat/completions',
+      completion_window: input.completionWindow ?? '24h',
+      ...(metadata ? { metadata } : {}),
+    });
+    return {
+      providerBatchId: batch.id,
+      status: this.mapOpenAIBatchStatus(batch.status),
+      raw: batch,
+    };
+  }
+
+  private async retrieveBatch(providerBatchId: string): Promise<ProviderBatchPollResult> {
+    const batch = await this.client.batches.retrieve(providerBatchId);
+    return {
+      providerBatchId: batch.id,
+      status: this.mapOpenAIBatchStatus(batch.status),
+      resultAvailable: typeof batch.output_file_id === 'string' || typeof batch.error_file_id === 'string',
+      raw: batch,
+    };
+  }
+
+  private async cancelBatch(providerBatchId: string): Promise<ProviderBatchPollResult> {
+    const batch = await this.client.batches.cancel(providerBatchId);
+    return {
+      providerBatchId: batch.id,
+      status: this.mapOpenAIBatchStatus(batch.status),
+      resultAvailable: typeof batch.output_file_id === 'string' || typeof batch.error_file_id === 'string',
+      raw: batch,
+    };
+  }
+
+  private async getBatchResults(providerBatchId: string): Promise<readonly ProviderBatchResult[]> {
+    const batch = await this.client.batches.retrieve(providerBatchId);
+    const results: ProviderBatchResult[] = [];
+    if (typeof batch.output_file_id === 'string' && batch.output_file_id.length > 0) {
+      results.push(...await this.readOpenAIBatchResultFile(batch.output_file_id, false));
+    }
+    if (typeof batch.error_file_id === 'string' && batch.error_file_id.length > 0) {
+      results.push(...await this.readOpenAIBatchResultFile(batch.error_file_id, true));
+    }
+    return results;
+  }
+
+  private toOpenAIBatchChatBody(params: Omit<ChatRequest, 'signal' | 'onDelta'>): Record<string, unknown> {
+    const openaiMessages = toOpenAIMessages(params.messages, params.systemPrompt);
+    const openaiTools = params.tools && params.tools.length > 0 ? toOpenAITools(params.tools) : undefined;
+    return {
+      model: params.model,
+      messages: openaiMessages,
+      ...(openaiTools ? { tools: openaiTools } : {}),
+      ...(params.maxTokens ? { max_tokens: params.maxTokens } : {}),
+      stream: false,
+    };
+  }
+
+  private mapOpenAIBatchStatus(status: string): ProviderBatchPollResult['status'] {
+    if (status === 'completed') return 'completed';
+    if (status === 'failed') return 'failed';
+    if (status === 'cancelled' || status === 'cancelling') return 'cancelled';
+    if (status === 'expired') return 'expired';
+    if (status === 'in_progress' || status === 'finalizing') return 'running';
+    return 'submitted';
+  }
+
+  private async readOpenAIBatchResultFile(fileId: string, forceFailed: boolean): Promise<ProviderBatchResult[]> {
+    const response = await this.client.files.content(fileId);
+    const text = await response.text();
+    const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+    const results: ProviderBatchResult[] = [];
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line) as Record<string, unknown>;
+        results.push(this.parseOpenAIBatchResult(parsed, forceFailed));
+      } catch (error: unknown) {
+        results.push({
+          customId: `unparseable:${crypto.randomUUID()}`,
+          status: 'failed',
+          error: {
+            message: `Unable to parse OpenAI batch result line: ${summarizeError(error)}`,
+          },
+          raw: line,
+        });
+      }
+    }
+    return results;
+  }
+
+  private parseOpenAIBatchResult(parsed: Record<string, unknown>, forceFailed: boolean): ProviderBatchResult {
+    const customId = typeof parsed['custom_id'] === 'string' ? parsed['custom_id'] : `unknown:${crypto.randomUUID()}`;
+    const response = toRecord(parsed['response']);
+    const statusCode = typeof response['status_code'] === 'number' ? response['status_code'] : 0;
+    const body = toRecord(response['body']);
+    const error = parsed['error'] ?? body['error'];
+    if (forceFailed || statusCode >= 400 || error !== undefined) {
+      const errorRecord = toRecord(error);
+      return {
+        customId,
+        status: 'failed',
+        error: {
+          message: typeof errorRecord['message'] === 'string' ? errorRecord['message'] : `OpenAI batch request failed${statusCode ? ` with status ${statusCode}` : ''}`,
+          ...(typeof errorRecord['code'] === 'string' ? { code: errorRecord['code'] } : {}),
+          raw: error ?? parsed,
+        },
+        raw: parsed,
+      };
+    }
+    return {
+      customId,
+      status: 'succeeded',
+      response: this.openAIBatchBodyToChatResponse(body),
+      raw: parsed,
+    };
+  }
+
+  private openAIBatchBodyToChatResponse(body: Record<string, unknown>): ChatResponse {
+    const choices = Array.isArray(body['choices']) ? body['choices'] : [];
+    const firstChoice = toRecord(choices[0]);
+    const message = toRecord(firstChoice['message']);
+    const content = message['content'];
+    const responseText = typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content.map((part) => {
+            const record = toRecord(part);
+            return typeof record['text'] === 'string' ? record['text'] : '';
+          }).join('')
+        : '';
+    const rawToolCalls = Array.isArray(message['tool_calls'])
+      ? message['tool_calls'].map((entry) => toRecord(entry) as unknown as OpenAIToolCall)
+      : [];
+    const usage = toRecord(body['usage']);
+    const promptDetails = toRecord(usage['prompt_tokens_details']);
+    const rawFinishReason = typeof firstChoice['finish_reason'] === 'string' ? firstChoice['finish_reason'] : undefined;
+    const stopReason = rawFinishReason ? mapOpenAIStopReason(rawFinishReason) : (responseText ? 'completed' : 'unknown');
+    return {
+      content: responseText,
+      toolCalls: rawToolCalls.length > 0 ? fromOpenAIToolCalls(rawToolCalls) : [],
+      usage: {
+        inputTokens: typeof usage['prompt_tokens'] === 'number' ? usage['prompt_tokens'] : 0,
+        outputTokens: typeof usage['completion_tokens'] === 'number' ? usage['completion_tokens'] : 0,
+        ...(typeof promptDetails['cached_tokens'] === 'number' && promptDetails['cached_tokens'] > 0
+          ? { cacheReadTokens: promptDetails['cached_tokens'] }
+          : {}),
+      },
+      stopReason,
+      ...(rawFinishReason ? { providerStopReason: rawFinishReason } : {}),
+    };
+  }
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }

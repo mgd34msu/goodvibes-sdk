@@ -27,6 +27,7 @@ import type { MultimodalService } from '../../multimodal/index.js';
 import type { IntegrationHelperService } from '../../runtime/integration/helpers.js';
 import type { DomainDispatch, RuntimeStore } from '../../runtime/store/index.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
+import type { DaemonBatchManager } from '../../batch/index.js';
 import { emitCompanionMessageReceived } from '../../runtime/emitters/session.js';
 import { correlationCtx } from '../../runtime/correlation.js';
 import { TelemetryApiService } from '../../runtime/telemetry/api.js';
@@ -66,6 +67,7 @@ import { VERSION } from '../../version.js';
 import type { CompanionChatManager } from '../../companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-routes.js';
 import { dispatchProviderRoutes } from './provider-routes.js';
+import { dispatchBatchRoutes } from './batch-routes.js';
 
 interface DaemonHttpRouterContext {
   readonly configManager: ConfigManager;
@@ -98,6 +100,7 @@ interface DaemonHttpRouterContext {
   readonly runtimeBus: RuntimeEventBus;
   readonly runtimeStore: RuntimeStore | null;
   readonly runtimeDispatch: DomainDispatch | null;
+  readonly batchManager?: DaemonBatchManager | null;
   readonly githubWebhookSecret: string | null;
   readonly authToken: () => string | null;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;
@@ -128,7 +131,7 @@ interface DaemonHttpRouterContext {
   }) => Promise<{ status: number; ok: boolean; body: unknown }>;
   readonly queueSurfaceReplyFromBinding: (
     binding: import('@pellux/goodvibes-sdk/platform/automation/routes').AutomationRouteBinding | undefined,
-    input: { readonly agentId: string; readonly task: string; readonly sessionId?: string },
+    input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string },
   ) => void;
   readonly surfaceDeliveryEnabled: (
     surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
@@ -182,6 +185,7 @@ export class DaemonHttpRouter {
 
   dispose(): void {
     this.telemetryApi?.dispose();
+    this.context.batchManager?.dispose();
   }
 
   async handleRequest(req: Request): Promise<Response> {
@@ -271,6 +275,19 @@ export class DaemonHttpRouter {
   }
 
   async dispatchApiRoutes(req: Request): Promise<Response | null> {
+    const url = new URL(req.url);
+    if (url.pathname.startsWith('/api/batch')) {
+      if (!this.context.batchManager) {
+        return Response.json({ error: 'Batch manager is not available', code: 'BATCH_MANAGER_UNAVAILABLE' }, { status: 503 });
+      }
+      const batchResponse = await dispatchBatchRoutes(req, {
+        batchManager: this.context.batchManager,
+        parseJsonBody: (request: Request) => this.parseJsonBody(request),
+        parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
+      });
+      if (batchResponse) return batchResponse;
+    }
+
     // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.
     // Handled before the main API router so they never touch the global control-plane feed.
     // Provider discovery + model-switching routes

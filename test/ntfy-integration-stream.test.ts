@@ -248,6 +248,39 @@ describe('ntfy topic routing', () => {
     expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
   });
 
+  test('goodvibes-chat falls back to a legacy TUI session tagged in metadata', async () => {
+    const calls = { authorize: 0, submit: 0, spawn: 0 };
+    const appended: Array<{ sessionId: string; input: Record<string, unknown> }> = [];
+    const context = makeRoutingContext({
+      calls,
+      sessionBroker: {
+        findPreferredSession: async () => null,
+        listSessions: () => [
+          { id: 'legacy-tui-session', status: 'active', metadata: { source: 'tui' } },
+        ],
+        appendCompanionMessage: async (sessionId: string, input: Record<string, unknown>) => {
+          appended.push({ sessionId, input });
+          return {};
+        },
+      },
+      publishConversationFollowup: () => {},
+    });
+
+    const response = await handleNtfySurfacePayload({
+      event: 'message',
+      topic: GOODVIBES_NTFY_CHAT_TOPIC,
+      message: 'hello tui',
+    }, context);
+
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({
+      routedTo: 'tui-chat',
+      sessionId: 'legacy-tui-session',
+    });
+    expect(appended[0]?.sessionId).toBe('legacy-tui-session');
+    expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
+  });
+
   test('goodvibes-chat publishes the reply by ntfy message id when turn events use the orchestrator session id', async () => {
     const runtimeBus = new RuntimeEventBus();
     const publishCalls: Array<{ url: string; body: string; headers: IncomingHttpHeaders }> = [];
@@ -509,6 +542,83 @@ describe('ntfy topic routing', () => {
     });
     expect(remoteCalls).toEqual([{ topic: GOODVIBES_NTFY_REMOTE_TOPIC, body: 'remote only', title: 'GoodVibes ntfy' }]);
     expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
+  });
+
+  test('goodvibes-ntfy creates its daemon remote chat session with the current provider and model', async () => {
+    let createdInput: Record<string, unknown> | null = null;
+    let resolvePublish!: () => void;
+    const published = new Promise<void>((resolve) => {
+      resolvePublish = resolve;
+    });
+    const server = createServer((req, res) => {
+      req.resume();
+      req.on('end', () => {
+        resolvePublish();
+        res.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
+      });
+    });
+    const baseUrl = await listen(server);
+    try {
+      const companionChatManager = {
+        init: async () => {},
+        getSession: () => null,
+        createSession: (input: Record<string, unknown>) => {
+          createdInput = input;
+          return {
+            id: 'ntfy-remote-session',
+            status: 'active',
+            provider: input.provider ?? null,
+            model: input.model ?? null,
+          };
+        },
+        updateSession: (_sessionId: string, input: Record<string, unknown>) => ({
+          id: 'ntfy-remote-session',
+          status: 'active',
+          provider: input.provider ?? null,
+          model: input.model ?? null,
+        }),
+        postMessageAndWaitForReply: async () => ({ messageId: 'reply-1', response: 'remote response' }),
+      };
+      const helper = new DaemonSurfaceActionHelper({
+        serviceRegistry: { resolveSecret: async () => null },
+        configManager: {
+          get: (key: string) => key === 'surfaces.ntfy.baseUrl' ? baseUrl : '',
+        },
+        routeBindings: {},
+        sessionBroker: {
+          findPreferredSession: async () => null,
+          appendCompanionMessage: async () => ({}),
+        },
+        channelPolicy: { evaluateIngress: async () => ({ allowed: true }) },
+        controlPlaneGateway: { publishEvent: () => {} },
+        runtimeBus: new RuntimeEventBus(),
+        companionChatManager,
+        automationManager: {},
+        agentManager: {},
+        trySpawnAgent: () => ({ id: 'agent-1', status: 'running', task: '', tools: [], startedAt: Date.now() }),
+        queueSurfaceReplyFromBinding: () => {},
+        queueWebhookReply: () => {},
+        surfaceDeliveryEnabled: () => true,
+        signWebhookPayload: () => '',
+        handleApprovalAction: async () => Response.json({ ok: true }),
+        resolveDefaultProviderModel: () => ({ provider: 'openai', model: 'gpt-5.5' }),
+      } as unknown as ConstructorParameters<typeof DaemonSurfaceActionHelper>[0]);
+
+      const response = await handleNtfySurfacePayload({
+        event: 'message',
+        topic: GOODVIBES_NTFY_REMOTE_TOPIC,
+        message: 'remote only',
+      }, helper.buildSurfaceAdapterContext());
+
+      expect(response.status).toBe(202);
+      expect(createdInput).toMatchObject({
+        provider: 'openai',
+        model: 'gpt-5.5',
+      });
+      await withTimeout(published, 1_000, 'timed out waiting for ntfy remote reply publish');
+    } finally {
+      await close(server);
+    }
   });
 
   test('goodvibes-agent submits agent work through the active TUI session when one is available', async () => {

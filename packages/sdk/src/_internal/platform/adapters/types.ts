@@ -16,6 +16,8 @@ export interface SurfaceControlCommand {
 export interface QueueSurfaceReplyInput {
   readonly agentId: string;
   readonly task: string;
+  readonly agentTask?: string;
+  readonly workflowChainId?: string;
   readonly sessionId?: string;
 }
 

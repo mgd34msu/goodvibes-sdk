@@ -17,6 +17,7 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 | Expo app | `@pellux/goodvibes-sdk/expo` | `npm install @pellux/goodvibes-sdk` | [Expo integration](./expo-integration.md) |
 | Browser SPA | `@pellux/goodvibes-sdk/browser` | `npm install @pellux/goodvibes-sdk` | [Browser integration](./browser-integration.md) |
 | Web app / web UI | `@pellux/goodvibes-sdk/web` | `npm install @pellux/goodvibes-sdk` | [Web UI integration](./web-ui-integration.md) |
+| Cloudflare Worker batch bridge | `@pellux/goodvibes-sdk/workers` | `npm install @pellux/goodvibes-sdk` | [Daemon batch processing](./daemon-batch-processing.md) |
 | iOS native | JSON contracts via `/contracts` | N/A | [iOS integration](./ios-integration.md) |
 | Android native | JSON contracts via `/contracts` | N/A | [Android integration](./android-integration.md) |
 
@@ -41,6 +42,7 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 | `@pellux/goodvibes-sdk/expo` | Expo alias of `/react-native` |
 | `@pellux/goodvibes-sdk/browser` | Browser defaults |
 | `@pellux/goodvibes-sdk/web` | Web app alias of `/browser` |
+| `@pellux/goodvibes-sdk/workers` | Cloudflare Worker bridge for optional daemon batch queue/tick integration |
 | `@pellux/goodvibes-sdk/auth` | Token storage and auth flows |
 | `@pellux/goodvibes-sdk/errors` | Typed error classes |
 | `@pellux/goodvibes-sdk/contracts` | Runtime-neutral contract types and method IDs |

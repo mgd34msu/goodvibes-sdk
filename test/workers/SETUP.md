@@ -4,7 +4,7 @@
 
 This directory contains the Wave 4 Cloudflare Workers real-runtime test harness for `@pellux/goodvibes-sdk`. It proves the `./web` entry runs cleanly under the workerd V8 isolate via Miniflare's programmatic API.
 
-**Result: `./web` entry is sufficient. No new `./workers` subpath is required.**
+**Result: `./web` entry is sufficient for normal Worker-hosted operator HTTP clients. `./workers` now exists separately for the optional GoodVibes Worker bridge.**
 
 `dist/web.js` has zero `node:` imports and zero `Bun.*` API calls. It runs under Workers without adaptation.
 
@@ -81,9 +81,9 @@ Full proposed diff context:
 
 ---
 
-## 4. New `./workers` subpath export — NOT required
+## 4. `./workers` subpath export
 
-**Decision: No new `./workers` subpath is needed.**
+**Decision: `./workers` is required only for the optional Worker bridge.**
 
 `dist/web.js` satisfies the Workers runtime constraint:
 - Zero `node:` protocol imports (confirmed by grep)
@@ -92,10 +92,11 @@ Full proposed diff context:
 - No `EventSource` usage (Workers-safe)
 - No `location.origin` dependency when `baseUrl` is supplied explicitly
 
-A `./workers` entry would only be needed if:
-- Workers requires Durable Object context wiring (not needed for SDK's use case)
-- A Workers-specific realtime transport adapter is added (currently out of scope)
-- Workers-specific request-scoped timer management is needed (current `setTimeout` usage is fine for request-scoped retry)
+`dist/workers.js` is a separate bridge entry for:
+- Proxying `/batch/*` to daemon `/api/batch/*` routes
+- Enqueueing small Cloudflare Queue tick signals
+- Consuming queue messages and allowing retries/DLQ handling
+- Running scheduled ticks against the daemon
 
 See `FINDINGS.md` for the full Workers runtime gap analysis.
 
@@ -103,14 +104,14 @@ See `FINDINGS.md` for the full Workers runtime gap analysis.
 
 ## 5. Bundle guard extension — proposed diff
 
-When/if a `./workers` entry is added in the future, extend `test/rn-bundle-node-imports.test.ts`:
+The `./workers` entry is included in `test/rn-bundle-node-imports.test.ts`:
 
 ```ts
-// In COMPANION_ENTRIES array, add:
+// In COMPANION_ENTRIES array:
   'workers.js',
 ```
 
-For now, `web.js` already covers the Workers use case and is already in `COMPANION_ENTRIES`.
+`web.js` remains in `COMPANION_ENTRIES` and covers normal Worker-hosted SDK clients.
 
 ---
 

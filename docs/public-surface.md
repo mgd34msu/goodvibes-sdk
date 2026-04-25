@@ -118,6 +118,12 @@ Browser-optimized SDK entry. Browser-safe entry with browser-appropriate reconne
 
 Web (browser + service workers) SDK entry.
 
+### `./workers` — `@pellux/goodvibes-sdk/workers`
+
+**Status:** preview
+
+Cloudflare Worker bridge for optional daemon batch integration. Exports `createGoodVibesCloudflareWorker` and structural Worker/Queue types. Use this when deploying a Worker that proxies `/batch/*` to the daemon, enqueues batch tick signals, consumes Cloudflare Queue messages, or runs scheduled ticks. Normal Worker-hosted clients that only need operator HTTP calls should keep using `./web`.
+
 ### `./react-native` — `@pellux/goodvibes-sdk/react-native`
 
 **Status:** stable

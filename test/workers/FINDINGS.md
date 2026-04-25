@@ -10,7 +10,7 @@
 
 ## Entry Point Decision
 
-**`./web` entry is sufficient. No new `./workers` subpath required.**
+**`./web` remains sufficient for normal Worker-hosted operator HTTP clients. A new `./workers` subpath now exists for the optional GoodVibes Worker bridge.**
 
 `dist/web.js` analysis:
 - Zero `node:` protocol imports (grep confirmed)
@@ -18,6 +18,8 @@
 - Zero client-side `new WebSocket()` calls in bundle (grep confirmed)
 - Zero `EventSource` usage in bundle (grep confirmed)
 - `setTimeout` usage in `backoff.ts` is request-scoped and safe (see Timer section)
+
+`dist/workers.js` is intentionally separate from `./web`. It exports `createGoodVibesCloudflareWorker()` for daemon batch proxying, Cloudflare Queue consumers, and scheduled batch ticks. It should not be used as the normal companion HTTP client entry point.
 
 ---
 
@@ -138,9 +140,9 @@ All fetch primitives are native in Workers. The SDK's `transport-http` path uses
 
 ## Architecture Verdict
 
-`./web` is the correct Workers entry. No `./workers` subpath is needed at this time. The two transport-realtime paths (`viaSse`, `viaWebSocket`) are not Workers-compatible by design — they belong in the browser/RN client layer. Worker-hosted code should use `sdk.operator` (HTTP transport) for all daemon interactions.
+`./web` is the correct Workers entry for Worker-hosted operator HTTP clients. The two transport-realtime paths (`viaSse`, `viaWebSocket`) are not Workers-compatible by design — they belong in the browser/RN client layer. Worker-hosted code should use `sdk.operator` (HTTP transport) for normal daemon interactions.
 
-If a Workers-specific realtime transport adapter is added in a future wave (e.g. Durable Objects WebSocket proxy, Workers-native SSE proxy), a new `./workers` subpath with a dedicated `workers.ts` factory should be created following the `browser.ts` / `react-native.ts` pattern.
+Use `./workers` only when deploying the GoodVibes Worker bridge for optional daemon batch route proxying, Cloudflare Queue tick/job-signal consumers, or scheduled `/api/batch/tick` calls.
 
 ---
 

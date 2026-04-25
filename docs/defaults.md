@@ -34,6 +34,23 @@ a 1.0.0 blocker — an unbounded reconnect loop could hang a process indefinitel
 persistent auth failure or server outage. `maxDelayMs: 30 000` caps worst-case wait between
 attempts to 30 seconds to avoid silent hangs.
 
+## Daemon Batch Processing
+
+| Config key | Default | Notes |
+|------|---------|-------|
+| `batch.mode` | `off` | Provider Batch APIs are opt-in. |
+| `batch.queueBackend` | `local` | The daemon stores jobs locally unless a client explicitly uses the Cloudflare Worker bridge. |
+| `batch.tickIntervalMs` | `60 000` | Local daemon batch scheduler interval. |
+| `batch.maxDelayMs` | `300 000` | Max queued-job wait before local submission on a scheduler tick. |
+| `batch.maxJobsPerProviderBatch` | `100` | SDK grouping limit before upstream provider-specific limits. |
+| `batch.maxQueuePayloadBytes` | `16 384` | Cloudflare queue messages should be small signals, not full prompts. |
+| `batch.maxQueueMessagesPerDay` | `1 000` | Free-tier-oriented client guardrail. |
+| `cloudflare.enabled` | `false` | Cloudflare is optional and never required for daemon value. |
+| `cloudflare.freeTierMode` | `true` | Prefer small queue signals and bounded daily usage. |
+| `cloudflare.maxQueueOpsPerDay` | `10 000` | Free-tier-oriented queue operation budget. |
+
+See [Daemon batch processing](./daemon-batch-processing.md) for provider support, routes, and Worker bridge behavior.
+
 ## WebSocket Reconnect (`packages/transport-realtime`)
 
 | Path | Default | Notes |
