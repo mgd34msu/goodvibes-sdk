@@ -40,6 +40,7 @@
 ## Server and Host Embedding
 
 - [Daemon embedding](./daemon-embedding.md)
+- [Daemon batch processing](./daemon-batch-processing.md)
 
 ## Agentic Workflows
 

@@ -19,12 +19,13 @@ This surface makes direct use of Bun runtime APIs, including `Bun.spawn`, `Bun.f
 
 ## Companion surface (multi-runtime)
 
-The companion surface provides auth, transport (HTTP/SSE/WebSocket), runtime events, contracts, errors, and observer hooks. It is intentionally runtime-neutral: no Bun globals, no `node:*` imports.
+The companion surface provides auth, transport (HTTP/SSE/WebSocket), runtime events, contracts, errors, observer hooks, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. It is intentionally runtime-neutral: no Bun globals, no `node:*` imports.
 
 Imported via:
 - `./react-native` — React Native (Hermes)
 - `./browser` — browser environments
 - `./web` — web + service workers (alias of `./browser`)
+- `./workers` — Cloudflare Worker bridge for daemon batch proxying, queue tick signals, queue consumers, and scheduled ticks
 - `./expo` — Expo (alias of `./react-native`)
 - `./auth` — auth client, token stores
 - `./errors` — typed error surface
@@ -41,7 +42,7 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 | Bun | Full + Companion | Dev environment, TUI, daemons, CLI apps |
 | Hermes (React Native / Expo) | Companion only | iOS and Android companion apps |
 | Browser | Companion only | Web UI apps |
-| Cloudflare Workers / workerd / Miniflare 4 | Companion only | Use the `/web` entry point |
+| Cloudflare Workers / workerd / Miniflare 4 | Companion only | Use `/web` for normal operator HTTP clients; use `/workers` only when deploying the GoodVibes Worker bridge for optional daemon batch queue/tick integration |
 
 ## Runtimes NOT supported
 
@@ -49,6 +50,6 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 
 ## Enforcement
 
-CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
+CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `workers.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
 
 Future: a per-source lint rule will prevent introduction of `Bun.*` in companion-reachable source files before they reach the bundle stage.

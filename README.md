@@ -11,13 +11,13 @@ TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-co
 
 This package has two surfaces with different runtime requirements. See [Runtime Surfaces](./docs/surfaces.md) for the authoritative two-tier model:
 - **Full surface** — Bun runtime consumers (TUI, daemon, CLI). Gets the complete agentic harness.
-- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers. Gets auth, transport, events, contracts, errors, and observer only.
+- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers. Gets auth, transport, events, contracts, errors, observer, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration.
 
 ## Install
 
 This is one npm package with subpath exports.
 
-> **Current version: `0.25.1`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
+> **Current version: `0.25.7`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
 
 
 ```bash
@@ -116,6 +116,13 @@ const sdk = createWebGoodVibesSdk({
 });
 ```
 
+```ts
+// Cloudflare Worker bridge for optional daemon batch queue/tick integration
+import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
+
+export default createGoodVibesCloudflareWorker();
+```
+
 For the full walkthrough — login flows, token persistence, realtime transports, error handling, and observability — see **[Getting Started](./docs/getting-started.md)**.
 
 ## Runtime Entry Points
@@ -128,6 +135,7 @@ For the full walkthrough — login flows, token persistence, realtime transports
 | `@pellux/goodvibes-sdk/expo` | Expo (alias of `/react-native`) | Companion |
 | `@pellux/goodvibes-sdk/browser` | Browser apps | Companion |
 | `@pellux/goodvibes-sdk/web` | Web apps (alias of `/browser`) | Companion |
+| `@pellux/goodvibes-sdk/workers` | Cloudflare Worker bridge for daemon batch queue/tick integration | Companion |
 | `@pellux/goodvibes-sdk/auth` | Token storage and auth flows | Companion |
 | `@pellux/goodvibes-sdk/operator` | Operator/control-plane client only | Companion |
 | `@pellux/goodvibes-sdk/peer` | Peer/distributed-runtime client only | Companion |
@@ -199,6 +207,7 @@ The health monitoring infrastructure uses `ComponentHealthMonitor`, `ComponentRe
 - [Android integration](./docs/android-integration.md)
 - [iOS integration](./docs/ios-integration.md)
 - [Daemon embedding](./docs/daemon-embedding.md)
+- [Daemon batch processing](./docs/daemon-batch-processing.md)
 - [Realtime and telemetry](./docs/realtime-and-telemetry.md)
 - [Retries and reconnect](./docs/retries-and-reconnect.md)
 - [Companion app patterns](./docs/companion-app-patterns.md)

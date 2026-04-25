@@ -16,6 +16,7 @@ import { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
 import { DaemonSurfaceActionHelper } from './surface-actions.js';
 import { DaemonTransportEventsHelper } from './transport-events.js';
 import { DaemonHttpRouter } from './http/router.js';
+import { DaemonBatchManager } from '../batch/index.js';
 import { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import type { CompanionLLMProvider, CompanionProviderChunk } from '../companion/companion-chat-manager.js';
 import { findModelDefinition, findModelDefinitionForProvider } from '../providers/registry-models.js';
@@ -337,6 +338,7 @@ export function createDaemonFacadeCollaborators(
     surfaceDeliveryEnabled: options.surfaceDeliveryEnabled,
     signWebhookPayload: options.signWebhookPayload,
     handleApprovalAction: options.handleApprovalAction,
+    resolveDefaultProviderModel: options.resolveDefaultProviderModel,
   });
   const controlPlaneHelper = new DaemonControlPlaneHelper({
     authToken: options.authToken,
@@ -359,6 +361,11 @@ export function createDaemonFacadeCollaborators(
     port: runtime.port,
     tlsState: options.tlsState,
   });
+  const batchManager = new DaemonBatchManager({
+    configManager: runtime.configManager,
+    providerRegistry: runtime.runtimeServices.providerRegistry,
+  });
+  batchManager.start();
   const httpRouter = new DaemonHttpRouter({
     configManager: runtime.configManager,
     serviceRegistry: runtime.serviceRegistry,
@@ -390,6 +397,7 @@ export function createDaemonFacadeCollaborators(
     runtimeBus: runtime.runtimeBus,
     runtimeStore: runtime.runtimeStore,
     runtimeDispatch: runtime.runtimeDispatch,
+    batchManager,
     githubWebhookSecret: runtime.githubWebhookSecret,
     authToken: options.authToken,
     buildSurfaceAdapterContext: () => surfaceActionHelper.buildSurfaceAdapterContext(),
@@ -459,6 +467,8 @@ export function configureDaemonSessionContinuation(options: {
   readonly queueSurfaceReplyFromBinding: (binding: import('@pellux/goodvibes-sdk/platform/automation/routes').AutomationRouteBinding | undefined, input: {
     readonly agentId: string;
     readonly task: string;
+    readonly agentTask?: string;
+    readonly workflowChainId?: string;
     readonly sessionId?: string;
   }) => void;
 }): void {
@@ -477,6 +487,8 @@ export function configureDaemonSessionContinuation(options: {
     options.queueSurfaceReplyFromBinding(routeBinding, {
       agentId: spawned.id,
       task: input.body,
+      agentTask: task,
+      ...(typeof spawned.wrfcId === 'string' && spawned.wrfcId.length > 0 ? { workflowChainId: spawned.wrfcId } : {}),
       sessionId,
     });
     return { agentId: spawned.id };

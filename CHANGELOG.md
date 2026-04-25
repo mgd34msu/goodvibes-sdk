@@ -8,6 +8,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [Unreleased]
+
+### Breaking
+- none
+
+### Added
+- Added opt-in daemon provider Batch API support with persistent local batch
+  jobs, `/api/batch/*` routes, provider polling, and completed-result storage.
+- Added OpenAI API-key Batch API support for `/v1/chat/completions` and
+  Anthropic API-key Message Batches support for `/v1/messages/batches`.
+- Added `batch.*` and `cloudflare.*` config keys. Defaults keep batching off,
+  Cloudflare off, and queue storage local.
+- Added the `@pellux/goodvibes-sdk/workers` entry with
+  `createGoodVibesCloudflareWorker()` for optional Cloudflare Worker proxying,
+  queue tick signals, queue consumers, scheduled ticks, and DLQ-compatible
+  retry handling.
+
+### Fixed
+- Provider runtime metadata now advertises provider Batch API capability through
+  `usage.batch` so clients can distinguish live streaming support from
+  asynchronous provider batch support.
+
+### Migration
+- Existing TUI, companion, and daemon chat paths remain live by default.
+- Use `/api/batch/jobs` for explicit asynchronous batch jobs, and use
+  `/api/batch/tick` from a daemon timer, Cloudflare scheduled Worker, or queue
+  consumer to submit and poll jobs.
+- Use `@pellux/goodvibes-sdk/web` for normal Cloudflare Worker-hosted operator
+  HTTP clients. Use `@pellux/goodvibes-sdk/workers` only for the optional
+  Worker bridge around daemon batch routes and queue/scheduled ticks.
+
+---
+
 ## [0.25.7] - 2026-04-25
 
 ### Breaking

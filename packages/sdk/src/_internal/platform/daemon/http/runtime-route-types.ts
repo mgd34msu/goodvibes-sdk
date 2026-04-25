@@ -192,7 +192,7 @@ export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteCon
   }, logLabel: string, sessionId?: string) => AgentRecordLike | Response;
   readonly queueSurfaceReplyFromBinding: (
     binding: AutomationRouteBinding | undefined,
-    input: { readonly agentId: string; readonly task: string; readonly sessionId?: string; },
+    input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string; },
   ) => void;
   readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
   readonly syncSpawnedAgentTask: (record: AgentRecordLike, sessionId?: string) => void;

@@ -199,6 +199,7 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
     webhookPath: '/webhook/ntfy',
     handleInbound: (req) => handleNtfySurfaceWebhook(req, context.deps.buildSurfaceAdapterContext()),
     deliverReply: (pending, message) => context.deps.deliverNtfyAgentReply(pending, message),
+    deliverProgress: (pending, progress) => context.deps.deliverSurfaceProgress(pending, progress),
     notifyApproval: (approval, binding) => context.deps.deliverNtfyApprovalUpdate(approval, binding),
     getStatus: async () => ({
       id: 'surface:ntfy',

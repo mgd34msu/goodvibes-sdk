@@ -258,6 +258,31 @@ export interface RuntimeConfig {
   };
 }
 
+export type BatchMode = 'off' | 'explicit' | 'eligible-by-default';
+export type BatchFallbackMode = 'live' | 'fail';
+export type BatchQueueBackend = 'local' | 'cloudflare';
+
+export interface BatchConfig {
+  mode: BatchMode;
+  fallback: BatchFallbackMode;
+  queueBackend: BatchQueueBackend;
+  tickIntervalMs: number;
+  maxDelayMs: number;
+  maxJobsPerProviderBatch: number;
+  maxQueuePayloadBytes: number;
+  maxQueueMessagesPerDay: number;
+}
+
+export interface CloudflareConfig {
+  enabled: boolean;
+  freeTierMode: boolean;
+  workerBaseUrl: string;
+  workerTokenRef: string;
+  queueName: string;
+  deadLetterQueueName: string;
+  maxQueueOpsPerDay: number;
+}
+
 export interface TelemetryConfig {
   /**
    * OBS-06: when true, raw prompt/response content remains visible in
@@ -380,6 +405,8 @@ export interface GoodVibesConfig {
   featureFlags: Record<string, PersistedFlagState>;
   runtime: RuntimeConfig;
   telemetry: TelemetryConfig;
+  batch: BatchConfig;
+  cloudflare: CloudflareConfig;
 }
 
 export interface ConfigSetting {
@@ -593,7 +620,22 @@ export type ConfigKey =
   | 'network.remoteFetch.allowPrivateHosts'
   | 'runtime.companionChatLimiter.perSessionLimit'
   | 'runtime.eventBus.maxListeners'
-  | 'telemetry.includeRawPrompts';
+  | 'telemetry.includeRawPrompts'
+  | 'batch.mode'
+  | 'batch.fallback'
+  | 'batch.queueBackend'
+  | 'batch.tickIntervalMs'
+  | 'batch.maxDelayMs'
+  | 'batch.maxJobsPerProviderBatch'
+  | 'batch.maxQueuePayloadBytes'
+  | 'batch.maxQueueMessagesPerDay'
+  | 'cloudflare.enabled'
+  | 'cloudflare.freeTierMode'
+  | 'cloudflare.workerBaseUrl'
+  | 'cloudflare.workerTokenRef'
+  | 'cloudflare.queueName'
+  | 'cloudflare.deadLetterQueueName'
+  | 'cloudflare.maxQueueOpsPerDay';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -798,4 +840,19 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   K extends 'runtime.eventBus.maxListeners' ? number :
   K extends 'telemetry.includeRawPrompts' ? boolean :
+  K extends 'batch.mode' ? BatchMode :
+  K extends 'batch.fallback' ? BatchFallbackMode :
+  K extends 'batch.queueBackend' ? BatchQueueBackend :
+  K extends 'batch.tickIntervalMs' ? number :
+  K extends 'batch.maxDelayMs' ? number :
+  K extends 'batch.maxJobsPerProviderBatch' ? number :
+  K extends 'batch.maxQueuePayloadBytes' ? number :
+  K extends 'batch.maxQueueMessagesPerDay' ? number :
+  K extends 'cloudflare.enabled' ? boolean :
+  K extends 'cloudflare.freeTierMode' ? boolean :
+  K extends 'cloudflare.workerBaseUrl' ? string :
+  K extends 'cloudflare.workerTokenRef' ? string :
+  K extends 'cloudflare.queueName' ? string :
+  K extends 'cloudflare.deadLetterQueueName' ? string :
+  K extends 'cloudflare.maxQueueOpsPerDay' ? number :
   never;

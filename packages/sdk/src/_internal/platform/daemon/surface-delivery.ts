@@ -51,6 +51,8 @@ function isSupportedDeliverySurface(surface: string): surface is DeliverySurface
 interface SurfaceReplyInput {
   readonly agentId: string;
   readonly task: string;
+  readonly agentTask?: string;
+  readonly workflowChainId?: string;
   readonly sessionId?: string;
 }
 
@@ -114,7 +116,9 @@ export class DaemonSurfaceDeliveryHelper {
       }
       const record = this.context.agentManager.getStatus(pending.agentId);
       if (record && (record.status === 'pending' || record.status === 'running')) {
-        const progress = record.progress ?? record.streamingContent;
+        const progress = pending.surfaceKind === 'ntfy'
+          ? record.progress
+          : record.progress ?? record.streamingContent;
         if (progress && progress !== pending.lastProgress && (Date.now() - (pending.lastProgressAt ?? 0)) >= 10_000) {
           try {
             await this.context.channelReplyPipeline.deliverProgress(pending.agentId, progress, true);
@@ -132,10 +136,7 @@ export class DaemonSurfaceDeliveryHelper {
       if (!record || (record.status !== 'completed' && record.status !== 'failed' && record.status !== 'cancelled')) {
         continue;
       }
-      const body = record.status === 'completed'
-        ? (record.fullOutput ?? record.streamingContent ?? record.progress ?? 'Completed')
-        : record.error ?? record.status;
-      const message = String(body);
+      const message = this.renderAgentCompletionForSurface(pending, record);
       syncFinishedAgentTask(record);
       if (pending.sessionId) {
         await this.context.sessionBroker.completeAgent(pending.sessionId, pending.agentId, message, {
@@ -144,7 +145,9 @@ export class DaemonSurfaceDeliveryHelper {
         });
       }
       try {
-        await this.context.channelReplyPipeline.deliverFinal(pending.agentId, message);
+        await this.context.channelReplyPipeline.deliverFinal(pending.agentId, message, {
+          keepTracking: pending.surfaceKind === 'ntfy' && typeof pending.workflowChainId === 'string',
+        });
       } catch (error) {
         logger.warn('DaemonServer: surface reply delivery failed', {
           surface: pending.surfaceKind,
@@ -195,6 +198,19 @@ export class DaemonSurfaceDeliveryHelper {
       if (pending.channelId) {
         await discord.postMessage(pending.channelId, `Progress for ${pending.agentId}: ${progress.slice(0, 180)}`);
       }
+      return;
+    }
+    if (pending.surfaceKind === 'ntfy') {
+      const topic = pending.topic ?? String(this.context.configManager.get('surfaces.ntfy.topic') ?? '');
+      if (!topic) return;
+      const ntfy = new NtfyIntegration(
+        String(this.context.configManager.get('surfaces.ntfy.baseUrl') ?? 'https://ntfy.sh'),
+        await this.context.serviceRegistry.resolveSecret('ntfy', 'primary') ?? process.env.NTFY_ACCESS_TOKEN ?? undefined,
+      );
+      await ntfy.publish(topic, progress.slice(0, 300), {
+        title: `Agent ${pending.agentId}`,
+        markGoodVibesOrigin: true,
+      });
     }
   }
 
@@ -353,6 +369,8 @@ export class DaemonSurfaceDeliveryHelper {
     const shared = {
       agentId: input.agentId,
       task: input.task,
+      ...(input.agentTask ? { agentTask: input.agentTask } : {}),
+      ...(input.workflowChainId ? { workflowChainId: input.workflowChainId } : {}),
       createdAt: Date.now(),
       sessionId: input.sessionId,
       routeId: binding.id,
@@ -542,5 +560,31 @@ export class DaemonSurfaceDeliveryHelper {
         : undefined,
       homeDirectory: this.context.secretsManager?.getGlobalHome?.() ?? undefined,
     });
+  }
+
+  private renderAgentCompletionForSurface(
+    pending: PendingSurfaceReply,
+    record: import('../tools/agent/index.js').AgentRecord,
+  ): string {
+    if (pending.surfaceKind === 'ntfy') {
+      if (record.status === 'completed') {
+        const wrfcId = typeof record.wrfcId === 'string' && record.wrfcId.trim()
+          ? record.wrfcId.trim()
+          : '';
+        return wrfcId
+          ? `Agent ${record.id} finished initial work. WRFC ${wrfcId} is continuing; review, fix, and gate updates will be posted here.`
+          : `Agent ${record.id} completed.`;
+      }
+      if (record.status === 'failed') {
+        return `Agent ${record.id} failed: ${record.error ?? 'failed'}`;
+      }
+      if (record.status === 'cancelled') {
+        return `Agent ${record.id} cancelled.`;
+      }
+    }
+    const body = record.status === 'completed'
+      ? (record.fullOutput ?? record.streamingContent ?? record.progress ?? 'Completed')
+      : record.error ?? record.status;
+    return String(body);
   }
 }

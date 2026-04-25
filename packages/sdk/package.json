@@ -92,6 +92,10 @@
       "types": "./dist/web.d.ts",
       "import": "./dist/web.js"
     },
+    "./workers": {
+      "types": "./dist/workers.d.ts",
+      "import": "./dist/workers.js"
+    },
     "./react-native": {
       "types": "./dist/react-native.d.ts",
       "import": "./dist/react-native.js"

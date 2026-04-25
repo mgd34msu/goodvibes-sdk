@@ -55,7 +55,7 @@ import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
 
 For companion apps and web UIs, use the runtime-specific entry point. These entry points contain no Bun globals and bundle cleanly with Metro, Vite, webpack, and esbuild.
 
-For a React Native or Expo deep-dive, see [React Native integration](./react-native-integration.md) and [Expo integration](./expo-integration.md). For browser and web UI, see [Browser integration](./browser-integration.md) and [Web UI integration](./web-ui-integration.md).
+For a React Native or Expo deep-dive, see [React Native integration](./react-native-integration.md) and [Expo integration](./expo-integration.md). For browser and web UI, see [Browser integration](./browser-integration.md) and [Web UI integration](./web-ui-integration.md). For the optional Cloudflare Worker bridge around daemon batch routes, see [Daemon batch processing](./daemon-batch-processing.md).
 
 ### React Native
 
@@ -98,6 +98,14 @@ const sdk = createWebGoodVibesSdk({
 const stop = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (event) => {
   console.log('agent completed', event);
 });
+```
+
+### Cloudflare Worker batch bridge
+
+```ts
+import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
+
+export default createGoodVibesCloudflareWorker();
 ```
 
 ## Auth options: `tokenStore` vs `authToken`

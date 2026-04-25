@@ -1,4 +1,16 @@
-import type { LLMProvider, ChatRequest, ChatResponse, ChatStopReason, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
+import type {
+  LLMProvider,
+  ChatRequest,
+  ChatResponse,
+  ChatStopReason,
+  ProviderBatchAdapter,
+  ProviderBatchCreateInput,
+  ProviderBatchCreateResult,
+  ProviderBatchPollResult,
+  ProviderBatchResult,
+  ProviderRuntimeMetadata,
+  ProviderRuntimeMetadataDeps,
+} from './interface.js';
 import { REASONING_BUDGET_MAP } from './interface.js';
 import { getCacheCapability } from './cache-capability.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
@@ -14,7 +26,7 @@ import {
   fromAnthropicContent,
 } from './tool-formats.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
-import { toProviderError } from '../utils/error-display.js';
+import { summarizeError, toProviderError } from '../utils/error-display.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { toRecord } from '../utils/record-coerce.js';
 
@@ -87,6 +99,7 @@ function clampMaxTokens(model: string, requested: number): number {
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
   readonly models: string[] = [];
+  readonly batch: ProviderBatchAdapter;
 
   private readonly apiKey: string;
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'>;
@@ -97,6 +110,14 @@ export class AnthropicProvider implements LLMProvider {
   ) {
     this.apiKey = apiKey;
     this.cacheHitTracker = cacheHitTracker;
+    this.batch = {
+      kind: 'provider-batch',
+      endpoints: ['/v1/messages/batches'],
+      createChatBatch: (input) => this.createChatBatch(input),
+      retrieveBatch: (providerBatchId) => this.retrieveBatch(providerBatchId),
+      cancelBatch: (providerBatchId) => this.cancelBatch(providerBatchId),
+      getResults: (providerBatchId) => this.getBatchResults(providerBatchId),
+    };
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
@@ -448,6 +469,15 @@ export class AnthropicProvider implements LLMProvider {
         toolCalling: true,
         parallelTools: true,
         promptCaching: true,
+        batch: {
+          supported: true,
+          discount: 'Provider-side Message Batches pricing is discounted versus live API pricing where Anthropic offers the discount.',
+          completionWindow: '24h',
+          endpoints: ['/v1/messages/batches'],
+          maxRequestsPerProviderBatch: 100_000,
+          maxInputBytes: 256 * 1024 * 1024,
+          notes: ['Batch requests are asynchronous and non-streaming. Results are correlated by custom_id.'],
+        },
         notes: ['Anthropic prompt caching and thinking budgets are handled natively.'],
       },
       policy: {
@@ -457,6 +487,209 @@ export class AnthropicProvider implements LLMProvider {
         supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
         cacheStrategy: 'anthropic-prompt-cache',
       },
+    };
+  }
+
+  isConfigured(): boolean {
+    return this.apiKey.trim().length > 0;
+  }
+
+  private async createChatBatch(input: ProviderBatchCreateInput): Promise<ProviderBatchCreateResult> {
+    const res = await instrumentedFetch(`${ANTHROPIC_API_BASE}/messages/batches`, {
+      method: 'POST',
+      headers: this.batchHeaders(),
+      body: JSON.stringify({
+        requests: input.requests.map((request) => ({
+          custom_id: request.customId,
+          params: this.toAnthropicBatchMessageParams(request.params),
+        })),
+      }),
+    });
+    const body = await this.readJsonResponse(res, 'create batch');
+    return {
+      providerBatchId: String(body['id'] ?? ''),
+      status: this.mapAnthropicBatchStatus(body),
+      raw: body,
+    };
+  }
+
+  private async retrieveBatch(providerBatchId: string): Promise<ProviderBatchPollResult> {
+    const res = await instrumentedFetch(`${ANTHROPIC_API_BASE}/messages/batches/${encodeURIComponent(providerBatchId)}`, {
+      method: 'GET',
+      headers: this.batchHeaders(),
+    });
+    const body = await this.readJsonResponse(res, 'retrieve batch');
+    return {
+      providerBatchId: String(body['id'] ?? providerBatchId),
+      status: this.mapAnthropicBatchStatus(body),
+      resultAvailable: typeof body['results_url'] === 'string' && body['results_url'].length > 0,
+      raw: body,
+    };
+  }
+
+  private async cancelBatch(providerBatchId: string): Promise<ProviderBatchPollResult> {
+    const res = await instrumentedFetch(`${ANTHROPIC_API_BASE}/messages/batches/${encodeURIComponent(providerBatchId)}/cancel`, {
+      method: 'POST',
+      headers: this.batchHeaders(),
+    });
+    const body = await this.readJsonResponse(res, 'cancel batch');
+    return {
+      providerBatchId: String(body['id'] ?? providerBatchId),
+      status: this.mapAnthropicBatchStatus(body),
+      resultAvailable: typeof body['results_url'] === 'string' && body['results_url'].length > 0,
+      raw: body,
+    };
+  }
+
+  private async getBatchResults(providerBatchId: string): Promise<readonly ProviderBatchResult[]> {
+    const retrieveRes = await instrumentedFetch(`${ANTHROPIC_API_BASE}/messages/batches/${encodeURIComponent(providerBatchId)}`, {
+      method: 'GET',
+      headers: this.batchHeaders(),
+    });
+    const batch = await this.readJsonResponse(retrieveRes, 'retrieve batch results');
+    const resultsUrl = typeof batch['results_url'] === 'string' ? batch['results_url'] : '';
+    if (!resultsUrl) return [];
+    const resultsRes = await instrumentedFetch(resultsUrl, {
+      method: 'GET',
+      headers: this.batchHeaders({ accept: 'application/jsonl' }),
+    });
+    if (!resultsRes.ok) {
+      const text = await resultsRes.text().catch(() => 'unknown error');
+      throw new ProviderError(formatAnthropicErrorText(resultsRes.status, text), {
+        statusCode: resultsRes.status,
+        provider: this.name,
+        operation: 'batch.results',
+        phase: 'request',
+      });
+    }
+    const text = await resultsRes.text();
+    const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+    const results: ProviderBatchResult[] = [];
+    for (const line of lines) {
+      try {
+        results.push(this.parseAnthropicBatchResult(JSON.parse(line) as Record<string, unknown>));
+      } catch (error: unknown) {
+        results.push({
+          customId: `unparseable:${crypto.randomUUID()}`,
+          status: 'failed',
+          error: { message: `Unable to parse Anthropic batch result line: ${summarizeError(error)}` },
+          raw: line,
+        });
+      }
+    }
+    return results;
+  }
+
+  private batchHeaders(extra?: { accept?: string }): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+      'anthropic-version': ANTHROPIC_API_VERSION,
+      'x-api-key': this.apiKey,
+      ...(extra?.accept ? { Accept: extra.accept } : {}),
+    };
+  }
+
+  private toAnthropicBatchMessageParams(params: Omit<ChatRequest, 'signal' | 'onDelta'>): Record<string, unknown> {
+    const resolvedModel = normalizeAnthropicModel(params.model);
+    const body: Record<string, unknown> = {
+      model: resolvedModel,
+      max_tokens: clampMaxTokens(resolvedModel, params.maxTokens ?? 8192),
+      messages: toAnthropicMessages(params.messages),
+    };
+    if (params.systemPrompt) {
+      body['system'] = [{ type: 'text', text: params.systemPrompt }];
+    }
+    if (params.tools && params.tools.length > 0) {
+      body['tools'] = toAnthropicTools(params.tools);
+    }
+    if (params.reasoningEffort && params.reasoningEffort !== 'instant') {
+      const budget = REASONING_BUDGET_MAP[params.reasoningEffort];
+      if (budget !== undefined && budget > 0) {
+        body['thinking'] = { type: 'enabled', budget_tokens: budget };
+        const currentMax = (body['max_tokens'] as number) ?? 8192;
+        if (currentMax <= budget) body['max_tokens'] = budget + 4096;
+      }
+    }
+    return body;
+  }
+
+  private mapAnthropicBatchStatus(body: Record<string, unknown>): ProviderBatchPollResult['status'] {
+    const status = typeof body['processing_status'] === 'string' ? body['processing_status'] : '';
+    if (status === 'ended') return 'completed';
+    if (status === 'canceling') return 'cancelled';
+    if (status === 'in_progress') return 'running';
+    const archivedAt = body['archived_at'];
+    if (archivedAt != null) return 'cancelled';
+    return 'submitted';
+  }
+
+  private async readJsonResponse(res: Response, operation: string): Promise<Record<string, unknown>> {
+    const text = await res.text().catch(() => 'unknown error');
+    if (!res.ok) {
+      throw new ProviderError(formatAnthropicErrorText(res.status, text), {
+        statusCode: res.status,
+        provider: this.name,
+        operation: `batch.${operation}`,
+        phase: 'request',
+      });
+    }
+    try {
+      return JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new ProviderError(`Anthropic batch ${operation} returned invalid JSON.`, {
+        statusCode: 502,
+        provider: this.name,
+        operation: `batch.${operation}`,
+        phase: 'response',
+      });
+    }
+  }
+
+  private parseAnthropicBatchResult(parsed: Record<string, unknown>): ProviderBatchResult {
+    const customId = typeof parsed['custom_id'] === 'string' ? parsed['custom_id'] : `unknown:${crypto.randomUUID()}`;
+    const result = toRecord(parsed['result']);
+    const type = typeof result['type'] === 'string' ? result['type'] : '';
+    if (type === 'succeeded') {
+      const message = toRecord(result['message']);
+      return {
+        customId,
+        status: 'succeeded',
+        response: this.anthropicBatchMessageToChatResponse(message),
+        raw: parsed,
+      };
+    }
+    const status = type === 'canceled' ? 'cancelled' : type === 'expired' ? 'expired' : 'failed';
+    const error = toRecord(result['error']);
+    return {
+      customId,
+      status,
+      error: {
+        message: typeof error['message'] === 'string' ? error['message'] : `Anthropic batch request ${type || 'failed'}`,
+        ...(typeof error['type'] === 'string' ? { code: error['type'] } : {}),
+        raw: result,
+      },
+      raw: parsed,
+    };
+  }
+
+  private anthropicBatchMessageToChatResponse(message: Record<string, unknown>): ChatResponse {
+    const content = Array.isArray(message['content'])
+      ? message['content'] as AnthropicContentBlock[]
+      : [];
+    const { text, toolCalls } = fromAnthropicContent(content);
+    const usage = toRecord(message['usage']);
+    const rawStopReason = typeof message['stop_reason'] === 'string' ? message['stop_reason'] : undefined;
+    return {
+      content: text,
+      toolCalls,
+      usage: {
+        inputTokens: typeof usage['input_tokens'] === 'number' ? usage['input_tokens'] : 0,
+        outputTokens: typeof usage['output_tokens'] === 'number' ? usage['output_tokens'] : 0,
+        ...(typeof usage['cache_read_input_tokens'] === 'number' ? { cacheReadTokens: usage['cache_read_input_tokens'] } : {}),
+        ...(typeof usage['cache_creation_input_tokens'] === 'number' ? { cacheWriteTokens: usage['cache_creation_input_tokens'] } : {}),
+      },
+      stopReason: rawStopReason ? mapAnthropicStopReason(rawStopReason) : (text ? 'completed' : 'unknown'),
+      ...(rawStopReason ? { providerStopReason: rawStopReason } : {}),
     };
   }
 }

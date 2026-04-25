@@ -25,6 +25,17 @@ export { createBrowserGoodVibesSdk } from './browser.js';
 export type { WebGoodVibesSdkOptions } from './web.js';
 export { createWebGoodVibesSdk } from './web.js';
 export type {
+  GoodVibesCloudflareExecutionContext,
+  GoodVibesCloudflareMessageBatch,
+  GoodVibesCloudflareQueue,
+  GoodVibesCloudflareQueueMessage,
+  GoodVibesCloudflareQueuePayload,
+  GoodVibesCloudflareWorker,
+  GoodVibesCloudflareWorkerEnv,
+  GoodVibesCloudflareWorkerOptions,
+} from './workers.js';
+export { createGoodVibesCloudflareWorker } from './workers.js';
+export type {
   ReactNativeGoodVibesRealtime,
   ReactNativeGoodVibesSdk,
   ReactNativeGoodVibesSdkOptions,

@@ -116,7 +116,7 @@ async function handleNtfyChatPayload(
   if (!context.publishConversationFollowup) {
     return Response.json({ error: 'ntfy chat routing is unavailable in this runtime' }, { status: 503 });
   }
-  const session = await context.sessionBroker.findPreferredSession({ surfaceKind: 'tui' });
+  const session = await findPreferredTuiSession(context);
   if (!session) {
     return Response.json({ error: 'No active terminal TUI session is available for ntfy chat' }, { status: 409 });
   }
@@ -188,7 +188,7 @@ async function handleNtfyAgentPayload(
 ): Promise<Response> {
   const denied = await authorizeNtfyPayload(body, context, topic, message);
   if (denied) return denied;
-  const preferredTuiSession = await context.sessionBroker.findPreferredSession({ surfaceKind: 'tui' });
+  const preferredTuiSession = await findPreferredTuiSession(context);
 
   const binding = await context.routeBindings.upsertBinding({
     kind: 'channel',
@@ -236,6 +236,8 @@ async function handleNtfyAgentPayload(
   context.queueSurfaceReplyFromBinding(submission.routeBinding ?? binding, {
     agentId: spawnResult.id,
     task: message,
+    ...(typeof submission.task === 'string' && submission.task.length > 0 ? { agentTask: submission.task } : {}),
+    ...(typeof spawnResult.wrfcId === 'string' && spawnResult.wrfcId.length > 0 ? { workflowChainId: spawnResult.wrfcId } : {}),
     sessionId: submission.session.id,
   });
   return Response.json({
@@ -246,4 +248,13 @@ async function handleNtfyAgentPayload(
     sessionId: submission.session.id,
     agentId: spawnResult.id,
   });
+}
+
+async function findPreferredTuiSession(context: SurfaceAdapterContext) {
+  const direct = await context.sessionBroker.findPreferredSession({ surfaceKind: 'tui' });
+  if (direct) return direct;
+  return context.sessionBroker
+    .listSessions(500)
+    .find((candidate) => candidate.status !== 'closed' && candidate.metadata?.source === 'tui')
+    ?? null;
 }

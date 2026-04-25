@@ -64,6 +64,7 @@ export interface ProviderRuntimeMetadata {
     readonly toolCalling: boolean;
     readonly parallelTools: boolean;
     readonly promptCaching?: boolean;
+    readonly batch?: ProviderBatchRuntimeMetadata;
     readonly cost?: ProviderUsageCostMetadata;
     readonly notes?: readonly string[];
   };
@@ -103,10 +104,72 @@ export interface ProviderEmbeddingResult {
   readonly metadata?: Record<string, unknown>;
 }
 
+export interface ProviderBatchRuntimeMetadata {
+  readonly supported: boolean;
+  readonly discount?: string;
+  readonly completionWindow?: string;
+  readonly endpoints?: readonly string[];
+  readonly maxRequestsPerProviderBatch?: number;
+  readonly maxInputBytes?: number;
+  readonly notes?: readonly string[];
+}
+
+export type ProviderBatchStatus =
+  | 'queued'
+  | 'submitted'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'expired';
+
+export interface ProviderBatchChatRequest {
+  readonly customId: string;
+  readonly params: Omit<ChatRequest, 'signal' | 'onDelta'>;
+}
+
+export interface ProviderBatchCreateInput {
+  readonly requests: readonly ProviderBatchChatRequest[];
+  readonly metadata?: Record<string, string>;
+  readonly completionWindow?: '24h';
+}
+
+export interface ProviderBatchCreateResult {
+  readonly providerBatchId: string;
+  readonly status: ProviderBatchStatus;
+  readonly raw?: unknown;
+}
+
+export interface ProviderBatchPollResult extends ProviderBatchCreateResult {
+  readonly resultAvailable: boolean;
+}
+
+export interface ProviderBatchResult {
+  readonly customId: string;
+  readonly status: 'succeeded' | 'failed' | 'cancelled' | 'expired';
+  readonly response?: ChatResponse;
+  readonly error?: {
+    readonly message: string;
+    readonly code?: string;
+    readonly raw?: unknown;
+  };
+  readonly raw?: unknown;
+}
+
+export interface ProviderBatchAdapter {
+  readonly kind: 'provider-batch';
+  readonly endpoints: readonly string[];
+  createChatBatch(input: ProviderBatchCreateInput): Promise<ProviderBatchCreateResult>;
+  retrieveBatch(providerBatchId: string): Promise<ProviderBatchPollResult>;
+  cancelBatch?(providerBatchId: string): Promise<ProviderBatchPollResult>;
+  getResults(providerBatchId: string): Promise<readonly ProviderBatchResult[]>;
+}
+
 /** Contract all LLM providers must implement. */
 export interface LLMProvider {
   readonly name: string;
   readonly models: string[];
+  readonly batch?: ProviderBatchAdapter;
   /**
    * Optional self-declared capability overrides for this provider instance.
    * When present, these take precedence over the built-in `PROVIDER_DEFAULTS`

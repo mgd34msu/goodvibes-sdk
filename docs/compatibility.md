@@ -9,7 +9,7 @@ See [Runtime Surfaces](./surfaces.md) for the full two-tier model.
 | **Bun ≥1.0** | Full + Companion | TUI, daemons, CLI apps, and all companion entry points |
 | **Hermes (React Native / Expo)** | Companion only | iOS and Android companion apps via `/react-native` and `/expo` |
 | **Modern browsers** | Companion only | Browser and web UI apps via `/browser` and `/web` |
-| **Cloudflare Workers / workerd / Miniflare 4** | Companion only | Use the `/web` entry point (`createWebGoodVibesSdk`); no `node:*` imports, no `Bun.*` |
+| **Cloudflare Workers / workerd / Miniflare 4** | Companion only | Use `/web` for normal operator HTTP clients. Use `/workers` only for the optional GoodVibes Worker bridge that proxies daemon batch routes and handles queue/scheduled ticks. |
 
 ## Node.js is NOT Supported
 
@@ -31,13 +31,13 @@ Attempting to import the full surface in Hermes, a browser, or any non-Bun runti
 
 ## Companion Bundle Guard
 
-CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
+CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `workers.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
 
 This is the enforcement mechanism for the companion surface guarantee.
 
 ## Runtime-Neutral Entry Points
 
-These entry points work on Hermes, browser, and Bun, and bundle cleanly with Metro, Vite, webpack, and esbuild:
+These companion-safe entry points contain no Bun-only imports and bundle cleanly with Metro, Vite, webpack, and esbuild. Use the runtime-specific entries only in the runtimes named by their docs:
 
 - `@pellux/goodvibes-sdk/contracts`
 - `@pellux/goodvibes-sdk/errors`
@@ -49,6 +49,7 @@ These entry points work on Hermes, browser, and Bun, and bundle cleanly with Met
 - `@pellux/goodvibes-sdk/transport-realtime`
 - `@pellux/goodvibes-sdk/browser`
 - `@pellux/goodvibes-sdk/web`
+- `@pellux/goodvibes-sdk/workers`
 - `@pellux/goodvibes-sdk/react-native`
 - `@pellux/goodvibes-sdk/expo`
 

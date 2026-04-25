@@ -29,6 +29,8 @@ export const DEFAULT_CONFIG = {
   network: runtimeConfigDefaults.network,
   runtime: runtimeConfigDefaults.runtime,
   telemetry: runtimeConfigDefaults.telemetry,
+  batch: runtimeConfigDefaults.batch,
+  cloudflare: runtimeConfigDefaults.cloudflare,
   danger: coreConfigDefaults.danger,
   tools: coreConfigDefaults.tools,
   wrfc: coreConfigDefaults.wrfc,

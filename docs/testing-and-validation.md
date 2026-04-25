@@ -12,11 +12,11 @@ Every push and PR to `main` must pass these gates:
 | `build` | `bun run build` | Builds `packages/sdk/dist` once and uploads it for downstream CI jobs |
 | `mirror-drift` | `bun run sync:check` | Ensures `_internal` transport-http mirror is byte-for-byte in sync with its canonical source |
 | `platform-matrix (bun)` | `bun run build && bun run test` | Runs the full Bun test suite |
-| `platform-matrix (rn-bundle)` | `bun run build && bun run test:rn` | Verifies companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports |
+| `platform-matrix (rn-bundle)` | `bun run build && bun run test:rn` | Verifies companion dist bundles, including `workers.js`, contain no `Bun.*` identifiers and no `node:*` imports |
 | `lint-gates` | inline raw-throw scan + `bun run changelog:check` + `bun run version:check` | Prevents raw public throws, missing changelog sections, and workspace version drift |
 | `types-check` | `bun run types:check` | Compiles type-level usage tests against the uploaded build artifact to catch type regressions |
 | `sbom-check` | `bun run sbom:generate` + CI-inline size + schema assertions | Generates the CycloneDX SBOM (`sbom.cdx.json`) and asserts non-empty + valid schema (no standalone `sbom:check` script — validation is inlined in `.github/workflows/ci.yml`) |
-| `platform-matrix (workers)` | `bun run test:workers` | Runs the `./web` entry under Miniflare 4 (workerd V8 isolate, in-process) — 9 tests validate Worker-runtime compatibility (no `node:*`, no `Bun.*`, no client `EventSource`/`WebSocket` dependence) |
+| `platform-matrix (workers)` | `bun run test:workers` | Runs the `./web` entry under Miniflare 4 (workerd V8 isolate, in-process) — 9 tests validate Worker-runtime compatibility (no `node:*`, no `Bun.*`, no client `EventSource`/`WebSocket` dependence). The dedicated `./workers` bridge is covered by source-level batch bridge tests and the `rn-bundle` companion scan. |
 | `platform-matrix (workers-wrangler)` | `bun run test:workers:wrangler` | Runs the `./web` entry under `wrangler dev --local` — exercises wrangler's esbuild bundling pipeline and wrangler.toml config. NOTE: wrangler dev --local shares the Miniflare 4 runtime, so this is **not** a production-workerd verification (see `test/workers/FINDINGS.md`) |
 | `types-resolution-check` | `bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm` | Validates the `exports` map resolves cleanly for every published subpath |
 | `publint-check` | `bun run publint:check` | Detects common `package.json` packaging hygiene issues before release |
@@ -79,7 +79,7 @@ To update budgets after a legitimate size change:
 
 ## Workers Runtime Verification
 
-The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatible (Cloudflare Workers / Miniflare 4 / `workerd`). CI verifies this three ways: (1) `rn-bundle` statically scans the built `web.js` for forbidden identifiers (`node:*`, `Bun.*`); (2) `platform-matrix (workers)` boots `./web` under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests; (3) `platform-matrix (workers-wrangler)` boots `./web` via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate — see `test/workers/FINDINGS.md` for the production-workerd gap).
+The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatible (Cloudflare Workers / Miniflare 4 / `workerd`). CI verifies this three ways: (1) `rn-bundle` statically scans the built `web.js` and `workers.js` for forbidden identifiers (`node:*`, `Bun.*`); (2) `platform-matrix (workers)` boots `./web` under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests; (3) `platform-matrix (workers-wrangler)` boots `./web` via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate — see `test/workers/FINDINGS.md` for the production-workerd gap). The `./workers` entry is a small Worker bridge for daemon batch routes, Cloudflare Queue consumers, and scheduled ticks; its source-level behavior is covered by `test/cloudflare-worker-batch.test.ts`.
 
 ## Type-Level Tests
 
@@ -89,7 +89,7 @@ The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatibl
 
 - **mirror-drift** — `packages/transport-http/src/` is mirrored into `packages/sdk/src/_internal/transport-http/`. Without this gate, a source edit in the canonical package silently diverges from the inlined copy.
 - **throw-guard** — All consumer-reachable errors must be `GoodVibesSdkError` instances with a typed `kind` discriminant. Raw `throw new Error` bypasses the error contract.
-- **rn-bundle** — Static bundle scan. Companion surface (React Native, Expo, browser, web) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers. (Runtime verification of `./web` under workerd lives in the separate `workers` and `workers-wrangler` lanes above.)
+- **rn-bundle** — Static bundle scan. Companion surface (React Native, Expo, browser, web, workers) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers. (Runtime verification of `./web` under workerd lives in the separate `workers` and `workers-wrangler` lanes above.)
 - **bundle:check** — Prevents accidental bundle size growth when run locally or
   reintroduced as a CI gate. Each entry has a ceiling; the 20% headroom prevents
   transient-spike failures.
