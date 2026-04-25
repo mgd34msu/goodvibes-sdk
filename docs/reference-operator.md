@@ -1,10 +1,10 @@
 # Operator API Reference
 
-Generated from the synced GoodVibes operator contract for product version `0.22.0`.
+Generated from the synced GoodVibes operator contract for product version `0.25.7`.
 
 ## Summary
 
-- Methods: `221`
+- Methods: `222`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -20829,6 +20829,190 @@ Return a companion-chat session record together with its full message history.
   "required": [
     "session",
     "messages"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.sessions.update`
+
+Update companion-chat session metadata, including session-local `provider` and `model`, without changing the daemon/TUI current model.
+
+- Title: `Update Companion Chat Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `PATCH /api/companion/chat/sessions/{sessionId}`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "systemPrompt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "closed"
+          ]
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "lastMessageAt": {
+          "type": "number"
+        },
+        "closedAt": {
+          "type": "number"
+        },
+        "messageCount": {
+          "type": "number"
+        },
+        "pendingInputCount": {
+          "type": "number"
+        },
+        "routeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "surfaceKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "surfaceKind": {
+                "type": "string"
+              },
+              "surfaceId": {
+                "type": "string"
+              },
+              "externalId": {
+                "type": "string"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "routeId": {
+                "type": "string"
+              },
+              "lastSeenAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "surfaceKind",
+              "surfaceId",
+              "lastSeenAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "activeAgentId": {
+          "type": "string"
+        },
+        "lastAgentId": {
+          "type": "string"
+        },
+        "lastError": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "messageCount",
+        "pendingInputCount",
+        "routeIds",
+        "surfaceKinds",
+        "participants",
+        "metadata"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "session"
   ],
   "additionalProperties": false
 }

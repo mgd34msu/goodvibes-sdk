@@ -29,12 +29,28 @@ export type ProviderModelEntry = z.infer<typeof ProviderModelEntrySchema>;
 export const ConfiguredViaSchema = z.enum(['env', 'secrets', 'subscription', 'anonymous']);
 export type ConfiguredVia = z.infer<typeof ConfiguredViaSchema>;
 
+export const ProviderAuthRouteDescriptorSchema = z.object({
+  route: z.enum(['api-key', 'secret-ref', 'service-oauth', 'subscription-oauth', 'anonymous', 'none']),
+  label: z.string(),
+  configured: z.boolean(),
+  usable: z.boolean().optional(),
+  freshness: z.enum(['healthy', 'expiring', 'expired', 'pending', 'unconfigured']).optional(),
+  detail: z.string().optional(),
+  envVars: z.array(z.string()).optional(),
+  secretKeys: z.array(z.string()).optional(),
+  serviceNames: z.array(z.string()).optional(),
+  providerId: z.string().optional(),
+  repairHints: z.array(z.string()).optional(),
+});
+export type ProviderAuthRouteDescriptor = z.infer<typeof ProviderAuthRouteDescriptorSchema>;
+
 export const ProviderEntrySchema = z.object({
   id: z.string(),
   label: z.string(),
   configured: z.boolean(),
   configuredVia: ConfiguredViaSchema.optional(),
   envVars: z.array(z.string()),
+  routes: z.array(ProviderAuthRouteDescriptorSchema).optional(),
   models: z.array(ProviderModelEntrySchema),
 });
 export type ProviderEntry = z.infer<typeof ProviderEntrySchema>;
@@ -42,6 +58,7 @@ export type ProviderEntry = z.infer<typeof ProviderEntrySchema>;
 export const ListProvidersResponseSchema = z.object({
   providers: z.array(ProviderEntrySchema),
   currentModel: ProviderModelRefSchema.nullable(),
+  secretsResolutionSkipped: z.boolean().optional(),
 });
 export type ListProvidersResponse = z.infer<typeof ListProvidersResponseSchema>;
 
@@ -49,6 +66,7 @@ export const CurrentModelResponseSchema = z.object({
   model: ProviderModelRefSchema.nullable(),
   configured: z.boolean(),
   configuredVia: ConfiguredViaSchema.optional(),
+  routes: z.array(ProviderAuthRouteDescriptorSchema).optional(),
 });
 export type CurrentModelResponse = z.infer<typeof CurrentModelResponseSchema>;
 

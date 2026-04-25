@@ -28,6 +28,7 @@ import type {
   CompanionChatTurnEvent,
   ConversationMessageEnvelope,
   CreateCompanionChatSessionInput,
+  UpdateCompanionChatSessionInput,
 } from './companion-chat-types.js';
 import {
   CompanionChatPersistence,
@@ -292,6 +293,29 @@ export class CompanionChatManager {
 
   getMessages(sessionId: string): CompanionChatMessage[] {
     return this.sessions.get(sessionId)?.messages ?? [];
+  }
+
+  updateSession(
+    sessionId: string,
+    input: UpdateCompanionChatSessionInput,
+  ): CompanionChatSession {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
+    }
+    if (session.meta.status === 'closed') {
+      throw Object.assign(new Error(`Session is closed: ${sessionId}`), { code: 'SESSION_CLOSED', status: 409 });
+    }
+
+    const patch: Partial<MutableSessionMeta> = { updatedAt: Date.now() };
+    if (input.title !== undefined) patch.title = input.title;
+    if (input.model !== undefined) patch.model = input.model;
+    if (input.provider !== undefined) patch.provider = input.provider;
+    if (input.systemPrompt !== undefined) patch.systemPrompt = input.systemPrompt;
+
+    const updated = this._updateMeta(session, patch);
+    void this._persist(sessionId);
+    return updated;
   }
 
   /**

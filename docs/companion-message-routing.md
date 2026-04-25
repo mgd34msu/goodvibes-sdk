@@ -120,14 +120,15 @@ orchestrator turn entry point when the user-facing behavior is live chat.
 
 ## Related session routes
 
-Two other session routes cover adjacent use cases. Use the one that matches your intent:
+Other session routes cover adjacent use cases. Use the one that matches your intent:
 
 | Route | Purpose | Triggers agent turn? |
 |---|---|---|
 | `POST /api/sessions/:id/messages` | Inject a companion main-chat message visible to the operator | Yes, when the live TUI delegates `COMPANION_MESSAGE_RECEIVED` to `handleUserInput()` |
 | `POST /api/sessions/:id/inputs` | Dispatch a structured intent (tool call, steer, cancel-input, etc.) into the active turn | Depends on the intent kind |
 | `GET  /api/sessions/:id/messages` | Fetch the full conversation history for the session | n/a |
+| `PATCH /api/companion/chat/sessions/:id` | Update a true remote companion-chat session's own provider/model metadata | No immediate turn; affects subsequent remote-session turns |
 
 `POST /api/sessions/:id/inputs` was restored as an intent-dispatching alias in 0.21.36 (F20) — callers should route structured intents through this endpoint rather than building ad-hoc bodies for `/messages`.
 
-All companion-chat routes (`POST /api/companion/chat/sessions`, `POST /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/events`, `GET /api/companion/chat/sessions/:id`, `DELETE /api/companion/chat/sessions/:id`) are registered in the live method catalog as of 0.21.36 (F21). Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.
+All companion-chat routes (`POST /api/companion/chat/sessions`, `PATCH /api/companion/chat/sessions/:id`, `POST /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/events`, `GET /api/companion/chat/sessions/:id`, `DELETE /api/companion/chat/sessions/:id`) are registered in the live method catalog. Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.

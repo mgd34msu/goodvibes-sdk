@@ -32,6 +32,21 @@ function makeMockProvider(reply = 'Hello from assistant'): CompanionLLMProvider 
   };
 }
 
+function makeCapturingProvider(
+  calls: Array<{ model: string | null; provider: string | null }>,
+): CompanionLLMProvider {
+  return {
+    async *chatStream(_messages, options) {
+      calls.push({
+        model: options.model ?? null,
+        provider: options.provider ?? null,
+      });
+      yield { type: 'text_delta', delta: 'ok' } satisfies CompanionProviderChunk;
+      yield { type: 'done' } satisfies CompanionProviderChunk;
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Mock event publisher
 // ---------------------------------------------------------------------------
@@ -154,6 +169,73 @@ describe('companion-chat-routes: create session', () => {
     const ctx = makeContext(manager);
     const res = await dispatchCompanionChatRoutes(
       makeRequest('GET', 'http://localhost/api/companion/chat/sessions/no-such-session'),
+      ctx,
+    );
+    expect(res!.status).toBe(404);
+  });
+});
+
+describe('companion-chat-routes: update session', () => {
+  test('PATCH updates session-local provider/model without using global provider state', async () => {
+    const calls: Array<{ model: string | null; provider: string | null }> = [];
+    const manager = new CompanionChatManager({
+      provider: makeCapturingProvider(calls),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+    });
+    const ctx = makeContext(manager);
+    const session = manager.createSession({ provider: 'openai', model: 'gpt-5.4' });
+
+    const res = await dispatchCompanionChatRoutes(
+      makeRequest('PATCH', `http://localhost/api/companion/chat/sessions/${session.id}`, {
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-5',
+      }),
+      ctx,
+    );
+    expect(res!.status).toBe(200);
+    const body = await res!.json();
+    expect(body.session.provider).toBe('anthropic');
+    expect(body.session.model).toBe('claude-sonnet-4-5');
+
+    await manager.postMessage(session.id, 'use the session model');
+    await new Promise((r) => setTimeout(r, 25));
+    expect(calls.at(-1)).toEqual({ provider: 'anthropic', model: 'claude-sonnet-4-5' });
+  });
+
+  test('PATCH can infer provider from a registry-key model', async () => {
+    const manager = new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+    });
+    const ctx = makeContext(manager);
+    const session = manager.createSession();
+
+    const res = await dispatchCompanionChatRoutes(
+      makeRequest('PATCH', `http://localhost/api/companion/chat/sessions/${session.id}`, {
+        model: 'openai:gpt-5.5',
+      }),
+      ctx,
+    );
+    expect(res!.status).toBe(200);
+    const body = await res!.json();
+    expect(body.session.provider).toBe('openai');
+    expect(body.session.model).toBe('openai:gpt-5.5');
+  });
+
+  test('PATCH unknown session returns 404', async () => {
+    const manager = new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+    });
+    const ctx = makeContext(manager);
+    const res = await dispatchCompanionChatRoutes(
+      makeRequest('PATCH', 'http://localhost/api/companion/chat/sessions/ghost-id', {
+        provider: 'openai',
+        model: 'gpt-5.5',
+      }),
       ctx,
     );
     expect(res!.status).toBe(404);

@@ -8,6 +8,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.7] - 2026-04-25
+
+### Breaking
+- none
+
+### Added
+- Companion remote chat sessions can now update session-local metadata with
+  `PATCH /api/companion/chat/sessions/{sessionId}`, including `provider`,
+  `model`, `title`, and `systemPrompt`, without changing the daemon/TUI current
+  model.
+- The companion-chat method catalog now advertises
+  `companion.chat.sessions.update` so clients can discover the remote-session
+  update route through `GET /api/control-plane/methods`.
+- Provider discovery responses now expose provider auth `routes`, including
+  API-key, secret-ref, service OAuth, subscription OAuth, and anonymous routes
+  when declared by the provider runtime.
+
+### Fixed
+- Companion-facing provider discovery now reports OpenAI as configured via
+  `"subscription"` when a usable OpenAI subscription OAuth session exists, even
+  if no OpenAI API key is configured.
+- `PATCH /api/providers/current` now accepts an OpenAI model when the provider
+  is usable through subscription OAuth, matching the TUI's existing
+  subscription-backed turn routing.
+- Companion remote-session model selection now has a documented SDK-owned path
+  that lets a remote session use one provider/model while a running TUI remains
+  on another provider/model.
+
+### Migration
+- Shared/TUI model pickers should continue using `PATCH /api/providers/current`;
+  that route intentionally changes the daemon/TUI current model.
+- True companion remote chat sessions should pass `provider` and `model` on
+  `POST /api/companion/chat/sessions`, or update them with
+  `PATCH /api/companion/chat/sessions/{sessionId}`. Do not use
+  `/api/providers/current` for remote-session-local model changes.
+- Companion apps should treat `openai` as the public provider id and use
+  `configuredVia` / `routes` to display whether OpenAI is available through
+  subscription or API-key auth. Do not expose internal subscription provider ids
+  such as `openai-subscriber` as selectable providers.
+
+---
+
 ## [0.25.6] - 2026-04-24
 
 ### Breaking

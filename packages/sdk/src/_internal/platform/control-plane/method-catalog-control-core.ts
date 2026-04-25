@@ -650,6 +650,23 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     }, ['session', 'messages']),
   }),
   methodDescriptor({
+    id: 'companion.chat.sessions.update',
+    title: 'Update Companion Chat Session',
+    description: 'Update companion-chat session metadata, including session-local `provider` and `model`, without changing the daemon/TUI current model.',
+    category: 'companion',
+    scopes: ['write:sessions'],
+    http: { method: 'PATCH', path: '/api/companion/chat/sessions/{sessionId}' },
+    inputSchema: bodyEnvelopeSchema({
+      title: STRING_SCHEMA,
+      model: STRING_SCHEMA,
+      provider: STRING_SCHEMA,
+      systemPrompt: STRING_SCHEMA,
+    }, []),
+    outputSchema: objectSchema({
+      session: SHARED_SESSION_RECORD_SCHEMA,
+    }, ['session']),
+  }),
+  methodDescriptor({
     id: 'companion.chat.sessions.delete',
     title: 'Close Companion Chat Session',
     description: 'Close a companion-chat session. The session record is preserved in closed state.',
