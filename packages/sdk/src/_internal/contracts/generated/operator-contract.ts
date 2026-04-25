@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.25.7"
+    "version": "0.25.8"
   },
   "auth": {
     "modes": [
@@ -51613,6 +51613,102 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "voice.tts.stream",
+        "title": "Stream Text To Speech",
+        "description": "Synthesize audio as streamed bytes through a registered streaming voice provider.",
+        "category": "voice",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http"
+        ],
+        "scopes": [
+          "write:voice"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/voice/tts/stream"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "providerId": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "voiceId": {
+              "type": "string"
+            },
+            "modelId": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "speed": {
+              "type": "number"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string"
+            },
+            "providerId": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "contentType",
+            "providerId",
+            "format"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": false,
+        "metadata": {
+          "responseKind": "binary-stream"
+        }
+      },
+      {
         "id": "voice.voices.list",
         "title": "List Voices",
         "description": "Return registered voices for a voice provider.",
@@ -54885,10 +54981,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 222,
-      "typedInputs": 222,
+      "methods": 223,
+      "typedInputs": 223,
       "genericInputs": 0,
-      "typedOutputs": 222,
+      "typedOutputs": 223,
       "genericOutputs": 0
     },
     "eventCoverage": {

@@ -163,6 +163,7 @@ export interface DaemonApiRouteHandlers {
   getVoiceProviders(): MaybeResponse;
   getVoiceVoices(url: URL): MaybeResponse;
   postVoiceTts(req: Request): MaybeResponse;
+  postVoiceTtsStream(req: Request): MaybeResponse;
   postVoiceStt(req: Request): MaybeResponse;
   postVoiceRealtimeSession(req: Request): MaybeResponse;
   getWebSearchProviders(): MaybeResponse;

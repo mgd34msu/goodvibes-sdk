@@ -53,7 +53,7 @@ This document maps every top-level directory under `packages/sdk/src/_internal/p
 | `tools/` | Built-in platform tools (exec, file, search, etc.) and shared tool helpers; the tool list surfaced to the LLM per session |
 | `types/` | Shared internal TypeScript types that cross multiple platform subsystems and cannot live in a single owner directory |
 | `utils/` | General internal utilities (logging, async helpers, string manipulation) with no platform-subsystem affiliation |
-| `voice/` | Voice provider registry: TTS and STT provider adapters, service facade, and builtin provider registrations |
+| `voice/` | Voice provider registry: TTS, streaming TTS, STT, realtime voice adapters, service facade, and builtin provider registrations |
 | `watchers/` | File system watcher registry and persistent store — tracks active watch subscriptions across sessions |
 | `web-search/` | Web search provider registry and service: supports Tavily, Exa, Brave, DuckDuckGo, SearXNG, Perplexity, and Firecrawl |
 | `workflow/` | Trigger executor — evaluates hook-event conditions against registered `TriggerDefinition`s and dispatches shell or agent actions on match |

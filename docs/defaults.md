@@ -51,6 +51,17 @@ attempts to 30 seconds to avoid silent hangs.
 
 See [Daemon batch processing](./daemon-batch-processing.md) for provider support, routes, and Worker bridge behavior.
 
+## Spoken Output / TTS
+
+| Config key | Default | Notes |
+|------|---------|-------|
+| `tts.provider` | `elevenlabs` | Default streaming TTS provider when a request omits `providerId`. |
+| `tts.voice` | empty string | Default voice id when a request omits `voiceId`; providers may still apply their own fallback. |
+| `tts.llmProvider` | empty string | Reserved optional spoken-output LLM provider override; empty means use the active chat provider. |
+| `tts.llmModel` | empty string | Reserved optional spoken-output LLM model override; empty means use the active chat model. |
+
+See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming route and TUI integration contract.
+
 ## WebSocket Reconnect (`packages/transport-realtime`)
 
 | Path | Default | Notes |

@@ -74,6 +74,23 @@ export const builtinGatewayMediaMethodDescriptors: readonly GatewayMethodDescrip
     outputSchema: VOICE_SYNTHESIS_RESULT_SCHEMA,
   }),
   methodDescriptor({
+    id: 'voice.tts.stream',
+    title: 'Stream Text To Speech',
+    description: 'Synthesize audio as streamed bytes through a registered streaming voice provider.',
+    category: 'voice',
+    scopes: ['write:voice'],
+    transport: ['http'],
+    http: { method: 'POST', path: '/api/voice/tts/stream' },
+    inputSchema: VOICE_SYNTHESIS_REQUEST_SCHEMA,
+    outputSchema: objectSchema({
+      contentType: STRING_SCHEMA,
+      providerId: STRING_SCHEMA,
+      format: STRING_SCHEMA,
+    }, ['contentType', 'providerId', 'format']),
+    invokable: false,
+    metadata: { responseKind: 'binary-stream' },
+  }),
+  methodDescriptor({
     id: 'voice.stt',
     title: 'Run Speech To Text',
     description: 'Transcribe an audio artifact through a registered voice provider.',

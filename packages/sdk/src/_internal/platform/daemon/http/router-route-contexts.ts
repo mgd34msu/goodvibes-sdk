@@ -357,6 +357,10 @@ export function buildMediaRouteContext(input: {
         providerId,
         body as unknown as Parameters<VoiceService['synthesize']>[1],
       ),
+      synthesizeStream: (providerId, body) => input.voiceService.synthesizeStream(
+        providerId,
+        body as unknown as Parameters<VoiceService['synthesizeStream']>[1],
+      ),
       transcribe: (providerId, body) => input.voiceService.transcribe(
         providerId,
         body as unknown as Parameters<VoiceService['transcribe']>[1],

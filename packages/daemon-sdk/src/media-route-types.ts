@@ -4,6 +4,13 @@ export type MediaArtifact = Record<string, unknown>;
 export type MultimodalAnalysisResult = unknown;
 export type MultimodalDetail = string;
 export type VoiceAudioArtifact = Record<string, unknown>;
+export interface VoiceSynthesisStreamLike {
+  readonly providerId: string;
+  readonly mimeType: string;
+  readonly format: string;
+  readonly chunks: AsyncIterable<{ readonly data: Uint8Array }>;
+  readonly metadata: Record<string, unknown>;
+}
 export type WebSearchSafeSearch = string;
 export type WebSearchTimeRange = string;
 export type WebSearchVerbosity = string;
@@ -16,6 +23,7 @@ export interface VoiceServiceLike {
   getStatus(enabled: boolean): Promise<{ providers: readonly unknown[] }>;
   listVoices(providerId?: string): Promise<readonly unknown[]>;
   synthesize(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
+  synthesizeStream(providerId: string | undefined, input: Record<string, unknown>): Promise<VoiceSynthesisStreamLike>;
   transcribe(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
   openRealtimeSession(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
 }

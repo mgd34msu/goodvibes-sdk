@@ -1,6 +1,6 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
-export type VoiceProviderCapability = 'tts' | 'stt' | 'realtime' | 'voice-list';
+export type VoiceProviderCapability = 'tts' | 'tts-stream' | 'stt' | 'realtime' | 'voice-list';
 export type VoiceProviderState = 'healthy' | 'degraded' | 'disabled' | 'unconfigured';
 export type VoiceAudioFormat = 'wav' | 'mp3' | 'ogg' | 'webm' | 'pcm16' | 'flac';
 
@@ -38,12 +38,30 @@ export interface VoiceSynthesisRequest {
   readonly modelId?: string;
   readonly format?: VoiceAudioFormat | string;
   readonly speed?: number;
+  readonly signal?: AbortSignal;
   readonly metadata?: Record<string, unknown>;
 }
 
 export interface VoiceSynthesisResult {
   readonly providerId: string;
   readonly audio: VoiceAudioArtifact;
+  readonly metadata: Record<string, unknown>;
+}
+
+export interface VoiceAudioChunk {
+  readonly data: Uint8Array;
+  readonly sequence: number;
+  readonly mimeType?: string;
+  readonly format?: VoiceAudioFormat | string;
+  readonly final?: boolean;
+  readonly metadata?: Record<string, unknown>;
+}
+
+export interface VoiceSynthesisStreamResult {
+  readonly providerId: string;
+  readonly mimeType: string;
+  readonly format: VoiceAudioFormat | string;
+  readonly chunks: AsyncIterable<VoiceAudioChunk>;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -94,6 +112,7 @@ export interface VoiceProvider {
   status?(): Promise<VoiceProviderStatus> | VoiceProviderStatus;
   listVoices?(): Promise<readonly VoiceDescriptor[]> | readonly VoiceDescriptor[];
   synthesize?(request: VoiceSynthesisRequest): Promise<VoiceSynthesisResult>;
+  synthesizeStream?(request: VoiceSynthesisRequest): Promise<VoiceSynthesisStreamResult> | VoiceSynthesisStreamResult;
   transcribe?(request: VoiceTranscriptionRequest): Promise<VoiceTranscriptionResult>;
   openRealtimeSession?(request: VoiceRealtimeSessionRequest): Promise<VoiceRealtimeSession>;
 }

@@ -1,6 +1,6 @@
 # Runtime Events Reference
 
-Generated from the synced GoodVibes operator event contract for product version `0.25.7`.
+Generated from the synced GoodVibes operator event contract for product version `0.25.8`.
 
 ## Transport endpoints
 

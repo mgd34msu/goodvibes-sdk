@@ -21,34 +21,34 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
         oauthReady: z.ZodBoolean;
         pendingLogin: z.ZodBoolean;
         availableRoutes: z.ZodArray<z.ZodEnum<{
-            "api-key": "api-key";
             unconfigured: "unconfigured";
+            "api-key": "api-key";
             "service-oauth": "service-oauth";
             subscription: "subscription";
         }>>;
         preferredRoute: z.ZodEnum<{
-            "api-key": "api-key";
             unconfigured: "unconfigured";
+            "api-key": "api-key";
             "service-oauth": "service-oauth";
             subscription: "subscription";
         }>;
         activeRoute: z.ZodEnum<{
-            "api-key": "api-key";
             unconfigured: "unconfigured";
+            "api-key": "api-key";
             "service-oauth": "service-oauth";
             subscription: "subscription";
         }>;
         activeRouteReason: z.ZodString;
         authFreshness: z.ZodEnum<{
-            pending: "pending";
             healthy: "healthy";
+            pending: "pending";
+            unconfigured: "unconfigured";
             expiring: "expiring";
             expired: "expired";
-            unconfigured: "unconfigured";
         }>;
         fallbackRoute: z.ZodOptional<z.ZodEnum<{
-            "api-key": "api-key";
             unconfigured: "unconfigured";
+            "api-key": "api-key";
             "service-oauth": "service-oauth";
             subscription: "subscription";
         }>>;
@@ -64,18 +64,18 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
         recommendedActions: z.ZodArray<z.ZodString>;
         routeRecords: z.ZodArray<z.ZodObject<{
             route: z.ZodEnum<{
-                "api-key": "api-key";
                 unconfigured: "unconfigured";
+                "api-key": "api-key";
                 "service-oauth": "service-oauth";
                 subscription: "subscription";
             }>;
             usable: z.ZodBoolean;
             freshness: z.ZodEnum<{
-                pending: "pending";
                 healthy: "healthy";
+                pending: "pending";
+                unconfigured: "unconfigured";
                 expiring: "expiring";
                 expired: "expired";
-                unconfigured: "unconfigured";
             }>;
             detail: z.ZodString;
             issues: z.ZodArray<z.ZodString>;
@@ -111,9 +111,13 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
 // Warning: (ae-forgotten-export) The symbol "WatcherEvent" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "SurfaceEvent" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "KnowledgeEvent" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "WorkspaceEvent" needs to be exported by the entry point index.d.ts
 //
 // @public
-export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | UIEvent_2 | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent;
+export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | UIEvent_2 | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent;
+
+// @public
+export function applyPerMethodPolicy(base: ResolvedHttpRetryPolicy, methodId: string): ResolvedHttpRetryPolicy;
 
 // @public (undocumented)
 export interface ApprovalBrokerLike {
@@ -366,6 +370,9 @@ export interface ClientTransport<TKind extends string, TOperator, TPeer> {
     readonly peer: TPeer;
 }
 
+// @public
+export function composeMiddleware(middleware: readonly TransportMiddleware[], innerFetch: (ctx: TransportContext) => Promise<Response>): (ctx: TransportContext) => Promise<void>;
+
 // @public (undocumented)
 export function computeBackoffDelay(attempt: number, policy: ResolvedBackoffPolicy): number;
 
@@ -373,6 +380,17 @@ export function computeBackoffDelay(attempt: number, policy: ResolvedBackoffPoli
 export class ConfigurationError extends GoodVibesSdkError {
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
+
+// @public (undocumented)
+export type ConfiguredVia = z.infer<typeof ConfiguredViaSchema>;
+
+// @public (undocumented)
+export const ConfiguredViaSchema: z.ZodEnum<{
+    env: "env";
+    secrets: "secrets";
+    anonymous: "anonymous";
+    subscription: "subscription";
+}>;
 
 // @public (undocumented)
 export interface ConsoleObserverOptions {
@@ -396,7 +414,7 @@ export interface ContractHttpDefinition {
 export interface ContractInvokeOptions {
     // (undocumented)
     readonly headers?: HeadersInit;
-    readonly responseSchema?: ZodType<any>;
+    readonly responseSchema?: ZodType;
     // (undocumented)
     readonly signal?: AbortSignal;
 }
@@ -413,6 +431,7 @@ export interface ContractRouteDefinition {
 export interface ContractRouteLike {
     // (undocumented)
     readonly id: string;
+    readonly idempotent?: boolean;
 }
 
 // @public (undocumented)
@@ -429,8 +448,8 @@ export const ControlAuthCurrentResponseSchema: z.ZodObject<{
     authenticated: z.ZodBoolean;
     authMode: z.ZodEnum<{
         session: "session";
-        anonymous: "anonymous";
         invalid: "invalid";
+        anonymous: "anonymous";
         "shared-token": "shared-token";
     }>;
     tokenPresent: z.ZodBoolean;
@@ -481,7 +500,7 @@ export function createClientTransport<TKind extends string, TOperator, TPeer>(ki
 export function createConsoleObserver(options?: ConsoleObserverOptions): SDKObserver;
 
 // @public (undocumented)
-export function createDaemonChannelRouteHandlers(context: DaemonChannelRouteContext): Pick<DaemonApiRouteHandlers, 'getSurfaces' | 'getChannelAccounts' | 'getChannelSurfaceAccounts' | 'getChannelAccount' | 'getChannelSetupSchema' | 'getChannelDoctor' | 'getChannelRepairActions' | 'getChannelLifecycle' | 'postChannelLifecycleMigrate' | 'postChannelAccountAction' | 'getChannelCapabilities' | 'getChannelSurfaceCapabilities' | 'getChannelTools' | 'getChannelSurfaceTools' | 'getChannelAgentTools' | 'getChannelSurfaceAgentTools' | 'postChannelTool' | 'getChannelActions' | 'getChannelSurfaceActions' | 'postChannelAction' | 'postChannelResolveTarget' | 'postChannelAuthorize' | 'postChannelAllowlistResolve' | 'postChannelAllowlistEdit' | 'getChannelPolicies' | 'postChannelPolicy' | 'getChannelPolicyAudit' | 'getChannelStatus' | 'getChannelDirectory'>;
+export function createDaemonChannelRouteHandlers(context: DaemonChannelRouteContext): Pick<DaemonApiRouteHandlers, 'getSurfaces' | 'getChannelAccounts' | 'getChannelSurfaceAccounts' | 'getChannelAccount' | 'getChannelSetupSchema' | 'getChannelDoctor' | 'getChannelRepairActions' | 'getChannelLifecycle' | 'postChannelLifecycleMigrate' | 'postChannelAccountAction' | 'getChannelCapabilities' | 'getChannelSurfaceCapabilities' | 'getChannelTools' | 'getChannelSurfaceTools' | 'getChannelAgentTools' | 'getChannelSurfaceAgentTools' | 'postChannelTool' | 'getChannelActions' | 'getChannelSurfaceActions' | 'postChannelAction' | 'postChannelResolveTarget' | 'postChannelAuthorize' | 'postChannelAllowlistResolve' | 'postChannelAllowlistEdit' | 'getChannelPolicies' | 'postChannelPolicy' | 'patchChannelPolicy' | 'getChannelPolicyAudit' | 'getChannelStatus' | 'getChannelDirectory'>;
 
 // Warning: (ae-forgotten-export) The symbol "ControlRouteContext" needs to be exported by the entry point index.d.ts
 //
@@ -495,7 +514,7 @@ export function createDaemonIntegrationRouteHandlers(context: DaemonIntegrationR
 export function createDaemonKnowledgeRouteHandlers(context: DaemonKnowledgeRouteContext): Pick<DaemonApiRouteHandlers, 'getKnowledgeStatus' | 'getKnowledgeSources' | 'getKnowledgeNodes' | 'getKnowledgeIssues' | 'getKnowledgeItem' | 'getKnowledgeConnectors' | 'getKnowledgeConnector' | 'getKnowledgeConnectorDoctor' | 'getKnowledgeProjectionTargets' | 'getKnowledgeGraphqlSchema' | 'getKnowledgeExtractions' | 'getKnowledgeUsage' | 'getKnowledgeCandidates' | 'getKnowledgeCandidate' | 'getKnowledgeReports' | 'getKnowledgeReport' | 'getKnowledgeExtraction' | 'getKnowledgeSourceExtraction' | 'getKnowledgeJobs' | 'getKnowledgeJob' | 'getKnowledgeJobRuns' | 'getKnowledgeSchedules' | 'getKnowledgeSchedule' | 'postKnowledgeIngestUrl' | 'postKnowledgeIngestArtifact' | 'postKnowledgeImportBookmarks' | 'postKnowledgeImportUrls' | 'postKnowledgeIngestConnector' | 'postKnowledgeSearch' | 'postKnowledgePacket' | 'postKnowledgeDecideCandidate' | 'postKnowledgeRunJob' | 'postKnowledgeLint' | 'postKnowledgeReindex' | 'postKnowledgeSaveSchedule' | 'deleteKnowledgeSchedule' | 'postKnowledgeSetScheduleEnabled' | 'postKnowledgeRenderProjection' | 'postKnowledgeMaterializeProjection' | 'executeKnowledgeGraphql'>;
 
 // @public (undocumented)
-export function createDaemonMediaRouteHandlers(context: DaemonMediaRouteContext): Pick<DaemonApiRouteHandlers, 'getVoiceStatus' | 'getVoiceProviders' | 'getVoiceVoices' | 'postVoiceTts' | 'postVoiceStt' | 'postVoiceRealtimeSession' | 'getWebSearchProviders' | 'postWebSearch' | 'getArtifacts' | 'postArtifact' | 'getArtifact' | 'getArtifactContent' | 'getMediaProviders' | 'postMediaAnalyze' | 'postMediaTransform' | 'postMediaGenerate' | 'getMultimodalStatus' | 'getMultimodalProviders' | 'postMultimodalAnalyze' | 'postMultimodalPacket' | 'postMultimodalWriteback'>;
+export function createDaemonMediaRouteHandlers(context: DaemonMediaRouteContext): Pick<DaemonApiRouteHandlers, 'getVoiceStatus' | 'getVoiceProviders' | 'getVoiceVoices' | 'postVoiceTts' | 'postVoiceTtsStream' | 'postVoiceStt' | 'postVoiceRealtimeSession' | 'getWebSearchProviders' | 'postWebSearch' | 'getArtifacts' | 'postArtifact' | 'getArtifact' | 'getArtifactContent' | 'getMediaProviders' | 'postMediaAnalyze' | 'postMediaTransform' | 'postMediaGenerate' | 'getMultimodalStatus' | 'getMultimodalProviders' | 'postMultimodalAnalyze' | 'postMultimodalPacket' | 'postMultimodalWriteback'>;
 
 // Warning: (ae-forgotten-export) The symbol "DaemonRemoteRouteContext" needs to be exported by the entry point index.d.ts
 //
@@ -503,13 +522,13 @@ export function createDaemonMediaRouteHandlers(context: DaemonMediaRouteContext)
 export function createDaemonRemoteRouteHandlers(context: DaemonRemoteRouteContext): Pick<DaemonApiRouteHandlers, 'getRemotePairRequests' | 'approveRemotePairRequest' | 'rejectRemotePairRequest' | 'getRemotePeers' | 'rotateRemotePeerToken' | 'revokeRemotePeerToken' | 'disconnectRemotePeer' | 'getRemoteWork' | 'invokeRemotePeer' | 'cancelRemoteWork' | 'getRemoteNodeHostContract'>;
 
 // @public (undocumented)
-export function createDaemonRuntimeAutomationRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow'>;
+export function createDaemonRuntimeAutomationRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow' | 'getSchedulerCapacity'>;
 
 // @public (undocumented)
-export function createDaemonRuntimeRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'createSharedSession' | 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'postTask' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'getSharedSessionInputs' | 'postSharedSessionMessage' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow'>;
+export function createDaemonRuntimeRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'createSharedSession' | 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'postTask' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'getSharedSessionInputs' | 'postSharedSessionMessage' | 'postSharedSessionInput' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getSharedSessionEvents' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow' | 'getSchedulerCapacity' | 'getRuntimeMetrics'>;
 
 // @public (undocumented)
-export function createDaemonRuntimeSessionRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'createSharedSession' | 'postTask' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'getSharedSessionInputs' | 'postSharedSessionMessage' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus'>;
+export function createDaemonRuntimeSessionRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'createSharedSession' | 'postTask' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'getSharedSessionInputs' | 'postSharedSessionMessage' | 'postSharedSessionInput' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus' | 'getSharedSessionEvents'>;
 
 // @public (undocumented)
 export function createDaemonSystemRouteHandlers(context: DaemonSystemRouteContext, request: Request): Pick<DaemonApiRouteHandlers, 'getWatchers' | 'postWatcher' | 'patchWatcher' | 'watcherAction' | 'deleteWatcher' | 'getServiceStatus' | 'installService' | 'startService' | 'stopService' | 'restartService' | 'uninstallService' | 'getRouteBindings' | 'postRouteBinding' | 'patchRouteBinding' | 'deleteRouteBinding' | 'getApprovals' | 'approvalAction' | 'getConfig' | 'postConfig'>;
@@ -517,7 +536,7 @@ export function createDaemonSystemRouteHandlers(context: DaemonSystemRouteContex
 // Warning: (ae-forgotten-export) The symbol "TelemetryRouteContext" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function createDaemonTelemetryRouteHandlers(context: TelemetryRouteContext): Pick<DaemonApiRouteHandlers, 'getTelemetrySnapshot' | 'getTelemetryEvents' | 'getTelemetryErrors' | 'getTelemetryTraces' | 'getTelemetryMetrics' | 'createTelemetryEventStream' | 'getTelemetryOtlpTraces' | 'getTelemetryOtlpLogs' | 'getTelemetryOtlpMetrics'>;
+export function createDaemonTelemetryRouteHandlers(context: TelemetryRouteContext): Pick<DaemonApiRouteHandlers, 'getTelemetrySnapshot' | 'getTelemetryEvents' | 'getTelemetryErrors' | 'getTelemetryTraces' | 'getTelemetryMetrics' | 'createTelemetryEventStream' | 'getTelemetryOtlpTraces' | 'getTelemetryOtlpLogs' | 'getTelemetryOtlpMetrics' | 'postTelemetryOtlpLogs' | 'postTelemetryOtlpTraces' | 'postTelemetryOtlpMetrics'>;
 
 // @public (undocumented)
 export function createDirectClientTransport<TOperator, TPeer>(operator: TOperator, peer: TPeer): DirectClientTransport<TOperator, TPeer>;
@@ -537,8 +556,15 @@ export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactN
 // @public (undocumented)
 export function createFetch(fetchImpl?: typeof fetch, fallbackFetch?: typeof fetch): typeof fetch;
 
+// Warning: (ae-forgotten-export) The symbol "AutoRefreshOptions" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "AutoRefreshCoordinator" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function createGoodVibesAuthClient(operator: OperatorSdk, tokenStore: GoodVibesTokenStore | null, getAuthToken?: AuthTokenResolver, observer?: SDKObserver): GoodVibesAuthClient;
+export function createGoodVibesAuthClient(operator: OperatorSdk, tokenStore: GoodVibesTokenStore | null, getAuthToken?: AuthTokenResolver, observer?: SDKObserver, autoRefreshOptions?: AutoRefreshOptions,
+existingCoordinator?: AutoRefreshCoordinator | null): GoodVibesAuthClient;
+
+// @public (undocumented)
+export function createGoodVibesCloudflareWorker(options?: GoodVibesCloudflareWorkerOptions): GoodVibesCloudflareWorker;
 
 // @public
 export function createGoodVibesSdk(options: GoodVibesSdkOptions): GoodVibesSdk;
@@ -556,7 +582,7 @@ export const createJsonInit: typeof createJsonRequestInit;
 export function createJsonRequestInit(token: string | null | undefined, body?: unknown, method?: string, headers?: HeadersInit, signal?: AbortSignal, defaultHeaders?: HeadersInit): RequestInit;
 
 // @public
-export function createMemoryTokenStore(initialToken?: string | null): GoodVibesTokenStore;
+export function createMemoryTokenStore(initialToken?: string | null, initialExpiresAt?: number): GoodVibesTokenStore;
 
 // @public
 export function createOpenTelemetryObserver(tracer: OtelTracer, meter: OtelMeter): SDKObserver;
@@ -602,7 +628,55 @@ export function createWebGoodVibesSdk(options?: WebGoodVibesSdkOptions): GoodVib
 export function createWebSocketConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, WebSocketImpl: typeof WebSocket, options?: RuntimeEventConnectorOptions): DomainEventConnector<RuntimeEventDomain, TEvent>;
 
 // @public (undocumented)
+export type CurrentModelResponse = z.infer<typeof CurrentModelResponseSchema>;
+
+// @public (undocumented)
+export const CurrentModelResponseSchema: z.ZodObject<{
+    model: z.ZodNullable<z.ZodObject<{
+        registryKey: z.ZodString;
+        provider: z.ZodString;
+        id: z.ZodString;
+    }, z.core.$strip>>;
+    configured: z.ZodBoolean;
+    configuredVia: z.ZodOptional<z.ZodEnum<{
+        env: "env";
+        secrets: "secrets";
+        anonymous: "anonymous";
+        subscription: "subscription";
+    }>>;
+    routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        route: z.ZodEnum<{
+            none: "none";
+            "api-key": "api-key";
+            "secret-ref": "secret-ref";
+            "service-oauth": "service-oauth";
+            "subscription-oauth": "subscription-oauth";
+            anonymous: "anonymous";
+        }>;
+        label: z.ZodString;
+        configured: z.ZodBoolean;
+        usable: z.ZodOptional<z.ZodBoolean>;
+        freshness: z.ZodOptional<z.ZodEnum<{
+            healthy: "healthy";
+            pending: "pending";
+            unconfigured: "unconfigured";
+            expiring: "expiring";
+            expired: "expired";
+        }>>;
+        detail: z.ZodOptional<z.ZodString>;
+        envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        secretKeys: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        providerId: z.ZodOptional<z.ZodString>;
+        repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
 export type DaemonApiClientKind = 'web' | 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix' | 'daemon';
+
+// @public
+export type DaemonApiRouteExtension = (req: Request) => Promise<Response | null> | Response | null;
 
 // @public (undocumented)
 export interface DaemonApiRouteHandlers {
@@ -825,7 +899,11 @@ export interface DaemonApiRouteHandlers {
     // (undocumented)
     getRoutesSnapshot(): MaybeResponse;
     // (undocumented)
+    getRuntimeMetrics(): MaybeResponse;
+    // (undocumented)
     getRuntimeTask(taskId: string): MaybeResponse;
+    // (undocumented)
+    getSchedulerCapacity(): MaybeResponse;
     // (undocumented)
     getSchedules(): MaybeResponse;
     // (undocumented)
@@ -834,6 +912,8 @@ export interface DaemonApiRouteHandlers {
     getSettings(): MaybeResponse;
     // (undocumented)
     getSharedSession(sessionId: string): MaybeResponse;
+    // (undocumented)
+    getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
     // (undocumented)
     getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
     // (undocumented)
@@ -880,6 +960,8 @@ export interface DaemonApiRouteHandlers {
     invokeRemotePeer(peerId: string, req: Request): MaybeResponse;
     // (undocumented)
     patchAutomationJob(jobId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    patchChannelPolicy(surface: string, req: Request): MaybeResponse;
     // (undocumented)
     patchRouteBinding(bindingId: string, req: Request): MaybeResponse;
     // (undocumented)
@@ -969,17 +1051,27 @@ export interface DaemonApiRouteHandlers {
     // (undocumented)
     postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
     // (undocumented)
+    postSharedSessionInput(sessionId: string, req: Request): MaybeResponse;
+    // (undocumented)
     postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
     // (undocumented)
     postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
     // (undocumented)
     postTask(req: Request): MaybeResponse;
     // (undocumented)
+    postTelemetryOtlpLogs(req: Request): MaybeResponse;
+    // (undocumented)
+    postTelemetryOtlpMetrics(req: Request): MaybeResponse;
+    // (undocumented)
+    postTelemetryOtlpTraces(req: Request): MaybeResponse;
+    // (undocumented)
     postVoiceRealtimeSession(req: Request): MaybeResponse;
     // (undocumented)
     postVoiceStt(req: Request): MaybeResponse;
     // (undocumented)
     postVoiceTts(req: Request): MaybeResponse;
+    // (undocumented)
+    postVoiceTtsStream(req: Request): MaybeResponse;
     // (undocumented)
     postWatcher(req: Request): MaybeResponse;
     // (undocumented)
@@ -1032,6 +1124,25 @@ export interface DaemonChannelRouteContext {
 
 // @public (undocumented)
 export type DaemonErrorCategory = 'authentication' | 'authorization' | 'billing' | 'rate_limit' | 'timeout' | 'network' | 'bad_request' | 'not_found' | 'permission' | 'tool' | 'config' | 'protocol' | 'service' | 'internal' | 'unknown';
+
+// @public (undocumented)
+export const DaemonErrorCategory: {
+    readonly AUTHENTICATION: "authentication";
+    readonly AUTHORIZATION: "authorization";
+    readonly BILLING: "billing";
+    readonly RATE_LIMIT: "rate_limit";
+    readonly TIMEOUT: "timeout";
+    readonly NETWORK: "network";
+    readonly BAD_REQUEST: "bad_request";
+    readonly NOT_FOUND: "not_found";
+    readonly PERMISSION: "permission";
+    readonly TOOL: "tool";
+    readonly CONFIG: "config";
+    readonly PROTOCOL: "protocol";
+    readonly SERVICE: "service";
+    readonly INTERNAL: "internal";
+    readonly UNKNOWN: "unknown";
+};
 
 // @public (undocumented)
 export type DaemonErrorSource = 'provider' | 'tool' | 'transport' | 'config' | 'permission' | 'runtime' | 'render' | 'acp' | 'unknown';
@@ -1111,9 +1222,6 @@ export interface DaemonMediaRouteContext {
 }
 
 // @public (undocumented)
-export type DaemonRuntimeEventDomain = string;
-
-// @public (undocumented)
 export interface DaemonRuntimeRouteContext {
     // (undocumented)
     readonly agentManager: {
@@ -1139,6 +1247,12 @@ export interface DaemonRuntimeRouteContext {
             agentId?: string;
             status: string;
         }>;
+        getSchedulerCapacity(): {
+            slotsTotal: number;
+            slotsInUse: number;
+            queueDepth: number;
+            oldestQueuedAgeMs: number | null;
+        };
     };
     // (undocumented)
     readonly configManager: {
@@ -1150,6 +1264,7 @@ export interface DaemonRuntimeRouteContext {
     readonly normalizeCronSchedule: (expression: string, timezone?: string, staggerMs?: unknown) => unknown;
     // (undocumented)
     readonly normalizeEverySchedule: (interval: string | number, anchorAt?: number) => unknown;
+    readonly openSessionEventStream: (req: Request, sessionId: string) => Response;
     // (undocumented)
     readonly parseJsonBody: (req: Request) => Promise<JsonBody | Response>;
     // (undocumented)
@@ -1308,7 +1423,15 @@ export interface DaemonRuntimeRouteContext {
             status: string;
             routeId?: string;
         }): Promise<void>;
+        appendCompanionMessage(sessionId: string, input: {
+            readonly messageId: string;
+            readonly body: string;
+            readonly timestamp: number;
+            readonly source: string;
+        }): Promise<unknown>;
     };
+    // (undocumented)
+    readonly snapshotMetrics: () => Record<string, unknown>;
     // (undocumented)
     readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
     // (undocumented)
@@ -1370,6 +1493,7 @@ export interface DaemonSystemRouteContext {
     } | null;
     // (undocumented)
     readonly routeBindings: RouteBindingManagerLike;
+    readonly swapManager: WorkspaceSwapManagerLike | null;
     // (undocumented)
     readonly watcherRegistry: WatcherRegistryLike;
 }
@@ -1390,16 +1514,16 @@ export type DirectClientTransport<TOperator, TPeer> = ClientTransport<'direct', 
 export function dispatchAutomationRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getReview' | 'getIntegrationSession' | 'getIntegrationAutomation' | 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'getDeliveries' | 'getDelivery' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow'>): Promise<Response | null>;
 
 // @public (undocumented)
-export function dispatchDaemonApiRoutes(req: Request, handlers: DaemonApiRouteHandlers): Promise<Response | null>;
+export function dispatchDaemonApiRoutes(req: Request, handlers: DaemonApiRouteHandlers, extensions?: readonly DaemonApiRouteExtension[]): Promise<Response | null>;
 
 // @public (undocumented)
-export function dispatchOperatorRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getStatus' | 'getCurrentAuth' | 'getControlPlaneSnapshot' | 'getOperatorContract' | 'getControlPlaneWeb' | 'getControlPlaneRecentEvents' | 'getControlPlaneMessages' | 'getControlPlaneClients' | 'getTelemetrySnapshot' | 'getTelemetryEvents' | 'getTelemetryErrors' | 'getTelemetryTraces' | 'getTelemetryMetrics' | 'createTelemetryEventStream' | 'getTelemetryOtlpTraces' | 'getTelemetryOtlpLogs' | 'getTelemetryOtlpMetrics' | 'getGatewayMethods' | 'getGatewayEvents' | 'getGatewayMethod' | 'invokeGatewayMethod' | 'createControlPlaneEventStream' | 'getRoutesSnapshot' | 'getSurfaces' | 'getChannelAccounts' | 'getChannelSurfaceAccounts' | 'getChannelAccount' | 'postChannelAccountAction' | 'getChannelSetupSchema' | 'getChannelDoctor' | 'getChannelRepairActions' | 'getChannelLifecycle' | 'postChannelLifecycleMigrate' | 'getChannelCapabilities' | 'getChannelSurfaceCapabilities' | 'getChannelTools' | 'getChannelSurfaceTools' | 'getChannelAgentTools' | 'getChannelSurfaceAgentTools' | 'postChannelTool' | 'getChannelActions' | 'getChannelSurfaceActions' | 'postChannelAction' | 'postChannelResolveTarget' | 'postChannelAuthorize' | 'postChannelAllowlistResolve' | 'postChannelAllowlistEdit' | 'getChannelPolicies' | 'postChannelPolicy' | 'getChannelPolicyAudit' | 'getChannelStatus' | 'getChannelDirectory' | 'getWatchers' | 'postWatcher' | 'patchWatcher' | 'watcherAction' | 'deleteWatcher' | 'getServiceStatus' | 'installService' | 'startService' | 'stopService' | 'restartService' | 'uninstallService' | 'getRouteBindings' | 'postRouteBinding' | 'patchRouteBinding' | 'deleteRouteBinding' | 'getApprovals' | 'approvalAction' | 'getRemote' | 'getHealth' | 'getAccounts' | 'getProviders' | 'getProvider' | 'getProviderUsage' | 'getSettings' | 'getContinuity' | 'getWorktrees' | 'getIntelligence' | 'getLocalAuth' | 'postLocalAuthUser' | 'deleteLocalAuthUser' | 'postLocalAuthPassword' | 'deleteLocalAuthSession' | 'deleteBootstrapFile' | 'getPanels' | 'postPanelOpen' | 'getEvents' | 'getConfig' | 'postConfig' | 'getReview' | 'getIntegrationSession' | 'getIntegrationTasks' | 'getIntegrationAutomation' | 'getIntegrationSessions' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'getMemoryDoctor' | 'getMemoryVectorStats' | 'postMemoryVectorRebuild' | 'postMemoryEmbeddingDefault' | 'getKnowledgeStatus' | 'getKnowledgeSources' | 'getKnowledgeNodes' | 'getKnowledgeIssues' | 'getKnowledgeItem' | 'getKnowledgeConnectors' | 'getKnowledgeConnector' | 'getKnowledgeConnectorDoctor' | 'getKnowledgeProjectionTargets' | 'getKnowledgeGraphqlSchema' | 'getKnowledgeExtractions' | 'getKnowledgeUsage' | 'getKnowledgeCandidates' | 'getKnowledgeCandidate' | 'getKnowledgeReports' | 'getKnowledgeReport' | 'getKnowledgeExtraction' | 'getKnowledgeSourceExtraction' | 'getKnowledgeJobs' | 'getKnowledgeJob' | 'getKnowledgeJobRuns' | 'getKnowledgeSchedules' | 'getKnowledgeSchedule' | 'postKnowledgeIngestUrl' | 'postKnowledgeIngestArtifact' | 'postKnowledgeImportBookmarks' | 'postKnowledgeImportUrls' | 'postKnowledgeIngestConnector' | 'postKnowledgeSearch' | 'postKnowledgePacket' | 'postKnowledgeDecideCandidate' | 'postKnowledgeRunJob' | 'postKnowledgeLint' | 'postKnowledgeReindex' | 'postKnowledgeSaveSchedule' | 'deleteKnowledgeSchedule' | 'postKnowledgeSetScheduleEnabled' | 'postKnowledgeRenderProjection' | 'postKnowledgeMaterializeProjection' | 'executeKnowledgeGraphql' | 'getVoiceStatus' | 'getVoiceProviders' | 'getVoiceVoices' | 'postVoiceTts' | 'postVoiceStt' | 'postVoiceRealtimeSession' | 'getWebSearchProviders' | 'postWebSearch' | 'getArtifacts' | 'postArtifact' | 'getArtifact' | 'getArtifactContent' | 'getMediaProviders' | 'postMediaAnalyze' | 'postMediaTransform' | 'postMediaGenerate' | 'getMultimodalStatus' | 'getMultimodalProviders' | 'postMultimodalAnalyze' | 'postMultimodalPacket' | 'postMultimodalWriteback' | 'getRemoteNodeHostContract'>): Promise<Response | null>;
+export function dispatchOperatorRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getStatus' | 'getCurrentAuth' | 'getControlPlaneSnapshot' | 'getOperatorContract' | 'getControlPlaneWeb' | 'getControlPlaneRecentEvents' | 'getControlPlaneMessages' | 'getControlPlaneClients' | 'getTelemetrySnapshot' | 'getTelemetryEvents' | 'getTelemetryErrors' | 'getTelemetryTraces' | 'getTelemetryMetrics' | 'createTelemetryEventStream' | 'getTelemetryOtlpTraces' | 'getTelemetryOtlpLogs' | 'getTelemetryOtlpMetrics' | 'postTelemetryOtlpLogs' | 'postTelemetryOtlpTraces' | 'postTelemetryOtlpMetrics' | 'getGatewayMethods' | 'getGatewayEvents' | 'getGatewayMethod' | 'invokeGatewayMethod' | 'createControlPlaneEventStream' | 'getRoutesSnapshot' | 'getSurfaces' | 'getChannelAccounts' | 'getChannelSurfaceAccounts' | 'getChannelAccount' | 'postChannelAccountAction' | 'getChannelSetupSchema' | 'getChannelDoctor' | 'getChannelRepairActions' | 'getChannelLifecycle' | 'postChannelLifecycleMigrate' | 'getChannelCapabilities' | 'getChannelSurfaceCapabilities' | 'getChannelTools' | 'getChannelSurfaceTools' | 'getChannelAgentTools' | 'getChannelSurfaceAgentTools' | 'postChannelTool' | 'getChannelActions' | 'getChannelSurfaceActions' | 'postChannelAction' | 'postChannelResolveTarget' | 'postChannelAuthorize' | 'postChannelAllowlistResolve' | 'postChannelAllowlistEdit' | 'getChannelPolicies' | 'postChannelPolicy' | 'patchChannelPolicy' | 'getChannelPolicyAudit' | 'getChannelStatus' | 'getChannelDirectory' | 'getWatchers' | 'postWatcher' | 'patchWatcher' | 'watcherAction' | 'deleteWatcher' | 'getServiceStatus' | 'installService' | 'startService' | 'stopService' | 'restartService' | 'uninstallService' | 'getRouteBindings' | 'postRouteBinding' | 'patchRouteBinding' | 'deleteRouteBinding' | 'getApprovals' | 'approvalAction' | 'getRemote' | 'getHealth' | 'getAccounts' | 'getProviders' | 'getProvider' | 'getProviderUsage' | 'getSettings' | 'getContinuity' | 'getWorktrees' | 'getIntelligence' | 'getLocalAuth' | 'postLocalAuthUser' | 'deleteLocalAuthUser' | 'postLocalAuthPassword' | 'deleteLocalAuthSession' | 'deleteBootstrapFile' | 'getPanels' | 'postPanelOpen' | 'getEvents' | 'getConfig' | 'postConfig' | 'getReview' | 'getIntegrationSession' | 'getIntegrationTasks' | 'getIntegrationAutomation' | 'getIntegrationSessions' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'getMemoryDoctor' | 'getMemoryVectorStats' | 'postMemoryVectorRebuild' | 'postMemoryEmbeddingDefault' | 'getKnowledgeStatus' | 'getKnowledgeSources' | 'getKnowledgeNodes' | 'getKnowledgeIssues' | 'getKnowledgeItem' | 'getKnowledgeConnectors' | 'getKnowledgeConnector' | 'getKnowledgeConnectorDoctor' | 'getKnowledgeProjectionTargets' | 'getKnowledgeGraphqlSchema' | 'getKnowledgeExtractions' | 'getKnowledgeUsage' | 'getKnowledgeCandidates' | 'getKnowledgeCandidate' | 'getKnowledgeReports' | 'getKnowledgeReport' | 'getKnowledgeExtraction' | 'getKnowledgeSourceExtraction' | 'getKnowledgeJobs' | 'getKnowledgeJob' | 'getKnowledgeJobRuns' | 'getKnowledgeSchedules' | 'getKnowledgeSchedule' | 'postKnowledgeIngestUrl' | 'postKnowledgeIngestArtifact' | 'postKnowledgeImportBookmarks' | 'postKnowledgeImportUrls' | 'postKnowledgeIngestConnector' | 'postKnowledgeSearch' | 'postKnowledgePacket' | 'postKnowledgeDecideCandidate' | 'postKnowledgeRunJob' | 'postKnowledgeLint' | 'postKnowledgeReindex' | 'postKnowledgeSaveSchedule' | 'deleteKnowledgeSchedule' | 'postKnowledgeSetScheduleEnabled' | 'postKnowledgeRenderProjection' | 'postKnowledgeMaterializeProjection' | 'executeKnowledgeGraphql' | 'getVoiceStatus' | 'getVoiceProviders' | 'getVoiceVoices' | 'postVoiceTts' | 'postVoiceTtsStream' | 'postVoiceStt' | 'postVoiceRealtimeSession' | 'getWebSearchProviders' | 'postWebSearch' | 'getArtifacts' | 'postArtifact' | 'getArtifact' | 'getArtifactContent' | 'getMediaProviders' | 'postMediaAnalyze' | 'postMediaTransform' | 'postMediaGenerate' | 'getMultimodalStatus' | 'getMultimodalProviders' | 'postMultimodalAnalyze' | 'postMultimodalPacket' | 'postMultimodalWriteback' | 'getRemoteNodeHostContract' | 'getSchedulerCapacity' | 'getRuntimeMetrics'>): Promise<Response | null>;
 
 // @public (undocumented)
 export function dispatchRemoteRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getRemote' | 'getRemotePairRequests' | 'approveRemotePairRequest' | 'rejectRemotePairRequest' | 'getRemotePeers' | 'rotateRemotePeerToken' | 'revokeRemotePeerToken' | 'disconnectRemotePeer' | 'getRemoteWork' | 'invokeRemotePeer' | 'cancelRemoteWork'>): Promise<Response | null>;
 
 // @public (undocumented)
-export function dispatchSessionRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getIntegrationSessions' | 'createSharedSession' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'postSharedSessionMessage' | 'getSharedSessionInputs' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput'>): Promise<Response | null>;
+export function dispatchSessionRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getIntegrationSessions' | 'createSharedSession' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'postSharedSessionMessage' | 'getSharedSessionInputs' | 'postSharedSessionInput' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getSharedSessionEvents'>): Promise<Response | null>;
 
 // @public (undocumented)
 export function dispatchTaskRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getIntegrationTasks' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus' | 'postTask'>): Promise<Response | null>;
@@ -1474,11 +1598,14 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.18.2";
-    readonly operatorMethodCount: 213;
-    readonly operatorEventCount: 29;
+    readonly productVersion: "0.25.8";
+    readonly operatorMethodCount: 223;
+    readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
 };
+
+// @public
+export function generateIdempotencyKey(): string;
 
 // @public (undocumented)
 export function getHttpRetryDelay(attempt: number, policy: ResolvedHttpRetryPolicy): number;
@@ -1524,6 +1651,75 @@ export interface GoodVibesAuthLoginOptions {
 }
 
 // @public (undocumented)
+export interface GoodVibesCloudflareExecutionContext {
+    // (undocumented)
+    waitUntil(promise: Promise<unknown>): void;
+}
+
+// @public (undocumented)
+export interface GoodVibesCloudflareMessageBatch<Body = unknown> {
+    // (undocumented)
+    readonly messages: readonly GoodVibesCloudflareQueueMessage<Body>[];
+}
+
+// @public (undocumented)
+export interface GoodVibesCloudflareQueue<Body = unknown> {
+    // (undocumented)
+    send(message: Body): Promise<void>;
+}
+
+// @public (undocumented)
+export interface GoodVibesCloudflareQueueMessage<Body = unknown> {
+    // (undocumented)
+    ack?(): void;
+    // (undocumented)
+    readonly body: Body;
+    // (undocumented)
+    retry?(): void;
+}
+
+// @public (undocumented)
+export type GoodVibesCloudflareQueuePayload = {
+    readonly type: 'batch.tick';
+    readonly force?: boolean;
+    readonly enqueuedAt?: number;
+} | {
+    readonly type: 'batch.job.create';
+    readonly body: Record<string, unknown>;
+    readonly enqueuedAt?: number;
+};
+
+// @public (undocumented)
+export interface GoodVibesCloudflareWorker {
+    // (undocumented)
+    fetch(request: Request, env: GoodVibesCloudflareWorkerEnv, ctx: GoodVibesCloudflareExecutionContext): Promise<Response>;
+    // (undocumented)
+    queue(batch: GoodVibesCloudflareMessageBatch<GoodVibesCloudflareQueuePayload>, env: GoodVibesCloudflareWorkerEnv, ctx: GoodVibesCloudflareExecutionContext): Promise<void>;
+    // (undocumented)
+    scheduled(event: unknown, env: GoodVibesCloudflareWorkerEnv, ctx: GoodVibesCloudflareExecutionContext): Promise<void>;
+}
+
+// @public (undocumented)
+export interface GoodVibesCloudflareWorkerEnv {
+    // (undocumented)
+    GOODVIBES_BATCH_QUEUE?: GoodVibesCloudflareQueue<GoodVibesCloudflareQueuePayload>;
+    // (undocumented)
+    GOODVIBES_DAEMON_URL?: string;
+    // (undocumented)
+    GOODVIBES_OPERATOR_TOKEN?: string;
+}
+
+// @public (undocumented)
+export interface GoodVibesCloudflareWorkerOptions {
+    // (undocumented)
+    readonly authToken?: string;
+    // (undocumented)
+    readonly daemonUrl?: string;
+    // (undocumented)
+    readonly queueJobPayloads?: boolean;
+}
+
+// @public (undocumented)
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
 
 // @public (undocumented)
@@ -1556,6 +1752,7 @@ export interface GoodVibesSdk {
     readonly operator: OperatorSdk;
     readonly peer: PeerSdk;
     readonly realtime: GoodVibesRealtime;
+    use(middleware: TransportMiddleware): void;
 }
 
 // @public
@@ -1636,11 +1833,13 @@ export interface GoodVibesSdkErrorOptions {
 // @public
 export interface GoodVibesSdkOptions {
     readonly authToken?: string | null;
+    readonly autoRefresh?: AutoRefreshOptions;
     readonly baseUrl: string;
     readonly fetch?: typeof fetch;
     readonly getAuthToken?: AuthTokenResolver;
     readonly getHeaders?: HeaderResolver;
     readonly headers?: HeadersInit;
+    readonly middleware?: TransportMiddleware[];
     readonly observer?: SDKObserver;
     readonly realtime?: GoodVibesRealtimeOptions;
     readonly retry?: HttpRetryPolicy;
@@ -1648,14 +1847,19 @@ export interface GoodVibesSdkOptions {
     readonly WebSocketImpl?: typeof WebSocket;
 }
 
-// @public (undocumented)
+// @public
 export interface GoodVibesTokenStore {
     // (undocumented)
     clearToken(): Promise<void>;
     // (undocumented)
     getToken(): Promise<string | null>;
+    getTokenEntry?(): Promise<{
+        token: string | null;
+        expiresAt?: number;
+    }>;
     // (undocumented)
     setToken(token: string | null): Promise<void>;
+    setTokenEntry?(token: string | null, expiresAt?: number): Promise<void>;
 }
 
 // @public (undocumented)
@@ -1682,8 +1886,10 @@ export interface HttpJsonRequestOptions {
     readonly body?: unknown;
     // (undocumented)
     readonly headers?: HeadersInit;
+    readonly idempotent?: boolean;
     // (undocumented)
     readonly method?: string;
+    readonly methodId?: string;
     // (undocumented)
     readonly retry?: false | HttpRetryPolicy;
     // (undocumented)
@@ -1692,6 +1898,7 @@ export interface HttpJsonRequestOptions {
 
 // @public (undocumented)
 export interface HttpRetryPolicy extends BackoffPolicy {
+    readonly perMethodPolicy?: Readonly<Record<string, PerMethodRetryPolicy>>;
     // (undocumented)
     readonly retryOnMethods?: readonly string[];
     // (undocumented)
@@ -1715,12 +1922,18 @@ export type HttpTransport = HttpJsonTransport;
 // @public (undocumented)
 export type HttpTransportOptions = HttpJsonTransportOptions;
 
+// @public
+export function injectTraceparent(headers: Record<string, string>): void;
+
+// @public
+export function injectTraceparentAsync(headers: Record<string, string>): Promise<void>;
+
 // @public (undocumented)
 export interface IntegrationHelperServiceLike {
     // (undocumented)
     buildReview(): unknown;
     // (undocumented)
-    createEventStream(req: Request, domains: readonly DaemonRuntimeEventDomain[]): Response | Promise<Response>;
+    createEventStream(req: Request, domains: readonly RuntimeEventDomain[]): Response | Promise<Response>;
     // (undocumented)
     getAccountsSnapshot(): Promise<Record<string, unknown>>;
     // (undocumented)
@@ -1760,7 +1973,7 @@ export interface IntegrationHelperServiceLike {
 }
 
 // @public (undocumented)
-export function invokeContractRoute<T = unknown>(transport: HttpTransport, route: ContractRouteDefinition, input?: Record<string, unknown>, options?: ContractInvokeOptions): Promise<T>;
+export function invokeContractRoute<T = unknown>(transport: HttpTransport, route: ContractRouteDefinition & ContractRouteLike, input?: Record<string, unknown>, options?: ContractInvokeOptions): Promise<T>;
 
 // @public
 export function invokeObserver(fn: () => void): void;
@@ -1961,6 +2174,64 @@ export function listOperatorMethods(): readonly OperatorMethodContract[];
 export function listPeerEndpoints(): readonly PeerEndpointContract[];
 
 // @public (undocumented)
+export type ListProvidersResponse = z.infer<typeof ListProvidersResponseSchema>;
+
+// @public (undocumented)
+export const ListProvidersResponseSchema: z.ZodObject<{
+    providers: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        label: z.ZodString;
+        configured: z.ZodBoolean;
+        configuredVia: z.ZodOptional<z.ZodEnum<{
+            env: "env";
+            secrets: "secrets";
+            anonymous: "anonymous";
+            subscription: "subscription";
+        }>>;
+        envVars: z.ZodArray<z.ZodString>;
+        routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            route: z.ZodEnum<{
+                none: "none";
+                "api-key": "api-key";
+                "secret-ref": "secret-ref";
+                "service-oauth": "service-oauth";
+                "subscription-oauth": "subscription-oauth";
+                anonymous: "anonymous";
+            }>;
+            label: z.ZodString;
+            configured: z.ZodBoolean;
+            usable: z.ZodOptional<z.ZodBoolean>;
+            freshness: z.ZodOptional<z.ZodEnum<{
+                healthy: "healthy";
+                pending: "pending";
+                unconfigured: "unconfigured";
+                expiring: "expiring";
+                expired: "expired";
+            }>>;
+            detail: z.ZodOptional<z.ZodString>;
+            envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
+            secretKeys: z.ZodOptional<z.ZodArray<z.ZodString>>;
+            serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
+            providerId: z.ZodOptional<z.ZodString>;
+            repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>>>;
+        models: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            registryKey: z.ZodString;
+            provider: z.ZodString;
+            label: z.ZodOptional<z.ZodString>;
+            contextWindow: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    currentModel: z.ZodNullable<z.ZodObject<{
+        registryKey: z.ZodString;
+        provider: z.ZodString;
+        id: z.ZodString;
+    }, z.core.$strip>>;
+    secretsResolutionSkipped: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>;
+
+// @public (undocumented)
 export type LocalAuthStatusResponse = z.infer<typeof LocalAuthStatusResponseSchema>;
 
 // @public
@@ -2009,6 +2280,20 @@ export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Header
 
 // @public (undocumented)
 export function missingScopes(grantedScopes: readonly string[] | undefined, requiredScopes: readonly string[]): string[];
+
+// @public (undocumented)
+export type ModelChangedEvent = z.infer<typeof ModelChangedEventSchema>;
+
+// @public
+export const ModelChangedEventSchema: z.ZodObject<{
+    type: z.ZodLiteral<"MODEL_CHANGED">;
+    registryKey: z.ZodString;
+    provider: z.ZodString;
+    previous: z.ZodOptional<z.ZodObject<{
+        registryKey: z.ZodString;
+        provider: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
 
 // @public (undocumented)
 export type MultimodalAnalysisResult = unknown;
@@ -2061,7 +2346,7 @@ export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: s
 export const OPERATOR_CONTRACT: OperatorContractManifest;
 
 // @public (undocumented)
-export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.lifecycle.migrate", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "intelligence.snapshot", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
+export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.lifecycle.migrate", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "intelligence.snapshot", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.create", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
 
 // @public (undocumented)
 export interface OperatorContractManifest {
@@ -2145,10 +2430,8 @@ export interface OperatorEventContract {
     readonly category: string;
     // (undocumented)
     readonly description: string;
-    // Warning: (ae-forgotten-export) The symbol "RuntimeEventDomain_2" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
-    readonly domains?: readonly RuntimeEventDomain_2[];
+    readonly domains?: readonly RuntimeEventDomain[];
     // (undocumented)
     readonly id: string;
     // (undocumented)
@@ -2371,6 +2654,7 @@ export interface OperatorMethodContract {
     readonly http?: ContractHttpDefinition;
     // (undocumented)
     readonly id: string;
+    readonly idempotent?: boolean;
     // (undocumented)
     readonly inputSchema?: JsonSchema;
     // (undocumented)
@@ -13429,6 +13713,75 @@ export interface OtelTracer {
 }
 
 // @public (undocumented)
+export type PatchCurrentModelBody = z.infer<typeof PatchCurrentModelBodySchema>;
+
+// @public (undocumented)
+export const PatchCurrentModelBodySchema: z.ZodObject<{
+    registryKey: z.ZodString;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type PatchCurrentModelError = z.infer<typeof PatchCurrentModelErrorSchema>;
+
+// @public (undocumented)
+export const PatchCurrentModelErrorSchema: z.ZodObject<{
+    error: z.ZodString;
+    code: z.ZodEnum<{
+        INVALID_REQUEST: "INVALID_REQUEST";
+        MODEL_NOT_FOUND: "MODEL_NOT_FOUND";
+        PROVIDER_NOT_CONFIGURED: "PROVIDER_NOT_CONFIGURED";
+        SET_MODEL_FAILED: "SET_MODEL_FAILED";
+    }>;
+    missingEnvVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type PatchCurrentModelResponse = z.infer<typeof PatchCurrentModelResponseSchema>;
+
+// @public (undocumented)
+export const PatchCurrentModelResponseSchema: z.ZodObject<{
+    model: z.ZodNullable<z.ZodObject<{
+        registryKey: z.ZodString;
+        provider: z.ZodString;
+        id: z.ZodString;
+    }, z.core.$strip>>;
+    configured: z.ZodBoolean;
+    configuredVia: z.ZodOptional<z.ZodEnum<{
+        env: "env";
+        secrets: "secrets";
+        anonymous: "anonymous";
+        subscription: "subscription";
+    }>>;
+    routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        route: z.ZodEnum<{
+            none: "none";
+            "api-key": "api-key";
+            "secret-ref": "secret-ref";
+            "service-oauth": "service-oauth";
+            "subscription-oauth": "subscription-oauth";
+            anonymous: "anonymous";
+        }>;
+        label: z.ZodString;
+        configured: z.ZodBoolean;
+        usable: z.ZodOptional<z.ZodBoolean>;
+        freshness: z.ZodOptional<z.ZodEnum<{
+            healthy: "healthy";
+            pending: "pending";
+            unconfigured: "unconfigured";
+            expiring: "expiring";
+            expired: "expired";
+        }>>;
+        detail: z.ZodOptional<z.ZodString>;
+        envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        secretKeys: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        providerId: z.ZodOptional<z.ZodString>;
+        repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>>>;
+    persisted: z.ZodBoolean;
+}, z.core.$strip>;
+
+// @public (undocumented)
 export const PEER_CONTRACT: PeerContractManifest;
 
 // @public (undocumented)
@@ -13474,6 +13827,7 @@ export interface PeerEndpointContract {
     readonly description: string;
     // (undocumented)
     readonly id: string;
+    readonly idempotent?: boolean;
     // (undocumented)
     readonly inputSchema?: JsonSchema;
     // (undocumented)
@@ -14105,6 +14459,18 @@ export interface PeerSdkOptions extends HttpTransportOptions {
 export type PeerTypedEndpointId = keyof PeerEndpointInputMap & string;
 
 // @public (undocumented)
+export interface PerMethodRetryPolicy {
+    // (undocumented)
+    readonly backoffFactor?: number;
+    // (undocumented)
+    readonly baseDelayMs?: number;
+    // (undocumented)
+    readonly maxAttempts?: number;
+    // (undocumented)
+    readonly maxDelayMs?: number;
+}
+
+// @public (undocumented)
 export interface PlatformServiceManagerLike {
     // (undocumented)
     install(): unknown;
@@ -14119,6 +14485,78 @@ export interface PlatformServiceManagerLike {
     // (undocumented)
     uninstall(): unknown;
 }
+
+// @public (undocumented)
+export type ProviderEntry = z.infer<typeof ProviderEntrySchema>;
+
+// @public (undocumented)
+export const ProviderEntrySchema: z.ZodObject<{
+    id: z.ZodString;
+    label: z.ZodString;
+    configured: z.ZodBoolean;
+    configuredVia: z.ZodOptional<z.ZodEnum<{
+        env: "env";
+        secrets: "secrets";
+        anonymous: "anonymous";
+        subscription: "subscription";
+    }>>;
+    envVars: z.ZodArray<z.ZodString>;
+    routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        route: z.ZodEnum<{
+            none: "none";
+            "api-key": "api-key";
+            "secret-ref": "secret-ref";
+            "service-oauth": "service-oauth";
+            "subscription-oauth": "subscription-oauth";
+            anonymous: "anonymous";
+        }>;
+        label: z.ZodString;
+        configured: z.ZodBoolean;
+        usable: z.ZodOptional<z.ZodBoolean>;
+        freshness: z.ZodOptional<z.ZodEnum<{
+            healthy: "healthy";
+            pending: "pending";
+            unconfigured: "unconfigured";
+            expiring: "expiring";
+            expired: "expired";
+        }>>;
+        detail: z.ZodOptional<z.ZodString>;
+        envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        secretKeys: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        providerId: z.ZodOptional<z.ZodString>;
+        repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>>>;
+    models: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        registryKey: z.ZodString;
+        provider: z.ZodString;
+        label: z.ZodOptional<z.ZodString>;
+        contextWindow: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type ProviderModelEntry = z.infer<typeof ProviderModelEntrySchema>;
+
+// @public (undocumented)
+export const ProviderModelEntrySchema: z.ZodObject<{
+    id: z.ZodString;
+    registryKey: z.ZodString;
+    provider: z.ZodString;
+    label: z.ZodOptional<z.ZodString>;
+    contextWindow: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type ProviderModelRef = z.infer<typeof ProviderModelRefSchema>;
+
+// @public
+export const ProviderModelRefSchema: z.ZodObject<{
+    registryKey: z.ZodString;
+    provider: z.ZodString;
+    id: z.ZodString;
+}, z.core.$strip>;
 
 // @public (undocumented)
 export interface ProviderRuntimeSnapshotServiceLike {
@@ -14215,6 +14653,7 @@ export interface ResolvedContractRequest {
 
 // @public (undocumented)
 export interface ResolvedHttpRetryPolicy extends ResolvedBackoffPolicy {
+    readonly perMethodPolicy: Readonly<Record<string, PerMethodRetryPolicy>>;
     // (undocumented)
     readonly retryOnMethods: readonly string[];
     // (undocumented)
@@ -14264,7 +14703,7 @@ export interface RouteBindingManagerLike {
 }
 
 // @public (undocumented)
-export const RUNTIME_EVENT_DOMAINS: readonly ["session", "turn", "providers", "tools", "tasks", "agents", "workflows", "orchestration", "communication", "planner", "permissions", "plugins", "mcp", "transport", "compaction", "ui", "ops", "forensics", "security", "automation", "routes", "control-plane", "deliveries", "watchers", "surfaces", "knowledge"];
+export const RUNTIME_EVENT_DOMAINS: readonly ["session", "turn", "providers", "tools", "tasks", "agents", "workflows", "orchestration", "communication", "planner", "permissions", "plugins", "mcp", "transport", "compaction", "ui", "ops", "forensics", "security", "automation", "routes", "control-plane", "deliveries", "watchers", "surfaces", "knowledge", "workspace"];
 
 // @public (undocumented)
 export type RuntimeDomainEventPayload<TDomain extends RuntimeEventTypedDomain, TEventType extends RuntimeDomainEventType<TDomain>> = RuntimeDomainEventPayloadMap[TDomain][TEventType];
@@ -14444,7 +14883,9 @@ export interface RuntimeEventConnectorOptions {
 }
 
 // @public (undocumented)
-export type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
+type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
+export { RuntimeEventDomain as DaemonRuntimeEventDomain }
+export { RuntimeEventDomain }
 
 // @public (undocumented)
 export interface RuntimeEventFeed<TEvent extends EventLike_2 = EventLike_2> {
@@ -14602,6 +15043,25 @@ export interface TransportActivityInfo {
     readonly url: string;
 }
 
+// @public
+export interface TransportContext {
+    activeMiddlewareName?: string;
+    body: unknown;
+    durationMs?: number;
+    error?: unknown;
+    headers: Record<string, string>;
+    method: string;
+    middlewareError?: boolean;
+    options: {
+        readonly signal?: AbortSignal;
+        readonly retry?: unknown;
+        [key: string]: unknown;
+    };
+    response?: Response;
+    signal?: AbortSignal;
+    url: string;
+}
+
 // @public (undocumented)
 export interface TransportJsonError {
     // (undocumented)
@@ -14617,6 +15077,9 @@ export interface TransportJsonError {
     // (undocumented)
     readonly url: string;
 }
+
+// @public
+export type TransportMiddleware = (ctx: TransportContext, next: () => Promise<void>) => Promise<void>;
 
 // @public
 export interface TransportObserver {
@@ -14725,6 +15188,10 @@ export interface VoiceServiceLike {
     openRealtimeSession(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
     // (undocumented)
     synthesize(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
+    // Warning: (ae-forgotten-export) The symbol "VoiceSynthesisStreamLike" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    synthesizeStream(providerId: string | undefined, input: Record<string, unknown>): Promise<VoiceSynthesisStreamLike>;
     // (undocumented)
     transcribe(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
 }
@@ -14783,22 +15250,43 @@ export type WebSearchTimeRange = string;
 // @public (undocumented)
 export type WebSearchVerbosity = string;
 
+// @public (undocumented)
+export interface WorkspaceSwapManagerLike {
+    // (undocumented)
+    getCurrentWorkingDir(): string;
+    // (undocumented)
+    requestSwap(newWorkingDir: string): Promise<{
+        ok: true;
+        previous: string;
+        current: string;
+    } | {
+        ok: false;
+        code: 'WORKSPACE_BUSY';
+        reason: string;
+        retryAfter: number;
+    } | {
+        ok: false;
+        code: 'INVALID_PATH';
+        reason: string;
+    }>;
+}
+
 // Warnings were encountered during analysis:
 //
 // packages/sdk/src/_internal/contracts/generated/foundation-client-types.ts:442:562 - (ae-forgotten-export) The symbol "JsonValue_2" needs to be exported by the entry point index.d.ts
 // packages/sdk/src/_internal/daemon/knowledge-route-types.ts:50:76 - (ae-forgotten-export) The symbol "KnowledgeUsageKind" needs to be exported by the entry point index.d.ts
 // packages/sdk/src/_internal/daemon/knowledge-route-types.ts:54:15 - (ae-forgotten-export) The symbol "KnowledgeCandidateStatus" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:74:7 - (ae-forgotten-export) The symbol "AutomationSurfaceKind_2" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:83:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:88:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:163:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:167:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:168:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:193:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:205:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:75:7 - (ae-forgotten-export) The symbol "AutomationSurfaceKind_2" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:84:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:89:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:170:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:174:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:175:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:201:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/daemon/runtime-route-types.ts:213:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
 // packages/sdk/src/_internal/daemon/system-route-types.ts:111:5 - (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/operator/client-core.ts:90:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/peer/client-core.ts:80:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/operator/client-core.ts:91:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/_internal/peer/client-core.ts:82:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

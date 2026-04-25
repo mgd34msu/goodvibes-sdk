@@ -149,6 +149,7 @@ export async function dispatchOperatorRoutes(
     | 'getVoiceProviders'
     | 'getVoiceVoices'
     | 'postVoiceTts'
+    | 'postVoiceTtsStream'
     | 'postVoiceStt'
     | 'postVoiceRealtimeSession'
     | 'getWebSearchProviders'
@@ -409,6 +410,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/voice' && method === 'GET') return handlers.getVoiceStatus();
   if (pathname === '/api/voice/providers' && method === 'GET') return handlers.getVoiceProviders();
   if (pathname === '/api/voice/voices' && method === 'GET') return handlers.getVoiceVoices(url);
+  if (pathname === '/api/voice/tts/stream' && method === 'POST') return handlers.postVoiceTtsStream(req);
   if (pathname === '/api/voice/tts' && method === 'POST') return handlers.postVoiceTts(req);
   if (pathname === '/api/voice/stt' && method === 'POST') return handlers.postVoiceStt(req);
   if (pathname === '/api/voice/realtime/session' && method === 'POST') return handlers.postVoiceRealtimeSession(req);

@@ -211,6 +211,7 @@ export const OPERATOR_METHOD_IDS = [
   "voice.status",
   "voice.stt",
   "voice.tts",
+  "voice.tts.stream",
   "voice.voices.list",
   "watchers.create",
   "watchers.delete",
