@@ -32,6 +32,14 @@ Use the platform this way:
 - load initial account/control/session state over HTTP
 - keep a lightweight WebSocket event channel open while the app is active
 - reload snapshots on foreground/resume
+- for true remote chat sessions, store provider/model on the companion chat session (`POST` or `PATCH /api/companion/chat/sessions/:id`) instead of calling the global `/api/providers/current` route
+
+### Provider/model selection
+
+Companion clients have two different model-selection modes:
+
+- Shared TUI session: call `PATCH /api/providers/current`. This intentionally changes the daemon/TUI current model and emits `MODEL_CHANGED`.
+- True remote chat session: pass `provider` and `model` when creating the companion chat session, or update them with `PATCH /api/companion/chat/sessions/:id`. This keeps the selection local to that remote session while the daemon still hosts runtime context such as working directory and tools.
 
 ### Approvals/status pane
 

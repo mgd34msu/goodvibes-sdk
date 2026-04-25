@@ -16,6 +16,7 @@ import type { ProviderRegistry } from '../../providers/registry.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import type { SecretsManager } from '../../config/secrets.js';
+import type { ProviderAuthRouteDescriptor, ProviderRuntimeMetadata } from '../../providers/interface.js';
 import { findModelDefinition } from '../../providers/registry-models.js';
 import { BUILTIN_COMPAT_PROVIDERS, BUILTIN_PROVIDER_ENV_KEYS } from '../../providers/builtin-catalog.js';
 import { logger } from '../../utils/logger.js';
@@ -94,6 +95,7 @@ export interface ProviderEntry {
   readonly configured: boolean;
   readonly configuredVia?: ConfiguredVia;
   readonly envVars: string[];
+  readonly routes?: readonly ProviderAuthRouteDescriptor[];
   readonly models: ProviderModelEntry[];
 }
 
@@ -120,6 +122,7 @@ export interface CurrentModelResponse {
   readonly model: ProviderModelRef | null;
   readonly configured: boolean;
   readonly configuredVia?: ConfiguredVia;
+  readonly routes?: readonly ProviderAuthRouteDescriptor[];
 }
 
 export interface PatchCurrentModelResponse extends CurrentModelResponse {
@@ -193,13 +196,86 @@ function getConfiguredVia(
   return undefined;
 }
 
-function buildCurrentModelResponse(
+function isRuntimeRouteUsable(route: ProviderAuthRouteDescriptor): boolean {
+  return (
+    route.configured &&
+    route.usable !== false &&
+    route.freshness !== 'expired' &&
+    route.freshness !== 'pending' &&
+    route.freshness !== 'unconfigured'
+  );
+}
+
+function getConfiguredViaFromRuntimeRoutes(
+  routes: readonly ProviderAuthRouteDescriptor[],
+): ConfiguredVia | undefined {
+  const usableRoutes = routes.filter(isRuntimeRouteUsable);
+  if (usableRoutes.some((route) => route.route === 'subscription-oauth')) return 'subscription';
+  if (usableRoutes.some((route) => route.route === 'secret-ref')) return 'secrets';
+  const apiKeyRoute = usableRoutes.find((route) => route.route === 'api-key');
+  if (apiKeyRoute) {
+    const hasEnv = (apiKeyRoute.envVars ?? []).some((envVar) => {
+      const value = process.env[envVar];
+      return typeof value === 'string' && value.length > 0;
+    });
+    return hasEnv ? 'env' : 'secrets';
+  }
+  if (usableRoutes.some((route) => route.route === 'anonymous')) return 'anonymous';
+  return undefined;
+}
+
+async function describeAuthRoutes(
+  providerRegistry: ProviderRegistry,
+  providerId: string,
+): Promise<readonly ProviderAuthRouteDescriptor[]> {
+  const maybeRegistry = providerRegistry as unknown as {
+    describeRuntime?: (name: string) => Promise<ProviderRuntimeMetadata | null>;
+  };
+  if (typeof maybeRegistry.describeRuntime !== 'function') return [];
+
+  try {
+    return (await maybeRegistry.describeRuntime(providerId))?.auth?.routes ?? [];
+  } catch (err: unknown) {
+    logger.debug('[provider-routes] Failed to read provider runtime metadata', {
+      providerId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
+interface ProviderConfiguredStatus {
+  readonly configured: boolean;
+  readonly configuredVia?: ConfiguredVia;
+  readonly routes?: readonly ProviderAuthRouteDescriptor[];
+}
+
+async function resolveProviderConfiguredStatus(
+  providerId: string,
+  envVars: string[],
   providerRegistry: ProviderRegistry,
   secretKeys?: ReadonlySet<string>,
-): CurrentModelResponse {
+): Promise<ProviderConfiguredStatus> {
+  const routes = await describeAuthRoutes(providerRegistry, providerId);
+  const runtimeVia = getConfiguredViaFromRuntimeRoutes(routes);
+  const legacyVia = getConfiguredVia(providerId, envVars, providerRegistry, secretKeys);
+  const hasUsableRuntimeRoute = routes.some((route) => isRuntimeRouteUsable(route) && route.route !== 'none');
+  const configuredVia = runtimeVia ?? legacyVia;
+  return {
+    configured: configuredVia !== undefined || hasUsableRuntimeRoute,
+    configuredVia,
+    ...(routes.length > 0 ? { routes } : {}),
+  };
+}
+
+async function buildCurrentModelResponse(
+  providerRegistry: ProviderRegistry,
+  secretKeys?: ReadonlySet<string>,
+): Promise<CurrentModelResponse> {
   let model: ProviderModelRef | null = null;
   let configured = false;
   let configuredVia: ConfiguredVia | undefined;
+  let routes: readonly ProviderAuthRouteDescriptor[] | undefined;
 
   try {
     const current = providerRegistry.getCurrentModel();
@@ -208,16 +284,15 @@ function buildCurrentModelResponse(
 
     // Determine configured status for the current model's provider
     const envVars = (BUILTIN_PROVIDER_ENV_KEYS[current.provider] ?? []) as string[];
-    const via = getConfiguredVia(current.provider, envVars, providerRegistry, secretKeys);
-    if (via !== undefined) {
-      configured = true;
-      configuredVia = via;
-    }
+    const status = await resolveProviderConfiguredStatus(current.provider, envVars, providerRegistry, secretKeys);
+    configured = status.configured;
+    configuredVia = status.configuredVia;
+    routes = status.routes;
   } catch {
     // No model configured
   }
 
-  return { model, configured, configuredVia };
+  return { model, configured, configuredVia, ...(routes ? { routes } : {}) };
 }
 
 // ---------------------------------------------------------------------------
@@ -257,8 +332,6 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
   const secretKeys = await resolveSecretKeys(secretsManager);
 
   const allModels = providerRegistry.listModels();
-  const configuredIds = new Set(providerRegistry.getConfiguredProviderIds());
-
   // Group models by provider
   const byProvider = new Map<string, ProviderModelEntry[]>();
   for (const model of allModels) {
@@ -276,13 +349,19 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
   const providers: ProviderEntry[] = [];
   for (const [providerId, models] of byProvider) {
     const envVars = (BUILTIN_PROVIDER_ENV_KEYS[providerId] ?? []) as string[];
-    const via = getConfiguredVia(providerId, envVars, providerRegistry, secretKeys);
-    const configured = via !== undefined;
-    const configuredVia = configured ? via : undefined;
+    const status = await resolveProviderConfiguredStatus(providerId, envVars, providerRegistry, secretKeys);
 
     const label = getProviderLabel(providerId);
 
-    providers.push({ id: providerId, label, configured, configuredVia, envVars, models });
+    providers.push({
+      id: providerId,
+      label,
+      configured: status.configured,
+      configuredVia: status.configuredVia,
+      envVars,
+      ...(status.routes ? { routes: status.routes } : {}),
+      models,
+    });
   }
 
   // Sort: configured first, then alphabetical
@@ -291,7 +370,7 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
     return a.id.localeCompare(b.id);
   });
 
-  const currentModel = buildCurrentModelResponse(providerRegistry, secretKeys).model;
+  const currentModel = (await buildCurrentModelResponse(providerRegistry, secretKeys)).model;
 
   // F-PROV-009 (SDK 0.21.36): always emit `secretsResolutionSkipped` as a boolean so
   // consumers can reliably distinguish "secrets layer not consulted" from "no such field"
@@ -310,7 +389,7 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
 
 async function handleGetCurrentModel(context: ProviderRouteContext): Promise<Response> {
   const secretKeys = await resolveSecretKeys(context.secretsManager);
-  return Response.json(buildCurrentModelResponse(context.providerRegistry, secretKeys));
+  return Response.json(await buildCurrentModelResponse(context.providerRegistry, secretKeys));
 }
 
 // ---------------------------------------------------------------------------
@@ -346,10 +425,18 @@ async function handlePatchCurrentModel(
     );
   }
 
-  // Check provider is configured
-  const configuredIds = new Set(providerRegistry.getConfiguredProviderIds());
-  if (!configuredIds.has(modelDef.provider)) {
-    const envVars = (BUILTIN_PROVIDER_ENV_KEYS[modelDef.provider] ?? []) as string[];
+  // Check provider is configured. Runtime auth routes cover subscription-backed
+  // providers like OpenAI, where the public model remains `openai:*` but the
+  // actual turn path aliases to the subscription-backed provider at runtime.
+  const envVars = (BUILTIN_PROVIDER_ENV_KEYS[modelDef.provider] ?? []) as string[];
+  const secretKeys = await resolveSecretKeys(context.secretsManager);
+  const configuredStatus = await resolveProviderConfiguredStatus(
+    modelDef.provider,
+    envVars,
+    providerRegistry,
+    secretKeys,
+  );
+  if (!configuredStatus.configured) {
     const errorMessage = envVars.length > 0
       ? `Provider '${modelDef.provider}' not configured: set one of [${envVars.join(', ')}]`
       : `Provider '${modelDef.provider}' is not configured. Check the provider's configuration (env var, subscription, or network discovery).`;
@@ -384,6 +471,5 @@ async function handlePatchCurrentModel(
 
   // setCurrentModel emits MODEL_CHANGED synchronously on the same runtimeBus —
   // no second emission needed here.
-  const secretKeys = await resolveSecretKeys(context.secretsManager);
-  return Response.json({ ...buildCurrentModelResponse(providerRegistry, secretKeys), persisted });
+  return Response.json({ ...(await buildCurrentModelResponse(providerRegistry, secretKeys)), persisted });
 }

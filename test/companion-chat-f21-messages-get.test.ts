@@ -4,7 +4,7 @@
  * Tests for F21 (SDK 0.21.36):
  *   1. `GET /api/companion/chat/sessions/:id/messages` returns `{sessionId, messages}` when session exists.
  *   2. Returns 404 `SESSION_NOT_FOUND` when session absent.
- *   3. Method catalog contains the 6 new `companion.chat.*` descriptors registered in `method-catalog-control-core.ts`.
+ *   3. Method catalog contains the companion-chat descriptors registered in `method-catalog-control-core.ts`.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -70,13 +70,14 @@ describe('F21 — GET /api/companion/chat/sessions/:id/messages', () => {
   });
 });
 
-describe('F21 — method catalog registers all 6 companion-chat methods', () => {
+describe('F21 — method catalog registers companion-chat methods', () => {
   test('listAll includes every companion.chat.* id', () => {
     const catalog = new GatewayMethodCatalog({ includeBuiltins: true });
     const ids = catalog.list().map((m) => m.id);
     const expected = [
       'companion.chat.sessions.create',
       'companion.chat.sessions.get',
+      'companion.chat.sessions.update',
       'companion.chat.sessions.delete',
       'companion.chat.messages.create',
       'companion.chat.messages.list',

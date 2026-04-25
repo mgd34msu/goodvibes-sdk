@@ -6,6 +6,7 @@
  * Routes:
  *   POST   /api/companion/chat/sessions
  *   GET    /api/companion/chat/sessions/:sessionId
+ *   PATCH  /api/companion/chat/sessions/:sessionId
  *   DELETE /api/companion/chat/sessions/:sessionId
  *   POST   /api/companion/chat/sessions/:sessionId/messages
  *   GET    /api/companion/chat/sessions/:sessionId/messages
@@ -19,6 +20,7 @@
 import type {
   CreateCompanionChatSessionInput,
   PostCompanionChatMessageInput,
+  UpdateCompanionChatSessionInput,
 } from './companion-chat-types.js';
 import type { CompanionChatRouteContext } from './companion-chat-route-types.js';
 
@@ -53,6 +55,11 @@ export async function dispatchCompanionChatRoutes(
   // GET /api/companion/chat/sessions/:sessionId
   if (!sub && req.method === 'GET') {
     return handleGetSession(sessionId, context);
+  }
+
+  // PATCH /api/companion/chat/sessions/:sessionId
+  if (!sub && req.method === 'PATCH') {
+    return handleUpdateSession(req, sessionId, context);
   }
 
   // DELETE /api/companion/chat/sessions/:sessionId
@@ -138,6 +145,97 @@ async function handleGetSession(
   }
   const messages = context.chatManager.getMessages(sessionId);
   return Response.json({ session, messages });
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/companion/chat/sessions/:sessionId
+// ---------------------------------------------------------------------------
+
+function hasOwn(body: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(body, key);
+}
+
+function readOptionalNonEmptyString(
+  body: Record<string, unknown>,
+  key: string,
+): string | Response | undefined {
+  if (!hasOwn(body, key)) return undefined;
+  const value = body[key];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return Response.json(
+      { error: `${key} must be a non-empty string`, code: 'INVALID_INPUT' },
+      { status: 400 },
+    );
+  }
+  return value.trim();
+}
+
+function readOptionalSystemPrompt(
+  body: Record<string, unknown>,
+): string | null | Response | undefined {
+  if (!hasOwn(body, 'systemPrompt')) return undefined;
+  const value = body['systemPrompt'];
+  if (value === null) return null;
+  if (typeof value !== 'string') {
+    return Response.json(
+      { error: 'systemPrompt must be a string or null', code: 'INVALID_INPUT' },
+      { status: 400 },
+    );
+  }
+  return value;
+}
+
+async function handleUpdateSession(
+  req: Request,
+  sessionId: string,
+  context: CompanionChatRouteContext,
+): Promise<Response> {
+  const bodyOrResponse = await context.parseJsonBody(req);
+  if (bodyOrResponse instanceof Response) return bodyOrResponse;
+
+  const body = bodyOrResponse as Record<string, unknown>;
+  const input: UpdateCompanionChatSessionInput = {};
+
+  const title = readOptionalNonEmptyString(body, 'title');
+  if (title instanceof Response) return title;
+  if (title !== undefined) (input as { title?: string }).title = title;
+
+  const model = readOptionalNonEmptyString(body, 'model');
+  if (model instanceof Response) return model;
+  if (model !== undefined) {
+    (input as { model?: string }).model = model;
+    if (!hasOwn(body, 'provider') && model.includes(':')) {
+      const providerId = model.split(':')[0];
+      if (providerId) (input as { provider?: string }).provider = providerId;
+    }
+  }
+
+  const provider = readOptionalNonEmptyString(body, 'provider');
+  if (provider instanceof Response) return provider;
+  if (provider !== undefined) (input as { provider?: string }).provider = provider;
+
+  const systemPrompt = readOptionalSystemPrompt(body);
+  if (systemPrompt instanceof Response) return systemPrompt;
+  if (systemPrompt !== undefined) (input as { systemPrompt?: string | null }).systemPrompt = systemPrompt;
+
+  if (Object.keys(input).length === 0) {
+    return Response.json(
+      { error: 'At least one of title, provider, model, or systemPrompt is required', code: 'INVALID_INPUT' },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const session = context.chatManager.updateSession(sessionId, input);
+    return Response.json({ session });
+  } catch (err: unknown) {
+    const e = err as { code?: string; status?: number; message?: string };
+    const status = e.status ?? 500;
+    return Response.json(
+      { error: e.message ?? 'Internal error', code: e.code ?? 'INTERNAL_ERROR' },
+      { status },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

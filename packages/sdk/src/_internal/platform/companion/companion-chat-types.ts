@@ -55,9 +55,20 @@ export interface CreateCompanionChatSessionInput {
   readonly systemPrompt?: string;
 }
 
+export interface UpdateCompanionChatSessionInput {
+  readonly title?: string;
+  readonly model?: string;
+  readonly provider?: string;
+  readonly systemPrompt?: string | null;
+}
+
 export interface CreateCompanionChatSessionOutput {
   readonly sessionId: string;
   readonly createdAt: number;
+}
+
+export interface UpdateCompanionChatSessionOutput {
+  readonly session: CompanionChatSession;
 }
 
 export interface PostCompanionChatMessageInput {

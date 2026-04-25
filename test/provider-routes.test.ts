@@ -15,6 +15,7 @@ import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/
 import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
 import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
 import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
+import type { ProviderRuntimeMetadata } from '../packages/sdk/src/_internal/platform/providers/interface.js';
 import type { ModelDefinition } from '../packages/sdk/src/_internal/platform/providers/registry-types.js';
 
 // ---------------------------------------------------------------------------
@@ -53,6 +54,7 @@ function makeRegistry(opts: {
   configuredIds?: string[];
   setCurrentModelThrows?: string;
   bus?: RuntimeEventBus;
+  runtimeByProvider?: Record<string, ProviderRuntimeMetadata | null>;
 }): ProviderRegistry {
   const models = opts.models ?? [];
   let current = opts.currentModel ?? models[0];
@@ -65,6 +67,7 @@ function makeRegistry(opts: {
       return current;
     },
     getConfiguredProviderIds: () => configuredIds,
+    describeRuntime: async (providerId: string) => opts.runtimeByProvider?.[providerId] ?? null,
     setCurrentModel: (modelId: string) => {
       if (opts.setCurrentModelThrows) throw new Error(opts.setCurrentModelThrows);
       // Emulate real registry behavior: emit exactly one MODEL_CHANGED per setCurrentModel
@@ -117,6 +120,32 @@ function makeRequest(method: string, url: string, body?: unknown): Request {
     headers: body ? { 'content-type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
+}
+
+function makeSubscriptionRuntime(providerId = 'openai'): ProviderRuntimeMetadata {
+  return {
+    auth: {
+      mode: 'api-key',
+      configured: false,
+      routes: [
+        {
+          route: 'api-key',
+          label: 'Ambient API key',
+          configured: false,
+          usable: false,
+          freshness: 'unconfigured',
+        },
+        {
+          route: 'subscription-oauth',
+          label: 'Subscription OAuth',
+          configured: true,
+          usable: true,
+          freshness: 'healthy',
+          providerId,
+        },
+      ],
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -222,6 +251,36 @@ describe('GET /api/providers', () => {
       if (original !== undefined) process.env['OPENAI_API_KEY'] = original;
     }
   });
+
+  test("returns configuredVia='subscription' when OpenAI has a usable subscription route but no API key", async () => {
+    const m1 = makeModel('openai', 'gpt-5.5');
+    const { context } = makeContext({
+      models: [m1],
+      currentModel: m1,
+      configuredIds: [],
+      runtimeByProvider: { openai: makeSubscriptionRuntime('openai') },
+    });
+
+    const original = process.env['OPENAI_API_KEY'];
+    const originalAlt = process.env['OPENAI_KEY'];
+    delete process.env['OPENAI_API_KEY'];
+    delete process.env['OPENAI_KEY'];
+
+    try {
+      const req = makeRequest('GET', 'http://localhost/api/providers');
+      const res = await dispatchProviderRoutes(req, context);
+      const body = await res!.json() as Record<string, unknown>;
+      const providers = body.providers as Array<Record<string, unknown>>;
+      const openaiProv = providers.find((p) => p['id'] === 'openai');
+      expect(openaiProv).toBeDefined();
+      expect(openaiProv!['configured']).toBe(true);
+      expect(openaiProv!['configuredVia']).toBe('subscription');
+      expect(openaiProv!['routes']).toBeInstanceOf(Array);
+    } finally {
+      if (original !== undefined) process.env['OPENAI_API_KEY'] = original;
+      if (originalAlt !== undefined) process.env['OPENAI_KEY'] = originalAlt;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -261,6 +320,23 @@ describe('GET /api/providers/current', () => {
     const body = await res!.json() as Record<string, unknown>;
     expect(body.configured).toBe(false);
     expect(body.model).not.toBeNull();
+  });
+
+  test("returns configuredVia='subscription' for current OpenAI model when subscription route is usable", async () => {
+    const m1 = makeModel('openai', 'gpt-5.5');
+    const { context } = makeContext({
+      models: [m1],
+      currentModel: m1,
+      configuredIds: [],
+      runtimeByProvider: { openai: makeSubscriptionRuntime('openai') },
+    });
+
+    const req = makeRequest('GET', 'http://localhost/api/providers/current');
+    const res = await dispatchProviderRoutes(req, context);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(body.configured).toBe(true);
+    expect(body.configuredVia).toBe('subscription');
+    expect(body.routes).toBeInstanceOf(Array);
   });
 });
 
@@ -347,6 +423,27 @@ describe('PATCH /api/providers/current', () => {
     expect(res!.status).toBe(400);
     const body = await res!.json() as Record<string, unknown>;
     expect(body.code).toBe('INVALID_REQUEST');
+  });
+
+  test('accepts OpenAI model switch when only a usable subscription route is configured', async () => {
+    const m1 = makeModel('openai', 'gpt-5.4');
+    const m2 = makeModel('openai', 'gpt-5.5');
+    const { context } = makeContext({
+      models: [m1, m2],
+      currentModel: m1,
+      configuredIds: [],
+      runtimeByProvider: { openai: makeSubscriptionRuntime('openai') },
+    });
+
+    const req = makeRequest('PATCH', 'http://localhost/api/providers/current', {
+      registryKey: 'openai:gpt-5.5',
+    });
+    const res = await dispatchProviderRoutes(req, context);
+    expect(res!.status).toBe(200);
+    const body = await res!.json() as Record<string, unknown>;
+    const model = body.model as Record<string, unknown> | null;
+    expect(model!['registryKey']).toBe('openai:gpt-5.5');
+    expect(body.configuredVia).toBe('subscription');
   });
 });
 
