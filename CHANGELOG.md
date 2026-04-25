@@ -8,6 +8,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.6] - 2026-04-24
+
+### Breaking
+- none
+
+### Added
+- Slack direct setup now captures the app-level token in the SDK service
+  registry alongside the bot token and signing secret, using GoodVibes secret
+  references for all persisted credential fields.
+- ntfy live subscriptions now expose an SDK helper for starting from the current
+  timestamp so daemon restarts do not replay cached channel history.
+
+### Fixed
+- Slack surface runtime, delivery, and adapter paths now resolve service
+  registry credentials, `goodvibes://secrets/...` config refs, and environment
+  fallbacks consistently, so configured Slack messaging can start from stored
+  onboarding credentials.
+- ntfy provider runtime now starts inbound subscriptions in live-only mode and
+  deduplicates reconnect messages by ntfy message id, preventing old channel
+  messages from being re-sent into the TUI after restart.
+
+### Migration
+- Re-run Slack setup or ensure existing Slack accounts include an app-level
+  token stored as `goodvibes://secrets/goodvibes/SLACK_APP_TOKEN` when using
+  Socket Mode.
+- TUI-side ntfy replay suppression shims can be removed once consuming SDK
+  `0.25.6` or later; the SDK now owns live-only ntfy subscription startup.
+
+---
+
 ## [0.25.5] - 2026-04-24
 
 ### Breaking
