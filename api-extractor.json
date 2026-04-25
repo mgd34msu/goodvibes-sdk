@@ -42,13 +42,17 @@
       },
       "TS1259": { "logLevel": "none" },
       "TS2304": { "logLevel": "none" },
+      "TS2305": { "logLevel": "none" },
       "TS2307": { "logLevel": "none" },
       "TS2322": { "logLevel": "none" },
+      "TS2344": { "logLevel": "none" },
       "TS2345": { "logLevel": "none" },
       "TS2552": { "logLevel": "none" },
       "TS2688": { "logLevel": "none" },
       "TS2694": { "logLevel": "none" },
       "TS2702": { "logLevel": "none" },
+      "TS2707": { "logLevel": "none" },
+      "TS2709": { "logLevel": "none" },
       "TS18028": { "logLevel": "none" }
     },
     "extractorMessageReporting": {

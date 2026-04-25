@@ -1,6 +1,9 @@
 import type {
+  VoiceAudioChunk,
   VoiceDescriptor,
   VoiceProvider,
+  VoiceSynthesisRequest,
+  VoiceSynthesisStreamResult,
   VoiceRealtimeSession,
   VoiceRealtimeSessionRequest,
 } from '../types.js';
@@ -18,6 +21,9 @@ import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 const DEFAULT_ELEVENLABS_STT_MODEL = 'scribe_v2';
 const DEFAULT_ELEVENLABS_REALTIME_MODEL = 'scribe_v2_realtime';
+const DEFAULT_ELEVENLABS_TTS_MODEL = 'eleven_multilingual_v2';
+const DEFAULT_ELEVENLABS_VOICE = 'pMsXgVXv3BLzUgSXRplE';
+const DEFAULT_ELEVENLABS_OUTPUT_FORMAT = 'mp3_44100_128';
 const ELEVENLABS_SINGLE_USE_TOKEN_TTL_MS = 15 * 60 * 1000;
 
 type ElevenLabsWord = {
@@ -51,6 +57,87 @@ function asStringArray(value: unknown): string[] | undefined {
     .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
     .map((entry) => entry.trim());
   return values.length > 0 ? values : undefined;
+}
+
+function resolveElevenLabsOutputFormat(format: string | undefined): string {
+  const normalized = format?.trim().toLowerCase();
+  if (!normalized) return DEFAULT_ELEVENLABS_OUTPUT_FORMAT;
+  if (normalized.includes('_')) return normalized;
+  switch (normalized) {
+    case 'mp3':
+      return DEFAULT_ELEVENLABS_OUTPUT_FORMAT;
+    case 'pcm':
+    case 'pcm16':
+      return 'pcm_16000';
+    case 'ulaw':
+    case 'mulaw':
+      return 'ulaw_8000';
+    case 'opus':
+    case 'ogg':
+    case 'webm':
+      return 'opus_48000_32';
+    default:
+      return DEFAULT_ELEVENLABS_OUTPUT_FORMAT;
+  }
+}
+
+function mimeTypeForElevenLabsOutputFormat(outputFormat: string): string {
+  if (outputFormat.startsWith('pcm_')) return 'audio/pcm';
+  if (outputFormat.startsWith('ulaw_')) return 'audio/basic';
+  if (outputFormat.startsWith('opus_')) return 'audio/ogg';
+  return 'audio/mpeg';
+}
+
+function artifactFormatForElevenLabsOutputFormat(outputFormat: string): string {
+  if (outputFormat.startsWith('pcm_')) return 'pcm16';
+  if (outputFormat.startsWith('ulaw_')) return 'ulaw';
+  if (outputFormat.startsWith('opus_')) return 'ogg';
+  return 'mp3';
+}
+
+function readVoiceSetting(metadata: Record<string, unknown> | undefined, camelKey: string, snakeKey: string, fallback: number): number {
+  const value = metadata?.[camelKey] ?? metadata?.[snakeKey];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function readSpeakerBoost(metadata: Record<string, unknown> | undefined): boolean {
+  const value = metadata?.['useSpeakerBoost'] ?? metadata?.['use_speaker_boost'];
+  return typeof value === 'boolean' ? value : true;
+}
+
+async function* streamResponseAudioChunks(
+  response: Response,
+  input: {
+    readonly mimeType: string;
+    readonly format: string;
+    readonly metadata: Record<string, unknown>;
+  },
+): AsyncIterable<VoiceAudioChunk> {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('ElevenLabs streaming synthesis returned no response body');
+  let sequence = 0;
+  let completed = false;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        completed = true;
+        break;
+      }
+      if (!value || value.byteLength === 0) continue;
+      sequence += 1;
+      yield {
+        data: value,
+        sequence,
+        mimeType: input.mimeType,
+        format: input.format,
+        metadata: input.metadata,
+      };
+    }
+  } finally {
+    if (!completed) await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
 }
 
 function parseElevenLabsTranscript(payload: ElevenLabsTranscriptionResponse): {
@@ -111,21 +198,23 @@ export function createElevenLabsProvider(): VoiceProvider {
   return {
     id: 'elevenlabs',
     label: 'ElevenLabs',
-    capabilities: ['tts', 'stt', 'realtime', 'voice-list'],
+    capabilities: ['tts', 'tts-stream', 'stt', 'realtime', 'voice-list'],
     status() {
       const configured = readFirstEnv(envVars) !== null;
       return buildStatus(
         'elevenlabs',
         'ElevenLabs',
-        ['tts', 'stt', 'realtime', 'voice-list'],
+        ['tts', 'tts-stream', 'stt', 'realtime', 'voice-list'],
         configured,
         configured
           ? 'ElevenLabs speech, transcription, and realtime APIs are available.'
           : 'Set ELEVENLABS_API_KEY or XI_API_KEY to enable ElevenLabs speech and transcription.',
         {
           baseUrl: normalizeBaseUrl(readFirstEnv(baseUrlEnvVars), 'https://api.elevenlabs.io'),
+          defaultTtsModel: DEFAULT_ELEVENLABS_TTS_MODEL,
           defaultSttModel: DEFAULT_ELEVENLABS_STT_MODEL,
           defaultRealtimeModel: DEFAULT_ELEVENLABS_REALTIME_MODEL,
+          defaultOutputFormat: DEFAULT_ELEVENLABS_OUTPUT_FORMAT,
         },
       );
     },
@@ -155,7 +244,7 @@ export function createElevenLabsProvider(): VoiceProvider {
       const apiKey = readFirstEnv(envVars);
       if (!apiKey) throw new Error('ElevenLabs API key missing');
       const baseUrl = normalizeBaseUrl(readFirstEnv(baseUrlEnvVars), 'https://api.elevenlabs.io');
-      const voiceId = request.voiceId?.trim() || 'pMsXgVXv3BLzUgSXRplE';
+      const voiceId = request.voiceId?.trim() || DEFAULT_ELEVENLABS_VOICE;
       const response = await instrumentedFetch(`${baseUrl}/v1/text-to-speech/${voiceId}`, {
         method: 'POST',
         headers: {
@@ -165,7 +254,7 @@ export function createElevenLabsProvider(): VoiceProvider {
         },
         body: JSON.stringify({
           text: request.text,
-          model_id: request.modelId?.trim() || 'eleven_multilingual_v2',
+          model_id: request.modelId?.trim() || DEFAULT_ELEVENLABS_TTS_MODEL,
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
@@ -187,6 +276,66 @@ export function createElevenLabsProvider(): VoiceProvider {
           metadata: { voiceId, baseUrl },
         },
         metadata: { voiceId, baseUrl },
+      };
+    },
+    async synthesizeStream(request: VoiceSynthesisRequest): Promise<VoiceSynthesisStreamResult> {
+      const apiKey = readFirstEnv(envVars);
+      if (!apiKey) throw new Error('ElevenLabs API key missing');
+      const baseUrl = normalizeBaseUrl(readFirstEnv(baseUrlEnvVars), 'https://api.elevenlabs.io');
+      const metadata = asRecord(request.metadata);
+      const voiceId = request.voiceId?.trim() || DEFAULT_ELEVENLABS_VOICE;
+      const modelId = request.modelId?.trim() || DEFAULT_ELEVENLABS_TTS_MODEL;
+      const outputFormat = resolveElevenLabsOutputFormat(request.format);
+      const mimeType = mimeTypeForElevenLabsOutputFormat(outputFormat);
+      const format = artifactFormatForElevenLabsOutputFormat(outputFormat);
+      const url = new URL(`${baseUrl}/v1/text-to-speech/${voiceId}/stream`);
+      url.searchParams.set('output_format', outputFormat);
+      if (metadata?.['enableLogging'] === false) {
+        url.searchParams.set('enable_logging', 'false');
+      }
+      const languageCode = trimToUndefined(metadata?.['languageCode']);
+      const body: Record<string, unknown> = {
+        text: request.text,
+        model_id: modelId,
+        voice_settings: {
+          stability: readVoiceSetting(metadata, 'stability', 'stability', 0.5),
+          similarity_boost: readVoiceSetting(metadata, 'similarityBoost', 'similarity_boost', 0.75),
+          style: readVoiceSetting(metadata, 'style', 'style', 0),
+          use_speaker_boost: readSpeakerBoost(metadata),
+          speed: request.speed ?? readVoiceSetting(metadata, 'speed', 'speed', 1),
+        },
+        ...(languageCode ? { language_code: languageCode } : {}),
+      };
+      const response = await instrumentedFetch(url, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json',
+          Accept: mimeType,
+        },
+        signal: request.signal,
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`ElevenLabs streaming synthesis failed: HTTP ${response.status}${errorText ? `: ${errorText}` : ''}`);
+      }
+      const resultMetadata = {
+        baseUrl,
+        voiceId,
+        modelId,
+        outputFormat,
+      };
+      return {
+        providerId: 'elevenlabs',
+        mimeType,
+        format,
+        chunks: streamResponseAudioChunks(response, {
+          mimeType,
+          format,
+          metadata: resultMetadata,
+        }),
+        metadata: resultMetadata,
       };
     },
     async transcribe(request) {

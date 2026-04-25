@@ -30,6 +30,13 @@ export interface NotificationsConfig {
   webhookUrls: string[];
 }
 
+export interface TtsConfig {
+  provider: string;
+  voice: string;
+  llmProvider: string;
+  llmModel: string;
+}
+
 export interface AutomationConfig {
   enabled: boolean;
   maxConcurrentRuns: number;
@@ -355,6 +362,7 @@ export interface GoodVibesConfig {
     operationalMessages: 'panel' | 'conversation' | 'both';
     wrfcMessages: 'panel' | 'conversation' | 'both';
   };
+  tts: TtsConfig;
   release: {
     channel: 'stable' | 'preview';
   };
@@ -477,6 +485,10 @@ export type ConfigKey =
   | 'ui.systemMessages'
   | 'ui.operationalMessages'
   | 'ui.wrfcMessages'
+  | 'tts.provider'
+  | 'tts.voice'
+  | 'tts.llmProvider'
+  | 'tts.llmModel'
   | 'release.channel'
   | 'danger.daemon'
   | 'danger.httpListener'
@@ -696,6 +708,10 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'ui.systemMessages' ? 'panel' | 'conversation' | 'both' :
   K extends 'ui.operationalMessages' ? 'panel' | 'conversation' | 'both' :
   K extends 'ui.wrfcMessages' ? 'panel' | 'conversation' | 'both' :
+  K extends 'tts.provider' ? string :
+  K extends 'tts.voice' ? string :
+  K extends 'tts.llmProvider' ? string :
+  K extends 'tts.llmModel' ? string :
   K extends 'release.channel' ? 'stable' | 'preview' :
   K extends 'danger.daemon' ? boolean :
   K extends 'danger.httpListener' ? boolean :

@@ -195,6 +195,7 @@ export function makeDefaultDaemonHandlerStub(
     getVoiceProviders: () => Response.json({ providers: [] }),
     getVoiceVoices: () => Response.json({ voices: [] }),
     postVoiceTts: () => new Response(new Uint8Array(), { headers: { 'content-type': 'audio/mpeg' } }),
+    postVoiceTtsStream: () => new Response(new Uint8Array(), { headers: { 'content-type': 'audio/mpeg' } }),
     postVoiceStt: () => Response.json({ text: '' }),
     postVoiceRealtimeSession: () => Response.json({}),
     getWebSearchProviders: () => Response.json({ providers: [] }),

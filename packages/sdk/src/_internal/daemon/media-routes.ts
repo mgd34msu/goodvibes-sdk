@@ -11,6 +11,7 @@ import type {
   MultimodalAnalysisResult,
   MultimodalDetail,
   VoiceAudioArtifact,
+  VoiceSynthesisStreamLike,
   WebSearchSafeSearch,
   WebSearchTimeRange,
   WebSearchVerbosity,
@@ -49,6 +50,7 @@ export function createDaemonMediaRouteHandlers(
   | 'getVoiceProviders'
   | 'getVoiceVoices'
   | 'postVoiceTts'
+  | 'postVoiceTtsStream'
   | 'postVoiceStt'
   | 'postVoiceRealtimeSession'
   | 'getWebSearchProviders'
@@ -74,6 +76,7 @@ export function createDaemonMediaRouteHandlers(
     }),
     getVoiceVoices: async (url) => Response.json({ voices: await context.voiceService.listVoices(url.searchParams.get('providerId') ?? undefined) }),
     postVoiceTts: async (request) => handleVoiceTts(context, request),
+    postVoiceTtsStream: async (request) => handleVoiceTtsStream(context, request),
     postVoiceStt: async (request) => handleVoiceStt(context, request),
     postVoiceRealtimeSession: async (request) => handleVoiceRealtimeSession(context, request),
     getWebSearchProviders: async () => Response.json({ providers: await context.webSearchService.getStatus().then((status) => status.providers) }),
@@ -99,22 +102,68 @@ export function createDaemonMediaRouteHandlers(
   };
 }
 
+function readOptionalConfigString(context: DaemonMediaRouteContext, key: string): string | undefined {
+  const value = context.configManager.get(key);
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readVoiceSynthesisRequest(
+  body: JsonBody,
+  context?: DaemonMediaRouteContext,
+): {
+  readonly providerId?: string;
+  readonly input: {
+    readonly text: string;
+    readonly voiceId?: string;
+    readonly modelId?: string;
+    readonly format?: string;
+    readonly speed?: number;
+    readonly metadata: Record<string, unknown>;
+  };
+} {
+  const providerId = typeof body.providerId === 'string'
+    ? body.providerId
+    : context
+      ? readOptionalConfigString(context, 'tts.provider')
+      : undefined;
+  const voiceId = typeof body.voiceId === 'string'
+    ? body.voiceId
+    : context
+      ? readOptionalConfigString(context, 'tts.voice')
+      : undefined;
+  const modelId = typeof body.modelId === 'string' ? body.modelId : undefined;
+  const format = typeof body.format === 'string' ? body.format : undefined;
+  const speed = typeof body.speed === 'number' ? body.speed : undefined;
+  const input: {
+    text: string;
+    voiceId?: string;
+    modelId?: string;
+    format?: string;
+    speed?: number;
+    metadata: Record<string, unknown>;
+  } = {
+    text: typeof body.text === 'string' ? body.text : '',
+    metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
+  };
+  if (voiceId !== undefined) input.voiceId = voiceId;
+  if (modelId !== undefined) input.modelId = modelId;
+  if (format !== undefined) input.format = format;
+  if (speed !== undefined) input.speed = speed;
+  return {
+    ...(providerId !== undefined ? { providerId } : {}),
+    input,
+  };
+}
+
 async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
-  const text = typeof body.text === 'string' ? body.text : '';
-  if (!text.trim()) return Response.json({ error: 'Missing text' }, { status: 400 });
+  const { providerId, input } = readVoiceSynthesisRequest(body);
+  if (!input.text.trim()) return Response.json({ error: 'Missing text' }, { status: 400 });
   try {
     const result = await context.voiceService.synthesize(
-      typeof body.providerId === 'string' ? body.providerId : undefined,
-      {
-        text,
-        voiceId: typeof body.voiceId === 'string' ? body.voiceId : undefined,
-        modelId: typeof body.modelId === 'string' ? body.modelId : undefined,
-        format: typeof body.format === 'string' ? body.format : undefined,
-        speed: typeof body.speed === 'number' ? body.speed : undefined,
-        metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
-      },
+      providerId,
+      input,
     );
     return Response.json(result);
   } catch (error) {
@@ -126,6 +175,59 @@ async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): P
     }
     return jsonErrorResponse(error, { status: 400 });
   }
+}
+
+async function handleVoiceTtsStream(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const body = await context.parseJsonBody(req);
+  if (body instanceof Response) return body;
+  const { providerId, input } = readVoiceSynthesisRequest(body, context);
+  if (!input.text.trim()) return Response.json({ error: 'Missing text' }, { status: 400 });
+  try {
+    const result = await context.voiceService.synthesizeStream(providerId, { ...input, signal: req.signal });
+    return voiceStreamResponse(result);
+  } catch (error) {
+    if (isProviderNotConfiguredError(error)) {
+      return Response.json(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the streaming TTS provider API key or service credentials.' },
+        { status: 409 },
+      );
+    }
+    return jsonErrorResponse(error, { status: 400 });
+  }
+}
+
+function voiceStreamResponse(result: VoiceSynthesisStreamLike): Response {
+  const iterator = result.chunks[Symbol.asyncIterator]();
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        while (true) {
+          const { done, value } = await iterator.next();
+          if (done) {
+            controller.close();
+            return;
+          }
+          if (value.data.byteLength > 0) {
+            controller.enqueue(value.data);
+            return;
+          }
+        }
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      await iterator.return?.(reason);
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      'Content-Type': result.mimeType,
+      'Cache-Control': 'no-store',
+      'X-GoodVibes-Voice-Provider': result.providerId,
+      'X-GoodVibes-Audio-Format': result.format,
+    },
+  });
 }
 
 async function handleVoiceStt(context: DaemonMediaRouteContext, req: Request): Promise<Response> {

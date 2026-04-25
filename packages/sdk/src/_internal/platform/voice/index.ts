@@ -1,5 +1,6 @@
 export type {
   VoiceAudioArtifact,
+  VoiceAudioChunk,
   VoiceAudioFormat,
   VoiceDescriptor,
   VoiceProvider,
@@ -10,6 +11,7 @@ export type {
   VoiceRealtimeSessionRequest,
   VoiceSynthesisRequest,
   VoiceSynthesisResult,
+  VoiceSynthesisStreamResult,
   VoiceTranscriptionRequest,
   VoiceTranscriptionResult,
 } from './types.js';

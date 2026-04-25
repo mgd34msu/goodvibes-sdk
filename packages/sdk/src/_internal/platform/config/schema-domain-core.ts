@@ -76,6 +76,12 @@ export const coreConfigDefaults = {
     operationalMessages: 'panel',
     wrfcMessages: 'both',
   },
+  tts: {
+    provider: 'elevenlabs',
+    voice: '',
+    llmProvider: '',
+    llmModel: '',
+  },
   release: {
     channel: 'stable',
   },
@@ -467,6 +473,30 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     default: 'panel',
     description: 'Where operational system messages render by default: panel, conversation, or both',
     enumValues: ['panel', 'conversation', 'both'],
+  },
+  {
+    key: 'tts.provider',
+    type: 'string',
+    default: 'elevenlabs',
+    description: 'Default TTS provider used by spoken-output clients when no provider is supplied on the request',
+  },
+  {
+    key: 'tts.voice',
+    type: 'string',
+    default: '',
+    description: 'Default TTS voice id used by spoken-output clients when no voice is supplied on the request',
+  },
+  {
+    key: 'tts.llmProvider',
+    type: 'string',
+    default: '',
+    description: 'Optional LLM provider override for spoken-output turns; empty means use the active chat provider',
+  },
+  {
+    key: 'tts.llmModel',
+    type: 'string',
+    default: '',
+    description: 'Optional LLM model override for spoken-output turns; empty means use the active chat model',
   },
   {
     key: 'ui.operationalMessages',

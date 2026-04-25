@@ -14,6 +14,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
+- none
+
+### Fixed
+- none
+
+### Migration
+- none
+
+---
+
+## [0.25.8] - 2026-04-25
+
+### Breaking
+- none
+
+### Added
 - Added opt-in daemon provider Batch API support with persistent local batch
   jobs, `/api/batch/*` routes, provider polling, and completed-result storage.
 - Added OpenAI API-key Batch API support for `/v1/chat/completions` and
@@ -24,11 +40,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   `createGoodVibesCloudflareWorker()` for optional Cloudflare Worker proxying,
   queue tick signals, queue consumers, scheduled ticks, and DLQ-compatible
   retry handling.
+- Added provider-agnostic streaming TTS support through the `tts-stream` voice
+  capability, `VoiceService.synthesizeStream()`,
+  `VoiceProvider.synthesizeStream()`, and `POST /api/voice/tts/stream`.
+- Added ElevenLabs streaming TTS support behind the generic voice provider
+  abstraction, including provider/voice/model/format request overrides and
+  daemon-request cancellation.
+- Added `tts.provider`, `tts.voice`, `tts.llmProvider`, and `tts.llmModel`
+  config keys for spoken-output clients. Defaults keep ElevenLabs as the
+  preferred TTS provider while allowing request-level overrides.
 
 ### Fixed
 - Provider runtime metadata now advertises provider Batch API capability through
   `usage.batch` so clients can distinguish live streaming support from
   asynchronous provider batch support.
+- API Extractor now suppresses known vendored Bash LSP declaration diagnostics,
+  allowing `bun run api:check` to validate the checked API report cleanly.
 
 ### Migration
 - Existing TUI, companion, and daemon chat paths remain live by default.
@@ -38,6 +65,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - Use `@pellux/goodvibes-sdk/web` for normal Cloudflare Worker-hosted operator
   HTTP clients. Use `@pellux/goodvibes-sdk/workers` only for the optional
   Worker bridge around daemon batch routes and queue/scheduled ticks.
+- Existing `POST /api/voice/tts` clients do not need to change. Live playback
+  clients should call `POST /api/voice/tts/stream` and pipe the binary response
+  body to their local playback layer.
 
 ---
 

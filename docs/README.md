@@ -41,6 +41,7 @@
 
 - [Daemon embedding](./daemon-embedding.md)
 - [Daemon batch processing](./daemon-batch-processing.md)
+- [Voice and streaming TTS](./voice.md)
 
 ## Agentic Workflows
 

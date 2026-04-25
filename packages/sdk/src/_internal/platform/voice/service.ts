@@ -5,6 +5,7 @@ import type {
   VoiceRealtimeSessionRequest,
   VoiceSynthesisRequest,
   VoiceSynthesisResult,
+  VoiceSynthesisStreamResult,
   VoiceTranscriptionRequest,
   VoiceTranscriptionResult,
 } from './types.js';
@@ -47,6 +48,14 @@ export class VoiceService {
       throw new Error(providerId ? `Voice TTS provider unavailable: ${providerId}` : 'No voice TTS provider is registered');
     }
     return provider.synthesize(request);
+  }
+
+  async synthesizeStream(providerId: string | undefined, request: VoiceSynthesisRequest): Promise<VoiceSynthesisStreamResult> {
+    const provider = this.registry.findProvider('tts-stream', providerId);
+    if (!provider?.synthesizeStream) {
+      throw new Error(providerId ? `Voice streaming TTS provider unavailable: ${providerId}` : 'No streaming voice TTS provider is registered');
+    }
+    return provider.synthesizeStream(request);
   }
 
   async transcribe(providerId: string | undefined, request: VoiceTranscriptionRequest): Promise<VoiceTranscriptionResult> {

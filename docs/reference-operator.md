@@ -1,10 +1,10 @@
 # Operator API Reference
 
-Generated from the synced GoodVibes operator contract for product version `0.25.7`.
+Generated from the synced GoodVibes operator contract for product version `0.25.8`.
 
 ## Summary
 
-- Methods: `222`
+- Methods: `223`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -52152,6 +52152,104 @@ Synthesize audio through a registered voice provider.
     "providerId",
     "audio",
     "metadata"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `voice.tts.stream`
+
+Synthesize audio as streamed bytes through a registered streaming voice provider.
+
+- Title: `Stream Text To Speech`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`
+- HTTP: `POST /api/voice/tts/stream`
+- Scopes: `write:voice`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `no`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "providerId": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "voiceId": {
+      "type": "string"
+    },
+    "modelId": {
+      "type": "string"
+    },
+    "format": {
+      "type": "string"
+    },
+    "speed": {
+      "type": "number"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "text"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "contentType": {
+      "type": "string"
+    },
+    "providerId": {
+      "type": "string"
+    },
+    "format": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "contentType",
+    "providerId",
+    "format"
   ],
   "additionalProperties": false
 }

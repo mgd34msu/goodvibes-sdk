@@ -18,6 +18,7 @@ export const DEFAULT_CONFIG = {
   orchestration: coreConfigDefaults.orchestration,
   sandbox: coreConfigDefaults.sandbox,
   ui: coreConfigDefaults.ui,
+  tts: coreConfigDefaults.tts,
   release: coreConfigDefaults.release,
   automation: runtimeConfigDefaults.automation,
   controlPlane: runtimeConfigDefaults.controlPlane,

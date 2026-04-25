@@ -189,7 +189,7 @@ Stability contract: the module shape (exported names and their TypeScript signat
 | `platform/tools/*` | Tool registry, exec, fetch, read, write, edit, agent | beta |
 | `platform/types/*` | Shared type definitions (errors, tools) | beta |
 | `platform/utils/*` | Logger, path-safety, clipboard, retry | beta |
-| `platform/voice/*` | Voice provider registry | beta |
+| `platform/voice/*` | Voice provider registry, provider-agnostic TTS/STT/realtime voice types, and streaming TTS primitives | beta |
 | `platform/watchers/*` | File watcher store | beta |
 | `platform/web-search/*` | Web search providers | beta |
 | `platform/workflow/*` | Workflow trigger executor | beta |
