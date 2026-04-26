@@ -264,20 +264,38 @@ export function createHomeAssistantDeliveryStrategy(
         'goodvibes_message',
       )!;
       const client = new HomeAssistantIntegration({ baseUrl, accessToken: token });
+      const pending = readRecord(request.metadata?.pending);
+      const messageId = firstNonEmpty(
+        readString(pending?.messageId),
+        readString(request.binding?.metadata.messageId),
+      );
+      const conversationId = firstNonEmpty(
+        readString(pending?.conversationId),
+        readString(request.binding?.metadata.conversationId),
+        request.binding?.externalId,
+      );
       const result = await client.publishGoodVibesEvent(eventType, {
         type: request.status === 'failed' ? 'error' : 'message',
         title: request.target.label ?? request.title,
         body: appendAttachmentSummary(request.body, attachments),
+        speechText: request.body,
         status: request.status,
         jobId: request.jobId,
         runId: request.runId,
         agentId: request.agentId,
+        sessionId: request.sessionId,
         routeId: request.binding?.id,
         surfaceId: request.binding?.surfaceId,
         externalId: request.binding?.externalId,
+        messageId: firstNonEmpty(readString(pending?.outboundMessageId), request.agentId ? `gv:${request.agentId}` : undefined),
+        replyToMessageId: firstNonEmpty(readString(pending?.replyToMessageId), messageId),
+        conversationId,
         metadata: {
           threadId: request.binding?.threadId,
           channelId: request.binding?.channelId,
+          phase: readString(request.metadata?.phase),
+          inboundMessageId: messageId,
+          conversationId,
           attachments,
         },
       });
@@ -364,4 +382,14 @@ export function createGoogleChatDeliveryStrategy(
       return success(extractResponseId(payload) ?? webhookUrl);
     },
   };
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
 }

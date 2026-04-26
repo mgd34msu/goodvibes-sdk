@@ -28,6 +28,7 @@ export interface HomeAssistantGoodVibesEvent {
   readonly type: string;
   readonly title?: string;
   readonly body: string;
+  readonly speechText?: string;
   readonly status?: string;
   readonly jobId?: string;
   readonly runId?: string;
@@ -36,6 +37,9 @@ export interface HomeAssistantGoodVibesEvent {
   readonly routeId?: string;
   readonly surfaceId?: string;
   readonly externalId?: string;
+  readonly messageId?: string;
+  readonly replyToMessageId?: string;
+  readonly conversationId?: string;
   readonly metadata?: Record<string, unknown>;
 }
 

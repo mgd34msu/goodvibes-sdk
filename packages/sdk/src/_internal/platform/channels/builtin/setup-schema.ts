@@ -197,6 +197,7 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
           setupField('deviceId', 'Device id', 'string', false, { configKey: 'surfaces.homeassistant.deviceId', defaultValue: 'goodvibes-daemon' }),
           setupField('deviceName', 'Device name', 'string', false, { configKey: 'surfaces.homeassistant.deviceName', defaultValue: 'GoodVibes Daemon' }),
           setupField('eventType', 'Event type', 'string', false, { configKey: 'surfaces.homeassistant.eventType', defaultValue: HOME_ASSISTANT_DEFAULT_EVENT_TYPE }),
+          setupField('remoteSessionTtlMs', 'Remote session idle TTL', 'number', false, { configKey: 'surfaces.homeassistant.remoteSessionTtlMs', defaultValue: 20 * 60_000 }),
         ],
         secretTargets: [
           secretTarget(surface, 'primary', 'Long-lived access token', false, 'Used by GoodVibes to read Home Assistant states, call services, render templates, and fire events.', {
@@ -215,6 +216,8 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
         externalSteps: [
           'Create the Home Assistant custom integration with config_flow enabled and a single config entry for this daemon.',
           'Configure the integration with the daemon base URL and operator bearer token.',
+          'Use /api/homeassistant/conversation for Assist conversation agents that need a final reply in the request/response cycle.',
+          'Use /api/homeassistant/conversation/stream when the integration wants progress events before the final response.',
           `Send Home Assistant-originated prompts to ${HOME_ASSISTANT_WEBHOOK_PATH} with x-goodvibes-homeassistant-secret or Authorization: Bearer <webhookSecret>.`,
           'Subscribe the Home Assistant integration to the configured GoodVibes event type to update entities and service-call responses.',
           'Use the channel tool catalog endpoints to expose daemon tools and agent tools as Home Assistant service actions.',
@@ -222,7 +225,11 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
         metadata: {
           protocolVersion: 1,
           webhookPath: HOME_ASSISTANT_WEBHOOK_PATH,
+          conversationPath: '/api/homeassistant/conversation',
+          conversationStreamPath: '/api/homeassistant/conversation/stream',
+          conversationCancelPath: '/api/homeassistant/conversation/cancel',
           eventTypeDefault: HOME_ASSISTANT_DEFAULT_EVENT_TYPE,
+          remoteSessionTtlMsDefault: 20 * 60_000,
           manifestAction: 'homeassistant-manifest',
         },
       };

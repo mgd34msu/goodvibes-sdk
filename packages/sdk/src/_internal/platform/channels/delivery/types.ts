@@ -35,10 +35,12 @@ export interface ChannelDeliveryRequest {
   readonly jobId: string;
   readonly runId: string;
   readonly agentId?: string;
+  readonly sessionId?: string;
   readonly status?: string;
   readonly includeLinks: boolean;
   readonly attachments?: readonly ArtifactReference[];
   readonly binding?: ChannelDeliveryRouteBinding;
+  readonly metadata?: Record<string, unknown>;
 }
 
 export interface ChannelDeliveryResult {

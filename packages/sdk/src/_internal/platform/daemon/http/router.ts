@@ -69,6 +69,7 @@ import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-rout
 import { dispatchProviderRoutes } from './provider-routes.js';
 import { dispatchBatchRoutes } from './batch-routes.js';
 import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
+import { HomeAssistantConversationRoutes } from './homeassistant-routes.js';
 import { readTextBodyWithinLimit } from '../../utils/request-body.js';
 
 interface DaemonHttpRouterContext {
@@ -175,6 +176,7 @@ interface DaemonHttpRouterContext {
 
 export class DaemonHttpRouter {
   private readonly telemetryApi: TelemetryApiService | null;
+  private homeAssistantRoutes: HomeAssistantConversationRoutes | null = null;
 
   constructor(private readonly context: DaemonHttpRouterContext) {
     this.telemetryApi = context.runtimeStore
@@ -301,6 +303,11 @@ export class DaemonHttpRouter {
         parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
       });
       if (cloudflareResponse) return cloudflareResponse;
+    }
+
+    if (url.pathname.startsWith('/api/homeassistant')) {
+      const homeAssistantResponse = await this.getHomeAssistantRoutes().handle(req);
+      if (homeAssistantResponse) return homeAssistantResponse;
     }
 
     // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.
@@ -567,6 +574,21 @@ export class DaemonHttpRouter {
         }),
       }),
     });
+  }
+
+  private getHomeAssistantRoutes(): HomeAssistantConversationRoutes {
+    if (!this.homeAssistantRoutes) {
+      this.homeAssistantRoutes = new HomeAssistantConversationRoutes({
+        configManager: this.context.configManager,
+        routeBindings: this.context.routeBindings,
+        sessionBroker: this.context.sessionBroker,
+        agentManager: this.context.agentManager,
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        trySpawnAgent: (input, logLabel, sessionId) => this.context.trySpawnAgent(input, logLabel, sessionId),
+        queueSurfaceReplyFromBinding: (binding, input) => this.context.queueSurfaceReplyFromBinding(binding, input),
+      });
+    }
+    return this.homeAssistantRoutes;
   }
 
   async parseJsonBody(req: Request): Promise<JsonRecord | Response> {
