@@ -36,6 +36,16 @@ export interface NtfyRemoteChatResult {
   readonly error?: string;
 }
 
+export interface HomeAssistantRemoteChatResult {
+  readonly sessionId: string;
+  readonly routeId?: string;
+  readonly messageId: string;
+  readonly assistantMessageId?: string;
+  readonly response?: string;
+  readonly delivered: boolean;
+  readonly error?: string;
+}
+
 export type TrySpawnAgentInput = Parameters<AgentManager['spawn']>[0];
 export type TrySpawnAgentResult = AgentRecord | Response;
 export type TrySpawnAgentFn = (
@@ -88,6 +98,23 @@ export interface SurfaceAdapterContext {
     readonly body: string;
     readonly title?: string;
   }) => Promise<NtfyRemoteChatResult>;
+  readonly postHomeAssistantChatMessage?: (input: {
+    readonly body: string;
+    readonly messageId: string;
+    readonly conversationId: string;
+    readonly surfaceId: string;
+    readonly channelId: string;
+    readonly threadId?: string;
+    readonly userId?: string;
+    readonly displayName?: string;
+    readonly title: string;
+    readonly providerId?: string;
+    readonly modelId?: string;
+    readonly tools?: readonly string[];
+    readonly context?: Record<string, unknown>;
+    readonly remoteSessionTtlMs?: number;
+    readonly publishEvent?: boolean;
+  }) => Promise<HomeAssistantRemoteChatResult>;
 }
 
 export interface GenericWebhookReplyInput {

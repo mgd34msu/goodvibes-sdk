@@ -72,26 +72,29 @@ export async function handleHomeAssistantSurfaceWebhook(
     return Response.json({ error: `Blocked by channel policy: ${policy.reason}` }, { status: 403 });
   }
 
-  await context.routeBindings.start();
-  const binding = await context.routeBindings.upsertBinding({
-    kind: threadId ? 'thread' : 'channel',
-    surfaceKind: HOME_ASSISTANT_SURFACE,
-    surfaceId,
-    externalId: conversationId,
-    threadId,
-    channelId,
-    sessionId: readString(body.sessionId ?? body.session_id),
-    title: readString(body.title) ?? 'Home Assistant',
-    metadata: {
-      ...body,
-      directoryKind: conversationKind === 'direct' ? 'user' : conversationKind,
-      source: 'homeassistant',
-      messageId,
-      conversationId,
-    },
-  });
-
   if (!text.trim()) {
+    await context.routeBindings.start();
+    const binding = await context.routeBindings.upsertBinding({
+      kind: threadId ? 'thread' : 'channel',
+      surfaceKind: HOME_ASSISTANT_SURFACE,
+      surfaceId,
+      externalId: conversationId,
+      threadId,
+      channelId,
+      title: readString(body.title) ?? 'Home Assistant',
+      metadata: {
+        ...body,
+        directoryKind: conversationKind === 'direct' ? 'user' : conversationKind,
+        source: 'homeassistant',
+        messageId,
+        conversationId,
+      },
+    });
+    await context.routeBindings.patchBinding(binding.id, {
+      sessionId: null,
+      jobId: null,
+      runId: null,
+    });
     return Response.json({
       acknowledged: true,
       queued: false,
@@ -100,67 +103,42 @@ export async function handleHomeAssistantSurfaceWebhook(
   }
 
   const routing = readRouting(body);
-  const submission = await context.sessionBroker.submitMessage({
-    sessionId: readString(body.sessionId ?? body.session_id),
-    routeId: binding.id,
-    surfaceKind: HOME_ASSISTANT_SURFACE,
-    surfaceId,
-    externalId: conversationId,
-    threadId,
-    userId: readString(body.userId ?? body.user_id),
-    displayName: readString(body.displayName ?? body.userName ?? body.user_name),
-    title: readString(body.title) ?? 'Home Assistant',
+  if (!context.postHomeAssistantChatMessage) {
+    return Response.json({ error: 'Home Assistant remote chat is unavailable in this runtime' }, { status: 503 });
+  }
+  const result = await context.postHomeAssistantChatMessage({
     body: text,
-    metadata: {
+    messageId,
+    conversationId,
+    surfaceId,
+    channelId,
+    ...(threadId ? { threadId } : {}),
+    ...(readString(body.userId ?? body.user_id) ? { userId: readString(body.userId ?? body.user_id)! } : {}),
+    ...(readString(body.displayName ?? body.userName ?? body.user_name) ? { displayName: readString(body.displayName ?? body.userName ?? body.user_name)! } : {}),
+    title: readString(body.title) ?? 'Home Assistant',
+    ...(routing?.providerId ? { providerId: routing.providerId } : {}),
+    ...(routing?.modelId ? { modelId: routing.modelId } : {}),
+    ...(routing?.tools?.length ? { tools: routing.tools } : {}),
+    context: {
+      ...body,
       source: 'homeassistant',
       messageId,
       conversationId,
       deviceId: readString(body.deviceId ?? body.device_id) ?? null,
       entityId: readString(body.entityId ?? body.entity_id) ?? null,
     },
-    ...(routing ? { routing } : {}),
-  });
-
-  if (submission.mode === 'continued-live') {
-    return Response.json({
-      acknowledged: true,
-      queued: true,
-      continued: true,
-      bindingId: binding.id,
-      sessionId: submission.session.id,
-      agentId: submission.activeAgentId ?? null,
-      messageId,
-      conversationId,
-    });
-  }
-
-  const spawnResult = context.trySpawnAgent({
-    mode: 'spawn',
-    task: submission.task!,
-    executionProtocol: 'direct',
-    reviewMode: 'none',
-    communicationLane: 'direct',
-    dangerously_disable_wrfc: true,
-    ...(routing?.modelId ? { model: routing.modelId } : {}),
-    ...(routing?.providerId ? { provider: routing.providerId } : {}),
-    ...(routing?.tools?.length ? { tools: [...routing.tools] } : {}),
-    context: `homeassistant:${conversationId}`,
-  }, 'handleHomeAssistantSurfaceWebhook', submission.session.id);
-  if (spawnResult instanceof Response) return spawnResult;
-  await context.sessionBroker.bindAgent(submission.session.id, spawnResult.id);
-  context.queueSurfaceReplyFromBinding(binding, {
-    agentId: spawnResult.id,
-    task: text,
-    sessionId: submission.session.id,
+    publishEvent: true,
   });
 
   return Response.json({
     acknowledged: true,
-    queued: true,
-    bindingId: binding.id,
-    sessionId: submission.session.id,
-    agentId: spawnResult.id,
+    queued: false,
+    delivered: result.delivered,
+    ...(result.routeId ? { bindingId: result.routeId } : {}),
+    sessionId: result.sessionId,
     messageId,
+    ...(result.assistantMessageId ? { assistantMessageId: result.assistantMessageId } : {}),
+    ...(result.error ? { error: result.error } : {}),
     conversationId,
   });
 }

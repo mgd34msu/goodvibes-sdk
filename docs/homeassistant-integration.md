@@ -80,8 +80,8 @@ config flow setup. The most useful endpoints are:
 | `POST /api/channels/actions/homeassistant/homeassistant-status` | Checks HA API reachability and token posture. |
 | `GET /api/homeassistant/health` | Authenticated surface health, capabilities, endpoints, and default remote-session TTL. |
 | `POST /api/homeassistant/conversation` | Submit an Assist-style conversation turn and wait for the final assistant reply. |
-| `POST /api/homeassistant/conversation/stream` | Submit a conversation turn and receive SSE `ack`, `progress`, `final`, or `error` events. |
-| `POST /api/homeassistant/conversation/cancel` | Cancel a running Home Assistant conversation by `agentId` or known `messageId`. |
+| `POST /api/homeassistant/conversation/stream` | Submit a conversation turn over SSE and receive one `final` or `error` event. |
+| `POST /api/homeassistant/conversation/cancel` | Close a running Home Assistant conversation by `sessionId` or known `messageId`. |
 
 All daemon API calls require normal daemon authentication. The inbound webhook
 below additionally requires the Home Assistant webhook secret because webhook
@@ -89,9 +89,10 @@ routes are evaluated before daemon bearer auth. The `/api/homeassistant/*`
 conversation routes use normal daemon bearer auth and are the preferred path
 for Home Assistant Assist conversation agents.
 
-No Home Assistant ingress path starts WRFC review/fix chains. The SDK forces
-Home Assistant work to use direct responders with `reviewMode: "none"`,
-`executionProtocol: "direct"`, and `dangerously_disable_wrfc: true`.
+Home Assistant prompt ingress uses isolated remote-chat sessions backed by the
+same daemon chat manager used by companion-app remote chat. It does not use a
+shared TUI session, `SharedSessionBroker`, `AgentManager`, or WRFC
+review/fix chains.
 
 ### Home Assistant Assist Conversations
 
@@ -120,8 +121,8 @@ Canonical body:
 }
 ```
 
-The response resolves only when the agent finishes, fails, is cancelled, or the
-wait timeout is reached:
+The response resolves only when the isolated chat turn completes, fails, is
+cancelled, or the wait timeout is reached:
 
 ```json
 {
@@ -129,61 +130,62 @@ wait timeout is reached:
   "acknowledged": true,
   "messageId": "ha-assist-msg-123",
   "conversationId": "assist-home",
-  "sessionId": "sess-1234",
+  "sessionId": "ha-chat-sess-1234",
   "routeId": "route-1234",
-  "agentId": "agent-1234",
-  "mode": "direct",
+  "mode": "remote-chat",
   "newSession": false,
   "sessionExpired": false,
   "status": "completed",
   "assistant": {
     "text": "The garage door is closed.",
     "speechText": "The garage door is closed.",
-    "status": "completed",
-    "toolCallsMade": 1
+    "status": "completed"
   }
 }
 ```
 
 `message`, `prompt`, `text`, `body`, or `task` can carry the prompt text.
 `providerId`, `modelId`, and `tools` are optional; if omitted, daemon/session
-defaults apply. This is intentionally different from companion-app remote chat:
-Home Assistant does not expose provider/model selection, so the daemon resolves
-the active/default routing.
+defaults apply. Home Assistant normally does not expose provider/model
+selection, so the daemon resolves the active/default routing. The isolated chat
+session receives a Home Assistant system prompt and the daemon tool registry,
+including `homeassistant_*` tools when the HA URL and access token are
+configured.
 
 `POST /api/homeassistant/conversation` returns the final response directly and
 does not also publish a `goodvibes_message` event by default. Set
 `"publishEvent": true` only when the Home Assistant integration also wants the
 normal event-bus delivery for that same turn.
 
-The daemon creates Home Assistant sessions as remote sessions, not shared TUI
-sessions. It reuses the session for the same Home Assistant conversation until
-`surfaces.homeassistant.remoteSessionTtlMs` elapses with no activity. The default
-is 20 minutes. After TTL expiry the daemon closes the old session and starts a
-fresh one, preventing stale Home Assistant turns from inheriting an old, long
-transcript.
+The daemon creates Home Assistant conversations as isolated remote-chat
+sessions, not shared TUI sessions. It reuses the isolated chat session for the
+same Home Assistant conversation until
+`surfaces.homeassistant.remoteSessionTtlMs` elapses with no activity. The
+default is 20 minutes. After TTL expiry the daemon closes the old chat session
+and starts a fresh one, preventing stale Home Assistant turns from inheriting
+an old, long transcript.
 
-For live progress, use:
+For an SSE transport, use:
 
 ```text
 POST /api/homeassistant/conversation/stream
 ```
 
-The response is `text/event-stream` with `ack`, `progress`, `final`, and `error`
-events. `final.data.assistant.text` and `final.data.assistant.speechText` carry
-the text Home Assistant should return from a `ConversationEntity`.
+The response is `text/event-stream` with one `final` or `error` event.
+`final.data.assistant.text` and `final.data.assistant.speechText` carry the
+text Home Assistant should return from a `ConversationEntity`.
 
 To cancel a running turn:
 
 ```json
 POST /api/homeassistant/conversation/cancel
 {
-  "agentId": "agent-1234"
+  "sessionId": "ha-chat-sess-1234"
 }
 ```
 
 The cancel endpoint also accepts a `messageId` while the daemon still has the
-message-to-agent correlation in memory.
+message-to-session correlation in memory.
 
 ### Home Assistant to GoodVibes Webhook
 
@@ -224,9 +226,10 @@ Canonical prompt body:
 `message`, `prompt`, `text`, or `task` can carry the prompt text. `providerId`,
 `modelId`, and `tools` are optional; if omitted, daemon/session defaults apply.
 The adapter creates or updates a route binding with
-`surfaceKind: "homeassistant"`, submits the prompt through the shared session
-broker, starts a direct non-WRFC responder when work is needed, and queues the
-final reply through the normal Home Assistant event pipeline.
+`surfaceKind: "homeassistant"`, posts the prompt through an isolated
+remote-chat session, and publishes the final reply through the Home Assistant
+event bus. It does not spawn an agent and does not attach to a shared TUI
+session.
 
 For Assist conversation agents, use `/api/homeassistant/conversation` so Home
 Assistant can return the assistant reply directly in the conversation call. The
@@ -236,9 +239,8 @@ configured `goodvibes_message` event.
 Control commands are supported through the same webhook:
 
 ```text
-status <run-or-agent-or-session-id>
-cancel <run-or-agent-id>
-retry <run-or-agent-id>
+status <session-id>
+cancel <session-id>
 ```
 
 ### GoodVibes to Home Assistant
@@ -259,19 +261,16 @@ The event payload is JSON and includes:
   "emittedAt": "2026-04-26T00:00:00.000Z",
   "type": "message",
   "title": "GoodVibes",
-  "body": "Assistant reply or agent status",
+  "body": "Assistant reply",
   "status": "completed",
-  "jobId": "job-1",
-  "runId": "run-1",
-  "agentId": "agent-1",
-  "sessionId": "sess-1",
+  "sessionId": "ha-chat-sess-1",
   "routeId": "route-1",
   "surfaceId": "homeassistant",
   "externalId": "home",
-  "messageId": "gv:agent-1",
+  "messageId": "ha-assistant-msg-1",
   "replyToMessageId": "ha-msg-123",
   "conversationId": "home",
-  "speechText": "Assistant reply or agent status",
+  "speechText": "Assistant reply",
   "metadata": {
     "threadId": "thread-1",
     "channelId": "area.kitchen",
@@ -284,14 +283,14 @@ The event payload is JSON and includes:
 
 The Home Assistant integration should listen for this event type and update
 entities, diagnostics, notifications, or repairs from the event data. The
-`replyToMessageId`, `conversationId`, `sessionId`, `routeId`, and `agentId`
-fields are stable SDK-owned correlation fields for matching a Home Assistant
-service call or webhook prompt to the final GoodVibes event.
+`replyToMessageId`, `conversationId`, `sessionId`, and `routeId` fields are
+stable SDK-owned correlation fields for matching a Home Assistant service call
+or webhook prompt to the final GoodVibes event.
 
 ## SDK Home Assistant Tools
 
-The SDK exposes Home Assistant tools to operators and agents. Side-effecting
-tools are intentionally explicit.
+The SDK exposes Home Assistant tools to operators and isolated remote-chat
+turns. Side-effecting tools are intentionally explicit.
 
 | Tool | Action | Side effects | Purpose |
 |---|---|---:|---|
@@ -307,8 +306,8 @@ tools are intentionally explicit.
 Operator-only Home Assistant actions also include
 `homeassistant-publish-goodvibes-event`, which publishes a GoodVibes-shaped
 message event to the configured Home Assistant event type. It is not exposed as
-an agent tool because normal daemon replies already use the channel reply
-pipeline.
+a chat tool because normal daemon replies already use the Home Assistant reply
+path.
 
 ## Home Assistant Project Handoff
 
@@ -325,7 +324,6 @@ The Home Assistant integration should implement:
    as a service device.
 4. Services/actions registered at integration setup time:
    - `goodvibes.prompt`
-   - `goodvibes.run_agent`
    - `goodvibes.status`
    - `goodvibes.cancel`
    - `goodvibes.call_tool`
@@ -338,13 +336,14 @@ The Home Assistant integration should implement:
 7. Entities for:
    - Daemon connectivity/status.
    - Last GoodVibes reply.
-   - Active session/agent id.
+   - Active Home Assistant chat session id.
    - Last error.
    - Optional tool catalog count/version.
 8. Optional WebSocket or SSE client support:
    - Home Assistant can use its own WebSocket APIs internally.
-   - For GoodVibes daemon progress, the integration can call
-     `/api/homeassistant/conversation/stream` and consume SSE events.
+   - For a GoodVibes daemon SSE transport, the integration can call
+     `/api/homeassistant/conversation/stream` and consume its `final` or
+     `error` event.
    - For broader daemon events, the integration can subscribe to the daemon
      control-plane event stream when it needs live updates beyond event bus
      deliveries.
