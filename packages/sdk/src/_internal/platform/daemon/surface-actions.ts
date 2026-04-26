@@ -12,6 +12,16 @@ import type { ChannelPolicyDecision, ChannelIngressPolicyInput } from '../channe
 import type { RuntimeEventBus, TurnEvent, TurnInputOrigin } from '../runtime/events/index.js';
 import { emitCompanionMessageReceived } from '../runtime/emitters/index.js';
 import { NtfyIntegration } from '../integrations/ntfy.js';
+import { HomeAssistantIntegration } from '../integrations/homeassistant.js';
+import {
+  HOME_ASSISTANT_DEFAULT_EVENT_TYPE,
+  resolveHomeAssistantAccessToken,
+  resolveHomeAssistantBaseUrl,
+} from '../channels/builtin/homeassistant.js';
+import {
+  postHomeAssistantChatMessage as postHomeAssistantChatTurn,
+  readHomeAssistantRemoteSessionTtlMs,
+} from './homeassistant-chat.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -93,6 +103,7 @@ export class DaemonSurfaceActionHelper {
       publishConversationFollowup: (sessionId, envelope) => this.publishConversationFollowup(sessionId, envelope),
       queueNtfyChatReply: (input) => this.queueNtfyChatReply(input),
       postNtfyRemoteChatMessage: (input) => this.postNtfyRemoteChatMessage(input),
+      postHomeAssistantChatMessage: (input) => this.postHomeAssistantChatMessage(input),
     };
   }
 
@@ -492,6 +503,169 @@ export class DaemonSurfaceActionHelper {
         });
       }
     }
+  }
+
+  private async postHomeAssistantChatMessage(input: {
+    readonly body: string;
+    readonly messageId: string;
+    readonly conversationId: string;
+    readonly surfaceId: string;
+    readonly channelId: string;
+    readonly threadId?: string;
+    readonly userId?: string;
+    readonly displayName?: string;
+    readonly title: string;
+    readonly providerId?: string;
+    readonly modelId?: string;
+    readonly tools?: readonly string[];
+    readonly context?: Record<string, unknown>;
+    readonly remoteSessionTtlMs?: number;
+    readonly publishEvent?: boolean;
+  }): Promise<{
+    readonly sessionId: string;
+    readonly routeId?: string;
+    readonly messageId: string;
+    readonly assistantMessageId?: string;
+    readonly response?: string;
+    readonly delivered: boolean;
+    readonly error?: string;
+  }> {
+    const manager = this.context.companionChatManager;
+    if (!manager) {
+      return {
+        sessionId: '',
+        messageId: input.messageId,
+        delivered: false,
+        error: 'Home Assistant remote chat manager is unavailable',
+      };
+    }
+
+    try {
+      const result = await postHomeAssistantChatTurn(
+        {
+          configManager: this.context.configManager,
+          routeBindings: this.context.routeBindings,
+          chatManager: manager,
+          resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
+        },
+        {
+          text: input.body,
+          messageId: input.messageId,
+          conversationId: input.conversationId,
+          surfaceId: input.surfaceId,
+          channelId: input.channelId,
+          ...(input.threadId ? { threadId: input.threadId } : {}),
+          ...(input.userId ? { userId: input.userId } : {}),
+          ...(input.displayName ? { displayName: input.displayName } : {}),
+          title: input.title,
+          ...(input.providerId ? { providerId: input.providerId } : {}),
+          ...(input.modelId ? { modelId: input.modelId } : {}),
+          ...(input.tools?.length ? { tools: input.tools } : {}),
+          ...(input.context ? { context: input.context } : {}),
+          remoteSessionTtlMs: readHomeAssistantRemoteSessionTtlMs(this.context.configManager, input.remoteSessionTtlMs),
+        },
+        {
+          wait: true,
+          timeoutMs: 120_000,
+          clientId: `homeassistant:${input.surfaceId}:${input.conversationId}`,
+        },
+      );
+      const response = result.response?.trim();
+      const error = result.error ?? (response ? undefined : 'No response from Home Assistant remote chat');
+      if (input.publishEvent !== false) {
+        await this.publishHomeAssistantChatReply(input, {
+          sessionId: result.session.id,
+          routeId: result.binding.id,
+          assistantMessageId: result.assistantMessageId,
+          response: response || `Error: ${error}`,
+          status: error ? 'failed' : 'completed',
+        });
+      }
+      return {
+        sessionId: result.session.id,
+        routeId: result.binding.id,
+        messageId: input.messageId,
+        ...(result.assistantMessageId ? { assistantMessageId: result.assistantMessageId } : {}),
+        ...(response ? { response } : {}),
+        delivered: !error,
+        ...(error ? { error } : {}),
+      };
+    } catch (error) {
+      const errorMessage = summarizeError(error);
+      if (input.publishEvent !== false) {
+        try {
+          await this.publishHomeAssistantChatReply(input, {
+            sessionId: '',
+            response: `Error: ${errorMessage}`,
+            status: 'failed',
+          });
+        } catch (publishError) {
+          logger.warn('DaemonSurfaceActionHelper: failed to publish Home Assistant chat error', {
+            conversationId: input.conversationId,
+            error: summarizeError(publishError),
+          });
+        }
+      }
+      return {
+        sessionId: '',
+        messageId: input.messageId,
+        delivered: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  private async publishHomeAssistantChatReply(
+    input: {
+      readonly body: string;
+      readonly messageId: string;
+      readonly conversationId: string;
+      readonly surfaceId: string;
+      readonly channelId: string;
+      readonly threadId?: string;
+      readonly userId?: string;
+      readonly displayName?: string;
+      readonly title: string;
+      readonly context?: Record<string, unknown>;
+    },
+    result: {
+      readonly sessionId: string;
+      readonly routeId?: string;
+      readonly assistantMessageId?: string;
+      readonly response: string;
+      readonly status: string;
+    },
+  ): Promise<void> {
+    const baseUrl = resolveHomeAssistantBaseUrl(this.context.configManager, this.context.serviceRegistry);
+    const accessToken = await resolveHomeAssistantAccessToken(this.context);
+    if (!baseUrl || !accessToken) {
+      throw new Error('Home Assistant instance URL or access token is not configured.');
+    }
+    const eventType = String(this.context.configManager.get('surfaces.homeassistant.eventType') || HOME_ASSISTANT_DEFAULT_EVENT_TYPE);
+    const client = new HomeAssistantIntegration({ baseUrl, accessToken });
+    await client.publishGoodVibesEvent(eventType, {
+      type: 'message',
+      title: input.title || 'GoodVibes',
+      body: result.response,
+      speechText: result.response,
+      status: result.status,
+      sessionId: result.sessionId,
+      ...(result.routeId ? { routeId: result.routeId } : {}),
+      surfaceId: input.surfaceId,
+      externalId: input.conversationId,
+      ...(result.assistantMessageId ? { messageId: result.assistantMessageId } : {}),
+      replyToMessageId: input.messageId,
+      conversationId: input.conversationId,
+      metadata: {
+        threadId: input.threadId ?? null,
+        channelId: input.channelId,
+        userId: input.userId ?? null,
+        displayName: input.displayName ?? null,
+        inboundMessageId: input.messageId,
+        conversationId: input.conversationId,
+        ...(input.context ? { homeAssistantContext: input.context } : {}),
+      },
+    });
   }
 
   private async publishNtfyReply(topic: string, message: string, title: string): Promise<void> {

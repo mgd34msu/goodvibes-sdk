@@ -245,7 +245,6 @@ export function buildHomeAssistantManifest(deps: Pick<BuiltinChannelRuntimeDeps,
     },
     capabilities: [
       'conversation-ingress',
-      'agent-task-ingress',
       'daemon-tool-catalog',
       'daemon-agent-tools',
       'session-binding',
@@ -265,10 +264,9 @@ export function buildHomeAssistantManifest(deps: Pick<BuiltinChannelRuntimeDeps,
       inboundSecretHeaders: ['x-goodvibes-homeassistant-secret', 'authorization'],
     },
     recommendedServices: [
-      { name: 'goodvibes.prompt', target: 'config_entry', description: 'Submit a normal prompt to the daemon.' },
-      { name: 'goodvibes.run_agent', target: 'config_entry', description: 'Run an agent task through the daemon.' },
-      { name: 'goodvibes.cancel', target: 'config_entry', description: 'Cancel an active run or agent by id.' },
-      { name: 'goodvibes.status', target: 'config_entry', description: 'Inspect daemon, session, or agent status.' },
+      { name: 'goodvibes.prompt', target: 'config_entry', description: 'Submit a normal prompt through an isolated daemon chat session.' },
+      { name: 'goodvibes.cancel', target: 'config_entry', description: 'Cancel an active Home Assistant conversation session.' },
+      { name: 'goodvibes.status', target: 'config_entry', description: 'Inspect daemon and Home Assistant conversation status.' },
     ],
     metadata: {
       configKeys: [

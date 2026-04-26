@@ -39,9 +39,8 @@ export interface SharedSessionMessage {
  * - 'tui': created by the operator TUI (default for existing sessions)
  * - 'companion-task': created via task-submit flow (agent spawn)
  * - 'companion-chat': created via companion chat-mode API (no agent spawn; uses per-session orchestrator)
- * - 'homeassistant-remote': created by the Home Assistant daemon surface and closed by an idle TTL
  */
-export type SharedSessionKind = 'tui' | 'companion-task' | 'companion-chat' | 'homeassistant-remote';
+export type SharedSessionKind = 'tui' | 'companion-task' | 'companion-chat';
 
 export interface SharedSessionRecord {
   readonly id: string;

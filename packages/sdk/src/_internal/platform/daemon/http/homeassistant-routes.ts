@@ -1,20 +1,24 @@
 import { randomUUID } from 'node:crypto';
 import type { AutomationRouteBinding } from '../../automation/routes.js';
-import type { RouteBindingManager } from '../../channels/index.js';
 import { HOME_ASSISTANT_SURFACE } from '../../channels/builtin/homeassistant.js';
+import type { RouteBindingManager } from '../../channels/index.js';
+import type { CompanionChatManager } from '../../companion/companion-chat-manager.js';
 import type { ConfigManager } from '../../config/manager.js';
-import type { SharedSessionBroker, SharedSessionRecord } from '../../control-plane/index.js';
-import type { AgentManager, AgentRecord } from '../../tools/agent/index.js';
+import {
+  postHomeAssistantChatMessage,
+  readHomeAssistantRemoteSessionTtlMs,
+  type HomeAssistantChatInput,
+  type HomeAssistantChatPostResult,
+} from '../homeassistant-chat.js';
 
 const DEFAULT_WAIT_TIMEOUT_MS = 120_000;
 const MAX_WAIT_TIMEOUT_MS = 10 * 60_000;
-const DEFAULT_REMOTE_SESSION_TTL_MS = 20 * 60_000;
 
 type JsonRecord = Record<string, unknown>;
 
 interface HomeAssistantMessageIndex {
   readonly messageId: string;
-  readonly agentId?: string;
+  readonly assistantMessageId?: string;
   readonly sessionId: string;
   readonly routeId: string;
   readonly conversationId: string;
@@ -28,8 +32,7 @@ interface HomeAssistantSubmitResult {
   readonly conversationId: string;
   readonly sessionId: string;
   readonly routeId: string;
-  readonly agentId?: string;
-  readonly mode: 'direct' | 'continued-live' | 'queued-follow-up' | 'rejected';
+  readonly mode: 'remote-chat' | 'rejected';
   readonly newSession: boolean;
   readonly sessionExpired: boolean;
   readonly status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'rejected' | 'timeout';
@@ -42,49 +45,21 @@ interface HomeAssistantAssistantResult {
   readonly text: string;
   readonly speechText: string;
   readonly status: string;
-  readonly toolCallsMade?: number;
-  readonly usage?: AgentRecord['usage'];
   readonly completedAt?: number;
 }
 
 interface HomeAssistantRouteContext {
   readonly configManager: Pick<ConfigManager, 'get'>;
   readonly routeBindings: Pick<RouteBindingManager, 'start' | 'upsertBinding' | 'patchBinding'>;
-  readonly sessionBroker: Pick<
-    SharedSessionBroker,
-    'start' | 'createSession' | 'submitMessage' | 'bindAgent' | 'getSession' | 'closeSession'
-  >;
-  readonly agentManager: Pick<AgentManager, 'getStatus' | 'cancel'>;
+  readonly chatManager: CompanionChatManager;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-  readonly trySpawnAgent: (
-    input: Parameters<AgentManager['spawn']>[0],
-    logLabel?: string,
-    sessionId?: string,
-  ) => AgentRecord | Response;
-  readonly queueSurfaceReplyFromBinding: (
-    binding: AutomationRouteBinding | undefined,
-    input: { readonly agentId: string; readonly task: string; readonly sessionId?: string },
-  ) => void;
+  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
 }
 
-interface ParsedHomeAssistantInput {
-  readonly text: string;
-  readonly messageId: string;
-  readonly conversationId: string;
-  readonly surfaceId: string;
-  readonly channelId: string;
-  readonly threadId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
-  readonly title: string;
-  readonly providerId?: string;
-  readonly modelId?: string;
-  readonly tools?: readonly string[];
-  readonly context?: JsonRecord;
+interface ParsedHomeAssistantInput extends HomeAssistantChatInput {
   readonly publishEvent: boolean;
   readonly wait: boolean;
   readonly waitTimeoutMs: number;
-  readonly remoteSessionTtlMs: number;
 }
 
 export class HomeAssistantConversationRoutes {
@@ -103,13 +78,13 @@ export class HomeAssistantConversationRoutes {
     if (url.pathname === '/api/homeassistant/conversation' && req.method === 'POST') {
       const body = await this.context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      return this.respondToSubmit(await this.submitConversation(body, req.signal));
+      return this.respondToSubmit(await this.submitConversation(body));
     }
 
     if (url.pathname === '/api/homeassistant/conversation/stream' && req.method === 'POST') {
       const body = await this.context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      return this.streamConversation(body, req.signal);
+      return this.streamConversation(body);
     }
 
     if (url.pathname === '/api/homeassistant/conversation/cancel' && req.method === 'POST') {
@@ -141,13 +116,14 @@ export class HomeAssistantConversationRoutes {
         'conversation-stream',
         'conversation-cancel',
         'stable-correlation',
+        'isolated-remote-chat-session',
         'remote-session-ttl',
         'homeassistant-event-delivery',
       ],
     };
   }
 
-  private async submitConversation(body: JsonRecord, signal: AbortSignal): Promise<HomeAssistantSubmitResult> {
+  private async submitConversation(body: JsonRecord): Promise<HomeAssistantSubmitResult> {
     if (!Boolean(this.context.configManager.get('surfaces.homeassistant.enabled'))) {
       return {
         ok: false,
@@ -181,91 +157,68 @@ export class HomeAssistantConversationRoutes {
       };
     }
 
-    await this.context.routeBindings.start();
-    await this.context.sessionBroker.start();
-    const binding = await this.upsertBinding(input);
-    const sessionResolution = await this.resolveRemoteSession(binding, input);
-    const routing = this.buildRouting(input);
-    const submission = await this.context.sessionBroker.submitMessage({
-      sessionId: sessionResolution.session.id,
-      routeId: binding.id,
-      surfaceKind: HOME_ASSISTANT_SURFACE,
-      surfaceId: input.surfaceId,
-      externalId: input.conversationId,
-      ...(input.threadId ? { threadId: input.threadId } : {}),
-      ...(input.userId ? { userId: input.userId } : {}),
-      ...(input.displayName ? { displayName: input.displayName } : {}),
-      title: input.title,
-      body: input.text,
-      metadata: {
-        source: 'homeassistant',
+    let posted: HomeAssistantChatPostResult;
+    try {
+      posted = await postHomeAssistantChatMessage(
+        {
+          configManager: this.context.configManager,
+          routeBindings: this.context.routeBindings,
+          chatManager: this.context.chatManager,
+          resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
+        },
+        input,
+        {
+          wait: input.wait,
+          timeoutMs: input.waitTimeoutMs,
+          clientId: `homeassistant:${input.surfaceId}:${input.conversationId}`,
+        },
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        acknowledged: true,
         messageId: input.messageId,
         conversationId: input.conversationId,
-        remoteSessionTtlMs: input.remoteSessionTtlMs,
-        ...(input.context ? { homeAssistantContext: input.context } : {}),
-      },
-      ...(routing ? { routing } : {}),
-    });
-
-    let agentId = submission.activeAgentId;
-    if (submission.mode === 'spawn') {
-      const spawnResult = this.context.trySpawnAgent({
-        mode: 'spawn',
-        task: submission.task!,
-        executionProtocol: 'direct',
-        reviewMode: 'none',
-        communicationLane: 'direct',
-        dangerously_disable_wrfc: true,
-        ...(input.modelId ? { model: input.modelId } : {}),
-        ...(input.providerId ? { provider: input.providerId } : {}),
-        ...(input.tools?.length ? { tools: [...input.tools] } : {}),
-        context: `homeassistant:${input.conversationId}`,
-      }, 'HomeAssistantConversationRoutes.submitConversation', submission.session.id);
-      if (spawnResult instanceof Response) {
-        return this.errorFromSpawnResponse(input, sessionResolution, binding, spawnResult);
-      }
-      agentId = spawnResult.id;
-      await this.context.sessionBroker.bindAgent(submission.session.id, spawnResult.id);
-      if (input.publishEvent) {
-        this.context.queueSurfaceReplyFromBinding(binding, {
-          agentId: spawnResult.id,
-          task: input.text,
-          sessionId: submission.session.id,
-        });
-      }
+        sessionId: '',
+        routeId: '',
+        mode: 'rejected',
+        newSession: false,
+        sessionExpired: false,
+        status: 'rejected',
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
 
-    this.indexMessage(input, submission.session.id, binding.id, agentId);
+    this.indexMessage(input, posted);
     const base = {
       ok: true,
       acknowledged: true as const,
       messageId: input.messageId,
       conversationId: input.conversationId,
-      sessionId: submission.session.id,
-      routeId: binding.id,
-      ...(agentId ? { agentId } : {}),
-      mode: submission.mode === 'spawn' ? 'direct' as const : submission.mode,
-      newSession: sessionResolution.newSession,
-      sessionExpired: sessionResolution.sessionExpired,
+      sessionId: posted.session.id,
+      routeId: posted.binding.id,
+      mode: 'remote-chat' as const,
+      newSession: posted.newSession,
+      sessionExpired: posted.sessionExpired,
     };
 
-    if (submission.mode === 'rejected') {
-      return { ...base, ok: false, status: 'rejected', error: 'Home Assistant conversation was rejected.' };
+    if (!input.wait) {
+      return { ...base, status: 'running' };
     }
-    if (!agentId || !input.wait) {
-      return { ...base, status: agentId ? 'running' : 'queued' };
-    }
-
-    const finalRecord = await this.waitForAgent(agentId, input.waitTimeoutMs, signal);
-    if (!finalRecord) {
-      return { ...base, status: 'timeout', timeoutMs: input.waitTimeoutMs };
+    if (posted.error) {
+      const timedOut = posted.error.toLowerCase().includes('timed out');
+      return {
+        ...base,
+        ok: false,
+        status: timedOut ? 'timeout' : 'failed',
+        ...(timedOut ? { timeoutMs: input.waitTimeoutMs } : {}),
+        error: posted.error,
+      };
     }
     return {
       ...base,
-      status: normalizeAgentStatus(finalRecord.status),
-      ok: finalRecord.status === 'completed',
-      assistant: buildAssistantResult(finalRecord),
-      ...(finalRecord.status !== 'completed' ? { error: finalRecord.error ?? finalRecord.status } : {}),
+      status: 'completed',
+      assistant: buildAssistantResult(posted.response ?? ''),
     };
   }
 
@@ -278,7 +231,7 @@ export class HomeAssistantConversationRoutes {
     return Response.json(result, { status: result.status === 'completed' ? 200 : 202 });
   }
 
-  private streamConversation(body: JsonRecord, signal: AbortSignal): Response {
+  private streamConversation(body: JsonRecord): Response {
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       start: async (controller) => {
@@ -286,45 +239,12 @@ export class HomeAssistantConversationRoutes {
           controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
         };
         try {
-          const result = await this.submitConversation({ ...body, wait: false }, signal);
-          send('ack', result);
-          if (!result.agentId) {
-            send('final', result);
-            controller.close();
-            return;
-          }
-          let lastProgress = '';
-          for (;;) {
-            if (signal.aborted) return;
-            const record = this.context.agentManager.getStatus(result.agentId);
-            if (!record) {
-              send('error', { ...result, ok: false, error: 'Unknown agent.' });
-              controller.close();
-              return;
-            }
-            const progress = record.streamingContent ?? record.progress ?? '';
-            if (progress && progress !== lastProgress) {
-              lastProgress = progress;
-              send('progress', { messageId: result.messageId, agentId: result.agentId, text: progress });
-            }
-            if (record.status === 'completed' || record.status === 'failed' || record.status === 'cancelled') {
-              send('final', {
-                ...result,
-                ok: record.status === 'completed',
-                status: normalizeAgentStatus(record.status),
-                assistant: buildAssistantResult(record),
-                ...(record.status !== 'completed' ? { error: record.error ?? record.status } : {}),
-              });
-              controller.close();
-              return;
-            }
-            await delay(250, signal);
-          }
+          const result = await this.submitConversation({ ...body, wait: true });
+          send(result.status === 'completed' ? 'final' : 'error', result);
+          controller.close();
         } catch (error) {
-          if (!signal.aborted) {
-            send('error', { ok: false, error: error instanceof Error ? error.message : String(error) });
-            controller.close();
-          }
+          send('error', { ok: false, error: error instanceof Error ? error.message : String(error) });
+          controller.close();
         }
       },
       cancel: () => undefined,
@@ -339,17 +259,17 @@ export class HomeAssistantConversationRoutes {
   }
 
   private cancelConversation(body: JsonRecord): Response {
-    const agentId = readString(body.agentId)
-      ?? (readString(body.messageId ?? body.message_id)
-        ? this.messageIndex.get(readString(body.messageId ?? body.message_id)!)?.agentId
-        : undefined);
-    if (!agentId) {
-      return Response.json({ ok: false, error: 'agentId or known messageId is required.' }, { status: 400 });
+    const indexed = readString(body.messageId ?? body.message_id)
+      ? this.messageIndex.get(readString(body.messageId ?? body.message_id)!)
+      : undefined;
+    const sessionId = readString(body.sessionId ?? body.session_id) ?? indexed?.sessionId;
+    if (!sessionId) {
+      return Response.json({ ok: false, error: 'sessionId or known messageId is required.' }, { status: 400 });
     }
-    const cancelled = this.context.agentManager.cancel(agentId);
-    return cancelled
-      ? Response.json({ ok: true, agentId, status: 'cancelled' })
-      : Response.json({ ok: false, agentId, error: 'Unknown or already finished agent.' }, { status: 404 });
+    const session = this.context.chatManager.closeSession(sessionId);
+    return session
+      ? Response.json({ ok: true, sessionId, status: 'cancelled' })
+      : Response.json({ ok: false, sessionId, error: 'Unknown Home Assistant chat session.' }, { status: 404 });
   }
 
   private parseInput(body: JsonRecord): ParsedHomeAssistantInput {
@@ -391,127 +311,12 @@ export class HomeAssistantConversationRoutes {
     };
   }
 
-  private async upsertBinding(input: ParsedHomeAssistantInput): Promise<AutomationRouteBinding> {
-    return this.context.routeBindings.upsertBinding({
-      kind: input.threadId ? 'thread' : 'channel',
-      surfaceKind: HOME_ASSISTANT_SURFACE,
-      surfaceId: input.surfaceId,
-      externalId: input.conversationId,
-      ...(input.threadId ? { threadId: input.threadId } : {}),
-      channelId: input.channelId,
-      title: input.title,
-      metadata: {
-        source: 'homeassistant',
-        directoryKind: input.threadId ? 'thread' : 'user',
-        messageId: input.messageId,
-        conversationId: input.conversationId,
-        remoteSessionTtlMs: input.remoteSessionTtlMs,
-        ...(input.context ? { homeAssistantContext: input.context } : {}),
-      },
-    });
-  }
-
-  private async resolveRemoteSession(
-    binding: AutomationRouteBinding,
-    input: ParsedHomeAssistantInput,
-  ): Promise<{ readonly session: SharedSessionRecord; readonly newSession: boolean; readonly sessionExpired: boolean }> {
-    const now = Date.now();
-    const current = binding.sessionId ? this.context.sessionBroker.getSession(binding.sessionId) : null;
-    if (current && current.status !== 'closed' && !isExpiredSession(current, input.remoteSessionTtlMs, now)) {
-      return { session: current, newSession: false, sessionExpired: false };
-    }
-    if (current && current.status !== 'closed' && !current.activeAgentId) {
-      await this.context.sessionBroker.closeSession(current.id);
-    }
-    const session = await this.context.sessionBroker.createSession({
-      title: input.title,
-      metadata: {
-        source: 'homeassistant',
-        conversationId: input.conversationId,
-        remote: true,
-        remoteSessionTtlMs: input.remoteSessionTtlMs,
-      },
-      routeBinding: binding,
-      participant: {
-        surfaceKind: HOME_ASSISTANT_SURFACE,
-        surfaceId: input.surfaceId,
-        externalId: input.conversationId,
-        ...(input.userId ? { userId: input.userId } : {}),
-        ...(input.displayName ? { displayName: input.displayName } : {}),
-        routeId: binding.id,
-        lastSeenAt: now,
-      },
-      kind: 'homeassistant-remote',
-    } as Parameters<SharedSessionBroker['createSession']>[0] & { kind: 'homeassistant-remote' });
-    await this.context.routeBindings.patchBinding(binding.id, {
-      sessionId: session.id,
-      metadata: {
-        homeAssistantSessionId: session.id,
-        homeAssistantSessionCreatedAt: now,
-        remoteSessionTtlMs: input.remoteSessionTtlMs,
-      },
-    });
-    return {
-      session,
-      newSession: true,
-      sessionExpired: Boolean(current),
-    };
-  }
-
-  private buildRouting(input: ParsedHomeAssistantInput): { providerId?: string; modelId?: string; tools?: readonly string[] } | undefined {
-    if (!input.providerId && !input.modelId && !input.tools?.length) return undefined;
-    return {
-      ...(input.providerId ? { providerId: input.providerId } : {}),
-      ...(input.modelId ? { modelId: input.modelId } : {}),
-      ...(input.tools?.length ? { tools: input.tools } : {}),
-    };
-  }
-
-  private async waitForAgent(agentId: string, timeoutMs: number, signal: AbortSignal): Promise<AgentRecord | null> {
-    const startedAt = Date.now();
-    while (Date.now() - startedAt < timeoutMs) {
-      if (signal.aborted) return null;
-      const record = this.context.agentManager.getStatus(agentId);
-      if (record && (record.status === 'completed' || record.status === 'failed' || record.status === 'cancelled')) {
-        return record;
-      }
-      await delay(200, signal);
-    }
-    return null;
-  }
-
-  private errorFromSpawnResponse(
-    input: ParsedHomeAssistantInput,
-    session: { readonly session: SharedSessionRecord; readonly newSession: boolean; readonly sessionExpired: boolean },
-    binding: AutomationRouteBinding,
-    response: Response,
-  ): HomeAssistantSubmitResult {
-    return {
-      ok: false,
-      acknowledged: true,
-      messageId: input.messageId,
-      conversationId: input.conversationId,
-      sessionId: session.session.id,
-      routeId: binding.id,
-      mode: 'rejected',
-      newSession: session.newSession,
-      sessionExpired: session.sessionExpired,
-      status: 'rejected',
-      error: `Home Assistant responder failed to start with HTTP ${response.status}.`,
-    };
-  }
-
-  private indexMessage(
-    input: ParsedHomeAssistantInput,
-    sessionId: string,
-    routeId: string,
-    agentId: string | undefined,
-  ): void {
+  private indexMessage(input: ParsedHomeAssistantInput, posted: HomeAssistantChatPostResult): void {
     this.messageIndex.set(input.messageId, {
       messageId: input.messageId,
-      ...(agentId ? { agentId } : {}),
-      sessionId,
-      routeId,
+      ...(posted.assistantMessageId ? { assistantMessageId: posted.assistantMessageId } : {}),
+      sessionId: posted.session.id,
+      routeId: posted.binding.id,
       conversationId: input.conversationId,
       createdAt: Date.now(),
     });
@@ -522,37 +327,17 @@ export class HomeAssistantConversationRoutes {
   }
 
   private readRemoteSessionTtlMs(body: JsonRecord): number {
-    return clampNumber(
-      body.remoteSessionTtlMs,
-      Number(this.context.configManager.get('surfaces.homeassistant.remoteSessionTtlMs') ?? DEFAULT_REMOTE_SESSION_TTL_MS),
-      60_000,
-      24 * 60 * 60_000,
-    );
+    return readHomeAssistantRemoteSessionTtlMs(this.context.configManager, body.remoteSessionTtlMs);
   }
 }
 
-function isExpiredSession(session: SharedSessionRecord, ttlMs: number, now: number): boolean {
-  if (session.activeAgentId) return false;
-  return now - session.lastActivityAt > ttlMs;
-}
-
-function buildAssistantResult(record: AgentRecord): HomeAssistantAssistantResult {
-  const text = record.status === 'completed'
-    ? (record.fullOutput ?? record.streamingContent ?? record.progress ?? 'Completed')
-    : record.error ?? record.status;
+function buildAssistantResult(text: string): HomeAssistantAssistantResult {
   return {
     text,
     speechText: text,
-    status: record.status,
-    toolCallsMade: record.toolCallCount,
-    ...(record.usage ? { usage: record.usage } : {}),
-    ...(record.completedAt ? { completedAt: record.completedAt } : {}),
+    status: 'completed',
+    completedAt: Date.now(),
   };
-}
-
-function normalizeAgentStatus(status: AgentRecord['status']): HomeAssistantSubmitResult['status'] {
-  if (status === 'pending' || status === 'running') return 'running';
-  return status;
 }
 
 function readString(value: unknown): string | undefined {
@@ -573,15 +358,4 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
   const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : fallback;
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, Math.trunc(parsed)));
-}
-
-function delay(ms: number, signal: AbortSignal): Promise<void> {
-  if (signal.aborted) return Promise.resolve();
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener('abort', () => {
-      clearTimeout(timer);
-      resolve();
-    }, { once: true });
-  });
 }

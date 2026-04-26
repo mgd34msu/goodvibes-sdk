@@ -24,6 +24,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.14] - 2026-04-26
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Assistant prompt ingress now uses isolated daemon remote-chat sessions
+  backed by `CompanionChatManager`, matching the companion-app remote-chat
+  execution model instead of the shared-session/agent execution path.
+- Home Assistant conversation responses now return `mode: "remote-chat"` with
+  no `agentId`, and the webhook path publishes final Home Assistant events
+  from the isolated chat response instead of the agent surface-reply pipeline.
+- Home Assistant remote-chat sessions now carry a Home Assistant system prompt
+  that forbids JSON/WRFC/agent-report output and directs the model to use
+  `homeassistant_*` tools for devices, entities, rooms, services,
+  automations, templates, weather, and current home state.
+- Home Assistant route bindings now clear stale shared-session/run/job ids and
+  store the SDK-owned `homeAssistantChatSessionId`, preventing old route state
+  from making HA turns appear attached to a TUI/shared session.
+- The Home Assistant manifest and setup guidance no longer advertise
+  `agent-task-ingress` or `goodvibes.run_agent`; HA clients should expose
+  prompt, status, cancel, and tool-call surfaces against the isolated chat
+  contract.
+
+### Migration
+- Home Assistant Assist agents should keep using
+  `POST /api/homeassistant/conversation` and consume
+  `assistant.text`/`assistant.speechText`. Do not read `agentId` for HA chat;
+  use `sessionId`, `messageId`, `replyToMessageId`, `conversationId`, and
+  `routeId` for correlation.
+
+---
+
 ## [0.25.13] - 2026-04-26
 
 ### Breaking

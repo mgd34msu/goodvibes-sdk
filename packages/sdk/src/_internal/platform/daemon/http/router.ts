@@ -578,14 +578,16 @@ export class DaemonHttpRouter {
 
   private getHomeAssistantRoutes(): HomeAssistantConversationRoutes {
     if (!this.homeAssistantRoutes) {
+      const chatManager = this.context.companionChatManager;
+      if (!chatManager) {
+        throw new Error('Home Assistant remote chat manager is unavailable.');
+      }
       this.homeAssistantRoutes = new HomeAssistantConversationRoutes({
         configManager: this.context.configManager,
         routeBindings: this.context.routeBindings,
-        sessionBroker: this.context.sessionBroker,
-        agentManager: this.context.agentManager,
+        chatManager,
         parseJsonBody: (request) => this.parseJsonBody(request),
-        trySpawnAgent: (input, logLabel, sessionId) => this.context.trySpawnAgent(input, logLabel, sessionId),
-        queueSurfaceReplyFromBinding: (binding, input) => this.context.queueSurfaceReplyFromBinding(binding, input),
+        resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
       });
     }
     return this.homeAssistantRoutes;
