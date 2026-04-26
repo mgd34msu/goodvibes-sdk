@@ -81,7 +81,27 @@ Jobs are persisted under the daemon config directory in `batch-jobs.json`.
 
 Cloudflare is optional. The daemon works without Cloudflare, and `cloudflare.enabled` defaults to `false`.
 
-The SDK owns Cloudflare service interaction. TUI/onboarding clients should gather user choices and call the daemon Cloudflare routes; they should not implement queue, Worker, secret, consumer, or cron provisioning themselves.
+The SDK owns Cloudflare service interaction. TUI/onboarding clients should gather user choices and call the daemon Cloudflare routes; they should not implement Cloudflare API calls themselves.
+
+Cloudflare remains opt-in. The default provisioning target is still the batch Worker plus Queue/DLQ path, but callers can enable additional SDK-managed components with the `components` object:
+
+```json
+{
+  "components": {
+    "workers": true,
+    "queues": true,
+    "zeroTrustTunnel": true,
+    "zeroTrustAccess": true,
+    "dns": true,
+    "kv": true,
+    "durableObjects": true,
+    "secretsStore": true,
+    "r2": true
+  }
+}
+```
+
+Unset component keys use safe defaults: `workers` and `queues` are on for the existing batch integration, while Tunnel, Access, DNS, KV, Durable Objects, Secrets Store, and R2 stay off unless a client enables them.
 
 ### Provisioning Requirements
 
@@ -89,11 +109,26 @@ The SDK provisioning flow needs:
 
 - A Cloudflare account id.
 - A Cloudflare API token. Pass `apiToken`, configure `cloudflare.apiTokenRef`, store `CLOUDFLARE_API_TOKEN` in `SecretsManager`, or set the `CLOUDFLARE_API_TOKEN` environment variable.
-- `cloudflare.daemonBaseUrl`, a public URL the Cloudflare Worker can reach. `http://127.0.0.1` and other local-only daemon URLs will not work from Cloudflare.
+- `cloudflare.daemonBaseUrl`, the origin URL the Cloudflare Worker or Tunnel should use for Worker-to-daemon calls. Without a Tunnel this must be public; with a Zero Trust Tunnel it may be a local daemon URL such as `http://127.0.0.1:3421`.
 - A Worker-to-daemon operator token. By default the daemon uses its current operator token; callers may pass `operatorToken` or configure `cloudflare.workerTokenRef`.
 - A Worker client bearer token. If one is not supplied, provisioning generates one, stores it in `SecretsManager`, writes `cloudflare.workerClientTokenRef`, and installs it as the Worker secret `GOODVIBES_WORKER_TOKEN`.
+- For DNS or Access automation, a selected Cloudflare zone via `zoneId` or `zoneName`.
+- For Tunnel/DNS/Access automation, `daemonHostname` identifies the hostname to route/protect.
 
 Secrets are stored as `goodvibes://secrets/...` references when the provisioning route is asked to persist them. Raw Cloudflare tokens are never written into config.
+
+### Token Bootstrap
+
+Onboarding clients can either collect a manually-created operational Cloudflare API token or use the SDK bootstrap flow:
+
+1. Call `GET /api/cloudflare/token/requirements` or `POST /api/cloudflare/token/requirements` with the desired `components`.
+2. Show the returned permission list to the user and ask them to create a temporary bootstrap token with `Account API Tokens Write` plus the listed operational permissions.
+3. Send that temporary token to `POST /api/cloudflare/token/create` as `bootstrapToken`.
+4. The SDK creates a narrower operational token, stores it as `goodvibes://secrets/goodvibes/CLOUDFLARE_API_TOKEN` when `storeApiToken` is not `false`, and never persists the bootstrap token.
+
+The SDK resolves Cloudflare permission groups dynamically through the official Cloudflare TypeScript SDK. If Cloudflare returns account-specific permission names that do not match the SDK candidates, token creation fails with the missing permission names so the client can guide the user to create the operational token manually.
+
+`POST /api/cloudflare/discover` lists accounts, zones, workers.dev subdomain, queues, KV namespaces, Durable Object namespaces, R2 buckets, Secrets Stores, Zero Trust Tunnels, and Access applications visible to the token. Use this for onboarding account/zone/domain selection. If no zone is available, Workers can still use a `workers.dev` URL.
 
 ### Cloudflare Daemon API
 
@@ -102,8 +137,11 @@ All Cloudflare routes require daemon authentication and admin privileges.
 | Route | Method | Behavior |
 |---|---:|---|
 | `/api/cloudflare/status` | `GET` | Returns local Cloudflare config, readiness booleans, and warnings without making Cloudflare API calls. |
+| `/api/cloudflare/token/requirements` | `GET` or `POST` | Returns the Cloudflare token permission shape for selected components and bootstrap instructions. |
+| `/api/cloudflare/token/create` | `POST` | Uses a temporary bootstrap token to create and optionally store the narrower GoodVibes operational token. |
+| `/api/cloudflare/discover` | `POST` | Discovers accounts, zones, and optional account-scoped Cloudflare resources visible to the token. |
 | `/api/cloudflare/validate` | `POST` | Resolves the API token and validates Cloudflare account access. |
-| `/api/cloudflare/provision` | `POST` | Creates or reuses the queue and DLQ, uploads the GoodVibes Worker, sets Worker secrets, enables workers.dev when possible, configures cron, attaches the queue consumer with DLQ, persists config, and optionally verifies the Worker. |
+| `/api/cloudflare/provision` | `POST` | Creates or reuses enabled components: Worker, Queue/DLQ, Tunnel, Access app/service token, DNS CNAMEs, KV namespace, Durable Object binding, Secrets Store, R2 Standard bucket, config, and optional verification. |
 | `/api/cloudflare/verify` | `POST` | Calls the Worker health endpoint and the Worker-to-daemon batch proxy. |
 | `/api/cloudflare/disable` | `POST` | Disables local Cloudflare usage, returns queue backend to `local`, and can remove Worker cron/subdomain settings. |
 
@@ -115,9 +153,22 @@ Provisioning request example:
   "apiToken": "<cloudflare-api-token>",
   "storeApiToken": true,
   "daemonBaseUrl": "https://daemon.example.com",
+  "daemonHostname": "daemon.example.com",
+  "zoneName": "example.com",
   "workerName": "goodvibes-batch-worker",
   "queueName": "goodvibes-batch",
   "deadLetterQueueName": "goodvibes-batch-dlq",
+  "components": {
+    "workers": true,
+    "queues": true,
+    "zeroTrustTunnel": false,
+    "zeroTrustAccess": false,
+    "dns": false,
+    "kv": false,
+    "durableObjects": false,
+    "secretsStore": false,
+    "r2": false
+  },
   "workerCron": "*/5 * * * *",
   "batchMode": "explicit",
   "returnGeneratedSecrets": true,
@@ -125,7 +176,17 @@ Provisioning request example:
 }
 ```
 
-`returnGeneratedSecrets` returns a generated Worker client token only for the provisioning response. Store it in the onboarding client if that client will call the Worker directly. Otherwise use the persisted `cloudflare.workerClientTokenRef`.
+`returnGeneratedSecrets` can return generated Worker client, Tunnel, or Access service-token credentials only for the provisioning response. Store them in the onboarding client only when that client must call those Cloudflare surfaces directly. Otherwise use the persisted `goodvibes://` refs.
+
+When enabled, the optional components do the following:
+
+- `zeroTrustTunnel`: creates or reuses a remotely-managed Tunnel and stores its cloudflared token under `cloudflare.tunnelTokenRef`.
+- `zeroTrustAccess`: creates or reuses an Access service token and self-hosted application for `daemonHostname`; service-token credentials are stored as JSON under `cloudflare.accessServiceTokenRef`.
+- `dns`: creates/updates proxied CNAMEs for `daemonHostname` to `<tunnelId>.cfargotunnel.com` and `workerHostname` to the Worker host.
+- `kv`: creates or reuses `cloudflare.kvNamespaceName` and binds it to the Worker as `GOODVIBES_KV`.
+- `durableObjects`: adds the `GoodVibesCoordinator` Durable Object class, migration, and Worker binding.
+- `secretsStore`: creates or reuses a Cloudflare Secrets Store for future Cloudflare-native secret placement.
+- `r2`: creates or reuses a Standard storage class bucket and binds it to the Worker as `GOODVIBES_ARTIFACTS`.
 
 The SDK exports `@pellux/goodvibes-sdk/workers` for Worker deployments:
 

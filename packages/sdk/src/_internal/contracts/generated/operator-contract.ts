@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.25.8"
+    "version": "0.25.10"
   },
   "auth": {
     "modes": [

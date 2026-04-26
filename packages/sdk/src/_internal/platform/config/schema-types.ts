@@ -285,15 +285,32 @@ export interface CloudflareConfig {
   freeTierMode: boolean;
   accountId: string;
   apiTokenRef: string;
+  zoneId: string;
+  zoneName: string;
   workerName: string;
   workerSubdomain: string;
+  workerHostname: string;
   workerBaseUrl: string;
   daemonBaseUrl: string;
+  daemonHostname: string;
   workerTokenRef: string;
   workerClientTokenRef: string;
   workerCron: string;
   queueName: string;
   deadLetterQueueName: string;
+  tunnelName: string;
+  tunnelId: string;
+  tunnelTokenRef: string;
+  accessAppId: string;
+  accessServiceTokenId: string;
+  accessServiceTokenRef: string;
+  kvNamespaceName: string;
+  kvNamespaceId: string;
+  durableObjectNamespaceName: string;
+  durableObjectNamespaceId: string;
+  r2BucketName: string;
+  secretsStoreName: string;
+  secretsStoreId: string;
   maxQueueOpsPerDay: number;
 }
 
@@ -652,15 +669,32 @@ export type ConfigKey =
   | 'cloudflare.freeTierMode'
   | 'cloudflare.accountId'
   | 'cloudflare.apiTokenRef'
+  | 'cloudflare.zoneId'
+  | 'cloudflare.zoneName'
   | 'cloudflare.workerName'
   | 'cloudflare.workerSubdomain'
+  | 'cloudflare.workerHostname'
   | 'cloudflare.workerBaseUrl'
   | 'cloudflare.daemonBaseUrl'
+  | 'cloudflare.daemonHostname'
   | 'cloudflare.workerTokenRef'
   | 'cloudflare.workerClientTokenRef'
   | 'cloudflare.workerCron'
   | 'cloudflare.queueName'
   | 'cloudflare.deadLetterQueueName'
+  | 'cloudflare.tunnelName'
+  | 'cloudflare.tunnelId'
+  | 'cloudflare.tunnelTokenRef'
+  | 'cloudflare.accessAppId'
+  | 'cloudflare.accessServiceTokenId'
+  | 'cloudflare.accessServiceTokenRef'
+  | 'cloudflare.kvNamespaceName'
+  | 'cloudflare.kvNamespaceId'
+  | 'cloudflare.durableObjectNamespaceName'
+  | 'cloudflare.durableObjectNamespaceId'
+  | 'cloudflare.r2BucketName'
+  | 'cloudflare.secretsStoreName'
+  | 'cloudflare.secretsStoreId'
   | 'cloudflare.maxQueueOpsPerDay';
 
 /** Maps a ConfigKey to its value type. */
@@ -882,14 +916,31 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'cloudflare.freeTierMode' ? boolean :
   K extends 'cloudflare.accountId' ? string :
   K extends 'cloudflare.apiTokenRef' ? string :
+  K extends 'cloudflare.zoneId' ? string :
+  K extends 'cloudflare.zoneName' ? string :
   K extends 'cloudflare.workerName' ? string :
   K extends 'cloudflare.workerSubdomain' ? string :
+  K extends 'cloudflare.workerHostname' ? string :
   K extends 'cloudflare.workerBaseUrl' ? string :
   K extends 'cloudflare.daemonBaseUrl' ? string :
+  K extends 'cloudflare.daemonHostname' ? string :
   K extends 'cloudflare.workerTokenRef' ? string :
   K extends 'cloudflare.workerClientTokenRef' ? string :
   K extends 'cloudflare.workerCron' ? string :
   K extends 'cloudflare.queueName' ? string :
   K extends 'cloudflare.deadLetterQueueName' ? string :
+  K extends 'cloudflare.tunnelName' ? string :
+  K extends 'cloudflare.tunnelId' ? string :
+  K extends 'cloudflare.tunnelTokenRef' ? string :
+  K extends 'cloudflare.accessAppId' ? string :
+  K extends 'cloudflare.accessServiceTokenId' ? string :
+  K extends 'cloudflare.accessServiceTokenRef' ? string :
+  K extends 'cloudflare.kvNamespaceName' ? string :
+  K extends 'cloudflare.kvNamespaceId' ? string :
+  K extends 'cloudflare.durableObjectNamespaceName' ? string :
+  K extends 'cloudflare.durableObjectNamespaceId' ? string :
+  K extends 'cloudflare.r2BucketName' ? string :
+  K extends 'cloudflare.secretsStoreName' ? string :
+  K extends 'cloudflare.secretsStoreId' ? string :
   K extends 'cloudflare.maxQueueOpsPerDay' ? number :
   never;

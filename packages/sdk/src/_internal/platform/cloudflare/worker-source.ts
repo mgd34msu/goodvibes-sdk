@@ -74,6 +74,21 @@ async function handleQueuePayload(payload, env) {
   });
 }
 
+export class GoodVibesCoordinator {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === '/health') {
+      return json({ ok: true, service: 'goodvibes-cloudflare-coordinator' });
+    }
+    return json({ error: 'Not found', code: 'NOT_FOUND' }, 404);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);

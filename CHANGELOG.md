@@ -24,6 +24,43 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.10] - 2026-04-26
+
+### Breaking
+- none
+
+### Added
+- Expanded SDK-owned Cloudflare provisioning beyond Worker/Queue to optional
+  Zero Trust Tunnel, Zero Trust Access, DNS, KV, Durable Objects, Secrets
+  Store, and R2 Standard bucket resources.
+- Added Cloudflare token bootstrap routes:
+  `/api/cloudflare/token/requirements` and `/api/cloudflare/token/create`.
+  The SDK can use a temporary bootstrap token to create a narrower operational
+  token and store only the operational token as a `goodvibes://` secret.
+- Added `/api/cloudflare/discover` for onboarding clients to list visible
+  accounts, zones, workers.dev subdomain, queues, KV namespaces, Durable Object
+  namespaces, R2 buckets, Secrets Stores, Tunnels, and Access applications.
+- Added Cloudflare config keys for zone selection, daemon/Worker hostnames,
+  Tunnel token refs, Access app/service-token refs, KV, Durable Objects, R2,
+  and Secrets Store resources.
+- Added a `GoodVibesCoordinator` Durable Object export to the SDK-managed
+  Worker module so optional Durable Object binding/migration can be provisioned.
+
+### Fixed
+- Cloudflare provisioning can now use a local daemon origin URL when a Zero
+  Trust Tunnel is enabled, while keeping the public URL requirement for
+  no-Tunnel Worker deployments.
+
+### Migration
+- Existing Cloudflare batch provisioning remains compatible: omitted
+  `components` keep Workers and Queues enabled and leave every new Cloudflare
+  component disabled.
+- Onboarding clients should use `/api/cloudflare/token/requirements`,
+  `/api/cloudflare/token/create`, and `/api/cloudflare/discover` instead of
+  hardcoding Cloudflare token instructions or resource discovery.
+
+---
+
 ## [0.25.9] - 2026-04-26
 
 ### Breaking

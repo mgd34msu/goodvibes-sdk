@@ -9,7 +9,7 @@ See [Runtime Surfaces](./surfaces.md) for the full two-tier model.
 | **Bun ≥1.0** | Full + Companion | TUI, daemons, CLI apps, and all companion entry points |
 | **Hermes (React Native / Expo)** | Companion only | iOS and Android companion apps via `/react-native` and `/expo` |
 | **Modern browsers** | Companion only | Browser and web UI apps via `/browser` and `/web` |
-| **Cloudflare Workers / workerd / Miniflare 4** | Companion only | Use `/web` for normal operator HTTP clients. Use `/workers` only for manual GoodVibes Worker bridge deployments that proxy daemon batch routes and handle queue/scheduled ticks. SDK-owned Cloudflare provisioning is exposed by daemon `/api/cloudflare/*` routes. |
+| **Cloudflare Workers / workerd / Miniflare 4** | Companion only | Use `/web` for normal operator HTTP clients. Use `/workers` only for manual GoodVibes Worker bridge deployments that proxy daemon batch routes and handle queue/scheduled ticks. SDK-owned Cloudflare provisioning is exposed by daemon `/api/cloudflare/*` routes and uses the official Cloudflare API from the Bun daemon side. |
 
 ## Node.js is NOT Supported
 
