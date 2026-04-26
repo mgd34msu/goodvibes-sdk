@@ -1,6 +1,6 @@
 # Operator API Reference
 
-Generated from the synced GoodVibes operator contract for product version `0.25.9`.
+Generated from the synced GoodVibes operator contract for product version `0.25.10`.
 
 ## Summary
 

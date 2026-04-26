@@ -49,15 +49,32 @@ attempts to 30 seconds to avoid silent hangs.
 | `cloudflare.freeTierMode` | `true` | Prefer small queue signals and bounded daily usage. |
 | `cloudflare.accountId` | empty string | Cloudflare account id used by SDK-owned provisioning. |
 | `cloudflare.apiTokenRef` | empty string | Secret reference for the Cloudflare API token; empty falls back to `CLOUDFLARE_API_TOKEN`. |
+| `cloudflare.zoneId` | empty string | Optional Cloudflare zone id used by DNS and Access automation. |
+| `cloudflare.zoneName` | empty string | Optional Cloudflare zone name used during onboarding/discovery. |
 | `cloudflare.workerName` | `goodvibes-batch-worker` | Worker script name managed by SDK provisioning. |
 | `cloudflare.workerSubdomain` | empty string | Account workers.dev subdomain used to infer the Worker URL. |
+| `cloudflare.workerHostname` | empty string | Optional custom Worker hostname managed through DNS automation. |
 | `cloudflare.workerBaseUrl` | empty string | Public Worker URL clients use for batch proxy/queue calls. |
-| `cloudflare.daemonBaseUrl` | empty string | Public daemon URL the Worker uses for Worker-to-daemon calls. |
+| `cloudflare.daemonBaseUrl` | empty string | Daemon origin URL the Worker or Tunnel uses for Worker-to-daemon calls. |
+| `cloudflare.daemonHostname` | empty string | Optional daemon hostname managed through Tunnel, DNS, and Access automation. |
 | `cloudflare.workerTokenRef` | empty string | Secret reference for the Worker-to-daemon bearer token. |
 | `cloudflare.workerClientTokenRef` | empty string | Secret reference for the client-to-Worker bearer token. |
 | `cloudflare.workerCron` | `*/5 * * * *` | Worker cron trigger for batch scheduler ticks. |
 | `cloudflare.queueName` | `goodvibes-batch` | Cloudflare Queue name for GoodVibes batch signals. |
 | `cloudflare.deadLetterQueueName` | `goodvibes-batch-dlq` | Cloudflare DLQ name for exhausted batch signal retries. |
+| `cloudflare.tunnelName` | `goodvibes-daemon` | Zero Trust Tunnel name managed by optional provisioning. |
+| `cloudflare.tunnelId` | empty string | Zero Trust Tunnel id selected or created by provisioning. |
+| `cloudflare.tunnelTokenRef` | empty string | Secret reference for the cloudflared Tunnel token. |
+| `cloudflare.accessAppId` | empty string | Zero Trust Access application id for the daemon hostname. |
+| `cloudflare.accessServiceTokenId` | empty string | Zero Trust Access service token id. |
+| `cloudflare.accessServiceTokenRef` | empty string | Secret reference for Access service-token client id/secret JSON. |
+| `cloudflare.kvNamespaceName` | `goodvibes-runtime` | Optional KV namespace name for edge runtime state. |
+| `cloudflare.kvNamespaceId` | empty string | KV namespace id bound to the Worker as `GOODVIBES_KV`. |
+| `cloudflare.durableObjectNamespaceName` | `GoodVibesCoordinator` | Durable Object class/namespace name for edge coordination. |
+| `cloudflare.durableObjectNamespaceId` | empty string | Durable Object namespace id discovered after Worker migration. |
+| `cloudflare.r2BucketName` | `goodvibes-artifacts` | R2 Standard bucket name for optional artifacts. |
+| `cloudflare.secretsStoreName` | `goodvibes` | Cloudflare Secrets Store name managed by optional provisioning. |
+| `cloudflare.secretsStoreId` | empty string | Cloudflare Secrets Store id selected or created by provisioning. |
 | `cloudflare.maxQueueOpsPerDay` | `10 000` | Free-tier-oriented queue operation budget. |
 
 See [Daemon batch processing](./daemon-batch-processing.md) for provider support, routes, and Worker bridge behavior.

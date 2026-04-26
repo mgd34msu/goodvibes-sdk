@@ -11,13 +11,13 @@ TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-co
 
 This package has two surfaces with different runtime requirements. See [Runtime Surfaces](./docs/surfaces.md) for the authoritative two-tier model:
 - **Full surface** — Bun runtime consumers (TUI, daemon, CLI). Gets the complete agentic harness.
-- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers. Gets auth, transport, events, contracts, errors, observer, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. Cloudflare provisioning itself is SDK-owned through daemon `/api/cloudflare/*` routes.
+- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers. Gets auth, transport, events, contracts, errors, observer, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. Cloudflare provisioning itself is SDK-owned through daemon `/api/cloudflare/*` routes, including token bootstrap, discovery, Workers, Queues, Tunnel, Access, DNS, KV, Durable Objects, Secrets Store, and R2.
 
 ## Install
 
 This is one npm package with subpath exports.
 
-> **Current version: `0.25.9`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
+> **Current version: `0.25.10`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
 
 
 ```bash

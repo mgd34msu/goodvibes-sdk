@@ -2,34 +2,86 @@ import type { ConfigKey } from '../config/schema.js';
 import { resolveSecretInput } from '../config/secret-refs.js';
 import { summarizeError } from '../utils/error-display.js';
 import { createCloudflareApiClient } from './client.js';
-import { GOODVIBES_CLOUDFLARE_WORKER_MODULE } from './worker-source.js';
+import { readCloudflareConfig } from './config.js';
+import {
+  CLOUDFLARE_API_TOKEN_KEY,
+  CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY,
+  CLOUDFLARE_WORKER_OPERATOR_TOKEN_KEY,
+  DEFAULT_DLQ_NAME,
+  DEFAULT_DO_NAMESPACE_NAME,
+  DEFAULT_KV_NAMESPACE_NAME,
+  DEFAULT_QUEUE_NAME,
+  DEFAULT_R2_BUCKET_NAME,
+  DEFAULT_SECRETS_STORE_NAME,
+  DEFAULT_TUNNEL_NAME,
+  DEFAULT_WORKER_CRON,
+  DEFAULT_WORKER_NAME,
+} from './constants.js';
+import {
+  discoverZones,
+  resolveZone,
+  selectDiscoveredZone,
+  tryDiscover,
+} from './discovery.js';
+import {
+  configureDns,
+  configureWorkerSubdomain,
+  ensureAccess,
+  ensureKvNamespace,
+  ensureQueue,
+  ensureQueueConsumer,
+  ensureR2Bucket,
+  ensureSecretsStore,
+  ensureTunnel,
+  findDurableObjectNamespace,
+  type CloudflareProvisioningContext,
+  uploadWorker,
+} from './resources.js';
 import type {
+  CloudflareAccessApplicationLike,
   CloudflareApiClient,
-  CloudflareConsumerLike,
   CloudflareControlPlaneConfig,
   CloudflareControlPlaneOptions,
   CloudflareControlPlaneStatus,
+  CloudflareDiscoverInput,
+  CloudflareDiscoverResult,
   CloudflareDisableInput,
   CloudflareDisableResult,
+  CloudflareDurableObjectNamespaceLike,
+  CloudflareKvNamespaceLike,
+  CloudflareOperationalTokenInput,
+  CloudflareOperationalTokenResult,
+  CloudflarePermissionGroupLike,
   CloudflareProvisionInput,
   CloudflareProvisionResult,
   CloudflareProvisionStep,
   CloudflareQueueLike,
+  CloudflareR2BucketLike,
   CloudflareResolvedSecret,
+  CloudflareSecretsStoreLike,
+  CloudflareTokenRequirementsInput,
+  CloudflareTokenRequirementsResult,
+  CloudflareTunnelLike,
   CloudflareValidateInput,
   CloudflareValidateResult,
   CloudflareVerifyInput,
   CloudflareVerifyResult,
 } from './types.js';
 import { CloudflareControlPlaneError } from './types.js';
-
-const DEFAULT_WORKER_NAME = 'goodvibes-batch-worker';
-const DEFAULT_QUEUE_NAME = 'goodvibes-batch';
-const DEFAULT_DLQ_NAME = 'goodvibes-batch-dlq';
-const DEFAULT_WORKER_CRON = '*/5 * * * *';
-const CLOUDFLARE_API_TOKEN_KEY = 'CLOUDFLARE_API_TOKEN';
-const CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY = 'GOODVIBES_CLOUDFLARE_WORKER_TOKEN';
-const CLOUDFLARE_WORKER_OPERATOR_TOKEN_KEY = 'GOODVIBES_CLOUDFLARE_OPERATOR_TOKEN';
+import {
+  buildTokenRequirements,
+  buildTokenResources,
+  clean,
+  collectAsync,
+  collectSingleAccount,
+  hostnameFromUrl,
+  requireKvNamespaceId,
+  requireQueueId,
+  resolveComponents,
+  safeResponseText,
+  selectPermissionGroups,
+  stripTrailingSlash,
+} from './utils.js';
 
 export class CloudflareControlPlaneManager {
   private readonly createClient: (apiToken: string) => Promise<CloudflareApiClient>;
@@ -48,13 +100,22 @@ export class CloudflareControlPlaneManager {
     const configured = {
       accountId: config.accountId.length > 0,
       apiToken: apiToken.value !== null,
+      zone: config.zoneId.length > 0 || config.zoneName.length > 0,
       workerName: config.workerName.length > 0,
       daemonBaseUrl: config.daemonBaseUrl.length > 0,
+      daemonHostname: config.daemonHostname.length > 0,
       workerBaseUrl: config.workerBaseUrl.length > 0,
+      workerHostname: config.workerHostname.length > 0,
       queueName: config.queueName.length > 0,
       deadLetterQueueName: config.deadLetterQueueName.length > 0,
       workerToken: workerToken.value !== null,
       workerClientToken: workerClientToken.value !== null,
+      tunnel: config.tunnelId.length > 0 || config.tunnelName.length > 0,
+      access: config.accessAppId.length > 0 || config.accessServiceTokenId.length > 0 || config.accessServiceTokenRef.length > 0,
+      kv: config.kvNamespaceId.length > 0 || config.kvNamespaceName.length > 0,
+      durableObjects: config.durableObjectNamespaceId.length > 0 || config.durableObjectNamespaceName.length > 0,
+      r2: config.r2BucketName.length > 0,
+      secretsStore: config.secretsStoreId.length > 0 || config.secretsStoreName.length > 0,
     };
     const warnings: string[] = [];
     if (config.enabled && !configured.apiToken) warnings.push('Cloudflare is enabled but no API token is configured.');
@@ -71,6 +132,164 @@ export class CloudflareControlPlaneManager {
       configured.deadLetterQueueName &&
       configured.workerToken;
     return { enabled: config.enabled, ready, configured, config, warnings };
+  }
+
+  tokenRequirements(input: CloudflareTokenRequirementsInput = {}): CloudflareTokenRequirementsResult {
+    const components = resolveComponents(input.components);
+    return {
+      ok: true,
+      components,
+      permissions: buildTokenRequirements(components, input.includeBootstrap === true),
+      bootstrapToken: {
+        requiredForSdkCreation: true,
+        storeInGoodVibes: false,
+        instructions: [
+          'Create a temporary Cloudflare API token in the dashboard with Account API Tokens Write, Account Settings Read, and the GoodVibes operational permissions listed here.',
+          'Pass that temporary token as bootstrapToken to POST /api/cloudflare/token/create.',
+          'The SDK uses the bootstrap token once to create a narrower operational token, stores only the operational token as a goodvibes:// secret when requested, and never persists the bootstrap token.',
+        ],
+      },
+    };
+  }
+
+  async createOperationalToken(input: CloudflareOperationalTokenInput): Promise<CloudflareOperationalTokenResult> {
+    const bootstrapToken = clean(input.bootstrapToken);
+    if (!bootstrapToken) {
+      throw new CloudflareControlPlaneError(
+        'bootstrapToken is required to create a Cloudflare operational token. The bootstrap token is used once and is not stored.',
+        'CLOUDFLARE_BOOTSTRAP_TOKEN_REQUIRED',
+        400,
+      );
+    }
+    const persist = input.persistConfig !== false;
+    const config = this.readConfig();
+    const accountId = this.resolveAccountId(input.accountId);
+    const components = resolveComponents(input.components);
+    const requirements = buildTokenRequirements(components, false);
+    const client = await this.createClient(bootstrapToken);
+    await client.accounts.get({ account_id: accountId });
+    const zone = await resolveZone(client, {
+      accountId,
+      zoneId: input.zoneId,
+      zoneName: input.zoneName,
+      configuredZoneId: config.zoneId,
+      configuredZoneName: config.zoneName,
+      required: components.dns,
+    });
+    const groups = await this.collectPermissionGroups(client, accountId);
+    const permissionIds = selectPermissionGroups(requirements, groups);
+    const resources = buildTokenResources(accountId, zone?.id, components);
+    const tokenName = clean(input.tokenName) || 'GoodVibes Cloudflare Operational';
+    const token = await this.requireAccountTokens(client).create({
+      account_id: accountId,
+      name: tokenName,
+      policies: [
+        {
+          effect: 'allow',
+          permission_groups: permissionIds.map((id) => ({ id })),
+          resources,
+        },
+      ],
+      ...(clean(input.expiresOn) ? { expires_on: clean(input.expiresOn) } : {}),
+    });
+    if (!token.value) {
+      throw new CloudflareControlPlaneError('Cloudflare did not return a token value for the newly-created operational token.', 'CLOUDFLARE_TOKEN_VALUE_MISSING', 502);
+    }
+
+    let apiTokenRef: string | undefined;
+    if (input.storeApiToken !== false) {
+      await this.storeSecret(CLOUDFLARE_API_TOKEN_KEY, token.value);
+      apiTokenRef = `goodvibes://secrets/goodvibes/${CLOUDFLARE_API_TOKEN_KEY}`;
+      this.setConfig('cloudflare.apiTokenRef', apiTokenRef, persist);
+      this.setConfig('cloudflare.accountId', accountId, persist);
+      if (zone) {
+        this.setConfig('cloudflare.zoneId', zone.id, persist);
+        this.setConfig('cloudflare.zoneName', zone.name, persist);
+      }
+    }
+
+    return {
+      ok: true,
+      ...(token.id ? { tokenId: token.id } : {}),
+      tokenName,
+      tokenSource: 'bootstrap',
+      ...(apiTokenRef ? { apiTokenRef } : {}),
+      ...(input.returnGeneratedToken ? { generatedToken: token.value } : {}),
+      accountId,
+      ...(zone ? { zoneId: zone.id } : {}),
+      permissions: requirements,
+    };
+  }
+
+  async discover(input: CloudflareDiscoverInput = {}): Promise<CloudflareDiscoverResult> {
+    const apiToken = await this.resolveApiToken(input);
+    if (!apiToken.value) {
+      throw new CloudflareControlPlaneError(
+        'Cloudflare API token is required. Set CLOUDFLARE_API_TOKEN, configure cloudflare.apiTokenRef, or pass apiToken.',
+        'CLOUDFLARE_API_TOKEN_REQUIRED',
+        400,
+      );
+    }
+    const client = await this.createClient(apiToken.value);
+    const config = this.readConfig();
+    const warnings: string[] = [];
+    const accounts = client.accounts.list
+      ? await collectAsync(client.accounts.list())
+      : await collectSingleAccount(client, clean(input.accountId) || config.accountId, warnings);
+    const selectedAccountId = clean(input.accountId) || config.accountId || (accounts.length === 1 ? accounts[0]?.id ?? '' : '');
+    const selectedAccount = selectedAccountId ? accounts.find((account) => account.id === selectedAccountId) ?? await client.accounts.get({ account_id: selectedAccountId }) : undefined;
+    const zones = await discoverZones(client, {
+      accountId: selectedAccount?.id ?? '',
+      zoneName: input.zoneName,
+      warnings,
+    });
+    const selectedZone = await selectDiscoveredZone(client, zones, {
+      zoneId: input.zoneId,
+      zoneName: input.zoneName,
+      configuredZoneId: config.zoneId,
+      configuredZoneName: config.zoneName,
+      warnings,
+    });
+
+    let workerSubdomain: string | undefined;
+    let queues: readonly CloudflareQueueLike[] | undefined;
+    let kvNamespaces: readonly CloudflareKvNamespaceLike[] | undefined;
+    let durableObjectNamespaces: readonly CloudflareDurableObjectNamespaceLike[] | undefined;
+    let r2Buckets: readonly CloudflareR2BucketLike[] | undefined;
+    let secretsStores: readonly CloudflareSecretsStoreLike[] | undefined;
+    let tunnels: readonly CloudflareTunnelLike[] | undefined;
+    let accessApplications: readonly CloudflareAccessApplicationLike[] | undefined;
+
+    if (input.includeResources !== false && selectedAccount) {
+      workerSubdomain = await tryDiscover('worker-subdomain', warnings, async () => (await client.workers.subdomains.get({ account_id: selectedAccount.id })).subdomain);
+      queues = await tryDiscover('queues', warnings, async () => collectAsync(client.queues.list({ account_id: selectedAccount.id })));
+      if (client.kv) kvNamespaces = await tryDiscover('kv-namespaces', warnings, async () => collectAsync(client.kv!.namespaces.list({ account_id: selectedAccount.id })));
+      if (client.durableObjects) durableObjectNamespaces = await tryDiscover('durable-object-namespaces', warnings, async () => collectAsync(client.durableObjects!.namespaces.list({ account_id: selectedAccount.id })));
+      if (client.r2) r2Buckets = await tryDiscover('r2-buckets', warnings, async () => (await client.r2!.buckets.list({ account_id: selectedAccount.id })).buckets ?? []);
+      if (client.secretsStore) secretsStores = await tryDiscover('secrets-stores', warnings, async () => collectAsync(client.secretsStore!.stores.list({ account_id: selectedAccount.id })));
+      if (client.zeroTrust?.tunnels) tunnels = await tryDiscover('zero-trust-tunnels', warnings, async () => collectAsync(client.zeroTrust!.tunnels!.cloudflared.list({ account_id: selectedAccount.id, is_deleted: false })));
+      if (client.zeroTrust?.access) accessApplications = await tryDiscover('access-applications', warnings, async () => collectAsync(client.zeroTrust!.access!.applications.list({ account_id: selectedAccount.id })));
+    } else if (!selectedAccount) {
+      warnings.push('Select a Cloudflare account before discovering account-scoped resources.');
+    }
+
+    return {
+      ok: true,
+      tokenSource: apiToken.source,
+      accounts,
+      ...(selectedAccount ? { selectedAccount } : {}),
+      zones,
+      ...(selectedZone ? { selectedZone } : {}),
+      ...(workerSubdomain ? { workerSubdomain } : {}),
+      ...(queues ? { queues } : {}),
+      ...(kvNamespaces ? { kvNamespaces } : {}),
+      ...(durableObjectNamespaces ? { durableObjectNamespaces } : {}),
+      ...(r2Buckets ? { r2Buckets } : {}),
+      ...(secretsStores ? { secretsStores } : {}),
+      ...(tunnels ? { tunnels } : {}),
+      ...(accessApplications ? { accessApplications } : {}),
+      warnings,
+    };
   }
 
   async validate(input: CloudflareValidateInput): Promise<CloudflareValidateResult> {
@@ -99,15 +318,19 @@ export class CloudflareControlPlaneManager {
   async provision(input: CloudflareProvisionInput): Promise<CloudflareProvisionResult> {
     const steps: CloudflareProvisionStep[] = [];
     const persist = input.persistConfig !== false;
+    const config = this.readConfig();
+    const components = resolveComponents(input.components);
     const accountId = this.resolveAccountId(input.accountId);
     const workerName = this.resolveWorkerName(input.workerName);
-    const queueName = clean(input.queueName) || this.readConfig().queueName || DEFAULT_QUEUE_NAME;
-    const deadLetterQueueName = clean(input.deadLetterQueueName) || this.readConfig().deadLetterQueueName || DEFAULT_DLQ_NAME;
-    const daemonBaseUrl = stripTrailingSlash(clean(input.daemonBaseUrl) || this.readConfig().daemonBaseUrl);
-    const workerCron = clean(input.workerCron) || this.readConfig().workerCron || DEFAULT_WORKER_CRON;
+    const queueName = clean(input.queueName) || config.queueName || DEFAULT_QUEUE_NAME;
+    const deadLetterQueueName = clean(input.deadLetterQueueName) || config.deadLetterQueueName || DEFAULT_DLQ_NAME;
+    const daemonBaseUrl = stripTrailingSlash(clean(input.daemonBaseUrl) || config.daemonBaseUrl);
+    const daemonHostname = clean(input.daemonHostname) || config.daemonHostname || hostnameFromUrl(daemonBaseUrl);
+    const workerHostname = clean(input.workerHostname) || config.workerHostname;
+    const workerCron = clean(input.workerCron) || config.workerCron || DEFAULT_WORKER_CRON;
     const queueJobPayloads = input.queueJobPayloads === true;
 
-    if (!daemonBaseUrl) {
+    if (components.workers && !daemonBaseUrl) {
       throw new CloudflareControlPlaneError(
         'cloudflare.daemonBaseUrl is required so the deployed Worker can reach the GoodVibes daemon.',
         'CLOUDFLARE_DAEMON_URL_REQUIRED',
@@ -131,118 +354,203 @@ export class CloudflareControlPlaneManager {
     }
 
     const client = await this.createClient(apiToken.value);
+    const resourceContext = this.createProvisioningContext();
     const account = await client.accounts.get({ account_id: accountId });
     steps.push({ name: 'validate-account', status: 'ok', message: `Validated Cloudflare account ${account.name}.`, resourceId: account.id });
 
-    const deadLetterQueue = await this.ensureQueue(client, accountId, deadLetterQueueName, steps, 'dead-letter-queue');
-    const queue = await this.ensureQueue(client, accountId, queueName, steps, 'queue');
-    const deadLetterQueueId = requireQueueId(deadLetterQueue, deadLetterQueueName);
-    const queueId = requireQueueId(queue, queueName);
-
-    await this.uploadWorker(client, {
+    const zone = await resolveZone(client, {
       accountId,
-      workerName,
-      queueName,
-      daemonBaseUrl,
-      queueJobPayloads,
+      zoneId: input.zoneId,
+      zoneName: input.zoneName,
+      configuredZoneId: config.zoneId,
+      configuredZoneName: config.zoneName,
+      required: components.dns || components.zeroTrustAccess,
     });
-    steps.push({ name: 'deploy-worker', status: 'ok', message: `Uploaded Worker ${workerName}.`, resourceId: workerName });
-
-    const operatorToken = await this.resolveOperatorToken(input);
-    if (!operatorToken.value) {
-      throw new CloudflareControlPlaneError(
-        'A Worker-to-daemon operator token is required. Pass operatorToken, configure cloudflare.workerTokenRef, or ensure the daemon has an operator token.',
-        'CLOUDFLARE_OPERATOR_TOKEN_REQUIRED',
-        400,
-      );
+    if (zone) {
+      this.setConfig('cloudflare.zoneId', zone.id, persist);
+      this.setConfig('cloudflare.zoneName', zone.name, persist);
+      steps.push({ name: 'zone', status: 'ok', message: `Using Cloudflare zone ${zone.name}.`, resourceId: zone.id });
+    } else if (components.dns || components.zeroTrustAccess) {
+      steps.push({ name: 'zone', status: 'warning', message: 'No Cloudflare zone was selected; DNS and Access hostname automation were skipped.' });
     }
-    if (input.storeOperatorToken && input.operatorToken) {
-      await this.storeSecret(CLOUDFLARE_WORKER_OPERATOR_TOKEN_KEY, input.operatorToken);
-      this.setConfig('cloudflare.workerTokenRef', `goodvibes://secrets/goodvibes/${CLOUDFLARE_WORKER_OPERATOR_TOKEN_KEY}`, persist);
-      steps.push({ name: 'store-worker-token', status: 'ok', message: 'Stored Worker-to-daemon token in the GoodVibes secret store.' });
-    }
-    await client.workers.scripts.secrets.update(workerName, {
-      account_id: accountId,
-      name: 'GOODVIBES_OPERATOR_TOKEN',
-      text: operatorToken.value,
-      type: 'secret_text',
-    });
-    steps.push({ name: 'set-worker-daemon-secret', status: 'ok', message: 'Configured Worker-to-daemon bearer token secret.' });
 
-    const workerClientToken = await this.resolveWorkerClientToken(input);
+    let deadLetterQueue: CloudflareQueueLike | undefined;
+    let queue: CloudflareQueueLike | undefined;
+    let deadLetterQueueId = '';
+    let queueId = '';
+    if (components.queues) {
+      deadLetterQueue = await ensureQueue(client, accountId, deadLetterQueueName, steps, 'dead-letter-queue');
+      queue = await ensureQueue(client, accountId, queueName, steps, 'queue');
+      deadLetterQueueId = requireQueueId(deadLetterQueue, deadLetterQueueName);
+      queueId = requireQueueId(queue, queueName);
+    }
+
+    const kv = components.kv ? await ensureKvNamespace(resourceContext, client, accountId, clean(input.kvNamespaceName) || config.kvNamespaceName || DEFAULT_KV_NAMESPACE_NAME, persist, steps) : undefined;
+    const r2 = components.r2 ? await ensureR2Bucket(resourceContext, client, accountId, clean(input.r2BucketName) || config.r2BucketName || DEFAULT_R2_BUCKET_NAME, persist, steps) : undefined;
+    const secretsStore = components.secretsStore ? await ensureSecretsStore(resourceContext, client, accountId, clean(input.secretsStoreName) || config.secretsStoreName || DEFAULT_SECRETS_STORE_NAME, persist, steps) : undefined;
+    const tunnel = components.zeroTrustTunnel
+      ? await ensureTunnel(resourceContext, client, {
+        accountId,
+        tunnelName: clean(input.tunnelName) || config.tunnelName || DEFAULT_TUNNEL_NAME,
+        tunnelId: clean(input.tunnelId) || config.tunnelId,
+        daemonHostname,
+        tunnelServiceUrl: stripTrailingSlash(clean(input.tunnelServiceUrl) || daemonBaseUrl),
+        persist,
+        returnGeneratedSecrets: input.returnGeneratedSecrets === true,
+        steps,
+      })
+      : undefined;
+
     let generatedWorkerClientToken: string | undefined;
-    let effectiveWorkerClientToken = workerClientToken.value;
-    if (!effectiveWorkerClientToken) {
-      effectiveWorkerClientToken = this.generateToken();
-      generatedWorkerClientToken = effectiveWorkerClientToken;
-      await this.storeSecret(CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY, effectiveWorkerClientToken);
-      this.setConfig('cloudflare.workerClientTokenRef', `goodvibes://secrets/goodvibes/${CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY}`, persist);
-      steps.push({ name: 'generate-worker-client-token', status: 'ok', message: 'Generated and stored Worker client bearer token.' });
-    } else if (input.storeWorkerClientToken && input.workerClientToken) {
-      await this.storeSecret(CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY, input.workerClientToken);
-      this.setConfig('cloudflare.workerClientTokenRef', `goodvibes://secrets/goodvibes/${CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY}`, persist);
-      steps.push({ name: 'store-worker-client-token', status: 'ok', message: 'Stored Worker client bearer token in the GoodVibes secret store.' });
-    }
-    await client.workers.scripts.secrets.update(workerName, {
-      account_id: accountId,
-      name: 'GOODVIBES_WORKER_TOKEN',
-      text: effectiveWorkerClientToken,
-      type: 'secret_text',
-    });
-    steps.push({ name: 'set-worker-client-secret', status: 'ok', message: 'Configured Worker client bearer token secret.' });
-
-    const subdomain = await this.configureWorkerSubdomain(client, {
-      accountId,
-      workerName,
-      requestedSubdomain: input.workerSubdomain,
-      enableWorkersDev: input.enableWorkersDev !== false,
-      steps,
-      persist,
-    });
-    const configuredWorkerBaseUrl = stripTrailingSlash(clean(input.workerBaseUrl) || this.readConfig().workerBaseUrl);
-    const inferredWorkerBaseUrl = subdomain ? `https://${workerName}.${subdomain}.workers.dev` : '';
-    const workerBaseUrl = configuredWorkerBaseUrl || inferredWorkerBaseUrl;
-    if (workerBaseUrl) {
-      this.setConfig('cloudflare.workerBaseUrl', workerBaseUrl, persist);
-    } else {
-      steps.push({
-        name: 'worker-base-url',
-        status: 'warning',
-        message: 'Could not infer workerBaseUrl. Configure cloudflare.workerBaseUrl after assigning a custom route or workers.dev subdomain.',
+    let effectiveWorkerClientToken = '';
+    let subdomain = '';
+    let workerBaseUrl = stripTrailingSlash(clean(input.workerBaseUrl) || config.workerBaseUrl);
+    if (components.workers) {
+      await uploadWorker(client, {
+        accountId,
+        workerName,
+        queueName: components.queues ? queueName : '',
+        daemonBaseUrl,
+        queueJobPayloads,
+        kvNamespaceId: kv?.id ?? '',
+        r2BucketName: r2?.name ?? '',
+        durableObject: components.durableObjects,
       });
-    }
+      steps.push({ name: 'deploy-worker', status: 'ok', message: `Uploaded Worker ${workerName}.`, resourceId: workerName });
 
-    if (workerCron) {
-      await client.workers.scripts.schedules.update(workerName, {
+      const operatorToken = await this.resolveOperatorToken(input);
+      if (!operatorToken.value) {
+        throw new CloudflareControlPlaneError(
+          'A Worker-to-daemon operator token is required. Pass operatorToken, configure cloudflare.workerTokenRef, or ensure the daemon has an operator token.',
+          'CLOUDFLARE_OPERATOR_TOKEN_REQUIRED',
+          400,
+        );
+      }
+      if (input.storeOperatorToken && input.operatorToken) {
+        await this.storeSecret(CLOUDFLARE_WORKER_OPERATOR_TOKEN_KEY, input.operatorToken);
+        this.setConfig('cloudflare.workerTokenRef', `goodvibes://secrets/goodvibes/${CLOUDFLARE_WORKER_OPERATOR_TOKEN_KEY}`, persist);
+        steps.push({ name: 'store-worker-token', status: 'ok', message: 'Stored Worker-to-daemon token in the GoodVibes secret store.' });
+      }
+      await client.workers.scripts.secrets.update(workerName, {
         account_id: accountId,
-        body: [{ cron: workerCron }],
+        name: 'GOODVIBES_OPERATOR_TOKEN',
+        text: operatorToken.value,
+        type: 'secret_text',
       });
-      steps.push({ name: 'configure-cron', status: 'ok', message: `Configured Worker cron ${workerCron}.` });
-    } else {
-      steps.push({ name: 'configure-cron', status: 'skipped', message: 'No Worker cron configured.' });
+      steps.push({ name: 'set-worker-daemon-secret', status: 'ok', message: 'Configured Worker-to-daemon bearer token secret.' });
+
+      const workerClientToken = await this.resolveWorkerClientToken(input);
+      effectiveWorkerClientToken = workerClientToken.value ?? '';
+      if (!effectiveWorkerClientToken) {
+        effectiveWorkerClientToken = this.generateToken();
+        generatedWorkerClientToken = effectiveWorkerClientToken;
+        await this.storeSecret(CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY, effectiveWorkerClientToken);
+        this.setConfig('cloudflare.workerClientTokenRef', `goodvibes://secrets/goodvibes/${CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY}`, persist);
+        steps.push({ name: 'generate-worker-client-token', status: 'ok', message: 'Generated and stored Worker client bearer token.' });
+      } else if (input.storeWorkerClientToken && input.workerClientToken) {
+        await this.storeSecret(CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY, input.workerClientToken);
+        this.setConfig('cloudflare.workerClientTokenRef', `goodvibes://secrets/goodvibes/${CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY}`, persist);
+        steps.push({ name: 'store-worker-client-token', status: 'ok', message: 'Stored Worker client bearer token in the GoodVibes secret store.' });
+      }
+      await client.workers.scripts.secrets.update(workerName, {
+        account_id: accountId,
+        name: 'GOODVIBES_WORKER_TOKEN',
+        text: effectiveWorkerClientToken,
+        type: 'secret_text',
+      });
+      steps.push({ name: 'set-worker-client-secret', status: 'ok', message: 'Configured Worker client bearer token secret.' });
+
+      subdomain = await configureWorkerSubdomain(resourceContext, client, {
+        accountId,
+        workerName,
+        requestedSubdomain: input.workerSubdomain,
+        enableWorkersDev: input.enableWorkersDev !== false,
+        steps,
+        persist,
+      });
+      const inferredWorkerBaseUrl = subdomain ? `https://${workerName}.${subdomain}.workers.dev` : '';
+      workerBaseUrl = workerBaseUrl || inferredWorkerBaseUrl;
+      if (workerBaseUrl) {
+        this.setConfig('cloudflare.workerBaseUrl', workerBaseUrl, persist);
+      } else {
+        steps.push({
+          name: 'worker-base-url',
+          status: 'warning',
+          message: 'Could not infer workerBaseUrl. Configure cloudflare.workerBaseUrl after assigning a custom route or workers.dev subdomain.',
+        });
+      }
+
+      if (workerCron) {
+        await client.workers.scripts.schedules.update(workerName, {
+          account_id: accountId,
+          body: [{ cron: workerCron }],
+        });
+        steps.push({ name: 'configure-cron', status: 'ok', message: `Configured Worker cron ${workerCron}.` });
+      } else {
+        steps.push({ name: 'configure-cron', status: 'skipped', message: 'No Worker cron configured.' });
+      }
     }
 
-    const consumer = await this.ensureQueueConsumer(client, {
-      accountId,
-      queueId,
-      workerName,
-      deadLetterQueueName,
+    const consumer = components.queues && components.workers
+      ? await ensureQueueConsumer(client, {
+        accountId,
+        queueId,
+        workerName,
+        deadLetterQueueName,
+        steps,
+      })
+      : undefined;
+    if (components.queues && !components.workers) {
+      steps.push({ name: 'queue-consumer', status: 'warning', message: 'Cloudflare Queues were provisioned without a Worker consumer.' });
+    }
+
+    const durableObject = components.durableObjects
+      ? await findDurableObjectNamespace(resourceContext, client, accountId, clean(input.durableObjectNamespaceName) || config.durableObjectNamespaceName || DEFAULT_DO_NAMESPACE_NAME, persist, steps)
+      : undefined;
+
+    const dnsRecords = await configureDns(client, {
+      enabled: components.dns,
+      zone,
+      daemonHostname,
+      tunnelId: tunnel?.id ?? '',
+      workerHostname,
+      workerBaseUrl,
       steps,
     });
+
+    const access = components.zeroTrustAccess
+      ? await ensureAccess(resourceContext, client, {
+        accountId,
+        zone,
+        daemonHostname,
+        accessAppId: clean(input.accessAppId) || config.accessAppId,
+        accessServiceTokenId: clean(input.accessServiceTokenId) || config.accessServiceTokenId,
+        accessServiceTokenRef: clean(input.accessServiceTokenRef) || config.accessServiceTokenRef,
+        persist,
+        returnGeneratedSecrets: input.returnGeneratedSecrets === true,
+        steps,
+      })
+      : undefined;
 
     this.setConfig('cloudflare.enabled', true, persist);
     this.setConfig('cloudflare.accountId', accountId, persist);
-    this.setConfig('cloudflare.workerName', workerName, persist);
-    this.setConfig('cloudflare.daemonBaseUrl', daemonBaseUrl, persist);
-    this.setConfig('cloudflare.queueName', queueName, persist);
-    this.setConfig('cloudflare.deadLetterQueueName', deadLetterQueueName, persist);
-    this.setConfig('cloudflare.workerCron', workerCron, persist);
-    this.setConfig('batch.queueBackend', 'cloudflare', persist);
+    if (components.workers) {
+      this.setConfig('cloudflare.workerName', workerName, persist);
+      this.setConfig('cloudflare.daemonBaseUrl', daemonBaseUrl, persist);
+      if (daemonHostname) this.setConfig('cloudflare.daemonHostname', daemonHostname, persist);
+      if (workerHostname) this.setConfig('cloudflare.workerHostname', workerHostname, persist);
+      this.setConfig('cloudflare.workerCron', workerCron, persist);
+    }
+    if (components.queues) {
+      this.setConfig('cloudflare.queueName', queueName, persist);
+      this.setConfig('cloudflare.deadLetterQueueName', deadLetterQueueName, persist);
+      this.setConfig('batch.queueBackend', 'cloudflare', persist);
+    }
     if (input.batchMode) this.setConfig('batch.mode', input.batchMode, persist);
 
-    const verification = input.verify === false || !workerBaseUrl
-      ? undefined
-      : await this.verify({ workerBaseUrl, workerClientToken: effectiveWorkerClientToken });
+    const verification = components.workers && input.verify !== false && workerBaseUrl
+      ? await this.verify({ workerBaseUrl, workerClientToken: effectiveWorkerClientToken })
+      : undefined;
     if (verification) {
       steps.push({
         name: 'verify-worker',
@@ -251,28 +559,58 @@ export class CloudflareControlPlaneManager {
       });
     }
 
+    const generatedSecrets = {
+      ...(generatedWorkerClientToken && input.returnGeneratedSecrets ? { workerClientToken: generatedWorkerClientToken } : {}),
+      ...(tunnel?.token && input.returnGeneratedSecrets ? { tunnelToken: tunnel.token } : {}),
+      ...(access?.clientId && input.returnGeneratedSecrets ? { accessServiceTokenClientId: access.clientId } : {}),
+      ...(access?.clientSecret && input.returnGeneratedSecrets ? { accessServiceTokenClientSecret: access.clientSecret } : {}),
+    };
+
     return {
       ok: true,
       dryRun: false,
       steps,
       account: { id: account.id, name: account.name },
-      queues: {
-        queueName,
-        queueId,
-        deadLetterQueueName,
-        deadLetterQueueId,
-        ...(consumer.consumer_id ? { consumerId: consumer.consumer_id } : {}),
-      },
-      worker: {
-        name: workerName,
-        ...(workerBaseUrl ? { baseUrl: workerBaseUrl } : {}),
-        ...(subdomain ? { subdomain } : {}),
-        ...(workerCron ? { cron: workerCron } : {}),
-      },
+      ...(components.queues ? {
+        queues: {
+          queueName,
+          queueId,
+          deadLetterQueueName,
+          deadLetterQueueId,
+          ...(consumer?.consumer_id ? { consumerId: consumer.consumer_id } : {}),
+        },
+      } : {}),
+      ...(components.workers ? {
+        worker: {
+          name: workerName,
+          ...(workerBaseUrl ? { baseUrl: workerBaseUrl } : {}),
+          ...(subdomain ? { subdomain } : {}),
+          ...(workerHostname ? { hostname: workerHostname } : {}),
+          ...(workerCron ? { cron: workerCron } : {}),
+        },
+      } : {}),
+      ...(tunnel ? {
+        tunnel: {
+          id: tunnel.id,
+          name: tunnel.name,
+          ...(daemonHostname ? { hostname: daemonHostname } : {}),
+          ...(tunnel.tokenRef ? { tokenRef: tunnel.tokenRef } : {}),
+        },
+      } : {}),
+      ...(access ? {
+        access: {
+          ...(access.appId ? { appId: access.appId } : {}),
+          ...(access.serviceTokenId ? { serviceTokenId: access.serviceTokenId } : {}),
+          ...(access.serviceTokenRef ? { serviceTokenRef: access.serviceTokenRef } : {}),
+        },
+      } : {}),
+      ...(dnsRecords.length > 0 && zone ? { dns: { zoneId: zone.id, zoneName: zone.name, records: dnsRecords } } : {}),
+      ...(kv ? { kv: { namespaceName: kv.title ?? DEFAULT_KV_NAMESPACE_NAME, namespaceId: requireKvNamespaceId(kv) } } : {}),
+      ...(durableObject ? { durableObjects: { namespaceName: durableObject.name ?? durableObject.class ?? DEFAULT_DO_NAMESPACE_NAME, ...(durableObject.id ? { namespaceId: durableObject.id } : {}) } } : {}),
+      ...(r2 ? { r2: { bucketName: r2.name ?? DEFAULT_R2_BUCKET_NAME, storageClass: 'Standard' } } : {}),
+      ...(secretsStore ? { secretsStore: { storeName: secretsStore.name, storeId: secretsStore.id } } : {}),
       ...(verification ? { verification } : {}),
-      ...(generatedWorkerClientToken && input.returnGeneratedSecrets
-        ? { generatedSecrets: { workerClientToken: generatedWorkerClientToken } }
-        : {}),
+      ...(Object.keys(generatedSecrets).length > 0 ? { generatedSecrets } : {}),
     };
   }
 
@@ -318,22 +656,7 @@ export class CloudflareControlPlaneManager {
   }
 
   private readConfig(): CloudflareControlPlaneConfig {
-    return {
-      enabled: this.getBooleanConfig('cloudflare.enabled', false),
-      freeTierMode: this.getBooleanConfig('cloudflare.freeTierMode', true),
-      accountId: this.getStringConfig('cloudflare.accountId', ''),
-      apiTokenRef: this.getStringConfig('cloudflare.apiTokenRef', ''),
-      workerName: this.getStringConfig('cloudflare.workerName', DEFAULT_WORKER_NAME),
-      workerSubdomain: this.getStringConfig('cloudflare.workerSubdomain', ''),
-      workerBaseUrl: this.getStringConfig('cloudflare.workerBaseUrl', ''),
-      daemonBaseUrl: this.getStringConfig('cloudflare.daemonBaseUrl', ''),
-      workerTokenRef: this.getStringConfig('cloudflare.workerTokenRef', ''),
-      workerClientTokenRef: this.getStringConfig('cloudflare.workerClientTokenRef', ''),
-      workerCron: this.getStringConfig('cloudflare.workerCron', DEFAULT_WORKER_CRON),
-      queueName: this.getStringConfig('cloudflare.queueName', DEFAULT_QUEUE_NAME),
-      deadLetterQueueName: this.getStringConfig('cloudflare.deadLetterQueueName', DEFAULT_DLQ_NAME),
-      maxQueueOpsPerDay: this.getNumberConfig('cloudflare.maxQueueOpsPerDay', 10_000),
-    };
+    return readCloudflareConfig(this.options.configManager);
   }
 
   private resolveAccountId(inputAccountId: string | undefined): string {
@@ -419,139 +742,27 @@ export class CloudflareControlPlaneManager {
     await this.options.secretsManager.set(key, value, { scope: 'user', medium: 'secure' });
   }
 
-  private async ensureQueue(
-    client: CloudflareApiClient,
-    accountId: string,
-    queueName: string,
-    steps: CloudflareProvisionStep[],
-    stepName: string,
-  ): Promise<CloudflareQueueLike> {
-    for await (const queue of client.queues.list({ account_id: accountId })) {
-      if (queue.queue_name === queueName) {
-        steps.push({ name: stepName, status: 'ok', message: `Using existing Cloudflare Queue ${queueName}.`, resourceId: queue.queue_id });
-        return queue;
-      }
+  private requireAccountTokens(client: CloudflareApiClient): NonNullable<CloudflareApiClient['accounts']['tokens']> {
+    if (!client.accounts.tokens) {
+      throw new CloudflareControlPlaneError('The Cloudflare client does not expose account token creation APIs.', 'CLOUDFLARE_TOKEN_API_UNAVAILABLE', 500);
     }
-    const created = await client.queues.create({ account_id: accountId, queue_name: queueName });
-    steps.push({ name: stepName, status: 'ok', message: `Created Cloudflare Queue ${queueName}.`, resourceId: created.queue_id });
-    return created;
+    return client.accounts.tokens;
   }
 
-  private async uploadWorker(
-    client: CloudflareApiClient,
-    input: {
-      readonly accountId: string;
-      readonly workerName: string;
-      readonly queueName: string;
-      readonly daemonBaseUrl: string;
-      readonly queueJobPayloads: boolean;
-    },
-  ): Promise<void> {
-    const file = new File(
-      [GOODVIBES_CLOUDFLARE_WORKER_MODULE],
-      'goodvibes-cloudflare-worker.mjs',
-      { type: 'application/javascript+module' },
-    );
-    await client.workers.scripts.update(input.workerName, {
-      account_id: input.accountId,
-      metadata: {
-        main_module: 'goodvibes-cloudflare-worker.mjs',
-        compatibility_date: '2026-04-25',
-        bindings: [
-          { type: 'queue', name: 'GOODVIBES_BATCH_QUEUE', queue_name: input.queueName },
-          { type: 'plain_text', name: 'GOODVIBES_DAEMON_URL', text: input.daemonBaseUrl },
-          { type: 'plain_text', name: 'GOODVIBES_QUEUE_JOB_PAYLOADS', text: input.queueJobPayloads ? 'true' : 'false' },
-        ],
-        keep_bindings: ['secret_text'],
-      },
-      files: [file],
-    });
+  private async collectPermissionGroups(client: CloudflareApiClient, accountId: string): Promise<readonly CloudflarePermissionGroupLike[]> {
+    const tokenApi = this.requireAccountTokens(client);
+    const groups = tokenApi.permissionGroups.get
+      ? await tokenApi.permissionGroups.get({ account_id: accountId })
+      : await collectAsync(tokenApi.permissionGroups.list({ account_id: accountId }));
+    return groups;
   }
 
-  private async configureWorkerSubdomain(
-    client: CloudflareApiClient,
-    input: {
-      readonly accountId: string;
-      readonly workerName: string;
-      readonly requestedSubdomain?: string;
-      readonly enableWorkersDev: boolean;
-      readonly steps: CloudflareProvisionStep[];
-      readonly persist: boolean;
-    },
-  ): Promise<string> {
-    if (!input.enableWorkersDev) {
-      input.steps.push({ name: 'worker-subdomain', status: 'skipped', message: 'workers.dev subdomain enablement was skipped.' });
-      return clean(input.requestedSubdomain) || this.readConfig().workerSubdomain;
-    }
-
-    let accountSubdomain = clean(input.requestedSubdomain) || this.readConfig().workerSubdomain;
-    if (accountSubdomain) {
-      const updated = await client.workers.subdomains.update({ account_id: input.accountId, subdomain: accountSubdomain });
-      accountSubdomain = updated.subdomain;
-      this.setConfig('cloudflare.workerSubdomain', accountSubdomain, input.persist);
-      input.steps.push({ name: 'account-worker-subdomain', status: 'ok', message: `Configured account workers.dev subdomain ${accountSubdomain}.` });
-    } else {
-      try {
-        const existing = await client.workers.subdomains.get({ account_id: input.accountId });
-        accountSubdomain = existing.subdomain;
-        this.setConfig('cloudflare.workerSubdomain', accountSubdomain, input.persist);
-        input.steps.push({ name: 'account-worker-subdomain', status: 'ok', message: `Using account workers.dev subdomain ${accountSubdomain}.` });
-      } catch (error: unknown) {
-        input.steps.push({
-          name: 'account-worker-subdomain',
-          status: 'warning',
-          message: `Could not read account workers.dev subdomain: ${summarizeError(error)}`,
-        });
-      }
-    }
-
-    await client.workers.scripts.subdomain.create(input.workerName, {
-      account_id: input.accountId,
-      enabled: true,
-      previews_enabled: false,
-    });
-    input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Enabled workers.dev route for ${input.workerName}.` });
-    return accountSubdomain;
-  }
-
-  private async ensureQueueConsumer(
-    client: CloudflareApiClient,
-    input: {
-      readonly accountId: string;
-      readonly queueId: string;
-      readonly workerName: string;
-      readonly deadLetterQueueName: string;
-      readonly steps: CloudflareProvisionStep[];
-    },
-  ): Promise<CloudflareConsumerLike> {
-    const settings = {
-      batch_size: 10,
-      max_retries: 3,
-      max_wait_time_ms: 5000,
-      retry_delay: 60,
+  private createProvisioningContext(): CloudflareProvisioningContext {
+    return {
+      readConfig: () => this.readConfig(),
+      setConfig: (key, value, persist) => this.setConfig(key, value, persist),
+      storeSecret: async (key, value) => await this.storeSecret(key, value),
     };
-    for await (const consumer of client.queues.consumers.list(input.queueId, { account_id: input.accountId })) {
-      if (consumer.type === 'worker' && consumer.script === input.workerName && consumer.consumer_id) {
-        const updated = await client.queues.consumers.update(input.queueId, consumer.consumer_id, {
-          account_id: input.accountId,
-          type: 'worker',
-          script_name: input.workerName,
-          dead_letter_queue: input.deadLetterQueueName,
-          settings,
-        });
-        input.steps.push({ name: 'queue-consumer', status: 'ok', message: `Updated Queue consumer for ${input.workerName}.`, resourceId: updated.consumer_id });
-        return updated;
-      }
-    }
-    const created = await client.queues.consumers.create(input.queueId, {
-      account_id: input.accountId,
-      type: 'worker',
-      script_name: input.workerName,
-      dead_letter_queue: input.deadLetterQueueName,
-      settings,
-    });
-    input.steps.push({ name: 'queue-consumer', status: 'ok', message: `Created Queue consumer for ${input.workerName}.`, resourceId: created.consumer_id });
-    return created;
   }
 
   private async fetchWorker(url: string, bearerToken?: string): Promise<{ readonly ok: boolean; readonly status: number; readonly error?: string }> {
@@ -578,39 +789,4 @@ export class CloudflareControlPlaneManager {
     set.call(this.options.configManager, key, value);
   }
 
-  private getStringConfig(key: ConfigKey, fallback: string): string {
-    const value = this.options.configManager.get(key);
-    return typeof value === 'string' ? value : fallback;
-  }
-
-  private getBooleanConfig(key: ConfigKey, fallback: boolean): boolean {
-    const value = this.options.configManager.get(key);
-    return typeof value === 'boolean' ? value : fallback;
-  }
-
-  private getNumberConfig(key: ConfigKey, fallback: number): number {
-    const value = this.options.configManager.get(key);
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-  }
-}
-
-function clean(value: string | undefined): string {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function stripTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, '');
-}
-
-function requireQueueId(queue: CloudflareQueueLike, queueName: string): string {
-  if (queue.queue_id) return queue.queue_id;
-  throw new CloudflareControlPlaneError(`Cloudflare Queue '${queueName}' did not include a queue_id.`, 'CLOUDFLARE_QUEUE_ID_MISSING', 502);
-}
-
-async function safeResponseText(response: Response): Promise<string> {
-  try {
-    return await response.text();
-  } catch {
-    return response.statusText;
-  }
 }

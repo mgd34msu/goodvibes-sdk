@@ -7,7 +7,14 @@ import { CloudflareControlPlaneManager } from '../packages/sdk/src/_internal/pla
 import type {
   CloudflareApiClient,
   CloudflareConsumerLike,
+  CloudflareDnsRecordLike,
+  CloudflareDurableObjectNamespaceLike,
+  CloudflareKvNamespaceLike,
   CloudflareQueueLike,
+  CloudflareR2BucketLike,
+  CloudflareSecretsStoreLike,
+  CloudflareTunnelLike,
+  CloudflareZoneLike,
 } from '../packages/sdk/src/_internal/platform/cloudflare/types.js';
 
 function makeConfigManager(): ConfigManager {
@@ -39,19 +46,115 @@ async function* items<T>(entries: readonly T[]): AsyncIterable<T> {
 function makeCloudflareClient() {
   const queues: CloudflareQueueLike[] = [];
   const consumers: CloudflareConsumerLike[] = [];
+  const zones: CloudflareZoneLike[] = [{ id: 'zone-1', name: 'example.com', status: 'active', type: 'full' }];
+  const dnsRecords: CloudflareDnsRecordLike[] = [];
+  const kvNamespaces: CloudflareKvNamespaceLike[] = [];
+  const durableObjectNamespaces: CloudflareDurableObjectNamespaceLike[] = [{ id: 'do-1', name: 'GoodVibesCoordinator', class: 'GoodVibesCoordinator', script: 'goodvibes-batch-worker', use_sqlite: true }];
+  const r2Buckets: CloudflareR2BucketLike[] = [];
+  const secretsStores: CloudflareSecretsStoreLike[] = [];
+  const tunnels: CloudflareTunnelLike[] = [];
   const calls = {
+    tokenCreates: [] as Array<{ readonly name: string; readonly resources: Record<string, string> }>,
     queueCreates: [] as string[],
     workerUpdates: [] as Array<{ readonly scriptName: string; readonly metadata: Record<string, unknown> }>,
     secretUpdates: [] as Array<{ readonly scriptName: string; readonly name: string; readonly text: string }>,
     scheduleUpdates: [] as Array<{ readonly scriptName: string; readonly crons: readonly string[] }>,
     consumerCreates: [] as Array<{ readonly queueId: string; readonly scriptName: string; readonly deadLetterQueue?: string }>,
     scriptSubdomains: [] as string[],
+    dnsCreates: [] as CloudflareDnsRecordLike[],
+    tunnelConfigUpdates: [] as Array<{ readonly tunnelId: string; readonly config: Record<string, unknown> }>,
+    accessAppCreates: [] as Record<string, unknown>[],
   };
 
   const client: CloudflareApiClient = {
     accounts: {
+      list() {
+        return items([{ id: 'acct-1', name: 'GoodVibes Test', type: 'standard' }]);
+      },
       async get(params) {
         return { id: params.account_id, name: 'GoodVibes Test', type: 'standard' };
+      },
+      tokens: {
+        async create(params) {
+          calls.tokenCreates.push({ name: params.name, resources: params.policies[0]?.resources ?? {} });
+          return { id: 'token-1', name: params.name, value: 'operational-token' };
+        },
+        async verify() {
+          return { id: 'token-1', status: 'active' };
+        },
+        permissionGroups: {
+          async get() {
+            return [
+              { id: 'pg-workers', name: 'Workers Scripts Write', scopes: ['com.cloudflare.api.account'] },
+              { id: 'pg-queues', name: 'Workers Queues Write', scopes: ['com.cloudflare.api.account'] },
+              { id: 'pg-zone-read', name: 'Zone Read', scopes: ['com.cloudflare.api.account.zone'] },
+              { id: 'pg-dns', name: 'DNS Write', scopes: ['com.cloudflare.api.account.zone'] },
+              { id: 'pg-kv', name: 'Workers KV Storage Write', scopes: ['com.cloudflare.api.account'] },
+              { id: 'pg-r2', name: 'Workers R2 Storage Write', scopes: ['com.cloudflare.edge.r2.bucket'] },
+              { id: 'pg-tunnel', name: 'Cloudflare Tunnel Write', scopes: ['com.cloudflare.api.account'] },
+              { id: 'pg-access-apps', name: 'Access: Apps and Policies Write', scopes: ['com.cloudflare.api.account'] },
+              { id: 'pg-access-tokens', name: 'Access: Service Tokens Write', scopes: ['com.cloudflare.api.account'] },
+              { id: 'pg-secrets', name: 'Secrets Store Write', scopes: ['com.cloudflare.api.account'] },
+            ];
+          },
+          list() {
+            return items([]);
+          },
+        },
+      },
+    },
+    user: {
+      tokens: {
+        async verify() {
+          return { id: 'user-token', status: 'active' };
+        },
+        permissionGroups: {
+          list() {
+            return items([]);
+          },
+        },
+      },
+    },
+    zones: {
+      list(params) {
+        const filtered = zones.filter((zone) => !params?.name || zone.name === params.name);
+        return items(filtered);
+      },
+      async get(params) {
+        const zone = zones.find((entry) => entry.id === params.zone_id);
+        if (!zone) throw new Error(`missing zone ${params.zone_id}`);
+        return zone;
+      },
+    },
+    dns: {
+      records: {
+        async create(params) {
+          const record = {
+            id: `dns-${params.name}`,
+            name: params.name,
+            type: params.type,
+            content: params.content,
+            proxied: params.proxied,
+            ttl: params.ttl,
+          };
+          dnsRecords.push(record);
+          calls.dnsCreates.push(record);
+          return record;
+        },
+        async update(recordId, params) {
+          const record = {
+            id: recordId,
+            name: params.name,
+            type: params.type,
+            content: params.content,
+            proxied: params.proxied,
+            ttl: params.ttl,
+          };
+          return record;
+        },
+        list(params) {
+          return items(dnsRecords.filter((record) => record.type === params.type));
+        },
       },
     },
     queues: {
@@ -85,6 +188,99 @@ function makeCloudflareClient() {
         },
         list() {
           return items(consumers);
+        },
+      },
+    },
+    kv: {
+      namespaces: {
+        async create(params) {
+          const namespace = { id: `kv-${params.title}`, title: params.title };
+          kvNamespaces.push(namespace);
+          return namespace;
+        },
+        list() {
+          return items(kvNamespaces);
+        },
+      },
+    },
+    durableObjects: {
+      namespaces: {
+        list() {
+          return items(durableObjectNamespaces);
+        },
+      },
+    },
+    r2: {
+      buckets: {
+        async create(params) {
+          const bucket = { name: params.name, storage_class: params.storageClass ?? 'Standard' };
+          r2Buckets.push(bucket);
+          return bucket;
+        },
+        async list() {
+          return { buckets: r2Buckets };
+        },
+      },
+    },
+    secretsStore: {
+      stores: {
+        async *create(params) {
+          for (const body of params.body) {
+            const store = { id: `store-${body.name}`, name: body.name };
+            secretsStores.push(store);
+            yield store;
+          }
+        },
+        list() {
+          return items(secretsStores);
+        },
+      },
+    },
+    zeroTrust: {
+      tunnels: {
+        cloudflared: {
+          async create(params) {
+            const tunnel = { id: 'tunnel-1', name: params.name, status: 'inactive' };
+            tunnels.push(tunnel);
+            return tunnel;
+          },
+          list(params) {
+            return items(tunnels.filter((tunnel) => !params.name || tunnel.name === params.name));
+          },
+          configurations: {
+            async update(tunnelId, params) {
+              calls.tunnelConfigUpdates.push({ tunnelId, config: params.config });
+              return { ok: true };
+            },
+          },
+          token: {
+            async get() {
+              return 'tunnel-token';
+            },
+          },
+        },
+      },
+      access: {
+        serviceTokens: {
+          async create(params) {
+            return { id: 'service-token-1', name: params.name, client_id: 'access-client-id', client_secret: 'access-client-secret' };
+          },
+          list() {
+            return items([]);
+          },
+        },
+        applications: {
+          async create(params) {
+            calls.accessAppCreates.push(params);
+            return { id: 'access-app-1', name: String(params['name'] ?? ''), domain: String(params['domain'] ?? ''), type: String(params['type'] ?? '') };
+          },
+          async update(_appId, params) {
+            calls.accessAppCreates.push(params);
+            return { id: 'access-app-1', name: String(params['name'] ?? ''), domain: String(params['domain'] ?? ''), type: String(params['type'] ?? '') };
+          },
+          list() {
+            return items([]);
+          },
         },
       },
     },
@@ -212,5 +408,121 @@ describe('CloudflareControlPlaneManager', () => {
         authorization: 'Bearer gv-cf-11111111222243338444555555555555',
       },
     ]);
+  });
+
+  test('reports Cloudflare token requirements for optional components', () => {
+    const manager = new CloudflareControlPlaneManager({
+      configManager: makeConfigManager(),
+      secretsManager: makeSecrets(),
+    });
+
+    const result = manager.tokenRequirements({
+      includeBootstrap: true,
+      components: {
+        dns: true,
+        kv: true,
+        r2: true,
+        zeroTrustTunnel: true,
+        zeroTrustAccess: true,
+        secretsStore: true,
+      },
+    });
+
+    expect(result.components.workers).toBe(true);
+    expect(result.components.queues).toBe(true);
+    expect(result.permissions.map((entry) => entry.permission)).toContain('Account API Tokens Write');
+    expect(result.permissions.map((entry) => entry.permission)).toContain('DNS Write');
+    expect(result.permissions.map((entry) => entry.permission)).toContain('Workers KV Storage Write');
+    expect(result.permissions.map((entry) => entry.permission)).toContain('Workers R2 Storage Write');
+    expect(result.permissions.map((entry) => entry.permission)).toContain('Cloudflare Tunnel Write');
+    expect(result.bootstrapToken.storeInGoodVibes).toBe(false);
+  });
+
+  test('creates and stores a narrow Cloudflare operational token from a bootstrap token', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client, calls } = makeCloudflareClient();
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      createClient: async (apiToken) => {
+        expect(apiToken).toBe('bootstrap-token');
+        return client;
+      },
+    });
+
+    const result = await manager.createOperationalToken({
+      accountId: 'acct-1',
+      zoneName: 'example.com',
+      bootstrapToken: 'bootstrap-token',
+      components: { dns: true, kv: true, r2: true },
+      returnGeneratedToken: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.generatedToken).toBe('operational-token');
+    expect(result.apiTokenRef).toBe('goodvibes://secrets/goodvibes/CLOUDFLARE_API_TOKEN');
+    expect(secrets.values['CLOUDFLARE_API_TOKEN']).toBe('operational-token');
+    expect(configManager.get('cloudflare.apiTokenRef')).toBe('goodvibes://secrets/goodvibes/CLOUDFLARE_API_TOKEN');
+    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.acct-1']).toBe('*');
+    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.zone.zone-1']).toBe('*');
+    expect(calls.tokenCreates[0]?.resources['com.cloudflare.edge.r2.bucket.*']).toBe('*');
+  });
+
+  test('provisions optional Cloudflare DNS, Tunnel, Access, KV, Durable Objects, Secrets Store, and R2 resources', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client, calls } = makeCloudflareClient();
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      authToken: () => 'daemon-operator-token',
+      createClient: async () => client,
+    });
+
+    const result = await manager.provision({
+      accountId: 'acct-1',
+      apiToken: 'cf-token',
+      daemonBaseUrl: 'http://127.0.0.1:3421',
+      daemonHostname: 'daemon.example.com',
+      workerHostname: 'worker.example.com',
+      zoneName: 'example.com',
+      components: {
+        dns: true,
+        kv: true,
+        durableObjects: true,
+        secretsStore: true,
+        r2: true,
+        zeroTrustTunnel: true,
+        zeroTrustAccess: true,
+      },
+      returnGeneratedSecrets: true,
+      verify: false,
+    });
+
+    expect(result.tunnel?.id).toBe('tunnel-1');
+    expect(result.access?.appId).toBe('access-app-1');
+    expect(result.kv?.namespaceId).toBe('kv-goodvibes-runtime');
+    expect(result.r2?.bucketName).toBe('goodvibes-artifacts');
+    expect(result.secretsStore?.storeId).toBe('store-goodvibes');
+    expect(result.dns?.records.map((record) => record.name)).toEqual(['daemon.example.com', 'worker.example.com']);
+    expect(result.generatedSecrets?.tunnelToken).toBe('tunnel-token');
+    expect(result.generatedSecrets?.accessServiceTokenClientSecret).toBe('access-client-secret');
+    const bindings = calls.workerUpdates[0]?.metadata['bindings'];
+    expect(Array.isArray(bindings)).toBe(true);
+    expect(JSON.stringify(bindings)).toContain('GOODVIBES_KV');
+    expect(JSON.stringify(bindings)).toContain('GOODVIBES_ARTIFACTS');
+    expect(JSON.stringify(bindings)).toContain('GOODVIBES_COORDINATOR');
+    expect(calls.tunnelConfigUpdates[0]?.config).toEqual({
+      ingress: [
+        { hostname: 'daemon.example.com', service: 'http://127.0.0.1:3421' },
+        { service: 'http_status:404' },
+      ],
+    });
+    expect(calls.accessAppCreates[0]?.['domain']).toBe('daemon.example.com');
+    expect(secrets.values['GOODVIBES_CLOUDFLARE_TUNNEL_TOKEN']).toBe('tunnel-token');
+    expect(configManager.get('cloudflare.zoneId')).toBe('zone-1');
+    expect(configManager.get('cloudflare.tunnelId')).toBe('tunnel-1');
+    expect(configManager.get('cloudflare.accessAppId')).toBe('access-app-1');
   });
 });
