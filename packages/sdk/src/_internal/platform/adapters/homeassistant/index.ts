@@ -137,6 +137,10 @@ export async function handleHomeAssistantSurfaceWebhook(
   const spawnResult = context.trySpawnAgent({
     mode: 'spawn',
     task: submission.task!,
+    executionProtocol: 'direct',
+    reviewMode: 'none',
+    communicationLane: 'direct',
+    dangerously_disable_wrfc: true,
     ...(routing?.modelId ? { model: routing.modelId } : {}),
     ...(routing?.providerId ? { provider: routing.providerId } : {}),
     ...(routing?.tools?.length ? { tools: [...routing.tools] } : {}),

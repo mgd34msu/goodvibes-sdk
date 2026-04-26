@@ -161,7 +161,7 @@ describe('Home Assistant channel surface', () => {
     expect(eventPayload.conversationId).toBe('kitchen');
   });
 
-  test('accepts signed Home Assistant prompts and queues an agent reply', async () => {
+  test('accepts signed Home Assistant prompts and queues a direct non-WRFC reply', async () => {
     const binding: AutomationRouteBinding = {
       id: 'route-ha-1',
       kind: 'channel',
@@ -260,8 +260,16 @@ describe('Home Assistant channel surface', () => {
       parseSurfaceControlCommand: () => null,
       performSurfaceControlCommand: async () => 'ok',
       performInteractiveSurfaceAction: async () => 'ok',
-      trySpawnAgent: (input: { readonly provider?: string }, _label: string, sessionId?: string) => {
+      trySpawnAgent: (input: {
+        readonly provider?: string;
+        readonly executionProtocol?: string;
+        readonly reviewMode?: string;
+        readonly dangerously_disable_wrfc?: boolean;
+      }, _label: string, sessionId?: string) => {
         expect(sessionId).toBe('session-ha-1');
+        expect(input.executionProtocol).toBe('direct');
+        expect(input.reviewMode).toBe('none');
+        expect(input.dangerously_disable_wrfc).toBe(true);
         spawnProvider = input.provider ?? '';
         return {
           id: 'agent-ha-1',
@@ -381,8 +389,11 @@ describe('Home Assistant channel surface', () => {
         cancel: () => true,
       },
       parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
-      trySpawnAgent: (_input, _label, sessionId) => {
+      trySpawnAgent: (input, _label, sessionId) => {
         expect(sessionId).toBe('session-ha-remote');
+        expect(input.executionProtocol).toBe('direct');
+        expect(input.reviewMode).toBe('none');
+        expect(input.dangerously_disable_wrfc).toBe(true);
         const record = {
           id: 'agent-ha-remote',
           task: 'turn on the lights',
@@ -416,6 +427,7 @@ describe('Home Assistant channel surface', () => {
 
     expect(response!.status).toBe(200);
     expect(payload.status).toBe('completed');
+    expect(payload.mode).toBe('direct');
     expect((payload.assistant as Record<string, unknown>).text).toBe('The lights are on.');
     expect(payload.sessionId).toBe('session-ha-remote');
     expect(createdKind).toBe('homeassistant-remote');
@@ -497,13 +509,18 @@ describe('Home Assistant channel surface', () => {
         cancel: () => true,
       },
       parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
-      trySpawnAgent: () => ({
-        id: 'agent-ha-2',
-        status: 'running',
-        task: 'hello',
-        startedAt: Date.now(),
-        tools: [],
-      } as AgentRecord),
+      trySpawnAgent: (input) => {
+        expect(input.executionProtocol).toBe('direct');
+        expect(input.reviewMode).toBe('none');
+        expect(input.dangerously_disable_wrfc).toBe(true);
+        return {
+          id: 'agent-ha-2',
+          status: 'running',
+          task: 'hello',
+          startedAt: Date.now(),
+          tools: [],
+        } as AgentRecord;
+      },
       queueSurfaceReplyFromBinding: () => undefined,
     } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
 

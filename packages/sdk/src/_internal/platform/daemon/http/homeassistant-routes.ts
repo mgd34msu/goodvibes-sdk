@@ -29,7 +29,7 @@ interface HomeAssistantSubmitResult {
   readonly sessionId: string;
   readonly routeId: string;
   readonly agentId?: string;
-  readonly mode: 'spawn' | 'continued-live' | 'queued-follow-up' | 'rejected';
+  readonly mode: 'direct' | 'continued-live' | 'queued-follow-up' | 'rejected';
   readonly newSession: boolean;
   readonly sessionExpired: boolean;
   readonly status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'rejected' | 'timeout';
@@ -212,6 +212,10 @@ export class HomeAssistantConversationRoutes {
       const spawnResult = this.context.trySpawnAgent({
         mode: 'spawn',
         task: submission.task!,
+        executionProtocol: 'direct',
+        reviewMode: 'none',
+        communicationLane: 'direct',
+        dangerously_disable_wrfc: true,
         ...(input.modelId ? { model: input.modelId } : {}),
         ...(input.providerId ? { provider: input.providerId } : {}),
         ...(input.tools?.length ? { tools: [...input.tools] } : {}),
@@ -240,7 +244,7 @@ export class HomeAssistantConversationRoutes {
       sessionId: submission.session.id,
       routeId: binding.id,
       ...(agentId ? { agentId } : {}),
-      mode: submission.mode,
+      mode: submission.mode === 'spawn' ? 'direct' as const : submission.mode,
       newSession: sessionResolution.newSession,
       sessionExpired: sessionResolution.sessionExpired,
     };
@@ -493,7 +497,7 @@ export class HomeAssistantConversationRoutes {
       newSession: session.newSession,
       sessionExpired: session.sessionExpired,
       status: 'rejected',
-      error: `Agent spawn failed with HTTP ${response.status}.`,
+      error: `Home Assistant responder failed to start with HTTP ${response.status}.`,
     };
   }
 

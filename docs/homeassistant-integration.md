@@ -89,6 +89,10 @@ routes are evaluated before daemon bearer auth. The `/api/homeassistant/*`
 conversation routes use normal daemon bearer auth and are the preferred path
 for Home Assistant Assist conversation agents.
 
+No Home Assistant ingress path starts WRFC review/fix chains. The SDK forces
+Home Assistant work to use direct responders with `reviewMode: "none"`,
+`executionProtocol: "direct"`, and `dangerously_disable_wrfc: true`.
+
 ### Home Assistant Assist Conversations
 
 Home Assistant conversation agents should use:
@@ -128,7 +132,7 @@ wait timeout is reached:
   "sessionId": "sess-1234",
   "routeId": "route-1234",
   "agentId": "agent-1234",
-  "mode": "spawn",
+  "mode": "direct",
   "newSession": false,
   "sessionExpired": false,
   "status": "completed",
@@ -181,9 +185,10 @@ POST /api/homeassistant/conversation/cancel
 The cancel endpoint also accepts a `messageId` while the daemon still has the
 message-to-agent correlation in memory.
 
-### Home Assistant to GoodVibes
+### Home Assistant to GoodVibes Webhook
 
-Home Assistant-originated prompts should be sent to:
+The webhook route remains available for Home Assistant service actions and
+automations that cannot call authenticated daemon API routes directly:
 
 ```text
 POST /webhook/homeassistant
@@ -218,13 +223,15 @@ Canonical prompt body:
 
 `message`, `prompt`, `text`, or `task` can carry the prompt text. `providerId`,
 `modelId`, and `tools` are optional; if omitted, daemon/session defaults apply.
-The webhook path remains available for service actions, automations, and
-fire-and-forget prompt ingress. The adapter creates or updates a route binding
-with `surfaceKind: "homeassistant"`, submits the prompt through the shared
-session broker, spawns an agent when needed, and queues replies through the
-normal channel reply pipeline. For Assist conversation agents, prefer
-`/api/homeassistant/conversation` so Home Assistant can return the assistant
-reply directly in the conversation call.
+The adapter creates or updates a route binding with
+`surfaceKind: "homeassistant"`, submits the prompt through the shared session
+broker, starts a direct non-WRFC responder when work is needed, and queues the
+final reply through the normal Home Assistant event pipeline.
+
+For Assist conversation agents, use `/api/homeassistant/conversation` so Home
+Assistant can return the assistant reply directly in the conversation call. The
+webhook returns an acknowledgement and delivers the final response through the
+configured `goodvibes_message` event.
 
 Control commands are supported through the same webhook:
 

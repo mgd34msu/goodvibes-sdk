@@ -199,6 +199,10 @@ export interface DaemonRuntimeRouteContext {
     provider?: string;
     context?: string;
     executionIntent?: ExecutionIntent;
+    executionProtocol?: 'direct' | 'gather-plan-apply';
+    reviewMode?: 'none' | 'wrfc';
+    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
+    dangerously_disable_wrfc?: boolean;
   }, logLabel: string, sessionId?: string) => AgentRecordLike | Response;
   readonly queueSurfaceReplyFromBinding: (
     binding: AutomationRouteBinding | undefined,
