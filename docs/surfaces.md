@@ -12,8 +12,9 @@ Daemon-owned channel surfaces also live on this full surface. That includes
 Slack, Discord, ntfy, generic webhook, Telegram, Google Chat, Signal, WhatsApp,
 iMessage, Microsoft Teams, BlueBubbles, Mattermost, Matrix, and Home Assistant.
 Home Assistant is implemented as a first-class daemon surface with signed
-webhook ingress, event-bus delivery, setup/manifest discovery, and
-Home Assistant REST-backed tools.
+webhook ingress, authenticated Assist conversation routes, daemon-owned remote
+sessions with a 20-minute idle TTL, event-bus delivery, setup/manifest
+discovery, and Home Assistant REST-backed tools.
 
 Imported via the root entry (`@pellux/goodvibes-sdk`) and the following subpaths:
 - `./daemon`

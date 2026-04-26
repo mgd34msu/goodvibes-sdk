@@ -46,6 +46,7 @@ export const surfaceConfigDefaults = {
     deviceId: 'goodvibes-daemon',
     deviceName: 'GoodVibes Daemon',
     eventType: 'goodvibes_message',
+    remoteSessionTtlMs: 20 * 60_000,
     setupVersion: 0,
   },
   telegram: {
@@ -323,6 +324,13 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: 'goodvibes_message',
     description: 'Home Assistant event type used for daemon-to-Home Assistant deliveries',
+  },
+  {
+    key: 'surfaces.homeassistant.remoteSessionTtlMs',
+    type: 'number',
+    default: 20 * 60_000,
+    description: 'Idle TTL for Home Assistant remote conversation sessions before the daemon closes them',
+    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 60_000 && v <= 24 * 60 * 60_000,
   },
   {
     key: 'surfaces.telegram.enabled',

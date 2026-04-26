@@ -79,6 +79,14 @@ attempts to 30 seconds to avoid silent hangs.
 
 See [Daemon batch processing](./daemon-batch-processing.md) for provider support, routes, and Worker bridge behavior.
 
+## Home Assistant Surface
+
+| Config key | Default | Notes |
+|------|---------|-------|
+| `surfaces.homeassistant.remoteSessionTtlMs` | `1 200 000` | Home Assistant remote conversation sessions close after 20 minutes of inactivity. |
+
+See [Home Assistant integration](./homeassistant-integration.md) for the Assist conversation route and event delivery contract.
+
 ## Spoken Output / TTS
 
 | Config key | Default | Notes |

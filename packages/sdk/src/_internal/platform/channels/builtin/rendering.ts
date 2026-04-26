@@ -31,9 +31,16 @@ export async function renderBuiltinChannelEvent(
     jobId: binding?.jobId ?? request.routeId ?? `channel:${surface}`,
     runId: binding?.runId ?? request.agentId ?? request.sessionId ?? `${surface}:${Date.now()}`,
     ...(request.agentId ? { agentId: request.agentId } : {}),
+    ...(request.sessionId ? { sessionId: request.sessionId } : {}),
     status: renderStatus(request),
     includeLinks: request.phase !== 'progress',
     ...(binding ? { binding: toDeliveryRouteBinding(binding) } : {}),
+    metadata: {
+      phase: request.phase,
+      pending: request.pending ?? {},
+      renderMetadata: request.metadata,
+      eventKinds: request.events.map((event) => event.kind),
+    },
   });
   return {
     delivered: true,

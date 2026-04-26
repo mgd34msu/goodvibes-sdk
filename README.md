@@ -17,7 +17,7 @@ This package has two surfaces with different runtime requirements. See [Runtime 
 
 This is one npm package with subpath exports.
 
-> **Current version: `0.25.11`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
+> **Current version: `0.25.12`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
 
 
 ```bash

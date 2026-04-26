@@ -133,6 +133,7 @@ export interface HomeAssistantSurfaceConfig {
   deviceId: string;
   deviceName: string;
   eventType: string;
+  remoteSessionTtlMs: number;
   setupVersion: number;
 }
 
@@ -608,6 +609,7 @@ export type ConfigKey =
   | 'surfaces.homeassistant.deviceId'
   | 'surfaces.homeassistant.deviceName'
   | 'surfaces.homeassistant.eventType'
+  | 'surfaces.homeassistant.remoteSessionTtlMs'
   | 'surfaces.telegram.enabled'
   | 'surfaces.telegram.botToken'
   | 'surfaces.telegram.webhookSecret'
@@ -863,6 +865,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.homeassistant.deviceId' ? string :
   K extends 'surfaces.homeassistant.deviceName' ? string :
   K extends 'surfaces.homeassistant.eventType' ? string :
+  K extends 'surfaces.homeassistant.remoteSessionTtlMs' ? number :
   K extends 'surfaces.telegram.enabled' ? boolean :
   K extends 'surfaces.telegram.botToken' ? string :
   K extends 'surfaces.telegram.webhookSecret' ? string :

@@ -83,6 +83,7 @@ export interface ControlPlaneWebSocketData {
     | 'discord'
     | 'ntfy'
     | 'webhook'
+    | 'homeassistant'
     | 'telegram'
     | 'google-chat'
     | 'signal'

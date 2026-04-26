@@ -54,6 +54,7 @@ default and is also enabled by the legacy `omnichannel-surface-adapters` alias.
 | `surfaces.homeassistant.deviceId` | `"goodvibes-daemon"` | Stable daemon device identifier presented to Home Assistant setup flows. |
 | `surfaces.homeassistant.deviceName` | `"GoodVibes Daemon"` | Display name for the daemon device. |
 | `surfaces.homeassistant.eventType` | `"goodvibes_message"` | Home Assistant event type used for daemon-to-HA deliveries. |
+| `surfaces.homeassistant.remoteSessionTtlMs` | `1200000` | Idle TTL for daemon-owned Home Assistant remote sessions. Default is 20 minutes. |
 
 Supported environment fallbacks:
 
@@ -77,10 +78,108 @@ config flow setup. The most useful endpoints are:
 | `GET /api/channels/actions/homeassistant` | Operator actions. |
 | `POST /api/channels/actions/homeassistant/homeassistant-manifest` | Daemon/device manifest consumed by the HA integration. |
 | `POST /api/channels/actions/homeassistant/homeassistant-status` | Checks HA API reachability and token posture. |
+| `GET /api/homeassistant/health` | Authenticated surface health, capabilities, endpoints, and default remote-session TTL. |
+| `POST /api/homeassistant/conversation` | Submit an Assist-style conversation turn and wait for the final assistant reply. |
+| `POST /api/homeassistant/conversation/stream` | Submit a conversation turn and receive SSE `ack`, `progress`, `final`, or `error` events. |
+| `POST /api/homeassistant/conversation/cancel` | Cancel a running Home Assistant conversation by `agentId` or known `messageId`. |
 
 All daemon API calls require normal daemon authentication. The inbound webhook
 below additionally requires the Home Assistant webhook secret because webhook
-routes are evaluated before daemon bearer auth.
+routes are evaluated before daemon bearer auth. The `/api/homeassistant/*`
+conversation routes use normal daemon bearer auth and are the preferred path
+for Home Assistant Assist conversation agents.
+
+### Home Assistant Assist Conversations
+
+Home Assistant conversation agents should use:
+
+```text
+POST /api/homeassistant/conversation
+Authorization: Bearer <daemon operator token>
+```
+
+Canonical body:
+
+```json
+{
+  "message": "is the garage door open?",
+  "conversationId": "assist-home",
+  "messageId": "ha-assist-msg-123",
+  "userId": "ha-user-id",
+  "displayName": "Home Assistant",
+  "context": {
+    "language": "en",
+    "deviceId": "voice-pe-1",
+    "areaId": "garage"
+  },
+  "timeoutMs": 120000
+}
+```
+
+The response resolves only when the agent finishes, fails, is cancelled, or the
+wait timeout is reached:
+
+```json
+{
+  "ok": true,
+  "acknowledged": true,
+  "messageId": "ha-assist-msg-123",
+  "conversationId": "assist-home",
+  "sessionId": "sess-1234",
+  "routeId": "route-1234",
+  "agentId": "agent-1234",
+  "mode": "spawn",
+  "newSession": false,
+  "sessionExpired": false,
+  "status": "completed",
+  "assistant": {
+    "text": "The garage door is closed.",
+    "speechText": "The garage door is closed.",
+    "status": "completed",
+    "toolCallsMade": 1
+  }
+}
+```
+
+`message`, `prompt`, `text`, `body`, or `task` can carry the prompt text.
+`providerId`, `modelId`, and `tools` are optional; if omitted, daemon/session
+defaults apply. This is intentionally different from companion-app remote chat:
+Home Assistant does not expose provider/model selection, so the daemon resolves
+the active/default routing.
+
+`POST /api/homeassistant/conversation` returns the final response directly and
+does not also publish a `goodvibes_message` event by default. Set
+`"publishEvent": true` only when the Home Assistant integration also wants the
+normal event-bus delivery for that same turn.
+
+The daemon creates Home Assistant sessions as remote sessions, not shared TUI
+sessions. It reuses the session for the same Home Assistant conversation until
+`surfaces.homeassistant.remoteSessionTtlMs` elapses with no activity. The default
+is 20 minutes. After TTL expiry the daemon closes the old session and starts a
+fresh one, preventing stale Home Assistant turns from inheriting an old, long
+transcript.
+
+For live progress, use:
+
+```text
+POST /api/homeassistant/conversation/stream
+```
+
+The response is `text/event-stream` with `ack`, `progress`, `final`, and `error`
+events. `final.data.assistant.text` and `final.data.assistant.speechText` carry
+the text Home Assistant should return from a `ConversationEntity`.
+
+To cancel a running turn:
+
+```json
+POST /api/homeassistant/conversation/cancel
+{
+  "agentId": "agent-1234"
+}
+```
+
+The cancel endpoint also accepts a `messageId` while the daemon still has the
+message-to-agent correlation in memory.
 
 ### Home Assistant to GoodVibes
 
@@ -119,10 +218,13 @@ Canonical prompt body:
 
 `message`, `prompt`, `text`, or `task` can carry the prompt text. `providerId`,
 `modelId`, and `tools` are optional; if omitted, daemon/session defaults apply.
-The adapter creates or updates a route binding with `surfaceKind:
-"homeassistant"`, submits the prompt through the shared session broker, spawns
-an agent when needed, and queues replies through the normal channel reply
-pipeline.
+The webhook path remains available for service actions, automations, and
+fire-and-forget prompt ingress. The adapter creates or updates a route binding
+with `surfaceKind: "homeassistant"`, submits the prompt through the shared
+session broker, spawns an agent when needed, and queues replies through the
+normal channel reply pipeline. For Assist conversation agents, prefer
+`/api/homeassistant/conversation` so Home Assistant can return the assistant
+reply directly in the conversation call.
 
 Control commands are supported through the same webhook:
 
@@ -155,19 +257,29 @@ The event payload is JSON and includes:
   "jobId": "job-1",
   "runId": "run-1",
   "agentId": "agent-1",
+  "sessionId": "sess-1",
   "routeId": "route-1",
   "surfaceId": "homeassistant",
   "externalId": "home",
+  "messageId": "gv:agent-1",
+  "replyToMessageId": "ha-msg-123",
+  "conversationId": "home",
+  "speechText": "Assistant reply or agent status",
   "metadata": {
     "threadId": "thread-1",
     "channelId": "area.kitchen",
+    "inboundMessageId": "ha-msg-123",
+    "conversationId": "home",
     "attachments": []
   }
 }
 ```
 
 The Home Assistant integration should listen for this event type and update
-entities, diagnostics, notifications, or repairs from the event data.
+entities, diagnostics, notifications, or repairs from the event data. The
+`replyToMessageId`, `conversationId`, `sessionId`, `routeId`, and `agentId`
+fields are stable SDK-owned correlation fields for matching a Home Assistant
+service call or webhook prompt to the final GoodVibes event.
 
 ## SDK Home Assistant Tools
 
@@ -210,17 +322,23 @@ The Home Assistant integration should implement:
    - `goodvibes.status`
    - `goodvibes.cancel`
    - `goodvibes.call_tool`
-5. Event listener for `surfaces.homeassistant.eventType`, default
+5. A Home Assistant Assist conversation platform using `ConversationEntity`.
+   Submit prompts to `POST /api/homeassistant/conversation`, pass
+   `conversation_id` as `conversationId`, wait for the response, and return
+   `assistant.speechText`/`assistant.text` from the entity handler.
+6. Event listener for `surfaces.homeassistant.eventType`, default
    `goodvibes_message`.
-6. Entities for:
+7. Entities for:
    - Daemon connectivity/status.
    - Last GoodVibes reply.
    - Active session/agent id.
    - Last error.
    - Optional tool catalog count/version.
-7. Optional WebSocket or SSE client support:
+8. Optional WebSocket or SSE client support:
    - Home Assistant can use its own WebSocket APIs internally.
-   - For GoodVibes daemon events, the integration can subscribe to the daemon
+   - For GoodVibes daemon progress, the integration can call
+     `/api/homeassistant/conversation/stream` and consume SSE events.
+   - For broader daemon events, the integration can subscribe to the daemon
      control-plane event stream when it needs live updates beyond event bus
      deliveries.
 

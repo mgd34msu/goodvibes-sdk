@@ -12,6 +12,7 @@ import {
 } from '../packages/sdk/src/_internal/platform/channels/builtin/homeassistant.js';
 import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
 import type { ServiceRegistry } from '../packages/sdk/src/_internal/platform/config/service-registry.js';
+import { HomeAssistantConversationRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/homeassistant-routes.js';
 import { HomeAssistantIntegration } from '../packages/sdk/src/_internal/platform/integrations/homeassistant.js';
 import type { AgentRecord } from '../packages/sdk/src/_internal/platform/tools/agent/index.js';
 
@@ -124,6 +125,8 @@ describe('Home Assistant channel surface', () => {
       jobId: 'job-1',
       runId: 'run-1',
       status: 'completed',
+      agentId: 'agent-ha-1',
+      sessionId: 'session-ha-1',
       includeLinks: false,
       binding: {
         id: 'binding-1',
@@ -131,7 +134,16 @@ describe('Home Assistant channel surface', () => {
         surfaceId: 'ha-main',
         externalId: 'kitchen',
         channelId: 'area.kitchen',
-        metadata: {},
+        metadata: {
+          messageId: 'ha-msg-1',
+          conversationId: 'kitchen',
+        },
+      },
+      metadata: {
+        pending: {
+          messageId: 'ha-msg-1',
+          conversationId: 'kitchen',
+        },
       },
     };
 
@@ -144,6 +156,9 @@ describe('Home Assistant channel surface', () => {
     expect(eventPayload.source).toBe('goodvibes');
     expect(eventPayload.body).toBe('The lights are on.');
     expect(eventPayload.externalId).toBe('kitchen');
+    expect(eventPayload.sessionId).toBe('session-ha-1');
+    expect(eventPayload.replyToMessageId).toBe('ha-msg-1');
+    expect(eventPayload.conversationId).toBe('kitchen');
   });
 
   test('accepts signed Home Assistant prompts and queues an agent reply', async () => {
@@ -283,6 +298,226 @@ describe('Home Assistant channel surface', () => {
     expect(submittedBody).toBe('turn on the kitchen lights');
     expect(spawnProvider).toBe('openai');
     expect(queuedAgentId).toBe('agent-ha-1');
+  });
+
+  test('supports submit-and-wait conversation routes with daemon-owned remote sessions', async () => {
+    const sessions = new Map<string, Record<string, unknown>>();
+    const agents = new Map<string, AgentRecord>();
+    let bindingMetadata: Record<string, unknown> | undefined;
+    let createdKind = '';
+    let submittedSessionId = '';
+
+    const routes = new HomeAssistantConversationRoutes({
+      configManager: {
+        get(key: string): unknown {
+          const values: Record<string, unknown> = {
+            'surfaces.homeassistant.enabled': true,
+            'surfaces.homeassistant.defaultConversationId': 'goodvibes',
+            'surfaces.homeassistant.eventType': 'goodvibes_message',
+            'surfaces.homeassistant.remoteSessionTtlMs': 20 * 60_000,
+          };
+          return values[key];
+        },
+      },
+      routeBindings: {
+        start: async () => undefined,
+        upsertBinding: async (input: Partial<AutomationRouteBinding>) => {
+          bindingMetadata = input.metadata;
+          return {
+            id: 'route-ha-conv',
+            kind: 'channel',
+            surfaceKind: 'homeassistant',
+            surfaceId: String(input.surfaceId),
+            externalId: String(input.externalId),
+            channelId: String(input.channelId),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            lastSeenAt: Date.now(),
+            metadata: input.metadata ?? {},
+          } as AutomationRouteBinding;
+        },
+        patchBinding: async () => null,
+      },
+      sessionBroker: {
+        start: async () => undefined,
+        createSession: async (input: Record<string, unknown>) => {
+          createdKind = String(input.kind);
+          const session = {
+            id: 'session-ha-remote',
+            kind: input.kind,
+            title: 'Home Assistant',
+            status: 'active',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            lastActivityAt: Date.now(),
+            messageCount: 0,
+            pendingInputCount: 0,
+            routeIds: ['route-ha-conv'],
+            surfaceKinds: ['homeassistant'],
+            participants: [],
+            metadata: input.metadata ?? {},
+          };
+          sessions.set(session.id, session);
+          return session;
+        },
+        submitMessage: async (input: { readonly sessionId?: string; readonly body: string }) => {
+          submittedSessionId = input.sessionId ?? '';
+          return {
+            session: sessions.get(submittedSessionId),
+            input: { id: 'input-ha-1', routing: {} },
+            userMessage: null,
+            mode: 'spawn',
+            task: input.body,
+            created: false,
+          };
+        },
+        bindAgent: async () => undefined,
+        getSession: (sessionId: string) => sessions.get(sessionId) as never,
+        getMessages: () => [],
+        closeSession: async () => null,
+      },
+      agentManager: {
+        getStatus: (agentId: string) => agents.get(agentId) ?? null,
+        cancel: () => true,
+      },
+      parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
+      trySpawnAgent: (_input, _label, sessionId) => {
+        expect(sessionId).toBe('session-ha-remote');
+        const record = {
+          id: 'agent-ha-remote',
+          task: 'turn on the lights',
+          template: 'general',
+          status: 'completed',
+          startedAt: Date.now(),
+          completedAt: Date.now(),
+          tools: [],
+          toolCallCount: 0,
+          orchestrationDepth: 0,
+          executionProtocol: 'direct',
+          reviewMode: 'none',
+          communicationLane: 'direct',
+          fullOutput: 'The lights are on.',
+        } as AgentRecord;
+        agents.set(record.id, record);
+        return record;
+      },
+      queueSurfaceReplyFromBinding: () => undefined,
+    } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
+
+    const response = await routes.handle(new Request('http://daemon.local/api/homeassistant/conversation', {
+      method: 'POST',
+      body: JSON.stringify({
+        message: 'turn on the lights',
+        conversationId: 'assist-home',
+        messageId: 'ha-message-1',
+      }),
+    }));
+    const payload = await response!.json() as Record<string, unknown>;
+
+    expect(response!.status).toBe(200);
+    expect(payload.status).toBe('completed');
+    expect((payload.assistant as Record<string, unknown>).text).toBe('The lights are on.');
+    expect(payload.sessionId).toBe('session-ha-remote');
+    expect(createdKind).toBe('homeassistant-remote');
+    expect(bindingMetadata?.messageId).toBe('ha-message-1');
+  });
+
+  test('expires idle Home Assistant remote sessions before accepting a later turn', async () => {
+    const oldSession = {
+      id: 'session-old',
+      kind: 'homeassistant-remote',
+      title: 'Home Assistant',
+      status: 'active',
+      createdAt: 1,
+      updatedAt: 1,
+      lastActivityAt: Date.now() - 61_000,
+      messageCount: 1,
+      pendingInputCount: 0,
+      routeIds: ['route-ha-expire'],
+      surfaceKinds: ['homeassistant'],
+      participants: [],
+      metadata: {},
+    };
+    const sessions = new Map<string, Record<string, unknown>>([['session-old', oldSession]]);
+    let closedSessionId = '';
+
+    const routes = new HomeAssistantConversationRoutes({
+      configManager: {
+        get(key: string): unknown {
+          const values: Record<string, unknown> = {
+            'surfaces.homeassistant.enabled': true,
+            'surfaces.homeassistant.defaultConversationId': 'goodvibes',
+            'surfaces.homeassistant.remoteSessionTtlMs': 60_000,
+          };
+          return values[key];
+        },
+      },
+      routeBindings: {
+        start: async () => undefined,
+        upsertBinding: async (input: Partial<AutomationRouteBinding>) => ({
+          id: 'route-ha-expire',
+          kind: 'channel',
+          surfaceKind: 'homeassistant',
+          surfaceId: String(input.surfaceId),
+          externalId: String(input.externalId),
+          channelId: String(input.channelId),
+          sessionId: 'session-old',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          lastSeenAt: Date.now(),
+          metadata: input.metadata ?? {},
+        } as AutomationRouteBinding),
+        patchBinding: async () => null,
+      },
+      sessionBroker: {
+        start: async () => undefined,
+        createSession: async () => {
+          const session = { ...oldSession, id: 'session-new', lastActivityAt: Date.now() };
+          sessions.set(session.id, session);
+          return session;
+        },
+        submitMessage: async () => ({
+          session: sessions.get('session-new'),
+          input: { id: 'input-ha-2', routing: {} },
+          userMessage: null,
+          mode: 'spawn',
+          task: 'hello',
+          created: false,
+        }),
+        bindAgent: async () => undefined,
+        getSession: (sessionId: string) => sessions.get(sessionId) as never,
+        getMessages: () => [],
+        closeSession: async (sessionId: string) => {
+          closedSessionId = sessionId;
+          return sessions.get(sessionId) as never;
+        },
+      },
+      agentManager: {
+        getStatus: () => null,
+        cancel: () => true,
+      },
+      parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
+      trySpawnAgent: () => ({
+        id: 'agent-ha-2',
+        status: 'running',
+        task: 'hello',
+        startedAt: Date.now(),
+        tools: [],
+      } as AgentRecord),
+      queueSurfaceReplyFromBinding: () => undefined,
+    } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
+
+    const response = await routes.handle(new Request('http://daemon.local/api/homeassistant/conversation', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'hello', conversationId: 'assist-home', wait: false }),
+    }));
+    const payload = await response!.json() as Record<string, unknown>;
+
+    expect(response!.status).toBe(202);
+    expect(payload.sessionExpired).toBe(true);
+    expect(payload.newSession).toBe(true);
+    expect(payload.sessionId).toBe('session-new');
+    expect(closedSessionId).toBe('session-old');
   });
 
   test('rejects Home Assistant webhook requests without the shared secret', async () => {

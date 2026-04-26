@@ -51,6 +51,7 @@ export async function handleHomeAssistantSurfaceWebhook(
   const channelId = readString(body.areaId ?? body.area_id)
     ?? readString(body.entityId ?? body.entity_id)
     ?? conversationId;
+  const messageId = readString(body.messageId ?? body.message_id) ?? `ha-${randomUUID()}`;
   const mode = readString(body.mode ?? body.type)?.toLowerCase() ?? 'prompt';
   const conversationKind = conversationKindForHomeAssistant(mode, threadId, channelId);
 
@@ -85,6 +86,8 @@ export async function handleHomeAssistantSurfaceWebhook(
       ...body,
       directoryKind: conversationKind === 'direct' ? 'user' : conversationKind,
       source: 'homeassistant',
+      messageId,
+      conversationId,
     },
   });
 
@@ -110,7 +113,8 @@ export async function handleHomeAssistantSurfaceWebhook(
     body: text,
     metadata: {
       source: 'homeassistant',
-      messageId: readString(body.messageId ?? body.message_id) ?? `ha-${randomUUID()}`,
+      messageId,
+      conversationId,
       deviceId: readString(body.deviceId ?? body.device_id) ?? null,
       entityId: readString(body.entityId ?? body.entity_id) ?? null,
     },
@@ -125,6 +129,8 @@ export async function handleHomeAssistantSurfaceWebhook(
       bindingId: binding.id,
       sessionId: submission.session.id,
       agentId: submission.activeAgentId ?? null,
+      messageId,
+      conversationId,
     });
   }
 
@@ -150,6 +156,8 @@ export async function handleHomeAssistantSurfaceWebhook(
     bindingId: binding.id,
     sessionId: submission.session.id,
     agentId: spawnResult.id,
+    messageId,
+    conversationId,
   });
 }
 

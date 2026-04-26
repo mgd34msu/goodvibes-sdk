@@ -136,6 +136,7 @@ export async function buildBuiltinAccount(
           deviceId: surfaces.homeassistant.deviceId,
           deviceName: surfaces.homeassistant.deviceName,
           eventType: surfaces.homeassistant.eventType,
+          remoteSessionTtlMs: surfaces.homeassistant.remoteSessionTtlMs,
           setupVersion: surfaces.homeassistant.setupVersion,
         },
       });

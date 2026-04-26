@@ -414,6 +414,20 @@ export class DaemonSurfaceDeliveryHelper {
             ? binding.metadata.callbackSignature as PendingSurfaceReply['callbackSignature']
             : undefined,
         };
+      case 'homeassistant':
+        return {
+          ...shared,
+          surfaceKind: 'homeassistant',
+          channelId: binding.channelId,
+          targetAddress: binding.channelId ?? binding.externalId,
+          surfaceId: binding.surfaceId,
+          externalId: binding.externalId,
+          conversationId: typeof binding.metadata.conversationId === 'string'
+            ? binding.metadata.conversationId
+            : binding.externalId,
+          messageId: typeof binding.metadata.messageId === 'string' ? binding.metadata.messageId : undefined,
+          replyToMessageId: typeof binding.metadata.messageId === 'string' ? binding.metadata.messageId : undefined,
+        };
       case 'telegram':
       case 'google-chat':
       case 'signal':
