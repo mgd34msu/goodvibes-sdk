@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, copyFileSync, unlinkSync, realpathSync } from 'node:fs';
-import { dirname, extname, join, relative, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, copyFileSync, unlinkSync } from 'node:fs';
+import { dirname, extname, join, relative } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { Tool, ToolDefinition } from '../../types/tools.js';
 import { WRITE_SCHEMA, type WriteInput, type WriteFileInput, type WriteMode } from './schema.js';
@@ -14,6 +14,7 @@ import { isNotebookFile } from '../../utils/notebook.js';
 import { logger } from '../../utils/logger.js';
 import type { SessionChangeTracker } from '../../sessions/change-tracker.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { resolveAndValidatePath } from '../../utils/path-safety.js';
 
 // ---------------------------------------------------------------------------
 // Result types
@@ -60,42 +61,6 @@ function resolveContent(fileInput: WriteFileInput): string {
 function buildBackupPath(resolvedPath: string, projectRoot: string): string {
   const rel = relative(projectRoot, resolvedPath);
   return join(projectRoot, '.goodvibes', '.backups', `${rel}.${Date.now()}`);
-}
-
-function nearestExistingPath(path: string): string {
-  let current = path;
-  while (!existsSync(current)) {
-    const parent = dirname(current);
-    if (parent === current) return current;
-    current = parent;
-  }
-  return current;
-}
-
-function isInsideRoot(root: string, candidate: string): boolean {
-  const rel = relative(root, candidate);
-  return rel === '' || (!rel.startsWith('..') && !rel.includes('/..') && !rel.startsWith('/'));
-}
-
-function resolveAndValidatePath(inputPath: string, projectRoot: string): string {
-  const root = realpathSync(resolve(projectRoot));
-  const resolved = resolve(root, inputPath);
-  const rel = relative(root, resolved);
-  if (rel.startsWith('..') || rel.includes('/..')) {
-    throw new Error(`Path '${inputPath}' is outside the project root`);
-  }
-  const existingPath = nearestExistingPath(resolved);
-  const realExistingPath = realpathSync(existingPath);
-  if (!isInsideRoot(root, realExistingPath)) {
-    throw new Error(`Path '${inputPath}' is outside the project root`);
-  }
-  if (existsSync(resolved)) {
-    const realTargetPath = realpathSync(resolved);
-    if (!isInsideRoot(root, realTargetPath)) {
-      throw new Error(`Path '${inputPath}' is outside the project root`);
-    }
-  }
-  return resolved;
 }
 
 /** Module-level constant — avoids re-allocating the Set on every validation call. */

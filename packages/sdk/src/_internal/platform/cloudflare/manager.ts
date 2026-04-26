@@ -144,9 +144,9 @@ export class CloudflareControlPlaneManager {
         requiredForSdkCreation: true,
         storeInGoodVibes: false,
         instructions: [
-          'Create a temporary Cloudflare API token in the dashboard with Account API Tokens Write, Account Settings Read, and the GoodVibes operational permissions listed here.',
+          'Create a temporary user-owned Cloudflare API token from the Create additional tokens template, or grant the User > API Tokens Write permission.',
           'Pass that temporary token as bootstrapToken to POST /api/cloudflare/token/create.',
-          'The SDK uses the bootstrap token once to create a narrower operational token, stores only the operational token as a goodvibes:// secret when requested, and never persists the bootstrap token.',
+          'The SDK uses Cloudflare user-token APIs to create a narrower operational token with the GoodVibes permissions listed here, stores only the operational token as a goodvibes:// secret when requested, and never persists the bootstrap token.',
         ],
       },
     };
@@ -167,21 +167,26 @@ export class CloudflareControlPlaneManager {
     const components = resolveComponents(input.components);
     const requirements = buildTokenRequirements(components, false);
     const client = await this.createClient(bootstrapToken);
-    await client.accounts.get({ account_id: accountId });
-    const zone = await resolveZone(client, {
-      accountId,
-      zoneId: input.zoneId,
-      zoneName: input.zoneName,
-      configuredZoneId: config.zoneId,
-      configuredZoneName: config.zoneName,
-      required: components.dns,
-    });
-    const groups = await this.collectPermissionGroups(client, accountId);
+    const explicitZoneId = clean(input.zoneId) || config.zoneId;
+    const explicitZoneName = clean(input.zoneName) || config.zoneName;
+    let zone: { readonly id: string; readonly name: string } | undefined;
+    if (explicitZoneId) {
+      zone = { id: explicitZoneId, name: explicitZoneName || explicitZoneId };
+    } else if (explicitZoneName) {
+      zone = await resolveZone(client, {
+        accountId,
+        zoneId: input.zoneId,
+        zoneName: input.zoneName,
+        configuredZoneId: config.zoneId,
+        configuredZoneName: config.zoneName,
+        required: components.dns,
+      });
+    }
+    const groups = await this.collectPermissionGroups(client);
     const permissionIds = selectPermissionGroups(requirements, groups);
     const resources = buildTokenResources(accountId, zone?.id, components);
     const tokenName = clean(input.tokenName) || 'GoodVibes Cloudflare Operational';
-    const token = await this.requireAccountTokens(client).create({
-      account_id: accountId,
+    const token = await this.requireUserTokens(client).create({
       name: tokenName,
       policies: [
         {
@@ -742,19 +747,16 @@ export class CloudflareControlPlaneManager {
     await this.options.secretsManager.set(key, value, { scope: 'user', medium: 'secure' });
   }
 
-  private requireAccountTokens(client: CloudflareApiClient): NonNullable<CloudflareApiClient['accounts']['tokens']> {
-    if (!client.accounts.tokens) {
-      throw new CloudflareControlPlaneError('The Cloudflare client does not expose account token creation APIs.', 'CLOUDFLARE_TOKEN_API_UNAVAILABLE', 500);
+  private requireUserTokens(client: CloudflareApiClient): NonNullable<CloudflareApiClient['user']>['tokens'] {
+    if (!client.user?.tokens) {
+      throw new CloudflareControlPlaneError('The Cloudflare client does not expose user token creation APIs.', 'CLOUDFLARE_TOKEN_API_UNAVAILABLE', 500);
     }
-    return client.accounts.tokens;
+    return client.user.tokens;
   }
 
-  private async collectPermissionGroups(client: CloudflareApiClient, accountId: string): Promise<readonly CloudflarePermissionGroupLike[]> {
-    const tokenApi = this.requireAccountTokens(client);
-    const groups = tokenApi.permissionGroups.get
-      ? await tokenApi.permissionGroups.get({ account_id: accountId })
-      : await collectAsync(tokenApi.permissionGroups.list({ account_id: accountId }));
-    return groups;
+  private async collectPermissionGroups(client: CloudflareApiClient): Promise<readonly CloudflarePermissionGroupLike[]> {
+    const tokenApi = this.requireUserTokens(client);
+    return await collectAsync(tokenApi.permissionGroups.list());
   }
 
   private createProvisioningContext(): CloudflareProvisioningContext {

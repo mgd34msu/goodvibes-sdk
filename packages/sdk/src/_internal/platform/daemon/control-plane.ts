@@ -9,6 +9,7 @@ import {
 import type { ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
 import type { GatewayMethodCatalog, GatewayMethodDescriptor } from '../control-plane/index.js';
 import type { RuntimeEventDomain } from '../runtime/events/index.js';
+import { isRuntimeEventDomain } from '../runtime/events/index.js';
 import type { DistributedRuntimeManager } from '../runtime/remote/index.js';
 import { extractForwardedClientIp } from '../runtime/network/index.js';
 import { resolveGatewayPathTemplate } from './helpers.js';
@@ -213,11 +214,12 @@ export class DaemonControlPlaneHelper {
     }
     const token = this.extractAuthToken(req);
     const principal = resolveAuthenticatedPrincipal(req, this);
-    if (token && !principal) {
+    if (!principal) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const rawDomains = url.searchParams.get('domains');
-    const domains = (rawDomains ? rawDomains.split(',').map((value) => value.trim()).filter(Boolean) : []) as RuntimeEventDomain[];
+    const domains = parseRuntimeDomains(rawDomains);
+    if (domains instanceof Response) return domains;
     const requestedKind = url.searchParams.get('clientKind');
     const clientKind = requestedKind === 'tui'
       || requestedKind === 'web'
@@ -239,7 +241,7 @@ export class DaemonControlPlaneHelper {
         domains,
         clientKind,
         remoteAddress: extractForwardedClientIp(req, this.trustProxyEnabled()),
-        authenticated: Boolean(principal),
+        authenticated: true,
       } satisfies ControlPlaneWebSocketData,
     });
     return upgraded ? 'upgraded' : Response.json({ error: 'WebSocket upgrade failed' }, { status: 400 });
@@ -311,9 +313,14 @@ export class DaemonControlPlaneHelper {
         ...(Array.isArray(frame.capabilities) ? { capabilities: frame.capabilities.filter((value): value is string => typeof value === 'string') } : {}),
       });
       if (Array.isArray(frame.domains)) {
+        const domains = normalizeFrameDomains(frame.domains);
+        if (domains instanceof Response) {
+          ws.send(JSON.stringify({ type: 'auth', ok: false, error: 'Invalid runtime event domain' }));
+          return;
+        }
         this.context.controlPlaneGateway.subscribeWebSocketClient(
           clientId,
-          frame.domains.filter((value): value is RuntimeEventDomain => typeof value === 'string') as RuntimeEventDomain[],
+          domains,
         );
       }
       ws.data.authToken = token;
@@ -332,8 +339,12 @@ export class DaemonControlPlaneHelper {
         return;
       }
       const domains = Array.isArray(frame.domains)
-        ? frame.domains.filter((value): value is RuntimeEventDomain => typeof value === 'string') as RuntimeEventDomain[]
+        ? normalizeFrameDomains(frame.domains)
         : [];
+      if (domains instanceof Response) {
+        ws.send(JSON.stringify({ type: 'error', error: 'Invalid runtime event domain' }));
+        return;
+      }
       this.context.controlPlaneGateway.subscribeWebSocketClient(clientId, domains);
       ws.send(JSON.stringify({ type: 'subscribed', clientId, domains }));
       return;
@@ -341,8 +352,12 @@ export class DaemonControlPlaneHelper {
 
     if (frame.type === 'unsubscribe') {
       const domains = Array.isArray(frame.domains)
-        ? frame.domains.filter((value): value is RuntimeEventDomain => typeof value === 'string') as RuntimeEventDomain[]
+        ? normalizeFrameDomains(frame.domains)
         : undefined;
+      if (domains instanceof Response) {
+        ws.send(JSON.stringify({ type: 'error', error: 'Invalid runtime event domain' }));
+        return;
+      }
       this.context.controlPlaneGateway.unsubscribeWebSocketClient(clientId, domains);
       ws.send(JSON.stringify({ type: 'unsubscribed', clientId, domains: domains ?? [] }));
       return;
@@ -519,4 +534,33 @@ export class DaemonControlPlaneHelper {
       },
     });
   }
+}
+
+function parseRuntimeDomains(rawDomains: string | null): RuntimeEventDomain[] | Response {
+  if (!rawDomains) return [];
+  return normalizeFrameDomains(rawDomains.split(',').map((value) => value.trim()).filter(Boolean));
+}
+
+function normalizeFrameDomains(values: readonly unknown[]): RuntimeEventDomain[] | Response {
+  const domains: RuntimeEventDomain[] = [];
+  const invalid: string[] = [];
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      invalid.push(String(value));
+      continue;
+    }
+    const trimmed = value.trim();
+    if (!isRuntimeEventDomain(trimmed)) {
+      invalid.push(trimmed);
+      continue;
+    }
+    domains.push(trimmed);
+  }
+  if (invalid.length > 0) {
+    return Response.json({
+      error: 'Invalid runtime event domain',
+      invalid,
+    }, { status: 400 });
+  }
+  return [...new Set(domains)];
 }

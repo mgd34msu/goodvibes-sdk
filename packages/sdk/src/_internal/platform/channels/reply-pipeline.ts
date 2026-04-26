@@ -95,6 +95,15 @@ const DEFAULT_POLICY: Record<ChannelSurface, ChannelRenderPolicy> = {
     maxEventsPerUpdate: 24,
     metadata: {},
   },
+  homeassistant: {
+    surface: 'homeassistant',
+    reasoningVisibility: 'summary',
+    format: 'json',
+    supportsThreads: true,
+    maxChunkChars: 8_000,
+    maxEventsPerUpdate: 16,
+    metadata: {},
+  },
   telegram: {
     surface: 'telegram',
     reasoningVisibility: 'summary',

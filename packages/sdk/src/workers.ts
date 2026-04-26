@@ -41,6 +41,12 @@ export interface GoodVibesCloudflareWorkerOptions {
   readonly authToken?: string;
   readonly workerAuthToken?: string;
   readonly queueJobPayloads?: boolean;
+  /**
+   * Explicitly allow unauthenticated non-health endpoints.
+   * Default is false: GOODVIBES_WORKER_TOKEN or workerAuthToken is required.
+   */
+  readonly allowUnauthenticated?: boolean;
+  readonly maxRequestBodyBytes?: number;
 }
 
 export interface GoodVibesCloudflareWorker {
@@ -66,6 +72,7 @@ export function createGoodVibesCloudflareWorker(
         const queue = env.GOODVIBES_BATCH_QUEUE;
         if (!queue) return json({ error: 'GOODVIBES_BATCH_QUEUE is not bound', code: 'QUEUE_NOT_CONFIGURED' }, 503);
         const body = await optionalJson(request);
+        if (body instanceof Response) return body;
         await queue.send({
           type: 'batch.tick',
           force: toRecord(body)['force'] === true,
@@ -87,6 +94,7 @@ export function createGoodVibesCloudflareWorker(
         const queue = env.GOODVIBES_BATCH_QUEUE;
         if (!queue) return json({ error: 'GOODVIBES_BATCH_QUEUE is not bound', code: 'QUEUE_NOT_CONFIGURED' }, 503);
         const body = await optionalJson(request);
+        if (body instanceof Response) return body;
         await queue.send({
           type: 'batch.job.create',
           body: toRecord(body),
@@ -149,7 +157,16 @@ async function proxyDaemonBatch(
   options: GoodVibesCloudflareWorkerOptions,
   daemonPath: string,
 ): Promise<Response> {
-  const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text();
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    const contentType = request.headers.get('content-type') ?? '';
+    if (contentType && !contentType.toLowerCase().includes('application/json')) {
+      return json({ error: 'Only application/json batch payloads are supported', code: 'UNSUPPORTED_MEDIA_TYPE' }, 415);
+    }
+  }
+  const body = request.method === 'GET' || request.method === 'HEAD'
+    ? undefined
+    : await readTextBodyWithinLimit(request, options.maxRequestBodyBytes);
+  if (body instanceof Response) return body;
   return proxyDaemonJson(env, options, daemonPath, {
     method: request.method,
     body,
@@ -191,7 +208,13 @@ function requireWorkerAuth(
   options: GoodVibesCloudflareWorkerOptions,
 ): Response | null {
   const expected = options.workerAuthToken ?? env.GOODVIBES_WORKER_TOKEN ?? '';
-  if (!expected) return null;
+  if (!expected && options.allowUnauthenticated === true) return null;
+  if (!expected) {
+    return json({
+      error: 'GOODVIBES_WORKER_TOKEN is required for non-health endpoints',
+      code: 'WORKER_AUTH_TOKEN_REQUIRED',
+    }, 503);
+  }
   const auth = request.headers.get('authorization') ?? '';
   if (auth === `Bearer ${expected}`) return null;
   return json({ error: 'Worker authorization required', code: 'WORKER_AUTH_REQUIRED' }, 401);
@@ -205,13 +228,45 @@ function resolveDaemonUrl(
   return raw.replace(/\/+$/, '');
 }
 
-async function optionalJson(request: Request): Promise<unknown> {
-  const text = await request.text();
+async function optionalJson(request: Request): Promise<unknown | Response> {
+  const text = await readTextBodyWithinLimit(request);
+  if (text instanceof Response) return text;
   if (!text.trim()) return {};
   try {
     return JSON.parse(text) as unknown;
   } catch {
     return {};
+  }
+}
+
+async function readTextBodyWithinLimit(
+  request: Request,
+  maxBytes = 1_000_000,
+): Promise<string | Response> {
+  const contentLength = Number.parseInt(request.headers.get('content-length') ?? '0', 10);
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    return json({ error: 'Payload too large', code: 'PAYLOAD_TOO_LARGE' }, 413);
+  }
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let body = '';
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel('Payload too large').catch(() => {});
+        return json({ error: 'Payload too large', code: 'PAYLOAD_TOO_LARGE' }, 413);
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return body;
+  } finally {
+    reader.releaseLock();
   }
 }
 

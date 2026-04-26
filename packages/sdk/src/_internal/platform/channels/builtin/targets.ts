@@ -326,6 +326,31 @@ export async function lookupBuiltinProviderDirectory(
     }], needle, limit);
   }
 
+  if (surface === 'homeassistant') {
+    const conversationId = surfaces.homeassistant.defaultConversationId || surfaces.homeassistant.deviceId || 'goodvibes';
+    const candidates: ChannelDirectoryEntry[] = [{
+      id: conversationId,
+      surface,
+      kind: 'service',
+      label: surfaces.homeassistant.deviceName || 'GoodVibes Daemon',
+      handle: conversationId,
+      groupId: conversationId,
+      isGroupConversation: false,
+      searchText: [
+        conversationId,
+        surfaces.homeassistant.deviceId,
+        surfaces.homeassistant.deviceName,
+        surfaces.homeassistant.instanceUrl,
+      ].filter(Boolean).join(' '),
+      metadata: {
+        provider: 'homeassistant',
+        instanceUrl: surfaces.homeassistant.instanceUrl,
+        eventType: surfaces.homeassistant.eventType,
+      },
+    }];
+    return filterProviderDirectory(candidates, needle, limit);
+  }
+
   if (surface === 'telegram') {
     const candidates: ChannelDirectoryEntry[] = [];
     if (surfaces.telegram.defaultChatId) {

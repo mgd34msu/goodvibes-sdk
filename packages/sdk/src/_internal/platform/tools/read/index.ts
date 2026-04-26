@@ -13,8 +13,12 @@ import {
   type FileReadResult,
   type ReadOutput,
 } from './file-readers.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
 
 export type { FileReadResult, ReadOutput } from './file-readers.js';
+
+const MAX_READ_FILES = 50;
+const MAX_PARALLEL_READ_FILES = 8;
 
 export class ReadTool implements Tool {
   readonly definition: ToolDefinition = {
@@ -45,6 +49,9 @@ export class ReadTool implements Tool {
   async execute(args: Record<string, unknown>): Promise<{ success: boolean; output?: string; error?: string }> {
     if (!Array.isArray(args.files) || args.files.length === 0) {
       return { success: false, error: 'Missing or empty "files" array' };
+    }
+    if (args.files.length > MAX_READ_FILES) {
+      return { success: false, error: `Too many files: maximum ${MAX_READ_FILES} per read call` };
     }
     try {
       return await this._execute(args as unknown as ReadInput);
@@ -87,8 +94,10 @@ export class ReadTool implements Tool {
       paginationInfo = { page, total_pages: totalPages, pending_files: pendingFiles };
     }
 
-    const results: FileReadResult[] = await Promise.all(
-      filesToProcess.map((f) =>
+    const results: FileReadResult[] = await mapWithConcurrency(
+      filesToProcess,
+      MAX_PARALLEL_READ_FILES,
+      (f) =>
         readOneFile(
           f,
           globalExtract,
@@ -101,7 +110,6 @@ export class ReadTool implements Tool {
           globalMaxImageSize,
           this.codeIntelligence,
         ),
-      ),
     );
 
     if (maxTokens !== undefined) {

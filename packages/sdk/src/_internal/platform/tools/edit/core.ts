@@ -28,68 +28,18 @@ import type {
 import { executeNotebookEdit } from './notebook.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { toRecord } from '../../utils/record-coerce.js';
+import {
+  runValidators as runSharedValidators,
+  formatValidatorFailure,
+  type ValidatorResult,
+} from '../shared/validators.js';
 
 const DIFF_TRUNCATE_THRESHOLD = 5000;
 const DIFF_PREVIEW_LENGTH = 500;
-const VALIDATOR_COMMANDS: Record<ValidatorName, string[]> = {
-  typecheck: ['npx', 'tsc', '--noEmit'],
-  lint: ['npx', 'eslint', '--no-error-on-unmatched-pattern'],
-  test: ['bun', 'test'],
-  build: ['bun', 'run', 'build'],
-};
-
-interface ValidatorResult {
-  validator: ValidatorName;
-  passed: boolean;
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
-
-async function runValidator(name: ValidatorName, cwd: string): Promise<ValidatorResult> {
-  const cmd = VALIDATOR_COMMANDS[name];
-  const TIMEOUT_MS = 30_000;
-  const proc = Bun.spawn(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
-  let timedOut = false;
-  const timeoutHandle = setTimeout(() => {
-    timedOut = true;
-    proc.kill();
-  }, TIMEOUT_MS);
-
-  const [exitCode, stdoutBuf, stderrBuf] = await Promise.all([
-    proc.exited,
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
-
-  clearTimeout(timeoutHandle);
-
-  if (timedOut) {
-    return {
-      validator: name,
-      passed: false,
-      stdout: '',
-      stderr: `Validator '${name}' timed out after ${TIMEOUT_MS}ms`,
-      exitCode: -1,
-    };
-  }
-
-  return { validator: name, passed: exitCode === 0, stdout: stdoutBuf, stderr: stderrBuf, exitCode };
-}
 
 async function runValidators(validators: ValidatorName[], cwd: string): Promise<ValidatorResult | null> {
-  for (const name of validators) {
-    const result = await runValidator(name, cwd);
-    if (!result.passed) return result;
-  }
-  return null;
-}
-
-function formatValidatorFailure(result: ValidatorResult): string {
-  const parts = [`Validator '${result.validator}' failed (exit ${result.exitCode}):`];
-  if (result.stderr.trim()) parts.push(result.stderr.trim());
-  if (result.stdout.trim()) parts.push(result.stdout.trim());
-  return parts.join('\n');
+  const failures = await runSharedValidators(validators, cwd);
+  return failures[0] ?? null;
 }
 
 interface EditExecutionContext {
@@ -231,7 +181,7 @@ async function buildImportGraphWarning(cwd: string, writtenPaths: Set<string>): 
     if (affectedSet.size === 0) return undefined;
 
     const affectedList = Array.from(affectedSet);
-    const proc = Bun.spawn(['/bin/sh', '-c', `npx tsc --noEmit ${affectedList.join(' ')}`], {
+    const proc = Bun.spawn(['npx', 'tsc', '--noEmit', ...affectedList], {
       cwd,
       stdout: 'pipe',
       stderr: 'pipe',

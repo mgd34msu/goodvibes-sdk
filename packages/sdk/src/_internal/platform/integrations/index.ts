@@ -26,6 +26,13 @@ export type {
   DiscordOAuthAuthorizeOptions,
 } from './discord.js';
 export { DiscordInteractionType, DiscordInteractionResponseType } from './discord.js';
+export { HomeAssistantIntegration, normalizeHomeAssistantBaseUrl } from './homeassistant.js';
+export type {
+  HomeAssistantClientOptions,
+  HomeAssistantGoodVibesEvent,
+  HomeAssistantServiceRecord,
+  HomeAssistantStateRecord,
+} from './homeassistant.js';
 export { Notifier } from './notifier.js';
 export { GitHubIntegration } from './github.js';
 export type { GitHubWebhookEvent } from './github.js';

@@ -69,7 +69,7 @@ legacy active behavior for embedders that have not opted into SDK-managed gates.
 | `tool-result-reconciliation` | enabled | yes | ready | Keep enabled for normal hosts; disabling reverts unresolved tool calls to warning-only behavior. |
 | `policy-signing` | disabled | no | ready | Policy loader validates signatures and enforces managed-mode rejection only when this startup flag is enabled. |
 | `session-compaction` | disabled | yes | ready | Enable for hosts that want structured runtime compaction; safe to expose as a runtime toggle. |
-| `fetch-sanitization` | disabled | yes | ready | Strong candidate for TUI safe-browsing profiles; enables response sanitization, unknown-host safe-text fallback, and SSRF-risk blocking. |
+| `fetch-sanitization` | disabled | yes | ready | Strong candidate for TUI safe-browsing profiles; enables response sanitization, unknown-host safe-text fallback, SSRF-risk host blocking, redirect-target revalidation, and streaming response-size caps. Disabled preserves legacy fetch behavior and should be surfaced through the security settings report. |
 | `runtime-tools-budget-enforcement` | disabled | yes | ready | Phased executor factory derives budget enforcement from the flag; explicit executor config can still override host policy. |
 | `overflow-spill-backends` | disabled | yes | ready | OverflowHandler forces the file backend while disabled; ledger/diagnostics backends require this flag. |
 | `permission-divergence-dashboard` | disabled | yes | ready | Divergence dashboard factory is gated; disabled hosts cannot create the dashboard/enforce gate through the SDK factory. |
@@ -99,6 +99,7 @@ legacy active behavior for embedders that have not opted into SDK-managed gates.
 | `discord-surface` | disabled | yes | ready | Discord surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
 | `ntfy-surface` | disabled | yes | ready | ntfy surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
 | `webhook-surface` | disabled | yes | ready | Webhook surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `homeassistant-surface` | disabled | yes | ready | Home Assistant surface records, signed webhook ingress, event delivery, setup manifest, and HA REST-backed tools require this flag unless the omnichannel alias is enabled. |
 | `web-surface` | disabled | yes | ready | Web control surface records and plugins require this flag unless the embedded web alias is enabled. |
 | `watcher-framework` | disabled | yes | ready | WatcherRegistry list/read APIs return empty while disabled; registration/start/stop/run/remove fail closed. |
 | `service-management` | disabled | yes | ready | PlatformServiceManager status reports disabled state; install/start/stop/restart/uninstall fail closed. |

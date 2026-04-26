@@ -204,7 +204,7 @@ export interface DaemonRuntimeRouteContext {
     binding: AutomationRouteBinding | undefined,
     input: { readonly agentId: string; readonly task: string; readonly sessionId?: string; },
   ) => void;
-  readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
+  readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
   readonly syncSpawnedAgentTask: (record: AgentRecordLike, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: AgentRecordLike) => void;
   readonly configManager: {

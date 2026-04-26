@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { GenericWebhookAdapterContext } from '../types.js';
 import { validatePublicWebhookUrl } from '../../utils/url-safety.js';
+import { readTextBodyWithinLimit } from '../helpers.js';
 
 function parseJsonRecord(rawBody: string): Record<string, unknown> | Response {
   try {
@@ -16,7 +17,8 @@ export async function handleGenericWebhookSurface(req: Request, context: Generic
   if (!enabled || !configuredSecret) {
     return Response.json({ error: 'Webhook ingress is not configured' }, { status: 503 });
   }
-  const rawBody = await req.text();
+  const rawBody = await readTextBodyWithinLimit(req);
+  if (rawBody instanceof Response) return rawBody;
   const providedSignature = req.headers.get('x-goodvibes-signature') ?? '';
   const providedSecret = req.headers.get('x-goodvibes-webhook-secret')
     ?? req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')

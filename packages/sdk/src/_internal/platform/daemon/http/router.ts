@@ -69,6 +69,7 @@ import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-rout
 import { dispatchProviderRoutes } from './provider-routes.js';
 import { dispatchBatchRoutes } from './batch-routes.js';
 import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
+import { readTextBodyWithinLimit } from '../../utils/request-body.js';
 
 interface DaemonHttpRouterContext {
   readonly configManager: ConfigManager;
@@ -135,7 +136,7 @@ interface DaemonHttpRouterContext {
     input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string },
   ) => void;
   readonly surfaceDeliveryEnabled: (
-    surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
+    surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
   ) => boolean;
   readonly syncSpawnedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord) => void;
@@ -571,15 +572,9 @@ export class DaemonHttpRouter {
   async parseJsonBody(req: Request): Promise<JsonRecord | Response> {
     // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
     const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
-    const contentLength = req.headers.get('content-length');
-    if (contentLength !== null && Number(contentLength) > MAX_JSON_BYTES) {
-      return Response.json({ error: 'Request body too large' }, { status: 413 });
-    }
     try {
-      const text = await req.text();
-      if (text.length > MAX_JSON_BYTES) {
-        return Response.json({ error: 'Request body too large' }, { status: 413 });
-      }
+      const text = await readTextBodyWithinLimit(req, MAX_JSON_BYTES);
+      if (text instanceof Response) return text;
       return this.parseJsonText(text);
     } catch {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
@@ -589,14 +584,8 @@ export class DaemonHttpRouter {
   async parseOptionalJsonBody(req: Request): Promise<JsonRecord | null | Response> {
     // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
     const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
-    const contentLength = req.headers.get('content-length');
-    if (contentLength !== null && Number(contentLength) > MAX_JSON_BYTES) {
-      return Response.json({ error: 'Request body too large' }, { status: 413 });
-    }
-    const raw = await req.text();
-    if (raw.length > MAX_JSON_BYTES) {
-      return Response.json({ error: 'Request body too large' }, { status: 413 });
-    }
+    const raw = await readTextBodyWithinLimit(req, MAX_JSON_BYTES);
+    if (raw instanceof Response) return raw;
     if (!raw.trim()) return null;
     return this.parseJsonText(raw);
   }
@@ -619,6 +608,7 @@ export class DaemonHttpRouter {
       | 'discord'
       | 'ntfy'
       | 'webhook'
+      | 'homeassistant'
       | 'telegram'
       | 'google-chat'
       | 'signal'

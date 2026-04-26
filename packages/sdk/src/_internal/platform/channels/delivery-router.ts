@@ -6,6 +6,7 @@ import type { ControlPlaneGateway } from '../control-plane/gateway.js';
 import {
   createDiscordDeliveryStrategy,
   createGoogleChatDeliveryStrategy,
+  createHomeAssistantDeliveryStrategy,
   createNtfyDeliveryStrategy,
   createSlackDeliveryStrategy,
   createTelegramDeliveryStrategy,
@@ -55,6 +56,7 @@ export function createDefaultChannelDeliveryStrategies(
     createDiscordDeliveryStrategy(serviceRegistry, configManager, artifactStore),
     createNtfyDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createWebControlPlaneDeliveryStrategy(configManager, artifactStore, getControlPlaneGateway),
+    createHomeAssistantDeliveryStrategy(configManager, serviceRegistry, artifactStore, secretsManager),
     createTelegramDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createGoogleChatDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createSignalDeliveryStrategy(configManager, serviceRegistry, artifactStore),

@@ -1,12 +1,9 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { readTextBodyWithinLimit, DEFAULT_MAX_REQUEST_BODY_BYTES } from '../utils/request-body.js';
 
-export const DEFAULT_WEBHOOK_MAX_BYTES = 1_000_000;
-
-function ignoreCancelError(): void {
-  // Best-effort cancellation only.
-}
+export const DEFAULT_WEBHOOK_MAX_BYTES = DEFAULT_MAX_REQUEST_BODY_BYTES;
 
 export function constantTimeEquals(expected: string, provided: string): boolean {
   if (!expected || !provided || expected.length !== provided.length) return false;
@@ -30,37 +27,7 @@ export function parseJsonRecord(rawBody: string): Record<string, unknown> | Resp
   }
 }
 
-export async function readTextBodyWithinLimit(
-  req: Request,
-  maxBytes = DEFAULT_WEBHOOK_MAX_BYTES,
-): Promise<string | Response> {
-  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
-  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-    return Response.json({ error: 'Payload too large' }, { status: 413 });
-  }
-
-  if (!req.body) return '';
-  const reader = req.body.getReader();
-  const decoder = new TextDecoder();
-  let total = 0;
-  let body = '';
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel('Payload too large').catch(ignoreCancelError);
-        return Response.json({ error: 'Payload too large' }, { status: 413 });
-      }
-      body += decoder.decode(value, { stream: true });
-    }
-    body += decoder.decode();
-    return body;
-  } finally {
-    reader.releaseLock();
-  }
-}
+export { readTextBodyWithinLimit };
 
 export function verifySha256HmacSignature(
   rawBody: string,

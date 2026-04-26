@@ -112,6 +112,7 @@ export interface DaemonApiRouteHandlers {
   getProvider(providerId: string): MaybeResponse;
   getProviderUsage(providerId: string): MaybeResponse;
   getSettings(): MaybeResponse;
+  getSecuritySettings(): MaybeResponse;
   getContinuity(): MaybeResponse;
   getWorktrees(): MaybeResponse;
   getIntelligence(): MaybeResponse;

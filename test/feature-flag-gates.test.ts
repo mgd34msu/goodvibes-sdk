@@ -29,6 +29,8 @@ import { createTelemetryProvider } from '../packages/sdk/src/_internal/platform/
 import { createRuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
 import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
 import { createTaskManager } from '../packages/sdk/src/_internal/platform/runtime/tasks/index.js';
+import { createFeatureFlagManager } from '../packages/sdk/src/_internal/platform/runtime/feature-flags/index.js';
+import { getSecuritySettingsReport } from '../packages/sdk/src/_internal/platform/runtime/security-settings.js';
 import { AgentOrchestrator } from '../packages/sdk/src/_internal/platform/agents/orchestrator.js';
 import { AgentMessageBus } from '../packages/sdk/src/_internal/platform/agents/message-bus.js';
 import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
@@ -338,6 +340,34 @@ describe('feature flag safe-default gates', () => {
     expect(result?.error).toMatch(/blocked/i);
   });
 
+  test('fetch-sanitization validates redirect targets before following', async () => {
+    const originalFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls++;
+      return new Response('', {
+        status: 302,
+        headers: { location: 'http://169.254.169.254/latest/meta-data/' },
+      });
+    }) as typeof fetch;
+
+    try {
+      const output = await executeFetchInput(
+        {
+          urls: [{ url: 'https://example.test/redirect' }],
+        },
+        { featureFlags: flags(['fetch-sanitization']) },
+      );
+
+      const result = output.results?.[0];
+      expect(calls).toBe(1);
+      expect(output.summary.failed).toBe(1);
+      expect(result?.error).toMatch(/redirect blocked/i);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('fetch-sanitization forces safe-text for unknown hosts requesting none', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async () =>
@@ -395,6 +425,17 @@ describe('feature flag safe-default gates', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  test('security settings report explains security-relevant disabled flags', () => {
+    const manager = createFeatureFlagManager();
+    const report = getSecuritySettingsReport(manager);
+    const fetchSetting = report.find((entry) => entry.key === 'featureFlags.fetch-sanitization');
+
+    expect(fetchSetting).toBeDefined();
+    expect(fetchSetting?.currentState).toBe('disabled');
+    expect(fetchSetting?.insecureWhen).toMatch(/SSRF-risk hosts/i);
+    expect(fetchSetting?.enablementRequirements.length).toBeGreaterThan(0);
   });
 
   test('shell-ast-normalization denies command substitution that baseline allows', async () => {

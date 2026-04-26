@@ -47,6 +47,17 @@ try {
 
 The parsed argument object is passed directly to your tool handler. If the tool was called with malformed arguments, your handler receives `{}`.
 
+All model-originated tool calls should pass through the shared tool execution boundary before a handler is invoked. That boundary applies permission checks, Pre/Post/Fail hooks, runtime tool events, and normalized error handling. TUI/orchestrator turns and companion remote chat use this shared path; embedders that provide a `ToolRegistry` without a `PermissionManager` to companion chat receive denied tool results instead of direct handler execution.
+
+Built-in batch tools also cap fanout to avoid accidental resource exhaustion:
+
+| Tool | Per-call item cap | Parallel cap |
+|---|---:|---:|
+| `fetch` | 20 URLs | 5 concurrent requests |
+| `exec` | 10 commands | 3 concurrent commands |
+| `find` | 20 queries | 5 concurrent queries |
+| `read` | 50 files | 8 concurrent reads |
+
 ---
 
 ## Why Silent Fallback Matters

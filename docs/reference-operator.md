@@ -1,10 +1,10 @@
 # Operator API Reference
 
-Generated from the synced GoodVibes operator contract for product version `0.25.10`.
+Generated from the synced GoodVibes operator contract for product version `0.25.11`.
 
 ## Summary
 
-- Methods: `223`
+- Methods: `224`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -2660,7 +2660,7 @@ Return local auth posture, users, and sessions.
       "items": {
         "type": "object",
         "properties": {
-          "token": {
+          "tokenFingerprint": {
             "type": "string"
           },
           "username": {
@@ -2671,7 +2671,7 @@ Return local auth posture, users, and sessions.
           }
         },
         "required": [
-          "token",
+          "tokenFingerprint",
           "username",
           "expiresAt"
         ],
@@ -3044,6 +3044,7 @@ Process automation jobs queued for the next heartbeat.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -3146,6 +3147,7 @@ Process automation jobs queued for the next heartbeat.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -3218,6 +3220,7 @@ Process automation jobs queued for the next heartbeat.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -3414,6 +3417,7 @@ Process automation jobs queued for the next heartbeat.
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -3529,6 +3533,7 @@ Process automation jobs queued for the next heartbeat.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -3720,6 +3725,7 @@ Process automation jobs queued for the next heartbeat.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -4368,6 +4374,7 @@ Create a durable automation job.
             "discord",
             "ntfy",
             "webhook",
+            "homeassistant",
             "telegram",
             "google-chat",
             "signal",
@@ -4462,6 +4469,7 @@ Create a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -4514,6 +4522,7 @@ Create a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -4827,6 +4836,7 @@ Create a durable automation job.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -5023,6 +5033,7 @@ Create a durable automation job.
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -5116,6 +5127,7 @@ Create a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -5168,6 +5180,7 @@ Create a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -5316,6 +5329,7 @@ Create a durable automation job.
             "discord",
             "ntfy",
             "webhook",
+            "homeassistant",
             "telegram",
             "google-chat",
             "signal",
@@ -5797,6 +5811,7 @@ Return automation jobs and recent runs.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -5993,6 +6008,7 @@ Return automation jobs and recent runs.
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -6086,6 +6102,7 @@ Return automation jobs and recent runs.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -6138,6 +6155,7 @@ Return automation jobs and recent runs.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -6286,6 +6304,7 @@ Return automation jobs and recent runs.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -6624,6 +6643,7 @@ Patch a durable automation job.
             "discord",
             "ntfy",
             "webhook",
+            "homeassistant",
             "telegram",
             "google-chat",
             "signal",
@@ -6718,6 +6738,7 @@ Patch a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -6770,6 +6791,7 @@ Patch a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -7080,6 +7102,7 @@ Patch a durable automation job.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -7276,6 +7299,7 @@ Patch a durable automation job.
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -7369,6 +7393,7 @@ Patch a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -7421,6 +7446,7 @@ Patch a durable automation job.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -7569,6 +7595,7 @@ Patch a durable automation job.
             "discord",
             "ntfy",
             "webhook",
+            "homeassistant",
             "telegram",
             "google-chat",
             "signal",
@@ -7976,6 +8003,7 @@ Cancel an active automation run.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -8078,6 +8106,7 @@ Cancel an active automation run.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -8150,6 +8179,7 @@ Cancel an active automation run.
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -8346,6 +8376,7 @@ Cancel an active automation run.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -8461,6 +8492,7 @@ Cancel an active automation run.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -8652,6 +8684,7 @@ Cancel an active automation run.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -8966,6 +8999,7 @@ Return a single automation run record.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -9068,6 +9102,7 @@ Return a single automation run record.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -9140,6 +9175,7 @@ Return a single automation run record.
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -9336,6 +9372,7 @@ Return a single automation run record.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -9451,6 +9488,7 @@ Return a single automation run record.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -9642,6 +9680,7 @@ Return a single automation run record.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -9883,6 +9922,7 @@ Return a single automation run record.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -10048,6 +10088,7 @@ Return automation run history.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -10150,6 +10191,7 @@ Return automation run history.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -10222,6 +10264,7 @@ Return automation run history.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -10418,6 +10461,7 @@ Return automation run history.
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -10533,6 +10577,7 @@ Return automation run history.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -10724,6 +10769,7 @@ Return automation run history.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -11039,6 +11085,7 @@ Retry a completed or failed automation run.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -11141,6 +11188,7 @@ Retry a completed or failed automation run.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -11213,6 +11261,7 @@ Retry a completed or failed automation run.
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -11409,6 +11458,7 @@ Retry a completed or failed automation run.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -11524,6 +11574,7 @@ Retry a completed or failed automation run.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -11715,6 +11766,7 @@ Retry a completed or failed automation run.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -12023,6 +12075,7 @@ Create a legacy schedule record.
             "discord",
             "ntfy",
             "webhook",
+            "homeassistant",
             "telegram",
             "google-chat",
             "signal",
@@ -12117,6 +12170,7 @@ Create a legacy schedule record.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -12169,6 +12223,7 @@ Create a legacy schedule record.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -12455,6 +12510,7 @@ Create a legacy schedule record.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -12651,6 +12707,7 @@ Create a legacy schedule record.
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -12744,6 +12801,7 @@ Create a legacy schedule record.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -12796,6 +12854,7 @@ Create a legacy schedule record.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -12944,6 +13003,7 @@ Create a legacy schedule record.
             "discord",
             "ntfy",
             "webhook",
+            "homeassistant",
             "telegram",
             "google-chat",
             "signal",
@@ -13425,6 +13485,7 @@ Return legacy schedule records.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -13621,6 +13682,7 @@ Return legacy schedule records.
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -13714,6 +13776,7 @@ Return legacy schedule records.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -13766,6 +13829,7 @@ Return legacy schedule records.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -13914,6 +13978,7 @@ Return legacy schedule records.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -14122,6 +14187,7 @@ Return legacy schedule records.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -14224,6 +14290,7 @@ Return legacy schedule records.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -14296,6 +14363,7 @@ Return legacy schedule records.
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -14492,6 +14560,7 @@ Return legacy schedule records.
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -14607,6 +14676,7 @@ Return legacy schedule records.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -14798,6 +14868,7 @@ Return legacy schedule records.
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -23905,6 +23976,7 @@ Return a single delivery record.
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -24066,6 +24138,7 @@ Return delivery records and integration snapshot data.
                   "discord",
                   "ntfy",
                   "webhook",
+                  "homeassistant",
                   "telegram",
                   "google-chat",
                   "signal",
@@ -39790,6 +39863,7 @@ Create or upsert a route binding.
         "discord",
         "ntfy",
         "webhook",
+        "homeassistant",
         "telegram",
         "google-chat",
         "signal",
@@ -40008,6 +40082,7 @@ Return configured route bindings.
               "discord",
               "ntfy",
               "webhook",
+              "homeassistant",
               "telegram",
               "google-chat",
               "signal",
@@ -40235,6 +40310,7 @@ Patch an existing route binding.
         "discord",
         "ntfy",
         "webhook",
+        "homeassistant",
         "telegram",
         "google-chat",
         "signal",
@@ -40411,6 +40487,7 @@ Return the route and binding integration snapshot.
               "discord",
               "ntfy",
               "webhook",
+              "homeassistant",
               "telegram",
               "google-chat",
               "signal",
@@ -47055,6 +47132,105 @@ Deliver a live steering message to the active agent for a shared session, option
 ```
 
 ### settings
+
+#### `security.settings`
+
+Return security-relevant settings, defaults, current state, and enablement tradeoffs.
+
+- Title: `Security Settings Report`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/security-settings`
+- Scopes: `read:settings`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "settings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "feature-flag",
+              "configuration"
+            ]
+          },
+          "defaultState": {
+            "type": "string"
+          },
+          "currentState": {
+            "type": "string"
+          },
+          "securityRelevant": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "insecureWhen": {
+            "type": "string"
+          },
+          "enablementEffect": {
+            "type": "string"
+          },
+          "enablementRequirements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "compatibilityNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "key",
+          "type",
+          "defaultState",
+          "currentState",
+          "securityRelevant",
+          "summary",
+          "insecureWhen",
+          "enablementEffect",
+          "enablementRequirements",
+          "compatibilityNotes"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "settings"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `settings.snapshot`
 

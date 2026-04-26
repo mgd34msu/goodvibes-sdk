@@ -174,7 +174,7 @@ export interface DaemonRouteContext {
   readonly parseJsonBody: (req: Request) => Promise<Record<string, unknown> | Response>;
   readonly parseOptionalJsonBody: (req: Request) => Promise<Record<string, unknown> | null | Response>;
   readonly parseJsonText: (rawBody: string) => Record<string, unknown> | Response;
-  readonly recordApiResponse: (req: Request, path: string, response: Response, clientKind?: 'web' | 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix' | 'daemon') => Response;
+  readonly recordApiResponse: (req: Request, path: string, response: Response, clientKind?: 'web' | 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix' | 'daemon') => Response;
   readonly queueSurfaceReplyFromBinding: (binding: import('@pellux/goodvibes-sdk/platform/automation/routes').AutomationRouteBinding | undefined, input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string; }) => void;
   readonly queueWebhookReply: (input: { readonly agentId: string; readonly task: string; readonly sessionId?: string; readonly routeId?: string; readonly callbackUrl?: string; readonly callbackCorrelationId?: string; readonly callbackSignature?: PendingSurfaceReply['callbackSignature']; }) => void;
   readonly parseSurfaceControlCommand: (text: string) => { readonly action: 'status' | 'cancel' | 'retry'; readonly id: string } | null;
@@ -184,7 +184,7 @@ export interface DaemonRouteContext {
   readonly syncSpawnedAgentTask: (record: import('../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../tools/agent/index.js').AgentRecord) => void;
   readonly findSchedule: (id: string) => AutomationJob | undefined;
-  readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
+  readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
   readonly pollPendingSurfaceReplies: () => Promise<void>;
   readonly deliverSurfaceProgress: (pending: PendingSurfaceReply, progress: string) => Promise<void>;
   readonly deliverSlackAgentReply: (pending: PendingSurfaceReply, message: string) => Promise<void>;

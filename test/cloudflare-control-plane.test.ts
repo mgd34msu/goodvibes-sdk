@@ -74,17 +74,19 @@ function makeCloudflareClient() {
       async get(params) {
         return { id: params.account_id, name: 'GoodVibes Test', type: 'standard' };
       },
+    },
+    user: {
       tokens: {
         async create(params) {
           calls.tokenCreates.push({ name: params.name, resources: params.policies[0]?.resources ?? {} });
           return { id: 'token-1', name: params.name, value: 'operational-token' };
         },
         async verify() {
-          return { id: 'token-1', status: 'active' };
+          return { id: 'user-token', status: 'active' };
         },
         permissionGroups: {
-          async get() {
-            return [
+          list() {
+            return items([
               { id: 'pg-workers', name: 'Workers Scripts Write', scopes: ['com.cloudflare.api.account'] },
               { id: 'pg-queues', name: 'Workers Queues Write', scopes: ['com.cloudflare.api.account'] },
               { id: 'pg-zone-read', name: 'Zone Read', scopes: ['com.cloudflare.api.account.zone'] },
@@ -95,22 +97,7 @@ function makeCloudflareClient() {
               { id: 'pg-access-apps', name: 'Access: Apps and Policies Write', scopes: ['com.cloudflare.api.account'] },
               { id: 'pg-access-tokens', name: 'Access: Service Tokens Write', scopes: ['com.cloudflare.api.account'] },
               { id: 'pg-secrets', name: 'Secrets Store Write', scopes: ['com.cloudflare.api.account'] },
-            ];
-          },
-          list() {
-            return items([]);
-          },
-        },
-      },
-    },
-    user: {
-      tokens: {
-        async verify() {
-          return { id: 'user-token', status: 'active' };
-        },
-        permissionGroups: {
-          list() {
-            return items([]);
+            ]);
           },
         },
       },
@@ -430,7 +417,7 @@ describe('CloudflareControlPlaneManager', () => {
 
     expect(result.components.workers).toBe(true);
     expect(result.components.queues).toBe(true);
-    expect(result.permissions.map((entry) => entry.permission)).toContain('Account API Tokens Write');
+    expect(result.permissions.map((entry) => entry.permission)).toContain('API Tokens Write');
     expect(result.permissions.map((entry) => entry.permission)).toContain('DNS Write');
     expect(result.permissions.map((entry) => entry.permission)).toContain('Workers KV Storage Write');
     expect(result.permissions.map((entry) => entry.permission)).toContain('Workers R2 Storage Write');

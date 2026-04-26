@@ -4,13 +4,9 @@ import type { SurfaceAdapterContext } from '../types.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { fetchWithTimeout } from '../../utils/fetch-with-timeout.js';
 import { resolveSecretInput, type SecretRefResolutionOptions } from '../../config/secret-refs.js';
+import { readTextBodyWithinLimit } from '../helpers.js';
 
 export async function handleSlackSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
-  if (contentLength > 1_000_000) {
-    return Response.json({ error: 'Payload too large' }, { status: 413 });
-  }
-
   const signingSecret =
     await context.serviceRegistry.resolveSecret('slack', 'signingSecret')
     ?? await resolveSlackConfigSecret(context, 'surfaces.slack.signingSecret')
@@ -22,7 +18,8 @@ export async function handleSlackSurfaceWebhook(req: Request, context: SurfaceAd
 
   const timestamp = req.headers.get('x-slack-request-timestamp') ?? '';
   const signature = req.headers.get('x-slack-signature') ?? '';
-  const rawBody = await req.text();
+  const rawBody = await readTextBodyWithinLimit(req);
+  if (rawBody instanceof Response) return rawBody;
 
   const slack = new SlackIntegration(
     await context.serviceRegistry.resolveSecret('slack', 'webhookUrl') ?? process.env.SLACK_WEBHOOK_URL,

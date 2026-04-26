@@ -41,6 +41,7 @@
 
 - [Daemon embedding](./daemon-embedding.md)
 - [Daemon batch processing](./daemon-batch-processing.md) — includes optional Cloudflare provisioning, token bootstrap, discovery, Workers, Queues, Tunnel, Access, DNS, KV, Durable Objects, Secrets Store, and R2
+- [Home Assistant integration](./homeassistant-integration.md)
 - [Voice and streaming TTS](./voice.md)
 
 ## Agentic Workflows

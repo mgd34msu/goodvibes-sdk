@@ -1,7 +1,7 @@
 # Roadmap-to-1.0 Status
 
 **Plan**: [`docs/roadmap-to-1.0.md`](../roadmap-to-1.0.md)
-**Current version**: 0.25.5
+**Current version**: 0.25.11
 **Current score**: pending recalibration after 0.23.x-0.25.x feature and hardening releases (last recorded: 9.0 / 10 at 0.21.36)
 **Last updated**: 2026-04-24 (0.25.x dependency-audit and ntfy hardening; 1.0 soak criteria need reset)
 
@@ -29,7 +29,7 @@
 | honest-runtime-posture | Honest runtime posture | 0.19.6 | **shipped** | no score effect (hygiene) | 0.19.6 | Stripped theater CI labels; runtime reporting now accurately reflects actual execution |
 | Wave M | Metadata / polish | 0.19.6 | **shipped** | no score effect (docs) | 0.19.6 | CONTRIBUTING.md CI gates, roadmap-status refresh, stale docs cleanup |
 | Wave D | Dependency audit + hardening | 0.25.1 | **shipped** | — | 0.25.1 | Root/package overrides now force fixed `ajv`, `fast-xml-parser`, `google-auth-library`, `lodash`, and `minimatch`; Bash LSP remains bundled through `vendor/bash-language-server`, patched to use `editorconfig@3.0.2`; the Vertex SDK transitive path was replaced; Verdaccio's `uuid@8` dry-run path is redirected to `vendor/uuid-cjs`. |
-| Wave 9 (soak) | Soak period | 0.21.0–0.25.5+ | **reset-needed** | — | 0.25.5 | Started 2026-04-18, but feature-bearing 0.23.x, 0.24.0, and 0.25.x releases landed after that. Owner sign-off pending and soak criteria need a fresh definition before 1.0.0. |
+| Wave 9 (soak) | Soak period | 0.21.0–0.25.11+ | **reset-needed** | — | 0.25.11 | Started 2026-04-18, but feature-bearing 0.23.x, 0.24.0, and 0.25.x releases landed after that. Owner sign-off pending and soak criteria need a fresh definition before 1.0.0. |
 | S-ι | Hardening gates | 0.19.8 / 0.20.x | **shipped (partial)** | 9.5 → 10.0 | 0.19.8 (Waves 5–8) | Waves 5–8 landed (hygiene, policy, verification, API-extractor/flake/no-todo). Remaining S-ι scope from `docs/roadmap-to-1.0.md`: mutation testing ≥85% kill rate, branch-coverage ≥95% on error paths, JSDoc `@throws` contract lint, public-surface file-size cap, `no-any-leak` lint. Score-effect withheld until full S-ι lands. |
 | 1.0.0 cut | Owner approval gate | 1.0.0 | **blocked on owner approval** | — | — | **Requires explicit owner approval. Not automatic.** |
 

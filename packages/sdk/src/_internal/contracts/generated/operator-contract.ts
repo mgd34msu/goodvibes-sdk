@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.25.10"
+    "version": "0.25.11"
   },
   "auth": {
     "modes": [
@@ -2822,7 +2822,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "items": {
                 "type": "object",
                 "properties": {
-                  "token": {
+                  "tokenFingerprint": {
                     "type": "string"
                   },
                   "username": {
@@ -2833,7 +2833,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   }
                 },
                 "required": [
-                  "token",
+                  "tokenFingerprint",
                   "username",
                   "expiresAt"
                 ],
@@ -3188,6 +3188,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -3290,6 +3291,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -3362,6 +3364,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -3558,6 +3561,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   "discord",
                                   "ntfy",
                                   "webhook",
+                                  "homeassistant",
                                   "telegram",
                                   "google-chat",
                                   "signal",
@@ -3673,6 +3677,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -3864,6 +3869,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -4512,6 +4518,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -4606,6 +4613,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -4658,6 +4666,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -4966,6 +4975,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -5162,6 +5172,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "discord",
                             "ntfy",
                             "webhook",
+                            "homeassistant",
                             "telegram",
                             "google-chat",
                             "signal",
@@ -5255,6 +5266,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -5307,6 +5319,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -5455,6 +5468,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -5933,6 +5947,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -6129,6 +6144,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   "discord",
                                   "ntfy",
                                   "webhook",
+                                  "homeassistant",
                                   "telegram",
                                   "google-chat",
                                   "signal",
@@ -6222,6 +6238,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -6274,6 +6291,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -6422,6 +6440,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -6764,6 +6783,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -6858,6 +6878,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -6910,6 +6931,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -7215,6 +7237,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -7411,6 +7434,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "discord",
                             "ntfy",
                             "webhook",
+                            "homeassistant",
                             "telegram",
                             "google-chat",
                             "signal",
@@ -7504,6 +7528,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -7556,6 +7581,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -7704,6 +7730,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -8104,6 +8131,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -8206,6 +8234,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -8278,6 +8307,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "discord",
                             "ntfy",
                             "webhook",
+                            "homeassistant",
                             "telegram",
                             "google-chat",
                             "signal",
@@ -8474,6 +8504,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -8589,6 +8620,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -8780,6 +8812,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -9090,6 +9123,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -9192,6 +9226,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -9264,6 +9299,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "discord",
                             "ntfy",
                             "webhook",
+                            "homeassistant",
                             "telegram",
                             "google-chat",
                             "signal",
@@ -9460,6 +9496,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -9575,6 +9612,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -9766,6 +9804,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -10007,6 +10046,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -10168,6 +10208,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -10270,6 +10311,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -10342,6 +10384,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -10538,6 +10581,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   "discord",
                                   "ntfy",
                                   "webhook",
+                                  "homeassistant",
                                   "telegram",
                                   "google-chat",
                                   "signal",
@@ -10653,6 +10697,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -10844,6 +10889,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -11155,6 +11201,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -11257,6 +11304,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -11329,6 +11377,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "discord",
                             "ntfy",
                             "webhook",
+                            "homeassistant",
                             "telegram",
                             "google-chat",
                             "signal",
@@ -11525,6 +11574,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -11640,6 +11690,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -11831,6 +11882,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -12140,6 +12192,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -12234,6 +12287,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -12286,6 +12340,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -12567,6 +12622,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -12763,6 +12819,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "discord",
                             "ntfy",
                             "webhook",
+                            "homeassistant",
                             "telegram",
                             "google-chat",
                             "signal",
@@ -12856,6 +12913,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -12908,6 +12966,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -13056,6 +13115,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "discord",
                     "ntfy",
                     "webhook",
+                    "homeassistant",
                     "telegram",
                     "google-chat",
                     "signal",
@@ -13522,6 +13582,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -13718,6 +13779,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   "discord",
                                   "ntfy",
                                   "webhook",
+                                  "homeassistant",
                                   "telegram",
                                   "google-chat",
                                   "signal",
@@ -13811,6 +13873,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -13863,6 +13926,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -14011,6 +14075,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -14219,6 +14284,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -14321,6 +14387,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -14393,6 +14460,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "discord",
                               "ntfy",
                               "webhook",
+                              "homeassistant",
                               "telegram",
                               "google-chat",
                               "signal",
@@ -14589,6 +14657,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                   "discord",
                                   "ntfy",
                                   "webhook",
+                                  "homeassistant",
                                   "telegram",
                                   "google-chat",
                                   "signal",
@@ -14704,6 +14773,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -14895,6 +14965,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "discord",
                                 "ntfy",
                                 "webhook",
+                                "homeassistant",
                                 "telegram",
                                 "google-chat",
                                 "signal",
@@ -23787,6 +23858,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "discord",
                         "ntfy",
                         "webhook",
+                        "homeassistant",
                         "telegram",
                         "google-chat",
                         "signal",
@@ -23947,6 +24019,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "discord",
                           "ntfy",
                           "webhook",
+                          "homeassistant",
                           "telegram",
                           "google-chat",
                           "signal",
@@ -39373,6 +39446,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -39590,6 +39664,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -39816,6 +39891,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "discord",
                 "ntfy",
                 "webhook",
+                "homeassistant",
                 "telegram",
                 "google-chat",
                 "signal",
@@ -39991,6 +40067,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "discord",
                       "ntfy",
                       "webhook",
+                      "homeassistant",
                       "telegram",
                       "google-chat",
                       "signal",
@@ -46546,6 +46623,101 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "input",
             "mode",
             "agentId"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "security.settings",
+        "title": "Security Settings Report",
+        "description": "Return security-relevant settings, defaults, current state, and enablement tradeoffs.",
+        "category": "settings",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:settings"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/security-settings"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "settings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "feature-flag",
+                      "configuration"
+                    ]
+                  },
+                  "defaultState": {
+                    "type": "string"
+                  },
+                  "currentState": {
+                    "type": "string"
+                  },
+                  "securityRelevant": {
+                    "type": "boolean"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "insecureWhen": {
+                    "type": "string"
+                  },
+                  "enablementEffect": {
+                    "type": "string"
+                  },
+                  "enablementRequirements": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "compatibilityNotes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "type",
+                  "defaultState",
+                  "currentState",
+                  "securityRelevant",
+                  "summary",
+                  "insecureWhen",
+                  "enablementEffect",
+                  "enablementRequirements",
+                  "compatibilityNotes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "settings"
           ],
           "additionalProperties": false
         },
@@ -54981,10 +55153,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 223,
-      "typedInputs": 223,
+      "methods": 224,
+      "typedInputs": 224,
       "genericInputs": 0,
-      "typedOutputs": 223,
+      "typedOutputs": 224,
       "genericOutputs": 0
     },
     "eventCoverage": {

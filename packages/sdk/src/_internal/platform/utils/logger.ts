@@ -7,6 +7,8 @@ import { join } from 'path';
 const LOG_BUFFER_MAX = 10;
 /** Flush interval in milliseconds when buffer is below max. */
 const LOG_FLUSH_INTERVAL_MS = 100;
+const REDACTED = '[REDACTED]';
+const SENSITIVE_KEY_PATTERN = /(authorization|api[-_]?key|token|password|passwd|secret|credential|cookie|set-cookie)/i;
 
 /**
  * ActivityLogger — Persistent debug logger for GoodVibes.
@@ -34,6 +36,7 @@ class ActivityLogger {
   private scheduleFlush(): void {
     if (this.flushTimer !== null) return;
     this.flushTimer = setTimeout(() => this.flush(), LOG_FLUSH_INTERVAL_MS);
+    this.flushTimer.unref?.();
   }
 
   private flush(): void {
@@ -53,7 +56,7 @@ class ActivityLogger {
     const timestamp = new Date().toISOString();
     let entry = `[${timestamp}] [${level}] ${message}\n`;
     if (data) {
-      entry += '```json\n' + JSON.stringify(data, null, 2) + '\n```\n';
+      entry += '```json\n' + JSON.stringify(redactLogData(data), null, 2) + '\n```\n';
     }
     this.buffer.push(entry);
     if (this.buffer.length >= LOG_BUFFER_MAX) {
@@ -78,4 +81,18 @@ export const logger = new ActivityLogger();
 
 export function configureActivityLogger(logDir: string): void {
   logger.configure(logDir);
+}
+
+function redactLogData(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  if (seen.has(value)) return '[Circular]';
+  seen.add(value);
+  if (Array.isArray(value)) {
+    return value.map((item) => redactLogData(item, seen));
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    out[key] = SENSITIVE_KEY_PATTERN.test(key) ? REDACTED : redactLogData(nested, seen);
+  }
+  return out;
 }

@@ -8,6 +8,10 @@ import {
   CHANNEL_SETUP_VERSION,
   DEFAULT_SECRET_BACKENDS,
 } from './shared.js';
+import {
+  HOME_ASSISTANT_DEFAULT_EVENT_TYPE,
+  HOME_ASSISTANT_WEBHOOK_PATH,
+} from './homeassistant.js';
 
 export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSchema {
   switch (surface) {
@@ -176,6 +180,51 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
           'Optionally configure a shared secret for callback signing and verification.',
         ],
         metadata: {},
+      };
+    case 'homeassistant':
+      return {
+        surface,
+        version: CHANNEL_SETUP_VERSION,
+        label: 'Home Assistant',
+        setupMode: 'bridge',
+        description: 'Home Assistant is a daemon/device surface with signed inbound callbacks, daemon event delivery, and Home Assistant REST-backed tools.',
+        fields: [
+          setupField('enabled', 'Enabled', 'boolean', false, { configKey: 'surfaces.homeassistant.enabled', defaultValue: false }),
+          setupField('instanceUrl', 'Instance URL', 'url', false, { configKey: 'surfaces.homeassistant.instanceUrl', placeholder: 'http://homeassistant.local:8123' }),
+          setupField('accessToken', 'Long-lived access token', 'secret', false, { configKey: 'surfaces.homeassistant.accessToken', secretTargetId: 'primary' }),
+          setupField('webhookSecret', 'Webhook secret', 'secret', true, { configKey: 'surfaces.homeassistant.webhookSecret', secretTargetId: 'signingSecret' }),
+          setupField('defaultConversationId', 'Default conversation id', 'string', false, { configKey: 'surfaces.homeassistant.defaultConversationId', defaultValue: 'goodvibes' }),
+          setupField('deviceId', 'Device id', 'string', false, { configKey: 'surfaces.homeassistant.deviceId', defaultValue: 'goodvibes-daemon' }),
+          setupField('deviceName', 'Device name', 'string', false, { configKey: 'surfaces.homeassistant.deviceName', defaultValue: 'GoodVibes Daemon' }),
+          setupField('eventType', 'Event type', 'string', false, { configKey: 'surfaces.homeassistant.eventType', defaultValue: HOME_ASSISTANT_DEFAULT_EVENT_TYPE }),
+        ],
+        secretTargets: [
+          secretTarget(surface, 'primary', 'Long-lived access token', false, 'Used by GoodVibes to read Home Assistant states, call services, render templates, and fire events.', {
+            serviceName: 'homeassistant',
+            serviceField: 'primary',
+            envKeys: ['HOMEASSISTANT_ACCESS_TOKEN', 'HOME_ASSISTANT_ACCESS_TOKEN', 'HA_ACCESS_TOKEN'],
+            configKeys: ['surfaces.homeassistant.accessToken'],
+          }),
+          secretTarget(surface, 'signingSecret', 'Webhook secret', true, 'Used to verify Home Assistant-originated callbacks before daemon auth is evaluated.', {
+            serviceName: 'homeassistant',
+            serviceField: 'signingSecret',
+            envKeys: ['HOMEASSISTANT_WEBHOOK_SECRET', 'HOME_ASSISTANT_WEBHOOK_SECRET', 'HA_GOODVIBES_WEBHOOK_SECRET'],
+            configKeys: ['surfaces.homeassistant.webhookSecret'],
+          }),
+        ],
+        externalSteps: [
+          'Create the Home Assistant custom integration with config_flow enabled and a single config entry for this daemon.',
+          'Configure the integration with the daemon base URL and operator bearer token.',
+          `Send Home Assistant-originated prompts to ${HOME_ASSISTANT_WEBHOOK_PATH} with x-goodvibes-homeassistant-secret or Authorization: Bearer <webhookSecret>.`,
+          'Subscribe the Home Assistant integration to the configured GoodVibes event type to update entities and service-call responses.',
+          'Use the channel tool catalog endpoints to expose daemon tools and agent tools as Home Assistant service actions.',
+        ],
+        metadata: {
+          protocolVersion: 1,
+          webhookPath: HOME_ASSISTANT_WEBHOOK_PATH,
+          eventTypeDefault: HOME_ASSISTANT_DEFAULT_EVENT_TYPE,
+          manifestAction: 'homeassistant-manifest',
+        },
       };
     case 'telegram':
       return {

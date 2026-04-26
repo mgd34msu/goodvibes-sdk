@@ -12,8 +12,12 @@ function readString(value: unknown): string | undefined {
 async function readBody(req: Request): Promise<Record<string, unknown> | Response | null> {
   const contentType = req.headers.get('content-type') ?? '';
   if (contentType.includes('multipart/form-data')) {
-    const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
-    if (Number.isFinite(contentLength) && contentLength > 1_000_000) {
+    const contentLengthHeader = req.headers.get('content-length');
+    const contentLength = parseInt(contentLengthHeader ?? '', 10);
+    if (!contentLengthHeader || !Number.isFinite(contentLength)) {
+      return Response.json({ error: 'Content-Length required for multipart payloads' }, { status: 411 });
+    }
+    if (contentLength > 1_000_000) {
       return Response.json({ error: 'Payload too large' }, { status: 413 });
     }
     const form = await req.formData().catch(() => null);

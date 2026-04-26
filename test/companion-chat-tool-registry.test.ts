@@ -9,6 +9,8 @@
  * TR3: Tool execution errors are published as isError=true tool_results.
  * TR4: When no toolRegistry is provided, tool_call chunks are published
  *      as events but the registry is not called (graceful degradation).
+ * TR5: Remote chat forwards daemon tool definitions to the provider and feeds
+ *      tool results back into a follow-up provider call before completing.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -20,6 +22,7 @@ import type {
 } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
 import { ToolRegistry } from '../packages/sdk/src/_internal/platform/tools/registry.js';
 import type { ToolResult } from '../packages/sdk/src/_internal/platform/types/tools.js';
+import type { ProviderMessage } from '../packages/sdk/src/_internal/platform/providers/interface.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,14 +66,20 @@ function makeToolCallProvider(
   toolCallId = 'call-123',
   toolInput: Record<string, unknown> = { x: 1 },
 ): CompanionLLMProvider {
+  let calls = 0;
   return {
     async *chatStream() {
-      yield {
-        type: 'tool_call',
-        toolCallId,
-        toolName,
-        toolInput,
-      } satisfies CompanionProviderChunk;
+      calls++;
+      if (calls === 1) {
+        yield {
+          type: 'tool_call',
+          toolCallId,
+          toolName,
+          toolInput,
+        } satisfies CompanionProviderChunk;
+      } else {
+        yield { type: 'text_delta', delta: 'done' } satisfies CompanionProviderChunk;
+      }
       yield { type: 'done' } satisfies CompanionProviderChunk;
     },
   };
@@ -92,6 +101,12 @@ function makeRecordingPublisher(): { publisher: CompanionChatEventPublisher; eve
   return { publisher, events };
 }
 
+function allowToolPermission() {
+  return {
+    check: async () => true,
+  } as never;
+}
+
 // ---------------------------------------------------------------------------
 // TR1: Registry.execute() called with expected args
 // ---------------------------------------------------------------------------
@@ -105,6 +120,7 @@ describe('TR1: ToolRegistry.execute() called when LLM emits tool_call', () => {
       provider: makeToolCallProvider('mock_tool', 'call-xyz', { query: 'hello' }),
       eventPublisher: publisher,
       toolRegistry: registry,
+      permissionManager: allowToolPermission(),
       gcIntervalMs: 999_999,
       persist: false,
       rateLimiter: false,
@@ -136,6 +152,7 @@ describe('TR2: turn.tool_result event published after tool executes', () => {
       provider: makeToolCallProvider('mock_tool', 'call-abc', { n: 42 }),
       eventPublisher: publisher,
       toolRegistry: registry,
+      permissionManager: allowToolPermission(),
       gcIntervalMs: 999_999,
       persist: false,
       rateLimiter: false,
@@ -180,6 +197,7 @@ describe('TR3: tool execution error published as isError=true', () => {
       provider: makeToolCallProvider('mock_tool', 'call-err', {}),
       eventPublisher: publisher,
       toolRegistry: registry,
+      permissionManager: allowToolPermission(),
       gcIntervalMs: 999_999,
       persist: false,
       rateLimiter: false,
@@ -233,6 +251,73 @@ describe('TR4: no toolRegistry — tool_call event published, graceful degradati
     // No tool_result event should have been emitted (no registry to call)
     const toolResultEvents = events.filter((e) => e.event === 'companion-chat.turn.tool_result');
     expect(toolResultEvents.length).toBe(0);
+
+    manager.dispose();
+  });
+});
+
+describe('TR5: companion remote chat advertises tools and loops over tool results', () => {
+  test('provider receives tool definitions, tool result history, and returns final answer', async () => {
+    const { registry } = makeMockRegistry('tool-result-value');
+    const { publisher, events } = makeRecordingPublisher();
+    const observed: Array<{
+      readonly messages: readonly ProviderMessage[];
+      readonly toolNames: readonly string[];
+    }> = [];
+
+    const provider: CompanionLLMProvider = {
+      async *chatStream(messages, options): AsyncIterable<CompanionProviderChunk> {
+        observed.push({
+          messages,
+          toolNames: (options.tools ?? []).map((tool) => tool.name),
+        });
+
+        if (observed.length === 1) {
+          yield {
+            type: 'tool_call',
+            toolCallId: 'call-loop',
+            toolName: 'mock_tool',
+            toolInput: { query: 'from remote session' },
+          };
+          yield { type: 'done' };
+          return;
+        }
+
+        yield { type: 'text_delta', delta: 'Final answer after tool result.' };
+        yield { type: 'done' };
+      },
+    };
+
+    const manager = new CompanionChatManager({
+      provider,
+      eventPublisher: publisher,
+      toolRegistry: registry,
+      permissionManager: allowToolPermission(),
+      gcIntervalMs: 999_999,
+      persist: false,
+      rateLimiter: false,
+    });
+
+    const session = manager.createSession();
+    const reply = await manager.postMessageAndWaitForReply(
+      session.id,
+      'use the daemon tool',
+      '',
+      { timeoutMs: 1_000 },
+    );
+
+    expect(reply.error).toBeUndefined();
+    expect(reply.response).toBe('Final answer after tool result.');
+    expect(observed.length).toBe(2);
+    expect(observed[0]!.toolNames).toContain('mock_tool');
+    expect(observed[1]!.messages.some((message) => (
+      message.role === 'tool'
+      && message.callId === 'call-loop'
+      && message.content === 'tool-result-value'
+    ))).toBe(true);
+    expect(events.map((event) => event.event)).toContain('companion-chat.turn.tool_call');
+    expect(events.map((event) => event.event)).toContain('companion-chat.turn.tool_result');
+    expect(events.map((event) => event.event)).toContain('companion-chat.turn.completed');
 
     manager.dispose();
   });

@@ -2,13 +2,9 @@ import { logger } from '../../utils/logger.js';
 import { DiscordIntegration, DiscordInteractionResponseType, DiscordInteractionType } from '../../integrations/index.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { readTextBodyWithinLimit } from '../helpers.js';
 
 export async function handleDiscordSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
-  if (contentLength > 1_000_000) {
-    return Response.json({ error: 'Payload too large' }, { status: 413 });
-  }
-
   const publicKey =
     await context.serviceRegistry.resolveSecret('discord', 'publicKey')
     ?? process.env.DISCORD_PUBLIC_KEY;
@@ -19,7 +15,8 @@ export async function handleDiscordSurfaceWebhook(req: Request, context: Surface
 
   const signature = req.headers.get('x-signature-ed25519') ?? '';
   const timestamp = req.headers.get('x-signature-timestamp') ?? '';
-  const rawBody = await req.text();
+  const rawBody = await readTextBodyWithinLimit(req);
+  if (rawBody instanceof Response) return rawBody;
 
   const discord = new DiscordIntegration(
     await context.serviceRegistry.resolveSecret('discord', 'webhookUrl') ?? process.env.DISCORD_WEBHOOK_URL,

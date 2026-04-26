@@ -20,6 +20,7 @@ import { requirePortAvailable } from './port-check.js';
 import { resolveHostBinding } from './host-resolver.js';
 import { createHostModeRestartWatcher } from './host-mode-watcher.js';
 import { RateLimiter } from './http/rate-limiter.js';
+import { readTextBodyWithinLimit } from '../utils/request-body.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -307,15 +308,9 @@ export class HttpListener {
   private async parseJsonBody(req: Request): Promise<Record<string, unknown> | Response> {
     // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
     const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
-    const contentLength = req.headers.get('content-length');
-    if (contentLength !== null && Number(contentLength) > MAX_JSON_BYTES) {
-      return Response.json({ error: 'Request body too large' }, { status: 413 });
-    }
     try {
-      const text = await req.text();
-      if (text.length > MAX_JSON_BYTES) {
-        return Response.json({ error: 'Request body too large' }, { status: 413 });
-      }
+      const text = await readTextBodyWithinLimit(req, MAX_JSON_BYTES);
+      if (text instanceof Response) return text;
       return JSON.parse(text) as Record<string, unknown>;
     } catch {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });

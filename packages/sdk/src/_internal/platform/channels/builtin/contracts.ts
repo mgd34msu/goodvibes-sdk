@@ -185,6 +185,15 @@ export async function getBuiltinDoctorReport(
   if (surface === 'matrix' && !surfaces.matrix.homeserverUrl) {
     pushCheck('homeserver-url', 'Homeserver URL', 'fail', 'Matrix requires a homeserver URL.', 'setup');
   }
+  if (surface === 'homeassistant' && !surfaces.homeassistant.webhookSecret) {
+    pushCheck('webhook-secret', 'Webhook secret', 'fail', 'Home Assistant ingress requires a webhook secret because webhook routes are evaluated before daemon bearer auth.', 'setup');
+  }
+  if (surface === 'homeassistant' && !surfaces.homeassistant.instanceUrl) {
+    pushCheck('instance-url', 'Instance URL', 'warn', 'Home Assistant REST-backed tools require an instance URL; daemon-only prompt ingress can work without one.', 'setup');
+  }
+  if (surface === 'homeassistant' && !surfaces.homeassistant.accessToken) {
+    pushCheck('access-token', 'Long-lived access token', 'warn', 'Home Assistant state, service, template, and event-delivery tools require an access token.', 'setup');
+  }
 
   const failures = checks.filter((check) => check.status === 'fail').length;
   const warnings = checks.filter((check) => check.status === 'warn').length;

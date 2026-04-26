@@ -18,6 +18,8 @@ import { checkRecoveryFile, readLastSessionPointer, type RecoveryFileInfo } from
 import { listPersistedWorktreeMeta, summarizeWorktreeOwnership, type ManagedWorktreeMeta, type WorktreeOwnershipSummary } from '../worktree/registry.js';
 import { inspectInboundTls, inspectOutboundTls } from '../network/index.js';
 import type { ManagedRollbackRecord, SettingsConflictRecord, StagedManagedBundle } from '../settings/control-plane-store.js';
+import type { FeatureFlagManager } from '../feature-flags/index.js';
+import { getSecuritySettingsReport, type SecuritySettingReport } from '../security-settings.js';
 
 export interface IntegrationHelpersContext {
   readonly workingDirectory: string;
@@ -25,6 +27,7 @@ export interface IntegrationHelpersContext {
   readonly runtimeStore: RuntimeStore;
   readonly runtimeBus: RuntimeEventBus;
   readonly configManager?: ConfigManager;
+  readonly featureFlags?: FeatureFlagManager;
   readonly getConversationTitle?: () => string | undefined;
   readonly automationManager: AutomationManager;
   readonly approvalBroker: ApprovalBroker;
@@ -518,6 +521,10 @@ export class IntegrationHelperService {
       stagedManagedBundle: snapshot.stagedManagedBundle,
       rollbackHistory: snapshot.rollbackHistory,
     };
+  }
+
+  getSecuritySettingsReport(): readonly SecuritySettingReport[] {
+    return getSecuritySettingsReport(this.context.featureFlags);
   }
 
   getLocalAuthSnapshot(): Record<string, unknown> {

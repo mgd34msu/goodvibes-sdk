@@ -2,6 +2,7 @@ export * from './types.js';
 export { handleSlackSurfacePayload, handleSlackSurfaceWebhook } from './slack/index.js';
 export { handleDiscordGatewayDispatchPayload, handleDiscordInteractionPayload, handleDiscordSurfaceWebhook } from './discord/index.js';
 export { handleNtfySurfacePayload, handleNtfySurfaceWebhook } from './ntfy/index.js';
+export { handleHomeAssistantSurfaceWebhook } from './homeassistant/index.js';
 export { handleTelegramSurfaceWebhook } from './telegram/index.js';
 export { handleGoogleChatSurfaceWebhook } from './google-chat/index.js';
 export { handleSignalSurfaceWebhook } from './signal/index.js';

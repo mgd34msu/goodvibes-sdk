@@ -122,9 +122,11 @@ Secrets are stored as `goodvibes://secrets/...` references when the provisioning
 Onboarding clients can either collect a manually-created operational Cloudflare API token or use the SDK bootstrap flow:
 
 1. Call `GET /api/cloudflare/token/requirements` or `POST /api/cloudflare/token/requirements` with the desired `components`.
-2. Show the returned permission list to the user and ask them to create a temporary bootstrap token with `Account API Tokens Write` plus the listed operational permissions.
+2. Ask the user to create a temporary user-owned bootstrap token from Cloudflare's **Create additional tokens** API token template, or with `User > API Tokens Write`.
 3. Send that temporary token to `POST /api/cloudflare/token/create` as `bootstrapToken`.
-4. The SDK creates a narrower operational token, stores it as `goodvibes://secrets/goodvibes/CLOUDFLARE_API_TOKEN` when `storeApiToken` is not `false`, and never persists the bootstrap token.
+4. The SDK uses Cloudflare's `/user/tokens` API to create a narrower operational user token with the returned GoodVibes permission list, stores it as `goodvibes://secrets/goodvibes/CLOUDFLARE_API_TOKEN` when `storeApiToken` is not `false`, and never persists the bootstrap token.
+
+The returned permission list describes the operational token the SDK will create. It is not a list of permissions to add to the temporary bootstrap token. If DNS automation should be scoped to one zone, pass `zoneId` during token creation; otherwise the SDK may create a broader zone-scoped operational token so later provisioning can discover/select the zone.
 
 The SDK resolves Cloudflare permission groups dynamically through the official Cloudflare TypeScript SDK. If Cloudflare returns account-specific permission names that do not match the SDK candidates, token creation fails with the missing permission names so the client can guide the user to create the operational token manually.
 
@@ -203,7 +205,7 @@ Manual Worker deployments can still use that entry point, but SDK provisioning u
 - Run scheduled events that call `/api/batch/tick`.
 - Consume Cloudflare Queue messages and retry failures so Cloudflare dead-letter queues can capture exhausted messages.
 
-When `GOODVIBES_WORKER_TOKEN` or `workerAuthToken` is configured, every Worker route except `/health` and `/batch/health` requires `Authorization: Bearer <token>`.
+Every Worker route except `/health` and `/batch/health` requires `Authorization: Bearer <token>` by default. Set the token with the Worker secret `GOODVIBES_WORKER_TOKEN` or `createGoodVibesCloudflareWorker({ workerAuthToken })`. The SDK provisioning flow generates and installs `GOODVIBES_WORKER_TOKEN` automatically. Manual deployments that intentionally put the Worker behind another trusted auth layer can pass `allowUnauthenticated: true`, but that is an explicit opt-out.
 
 By default, the Worker does not queue full prompt/job payloads. Queue messages should be small signals, not prompt archives or secrets. This keeps usage free-tier friendly and avoids putting sensitive prompt bodies into Cloudflare Queues. Full job payload queueing requires `createGoodVibesCloudflareWorker({ queueJobPayloads: true })`.
 

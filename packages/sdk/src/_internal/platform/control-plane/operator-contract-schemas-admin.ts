@@ -19,10 +19,10 @@ export const LOCAL_AUTH_USER_SCHEMA = objectSchema({
 }, ['username', 'roles']);
 
 const LOCAL_AUTH_SESSION_SCHEMA = objectSchema({
-  token: STRING_SCHEMA,
+  tokenFingerprint: STRING_SCHEMA,
   username: STRING_SCHEMA,
   expiresAt: NUMBER_SCHEMA,
-}, ['token', 'username', 'expiresAt']);
+}, ['tokenFingerprint', 'username', 'expiresAt']);
 
 export const LOCAL_AUTH_STATUS_SCHEMA = objectSchema({
   userStorePath: STRING_SCHEMA,
@@ -115,6 +115,7 @@ const AUTOMATION_SURFACE_KIND_SCHEMA = enumSchema([
   'discord',
   'ntfy',
   'webhook',
+  'homeassistant',
   'telegram',
   'google-chat',
   'signal',

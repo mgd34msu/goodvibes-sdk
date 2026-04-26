@@ -33,6 +33,8 @@ export function surfaceFeatureGateId(surface: string): string | null {
       return 'ntfy-surface';
     case 'webhook':
       return 'webhook-surface';
+    case 'homeassistant':
+      return 'homeassistant-surface';
     default:
       return null;
   }

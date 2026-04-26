@@ -17,6 +17,7 @@ import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 import { toRecord } from '../../utils/record-coerce.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
 
 export interface FetchRuntimeDeps {
   readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null;
@@ -30,6 +31,9 @@ interface CacheEntry {
 }
 
 const MAX_CACHE_SIZE = 500;
+const MAX_FETCH_URLS = 20;
+const MAX_PARALLEL_FETCHES = 5;
+const MAX_REDIRECTS = 10;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -69,6 +73,22 @@ export class FetchRuntimeService {
     const rateLimitMs = input.rate_limit_ms ?? 0;
     const maxContentLength = input.max_content_length;
 
+    if (input.urls.length > MAX_FETCH_URLS) {
+      return {
+        success: false,
+        summary: {
+          total: input.urls.length,
+          succeeded: 0,
+          failed: input.urls.length,
+          total_ms: 0,
+        },
+        results: [{
+          url: input.urls[0]?.url ?? '',
+          error: `Too many URLs: maximum ${MAX_FETCH_URLS} per fetch call`,
+        }],
+      };
+    }
+
     const sanitizeMode = resolveSanitizeMode(input.sanitize_mode);
     const trustTierConfig: TrustTierConfig = {
       trustedHosts: input.trusted_hosts,
@@ -92,7 +112,11 @@ export class FetchRuntimeService {
       if (rateLimitMs > 0) {
         logger.debug('fetch tool: rate_limit_ms is ignored in parallel mode; set parallel: false to enforce rate limiting');
       }
-      results = await Promise.all(input.urls.map((urlInput) => fetchOne(urlInput, fetchOpts, this)));
+      results = await mapWithConcurrency(
+        input.urls,
+        MAX_PARALLEL_FETCHES,
+        (urlInput) => fetchOne(urlInput, fetchOpts, this),
+      );
     } else {
       results = [];
       for (let i = 0; i < input.urls.length; i++) {
@@ -212,22 +236,115 @@ async function fetchOneRaw(
   method: string,
   body: string | FormData | undefined,
   effectiveUrl: string,
+  trustTierConfig: TrustTierConfig,
+  sanitizationEnabled: boolean,
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
   try {
-    const response = await instrumentedFetch(effectiveUrl, {
-      method,
-      headers: Object.keys(headers).length > 0 ? (headers as HeadersInit) : undefined,
-      body,
-      signal: controller.signal,
-    });
+    const response = sanitizationEnabled
+      ? await fetchWithValidatedRedirects({
+          url: effectiveUrl,
+          method,
+          headers,
+          body,
+          signal: controller.signal,
+          trustTierConfig,
+        })
+      : await instrumentedFetch(effectiveUrl, {
+          method,
+          headers: Object.keys(headers).length > 0 ? (headers as HeadersInit) : undefined,
+          body,
+          signal: controller.signal,
+        });
     clearTimeout(timer);
     return response;
   } catch (err) {
     clearTimeout(timer);
     throw err;
   }
+}
+
+async function fetchWithValidatedRedirects(input: {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: string | FormData | undefined;
+  signal: AbortSignal;
+  trustTierConfig: TrustTierConfig;
+}): Promise<Response> {
+  let currentUrl = input.url;
+  let currentMethod = input.method;
+  let currentBody = input.body;
+  let currentHeaders = { ...input.headers };
+
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
+    const response = await instrumentedFetch(currentUrl, {
+      method: currentMethod,
+      headers: Object.keys(currentHeaders).length > 0 ? (currentHeaders as HeadersInit) : undefined,
+      body: currentBody,
+      signal: input.signal,
+      redirect: 'manual',
+    });
+
+    if (!isRedirectStatus(response.status)) return response;
+
+    const location = response.headers.get('location');
+    if (!location) return response;
+    if (redirectCount === MAX_REDIRECTS) {
+      throw new Error(`Too many redirects after ${MAX_REDIRECTS} hops`);
+    }
+
+    const nextUrl = new URL(location, currentUrl).toString();
+    const nextHost = extractHostname(nextUrl);
+    if (nextHost !== null) {
+      const trustResult = classifyHostTrustTier(nextHost, input.trustTierConfig);
+      emitHostTrustTier(nextHost, nextUrl, trustResult);
+      if (trustResult.tier === 'blocked') {
+        if (trustResult.isSsrf) emitSsrfDeny(nextHost, nextUrl, trustResult.reason);
+        throw new Error(`Redirect blocked: ${trustResult.reason}`);
+      }
+    }
+
+    if (shouldRewriteRedirectToGet(response.status, currentMethod)) {
+      currentMethod = 'GET';
+      currentBody = undefined;
+      currentHeaders = removeContentHeaders(currentHeaders);
+    }
+    if (new URL(nextUrl).origin !== new URL(currentUrl).origin) {
+      currentHeaders = removeCredentialHeaders(currentHeaders);
+    }
+    currentUrl = nextUrl;
+  }
+
+  throw new Error(`Too many redirects after ${MAX_REDIRECTS} hops`);
+}
+
+function isRedirectStatus(status: number): boolean {
+  return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
+}
+
+function shouldRewriteRedirectToGet(status: number, method: string): boolean {
+  const upper = method.toUpperCase();
+  return status === 303 || ((status === 301 || status === 302) && upper === 'POST');
+}
+
+function removeContentHeaders(headers: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => {
+      const normalized = key.toLowerCase();
+      return normalized !== 'content-type' && normalized !== 'content-length';
+    }),
+  );
+}
+
+function removeCredentialHeaders(headers: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => {
+      const normalized = key.toLowerCase();
+      return normalized !== 'authorization' && normalized !== 'cookie' && normalized !== 'proxy-authorization';
+    }),
+  );
 }
 
 function prepareFetchHeaders(urlInput: FetchUrlInput): Record<string, string> {
@@ -353,7 +470,15 @@ async function fetchOne(
   const startTime = performance.now();
 
   try {
-    let response = await fetchOneRaw(urlInput, headers, method, requestBody, effectiveUrl);
+    let response = await fetchOneRaw(
+      urlInput,
+      headers,
+      method,
+      requestBody,
+      effectiveUrl,
+      trustTierConfig,
+      sanitizationEnabled,
+    );
 
     const retryOnAuth = urlInput.retry_on_auth ?? (urlInput.service !== undefined);
     if (response.status === 401 && retryOnAuth && urlInput.service && !(requestBody instanceof FormData)) {
@@ -361,23 +486,25 @@ async function fetchOne(
       if (refreshedHeaders) {
         const retryHeaders = { ...headers };
         Object.assign(retryHeaders, refreshedHeaders);
-        response = await fetchOneRaw(urlInput, retryHeaders, method, requestBody, effectiveUrl);
+        response = await fetchOneRaw(
+          urlInput,
+          retryHeaders,
+          method,
+          requestBody,
+          effectiveUrl,
+          trustTierConfig,
+          sanitizationEnabled,
+        );
       }
     }
 
     const durationMs = Math.round(performance.now() - startTime);
     let contentType = response.headers.get('content-type') ?? '';
-    let rawBody = await response.text();
+    const bodyResult = await readResponseText(response, effectiveMaxContent);
+    let rawBody = bodyResult.text;
     contentType = sniffContentType(contentType, rawBody);
 
-    let truncated = false;
-    if (effectiveMaxContent !== undefined) {
-      const buf = Buffer.from(rawBody, 'utf-8');
-      if (buf.length > effectiveMaxContent) {
-        rawBody = buf.subarray(0, effectiveMaxContent).toString('utf-8');
-        truncated = true;
-      }
-    }
+    const truncated = bodyResult.truncated;
 
     const byteSize = Buffer.byteLength(rawBody, 'utf-8');
     const result: FetchUrlResult = buildFetchResultBase(urlInput, response, durationMs);
@@ -447,6 +574,46 @@ async function fetchOne(
         : summarizeError(err);
     logger.debug('fetch tool: request failed', { url: urlInput.url, error: message });
     return { url: urlInput.url, error: message, duration_ms: durationMs };
+  }
+}
+
+async function readResponseText(
+  response: Response,
+  maxBytes: number | undefined,
+): Promise<{ text: string; truncated: boolean }> {
+  if (maxBytes === undefined || maxBytes <= 0 || !response.body) {
+    return { text: await response.text(), truncated: false };
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = '';
+  let truncated = false;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const remaining = maxBytes - total;
+      if (remaining <= 0) {
+        truncated = true;
+        await reader.cancel('Response body limit reached').catch(() => {});
+        break;
+      }
+      const chunk = value.byteLength > remaining ? value.subarray(0, remaining) : value;
+      text += decoder.decode(chunk, { stream: true });
+      total += chunk.byteLength;
+      if (value.byteLength > remaining) {
+        truncated = true;
+        await reader.cancel('Response body limit reached').catch(() => {});
+        break;
+      }
+    }
+    text += decoder.decode();
+    return { text, truncated };
+  } finally {
+    reader.releaseLock();
   }
 }
 

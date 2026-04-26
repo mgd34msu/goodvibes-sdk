@@ -37,6 +37,7 @@ import {
   REMOTE_WORK_LIST_OUTPUT_SCHEMA,
   REMOTE_WORK_CANCEL_INPUT_SCHEMA,
   REMOTE_WORK_OUTPUT_SCHEMA,
+  SECURITY_SETTINGS_REPORT_SCHEMA,
   SETTINGS_SNAPSHOT_SCHEMA,
   WORKTREE_SNAPSHOT_SCHEMA,
 } from './operator-contract-schemas.js';
@@ -230,6 +231,16 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     http: { method: 'GET', path: '/api/settings' },
     inputSchema: EMPTY_OBJECT_SCHEMA,
     outputSchema: SETTINGS_SNAPSHOT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'security.settings',
+    title: 'Security Settings Report',
+    description: 'Return security-relevant settings, defaults, current state, and enablement tradeoffs.',
+    category: 'settings',
+    scopes: ['read:settings'],
+    http: { method: 'GET', path: '/api/security-settings' },
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: SECURITY_SETTINGS_REPORT_SCHEMA,
   }),
   methodDescriptor({
     id: 'continuity.snapshot',

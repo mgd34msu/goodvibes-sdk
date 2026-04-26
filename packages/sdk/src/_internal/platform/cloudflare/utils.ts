@@ -28,17 +28,10 @@ export function buildTokenRequirements(
     requirements.push(
       {
         component: 'bootstrap',
-        scope: 'account',
-        permission: 'Account API Tokens Write',
-        alternatives: ['API Tokens Write'],
-        reason: 'Create the narrower GoodVibes operational token from the temporary bootstrap token.',
-      },
-      {
-        component: 'bootstrap',
-        scope: 'account',
-        permission: 'Account Settings Read',
-        alternatives: ['Account Read'],
-        reason: 'Read the selected Cloudflare account during bootstrap validation.',
+        scope: 'user',
+        permission: 'API Tokens Write',
+        alternatives: ['API Tokens Edit'],
+        reason: 'Create the narrower GoodVibes operational user token from the temporary bootstrap token.',
       },
     );
   }
