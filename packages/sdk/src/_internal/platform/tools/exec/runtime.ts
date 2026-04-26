@@ -9,10 +9,13 @@ import { guardExecCommand, formatDenialResponse } from './ast-guard.js';
 import { executeFileOperations } from './file-ops.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const PROGRESS_AUTO_THRESHOLD_MS = 30_000;
 const OVERFLOW_SUBDIR = ['.goodvibes', '.overflow'] as const;
+const MAX_EXEC_COMMANDS = 10;
+const MAX_PARALLEL_EXEC_COMMANDS = 3;
 
 const DANGEROUS_PATTERNS = [
   /rm\s+-[a-zA-Z]*r[a-zA-Z]*f?\s+[\/~]/,
@@ -543,10 +546,11 @@ async function executeResolvedCommands(
   failFast: boolean,
 ): Promise<ExecCommandResult[]> {
   if (parallel) {
-    return Promise.all(
-      resolvedCmds.map(({ cmdStr, cmdInput }) =>
+    return mapWithConcurrency(
+      resolvedCmds,
+      MAX_PARALLEL_EXEC_COMMANDS,
+      ({ cmdStr, cmdInput }) =>
         executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout),
-      ),
     );
   }
 
@@ -642,6 +646,9 @@ export function createExecTool(
       try {
         if (!Array.isArray(args['commands']) || (args['commands'] as unknown[]).length === 0) {
           return { success: false, error: 'commands must be a non-empty array' };
+        }
+        if ((args['commands'] as unknown[]).length > MAX_EXEC_COMMANDS) {
+          return { success: false, error: `Too many commands: maximum ${MAX_EXEC_COMMANDS} per exec call` };
         }
         const input = args as unknown as ExecInput;
         const workingDirectory = requireWorkingDirectory(input);

@@ -22,6 +22,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { ConversationManager } from '../core/conversation.js';
+import type { ProviderMessage } from '../providers/interface.js';
 import type {
   CompanionChatMessage,
   CompanionChatSession,
@@ -37,15 +38,17 @@ import {
 import { CompanionChatRateLimiter } from './companion-chat-rate-limiter.js';
 import type { CompanionChatRateLimiterOptions } from './companion-chat-rate-limiter.js';
 import type { ToolRegistry } from '../tools/registry.js';
+import type { ToolCall, ToolDefinition, ToolResult } from '../types/tools.js';
+import type { PermissionManager } from '../permissions/manager.js';
+import type { RuntimeEventBus } from '../runtime/events/index.js';
+import type { HookEvent, HookResult } from '../hooks/types.js';
+import { executeToolCalls as executeOrchestratorToolCalls } from '../core/orchestrator-tool-runtime.js';
 
 // ---------------------------------------------------------------------------
 // Minimal provider types (subset of the real ProviderRegistry interface)
 // ---------------------------------------------------------------------------
 
-export interface CompanionProviderMessage {
-  readonly role: 'user' | 'assistant';
-  readonly content: string;
-}
+export type CompanionProviderMessage = ProviderMessage;
 
 export interface CompanionProviderChunk {
   readonly type: 'text_delta' | 'tool_call' | 'tool_result' | 'done' | 'error';
@@ -66,10 +69,15 @@ export interface CompanionLLMProvider {
       readonly systemPrompt?: string | null;
       readonly model?: string | null;
       readonly provider?: string | null;
+      readonly tools?: readonly ToolDefinition[];
       readonly abortSignal?: AbortSignal;
     },
   ): AsyncIterable<CompanionProviderChunk>;
 }
+
+type HookDispatcherLike = {
+  fire(event: HookEvent): Promise<HookResult>;
+};
 
 // ---------------------------------------------------------------------------
 // Event publisher interface (subset of ControlPlaneGateway)
@@ -90,6 +98,7 @@ export interface CompanionChatEventPublisher {
 const DEFAULT_IDLE_ACTIVE_MS = 30 * 60 * 1_000; // 30 minutes with messages
 const DEFAULT_IDLE_EMPTY_MS = 5 * 60 * 1_000;   // 5 minutes empty session
 const GC_INTERVAL_MS = 60 * 1_000;               // sweep every minute
+const MAX_TOOL_ROUNDS_PER_TURN = 8;
 
 // ---------------------------------------------------------------------------
 // Internal session state (includes mutable conversation + turn queue)
@@ -135,6 +144,15 @@ export interface CompanionChatManagerConfig {
    */
   readonly toolRegistry?: ToolRegistry;
   /**
+   * Permission boundary used when executing model-originated tool calls.
+   * Tool calls are denied when a registry is present without this manager.
+   */
+  readonly permissionManager?: PermissionManager | null;
+  /** Optional hook dispatcher for Pre/Post/Fail tool hooks. */
+  readonly hookDispatcher?: HookDispatcherLike | null;
+  /** Optional runtime event bus for typed tool telemetry. */
+  readonly runtimeBus?: RuntimeEventBus | null;
+  /**
    * Directory under which session JSON files are persisted.
    * Default: ~/.goodvibes/companion-chat/sessions/
    */
@@ -159,6 +177,9 @@ export class CompanionChatManager {
   private readonly provider: CompanionLLMProvider;
   private readonly eventPublisher: CompanionChatEventPublisher;
   private readonly toolRegistry: ToolRegistry | null;
+  private readonly permissionManager: PermissionManager | null;
+  private readonly hookDispatcher: HookDispatcherLike | null;
+  private readonly runtimeBus: RuntimeEventBus | null;
   private readonly persistence: CompanionChatPersistence | null;
   private readonly rateLimiter: CompanionChatRateLimiter | null;
   private readonly idleActiveMs: number;
@@ -178,6 +199,9 @@ export class CompanionChatManager {
     this.provider = config.provider;
     this.eventPublisher = config.eventPublisher;
     this.toolRegistry = config.toolRegistry ?? null;
+    this.permissionManager = config.permissionManager ?? null;
+    this.hookDispatcher = config.hookDispatcher ?? null;
+    this.runtimeBus = config.runtimeBus ?? null;
     this.idleActiveMs = config.idleActiveMs ?? DEFAULT_IDLE_ACTIVE_MS;
     this.idleEmptyMs = config.idleEmptyMs ?? DEFAULT_IDLE_EMPTY_MS;
 
@@ -491,95 +515,90 @@ export class CompanionChatManager {
     const assistantMessageId = randomUUID();
 
     try {
-      const messages = session.conversation.getMessagesForLLM();
-      // Convert ProviderMessage[] to our minimal interface
-      const chatMessages: CompanionProviderMessage[] = messages.map((m) => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-      }));
+      const toolDefinitions = this.toolRegistry?.getToolDefinitions() ?? [];
+      let completed = false;
 
-      const stream = this.provider.chatStream(chatMessages, {
-        systemPrompt: session.meta.systemPrompt,
-        model: session.meta.model,
-        provider: session.meta.provider,
-        abortSignal,
-      });
+      for (let round = 0; round < MAX_TOOL_ROUNDS_PER_TURN; round++) {
+        const stream = this.provider.chatStream([...session.conversation.getMessagesForLLM()], {
+          systemPrompt: session.meta.systemPrompt,
+          model: session.meta.model,
+          provider: session.meta.provider,
+          tools: toolDefinitions,
+          abortSignal,
+        });
 
-      for await (const chunk of stream) {
+        let roundAssistantContent = '';
+        const toolCalls: ToolCall[] = [];
+
+        for await (const chunk of stream) {
+          if (abortSignal.aborted) break;
+
+          switch (chunk.type) {
+            case 'text_delta': {
+              const delta = chunk.delta ?? '';
+              roundAssistantContent += delta;
+              assistantContent += delta;
+              publish({ type: 'turn.delta', sessionId, turnId, delta });
+              break;
+            }
+            case 'tool_call': {
+              const toolCallId = chunk.toolCallId ?? '';
+              const toolName = chunk.toolName ?? '';
+              const toolInput = (chunk.toolInput ?? {}) as Record<string, unknown>;
+              publish({
+                type: 'turn.tool_call',
+                sessionId,
+                turnId,
+                toolCallId,
+                toolName,
+                toolInput,
+              });
+              if (toolCallId && toolName) {
+                toolCalls.push({ id: toolCallId, name: toolName, arguments: toolInput });
+              }
+              break;
+            }
+            case 'tool_result': {
+              publish({
+                type: 'turn.tool_result',
+                sessionId,
+                turnId,
+                toolCallId: chunk.toolCallId ?? '',
+                toolName: chunk.toolName ?? '',
+                result: chunk.result ?? null,
+                isError: chunk.isError ?? false,
+              });
+              break;
+            }
+            case 'error': {
+              throw new Error(chunk.error ?? 'Provider streaming error');
+            }
+            case 'done':
+              break;
+          }
+        }
+
         if (abortSignal.aborted) break;
 
-        switch (chunk.type) {
-          case 'text_delta': {
-            const delta = chunk.delta ?? '';
-            assistantContent += delta;
-            publish({ type: 'turn.delta', sessionId, turnId, delta });
-            break;
-          }
-          case 'tool_call': {
-            publish({
-              type: 'turn.tool_call',
-              sessionId,
-              turnId,
-              toolCallId: chunk.toolCallId ?? '',
-              toolName: chunk.toolName ?? '',
-              toolInput: chunk.toolInput ?? null,
-            });
-
-            // Execute via ToolRegistry if available
-            if (this.toolRegistry && chunk.toolName && chunk.toolCallId) {
-              const toolCallId = chunk.toolCallId;
-              const toolName = chunk.toolName;
-              const toolInput = (chunk.toolInput ?? {}) as Record<string, unknown>;
-
-              try {
-                const toolResult = await this.toolRegistry.execute(toolCallId, toolName, toolInput);
-                publish({
-                  type: 'turn.tool_result',
-                  sessionId,
-                  turnId,
-                  toolCallId,
-                  toolName,
-                  result: toolResult.output ?? null,
-                  isError: !toolResult.success,
-                });
-              } catch (toolErr: unknown) {
-                const errMsg = toolErr instanceof Error ? toolErr.message : String(toolErr);
-                publish({
-                  type: 'turn.tool_result',
-                  sessionId,
-                  turnId,
-                  toolCallId,
-                  toolName,
-                  result: errMsg,
-                  isError: true,
-                });
-              }
-            }
-            break;
-          }
-          case 'tool_result': {
-            publish({
-              type: 'turn.tool_result',
-              sessionId,
-              turnId,
-              toolCallId: chunk.toolCallId ?? '',
-              toolName: chunk.toolName ?? '',
-              result: chunk.result ?? null,
-              isError: chunk.isError ?? false,
-            });
-            break;
-          }
-          case 'error': {
-            throw new Error(chunk.error ?? 'Provider streaming error');
-          }
-          case 'done':
-            break;
+        if (toolCalls.length === 0) {
+          session.conversation.addAssistantMessage(roundAssistantContent);
+          completed = true;
+          break;
         }
+
+        session.conversation.addAssistantMessage(roundAssistantContent, { toolCalls });
+
+        if (!this.toolRegistry) {
+          completed = true;
+          break;
+        }
+
+        const toolResults = await this._executeToolCalls(toolCalls, publish, sessionId, turnId);
+        session.conversation.addToolResults(toolResults);
       }
 
-      // Append assistant reply to conversation
-      if (assistantContent) {
-        session.conversation.addAssistantMessage(assistantContent);
+      if (!completed && !abortSignal.aborted) {
+        throw new Error(`Companion chat exceeded ${MAX_TOOL_ROUNDS_PER_TURN} tool rounds without a final response`);
       }
 
       const now = Date.now();
@@ -616,6 +635,65 @@ export class CompanionChatManager {
         this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: 'Turn cancelled' });
       }
     }
+  }
+
+  private async _executeToolCalls(
+    toolCalls: ToolCall[],
+    publish: (event: CompanionChatTurnEvent) => void,
+    sessionId: string,
+    turnId: string,
+  ): Promise<ToolResult[]> {
+    const toolRegistry = this.toolRegistry;
+    if (!toolRegistry) return [];
+
+    if (!this.permissionManager) {
+      return toolCalls.map((call) => {
+        const toolResult: ToolResult = {
+          callId: call.id,
+          success: false,
+          error: 'Tool execution denied: permission manager unavailable for companion chat',
+        };
+        publish({
+          type: 'turn.tool_result',
+          sessionId,
+          turnId,
+          toolCallId: call.id,
+          toolName: call.name,
+          result: toolResult.error,
+          isError: true,
+        });
+        return toolResult;
+      });
+    }
+
+    const results = await executeOrchestratorToolCalls({
+      toolRegistry,
+      permissionManager: this.permissionManager,
+      hookDispatcher: this.hookDispatcher,
+      runtimeBus: this.runtimeBus,
+      sessionId,
+      emitterContext: (id) => ({
+        sessionId,
+        traceId: `${sessionId}:${id}`,
+        source: 'companion-chat',
+      }),
+    }, turnId, toolCalls);
+
+    for (const [index, toolResult] of results.entries()) {
+      const call = toolCalls[index];
+      if (!call) continue;
+      publish({
+        type: 'turn.tool_result',
+        sessionId,
+        turnId,
+        toolCallId: call.id,
+        toolName: call.name,
+        result: toolResult.output ?? toolResult.error ?? null,
+        isError: !toolResult.success,
+      });
+    }
+
+    return results;
   }
 
   // ---------------------------------------------------------------------------

@@ -23,6 +23,7 @@ export interface IntegrationHelperServiceLike {
   getHealthSnapshot(): unknown;
   getAccountsSnapshot(): Promise<Record<string, unknown>>;
   getSettingsSnapshot(): unknown;
+  getSecuritySettingsReport(): unknown;
   getContinuitySnapshot(): unknown;
   getWorktreeSnapshot(): unknown;
   getIntelligenceSnapshot(): unknown;

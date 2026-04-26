@@ -23,6 +23,7 @@ export type AutomationSurfaceKind =
   | 'discord'
   | 'ntfy'
   | 'webhook'
+  | 'homeassistant'
   | 'telegram'
   | 'google-chat'
   | 'signal'

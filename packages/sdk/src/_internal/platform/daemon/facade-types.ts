@@ -122,7 +122,7 @@ export interface CreateDaemonFacadeCollaboratorsOptions {
   }) => Promise<{ status: number; ok: boolean; body: unknown }>;
   readonly syncSpawnedAgentTask: (record: import('../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../tools/agent/index.js').AgentRecord) => void;
-  readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
+  readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
   readonly signWebhookPayload: (body: string, secret: string) => string;
   readonly handleApprovalAction: (approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request) => Promise<Response>;
   readonly tlsState: () => ResolvedInboundTlsContext | null;

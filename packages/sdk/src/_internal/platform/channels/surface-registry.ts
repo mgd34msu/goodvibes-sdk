@@ -53,6 +53,7 @@ export class SurfaceRegistry {
       }
       const surfaces = this.configManager.getCategory('surfaces');
       if (surface === 'telegram') return Boolean(surfaces.telegram.enabled || surfaces.telegram.botToken || surfaces.telegram.defaultChatId);
+      if (surface === 'homeassistant') return Boolean(surfaces.homeassistant.enabled || surfaces.homeassistant.instanceUrl || surfaces.homeassistant.webhookSecret);
       if (surface === 'google-chat') return Boolean(surfaces.googleChat.enabled || surfaces.googleChat.webhookUrl || surfaces.googleChat.spaceId);
       if (surface === 'signal') return Boolean(surfaces.signal.enabled || surfaces.signal.bridgeUrl || surfaces.signal.account);
       if (surface === 'whatsapp') return Boolean(surfaces.whatsapp.enabled || surfaces.whatsapp.accessToken || surfaces.whatsapp.phoneNumberId);
@@ -68,6 +69,7 @@ export class SurfaceRegistry {
       if (surface === 'slack') return String(this.configManager.get('surfaces.slack.workspaceId') || '') || undefined;
       if (surface === 'discord') return String(this.configManager.get('surfaces.discord.applicationId') || '') || undefined;
       if (surface === 'telegram') return surfaces.telegram.botUsername || surfaces.telegram.defaultChatId || undefined;
+      if (surface === 'homeassistant') return surfaces.homeassistant.deviceId || surfaces.homeassistant.defaultConversationId || undefined;
       if (surface === 'google-chat') return surfaces.googleChat.appId || surfaces.googleChat.spaceId || undefined;
       if (surface === 'signal') return surfaces.signal.account || surfaces.signal.defaultRecipient || undefined;
       if (surface === 'whatsapp') return surfaces.whatsapp.phoneNumberId || surfaces.whatsapp.defaultRecipient || undefined;

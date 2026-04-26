@@ -23,6 +23,7 @@ export function createDaemonIntegrationRouteHandlers(
   | 'getProvider'
   | 'getProviderUsage'
   | 'getSettings'
+  | 'getSecuritySettings'
   | 'getContinuity'
   | 'getWorktrees'
   | 'getIntelligence'
@@ -86,6 +87,9 @@ export function createDaemonIntegrationRouteHandlers(
         : Response.json({ error: 'Unknown provider' }, { status: 404 });
     },
     getSettings: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getSettingsSnapshot())),
+    getSecuritySettings: () => withHelpers(context.integrationHelpers, (helpers) => Response.json({
+      settings: helpers.getSecuritySettingsReport(),
+    })),
     getContinuity: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getContinuitySnapshot())),
     getWorktrees: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getWorktreeSnapshot())),
     getIntelligence: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getIntelligenceSnapshot())),

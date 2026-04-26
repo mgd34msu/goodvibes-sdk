@@ -6,6 +6,11 @@ import type {
   ChannelSurface,
   ChannelToolDescriptor,
 } from '../types.js';
+import {
+  HOME_ASSISTANT_SURFACE,
+  listHomeAssistantOperatorActions,
+  listHomeAssistantTools,
+} from './homeassistant.js';
 
 export function listBuiltinCapabilities(
   surface: ChannelSurface,
@@ -127,7 +132,7 @@ export function listBuiltinCapabilities(
 }
 
 export function listBuiltinOperatorActions(surface: ChannelSurface): ChannelOperatorActionDescriptor[] {
-  return [
+  const actions = [
     {
       id: 'inspect-account',
       surface,
@@ -355,10 +360,13 @@ export function listBuiltinOperatorActions(surface: ChannelSurface): ChannelOper
       metadata: {},
     },
   ];
+  return surface === HOME_ASSISTANT_SURFACE
+    ? [...actions, ...listHomeAssistantOperatorActions()]
+    : actions;
 }
 
 export function listBuiltinTools(surface: ChannelSurface): ChannelToolDescriptor[] {
-  return [
+  const tools = [
     {
       id: `${surface}:account`,
       surface,
@@ -578,4 +586,7 @@ export function listBuiltinTools(surface: ChannelSurface): ChannelToolDescriptor
       metadata: {},
     },
   ];
+  return surface === HOME_ASSISTANT_SURFACE
+    ? [...tools, ...listHomeAssistantTools()]
+    : tools;
 }

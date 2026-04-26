@@ -123,6 +123,7 @@ export const EXEC_TOOL_SCHEMA = {
         // cmd or cmd_base64 required — validated at runtime
       },
       minItems: 1,
+      maxItems: 10,
     },
     parallel: {
       type: 'boolean',

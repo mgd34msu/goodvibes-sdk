@@ -8,6 +8,13 @@ See also: [Public Surface reference](./public-surface.md) for the full exports m
 
 The full surface provides the agentic harness: tool execution, LSP and tree-sitter intelligence, MCP client/registry, workflow trigger executor, daemon HTTP server, file-based artifact storage, file state and KV caching, git service integration, ACP connection management, and companion pairing.
 
+Daemon-owned channel surfaces also live on this full surface. That includes
+Slack, Discord, ntfy, generic webhook, Telegram, Google Chat, Signal, WhatsApp,
+iMessage, Microsoft Teams, BlueBubbles, Mattermost, Matrix, and Home Assistant.
+Home Assistant is implemented as a first-class daemon surface with signed
+webhook ingress, event-bus delivery, setup/manifest discovery, and
+Home Assistant REST-backed tools.
+
 Imported via the root entry (`@pellux/goodvibes-sdk`) and the following subpaths:
 - `./daemon`
 - `./operator`

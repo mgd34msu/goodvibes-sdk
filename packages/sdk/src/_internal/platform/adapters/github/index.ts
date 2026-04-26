@@ -2,6 +2,7 @@ import { logger } from '../../utils/logger.js';
 import { GitHubIntegration } from '../../integrations/github.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import type { TrySpawnAgentFn } from '../types.js';
+import { readTextBodyWithinLimit } from '../helpers.js';
 
 function parseJsonRecord(rawBody: string): Record<string, unknown> | Response {
   try {
@@ -19,12 +20,8 @@ export async function handleGitHubAutomationWebhook(
     readonly trySpawnAgent: TrySpawnAgentFn;
   },
 ): Promise<Response> {
-  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
-  if (contentLength > 1_000_000) {
-    return Response.json({ error: 'Payload too large' }, { status: 413 });
-  }
-
-  const rawBody = await req.text();
+  const rawBody = await readTextBodyWithinLimit(req);
+  if (rawBody instanceof Response) return rawBody;
   const githubWebhookSecret =
     context.githubWebhookSecret
     ?? await context.serviceRegistry.resolveSecret('github', 'signingSecret');

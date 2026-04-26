@@ -11,6 +11,7 @@ export const ROUTE_SURFACE_KINDS = [
   'discord',
   'ntfy',
   'webhook',
+  'homeassistant',
   'telegram',
   'google-chat',
   'signal',

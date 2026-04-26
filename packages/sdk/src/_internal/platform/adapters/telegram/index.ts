@@ -1,4 +1,5 @@
 import type { SurfaceAdapterContext } from '../types.js';
+import { parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -32,10 +33,6 @@ function telegramConversationKind(chatType?: string, threadId?: string): import(
 }
 
 export async function handleTelegramSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
-  if (contentLength > 1_000_000) {
-    return Response.json({ error: 'Payload too large' }, { status: 413 });
-  }
   const configuredSecret =
     String(context.configManager.get('surfaces.telegram.webhookSecret') ?? '')
     || await context.serviceRegistry.resolveSecret('telegram', 'signingSecret')
@@ -47,7 +44,10 @@ export async function handleTelegramSurfaceWebhook(req: Request, context: Surfac
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }
-  const body = await req.json().catch(() => null);
+  const rawBody = await readTextBodyWithinLimit(req);
+  if (rawBody instanceof Response) return rawBody;
+  const body = parseJsonRecord(rawBody);
+  if (body instanceof Response) return body;
   const payload = readRecord(body);
   if (!payload) return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
 

@@ -27,6 +27,7 @@ import { createRuntimeServices, type RuntimeServices } from '../runtime/services
 import type { DaemonConfig, PendingSurfaceReply } from './types.js';
 import { PlatformServiceManager } from './service-manager.js';
 import type { ResolvedInboundTlsContext } from '../runtime/network/index.js';
+import { PermissionManager, createPermissionConfigReader } from '../permissions/manager.js';
 // Re-export type definitions from the dedicated types module.
 export type {
   ResolvedDaemonFacadeRuntime,
@@ -108,6 +109,7 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
       let resolve: (() => void) | null = null;
       let done = false;
       let streamError: string | undefined;
+      let streamedContent = '';
       const push = (chunk: CompanionProviderChunk): void => {
         queue.push(chunk);
         resolve?.();
@@ -115,13 +117,37 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
       };
       const chatPromise = provider.chat({
         model: bareModelId,
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages: messages.map((m) => {
+          if (m.role === 'tool') {
+            return {
+              role: 'tool' as const,
+              callId: m.callId,
+              content: m.content,
+              ...(m.name ? { name: m.name } : {}),
+            };
+          }
+          if (m.role === 'assistant') {
+            return {
+              role: 'assistant' as const,
+              content: m.content,
+              ...(m.toolCalls ? { toolCalls: m.toolCalls } : {}),
+            };
+          }
+          return { role: 'user' as const, content: m.content };
+        }),
+        tools: options.tools && options.tools.length > 0 ? [...options.tools] : undefined,
         systemPrompt: options.systemPrompt ?? undefined,
         signal: options.abortSignal,
         onDelta(delta) {
-          if (delta.content) push({ type: 'text_delta', delta: delta.content });
+          if (delta.content) {
+            streamedContent += delta.content;
+            push({ type: 'text_delta', delta: delta.content });
+          }
         },
       }).then((resp) => {
+        if (resp.content && streamedContent.length === 0) {
+          push({ type: 'text_delta', delta: resp.content });
+        }
         if (resp.toolCalls?.length) {
           for (const tc of resp.toolCalls) {
             push({ type: 'tool_call', toolCallId: tc.id, toolName: tc.name, toolInput: tc.arguments });
@@ -227,6 +253,15 @@ export function resolveDaemonFacadeRuntime(
     persist: true,
     // C-3: Wire the full ToolRegistry so LLM-emitted tool calls are executed.
     toolRegistry: runtimeServices.agentOrchestrator.getToolRegistry(),
+    permissionManager: new PermissionManager(
+      undefined,
+      createPermissionConfigReader(resolvedConfigManager),
+      runtimeServices.policyRuntimeState,
+      runtimeServices.hookDispatcher,
+      runtimeServices.featureFlags,
+    ),
+    hookDispatcher: runtimeServices.hookDispatcher,
+    runtimeBus,
   });
   runtimeServices.approvalBroker.setPublisher(controlPlaneGateway);
   runtimeServices.sessionBroker.setEventPublisher((event, payload) => {

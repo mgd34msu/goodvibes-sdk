@@ -477,6 +477,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeStore: options.runtimeStore,
     runtimeBus: options.runtimeBus,
     configManager,
+    featureFlags,
     getConversationTitle: options.getConversationTitle,
     automationManager,
     approvalBroker,

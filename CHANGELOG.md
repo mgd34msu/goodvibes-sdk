@@ -24,6 +24,62 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.11] - 2026-04-26
+
+### Breaking
+- none
+
+### Added
+- Added a security settings report surface via `getSecuritySettingsReport()`,
+  `IntegrationHelperService.getSecuritySettingsReport()`,
+  `GET /api/security-settings`, and gateway method `security.settings`.
+  The report explains security-relevant settings, defaults, current state,
+  insecure disabled-state behavior, enablement effects, and requirements.
+- Added the SDK-owned Home Assistant daemon surface with signed webhook ingress,
+  Home Assistant event-bus delivery, setup/manifest discovery, config defaults,
+  feature flag gate, and Home Assistant REST-backed tools for states, services,
+  events, and template rendering.
+
+### Fixed
+- Cloudflare operational-token bootstrap now uses Cloudflare's user-token API
+  (`/user/tokens`) with the user-scoped `API Tokens Write` bootstrap
+  permission instead of the account-owned token API. The bootstrap flow no
+  longer requires account-token creation permissions just to mint the narrower
+  GoodVibes operational token.
+- Companion remote chat now executes model-originated tool calls through the
+  shared orchestrator tool runtime so permission checks, hooks, and runtime
+  tool events are applied instead of calling `ToolRegistry.execute()` directly.
+- `fetch-sanitization` enabled mode now validates redirect targets before
+  following them and reads capped responses incrementally instead of buffering
+  the full body before truncation.
+- Control-plane recent-event replay now preserves client/route/surface scope
+  and does not replay filtered events to unrelated clients.
+- Control-plane WebSocket upgrades now require authentication before gateway
+  state is allocated, and WebSocket domain subscriptions validate domain names.
+- Inbound JSON/webhook body readers now enforce byte limits while streaming
+  instead of relying only on `Content-Length`.
+- Background process tracking now caps retained stdout/stderr, prunes completed
+  process records, and unrefs timeout timers.
+- Edit import-graph validation now invokes `npx tsc` without `/bin/sh -c`.
+- Local auth status now exposes session token fingerprints instead of raw
+  bearer tokens while still allowing revocation by fingerprint.
+- The Cloudflare Worker bridge now fails closed for non-health endpoints unless
+  `GOODVIBES_WORKER_TOKEN`, `workerAuthToken`, or explicit
+  `allowUnauthenticated: true` is configured.
+- Built-in batch-capable tools now enforce per-call item caps and bounded
+  parallelism for `fetch`, `exec`, `find`, and `read`.
+- Activity logger entries now redact common token/secret/password fields before
+  writing structured metadata.
+
+### Migration
+- Worker bridge manual deployments must provide `GOODVIBES_WORKER_TOKEN` or
+  `workerAuthToken` for `/batch/*` and `/api/batch/*` routes, unless another
+  trusted auth layer is used and `allowUnauthenticated: true` is set.
+- Consumers of `local_auth.status` should read `tokenFingerprint` instead of
+  `token` for session listings.
+
+---
+
 ## [0.25.10] - 2026-04-26
 
 ### Breaking

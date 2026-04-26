@@ -507,6 +507,16 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     runtimeToggleable: true,
   },
   {
+    id: 'homeassistant-surface',
+    name: 'Home Assistant Surface',
+    description:
+      'Enables the Home Assistant surface for daemon/device integration, Home Assistant '
+      + 'event delivery, service-call tools, and Home Assistant-originated prompts.',
+    defaultState: 'disabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
     id: 'web-surface',
     name: 'Web Surface',
     description:

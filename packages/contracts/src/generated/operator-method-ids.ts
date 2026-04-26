@@ -169,6 +169,7 @@ export const OPERATOR_METHOD_IDS = [
   "schedules.enable",
   "schedules.list",
   "schedules.run",
+  "security.settings",
   "services.install",
   "services.restart",
   "services.start",

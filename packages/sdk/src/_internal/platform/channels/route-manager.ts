@@ -58,6 +58,7 @@ function toEventSurfaceKind(surfaceKind: AutomationSurfaceKind): RouteSurfaceKin
     case 'web':
     case 'ntfy':
     case 'webhook':
+    case 'homeassistant':
     case 'telegram':
     case 'google-chat':
     case 'signal':

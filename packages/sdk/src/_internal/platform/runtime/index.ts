@@ -19,6 +19,8 @@ export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from './events/domain-map
 export type { AnyRuntimeEvent, RuntimeEventDomain, RuntimeEventRecord } from './events/domain-map.js';
 export { createRuntimeEventFeed, createRuntimeEventFeeds } from './event-feeds.js';
 export type { RuntimeEventFeed, RuntimeEventFeeds } from './event-feeds.js';
+export { getSecuritySettingsReport } from './security-settings.js';
+export type { SecuritySettingReport, SecuritySettingsReporter } from './security-settings.js';
 
 export type { EmitterContext } from './emitters/index.js';
 

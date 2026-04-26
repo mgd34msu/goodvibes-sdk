@@ -5,6 +5,7 @@ type SurfaceDeliveryTarget =
   | 'discord'
   | 'ntfy'
   | 'webhook'
+  | 'homeassistant'
   | 'telegram'
   | 'google-chat'
   | 'signal'
@@ -32,6 +33,16 @@ export function isSurfaceDeliveryEnabled(
     return Boolean(configManager.get('surfaces.ntfy.enabled') || configManager.get('surfaces.ntfy.topic') || process.env.NTFY_ACCESS_TOKEN);
   }
   const surfaces = configManager.getCategory('surfaces');
+  if (surface === 'homeassistant') {
+    return Boolean(
+      surfaces.homeassistant.enabled
+      || surfaces.homeassistant.instanceUrl
+      || surfaces.homeassistant.webhookSecret
+      || process.env.HOMEASSISTANT_URL
+      || process.env.HOME_ASSISTANT_URL
+      || process.env.HA_URL,
+    );
+  }
   if (surface === 'telegram') {
     return Boolean(surfaces.telegram.enabled || surfaces.telegram.botToken || surfaces.telegram.defaultChatId || process.env.TELEGRAM_BOT_TOKEN);
   }

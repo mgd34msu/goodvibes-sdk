@@ -10,6 +10,10 @@ import { executeSymbolsQuery } from './symbols.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { FindRuntimeService } from './shared.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
+
+const MAX_FIND_QUERIES = 20;
+const MAX_PARALLEL_FIND_QUERIES = 5;
 
 export function createFindTool(
   projectRoot: string,
@@ -26,6 +30,9 @@ export function createFindTool(
       try {
         if (!Array.isArray(args.queries) || (args.queries as unknown[]).length === 0) {
           return { success: false, error: 'Missing or empty "queries" array' };
+        }
+        if ((args.queries as unknown[]).length > MAX_FIND_QUERIES) {
+          return { success: false, error: `Too many queries: maximum ${MAX_FIND_QUERIES} per find call` };
         }
 
         const input = args as unknown as FindInput;
@@ -60,7 +67,7 @@ export function createFindTool(
 
         let pairs: Array<[string, Record<string, unknown>]>;
         if (parallel) {
-          pairs = await Promise.all(input.queries.map(runQuery));
+          pairs = await mapWithConcurrency(input.queries, MAX_PARALLEL_FIND_QUERIES, runQuery);
         } else {
           pairs = [];
           for (const query of input.queries) {

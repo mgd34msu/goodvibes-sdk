@@ -281,4 +281,28 @@ describe('ControlPlaneGateway — invariants', () => {
     expect(receivedA).toContain('targeted');
     expect(receivedB).not.toContain('targeted');
   });
+
+  test('filtered recent events are not replayed to other clients', () => {
+    const { gateway } = makeGatewayWithBus();
+    const receivedA: string[] = [];
+    const { clientId: idA } = gateway.openWebSocketClient(
+      { clientKind: 'tui', label: 'client-A' },
+      (event) => { receivedA.push(event); },
+    );
+    receivedA.length = 0;
+
+    gateway.publishEvent('targeted-private', { for: 'A' }, { clientId: idA });
+
+    const receivedB: string[] = [];
+    gateway.openWebSocketClient(
+      { clientKind: 'tui', label: 'client-B' },
+      (event) => { receivedB.push(event); },
+    );
+
+    expect(receivedA).toContain('targeted-private');
+    expect(receivedB).not.toContain('targeted-private');
+    const publicRecent = gateway.listRecentEvents().find((event) => event.event === 'targeted-private');
+    expect(publicRecent).toBeDefined();
+    expect('replayScope' in (publicRecent as Record<string, unknown>)).toBe(false);
+  });
 });

@@ -12,6 +12,7 @@ export function isManagedSurface(surface: ChannelSurface): surface is ManagedSur
     || surface === 'discord'
     || surface === 'ntfy'
     || surface === 'webhook'
+    || surface === 'homeassistant'
     || surface === 'telegram'
     || surface === 'google-chat'
     || surface === 'signal'

@@ -12,6 +12,7 @@ export const CONTROL_PLANE_CLIENT_KINDS = [
   'ntfy',
   'daemon',
   'webhook',
+  'homeassistant',
   'service',
   'telegram',
   'google-chat',

@@ -439,6 +439,11 @@ export interface CloudflareApiClient {
   };
   readonly user?: {
     readonly tokens: {
+      create(params: {
+        readonly name: string;
+        readonly policies: readonly CloudflareTokenPolicyParam[];
+        readonly expires_on?: string;
+      }): Promise<CloudflareTokenCreateResponseLike>;
       verify(): Promise<CloudflareTokenVerifyResponseLike>;
       readonly permissionGroups: {
         list(params?: { readonly name?: string; readonly scope?: string }): AsyncIterable<CloudflarePermissionGroupLike>;

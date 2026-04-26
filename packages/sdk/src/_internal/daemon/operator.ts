@@ -85,6 +85,7 @@ export async function dispatchOperatorRoutes(
     | 'getProvider'
     | 'getProviderUsage'
     | 'getSettings'
+    | 'getSecuritySettings'
     | 'getContinuity'
     | 'getWorktrees'
     | 'getIntelligence'
@@ -355,6 +356,7 @@ export async function dispatchOperatorRoutes(
   const providerMatch = pathname.match(/^\/api\/providers\/([^/]+)$/);
   if (providerMatch && method === 'GET') return handlers.getProvider(decodeURIComponent(providerMatch[1]));
   if (pathname === '/api/settings' && method === 'GET') return handlers.getSettings();
+  if (pathname === '/api/security-settings' && method === 'GET') return handlers.getSecuritySettings();
   if (pathname === '/api/continuity' && method === 'GET') return handlers.getContinuity();
   if (pathname === '/api/worktrees' && method === 'GET') return handlers.getWorktrees();
   if (pathname === '/api/intelligence' && method === 'GET') return handlers.getIntelligence();

@@ -29,6 +29,8 @@ export function renderBuiltinPolicy(surface: ChannelSurface): ChannelRenderPolic
       return { ...base, reasoningVisibility: 'suppress', format: 'plain', supportsThreads: false, maxChunkChars: 1_600 };
     case 'webhook':
       return { ...base, reasoningVisibility: 'private', format: 'json', supportsThreads: false, maxChunkChars: 12_000 };
+    case 'homeassistant':
+      return { ...base, reasoningVisibility: 'summary', format: 'json', supportsThreads: true, maxChunkChars: 8_000 };
     case 'signal':
     case 'whatsapp':
     case 'imessage':
@@ -51,6 +53,8 @@ export function surfaceLabelForBuiltin(surface: ChannelSurface): string {
       return 'ntfy';
     case 'webhook':
       return 'Generic webhook';
+    case 'homeassistant':
+      return 'Home Assistant';
     case 'telegram':
       return 'Telegram';
     case 'google-chat':

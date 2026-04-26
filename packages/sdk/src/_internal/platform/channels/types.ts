@@ -11,6 +11,7 @@ export type ChannelSurface =
   | 'discord'
   | 'ntfy'
   | 'webhook'
+  | 'homeassistant'
   | 'telegram'
   | 'google-chat'
   | 'signal'

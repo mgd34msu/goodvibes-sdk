@@ -124,6 +124,18 @@ export interface WebhookSurfaceConfig {
   setupVersion: number;
 }
 
+export interface HomeAssistantSurfaceConfig {
+  enabled: boolean;
+  instanceUrl: string;
+  accessToken: string;
+  webhookSecret: string;
+  defaultConversationId: string;
+  deviceId: string;
+  deviceName: string;
+  eventType: string;
+  setupVersion: number;
+}
+
 export interface TelegramSurfaceConfig {
   enabled: boolean;
   botToken: string;
@@ -217,6 +229,7 @@ export interface SurfacesConfig {
   discord: DiscordSurfaceConfig;
   ntfy: NtfySurfaceConfig;
   webhook: WebhookSurfaceConfig;
+  homeassistant: HomeAssistantSurfaceConfig;
   telegram: TelegramSurfaceConfig;
   googleChat: GoogleChatSurfaceConfig;
   signal: SignalSurfaceConfig;
@@ -587,6 +600,14 @@ export type ConfigKey =
   | 'surfaces.webhook.defaultTarget'
   | 'surfaces.webhook.timeoutMs'
   | 'surfaces.webhook.secret'
+  | 'surfaces.homeassistant.enabled'
+  | 'surfaces.homeassistant.instanceUrl'
+  | 'surfaces.homeassistant.accessToken'
+  | 'surfaces.homeassistant.webhookSecret'
+  | 'surfaces.homeassistant.defaultConversationId'
+  | 'surfaces.homeassistant.deviceId'
+  | 'surfaces.homeassistant.deviceName'
+  | 'surfaces.homeassistant.eventType'
   | 'surfaces.telegram.enabled'
   | 'surfaces.telegram.botToken'
   | 'surfaces.telegram.webhookSecret'
@@ -834,6 +855,14 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.webhook.defaultTarget' ? string :
   K extends 'surfaces.webhook.timeoutMs' ? number :
   K extends 'surfaces.webhook.secret' ? string :
+  K extends 'surfaces.homeassistant.enabled' ? boolean :
+  K extends 'surfaces.homeassistant.instanceUrl' ? string :
+  K extends 'surfaces.homeassistant.accessToken' ? string :
+  K extends 'surfaces.homeassistant.webhookSecret' ? string :
+  K extends 'surfaces.homeassistant.defaultConversationId' ? string :
+  K extends 'surfaces.homeassistant.deviceId' ? string :
+  K extends 'surfaces.homeassistant.deviceName' ? string :
+  K extends 'surfaces.homeassistant.eventType' ? string :
   K extends 'surfaces.telegram.enabled' ? boolean :
   K extends 'surfaces.telegram.botToken' ? string :
   K extends 'surfaces.telegram.webhookSecret' ? string :

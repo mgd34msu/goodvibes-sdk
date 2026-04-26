@@ -41,6 +41,7 @@ Users authenticate with a username and password via the login endpoint. On succe
 - Passwords are hashed with **scrypt** (64-byte key, random salt), stored as `salt:hash` in base64
 - Default session TTL is **1 hour** (`DEFAULT_SESSION_TTL_MS = 3_600_000`)
 - Sessions are pruned on access; expired sessions are rejected and cleaned up
+- Local auth status reports expose `tokenFingerprint` only; raw session bearer tokens are not returned by status APIs
 - On first boot with no user store, the daemon bootstraps a default admin account and writes a plaintext credential file for initial login; this file should be deleted after the first login
 
 Session tokens are carried as:
@@ -165,6 +166,19 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 
 ## Network Security
 
+### Security Settings Report
+
+SDK hosts can expose a user-facing explanation of security-relevant settings with:
+
+- `getSecuritySettingsReport(featureFlags)` from the runtime surface
+- `IntegrationHelperService.getSecuritySettingsReport()`
+- daemon `GET /api/security-settings`
+- gateway method `security.settings`
+
+Each report entry includes the setting key, default state, current state, what the setting does, why the disabled state is less restrictive, what enabling it changes, and any compatibility requirements. This is intended for TUI/onboarding flows where safe-default feature flags remain off unless the user explicitly opts in.
+
+The current report covers security-sensitive flags including `fetch-sanitization`, `permissions-policy-engine`, `permissions-simulation`, `permission-divergence-dashboard`, `policy-as-code`, `policy-signing`, `runtime-tools-budget-enforcement`, `shell-ast-normalization`, `token-scope-rotation-audit`, and `tool-contract-verification`.
+
 ### TLS
 
 When the daemon is accessed over a network (not localhost), TLS is strongly recommended. The session cookie system sets the `Secure` attribute automatically when the request comes over HTTPS (or via a trusted proxy with `X-Forwarded-Proto: https`):
@@ -195,6 +209,8 @@ The remote fetch proxy (`remote-routes.ts`) has explicit SSRF protection. When a
 2. Elevated access must be granted (`requireElevatedAccess` returns null)
 
 If either check fails, the request is rejected with HTTP 403. Do not enable `allowPrivateHosts` unless your deployment specifically requires internal URL resolution.
+
+The `fetch` tool has a separate opt-in protection gate: `featureFlags.fetch-sanitization`. It remains disabled by default for compatibility. When enabled, the fetch tool classifies initial hosts and every redirect target before reading the response, blocks localhost/private/link-local/cloud-metadata targets, applies unknown-host safe-text sanitization by default, and stops reading once `max_content_length` is reached. When disabled, legacy fetch behavior is preserved; use the security settings report above to surface that tradeoff to users.
 
 ---
 

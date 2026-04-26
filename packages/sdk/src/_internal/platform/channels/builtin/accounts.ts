@@ -118,6 +118,28 @@ export async function buildBuiltinAccount(
         },
       });
     }
+    case 'homeassistant': {
+      const surfaces = context.deps.configManager.getCategory('surfaces');
+      const secrets = await Promise.all([
+        describeBuiltinSecret(context.deps, 'primary', 'Long-lived access token', surfaces.homeassistant.accessToken, ['HOMEASSISTANT_ACCESS_TOKEN', 'HOME_ASSISTANT_ACCESS_TOKEN', 'HA_ACCESS_TOKEN'], 'homeassistant', 'primary'),
+        describeBuiltinSecret(context.deps, 'webhookSecret', 'Webhook secret', surfaces.homeassistant.webhookSecret, ['HOMEASSISTANT_WEBHOOK_SECRET', 'HOME_ASSISTANT_WEBHOOK_SECRET', 'HA_GOODVIBES_WEBHOOK_SECRET'], 'homeassistant', 'signingSecret'),
+      ]);
+      return finalizeBuiltinChannelAccount({
+        surface,
+        label: 'Home Assistant',
+        enabled: context.deps.surfaceDeliveryEnabled('homeassistant'),
+        accountId: surfaces.homeassistant.deviceId || surfaces.homeassistant.defaultConversationId || 'surface:homeassistant',
+        secrets,
+        metadata: {
+          instanceUrl: surfaces.homeassistant.instanceUrl,
+          defaultConversationId: surfaces.homeassistant.defaultConversationId,
+          deviceId: surfaces.homeassistant.deviceId,
+          deviceName: surfaces.homeassistant.deviceName,
+          eventType: surfaces.homeassistant.eventType,
+          setupVersion: surfaces.homeassistant.setupVersion,
+        },
+      });
+    }
     case 'telegram': {
       const surfaces = context.deps.configManager.getCategory('surfaces');
       const secrets = await Promise.all([

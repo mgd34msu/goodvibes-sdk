@@ -4,7 +4,7 @@ import type { SecretsManager } from '../../config/secrets.js';
 import { ServiceRegistry } from '../../config/service-registry.js';
 import { resolveSecretInput } from '../../config/secret-refs.js';
 import { ControlPlaneGateway } from '../../control-plane/gateway.js';
-import { DiscordIntegration, NtfyIntegration, SlackIntegration } from '../../integrations/index.js';
+import { DiscordIntegration, HomeAssistantIntegration, NtfyIntegration, SlackIntegration } from '../../integrations/index.js';
 import { validatePublicWebhookUrl } from '../../utils/url-safety.js';
 import type { ChannelDeliveryStrategy } from './types.js';
 import {
@@ -223,6 +223,65 @@ export function createWebControlPlaneDeliveryStrategy(
         },
       });
       return success(published.id);
+    },
+  };
+}
+
+export function createHomeAssistantDeliveryStrategy(
+  configManager: ConfigManager,
+  serviceRegistry: ServiceRegistry,
+  artifactStore: ArtifactStore,
+  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
+): ChannelDeliveryStrategy {
+  return {
+    id: 'channel-delivery:homeassistant',
+    canHandle(request) {
+      return resolveChannelDeliverySurfaceKind(request.target) === 'homeassistant';
+    },
+    async deliver(request) {
+      const attachments = await resolveAttachments(request, artifactStore, configManager, 128 * 1024);
+      const baseUrl = firstNonEmpty(
+        String(configManager.get('surfaces.homeassistant.instanceUrl') ?? ''),
+        serviceRegistry.get('homeassistant')?.baseUrl,
+        process.env.HOMEASSISTANT_URL,
+        process.env.HOME_ASSISTANT_URL,
+        process.env.HA_URL,
+      );
+      if (!baseUrl) throw new Error('Missing Home Assistant instance URL');
+      const token = firstNonEmpty(
+        await serviceRegistry.resolveSecret('homeassistant', 'primary'),
+        await resolveSecretInput(configManager.get('surfaces.homeassistant.accessToken'), {
+          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
+          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+        }),
+        process.env.HOMEASSISTANT_ACCESS_TOKEN,
+        process.env.HOME_ASSISTANT_ACCESS_TOKEN,
+        process.env.HA_ACCESS_TOKEN,
+      );
+      if (!token) throw new Error('Missing Home Assistant access token');
+      const eventType = firstNonEmpty(
+        String(configManager.get('surfaces.homeassistant.eventType') ?? ''),
+        'goodvibes_message',
+      )!;
+      const client = new HomeAssistantIntegration({ baseUrl, accessToken: token });
+      const result = await client.publishGoodVibesEvent(eventType, {
+        type: request.status === 'failed' ? 'error' : 'message',
+        title: request.target.label ?? request.title,
+        body: appendAttachmentSummary(request.body, attachments),
+        status: request.status,
+        jobId: request.jobId,
+        runId: request.runId,
+        agentId: request.agentId,
+        routeId: request.binding?.id,
+        surfaceId: request.binding?.surfaceId,
+        externalId: request.binding?.externalId,
+        metadata: {
+          threadId: request.binding?.threadId,
+          channelId: request.binding?.channelId,
+          attachments,
+        },
+      });
+      return success(extractResponseId(result) ?? eventType);
     },
   };
 }

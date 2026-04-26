@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
@@ -36,7 +36,7 @@ export interface AuthUserRecord {
 }
 
 export interface AuthSessionRecord {
-  readonly token: string;
+  readonly tokenFingerprint: string;
   readonly username: string;
   readonly expiresAt: number;
 }
@@ -79,6 +79,10 @@ function verifyPassword(password: string, passwordHash: string): boolean {
   const actual = scryptSync(password, salt, SCRYPT_KEY_LENGTH);
   if (actual.length !== expected.length) return false;
   return timingSafeEqual(actual, expected);
+}
+
+function fingerprintToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex').slice(0, 16);
 }
 
 function readBootstrapUsers(filePath: string): AuthUser[] | null {
@@ -281,7 +285,14 @@ export class UserAuthManager {
   }
 
   revokeSession(token: string): boolean {
-    return this.sessions.delete(token);
+    if (this.sessions.delete(token)) return true;
+    for (const sessionToken of this.sessions.keys()) {
+      if (fingerprintToken(sessionToken) === token) {
+        this.sessions.delete(sessionToken);
+        return true;
+      }
+    }
+    return false;
   }
 
   revokeSessionsForUser(username: string): number {
@@ -307,7 +318,11 @@ export class UserAuthManager {
   listSessions(): AuthSessionRecord[] {
     this.pruneExpiredSessions();
     return [...this.sessions.values()]
-      .map((session) => ({ ...session }))
+      .map((session) => ({
+        tokenFingerprint: fingerprintToken(session.token),
+        username: session.username,
+        expiresAt: session.expiresAt,
+      }))
       .sort((a, b) => a.username.localeCompare(b.username) || a.expiresAt - b.expiresAt);
   }
 

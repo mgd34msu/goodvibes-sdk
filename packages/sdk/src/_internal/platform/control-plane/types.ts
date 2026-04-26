@@ -12,6 +12,7 @@ export type ControlPlaneClientSurface =
   | 'discord'
   | 'ntfy'
   | 'webhook'
+  | 'homeassistant'
   | 'telegram'
   | 'google-chat'
   | 'signal'

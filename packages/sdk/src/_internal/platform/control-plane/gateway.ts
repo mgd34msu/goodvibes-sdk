@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createDomainDispatch } from '../runtime/store/index.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
-import type { RuntimeEventBus, RuntimeEventDomain, RuntimeEventEnvelope, AnyRuntimeEvent } from '../runtime/events/index.js';
+import type { RuntimeEventBus, RuntimeEventDomain } from '../runtime/events/index.js';
 import type { ControlPlaneClientRecord } from '../runtime/store/domains/control-plane.js';
 import {
   emitControlPlaneAuthGranted,
@@ -18,31 +18,21 @@ import type {
 } from './types.js';
 import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
 import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
-
-const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
-  'session',
-  'tasks',
-  'agents',
-  'automation',
-  'routes',
-  'control-plane',
-  'deliveries',
-  'surfaces',
-  'watchers',
-  'transport',
-  'ops',
-  'knowledge',
-  'providers',
-  'turn',
-];
-
-const DEFAULT_SERVER_CONFIG: ControlPlaneServerConfig = {
-  enabled: false,
-  host: '127.0.0.1',
-  port: 3421,
-  streamingMode: 'sse',
-  sessionTtlMs: 12 * 60 * 60 * 1000,
-};
+import {
+  DEFAULT_DOMAINS,
+  DEFAULT_SERVER_CONFIG,
+  canReplayEventToClient,
+  hasReplayScope,
+  normalizeRuntimeDomains,
+  pruneDisconnectedClientRecords,
+  serializeEnvelope,
+  stripReplayScope,
+  toClientDescriptor,
+  type ControlPlaneEventReplayScope,
+  type ControlPlaneRecentEvent,
+  type ScopedControlPlaneRecentEvent,
+} from './gateway-utils.js';
+export type { ControlPlaneRecentEvent } from './gateway-utils.js';
 
 export interface ControlPlaneGatewayConfig {
   readonly runtimeBus?: RuntimeEventBus | null;
@@ -60,6 +50,7 @@ export interface ControlPlaneEventStreamOptions {
     | 'discord'
     | 'ntfy'
     | 'webhook'
+    | 'homeassistant'
     | 'telegram'
     | 'google-chat'
     | 'signal'
@@ -83,13 +74,6 @@ export interface ControlPlaneEventStreamOptions {
   readonly capabilities?: readonly string[];
 }
 
-export interface ControlPlaneRecentEvent {
-  readonly id: string;
-  readonly event: string;
-  readonly createdAt: number;
-  readonly payload: unknown;
-}
-
 interface LiveControlPlaneClient {
   readonly clientId: string;
   readonly kind:
@@ -99,6 +83,7 @@ interface LiveControlPlaneClient {
     | 'discord'
     | 'ntfy'
     | 'webhook'
+    | 'homeassistant'
     | 'telegram'
     | 'google-chat'
     | 'signal'
@@ -107,8 +92,8 @@ interface LiveControlPlaneClient {
     | 'msteams'
     | 'bluebubbles'
     | 'mattermost'
-      | 'matrix'
-      | 'daemon';
+    | 'matrix'
+    | 'daemon';
   readonly surfaceId?: string;
   readonly routeId?: string;
   readonly send: (event: string, payload: unknown, id?: string) => void;
@@ -121,28 +106,6 @@ interface WebSocketControlPlaneClient {
   readonly unsubscribers: Map<RuntimeEventDomain, () => void>;
 }
 
-function serializeEnvelope(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): Record<string, unknown> {
-  return {
-    type: envelope.type,
-    timestamp: envelope.ts,
-    traceId: envelope.traceId,
-    sessionId: envelope.sessionId,
-    source: envelope.source,
-    payload: envelope.payload,
-  };
-}
-
-function toClientDescriptor(record: ControlPlaneClientRecord): ControlPlaneClientDescriptor {
-  return {
-    id: record.id,
-    surface: record.kind,
-    label: record.label,
-    connectedAt: record.authenticatedAt ?? record.lastSeenAt ?? Date.now(),
-    lastSeenAt: record.lastSeenAt ?? Date.now(),
-    ...(record.metadata.userId && typeof record.metadata.userId === 'string' ? { userId: record.metadata.userId } : {}),
-  };
-}
-
 export class ControlPlaneGateway {
   private runtimeBus: RuntimeEventBus | null;
   private dispatch: DomainDispatch | null;
@@ -153,13 +116,13 @@ export class ControlPlaneGateway {
   private readonly websocketClients = new Map<string, WebSocketControlPlaneClient>();
   private readonly recentMessages: ControlPlaneSurfaceMessage[] = [];
   // Circular ring buffer for O(1) insert instead of O(n) unshift.
-  private readonly _recentEventsRing: (ControlPlaneRecentEvent | undefined)[];
+  private readonly _recentEventsRing: (ScopedControlPlaneRecentEvent | undefined)[];
   private _recentEventsHead = 0;
   private _recentEventsCount = 0;
   private readonly _recentEventsCapacity = 500;
   /** Back-compat accessor used by getSnapshot / listRecentEvents */
-  private get recentEvents(): ControlPlaneRecentEvent[] {
-    const out: ControlPlaneRecentEvent[] = [];
+  private get recentEvents(): ScopedControlPlaneRecentEvent[] {
+    const out: ScopedControlPlaneRecentEvent[] = [];
     const count = this._recentEventsCount;
     const cap = this._recentEventsCapacity;
     for (let i = 0; i < count; i++) {
@@ -230,6 +193,7 @@ export class ControlPlaneGateway {
 
   listClients(): ControlPlaneClientDescriptor[] {
     if (!this.isEnabled()) return [];
+    pruneDisconnectedClientRecords(this.clients);
     return [...this.clients.values()]
       .sort((a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0) || a.id.localeCompare(b.id))
       .map(toClientDescriptor);
@@ -254,6 +218,7 @@ export class ControlPlaneGateway {
         recentEvents: [],
       };
     }
+    pruneDisconnectedClientRecords(this.clients);
     const active = [...this.clients.values()].filter((client) => client.connected);
     return {
       server: this.serverConfig,
@@ -278,7 +243,7 @@ export class ControlPlaneGateway {
 
   listRecentEvents(limit = 100): ControlPlaneRecentEvent[] {
     if (!this.isEnabled()) return [];
-    return this.recentEvents.slice(0, Math.max(1, limit));
+    return this.recentEvents.slice(0, Math.max(1, limit)).map(stripReplayScope);
   }
 
   publishSurfaceMessage(input: Omit<ControlPlaneSurfaceMessage, 'id' | 'createdAt'>): ControlPlaneSurfaceMessage {
@@ -292,12 +257,16 @@ export class ControlPlaneGateway {
     if (this.recentMessages.length > 200) {
       this.recentMessages.length = 200;
     }
-    const record = this.rememberEvent('surface-message', message);
+    const record = this.rememberEvent('surface-message', message, {
+      ...(message.clientId ? { clientId: message.clientId } : {}),
+      ...(message.routeId ? { routeId: message.routeId } : {}),
+      ...(message.surfaceId ? { surfaceId: message.surfaceId } : {}),
+    });
     for (const client of this.liveClients.values()) {
       if (client.kind !== 'web') continue;
       if (message.clientId && client.clientId !== message.clientId) continue;
-      if (message.routeId && client.routeId && client.routeId !== message.routeId) continue;
-      if (message.surfaceId && client.surfaceId && client.surfaceId !== message.surfaceId) continue;
+      if (message.routeId && client.routeId !== message.routeId) continue;
+      if (message.surfaceId && client.surfaceId !== message.surfaceId) continue;
       client.send('surface-message', message, record.id);
     }
     return message;
@@ -310,12 +279,12 @@ export class ControlPlaneGateway {
     readonly surfaceId?: string;
   }): void {
     if (!this.isEnabled()) return;
-    const record = this.rememberEvent(event, payload);
+    const record = this.rememberEvent(event, payload, filter);
     for (const client of this.liveClients.values()) {
       if (filter?.clientKind && client.kind !== filter.clientKind) continue;
       if (filter?.clientId && client.clientId !== filter.clientId) continue;
-      if (filter?.routeId && client.routeId && client.routeId !== filter.routeId) continue;
-      if (filter?.surfaceId && client.surfaceId && client.surfaceId !== filter.surfaceId) continue;
+      if (filter?.routeId && client.routeId !== filter.routeId) continue;
+      if (filter?.surfaceId && client.surfaceId !== filter.surfaceId) continue;
       client.send(event, payload, record.id);
     }
   }
@@ -381,7 +350,7 @@ export class ControlPlaneGateway {
       throw new Error('Runtime event bus unavailable');
     }
 
-    const selectedDomains = options.domains?.length ? [...options.domains] : [...DEFAULT_DOMAINS];
+    const selectedDomains = normalizeRuntimeDomains(options.domains);
     const clientId = options.clientId ?? `cp-${randomUUID().slice(0, 8)}`;
     const label = options.label ?? `${options.clientKind ?? 'web'}:${clientId}`;
     const now = Date.now();
@@ -460,7 +429,7 @@ export class ControlPlaneGateway {
 
     this.subscribeWebSocketClient(clientId, selectedDomains);
     send('ready', { clientId, domains: selectedDomains, transport: 'websocket' });
-    this.replayRecentTraffic(send);
+    this.replayRecentTraffic(send, { ...options, clientId, domains: selectedDomains });
     return { clientId, domains: selectedDomains };
   }
 
@@ -584,6 +553,7 @@ export class ControlPlaneGateway {
       lastSeenAt: Date.now(),
     };
     this.clients.set(clientId, disconnected);
+    pruneDisconnectedClientRecords(this.clients);
     this.dispatch?.syncControlPlaneClient(disconnected, 'control-plane.gateway.ws-disconnect');
     this.dispatch?.syncControlPlaneState({
       enabled: true,
@@ -594,13 +564,15 @@ export class ControlPlaneGateway {
 
   private replayRecentTraffic(
     send: (event: string, payload: unknown, id?: string) => void,
+    options: ControlPlaneEventStreamOptions,
     sinceId?: string,
   ): void {
     const sinceIndex = sinceId ? this.recentEvents.findIndex((event) => event.id === sinceId) : -1;
     const recentEvents = sinceIndex >= 0
       ? this.recentEvents.slice(0, sinceIndex).reverse()
-      : this.listRecentEvents(20).reverse();
+      : this.recentEvents.slice(0, 20).reverse();
     for (const recentEvent of recentEvents) {
+      if (!canReplayEventToClient(recentEvent, options)) continue;
       send(recentEvent.event, recentEvent.payload, recentEvent.id);
     }
   }
@@ -614,7 +586,7 @@ export class ControlPlaneGateway {
     }
 
     const encoder = new TextEncoder();
-    const selectedDomains = options.domains?.length ? [...options.domains] : [...DEFAULT_DOMAINS];
+    const selectedDomains = normalizeRuntimeDomains(options.domains);
     const lastEventId = request.headers.get('last-event-id')?.trim() || undefined;
     const clientId = options.clientId ?? `cp-${randomUUID().slice(0, 8)}`;
     const label = options.label ?? `${options.clientKind ?? 'web'}:${clientId}`;
@@ -733,6 +705,7 @@ export class ControlPlaneGateway {
               lastSeenAt: Date.now(),
             };
             this.clients.set(clientId, disconnected);
+            pruneDisconnectedClientRecords(this.clients);
             this.dispatch?.syncControlPlaneClient(disconnected, 'control-plane.gateway.disconnect');
             this.dispatch?.syncControlPlaneState({
               enabled: true,
@@ -763,7 +736,7 @@ export class ControlPlaneGateway {
           controller.close();
         }, { once: true });
         send('ready', { clientId, domains: selectedDomains });
-        this.replayRecentTraffic(send, lastEventId);
+        this.replayRecentTraffic(send, { ...options, clientId, domains: selectedDomains }, lastEventId);
       },
       cancel: () => {
         teardown();
@@ -800,12 +773,17 @@ export class ControlPlaneGateway {
     });
   }
 
-  private rememberEvent(event: string, payload: unknown): ControlPlaneRecentEvent {
-    const record: ControlPlaneRecentEvent = {
+  private rememberEvent(
+    event: string,
+    payload: unknown,
+    replayScope?: ControlPlaneEventReplayScope,
+  ): ScopedControlPlaneRecentEvent {
+    const record: ScopedControlPlaneRecentEvent = {
       id: `cpe-${randomUUID().slice(0, 8)}`,
       event,
       createdAt: Date.now(),
       payload,
+      ...(replayScope && hasReplayScope(replayScope) ? { replayScope } : {}),
     };
     // O(1) circular ring buffer write — no array shifting.
     this._recentEventsRing[this._recentEventsHead] = record;
@@ -818,9 +796,5 @@ export class ControlPlaneGateway {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Test export — exposes DEFAULT_DOMAINS for regression tests.
-// This export is intentional; the const itself is module-scoped so tests
-// cannot otherwise verify its contents without runtime inspection.
-// ---------------------------------------------------------------------------
 export { DEFAULT_DOMAINS as DEFAULT_DOMAINS_TEST_EXPORT };

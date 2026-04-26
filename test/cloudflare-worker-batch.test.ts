@@ -17,9 +17,14 @@ describe('Cloudflare Worker batch bridge', () => {
       const res = await worker.fetch(
         new Request('https://worker.example/batch/jobs', {
           method: 'POST',
+          headers: { Authorization: 'Bearer worker-token', 'Content-Type': 'application/json' },
           body: JSON.stringify({ request: { messages: [{ role: 'user', content: 'hi' }] } }),
         }),
-        { GOODVIBES_DAEMON_URL: 'https://daemon.example', GOODVIBES_OPERATOR_TOKEN: 'token' },
+        {
+          GOODVIBES_DAEMON_URL: 'https://daemon.example',
+          GOODVIBES_OPERATOR_TOKEN: 'token',
+          GOODVIBES_WORKER_TOKEN: 'worker-token',
+        },
         { waitUntil: () => undefined },
       );
       expect(res.status).toBe(202);
@@ -38,9 +43,11 @@ describe('Cloudflare Worker batch bridge', () => {
     const res = await worker.fetch(
       new Request('https://worker.example/batch/tick/enqueue', {
         method: 'POST',
+        headers: { Authorization: 'Bearer worker-token', 'Content-Type': 'application/json' },
         body: JSON.stringify({ force: true }),
       }),
       {
+        GOODVIBES_WORKER_TOKEN: 'worker-token',
         GOODVIBES_BATCH_QUEUE: {
           async send(message) {
             messages.push(message);
@@ -54,5 +61,20 @@ describe('Cloudflare Worker batch bridge', () => {
     expect(messages[0]?.type).toBe('batch.tick');
     expect(messages[0]?.force).toBe(true);
     expect(typeof messages[0]?.enqueuedAt).toBe('number');
+  });
+
+  test('requires a worker token for non-health endpoints by default', async () => {
+    const worker = createGoodVibesCloudflareWorker();
+    const res = await worker.fetch(
+      new Request('https://worker.example/batch/tick/enqueue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      }),
+      {},
+      { waitUntil: () => undefined },
+    );
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ code: 'WORKER_AUTH_TOKEN_REQUIRED' });
   });
 });

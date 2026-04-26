@@ -34,6 +34,7 @@ import {
   listBuiltinOperatorActions,
   listBuiltinTools,
 } from './builtin/descriptors.js';
+import { runHomeAssistantOperatorAction } from './builtin/homeassistant.js';
 import { getBuiltinSetupSchema } from './builtin/setup-schema.js';
 import { registerBuiltinChannelPlugins } from './builtin/plugins.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './builtin/shared.js';
@@ -136,6 +137,10 @@ export class BuiltinChannelRuntime {
     actionId: string,
     input?: Record<string, unknown>,
   ): Promise<unknown> {
+    if (surface === 'homeassistant') {
+      const homeAssistantResult = await runHomeAssistantOperatorAction({ deps: this.deps }, actionId, input);
+      if (homeAssistantResult.handled) return homeAssistantResult.result;
+    }
     if (actionId === 'inspect-account') {
       const accountId = typeof input?.accountId === 'string' ? input.accountId : undefined;
       return accountId ? this.resolveAccount(surface, accountId) : this.buildAccount(surface);

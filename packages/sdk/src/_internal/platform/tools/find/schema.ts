@@ -194,6 +194,8 @@ export const findSchema: ToolDefinition = {
             },
           },
         },
+        minItems: 1,
+        maxItems: 20,
       },
       output: {
         type: 'object',

@@ -16,6 +16,7 @@ export type ManagedSurface =
   | 'discord'
   | 'ntfy'
   | 'webhook'
+  | 'homeassistant'
   | 'telegram'
   | 'google-chat'
   | 'signal'
@@ -74,6 +75,8 @@ export function configSectionForSurface(surface: ManagedSurface): SurfaceConfigS
       return 'ntfy';
     case 'webhook':
       return 'webhook';
+    case 'homeassistant':
+      return 'homeassistant';
     case 'telegram':
       return 'telegram';
     case 'google-chat':

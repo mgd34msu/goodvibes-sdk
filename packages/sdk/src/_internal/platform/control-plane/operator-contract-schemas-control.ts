@@ -133,6 +133,34 @@ export const SETTINGS_SNAPSHOT_SCHEMA: Record<string, unknown> = {
   anyOf: [SETTINGS_SNAPSHOT_UNAVAILABLE_SCHEMA, SETTINGS_SNAPSHOT_AVAILABLE_SCHEMA],
 };
 
+const SECURITY_SETTING_REPORT_SCHEMA = objectSchema({
+  key: STRING_SCHEMA,
+  type: enumSchema(['feature-flag', 'configuration']),
+  defaultState: STRING_SCHEMA,
+  currentState: STRING_SCHEMA,
+  securityRelevant: BOOLEAN_SCHEMA,
+  summary: STRING_SCHEMA,
+  insecureWhen: STRING_SCHEMA,
+  enablementEffect: STRING_SCHEMA,
+  enablementRequirements: STRING_LIST_SCHEMA,
+  compatibilityNotes: STRING_LIST_SCHEMA,
+}, [
+  'key',
+  'type',
+  'defaultState',
+  'currentState',
+  'securityRelevant',
+  'summary',
+  'insecureWhen',
+  'enablementEffect',
+  'enablementRequirements',
+  'compatibilityNotes',
+]);
+
+export const SECURITY_SETTINGS_REPORT_SCHEMA = objectSchema({
+  settings: arraySchema(SECURITY_SETTING_REPORT_SCHEMA),
+}, ['settings']);
+
 const SESSION_RETURN_CONTEXT_SCHEMA = objectSchema({
   activityLabel: STRING_SCHEMA,
   statusLabel: STRING_SCHEMA,
