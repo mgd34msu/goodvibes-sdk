@@ -68,6 +68,7 @@ import type { CompanionChatManager } from '../../companion/companion-chat-manage
 import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-routes.js';
 import { dispatchProviderRoutes } from './provider-routes.js';
 import { dispatchBatchRoutes } from './batch-routes.js';
+import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
 
 interface DaemonHttpRouterContext {
   readonly configManager: ConfigManager;
@@ -163,7 +164,7 @@ interface DaemonHttpRouterContext {
    * Without this, the production router always passes undefined and the secrets
    * tier is permanently dead on live code paths.
    */
-  readonly secretsManager?: Pick<import('../../config/secrets.js').SecretsManager, 'get'> | null;
+  readonly secretsManager?: Pick<import('../../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
   readonly trySpawnAgent: (
     input: Parameters<AgentManager['spawn']>[0],
     logLabel?: string,
@@ -286,6 +287,19 @@ export class DaemonHttpRouter {
         parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
       });
       if (batchResponse) return batchResponse;
+    }
+
+    if (url.pathname.startsWith('/api/cloudflare')) {
+      const adminError = this.context.requireAdmin(req);
+      if (adminError) return adminError;
+      const cloudflareResponse = await dispatchCloudflareRoutes(req, {
+        configManager: this.context.configManager,
+        secretsManager: this.context.secretsManager,
+        authToken: this.context.authToken,
+        parseJsonBody: (request: Request) => this.parseJsonBody(request),
+        parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
+      });
+      if (cloudflareResponse) return cloudflareResponse;
     }
 
     // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.

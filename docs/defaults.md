@@ -47,6 +47,17 @@ attempts to 30 seconds to avoid silent hangs.
 | `batch.maxQueueMessagesPerDay` | `1 000` | Free-tier-oriented client guardrail. |
 | `cloudflare.enabled` | `false` | Cloudflare is optional and never required for daemon value. |
 | `cloudflare.freeTierMode` | `true` | Prefer small queue signals and bounded daily usage. |
+| `cloudflare.accountId` | empty string | Cloudflare account id used by SDK-owned provisioning. |
+| `cloudflare.apiTokenRef` | empty string | Secret reference for the Cloudflare API token; empty falls back to `CLOUDFLARE_API_TOKEN`. |
+| `cloudflare.workerName` | `goodvibes-batch-worker` | Worker script name managed by SDK provisioning. |
+| `cloudflare.workerSubdomain` | empty string | Account workers.dev subdomain used to infer the Worker URL. |
+| `cloudflare.workerBaseUrl` | empty string | Public Worker URL clients use for batch proxy/queue calls. |
+| `cloudflare.daemonBaseUrl` | empty string | Public daemon URL the Worker uses for Worker-to-daemon calls. |
+| `cloudflare.workerTokenRef` | empty string | Secret reference for the Worker-to-daemon bearer token. |
+| `cloudflare.workerClientTokenRef` | empty string | Secret reference for the client-to-Worker bearer token. |
+| `cloudflare.workerCron` | `*/5 * * * *` | Worker cron trigger for batch scheduler ticks. |
+| `cloudflare.queueName` | `goodvibes-batch` | Cloudflare Queue name for GoodVibes batch signals. |
+| `cloudflare.deadLetterQueueName` | `goodvibes-batch-dlq` | Cloudflare DLQ name for exhausted batch signal retries. |
 | `cloudflare.maxQueueOpsPerDay` | `10 000` | Free-tier-oriented queue operation budget. |
 
 See [Daemon batch processing](./daemon-batch-processing.md) for provider support, routes, and Worker bridge behavior.

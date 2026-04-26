@@ -73,6 +73,10 @@ export class DaemonBatchManager {
       cloudflare: {
         enabled: this.getBooleanConfig('cloudflare.enabled', false),
         freeTierMode: this.getBooleanConfig('cloudflare.freeTierMode', true),
+        accountId: this.getStringConfig('cloudflare.accountId', ''),
+        workerName: this.getStringConfig('cloudflare.workerName', 'goodvibes-batch-worker'),
+        workerBaseUrl: this.getStringConfig('cloudflare.workerBaseUrl', ''),
+        daemonBaseUrl: this.getStringConfig('cloudflare.daemonBaseUrl', ''),
         queueName: this.getStringConfig('cloudflare.queueName', 'goodvibes-batch'),
         deadLetterQueueName: this.getStringConfig('cloudflare.deadLetterQueueName', 'goodvibes-batch-dlq'),
         maxQueueOpsPerDay: this.getNumberConfig('cloudflare.maxQueueOpsPerDay', 10_000),

@@ -75,6 +75,10 @@ export interface DaemonBatchRuntimeSnapshot {
   readonly cloudflare: {
     readonly enabled: boolean;
     readonly freeTierMode: boolean;
+    readonly accountId: string;
+    readonly workerName: string;
+    readonly workerBaseUrl: string;
+    readonly daemonBaseUrl: string;
     readonly queueName: string;
     readonly deadLetterQueueName: string;
     readonly maxQueueOpsPerDay: number;
