@@ -24,7 +24,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
-## [0.25.12] - 2026-04-26
+## [0.25.13] - 2026-04-26
 
 ### Breaking
 - none
@@ -43,19 +43,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   `speechText`, and inbound-message metadata.
 
 ### Fixed
-- Home Assistant webhook-spawned agents now build a pending
-  `homeassistant` surface reply, so final daemon output publishes through the
-  existing Home Assistant event-bus delivery strategy.
+- Home Assistant ingress now always uses direct, non-WRFC responders. Both
+  `/api/homeassistant/conversation` and `/webhook/homeassistant` set
+  `reviewMode: "none"`, `executionProtocol: "direct"`, and
+  `dangerously_disable_wrfc: true` before starting daemon-side work, preventing
+  Home Assistant messages from creating engineer/reviewer/fixer WRFC chains.
+- Home Assistant webhook responders now build a pending `homeassistant`
+  surface reply, so final daemon output publishes through the existing Home
+  Assistant event-bus delivery strategy.
 - Home Assistant inbound prompt handling now stores the generated or supplied
   `messageId` on both route bindings and session-message metadata so replies
   can be correlated reliably.
 
 ### Migration
 - Home Assistant Assist conversation agents should call
-  `POST /api/homeassistant/conversation` instead of stitching together
-  `/webhook/homeassistant` acknowledgements with later event-bus replies.
-- Existing webhook automations may keep using `/webhook/homeassistant`; they
-  now receive better final-event correlation metadata.
+  `POST /api/homeassistant/conversation` for submit-and-wait behavior.
+- Existing webhook automations may keep using `/webhook/homeassistant`; they now
+  run direct non-WRFC Home Assistant work and receive better final-event
+  correlation metadata.
 
 ---
 

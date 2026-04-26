@@ -181,7 +181,18 @@ export interface DaemonRouteContext {
   readonly parseSurfaceControlCommand: (text: string) => { readonly action: 'status' | 'cancel' | 'retry'; readonly id: string } | null;
   readonly performSurfaceControlCommand: (command: { readonly action: 'status' | 'cancel' | 'retry'; readonly id: string }) => Promise<string>;
   readonly performInteractiveSurfaceAction: (actionId: string, surface: 'slack' | 'discord', req: Request) => Promise<string>;
-  readonly trySpawnAgent: (input: { mode: 'spawn'; task: string; model?: string; tools?: readonly string[]; provider?: string; context?: string }, logLabel: string, sessionId?: string) => import('../tools/agent/index.js').AgentRecord | Response;
+  readonly trySpawnAgent: (input: {
+    mode: 'spawn';
+    task: string;
+    model?: string;
+    tools?: readonly string[];
+    provider?: string;
+    context?: string;
+    executionProtocol?: 'direct' | 'gather-plan-apply';
+    reviewMode?: 'none' | 'wrfc';
+    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
+    dangerously_disable_wrfc?: boolean;
+  }, logLabel: string, sessionId?: string) => import('../tools/agent/index.js').AgentRecord | Response;
   readonly syncSpawnedAgentTask: (record: import('../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../tools/agent/index.js').AgentRecord) => void;
   readonly findSchedule: (id: string) => AutomationJob | undefined;
