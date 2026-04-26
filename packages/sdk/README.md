@@ -30,7 +30,11 @@ Entry points:
 - `@pellux/goodvibes-sdk/auth`
 - `@pellux/goodvibes-sdk/browser`
 - `@pellux/goodvibes-sdk/web`
+- `@pellux/goodvibes-sdk/workers`
 - `@pellux/goodvibes-sdk/react-native`
 - `@pellux/goodvibes-sdk/expo`
+
+Cloudflare batch provisioning is exposed through daemon `/api/cloudflare/*`
+routes. The `/workers` entry is for manual Worker deployments.
 
 Use this package when you want the main consumer-facing GoodVibes TypeScript SDK rather than lower-level pieces.

@@ -122,7 +122,7 @@ Web (browser + service workers) SDK entry.
 
 **Status:** preview
 
-Cloudflare Worker bridge for optional daemon batch integration. Exports `createGoodVibesCloudflareWorker` and structural Worker/Queue types. Use this when deploying a Worker that proxies `/batch/*` to the daemon, enqueues batch tick signals, consumes Cloudflare Queue messages, or runs scheduled ticks. Normal Worker-hosted clients that only need operator HTTP calls should keep using `./web`.
+Cloudflare Worker bridge for optional daemon batch integration. Exports `createGoodVibesCloudflareWorker` and structural Worker/Queue types. Use this when manually deploying a Worker that proxies `/batch/*` to the daemon, enqueues batch tick signals, consumes Cloudflare Queue messages, or runs scheduled ticks. Normal Worker-hosted clients that only need operator HTTP calls should keep using `./web`. SDK-owned provisioning is exposed through daemon `/api/cloudflare/*` routes rather than this Worker entry point.
 
 ### `./react-native` — `@pellux/goodvibes-sdk/react-native`
 

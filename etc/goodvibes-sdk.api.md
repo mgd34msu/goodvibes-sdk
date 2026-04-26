@@ -1707,6 +1707,10 @@ export interface GoodVibesCloudflareWorkerEnv {
     GOODVIBES_DAEMON_URL?: string;
     // (undocumented)
     GOODVIBES_OPERATOR_TOKEN?: string;
+    // (undocumented)
+    GOODVIBES_QUEUE_JOB_PAYLOADS?: string;
+    // (undocumented)
+    GOODVIBES_WORKER_TOKEN?: string;
 }
 
 // @public (undocumented)
@@ -1717,6 +1721,8 @@ export interface GoodVibesCloudflareWorkerOptions {
     readonly daemonUrl?: string;
     // (undocumented)
     readonly queueJobPayloads?: boolean;
+    // (undocumented)
+    readonly workerAuthToken?: string;
 }
 
 // @public (undocumented)

@@ -102,6 +102,10 @@ const stop = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (event) => {
 
 ### Cloudflare Worker batch bridge
 
+Cloudflare is optional and off by default. For onboarding, call the daemon's
+`/api/cloudflare/*` routes so the SDK validates the token/account and provisions
+Queues, DLQ, Worker secrets, queue consumer, and cron trigger.
+
 ```ts
 import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
 

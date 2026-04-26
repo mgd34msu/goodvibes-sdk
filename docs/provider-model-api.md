@@ -1,6 +1,6 @@
 # Provider & Model API Reference
 
-**Version**: `@pellux/goodvibes-sdk` >= 0.21.3 (current: 0.25.8 — see SDK `CHANGELOG.md` for incremental provider-API changes; `secretsResolutionSkipped` has been always present since 0.21.36)
+**Version**: `@pellux/goodvibes-sdk` >= 0.21.3 (current: 0.25.9 — see SDK `CHANGELOG.md` for incremental provider-API changes; `secretsResolutionSkipped` has been always present since 0.21.36)
 **Base path**: provider routes are under `/api/providers`; companion remote-session routes are under `/api/companion/chat`
 **Authentication**: all routes require the standard daemon bearer token (`Authorization: Bearer <token>` or the operator session cookie).
 

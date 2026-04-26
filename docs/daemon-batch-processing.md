@@ -10,7 +10,8 @@ Batching is off by default.
 {
   "batch.mode": "off",
   "batch.queueBackend": "local",
-  "cloudflare.enabled": false
+  "cloudflare.enabled": false,
+  "cloudflare.freeTierMode": true
 }
 ```
 
@@ -80,6 +81,52 @@ Jobs are persisted under the daemon config directory in `batch-jobs.json`.
 
 Cloudflare is optional. The daemon works without Cloudflare, and `cloudflare.enabled` defaults to `false`.
 
+The SDK owns Cloudflare service interaction. TUI/onboarding clients should gather user choices and call the daemon Cloudflare routes; they should not implement queue, Worker, secret, consumer, or cron provisioning themselves.
+
+### Provisioning Requirements
+
+The SDK provisioning flow needs:
+
+- A Cloudflare account id.
+- A Cloudflare API token. Pass `apiToken`, configure `cloudflare.apiTokenRef`, store `CLOUDFLARE_API_TOKEN` in `SecretsManager`, or set the `CLOUDFLARE_API_TOKEN` environment variable.
+- `cloudflare.daemonBaseUrl`, a public URL the Cloudflare Worker can reach. `http://127.0.0.1` and other local-only daemon URLs will not work from Cloudflare.
+- A Worker-to-daemon operator token. By default the daemon uses its current operator token; callers may pass `operatorToken` or configure `cloudflare.workerTokenRef`.
+- A Worker client bearer token. If one is not supplied, provisioning generates one, stores it in `SecretsManager`, writes `cloudflare.workerClientTokenRef`, and installs it as the Worker secret `GOODVIBES_WORKER_TOKEN`.
+
+Secrets are stored as `goodvibes://secrets/...` references when the provisioning route is asked to persist them. Raw Cloudflare tokens are never written into config.
+
+### Cloudflare Daemon API
+
+All Cloudflare routes require daemon authentication and admin privileges.
+
+| Route | Method | Behavior |
+|---|---:|---|
+| `/api/cloudflare/status` | `GET` | Returns local Cloudflare config, readiness booleans, and warnings without making Cloudflare API calls. |
+| `/api/cloudflare/validate` | `POST` | Resolves the API token and validates Cloudflare account access. |
+| `/api/cloudflare/provision` | `POST` | Creates or reuses the queue and DLQ, uploads the GoodVibes Worker, sets Worker secrets, enables workers.dev when possible, configures cron, attaches the queue consumer with DLQ, persists config, and optionally verifies the Worker. |
+| `/api/cloudflare/verify` | `POST` | Calls the Worker health endpoint and the Worker-to-daemon batch proxy. |
+| `/api/cloudflare/disable` | `POST` | Disables local Cloudflare usage, returns queue backend to `local`, and can remove Worker cron/subdomain settings. |
+
+Provisioning request example:
+
+```json
+{
+  "accountId": "023e105f4ecef8ad9ca31a8372d0c353",
+  "apiToken": "<cloudflare-api-token>",
+  "storeApiToken": true,
+  "daemonBaseUrl": "https://daemon.example.com",
+  "workerName": "goodvibes-batch-worker",
+  "queueName": "goodvibes-batch",
+  "deadLetterQueueName": "goodvibes-batch-dlq",
+  "workerCron": "*/5 * * * *",
+  "batchMode": "explicit",
+  "returnGeneratedSecrets": true,
+  "verify": true
+}
+```
+
+`returnGeneratedSecrets` returns a generated Worker client token only for the provisioning response. Store it in the onboarding client if that client will call the Worker directly. Otherwise use the persisted `cloudflare.workerClientTokenRef`.
+
 The SDK exports `@pellux/goodvibes-sdk/workers` for Worker deployments:
 
 ```ts
@@ -88,16 +135,18 @@ import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
 export default createGoodVibesCloudflareWorker();
 ```
 
-The Worker bridge can:
+Manual Worker deployments can still use that entry point, but SDK provisioning uploads an equivalent Worker module automatically. The Worker bridge can:
 
 - Proxy `/batch/*` requests to the daemon's `/api/batch/*` routes.
 - Queue small tick signals with `/batch/tick/enqueue`.
 - Run scheduled events that call `/api/batch/tick`.
 - Consume Cloudflare Queue messages and retry failures so Cloudflare dead-letter queues can capture exhausted messages.
 
+When `GOODVIBES_WORKER_TOKEN` or `workerAuthToken` is configured, every Worker route except `/health` and `/batch/health` requires `Authorization: Bearer <token>`.
+
 By default, the Worker does not queue full prompt/job payloads. Queue messages should be small signals, not prompt archives or secrets. This keeps usage free-tier friendly and avoids putting sensitive prompt bodies into Cloudflare Queues. Full job payload queueing requires `createGoodVibesCloudflareWorker({ queueJobPayloads: true })`.
 
-Configure dead-letter queues in Cloudflare/Wrangler for the queue binding; the SDK consumes retries and allows failed messages to flow to the configured DLQ.
+The SDK provisioning route configures the queue consumer with `dead_letter_queue`. Manual deployments must configure the dead-letter queue in Cloudflare or Wrangler for the queue binding; the SDK Worker consumes retries and allows failed messages to flow to the configured DLQ.
 
 ## Free-Tier Guardrails
 

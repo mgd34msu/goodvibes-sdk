@@ -24,6 +24,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.9] - 2026-04-26
+
+### Breaking
+- none
+
+### Added
+- Added SDK-owned Cloudflare control-plane provisioning with
+  `/api/cloudflare/status`, `/api/cloudflare/validate`,
+  `/api/cloudflare/provision`, `/api/cloudflare/verify`, and
+  `/api/cloudflare/disable` daemon routes.
+- Added the `cloudflare` official TypeScript client dependency for Cloudflare
+  account validation, Queue/DLQ creation, Worker script upload, Worker secrets,
+  queue consumers, workers.dev enablement, and cron trigger configuration.
+- Added Cloudflare config keys for account id, API-token secret ref, Worker
+  script name/subdomain/base URL, Worker-to-daemon daemon URL, Worker client
+  token ref, and Worker cron.
+- Added generated Worker-client bearer-token setup during provisioning so
+  exposed Worker routes can require `Authorization: Bearer <token>`.
+
+### Fixed
+- Cloudflare Worker bridge routes now honor `GOODVIBES_WORKER_TOKEN` or
+  `workerAuthToken` for client-to-Worker auth while keeping health endpoints
+  public.
+- Cloudflare DLQ setup is now part of SDK provisioning instead of requiring
+  clients or onboarding flows to wire Cloudflare service resources manually.
+
+### Migration
+- TUI/onboarding clients should gather Cloudflare choices and call
+  `/api/cloudflare/provision`; they should not implement Cloudflare Queue,
+  Worker, secret, consumer, or cron API calls themselves.
+- Set `CLOUDFLARE_API_TOKEN` or configure `cloudflare.apiTokenRef` before
+  provisioning. `cloudflare.daemonBaseUrl` must be a public daemon URL reachable
+  from Cloudflare.
+
+---
+
 ## [0.25.8] - 2026-04-25
 
 ### Breaking

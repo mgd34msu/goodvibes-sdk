@@ -283,8 +283,15 @@ export interface BatchConfig {
 export interface CloudflareConfig {
   enabled: boolean;
   freeTierMode: boolean;
+  accountId: string;
+  apiTokenRef: string;
+  workerName: string;
+  workerSubdomain: string;
   workerBaseUrl: string;
+  daemonBaseUrl: string;
   workerTokenRef: string;
+  workerClientTokenRef: string;
+  workerCron: string;
   queueName: string;
   deadLetterQueueName: string;
   maxQueueOpsPerDay: number;
@@ -643,8 +650,15 @@ export type ConfigKey =
   | 'batch.maxQueueMessagesPerDay'
   | 'cloudflare.enabled'
   | 'cloudflare.freeTierMode'
+  | 'cloudflare.accountId'
+  | 'cloudflare.apiTokenRef'
+  | 'cloudflare.workerName'
+  | 'cloudflare.workerSubdomain'
   | 'cloudflare.workerBaseUrl'
+  | 'cloudflare.daemonBaseUrl'
   | 'cloudflare.workerTokenRef'
+  | 'cloudflare.workerClientTokenRef'
+  | 'cloudflare.workerCron'
   | 'cloudflare.queueName'
   | 'cloudflare.deadLetterQueueName'
   | 'cloudflare.maxQueueOpsPerDay';
@@ -866,8 +880,15 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'batch.maxQueueMessagesPerDay' ? number :
   K extends 'cloudflare.enabled' ? boolean :
   K extends 'cloudflare.freeTierMode' ? boolean :
+  K extends 'cloudflare.accountId' ? string :
+  K extends 'cloudflare.apiTokenRef' ? string :
+  K extends 'cloudflare.workerName' ? string :
+  K extends 'cloudflare.workerSubdomain' ? string :
   K extends 'cloudflare.workerBaseUrl' ? string :
+  K extends 'cloudflare.daemonBaseUrl' ? string :
   K extends 'cloudflare.workerTokenRef' ? string :
+  K extends 'cloudflare.workerClientTokenRef' ? string :
+  K extends 'cloudflare.workerCron' ? string :
   K extends 'cloudflare.queueName' ? string :
   K extends 'cloudflare.deadLetterQueueName' ? string :
   K extends 'cloudflare.maxQueueOpsPerDay' ? number :

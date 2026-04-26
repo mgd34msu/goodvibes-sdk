@@ -19,13 +19,13 @@ This surface makes direct use of Bun runtime APIs, including `Bun.spawn`, `Bun.f
 
 ## Companion surface (multi-runtime)
 
-The companion surface provides auth, transport (HTTP/SSE/WebSocket), runtime events, contracts, errors, observer hooks, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. It is intentionally runtime-neutral: no Bun globals, no `node:*` imports.
+The companion surface provides auth, transport (HTTP/SSE/WebSocket), runtime events, contracts, errors, observer hooks, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. It is intentionally runtime-neutral: no Bun globals, no `node:*` imports. Cloudflare account/Queue/Worker provisioning is a daemon route concern under `/api/cloudflare/*`, not companion-side service logic.
 
 Imported via:
 - `./react-native` — React Native (Hermes)
 - `./browser` — browser environments
 - `./web` — web + service workers (alias of `./browser`)
-- `./workers` — Cloudflare Worker bridge for daemon batch proxying, queue tick signals, queue consumers, and scheduled ticks
+- `./workers` — manual Cloudflare Worker bridge for daemon batch proxying, queue tick signals, queue consumers, and scheduled ticks
 - `./expo` — Expo (alias of `./react-native`)
 - `./auth` — auth client, token stores
 - `./errors` — typed error surface
@@ -42,7 +42,7 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 | Bun | Full + Companion | Dev environment, TUI, daemons, CLI apps |
 | Hermes (React Native / Expo) | Companion only | iOS and Android companion apps |
 | Browser | Companion only | Web UI apps |
-| Cloudflare Workers / workerd / Miniflare 4 | Companion only | Use `/web` for normal operator HTTP clients; use `/workers` only when deploying the GoodVibes Worker bridge for optional daemon batch queue/tick integration |
+| Cloudflare Workers / workerd / Miniflare 4 | Companion only | Use `/web` for normal operator HTTP clients; use `/workers` only when manually deploying the GoodVibes Worker bridge for optional daemon batch queue/tick integration |
 
 ## Runtimes NOT supported
 

@@ -19,6 +19,8 @@ export interface GoodVibesCloudflareExecutionContext {
 export interface GoodVibesCloudflareWorkerEnv {
   GOODVIBES_DAEMON_URL?: string;
   GOODVIBES_OPERATOR_TOKEN?: string;
+  GOODVIBES_WORKER_TOKEN?: string;
+  GOODVIBES_QUEUE_JOB_PAYLOADS?: string;
   GOODVIBES_BATCH_QUEUE?: GoodVibesCloudflareQueue<GoodVibesCloudflareQueuePayload>;
 }
 
@@ -37,6 +39,7 @@ export type GoodVibesCloudflareQueuePayload =
 export interface GoodVibesCloudflareWorkerOptions {
   readonly daemonUrl?: string;
   readonly authToken?: string;
+  readonly workerAuthToken?: string;
   readonly queueJobPayloads?: boolean;
 }
 
@@ -56,6 +59,9 @@ export function createGoodVibesCloudflareWorker(
         return json({ ok: true, service: 'goodvibes-cloudflare-worker' });
       }
 
+      const authError = requireWorkerAuth(request, env, options);
+      if (authError) return authError;
+
       if (url.pathname === '/batch/tick/enqueue' && request.method === 'POST') {
         const queue = env.GOODVIBES_BATCH_QUEUE;
         if (!queue) return json({ error: 'GOODVIBES_BATCH_QUEUE is not bound', code: 'QUEUE_NOT_CONFIGURED' }, 503);
@@ -72,7 +78,7 @@ export function createGoodVibesCloudflareWorker(
       if (!daemonPath) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404);
 
       if (url.pathname === '/batch/jobs/enqueue' && request.method === 'POST') {
-        if (!options.queueJobPayloads) {
+        if (!options.queueJobPayloads && env.GOODVIBES_QUEUE_JOB_PAYLOADS !== 'true') {
           return json({
             error: 'Queueing full batch job payloads is disabled. Post /batch/jobs to proxy directly to the daemon, or enable queueJobPayloads explicitly.',
             code: 'QUEUE_PAYLOADS_DISABLED',
@@ -177,6 +183,18 @@ function toDaemonBatchPath(pathname: string): string | null {
   if (pathname.startsWith('/batch/')) return `/api${pathname}`;
   if (pathname === '/batch') return '/api/batch';
   return null;
+}
+
+function requireWorkerAuth(
+  request: Request,
+  env: GoodVibesCloudflareWorkerEnv,
+  options: GoodVibesCloudflareWorkerOptions,
+): Response | null {
+  const expected = options.workerAuthToken ?? env.GOODVIBES_WORKER_TOKEN ?? '';
+  if (!expected) return null;
+  const auth = request.headers.get('authorization') ?? '';
+  if (auth === `Bearer ${expected}`) return null;
+  return json({ error: 'Worker authorization required', code: 'WORKER_AUTH_REQUIRED' }, 401);
 }
 
 function resolveDaemonUrl(
