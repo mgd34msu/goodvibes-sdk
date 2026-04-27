@@ -33,6 +33,13 @@ type-level checks, browser compatibility, package metadata, no-any, pack, and
 install smoke. Test execution is owned by the `platform-matrix` jobs; run
 `bun run test` locally when you need the full Bun test suite.
 
+`bun run build` and the package test scripts share the repo workspace lock.
+That prevents tests from reading `packages/*/dist` while another build or
+validation process is cleaning and rebuilding package output. Use
+`bun run test`, `bun run test:rn`, `bun run test:workers`, or
+`bun run test:workers:wrangler` instead of invoking `bun test ...` directly
+when package `dist` imports are involved.
+
 ## Internal Refresh
 
 When you changed internal workspace source, refresh the umbrella package before validating:

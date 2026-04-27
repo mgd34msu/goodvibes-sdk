@@ -24,6 +24,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.18] - 2026-04-27
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Cloudflare provisioning is now idempotent across repeated onboarding runs.
+  The SDK checks for existing Queues, queue consumers, KV namespaces, R2
+  buckets, Secrets Stores, Zero Trust Tunnels, Access service tokens/apps, DNS
+  CNAMEs, and workers.dev script routes before creating them, and reuses saved
+  resource ids when present.
+- Cloudflare provisioning now performs a second discovery pass after
+  exists/quota-style create errors. Secrets Store provisioning specifically
+  recovers from Cloudflare's `maximum_stores_exceeded` response when the
+  requested store, or a single account-level store, is visible.
+- `bun run test`, `test:rn`, `test:workers`, and `test:workers:wrangler` now
+  use the repo workspace lock, preventing tests from importing `dist` while a
+  concurrent build/validation process is cleaning or rebuilding package output.
+
+### Migration
+- none
+
+---
+
 ## [0.25.17] - 2026-04-27
 
 ### Breaking

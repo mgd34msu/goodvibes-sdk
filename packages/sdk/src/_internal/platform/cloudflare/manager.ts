@@ -385,9 +385,13 @@ export class CloudflareControlPlaneManager {
       queueId = requireQueueId(queue, queueName);
     }
 
-    const kv = components.kv ? await ensureKvNamespace(resourceContext, client, accountId, clean(input.kvNamespaceName) || config.kvNamespaceName || DEFAULT_KV_NAMESPACE_NAME, persist, steps) : undefined;
+    const kvName = clean(input.kvNamespaceName) || config.kvNamespaceName || DEFAULT_KV_NAMESPACE_NAME;
+    const kvId = clean(input.kvNamespaceId) || config.kvNamespaceId;
+    const kv = components.kv ? await ensureKvNamespace(resourceContext, client, accountId, kvName, kvId, persist, steps) : undefined;
     const r2 = components.r2 ? await ensureR2Bucket(resourceContext, client, accountId, clean(input.r2BucketName) || config.r2BucketName || DEFAULT_R2_BUCKET_NAME, persist, steps) : undefined;
-    const secretsStore = components.secretsStore ? await ensureSecretsStore(resourceContext, client, accountId, clean(input.secretsStoreName) || config.secretsStoreName || DEFAULT_SECRETS_STORE_NAME, persist, steps) : undefined;
+    const secretsStoreName = clean(input.secretsStoreName) || config.secretsStoreName || DEFAULT_SECRETS_STORE_NAME;
+    const secretsStoreId = clean(input.secretsStoreId) || config.secretsStoreId;
+    const secretsStore = components.secretsStore ? await ensureSecretsStore(resourceContext, client, accountId, secretsStoreName, secretsStoreId, persist, steps) : undefined;
     const tunnel = components.zeroTrustTunnel
       ? await ensureTunnel(resourceContext, client, {
         accountId,

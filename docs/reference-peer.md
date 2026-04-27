@@ -1,6 +1,6 @@
 # Peer API Reference
 
-Generated from the synced GoodVibes peer contract for product version `0.25.17`.
+Generated from the synced GoodVibes peer contract for product version `0.25.18`.
 
 ## Summary
 
