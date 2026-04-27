@@ -112,8 +112,8 @@ The SDK provisioning flow needs:
 - `cloudflare.daemonBaseUrl`, the origin URL the Cloudflare Worker or Tunnel should use for Worker-to-daemon calls. Without a Tunnel this must be public; with a Zero Trust Tunnel it may be a local daemon URL such as `http://127.0.0.1:3421`.
 - A Worker-to-daemon operator token. By default the daemon uses its current operator token; callers may pass `operatorToken` or configure `cloudflare.workerTokenRef`.
 - A Worker client bearer token. If one is not supplied, provisioning generates one, stores it in `SecretsManager`, writes `cloudflare.workerClientTokenRef`, and installs it as the Worker secret `GOODVIBES_WORKER_TOKEN`.
-- For DNS or Access automation, a selected Cloudflare zone via `zoneId` or `zoneName`.
-- For Tunnel/DNS/Access automation, `daemonHostname` identifies the hostname to route/protect.
+- For DNS automation, a selected Cloudflare zone via `zoneId` or `zoneName`.
+- For Tunnel or Access automation, `daemonHostname` identifies the hostname to route/protect. Access application and service-token APIs are account-scoped; a zone is only required when GoodVibes should also create DNS records.
 
 Secrets are stored as `goodvibes://secrets/...` references when the provisioning route is asked to persist them. Raw Cloudflare tokens are never written into config.
 
@@ -129,6 +129,25 @@ Onboarding clients can either collect a manually-created operational Cloudflare 
 The returned permission list describes the operational token the SDK will create. It is not a list of permissions to add to the temporary bootstrap token. If DNS automation should be scoped to one zone, pass `zoneId` during token creation; otherwise the SDK may create a broader zone-scoped operational token so later provisioning can discover/select the zone.
 
 The SDK resolves Cloudflare permission groups dynamically through the official Cloudflare TypeScript SDK. It resolves each required permission by `name` and Cloudflare scope, with aliases for Cloudflare's `Write`/`Edit` naming variants, before falling back to a broad catalog scan. If Cloudflare still returns account-specific permission names that do not match the SDK candidates, token creation fails with the missing permission names so the client can guide the user to create the operational token manually.
+
+Operational-token permissions are scoped to the selected account except for DNS, which uses the selected zone:
+
+| Component | Permission candidates | Scope |
+|---|---|---|
+| Bootstrap token only | `API Tokens Write`, `API Tokens Edit` | User |
+| Workers | `Workers Scripts Write`, `Workers Scripts Edit` | Account |
+| Queues | `Queues Write`, `Queues Edit`, `Workers Queues Write`, `Cloudflare Queues Write` | Account |
+| Zero Trust Tunnel | `Cloudflare Tunnel Write`, `Cloudflare Tunnel Edit` | Account |
+| Zero Trust Access | `Access: Apps and Policies Write`, `Access: Service Tokens Write`, plus `Edit` variants | Account |
+| DNS | `Zone Read`, `DNS Write`, `DNS Edit` | Zone |
+| KV | `Workers KV Storage Write`, `Workers KV Storage Edit` | Account |
+| Durable Objects | `Workers Scripts Write`, `Workers Scripts Edit` | Account |
+| Secrets Store | `Account Secrets Store Write`, `Account Secrets Store Edit` | Account |
+| R2 | `Workers R2 Storage Write`, `Workers R2 Storage Edit` | Account |
+
+R2 provisioning uses Cloudflare's account-scoped R2 API for bucket creation/listing. The operational token policy is scoped to the selected account; the SDK does not add a separate `com.cloudflare.edge.r2.bucket.*` resource for the provisioning token.
+
+A user-owned bootstrap token can create account- and zone-scoped operational tokens when that Cloudflare user has access to those resources. "User" describes ownership of the API token management permission; it does not mean the generated token can only carry user-scoped permissions.
 
 `POST /api/cloudflare/discover` lists accounts, zones, workers.dev subdomain, queues, KV namespaces, Durable Object namespaces, R2 buckets, Secrets Stores, Zero Trust Tunnels, and Access applications visible to the token. Use this for onboarding account/zone/domain selection. If no zone is available, Workers can still use a `workers.dev` URL.
 

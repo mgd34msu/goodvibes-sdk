@@ -48,8 +48,8 @@ export function buildTokenRequirements(
     requirements.push({
       component: 'queues',
       scope: 'account',
-      permission: 'Workers Queues Write',
-      alternatives: ['Queues Write', 'Cloudflare Queues Write'],
+      permission: 'Queues Write',
+      alternatives: ['Workers Queues Write', 'Cloudflare Queues Write'],
       reason: 'Create GoodVibes batch queues, dead-letter queues, and Worker consumers.',
     });
   }
@@ -120,15 +120,15 @@ export function buildTokenRequirements(
     requirements.push({
       component: 'secretsStore',
       scope: 'account',
-      permission: 'Secrets Store Write',
-      alternatives: ['Secrets Store Edit', 'Secrets Write'],
+      permission: 'Account Secrets Store Write',
+      alternatives: ['Account Secrets Store Edit', 'Secrets Store Write', 'Secrets Store Edit'],
       reason: 'Create or reuse a Cloudflare Secrets Store for future account-level secrets.',
     });
   }
   if (components.r2) {
     requirements.push({
       component: 'r2',
-      scope: 'r2',
+      scope: 'account',
       permission: 'Workers R2 Storage Write',
       alternatives: ['R2 Storage Write', 'Workers R2 Storage Edit'],
       reason: 'Create and bind a Standard R2 bucket for optional GoodVibes artifacts.',
@@ -178,7 +178,7 @@ export async function resolvePermissionGroupIds(
 
   for (const requirement of requirements) {
     const scope = cloudflareScopeForRequirement(requirement);
-    const names = [requirement.permission, ...(requirement.alternatives ?? [])];
+    const names = permissionNameCandidates(requirement);
     let group: CloudflarePermissionGroupLike | undefined;
 
     for (const name of names) {
@@ -227,11 +227,8 @@ export function buildTokenResources(
   const resources: Record<string, string> = {
     [`com.cloudflare.api.account.${accountId}`]: '*',
   };
-  if (components.dns || components.zeroTrustAccess) {
+  if (components.dns) {
     resources[zoneId ? `com.cloudflare.api.account.zone.${zoneId}` : 'com.cloudflare.api.account.zone.*'] = '*';
-  }
-  if (components.r2) {
-    resources['com.cloudflare.edge.r2.bucket.*'] = '*';
   }
   return resources;
 }
@@ -313,7 +310,7 @@ function findPermissionGroup(
   requirement: CloudflareTokenPermissionRequirement,
   groups: readonly CloudflarePermissionGroupLike[],
 ): CloudflarePermissionGroupLike | undefined {
-  const names = [requirement.permission, ...(requirement.alternatives ?? [])].map(normalizePermissionName);
+  const names = permissionNameCandidates(requirement).map(normalizePermissionName);
   const scope = cloudflareScopeForRequirement(requirement);
   return groups.find((entry) =>
     entry.id &&
@@ -335,11 +332,21 @@ function cloudflareScopeForRequirement(requirement: CloudflareTokenPermissionReq
       return 'com.cloudflare.api.account.zone';
     case 'user':
       return 'com.cloudflare.api.user';
-    case 'r2':
-      return 'com.cloudflare.edge.r2.bucket';
   }
 }
 
 function normalizePermissionName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function permissionNameCandidates(requirement: CloudflareTokenPermissionRequirement): readonly string[] {
+  const names = new Set<string>();
+  for (const name of [requirement.permission, ...(requirement.alternatives ?? [])]) {
+    names.add(name);
+    const editVariant = name.replace(/\bWrite\b/g, 'Edit');
+    const writeVariant = name.replace(/\bEdit\b/g, 'Write');
+    names.add(editVariant);
+    names.add(writeVariant);
+  }
+  return Array.from(names);
 }

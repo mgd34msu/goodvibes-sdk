@@ -24,6 +24,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.16] - 2026-04-27
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Cloudflare operational-token bootstrap now matches Cloudflare's documented
+  permission names and scopes across the SDK-managed components. Queues use
+  `Queues Write`, Secrets Store uses the account-prefixed
+  `Account Secrets Store Write/Edit` candidates, R2 uses account-scoped
+  `Workers R2 Storage Write/Edit`, and all requirements accept Cloudflare's
+  `Write`/`Edit` naming variants.
+- Cloudflare operational-token creation no longer adds invalid R2 bucket
+  resources or zone resources for account-scoped Zero Trust Access. Zone
+  resources are included only when DNS automation is enabled.
+
+### Migration
+- No config migration is required. If R2 provisioning failed with
+  `CLOUDFLARE_PERMISSION_GROUPS_MISSING`, or if token creation failed for
+  Queues, Secrets Store, or Access resource scope, update to this SDK version
+  and rerun the Cloudflare wizard with a temporary bootstrap token that has
+  `User > API Tokens Write`.
+
+---
+
 ## [0.25.15] - 2026-04-26
 
 ### Breaking

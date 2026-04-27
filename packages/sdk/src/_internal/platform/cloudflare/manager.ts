@@ -368,14 +368,14 @@ export class CloudflareControlPlaneManager {
       zoneName: input.zoneName,
       configuredZoneId: config.zoneId,
       configuredZoneName: config.zoneName,
-      required: components.dns || components.zeroTrustAccess,
+      required: components.dns,
     });
     if (zone) {
       this.setConfig('cloudflare.zoneId', zone.id, persist);
       this.setConfig('cloudflare.zoneName', zone.name, persist);
       steps.push({ name: 'zone', status: 'ok', message: `Using Cloudflare zone ${zone.name}.`, resourceId: zone.id });
-    } else if (components.dns || components.zeroTrustAccess) {
-      steps.push({ name: 'zone', status: 'warning', message: 'No Cloudflare zone was selected; DNS and Access hostname automation were skipped.' });
+    } else if (components.dns) {
+      steps.push({ name: 'zone', status: 'warning', message: 'No Cloudflare zone was selected; DNS hostname automation was skipped.' });
     }
 
     let deadLetterQueue: CloudflareQueueLike | undefined;
@@ -525,7 +525,6 @@ export class CloudflareControlPlaneManager {
     const access = components.zeroTrustAccess
       ? await ensureAccess(resourceContext, client, {
         accountId,
-        zone,
         daemonHostname,
         accessAppId: clean(input.accessAppId) || config.accessAppId,
         accessServiceTokenId: clean(input.accessServiceTokenId) || config.accessServiceTokenId,
