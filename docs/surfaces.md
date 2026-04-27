@@ -2,7 +2,8 @@
 
 The `@pellux/goodvibes-sdk` package has two surfaces with different runtime requirements.
 
-See also: [Public Surface reference](./public-surface.md) for the full exports map.
+See also: [Public Surface reference](./public-surface.md) for the full exports
+map and [Channel surfaces](./channel-surfaces.md) for the channel runtime.
 
 ## Full surface (Bun-only)
 
@@ -59,5 +60,3 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 ## Enforcement
 
 CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `workers.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
-
-Future: a per-source lint rule will prevent introduction of `Bun.*` in companion-reachable source files before they reach the bundle stage.

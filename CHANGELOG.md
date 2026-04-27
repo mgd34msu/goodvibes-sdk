@@ -22,9 +22,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   falling back to the lightweight extractor, improving URL/artifact summaries
   without changing non-HTML extraction behavior.
 - Documentation now describes the current SDK surface as a live reference set:
-  the main README, docs index, tools, secrets, automation, media/search, and
-  knowledge-system docs were refreshed against source, and generated API docs
-  no longer include version-pinned prose.
+  the main README, docs index, runtime orchestration, channel surfaces, tools,
+  secrets, automation, media/search, and knowledge-system docs were refreshed
+  against source, and generated API docs no longer include version-pinned
+  prose.
 
 ### Fixed
 - Control-plane method catalog descriptions now avoid stale restoration and
