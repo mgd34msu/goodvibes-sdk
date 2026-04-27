@@ -1,69 +1,69 @@
-# Docs
+# GoodVibes SDK Documentation
+
+These documents describe the current SDK behavior. `CHANGELOG.md` is the
+release-history source.
 
 ## Start Here
 
-### Bun full surface (TUI / daemon / CLI)
-
-- [Runtime surfaces](./surfaces.md) — two-tier model: full surface vs. companion surface
-- [Public surface reference](./public-surface.md) — full exports map by entry point
 - [Getting started](./getting-started.md)
-- [Package guide](./packages.md)
+- [Packages and entry points](./packages.md)
+- [Runtime surfaces](./surfaces.md)
 - [Compatibility](./compatibility.md)
+- [Public surface reference](./public-surface.md)
 
-### Companion surface (React Native / Expo / browser / Cloudflare Workers)
-
-- [Getting started](./getting-started.md) — includes companion quickstart paths
-- [React Native integration](./react-native-integration.md)
-- [Expo integration](./expo-integration.md)
-- [Browser integration](./browser-integration.md)
-- [Companion app patterns](./companion-app-patterns.md)
-- [Companion message routing](./companion-message-routing.md)
-- [Companion app pairing](./pairing.md)
-
-## Auth, Realtime, and Runtime Integration
+## Client Integration
 
 - [Authentication](./authentication.md)
-- [Realtime and telemetry](./realtime-and-telemetry.md)
-- [Retries and reconnect](./retries-and-reconnect.md)
+- [Browser integration](./browser-integration.md)
 - [Web UI integration](./web-ui-integration.md)
+- [React Native integration](./react-native-integration.md)
+- [Expo integration](./expo-integration.md)
 - [Android integration](./android-integration.md)
 - [iOS integration](./ios-integration.md)
+- [Companion app patterns](./companion-app-patterns.md)
+- [Companion message routing](./companion-message-routing.md)
+- [Pairing](./pairing.md)
+- [Realtime and telemetry](./realtime-and-telemetry.md)
+- [Retries and reconnect](./retries-and-reconnect.md)
 
-## Architecture and Security
-
-- [Architecture](./architecture.md)
-- [Platform layer architecture](./architecture-platform.md)
-- [Feature flags](./feature-flags.md)
-- [Security](./security.md)
-- [Tool safety](./tool-safety.md)
-
-## Server and Host Embedding
+## Daemon and Runtime
 
 - [Daemon embedding](./daemon-embedding.md)
-- [Daemon batch processing](./daemon-batch-processing.md) — includes optional Cloudflare provisioning, token bootstrap, discovery, Workers, Queues, Tunnel, Access, DNS, KV, Durable Objects, Secrets Store, and R2
-- [Home Assistant integration](./homeassistant-integration.md)
+- [Provider and model API](./provider-model-api.md)
+- [Tool system](./tools.md)
+- [Tool safety](./tool-safety.md)
+- [WRFC constraint propagation](./wrfc-constraint-propagation.md)
+- [Architecture](./architecture.md)
+- [Platform architecture](./architecture-platform.md)
+
+## Knowledge, Media, and Search
+
+- [Knowledge system](./knowledge.md)
 - [Browser knowledge ingestion](./knowledge-browser-history.md)
 - [Voice and streaming TTS](./voice.md)
+- [Media and multimodal runtime](./media-and-search.md)
 
-## Agentic Workflows
+## Surfaces and Automation
 
-- [WRFC constraint propagation](./wrfc-constraint-propagation.md) — how Work-Review-Fix-Commit chains enforce user-declared constraints
+- [Channel surfaces](./surfaces.md)
+- [Home Assistant integration](./homeassistant-integration.md)
+- [Daemon batch processing and Cloudflare](./daemon-batch-processing.md)
+- [Automation and watchers](./automation.md)
 
-## Operability
+## Configuration and Operations
 
-- [Error handling](./error-handling.md)
-- [Error kinds reference](./error-kinds.md)
+- [Configuration defaults](./defaults.md)
+- [Secret references](./secrets.md)
+- [Feature flags](./feature-flags.md)
+- [Security](./security.md)
 - [Observability](./observability.md)
 - [Performance and tuning](./performance.md)
+- [Error handling](./error-handling.md)
+- [Error kinds reference](./error-kinds.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Testing and validation](./testing-and-validation.md)
 - [Release and publishing](./release-and-publishing.md)
-- [Migration and upgrade guide](./migration.md)
-
-## Roadmap
-
-- [Roadmap to 1.0](./roadmap-to-1.0.md)
-- [Roadmap status](./tracking/roadmap-status.md)
+- [Semver policy](./semver-policy.md)
 
 ## Generated References
 

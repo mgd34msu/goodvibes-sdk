@@ -1,6 +1,6 @@
 # Operator API Reference
 
-Generated from the synced GoodVibes operator contract for product version `0.25.21`.
+Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
@@ -4015,7 +4015,7 @@ Process automation jobs queued for the next heartbeat.
 
 #### `automation.integration.snapshot`
 
-Return the legacy integration automation snapshot.
+Return the automation integration snapshot.
 
 - Title: `Automation Integration Snapshot`
 - Source: `builtin`
@@ -11982,7 +11982,7 @@ Retry a completed or failed automation run.
 
 #### `schedules.create`
 
-Create a legacy schedule record.
+Create a schedule record.
 
 - Title: `Create Schedule`
 - Source: `builtin`
@@ -13149,7 +13149,7 @@ Create a legacy schedule record.
 
 #### `schedules.delete`
 
-Delete a legacy schedule record.
+Delete a schedule record.
 
 - Title: `Delete Schedule`
 - Source: `builtin`
@@ -13200,7 +13200,7 @@ Delete a legacy schedule record.
 
 #### `schedules.disable`
 
-Disable a legacy schedule record.
+Disable a schedule record.
 
 - Title: `Disable Schedule`
 - Source: `builtin`
@@ -13252,7 +13252,7 @@ Disable a legacy schedule record.
 
 #### `schedules.enable`
 
-Enable a legacy schedule record.
+Enable a schedule record.
 
 - Title: `Enable Schedule`
 - Source: `builtin`
@@ -13304,7 +13304,7 @@ Enable a legacy schedule record.
 
 #### `schedules.list`
 
-Return legacy schedule records.
+Return schedule records.
 
 - Title: `List Schedules`
 - Source: `builtin`
@@ -15086,7 +15086,7 @@ Return legacy schedule records.
 
 #### `schedules.run`
 
-Trigger a legacy schedule immediately.
+Trigger a schedule immediately.
 
 - Title: `Run Schedule Now`
 - Source: `builtin`
@@ -20553,7 +20553,7 @@ Post a user message to a companion-chat session. Accepts either `body` or `conte
 
 #### `companion.chat.messages.list`
 
-Return the message list for a companion-chat session. Restored in SDK 0.21.36 (F21) after it was briefly reachable only via the session-detail endpoint.
+Return the message list for a companion-chat session.
 
 - Title: `List Companion Chat Messages`
 - Source: `builtin`
@@ -44472,7 +44472,7 @@ Cancel a queued shared-session input before it is delivered or spawned.
 
 #### `sessions.inputs.create`
 
-Create a shared-session input via the intent-dispatching alias. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler. Restored in SDK 0.21.36 for API surface parity after 0.21.35 removed the direct input-create endpoint.
+Create a shared-session input. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler.
 
 - Title: `Create Shared Session Input`
 - Source: `builtin`
@@ -45498,7 +45498,7 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
 
 #### `sessions.integration.snapshot`
 
-Return the legacy integration session snapshot.
+Return the session integration snapshot.
 
 - Title: `Legacy Session Snapshot`
 - Source: `builtin`

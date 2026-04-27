@@ -141,7 +141,7 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 
 1. **Token generation** — companion tokens are generated with `randomBytes(24)` (192 bits of entropy), base64url-encoded, and prefixed with `gv_`. The `gv_` prefix makes tokens machine-identifiable in logs and secret scanners.
 
-2. **Persistence** — tokens are stored on disk at `<daemonHomeDir>/operator-tokens.json` (canonical global location since SDK 0.21.28). The file is created at mode `0600`. The token is stable across daemon restarts.
+2. **Persistence** — tokens are stored on disk at `<daemonHomeDir>/operator-tokens.json`. The file is created at mode `0600`. The token is stable across daemon restarts.
 
 3. **QR payload** — `encodeConnectionPayload()` serializes the connection info (URL, token, username, version, surface) as JSON. This JSON is what gets encoded into the QR matrix. The QR is displayed in a trusted UI context (TUI screen or authenticated web page); it should not be left visible in shared screen recordings.
 
@@ -210,7 +210,7 @@ The remote fetch proxy (`remote-routes.ts`) has explicit SSRF protection. When a
 
 If either check fails, the request is rejected with HTTP 403. Do not enable `allowPrivateHosts` unless your deployment specifically requires internal URL resolution.
 
-The `fetch` tool has a separate opt-in protection gate: `featureFlags.fetch-sanitization`. It remains disabled by default for compatibility. When enabled, the fetch tool classifies initial hosts and every redirect target before reading the response, blocks localhost/private/link-local/cloud-metadata targets, applies unknown-host safe-text sanitization by default, and stops reading once `max_content_length` is reached. When disabled, legacy fetch behavior is preserved; use the security settings report above to surface that tradeoff to users.
+The `fetch` tool has a separate opt-in protection gate: `featureFlags.fetch-sanitization`. It remains disabled by default so hosts can choose their own browsing posture. When enabled, the fetch tool classifies initial hosts and every redirect target before reading the response, blocks localhost/private/link-local/cloud-metadata targets, applies unknown-host safe-text sanitization by default, and stops reading once `max_content_length` is reached. When disabled, fetch performs the requested network read without this extra SDK sanitization layer; use the security settings report above to surface that tradeoff to users.
 
 ---
 

@@ -141,7 +141,7 @@ const sdk = createReactNativeGoodVibesSdk({
 
 ### SSE Backpressure
 
-The control-plane gateway's SSE `ReadableStream` is constructed with a bounded `CountQueuingStrategy` to prevent slow subscribers from consuming unbounded memory (0.21.35, PERF-08):
+The control-plane gateway's SSE `ReadableStream` is constructed with a bounded `CountQueuingStrategy` to prevent slow subscribers from consuming unbounded memory:
 
 ```ts
 new ReadableStream(..., new CountQueuingStrategy({ highWaterMark: 256 }));
@@ -181,7 +181,7 @@ The SDK tracks token usage continuously against the active model's context windo
 
 ### Compaction Strategies
 
-Compaction collapses the conversation history into a structured handoff document that preserves essential context while drastically reducing token count.
+Compaction collapses conversation history into a structured return-context document that preserves essential context while reducing token count.
 
 **Automatic compaction** fires when token usage crosses the buffer threshold:
 

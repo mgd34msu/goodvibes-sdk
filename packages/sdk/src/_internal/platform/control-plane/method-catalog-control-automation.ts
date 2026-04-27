@@ -40,7 +40,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'automation.integration.snapshot',
     title: 'Automation Integration Snapshot',
-    description: 'Return the legacy integration automation snapshot.',
+    description: 'Return the automation integration snapshot.',
     category: 'automation',
     scopes: ['read:automation'],
     http: { method: 'GET', path: '/api/automation' },
@@ -289,7 +289,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'schedules.list',
     title: 'List Schedules',
-    description: 'Return legacy schedule records.',
+    description: 'Return schedule records.',
     category: 'automation',
     scopes: ['read:automation'],
     http: { method: 'GET', path: '/schedules' },
@@ -299,7 +299,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'schedules.create',
     title: 'Create Schedule',
-    description: 'Create a legacy schedule record.',
+    description: 'Create a schedule record.',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'POST', path: '/schedules' },
@@ -336,7 +336,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'schedules.delete',
     title: 'Delete Schedule',
-    description: 'Delete a legacy schedule record.',
+    description: 'Delete a schedule record.',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'DELETE', path: '/schedules/{scheduleId}' },
@@ -347,7 +347,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'schedules.enable',
     title: 'Enable Schedule',
-    description: 'Enable a legacy schedule record.',
+    description: 'Enable a schedule record.',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'POST', path: '/schedules/{scheduleId}/enable' },
@@ -357,7 +357,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'schedules.disable',
     title: 'Disable Schedule',
-    description: 'Disable a legacy schedule record.',
+    description: 'Disable a schedule record.',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'POST', path: '/schedules/{scheduleId}/disable' },
@@ -367,7 +367,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'schedules.run',
     title: 'Run Schedule Now',
-    description: 'Trigger a legacy schedule immediately.',
+    description: 'Trigger a schedule immediately.',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'POST', path: '/schedules/{scheduleId}/run' },

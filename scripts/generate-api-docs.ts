@@ -66,7 +66,7 @@ function renderOperatorReference() {
   const lines = [];
   lines.push('# Operator API Reference');
   lines.push('');
-  lines.push(`Generated from the synced GoodVibes operator contract for product version \`${operatorContract.product.version}\`.`);
+  lines.push('Generated from the synced GoodVibes operator contract artifact.');
   lines.push('');
   lines.push('## Summary');
   lines.push('');
@@ -163,7 +163,7 @@ function renderPeerReference() {
   const lines = [];
   lines.push('# Peer API Reference');
   lines.push('');
-  lines.push(`Generated from the synced GoodVibes peer contract for product version \`${operatorContract.product.version}\`.`);
+  lines.push('Generated from the synced GoodVibes peer contract artifact.');
   lines.push('');
   lines.push('## Summary');
   lines.push('');
@@ -219,7 +219,7 @@ function renderRuntimeEventReference() {
 
   lines.push('# Runtime Events Reference');
   lines.push('');
-  lines.push(`Generated from the synced GoodVibes operator event contract for product version \`${operatorContract.product.version}\`.`);
+  lines.push('Generated from the synced GoodVibes operator event contract artifact.');
   lines.push('');
   lines.push('## Transport endpoints');
   lines.push('');
@@ -293,7 +293,7 @@ function renderRuntimeEventReference() {
   lines.push('| `constraintsTotal` | `number \\| undefined` | Total constraint findings evaluated. Present only when `chain.constraints.length > 0`. |');
   lines.push('| `unsatisfiedConstraintIds` | `string[] \\| undefined` | IDs of constraints that were not satisfied. Present only when `chain.constraints.length > 0`. |');
   lines.push('');
-  lines.push('When the chain has no constraints, `constraintsSatisfied`, `constraintsTotal`, and `unsatisfiedConstraintIds` are absent entirely (pre-0.23 consumers see no new fields).');
+  lines.push('When the chain has no constraints, `constraintsSatisfied`, `constraintsTotal`, and `unsatisfiedConstraintIds` are absent entirely.');
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -308,7 +308,7 @@ function renderRuntimeEventReference() {
   lines.push('| `maxAttempts` | `number` | Maximum fix attempts configured for the chain |');
   lines.push('| `targetConstraintIds` | `string[] \\| undefined` | IDs of unsatisfied constraints this fix iteration is addressing. Present only when `chain.constraints.length > 0`. |');
   lines.push('');
-  lines.push('When the chain has no constraints, `targetConstraintIds` is absent (pre-0.23 consumers see no new fields).');
+  lines.push('When the chain has no constraints, `targetConstraintIds` is absent.');
   lines.push('');
   lines.push('For the full constraint propagation lifecycle, see [WRFC Constraint Propagation](./wrfc-constraint-propagation.md).');
   return `${lines.join('\n')}\n`;

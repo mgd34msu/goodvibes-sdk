@@ -13,9 +13,9 @@ See [Runtime Surfaces](./surfaces.md) for the full two-tier model.
 
 ## Node.js is NOT Supported
 
-Node.js is not in the consumer list. The `engines.node` field and the `./node` exports entry have been removed as of 0.19.6. The published surface does not advertise Node support. If you need Node support, open an issue.
+Node.js is not in the supported consumer list. The published surface does not advertise a Node runtime target. If you need Node support, open an issue.
 
-If you encounter a reference to `createNodeGoodVibesSdk` or `@pellux/goodvibes-sdk/node` in older documentation or examples, those are stale. Use `createGoodVibesSdk` from the root entry (`@pellux/goodvibes-sdk`) on Bun instead.
+Use `createGoodVibesSdk` from the root entry (`@pellux/goodvibes-sdk`) on Bun for full-surface hosts.
 
 ## Runtime Requirements
 

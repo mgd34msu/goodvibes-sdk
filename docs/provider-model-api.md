@@ -1,6 +1,5 @@
 # Provider & Model API Reference
 
-**Version**: `@pellux/goodvibes-sdk` >= 0.21.3 (current: 0.25.10 — see SDK `CHANGELOG.md` for incremental provider-API changes; `secretsResolutionSkipped` has been always present since 0.21.36)
 **Base path**: provider routes are under `/api/providers`; companion remote-session routes are under `/api/companion/chat`
 **Authentication**: all routes require the standard daemon bearer token (`Authorization: Bearer <token>` or the operator session cookie).
 
@@ -82,7 +81,7 @@ List all registered providers and their models. Returns configured status, auth 
 | `providers[].models` | `ProviderModelEntry[]` | All models exposed by this provider |
 | `providers[].models[].registryKey` | `string` | Compound key for model selection. Use it with `PATCH /api/providers/current` for shared/TUI model selection, or store it on a companion chat session for a remote-session-local selection. |
 | `currentModel` | `ProviderModelRef \| null` | Daemon/TUI currently-selected model; `null` if none configured |
-| `secretsResolutionSkipped` | `boolean` | **Required since 0.21.36 (F-PROV-009)**: `true` when no `SecretsManager` was available during this response (secrets-tier providers will show `configured:false`); `false` when a secrets manager was consulted regardless of whether it resolved any keys. Always present. |
+| `secretsResolutionSkipped` | `boolean` | `true` when no `SecretsManager` was available during this response; `false` when a secrets manager was consulted regardless of whether it resolved any keys. Always present. |
 
 **curl example**
 
@@ -207,7 +206,7 @@ curl -X PATCH \
 
 When a `PATCH /api/providers/current` succeeds, or when the model is changed via any other codepath (e.g. TUI settings), a `MODEL_CHANGED` event is emitted on the `providers` RuntimeEventBus domain.
 
-**Companion SSE subscribers** receive this event automatically on their existing event stream (`GET /api/companion/chat/sessions/:id/events`). The `providers` domain is included in `DEFAULT_DOMAINS` as of 0.21.3 — no explicit domain subscription is needed.
+**Companion SSE subscribers** receive this event automatically on their existing event stream (`GET /api/companion/chat/sessions/:id/events`) when the providers domain is part of the stream.
 
 **Event envelope** (SSE `data:` payload):
 
@@ -279,7 +278,7 @@ async function switchModel(registryKey: string, token: string): Promise<void> {
 
 ## Turn-time error posture
 
-As of 0.21.2, if the currently-selected provider is unconfigured and a companion chat turn is attempted, the provider adapter immediately yields a structured error chunk **before** making any network call:
+If the currently-selected provider is unconfigured and a companion chat turn is attempted, the provider adapter yields a structured error chunk **before** making any network call:
 
 ```json
 {
@@ -288,7 +287,7 @@ As of 0.21.2, if the currently-selected provider is unconfigured and a companion
 }
 ```
 
-This replaces the previous behavior where the upstream API would respond with `401 Authentication failed` and the SDK would surface a confusing error string. No code changes are required in the companion app to benefit from this fix — the error arrives on the existing SSE `companion-chat.turn_error` event.
+The error arrives on the existing SSE `companion-chat.turn_error` event.
 
 ---
 

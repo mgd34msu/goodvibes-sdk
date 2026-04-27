@@ -332,7 +332,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.integration.snapshot',
     title: 'Legacy Session Snapshot',
-    description: 'Return the legacy integration session snapshot.',
+    description: 'Return the session integration snapshot.',
     category: 'sessions',
     scopes: ['read:sessions'],
     http: { method: 'GET', path: '/api/session' },
@@ -426,7 +426,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.inputs.create',
     title: 'Create Shared Session Input',
-    description: 'Create a shared-session input via the intent-dispatching alias. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler. Restored in SDK 0.21.36 for API surface parity after 0.21.35 removed the direct input-create endpoint.',
+    description: 'Create a shared-session input. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler.',
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/inputs' },
@@ -612,12 +612,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     inputSchema: APPROVAL_ACTION_INPUT_SCHEMA,
     outputSchema: APPROVAL_ACTION_OUTPUT_SCHEMA,
   }),
-  // ---------------------------------------------------------------------------
-  // F21 (SDK 0.21.36): companion-chat method catalog registration.
-  // The companion-chat routes were previously unadvertised in the method catalog
-  // even though the routes themselves worked. These entries restore parity so
-  // `/api/control-plane/methods` enumerates the full companion-chat surface.
-  // ---------------------------------------------------------------------------
+  // Companion-chat method catalog registration.
   methodDescriptor({
     id: 'companion.chat.sessions.create',
     title: 'Create Companion Chat Session',
@@ -698,7 +693,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'companion.chat.messages.list',
     title: 'List Companion Chat Messages',
-    description: 'Return the message list for a companion-chat session. Restored in SDK 0.21.36 (F21) after it was briefly reachable only via the session-detail endpoint.',
+    description: 'Return the message list for a companion-chat session.',
     category: 'companion',
     scopes: ['read:sessions'],
     http: { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/messages' },

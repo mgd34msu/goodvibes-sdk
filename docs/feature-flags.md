@@ -47,14 +47,14 @@ Status values in this table are intentionally direct:
 
 - `ready` means runtime code currently checks the flag and the feature has a
   concrete behavior change.
-- `registry-only` means the flag is currently a declaration or roadmap marker
-  with no meaningful runtime gating found.
+- `registry-only` means the flag is currently declared for host visibility but
+  has no meaningful runtime gating found.
 - `informational` means the flag is useful for UI/status display but is not the
   behavior gate.
 
 SDK-created runtime services inject the feature manager and therefore follow
-the safe defaults below. Direct construction without a feature manager preserves
-legacy active behavior for embedders that have not opted into SDK-managed gates.
+the safe defaults below. Direct construction without a feature manager uses the
+constructor's explicit options and does not apply config-backed host policy.
 
 | Flag | Default | Runtime toggle | Status | Guidance |
 |---|---:|---:|---|---|
@@ -69,7 +69,7 @@ legacy active behavior for embedders that have not opted into SDK-managed gates.
 | `tool-result-reconciliation` | enabled | yes | ready | Keep enabled for normal hosts; disabling reverts unresolved tool calls to warning-only behavior. |
 | `policy-signing` | disabled | no | ready | Policy loader validates signatures and enforces managed-mode rejection only when this startup flag is enabled. |
 | `session-compaction` | disabled | yes | ready | Enable for hosts that want structured runtime compaction; safe to expose as a runtime toggle. |
-| `fetch-sanitization` | disabled | yes | ready | Strong candidate for TUI safe-browsing profiles; enables response sanitization, unknown-host safe-text fallback, SSRF-risk host blocking, redirect-target revalidation, and streaming response-size caps. Disabled preserves legacy fetch behavior and should be surfaced through the security settings report. |
+| `fetch-sanitization` | disabled | yes | ready | Strong candidate for TUI safe-browsing profiles; enables response sanitization, unknown-host safe-text fallback, SSRF-risk host blocking, redirect-target revalidation, and streaming response-size caps. Disabled means the SDK does not add this extra sanitization layer and should be surfaced through the security settings report. |
 | `runtime-tools-budget-enforcement` | disabled | yes | ready | Phased executor factory derives budget enforcement from the flag; explicit executor config can still override host policy. |
 | `overflow-spill-backends` | disabled | yes | ready | OverflowHandler forces the file backend while disabled; ledger/diagnostics backends require this flag. |
 | `permission-divergence-dashboard` | disabled | yes | ready | Divergence dashboard factory is gated; disabled hosts cannot create the dashboard/enforce gate through the SDK factory. |
@@ -81,16 +81,16 @@ legacy active behavior for embedders that have not opted into SDK-managed gates.
 | `adaptive-execution-planner` | disabled | yes | ready | Orchestrator decision emission and `/plan` runtime exposure are both gated by the flag. |
 | `provider-optimizer` | disabled | yes | ready | Runtime service follows flag transitions; agent routing consumes optimizer decisions when the optimizer is active and not in manual mode. |
 | `integration-delivery-slo` | disabled | yes | ready | Delivery queues derive SLO enforcement from the flag unless a host explicitly overrides queue config. |
-| `automation-runtime` | disabled | no | ready | Legacy startup alias for `automation-domain`; prefer the newer flag in new host config. |
-| `gateway-control-plane` | disabled | no | ready | Legacy startup alias for `control-plane-gateway`; prefer the newer flag in new host config. |
-| `omnichannel-route-binding` | disabled | no | ready | Legacy startup alias for `route-binding`; prefer the newer flag in new host config. |
-| `omnichannel-surface-adapters` | disabled | no | ready | Legacy startup alias that enables all non-TUI channel surface gates; prefer surface-specific flags. |
-| `embedded-web-control-ui` | disabled | no | ready | Legacy startup alias for `web-surface`; prefer the newer flag in new host config. |
-| `managed-watcher-services` | disabled | no | ready | Legacy startup alias for `watcher-framework`; prefer the newer flag in new host config. |
-| `service-installation` | disabled | no | ready | Legacy startup alias for `service-management`; prefer the newer flag in new host config. |
+| `automation-runtime` | disabled | no | ready | Compatibility alias for `automation-domain`; prefer the domain flag in new host config. |
+| `gateway-control-plane` | disabled | no | ready | Compatibility alias for `control-plane-gateway`; prefer the domain flag in new host config. |
+| `omnichannel-route-binding` | disabled | no | ready | Compatibility alias for `route-binding`; prefer the domain flag in new host config. |
+| `omnichannel-surface-adapters` | disabled | no | ready | Compatibility alias that enables all non-TUI channel surface gates; prefer surface-specific flags. |
+| `embedded-web-control-ui` | disabled | no | ready | Compatibility alias for `web-surface`; prefer the domain flag in new host config. |
+| `managed-watcher-services` | disabled | no | ready | Compatibility alias for `watcher-framework`; prefer the domain flag in new host config. |
+| `service-installation` | disabled | no | ready | Compatibility alias for `service-management`; prefer the domain flag in new host config. |
 | `adaptive-notification-suppression` | disabled | yes | ready | Safe to expose as a host UX toggle; suppresses noisy operational notifications. |
 | `token-scope-rotation-audit` | disabled | yes | ready | Audits always report findings, but managed-mode token blocking only happens when this flag is enabled. |
-| `tool-contract-verification` | enabled | yes | ready | Built-in tool registration now passes through contract verification by default; hosts can explicitly disable it for legacy compatibility. |
+| `tool-contract-verification` | enabled | yes | ready | Built-in tool registration now passes through contract verification by default; hosts can explicitly disable it for compatibility with custom tool registries. |
 | `automation-domain` | disabled | yes | ready | AutomationManager read/mutation/scheduling APIs are gated; disabled SDK services expose empty reads and fail closed on mutations. |
 | `control-plane-gateway` | disabled | yes | ready | ControlPlaneGateway snapshots, live streams, Web UI, and websocket clients are gated. |
 | `route-binding` | disabled | yes | ready | Runtime route binding manager is gated by the flag; durable writes fail closed when disabled. |
@@ -168,7 +168,7 @@ side effects are expected:
    command and user-facing denial-output fixtures.
 3. Tighten `tool-contract-verification` metadata over time by adding explicit
    categories and idempotency declarations to side-effecting tools.
-4. Collapse or retire legacy aliases once downstream hosts have migrated to the
-   newer domain/surface flags.
+4. Keep compatibility aliases documented only while they remain active source
+   behavior.
 5. Keep new feature flags out of the table until they have either a tested
-   runtime gate or a clear `registry-only` roadmap classification.
+   runtime gate or a clear `registry-only` classification.

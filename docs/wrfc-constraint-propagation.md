@@ -142,7 +142,7 @@ When constraints are present, `WORKFLOW_REVIEW_COMPLETED` carries the constraint
 }
 ```
 
-When there are no constraints, these fields are omitted entirely (the payload is byte-identical to pre-0.23).
+When there are no constraints, these fields are omitted entirely.
 
 ---
 
@@ -228,7 +228,7 @@ When the engineer emits `constraints: []` (non-build or unconstrained prompt):
 - Gate-retry children inherit an empty list.
 - `passed` is computed as `review.score >= threshold` only — no constraint axis.
 
-This path is byte-identical to pre-0.23 behavior in all downstream consumers. No new fields appear in events, no new task blocks appear in agent prompts.
+This path does not add constraint fields to events or constraint blocks to agent prompts.
 
 ---
 
@@ -236,4 +236,3 @@ This path is byte-identical to pre-0.23 behavior in all downstream consumers. No
 
 - [Runtime events reference](./reference-runtime-events.md) — `WORKFLOW_CONSTRAINTS_ENUMERATED`, `WORKFLOW_REVIEW_COMPLETED`, `WORKFLOW_FIX_ATTEMPTED` event shapes
 - [Observability](./observability.md) — event domain subscription
-- [Migration guide](./migration.md) — 0.23.0 entry

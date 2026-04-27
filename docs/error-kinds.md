@@ -136,7 +136,7 @@ They do not propagate as thrown errors and are not reachable via the error handl
 
 ## Typed error codes
 
-As of 0.21.33 (QA-14), concrete `AppError` subclasses declare a **literal `code`** via `declare readonly code: '<LITERAL>'`. This lets TypeScript narrow on `err.code` exhaustively — each subclass advertises exactly one code.
+Concrete `AppError` subclasses declare a **literal `code`** via `declare readonly code: '<LITERAL>'`. This lets TypeScript narrow on `err.code` exhaustively; each subclass advertises exactly one code.
 
 ```ts
 export class ConfigError extends AppError {

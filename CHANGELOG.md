@@ -4,10 +4,6 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
-> **Versions prior to 0.19.0**: see `docs/releases/*.md` for long-form per-release notes.
-
----
-
 ## [Unreleased]
 
 ### Breaking
@@ -25,14 +21,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - HTML knowledge extraction now tries `jsdom` plus Mozilla Readability before
   falling back to the lightweight extractor, improving URL/artifact summaries
   without changing non-HTML extraction behavior.
+- Documentation now describes the current SDK surface as a live reference set:
+  the main README, docs index, tools, secrets, automation, media/search, and
+  knowledge-system docs were refreshed against source, and generated API docs
+  no longer include version-pinned prose.
 
 ### Fixed
-- none
+- Control-plane method catalog descriptions now avoid stale restoration and
+  historical implementation notes in generated references.
 
 ### Migration
 - Browser knowledge sync is opt-in and is not scheduled by default. Clients
   that expose it should present it as a local-data import and request explicit
   user consent before scanning browser profiles.
+- Historical docs folders that duplicated release notes, audit notes, UAT
+  handoffs, and roadmap tracking were removed from the live docs tree. Use
+  `CHANGELOG.md` for release history and the docs under `docs/` for current
+  behavior.
 
 ---
 

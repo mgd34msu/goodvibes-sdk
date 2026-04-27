@@ -29,10 +29,9 @@ increase `maxAttempts` for batch/background operations.
 | `DEFAULT_STREAM_RECONNECT_POLICY.maxDelayMs` | 30 000 | Hard backoff cap (30 s) |
 | `DEFAULT_STREAM_RECONNECT_POLICY.backoffFactor` | 2 | Exponential multiplier |
 
-**Rationale:** `maxAttempts: 10` replaces a previous `Number.POSITIVE_INFINITY` default which was
-a 1.0.0 blocker — an unbounded reconnect loop could hang a process indefinitely in the face of a
-persistent auth failure or server outage. `maxDelayMs: 30 000` caps worst-case wait between
-attempts to 30 seconds to avoid silent hangs.
+**Rationale:** a finite retry cap prevents unbounded reconnect loops during
+persistent auth failure or server outage. `maxDelayMs: 30 000` caps worst-case
+wait between attempts to 30 seconds.
 
 ## Daemon Batch Processing
 

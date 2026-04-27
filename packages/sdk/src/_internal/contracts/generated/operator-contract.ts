@@ -4160,7 +4160,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "automation.integration.snapshot",
         "title": "Automation Integration Snapshot",
-        "description": "Return the legacy integration automation snapshot.",
+        "description": "Return the automation integration snapshot.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -12099,7 +12099,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "schedules.create",
         "title": "Create Schedule",
-        "description": "Create a legacy schedule record.",
+        "description": "Create a schedule record.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -13262,7 +13262,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "schedules.delete",
         "title": "Delete Schedule",
-        "description": "Delete a legacy schedule record.",
+        "description": "Delete a schedule record.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -13310,7 +13310,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "schedules.disable",
         "title": "Disable Schedule",
-        "description": "Disable a legacy schedule record.",
+        "description": "Disable a schedule record.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -13358,7 +13358,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "schedules.enable",
         "title": "Enable Schedule",
-        "description": "Enable a legacy schedule record.",
+        "description": "Enable a schedule record.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -13406,7 +13406,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "schedules.list",
         "title": "List Schedules",
-        "description": "Return legacy schedule records.",
+        "description": "Return schedule records.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -15184,7 +15184,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "schedules.run",
         "title": "Run Schedule Now",
-        "description": "Trigger a legacy schedule immediately.",
+        "description": "Trigger a schedule immediately.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -20519,7 +20519,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "companion.chat.messages.list",
         "title": "List Companion Chat Messages",
-        "description": "Return the message list for a companion-chat session. Restored in SDK 0.21.36 (F21) after it was briefly reachable only via the session-detail endpoint.",
+        "description": "Return the message list for a companion-chat session.",
         "category": "companion",
         "source": "builtin",
         "access": "authenticated",
@@ -43995,7 +43995,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.inputs.create",
         "title": "Create Shared Session Input",
-        "description": "Create a shared-session input via the intent-dispatching alias. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler. Restored in SDK 0.21.36 for API surface parity after 0.21.35 removed the direct input-create endpoint.",
+        "description": "Create a shared-session input. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
@@ -45013,7 +45013,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.integration.snapshot",
         "title": "Legacy Session Snapshot",
-        "description": "Return the legacy integration session snapshot.",
+        "description": "Return the session integration snapshot.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",

@@ -154,7 +154,7 @@ feed.turn.onEnvelope('TURN_COMPLETED', (envelope) => {
 
 Two high-cardinality payload fields are emitted as **structured summaries** rather than raw content to keep the event stream safe for external subscribers, on-disk traces, and OTel export.
 
-**`ToolResultSummary` on `TOOL_SUCCEEDED` / `TOOL_FAILED`** (added 0.21.31, OBS-05). The `result` field on these events is a `ToolResultSummary` describing the raw tool output without embedding it:
+**`ToolResultSummary` on `TOOL_SUCCEEDED` / `TOOL_FAILED`**. The `result` field on these events is a `ToolResultSummary` describing the raw tool output without embedding it:
 
 ```ts
 export interface ToolResultSummary {
@@ -169,7 +169,7 @@ export interface ToolResultSummary {
 
 Do not rely on `payload.result` being the raw tool return value — downstream consumers that need the full result should read it from the tool-call ledger, not the event stream.
 
-**`contentSummary` on `LLM_RESPONSE_RECEIVED`** (added 0.21.31, OBS-06). The provider response is surfaced as a redacted summary by default:
+**`contentSummary` on `LLM_RESPONSE_RECEIVED`**. The provider response is surfaced as a redacted summary by default:
 
 ```ts
 promptSummary: { length: number; sha256: string; first100chars: string } | string;
@@ -180,7 +180,7 @@ Raw prompts and responses are only emitted when `telemetry.includeRawPrompts` is
 
 ### Dispatch Ordering
 
-`RuntimeEventBus.emit` dispatches listener callbacks **asynchronously via `queueMicrotask`** (0.21.32, OBS-14). Emitters return synchronously before any listener runs, so listeners cannot reorder or re-enter the emitter on the current stack frame.
+`RuntimeEventBus.emit` dispatches listener callbacks **asynchronously via `queueMicrotask`**. Emitters return synchronously before any listener runs, so listeners cannot reorder or re-enter the emitter on the current stack frame.
 
 Guarantees:
 - Emit order matches dispatch order — microtasks are FIFO within the current task.
@@ -728,7 +728,7 @@ Both functions are no-ops when `@opentelemetry/api` is not installed or no activ
 
 ## WRFC Workflow Events
 
-WRFC (Work-Review-Fix-Commit) chains emit structured events on the `workflows` domain. The constraint-related events added in 0.23.0 are documented here.
+WRFC (Work-Review-Fix-Commit) chains emit structured events on the `workflows` domain. Constraint-related events are documented here.
 
 ### `WORKFLOW_CONSTRAINTS_ENUMERATED`
 
@@ -744,7 +744,7 @@ feed.workflows.on('WORKFLOW_CONSTRAINTS_ENUMERATED', (event) => {
 
 An empty `constraints` array signals the zero-constraint (unconstrained) path — no constraint enforcement follows for this chain.
 
-### `WORKFLOW_REVIEW_COMPLETED` — constraint fields (0.23.0+)
+### `WORKFLOW_REVIEW_COMPLETED` constraint fields
 
 When the chain has user-declared constraints, three additional fields are present:
 
@@ -762,9 +762,9 @@ feed.workflows.on('WORKFLOW_REVIEW_COMPLETED', (event) => {
 | `constraintsTotal` | `number` | chain has `constraints.length > 0` |
 | `unsatisfiedConstraintIds` | `string[]` | chain has `constraints.length > 0` |
 
-Pre-0.23 consumers see no new fields when the chain has no constraints.
+When the chain has no constraints, these fields are omitted.
 
-### `WORKFLOW_FIX_ATTEMPTED` — constraint fields (0.23.0+)
+### `WORKFLOW_FIX_ATTEMPTED` constraint fields
 
 ```ts
 feed.workflows.on('WORKFLOW_FIX_ATTEMPTED', (event) => {

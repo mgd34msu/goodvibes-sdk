@@ -34,13 +34,13 @@ Companion tokens are persistent. Unlike session tokens, they do not expire autom
 
 ### Storage
 
-As of SDK 0.21.28, the companion/operator token is stored in a single global location under the daemon-home directory:
+The companion/operator token is stored in a single global location under the daemon-home directory:
 
 ```
 <daemonHomeDir>/operator-tokens.json
 ```
 
-The canonical default is `~/.goodvibes/daemon/operator-tokens.json`. The file is written at mode `0600` and contains `{ token, peerId, createdAt }`. The surface name (`'tui'`, etc.) is retained on the API for forward compatibility but does **not** partition the token path — all surfaces on a given host share one companion/operator token. Legacy workspace-scoped token files from pre-0.21.28 releases are removed automatically by `pruneStaleOperatorTokens` on daemon startup (see [F3 in the 0.21.36 CHANGELOG entry](../CHANGELOG.md)).
+The canonical default is `~/.goodvibes/daemon/operator-tokens.json`. The file is written at mode `0600` and contains `{ token, peerId, createdAt }`. The surface name (`'tui'`, etc.) is retained on the API for context but does **not** partition the token path; all surfaces on a given host share one companion/operator token.
 
 ### Connection payload
 
@@ -51,7 +51,7 @@ The QR code encodes a `CompanionConnectionInfo` JSON object containing everythin
   "url": "http://192.168.1.42:3210",
   "token": "gv_abc123...",
   "username": "admin",
-  "version": "0.25.5",
+  "version": "host-product-version",
   "surface": "tui",
   "password": "<bootstrap-password, optional>"
 }
@@ -95,7 +95,7 @@ const payload = buildCompanionConnectionInfo({
   daemonUrl: 'http://192.168.1.42:3210',
   token: record.token,
   username: 'admin',      // optional; defaults to 'admin'
-  version: '0.25.5',       // optional; host product version
+  version: 'host-product-version', // optional
   surface: 'tui',          // optional; defaults to 'daemon'
   // password: 'bootstrap-pw',  // optional; include when local auth is active
 });
@@ -204,9 +204,9 @@ Rotate tokens proactively if:
 - You believe the token may have been observed by a third party.
 - You are decommissioning a companion app.
 
-### Pruning stale workspace tokens
+### Pruning non-canonical workspace tokens
 
-Hosts that ran pre-0.21.28 builds may still have legacy workspace-scoped token files on disk. Call `pruneStaleOperatorTokens({ daemonHomeDir, candidatePaths })` on daemon startup to remove any candidates whose token does not match the canonical `<daemonHomeDir>/operator-tokens.json`:
+Hosts can call `pruneStaleOperatorTokens({ daemonHomeDir, candidatePaths })` on daemon startup to remove candidate token files whose token does not match the canonical `<daemonHomeDir>/operator-tokens.json`:
 
 ```ts
 import { pruneStaleOperatorTokens } from '@pellux/goodvibes-sdk/platform/pairing';
