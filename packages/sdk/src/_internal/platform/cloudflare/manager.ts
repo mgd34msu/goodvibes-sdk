@@ -25,7 +25,6 @@ import {
 } from './discovery.js';
 import {
   configureDns,
-  configureWorkerSubdomain,
   ensureAccess,
   ensureKvNamespace,
   ensureQueue,
@@ -35,7 +34,6 @@ import {
   ensureTunnel,
   findDurableObjectNamespace,
   type CloudflareProvisioningContext,
-  uploadWorker,
 } from './resources.js';
 import type {
   CloudflareAccessApplicationLike,
@@ -82,6 +80,13 @@ import {
   stripTrailingSlash,
   verifyCreatedTokenPolicies,
 } from './utils.js';
+import {
+  configureWorkerSchedule,
+  configureWorkerSubdomain,
+  disableWorkerSchedule,
+  disableWorkerSubdomain,
+  uploadWorker,
+} from './worker-settings.js';
 
 export class CloudflareControlPlaneManager {
   private readonly createClient: (apiToken: string) => Promise<CloudflareApiClient>;
@@ -485,11 +490,7 @@ export class CloudflareControlPlaneManager {
       }
 
       if (workerCron) {
-        await client.workers.scripts.schedules.update(workerName, {
-          account_id: accountId,
-          body: [{ cron: workerCron }],
-        });
-        steps.push({ name: 'configure-cron', status: 'ok', message: `Configured Worker cron ${workerCron}.` });
+        await configureWorkerSchedule(client, { accountId, workerName, workerCron, steps });
       } else {
         steps.push({ name: 'configure-cron', status: 'skipped', message: 'No Worker cron configured.' });
       }
@@ -642,12 +643,10 @@ export class CloudflareControlPlaneManager {
     if (apiToken.value && accountId) {
       const client = await this.createClient(apiToken.value);
       if (input.disableCron !== false) {
-        await client.workers.scripts.schedules.update(workerName, { account_id: accountId, body: [] });
-        steps.push({ name: 'disable-cron', status: 'ok', message: `Removed Worker cron schedules from ${workerName}.` });
+        await disableWorkerSchedule(client, accountId, workerName, steps);
       }
       if (input.disableWorkerSubdomain) {
-        await client.workers.scripts.subdomain.delete(workerName, { account_id: accountId });
-        steps.push({ name: 'disable-worker-subdomain', status: 'ok', message: `Disabled workers.dev route for ${workerName}.` });
+        await disableWorkerSubdomain(client, accountId, workerName, steps);
       }
     } else {
       steps.push({ name: 'cloudflare-api', status: 'skipped', message: 'No Cloudflare API token/account configured; only local config was disabled.' });

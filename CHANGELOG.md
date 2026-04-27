@@ -24,6 +24,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.19] - 2026-04-27
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Cloudflare Workers provisioning now reads the account-level workers.dev
+  subdomain before attempting to configure one. Existing account subdomains are
+  reused, and Cloudflare `10036` "Account already has an associated subdomain"
+  responses are recovered by re-reading account state.
+- Worker cron provisioning and disable flows now read existing Worker settings
+  before updating schedules or disabling workers.dev script routes.
+- Worker-specific Cloudflare provisioning was split into a dedicated module so
+  Cloudflare source files stay below the large-file threshold.
+
+### Migration
+- none
+
+---
+
 ## [0.25.18] - 2026-04-27
 
 ### Breaking

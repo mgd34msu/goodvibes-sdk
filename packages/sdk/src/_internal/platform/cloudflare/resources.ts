@@ -3,7 +3,6 @@ import { summarizeError } from '../utils/error-display.js';
 import {
   CLOUDFLARE_ACCESS_SERVICE_TOKEN_KEY,
   CLOUDFLARE_TUNNEL_TOKEN_KEY,
-  DEFAULT_DO_NAMESPACE_NAME,
 } from './constants.js';
 import type {
   CloudflareAccessApplicationLike,
@@ -23,7 +22,6 @@ import type {
 } from './types.js';
 import { CloudflareControlPlaneError } from './types.js';
 import { clean, collectAsync, hostnameFromUrl } from './utils.js';
-import { GOODVIBES_CLOUDFLARE_WORKER_MODULE } from './worker-source.js';
 
 export interface CloudflareProvisioningContext {
   readonly readConfig: () => CloudflareControlPlaneConfig;
@@ -404,107 +402,6 @@ export async function findDurableObjectNamespace(
   }
   steps.push({ name: 'durable-object-namespace', status: 'warning', message: 'Durable Object migration was included, but the namespace was not visible yet during confirmation.' });
   return { name: namespaceName };
-}
-
-export async function uploadWorker(
-  client: CloudflareApiClient,
-  input: {
-    readonly accountId: string;
-    readonly workerName: string;
-    readonly queueName: string;
-    readonly daemonBaseUrl: string;
-    readonly queueJobPayloads: boolean;
-    readonly kvNamespaceId: string;
-    readonly r2BucketName: string;
-    readonly durableObject: boolean;
-  },
-): Promise<void> {
-  const file = new File(
-    [GOODVIBES_CLOUDFLARE_WORKER_MODULE],
-    'goodvibes-cloudflare-worker.mjs',
-    { type: 'application/javascript+module' },
-  );
-  const bindings: Record<string, unknown>[] = [
-    ...(input.queueName ? [{ type: 'queue', name: 'GOODVIBES_BATCH_QUEUE', queue_name: input.queueName }] : []),
-    { type: 'plain_text', name: 'GOODVIBES_DAEMON_URL', text: input.daemonBaseUrl },
-    { type: 'plain_text', name: 'GOODVIBES_QUEUE_JOB_PAYLOADS', text: input.queueJobPayloads ? 'true' : 'false' },
-    ...(input.kvNamespaceId ? [{ type: 'kv_namespace', name: 'GOODVIBES_KV', namespace_id: input.kvNamespaceId }] : []),
-    ...(input.r2BucketName ? [{ type: 'r2_bucket', name: 'GOODVIBES_ARTIFACTS', bucket_name: input.r2BucketName }] : []),
-    ...(input.durableObject ? [{ type: 'durable_object_namespace', name: 'GOODVIBES_COORDINATOR', class_name: DEFAULT_DO_NAMESPACE_NAME }] : []),
-  ];
-  await client.workers.scripts.update(input.workerName, {
-    account_id: input.accountId,
-    metadata: {
-      main_module: 'goodvibes-cloudflare-worker.mjs',
-      compatibility_date: '2026-04-25',
-      bindings,
-      ...(input.durableObject ? { migrations: { tag: 'goodvibes-coordinator-v1', new_sqlite_classes: [DEFAULT_DO_NAMESPACE_NAME] } } : {}),
-      keep_bindings: ['secret_text'],
-    },
-    files: [file],
-  });
-}
-
-export async function configureWorkerSubdomain(
-  context: CloudflareProvisioningContext,
-  client: CloudflareApiClient,
-  input: {
-    readonly accountId: string;
-    readonly workerName: string;
-    readonly requestedSubdomain?: string;
-    readonly enableWorkersDev: boolean;
-    readonly steps: CloudflareProvisionStep[];
-    readonly persist: boolean;
-  },
-): Promise<string> {
-  if (!input.enableWorkersDev) {
-    input.steps.push({ name: 'worker-subdomain', status: 'skipped', message: 'workers.dev subdomain enablement was skipped.' });
-    return clean(input.requestedSubdomain) || context.readConfig().workerSubdomain;
-  }
-
-  let accountSubdomain = clean(input.requestedSubdomain) || context.readConfig().workerSubdomain;
-  if (accountSubdomain) {
-    const updated = await client.workers.subdomains.update({ account_id: input.accountId, subdomain: accountSubdomain });
-    accountSubdomain = updated.subdomain;
-    context.setConfig('cloudflare.workerSubdomain', accountSubdomain, input.persist);
-    input.steps.push({ name: 'account-worker-subdomain', status: 'ok', message: `Configured account workers.dev subdomain ${accountSubdomain}.` });
-  } else {
-    try {
-      const existing = await client.workers.subdomains.get({ account_id: input.accountId });
-      accountSubdomain = existing.subdomain;
-      context.setConfig('cloudflare.workerSubdomain', accountSubdomain, input.persist);
-      input.steps.push({ name: 'account-worker-subdomain', status: 'ok', message: `Using account workers.dev subdomain ${accountSubdomain}.` });
-    } catch (error: unknown) {
-      input.steps.push({
-        name: 'account-worker-subdomain',
-        status: 'warning',
-        message: `Could not read account workers.dev subdomain: ${summarizeError(error)}`,
-      });
-    }
-  }
-
-  try {
-    const existing = await client.workers.scripts.subdomain.get(input.workerName, { account_id: input.accountId });
-    if (existing.enabled) {
-      input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Using existing workers.dev route for ${input.workerName}.` });
-      return accountSubdomain;
-    }
-  } catch {
-    // Older accounts may not return script-level subdomain state before it is enabled.
-  }
-  try {
-    await client.workers.scripts.subdomain.create(input.workerName, {
-      account_id: input.accountId,
-      enabled: true,
-      previews_enabled: false,
-    });
-    input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Enabled workers.dev route for ${input.workerName}.` });
-  } catch (error: unknown) {
-    const recovered = await client.workers.scripts.subdomain.get(input.workerName, { account_id: input.accountId });
-    if (!recovered.enabled) throw error;
-    input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Using existing workers.dev route for ${input.workerName} after enable retry: ${summarizeError(error)}` });
-  }
-  return accountSubdomain;
 }
 
 export async function ensureQueueConsumer(
