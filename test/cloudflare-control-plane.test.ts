@@ -10,6 +10,7 @@ import type {
   CloudflareDnsRecordLike,
   CloudflareDurableObjectNamespaceLike,
   CloudflareKvNamespaceLike,
+  CloudflarePermissionGroupLike,
   CloudflareQueueLike,
   CloudflareR2BucketLike,
   CloudflareSecretsStoreLike,
@@ -454,6 +455,50 @@ describe('CloudflareControlPlaneManager', () => {
     expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.acct-1']).toBe('*');
     expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.zone.zone-1']).toBe('*');
     expect(calls.tokenCreates[0]?.resources['com.cloudflare.edge.r2.bucket.*']).toBe('*');
+  });
+
+  test('resolves operational token permissions with filtered Cloudflare permission-group lookups', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client, calls } = makeCloudflareClient();
+    const queries: Array<{ readonly name?: string; readonly scope?: string } | null> = [];
+    const groups: CloudflarePermissionGroupLike[] = [
+      { id: 'pg-workers', name: 'Workers Scripts Write', scopes: ['com.cloudflare.api.account'] },
+      { id: 'pg-queues', name: 'Queues Write', scopes: ['com.cloudflare.api.account'] },
+      { id: 'pg-zone-read', name: 'Zone Read', scopes: ['com.cloudflare.api.account.zone'] },
+      { id: 'pg-dns', name: 'DNS Write', scopes: ['com.cloudflare.api.account.zone'] },
+      { id: 'pg-kv', name: 'Workers KV Storage Write', scopes: ['com.cloudflare.api.account'] },
+    ];
+    (client.user!.tokens.permissionGroups as {
+      list(params?: { readonly name?: string; readonly scope?: string }): AsyncIterable<CloudflarePermissionGroupLike>;
+    }).list = (params?: { readonly name?: string; readonly scope?: string }) => {
+      queries.push(params ?? null);
+      if (!params) return items([{ id: 'pg-bootstrap', name: 'API Tokens Write', scopes: ['com.cloudflare.api.user'] }]);
+      return items(groups.filter((group) =>
+        (!params.name || group.name === params.name) &&
+        (!params.scope || group.scopes?.includes(params.scope)),
+      ));
+    };
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      createClient: async () => client,
+    });
+
+    const result = await manager.createOperationalToken({
+      accountId: 'acct-1',
+      zoneName: 'example.com',
+      bootstrapToken: 'bootstrap-token',
+      components: { workers: true, queues: true, dns: true, kv: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.acct-1']).toBe('*');
+    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.zone.zone-1']).toBe('*');
+    expect(queries).toContainEqual({ name: 'Workers Scripts Write', scope: 'com.cloudflare.api.account' });
+    expect(queries).toContainEqual({ name: 'Workers Queues Write', scope: 'com.cloudflare.api.account' });
+    expect(queries).toContainEqual({ name: 'Queues Write', scope: 'com.cloudflare.api.account' });
+    expect(queries).not.toContain(null);
   });
 
   test('provisions optional Cloudflare DNS, Tunnel, Access, KV, Durable Objects, Secrets Store, and R2 resources', async () => {

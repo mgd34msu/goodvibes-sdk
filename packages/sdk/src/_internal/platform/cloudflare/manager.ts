@@ -51,7 +51,6 @@ import type {
   CloudflareKvNamespaceLike,
   CloudflareOperationalTokenInput,
   CloudflareOperationalTokenResult,
-  CloudflarePermissionGroupLike,
   CloudflareProvisionInput,
   CloudflareProvisionResult,
   CloudflareProvisionStep,
@@ -59,6 +58,7 @@ import type {
   CloudflareR2BucketLike,
   CloudflareResolvedSecret,
   CloudflareSecretsStoreLike,
+  CloudflareTokenPermissionRequirement,
   CloudflareTokenRequirementsInput,
   CloudflareTokenRequirementsResult,
   CloudflareTunnelLike,
@@ -78,8 +78,8 @@ import {
   requireKvNamespaceId,
   requireQueueId,
   resolveComponents,
+  resolvePermissionGroupIds,
   safeResponseText,
-  selectPermissionGroups,
   stripTrailingSlash,
 } from './utils.js';
 
@@ -182,8 +182,7 @@ export class CloudflareControlPlaneManager {
         required: components.dns,
       });
     }
-    const groups = await this.collectPermissionGroups(client);
-    const permissionIds = selectPermissionGroups(requirements, groups);
+    const permissionIds = await this.resolvePermissionGroupIds(client, requirements);
     const resources = buildTokenResources(accountId, zone?.id, components);
     const tokenName = clean(input.tokenName) || 'GoodVibes Cloudflare Operational';
     const token = await this.requireUserTokens(client).create({
@@ -754,9 +753,12 @@ export class CloudflareControlPlaneManager {
     return client.user.tokens;
   }
 
-  private async collectPermissionGroups(client: CloudflareApiClient): Promise<readonly CloudflarePermissionGroupLike[]> {
+  private async resolvePermissionGroupIds(
+    client: CloudflareApiClient,
+    requirements: readonly CloudflareTokenPermissionRequirement[],
+  ): Promise<readonly string[]> {
     const tokenApi = this.requireUserTokens(client);
-    return await collectAsync(tokenApi.permissionGroups.list());
+    return await resolvePermissionGroupIds(requirements, (params) => tokenApi.permissionGroups.list(params));
   }
 
   private createProvisioningContext(): CloudflareProvisioningContext {

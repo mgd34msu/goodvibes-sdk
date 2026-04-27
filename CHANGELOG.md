@@ -24,6 +24,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.15] - 2026-04-26
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Cloudflare operational-token bootstrap now resolves each required
+  permission group with filtered Cloudflare API lookups by permission `name`
+  and Cloudflare scope before falling back to a broad permission catalog scan.
+  This fixes bootstrap failures where Cloudflare returned only user-level
+  permission groups in the initial page and account/zone groups such as
+  `Workers Scripts Write`, `Queues Write`, `Zone Read`, `DNS Write`, and
+  `Workers KV Storage Write` were missed.
+
+### Migration
+- No config migration is required. Recreate the temporary bootstrap token from
+  the Cloudflare **Create additional tokens** template or with
+  `User > API Tokens Write`, then retry the GoodVibes Cloudflare wizard.
+
+---
+
 ## [0.25.14] - 2026-04-26
 
 ### Breaking

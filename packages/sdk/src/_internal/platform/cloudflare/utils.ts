@@ -144,8 +144,7 @@ export function selectPermissionGroups(
   const ids: string[] = [];
   const missing: string[] = [];
   for (const requirement of requirements) {
-    const names = [requirement.permission, ...(requirement.alternatives ?? [])];
-    const group = groups.find((entry) => entry.id && entry.name && names.some((name) => normalizePermissionName(entry.name!) === normalizePermissionName(name)));
+    const group = findPermissionGroup(requirement, groups);
     if (group?.id) {
       ids.push(group.id);
     } else {
@@ -159,6 +158,64 @@ export function selectPermissionGroups(
       400,
     );
   }
+  return Array.from(new Set(ids));
+}
+
+export async function resolvePermissionGroupIds(
+  requirements: readonly CloudflareTokenPermissionRequirement[],
+  listPermissionGroups: (params?: { readonly name?: string; readonly scope?: string }) => AsyncIterable<CloudflarePermissionGroupLike>,
+): Promise<readonly string[]> {
+  const ids: string[] = [];
+  const missing: string[] = [];
+  let scannedGroups: readonly CloudflarePermissionGroupLike[] | null = null;
+  let lastError: unknown;
+
+  const scanAllGroups = async (): Promise<readonly CloudflarePermissionGroupLike[]> => {
+    if (scannedGroups) return scannedGroups;
+    scannedGroups = await collectAsync(listPermissionGroups(), 5_000);
+    return scannedGroups;
+  };
+
+  for (const requirement of requirements) {
+    const scope = cloudflareScopeForRequirement(requirement);
+    const names = [requirement.permission, ...(requirement.alternatives ?? [])];
+    let group: CloudflarePermissionGroupLike | undefined;
+
+    for (const name of names) {
+      try {
+        const exactMatches = await collectAsync(listPermissionGroups({ name, scope }), 50);
+        group = findPermissionGroup(requirement, exactMatches);
+        if (group) break;
+      } catch (error: unknown) {
+        lastError = error;
+        break;
+      }
+    }
+
+    if (!group) {
+      try {
+        group = findPermissionGroup(requirement, await scanAllGroups());
+      } catch (error: unknown) {
+        lastError = error;
+      }
+    }
+
+    if (group?.id) {
+      ids.push(group.id);
+    } else {
+      missing.push(`${requirement.permission} (${requirement.component})`);
+    }
+  }
+
+  if (missing.length > 0) {
+    const suffix = lastError ? ` Last Cloudflare permission-group error: ${summarizeError(lastError)}` : '';
+    throw new CloudflareControlPlaneError(
+      `Could not resolve Cloudflare permission groups for: ${missing.join(', ')}.${suffix} Use /api/cloudflare/token/requirements to show the exact required token shape and create the operational token manually if this Cloudflare account uses different permission names.`,
+      'CLOUDFLARE_PERMISSION_GROUPS_MISSING',
+      400,
+    );
+  }
+
   return Array.from(new Set(ids));
 }
 
@@ -250,6 +307,37 @@ function uniqueRequirements(requirements: readonly CloudflareTokenPermissionRequ
     unique.push(requirement);
   }
   return unique;
+}
+
+function findPermissionGroup(
+  requirement: CloudflareTokenPermissionRequirement,
+  groups: readonly CloudflarePermissionGroupLike[],
+): CloudflarePermissionGroupLike | undefined {
+  const names = [requirement.permission, ...(requirement.alternatives ?? [])].map(normalizePermissionName);
+  const scope = cloudflareScopeForRequirement(requirement);
+  return groups.find((entry) =>
+    entry.id &&
+    entry.name &&
+    names.includes(normalizePermissionName(entry.name)) &&
+    matchesPermissionScope(entry, scope),
+  );
+}
+
+function matchesPermissionScope(group: CloudflarePermissionGroupLike, scope: string): boolean {
+  return !group.scopes || group.scopes.length === 0 || group.scopes.includes(scope);
+}
+
+function cloudflareScopeForRequirement(requirement: CloudflareTokenPermissionRequirement): string {
+  switch (requirement.scope) {
+    case 'account':
+      return 'com.cloudflare.api.account';
+    case 'zone':
+      return 'com.cloudflare.api.account.zone';
+    case 'user':
+      return 'com.cloudflare.api.user';
+    case 'r2':
+      return 'com.cloudflare.edge.r2.bucket';
+  }
 }
 
 function normalizePermissionName(value: string): string {
