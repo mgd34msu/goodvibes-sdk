@@ -335,6 +335,42 @@ export function hostnameFromUrl(value: string): string {
   }
 }
 
+export function normalizeHostname(value: string | undefined): string {
+  const trimmed = clean(value).replace(/\.+$/, '');
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return hostnameFromUrl(trimmed).toLowerCase();
+  const withoutPath = trimmed.split('/')[0] ?? '';
+  return withoutPath.split(':')[0]?.toLowerCase() ?? '';
+}
+
+export function hostnameBelongsToZone(hostname: string, zoneName: string): boolean {
+  const normalizedHostname = normalizeHostname(hostname);
+  const normalizedZone = normalizeHostname(zoneName);
+  return normalizedHostname === normalizedZone || normalizedHostname.endsWith(`.${normalizedZone}`);
+}
+
+export function isPlaceholderHostname(hostname: string): boolean {
+  const normalized = normalizeHostname(hostname);
+  return normalized === 'example.com' ||
+    normalized.endsWith('.example.com') ||
+    normalized.endsWith('.example.net') ||
+    normalized.endsWith('.example.org') ||
+    normalized.endsWith('.example.test');
+}
+
+export function isLocalHostname(hostname: string): boolean {
+  const normalized = normalizeHostname(hostname);
+  return normalized === 'localhost' ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized.endsWith('.localhost');
+}
+
+export function deriveZoneHostname(label: string, zoneName: string): string {
+  const normalizedLabel = clean(label).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'goodvibes';
+  return `${normalizedLabel}.${normalizeHostname(zoneName)}`;
+}
+
 export function requireQueueId(queue: CloudflareQueueLike, queueName: string): string {
   if (queue.queue_id) return queue.queue_id;
   throw new CloudflareControlPlaneError(`Cloudflare Queue '${queueName}' did not include a queue_id.`, 'CLOUDFLARE_QUEUE_ID_MISSING', 502);

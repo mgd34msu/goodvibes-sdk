@@ -24,6 +24,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.21] - 2026-04-27
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Cloudflare provisioning now normalizes stale placeholder hostnames such as
+  `daemon.example.com` and `goodvibes.example.com` to hostnames inside the
+  selected zone before configuring Tunnel ingress, DNS CNAMEs, or Zero Trust
+  Access apps. For example, selecting `buzznet.dev` produces
+  `daemon.buzznet.dev` and `goodvibes-batch-worker.buzznet.dev`.
+- DNS and Zero Trust Access provisioning now perform SDK-side zone ownership
+  checks before sending hostname requests to Cloudflare. Hostnames that do not
+  belong to the selected zone are skipped with warning steps instead of
+  producing Cloudflare `12130` failures.
+
+### Migration
+- none
+
+---
+
 ## [0.25.20] - 2026-04-27
 
 ### Breaking
