@@ -25127,6 +25127,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "url",
                     "bookmark",
                     "bookmark-list",
+                    "history",
                     "document",
                     "repo",
                     "dataset",
@@ -25388,6 +25389,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "url",
                       "bookmark",
                       "bookmark-list",
+                      "history",
                       "document",
                       "repo",
                       "dataset",
@@ -26152,6 +26154,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "url",
                 "bookmark",
                 "bookmark-list",
+                "history",
                 "document",
                 "repo",
                 "dataset",
@@ -26226,6 +26229,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "url",
                     "bookmark",
                     "bookmark-list",
+                    "history",
                     "document",
                     "repo",
                     "dataset",
@@ -26496,6 +26500,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "url",
                       "bookmark",
                       "bookmark-list",
+                      "history",
                       "document",
                       "repo",
                       "dataset",
@@ -26611,6 +26616,259 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "knowledge.ingest.browserHistory",
+        "title": "Sync Browser History Into Knowledge",
+        "description": "Read local browser history and bookmarks and index them as metadata-first structured knowledge.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/knowledge/ingest/browser-history"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "sinceMs": {
+              "type": "number"
+            },
+            "browsers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sourceKinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "homeOverride": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "connectorId": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "imported": {
+              "type": "number"
+            },
+            "failed": {
+              "type": "number"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "connectorId": {
+                    "type": "string"
+                  },
+                  "sourceType": {
+                    "type": "string",
+                    "enum": [
+                      "url",
+                      "bookmark",
+                      "bookmark-list",
+                      "history",
+                      "document",
+                      "repo",
+                      "dataset",
+                      "image",
+                      "manual",
+                      "other"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "sourceUri": {
+                    "type": "string"
+                  },
+                  "canonicalUri": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "folderPath": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "artifactId": {
+                    "type": "string"
+                  },
+                  "contentHash": {
+                    "type": "string"
+                  },
+                  "lastCrawledAt": {
+                    "type": "number"
+                  },
+                  "crawlError": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "connectorId",
+                  "sourceType",
+                  "tags",
+                  "status",
+                  "metadata",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "profiles": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "family": {
+                    "type": "string"
+                  },
+                  "browser": {
+                    "type": "string"
+                  },
+                  "profileName": {
+                    "type": "string"
+                  },
+                  "profilePath": {
+                    "type": "string"
+                  },
+                  "historyPath": {
+                    "type": "string"
+                  },
+                  "bookmarksPath": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "family",
+                  "browser",
+                  "profileName",
+                  "profilePath"
+                ],
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "imported",
+            "failed",
+            "sources",
+            "errors",
+            "profiles"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "knowledge.ingest.connector",
         "title": "Ingest Connector Input",
         "description": "Resolve a knowledge connector against inline input, inline content, or file-backed content.",
@@ -26719,6 +26977,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "url",
                       "bookmark",
                       "bookmark-list",
+                      "history",
                       "document",
                       "repo",
                       "dataset",
@@ -26866,6 +27125,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "url",
                 "bookmark",
                 "bookmark-list",
+                "history",
                 "document",
                 "repo",
                 "dataset",
@@ -26940,6 +27200,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "url",
                     "bookmark",
                     "bookmark-list",
+                    "history",
                     "document",
                     "repo",
                     "dataset",
@@ -27210,6 +27471,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "url",
                       "bookmark",
                       "bookmark-list",
+                      "history",
                       "document",
                       "repo",
                       "dataset",
@@ -27483,6 +27745,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "url",
                     "bookmark",
                     "bookmark-list",
+                    "history",
                     "document",
                     "repo",
                     "dataset",
@@ -27822,6 +28085,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "url",
                       "bookmark",
                       "bookmark-list",
+                      "history",
                       "document",
                       "repo",
                       "dataset",
@@ -28130,6 +28394,30 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       {
                         "type": "object",
                         "properties": {
+                          "imported": {
+                            "type": "number"
+                          },
+                          "failed": {
+                            "type": "number"
+                          },
+                          "profileCount": {
+                            "type": "number"
+                          },
+                          "errorCount": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "imported",
+                          "failed",
+                          "profileCount",
+                          "errorCount"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
                           "projections": {
                             "type": "array",
                             "items": {
@@ -28278,6 +28566,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reindex",
                     "refresh-stale",
                     "refresh-bookmarks",
+                    "sync-browser-history",
                     "rebuild-projections",
                     "light-consolidation",
                     "deep-consolidation"
@@ -28475,6 +28764,30 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     {
                       "type": "object",
                       "properties": {
+                        "imported": {
+                          "type": "number"
+                        },
+                        "failed": {
+                          "type": "number"
+                        },
+                        "profileCount": {
+                          "type": "number"
+                        },
+                        "errorCount": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "imported",
+                        "failed",
+                        "profileCount",
+                        "errorCount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
                         "projections": {
                           "type": "array",
                           "items": {
@@ -28617,6 +28930,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "reindex",
                       "refresh-stale",
                       "refresh-bookmarks",
+                      "sync-browser-history",
                       "rebuild-projections",
                       "light-consolidation",
                       "deep-consolidation"
@@ -31083,6 +31397,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "url",
                           "bookmark",
                           "bookmark-list",
+                          "history",
                           "document",
                           "repo",
                           "dataset",
@@ -31484,6 +31799,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "url",
                       "bookmark",
                       "bookmark-list",
+                      "history",
                       "document",
                       "repo",
                       "dataset",
@@ -55153,10 +55469,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 224,
-      "typedInputs": 224,
+      "methods": 225,
+      "typedInputs": 225,
       "genericInputs": 0,
-      "typedOutputs": 224,
+      "typedOutputs": 225,
       "genericOutputs": 0
     },
     "eventCoverage": {

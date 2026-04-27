@@ -285,7 +285,7 @@ The knowledge system provides persistent, queryable memory that agents can read 
 ### Components
 
 - **Store** (`store.ts`, `store-schema.ts`, `store-read.ts`, `store-load.ts`) — SQLite-backed storage layer; manages the graph schema, reads, and loads
-- **Ingestion** (`ingest.ts`, `ingest-compile.ts`, `ingest-inputs.ts`, `ingest-context.ts`) — pipelines for ingesting new knowledge from files, URLs, and agent outputs
+- **Ingestion** (`ingest.ts`, `ingest-compile.ts`, `ingest-inputs.ts`, `ingest-context.ts`, `browser-history/`) — pipelines for ingesting new knowledge from files, URLs, browser-local history/bookmark metadata, and agent outputs
 - **GraphQL** (`graphql.ts`, `graphql-schema.ts`) — query interface for knowledge retrieval; exposes the knowledge graph over a GraphQL API consumed by route handlers
 - **Memory Sync** (`memory-sync.ts`) — keeps the in-memory projection synchronized with persisted store state
 - **Projections** (`projections.ts`) — derived views of the knowledge graph (e.g. context-window projections for injection into prompts)

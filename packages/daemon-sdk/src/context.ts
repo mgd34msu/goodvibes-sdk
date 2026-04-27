@@ -144,6 +144,7 @@ export interface DaemonApiRouteHandlers {
   getKnowledgeSchedule(id: string): MaybeResponse;
   postKnowledgeIngestUrl(req: Request): MaybeResponse;
   postKnowledgeIngestArtifact(req: Request): MaybeResponse;
+  postKnowledgeSyncBrowserHistory(req: Request): MaybeResponse;
   postKnowledgeImportBookmarks(req: Request): MaybeResponse;
   postKnowledgeImportUrls(req: Request): MaybeResponse;
   postKnowledgeIngestConnector(req: Request): MaybeResponse;

@@ -267,6 +267,7 @@ describe('daemon sdk', () => {
         getSchedule: () => null,
         ingestUrl: async () => ({}),
         ingestArtifact: async () => ({}),
+        syncBrowserHistory: async () => ({}),
         importBookmarksFromFile: async () => ({}),
         importUrlsFromFile: async () => ({}),
         ingestConnectorInput: async () => ({}),

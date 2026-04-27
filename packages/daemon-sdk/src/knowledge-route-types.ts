@@ -64,6 +64,7 @@ export interface KnowledgeServiceLike {
   getSchedule(id: string): unknown | null;
   ingestUrl(input: Record<string, unknown>): Promise<unknown>;
   ingestArtifact(input: Record<string, unknown>): Promise<unknown>;
+  syncBrowserHistory(input: Record<string, unknown>): Promise<unknown>;
   importBookmarksFromFile(input: Record<string, unknown>): Promise<unknown>;
   importUrlsFromFile(input: Record<string, unknown>): Promise<unknown>;
   ingestConnectorInput(input: Record<string, unknown>): Promise<unknown>;

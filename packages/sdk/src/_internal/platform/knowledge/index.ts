@@ -1,5 +1,12 @@
 export { KnowledgeConnectorRegistry, createDefaultKnowledgeConnectorRegistry } from './connectors.js';
 export { extractKnowledgeArtifact } from './extractors.js';
+export {
+  collectBrowserKnowledge,
+  discoverBrowserKnowledgeProfiles,
+  ingestBrowserKnowledge,
+  listBrowserKinds,
+  readBrowserKnowledgeProfile,
+} from './browser-history/index.js';
 export { KnowledgeGraphqlService, getKnowledgeGraphqlSchemaText, inspectKnowledgeGraphqlAccess } from './graphql.js';
 export type { KnowledgeGraphqlAccessProfile, KnowledgeGraphqlExecuteInput } from './graphql.js';
 export { createKnowledgeApi } from './knowledge-api.js';
@@ -58,3 +65,15 @@ export type {
   KnowledgeStatus,
   KnowledgeUsageRecord,
 } from './types.js';
+export type {
+  BrowserBookmarkEntry,
+  BrowserHistoryEntry,
+  BrowserKnowledgeCollectResult,
+  BrowserKnowledgeEntry,
+  BrowserKnowledgeFamily,
+  BrowserKnowledgeFilter,
+  BrowserKnowledgeIngestOptions,
+  BrowserKnowledgeKind,
+  BrowserKnowledgeProfile,
+  BrowserKnowledgeSourceKind,
+} from './browser-history/index.js';

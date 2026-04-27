@@ -4,6 +4,7 @@ export type KnowledgeSourceType =
   | 'url'
   | 'bookmark'
   | 'bookmark-list'
+  | 'history'
   | 'document'
   | 'repo'
   | 'dataset'
@@ -55,6 +56,7 @@ export type KnowledgeJobKind =
   | 'reindex'
   | 'refresh-stale'
   | 'refresh-bookmarks'
+  | 'sync-browser-history'
   | 'rebuild-projections'
   | 'light-consolidation'
   | 'deep-consolidation';

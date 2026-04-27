@@ -265,6 +265,9 @@ export function buildKnowledgeRouteContext(input: {
       ingestArtifact: (body) => input.knowledgeService.ingestArtifact(
         body as Parameters<KnowledgeService['ingestArtifact']>[0],
       ),
+      syncBrowserHistory: (body) => input.knowledgeService.syncBrowserHistory(
+        body as Parameters<KnowledgeService['syncBrowserHistory']>[0],
+      ),
       importBookmarksFromFile: (body) => input.knowledgeService.importBookmarksFromFile(
         body as Parameters<KnowledgeService['importBookmarksFromFile']>[0],
       ),

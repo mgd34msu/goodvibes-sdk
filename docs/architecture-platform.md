@@ -34,7 +34,7 @@ This document maps every top-level directory under `packages/sdk/src/_internal/p
 | `input/` | Reserved directory for input-processing extensions (currently unpopulated) |
 | `integrations/` | Third-party integration connectors (non-channel services: Linear, Jira, Notion, etc.) |
 | `intelligence/` | Code-intelligence facade over tree-sitter and LSP: symbol extraction, outline parsing, language detection, diagnostics, and hover — with graceful degradation when either backend is absent |
-| `knowledge/` | Persistent queryable memory store: ingestion pipelines (files, URLs, agent output), GraphQL query API, projections for prompt injection, consolidation/deduplication, and scheduling |
+| `knowledge/` | Persistent queryable memory store: ingestion pipelines (files, URLs, browser-local history/bookmark metadata, agent output), GraphQL query API, projections for prompt injection, consolidation/deduplication, and scheduling |
 | `mcp/` | MCP client (stdio JSON-RPC 2.0 transport), server registry, and per-server configuration; connects external MCP server processes and exposes their tools to the LLM |
 | `media/` | Media provider registry: metadata, image-understanding, transform, generate, and attachment-store capability surfaces for images and binary attachments |
 | `multimodal/` | Multimodal content service — encodes images and files into provider-specific prompt structures for vision-capable models |
