@@ -41,6 +41,7 @@ type IngestUrlInput = Parameters<KnowledgeService['ingestUrl']>[0];
 type IngestArtifactInput = Parameters<KnowledgeService['ingestArtifact']>[0];
 type ImportBookmarksInput = Parameters<KnowledgeService['importBookmarksFromFile']>[0];
 type ImportUrlsInput = Parameters<KnowledgeService['importUrlsFromFile']>[0];
+type BrowserHistoryInput = Parameters<KnowledgeService['syncBrowserHistory']>[0];
 type BookmarkSeedsInput = Parameters<KnowledgeService['ingestBookmarkSeeds']>[0];
 type ConnectorInput = Parameters<KnowledgeService['ingestConnectorInput']>[0];
 type ProjectionRenderInput = Parameters<KnowledgeService['renderProjection']>[0];
@@ -165,6 +166,7 @@ export interface KnowledgeApi {
   readonly ingest: {
     url(input: KnowledgeApiUrlIngestInput): ReturnType<KnowledgeService['ingestUrl']>;
     artifact(input: KnowledgeApiArtifactIngestInput): ReturnType<KnowledgeService['ingestArtifact']>;
+    browserHistory(input?: BrowserHistoryInput): ReturnType<KnowledgeService['syncBrowserHistory']>;
     bookmarksFile(input: ImportBookmarksInput): ReturnType<KnowledgeService['importBookmarksFromFile']>;
     urlsFile(input: ImportUrlsInput): ReturnType<KnowledgeService['importUrlsFromFile']>;
     bookmarkSeeds(input: BookmarkSeedsInput): ReturnType<KnowledgeService['ingestBookmarkSeeds']>;
@@ -357,6 +359,7 @@ export function createKnowledgeApi(
         ...normalizeKnowledgeFetchMode(input.fetchMode),
         metadata: appendKnowledgeIntentMetadata(input.metadata, input.fetchMode, 'artifact'),
       }),
+      browserHistory: (input: BrowserHistoryInput = {}) => knowledgeService.syncBrowserHistory(input),
       bookmarksFile: (input: ImportBookmarksInput) => knowledgeService.importBookmarksFromFile(input),
       urlsFile: (input: ImportUrlsInput) => knowledgeService.importUrlsFromFile(input),
       bookmarkSeeds: (

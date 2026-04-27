@@ -8,6 +8,8 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { createDefaultKnowledgeConnectorRegistry, KnowledgeConnectorRegistry } from './connectors.js';
 import { KnowledgeProjectionService } from './projections.js';
 import { KnowledgeStore } from './store.js';
+import { ingestBrowserKnowledge } from './browser-history/index.js';
+import type { BrowserKnowledgeIngestOptions, BrowserKnowledgeProfile } from './browser-history/index.js';
 import type {
   KnowledgeBatchIngestResult,
   KnowledgeBookmarkSeed,
@@ -474,6 +476,12 @@ export class KnowledgeService {
     return ingestKnowledgeConnectorInput(this.getIngestContext(), input);
   }
 
+  async syncBrowserHistory(
+    input: BrowserKnowledgeIngestOptions = {},
+  ): Promise<KnowledgeBatchIngestResult & { readonly profiles: readonly BrowserKnowledgeProfile[] }> {
+    return ingestBrowserKnowledge(this.getIngestContext(), input);
+  }
+
   async listProjectionTargets(limit = 25): Promise<KnowledgeProjectionTarget[]> {
     return this.projectionService.listTargets(limit);
   }
@@ -637,6 +645,17 @@ export class KnowledgeService {
           pickKnowledgeRefreshCandidates({ store: this.store }, 'bookmark', input.sourceIds, input.limit),
         );
         return { refreshed };
+      }
+      case 'sync-browser-history': {
+        const result = await this.syncBrowserHistory({
+          limit: input.limit,
+        });
+        return {
+          imported: result.imported,
+          failed: result.failed,
+          profileCount: result.profiles.length,
+          errorCount: result.errors.length,
+        };
       }
       case 'rebuild-projections': {
         const overview = await this.materializeProjection({ kind: 'overview', limit: Math.max(8, input.limit ?? 12) });

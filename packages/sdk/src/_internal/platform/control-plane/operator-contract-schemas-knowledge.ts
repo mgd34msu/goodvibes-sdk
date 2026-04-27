@@ -30,6 +30,7 @@ export const KNOWLEDGE_SOURCE_TYPE_SCHEMA = enumSchema([
   'url',
   'bookmark',
   'bookmark-list',
+  'history',
   'document',
   'repo',
   'dataset',
@@ -45,6 +46,7 @@ export const KNOWLEDGE_JOB_KIND_SCHEMA = enumSchema([
   'reindex',
   'refresh-stale',
   'refresh-bookmarks',
+  'sync-browser-history',
   'rebuild-projections',
   'light-consolidation',
   'deep-consolidation',
@@ -114,6 +116,12 @@ const KNOWLEDGE_JOB_RUN_REINDEX_RESULT_SCHEMA = objectSchema({
 const KNOWLEDGE_JOB_RUN_REFRESH_RESULT_SCHEMA = objectSchema({
   refreshed: NUMBER_SCHEMA,
 }, ['refreshed'], { additionalProperties: false });
+const KNOWLEDGE_JOB_RUN_BROWSER_SYNC_RESULT_SCHEMA = objectSchema({
+  imported: NUMBER_SCHEMA,
+  failed: NUMBER_SCHEMA,
+  profileCount: NUMBER_SCHEMA,
+  errorCount: NUMBER_SCHEMA,
+}, ['imported', 'failed', 'profileCount', 'errorCount'], { additionalProperties: false });
 const KNOWLEDGE_JOB_RUN_PROJECTIONS_RESULT_SCHEMA = objectSchema({
   projections: arraySchema(KNOWLEDGE_JOB_RUN_PROJECTION_SCHEMA),
 }, ['projections'], { additionalProperties: false });
@@ -127,6 +135,7 @@ export const KNOWLEDGE_JOB_RUN_RESULT_SCHEMA = {
     KNOWLEDGE_JOB_RUN_ISSUE_COUNT_RESULT_SCHEMA,
     KNOWLEDGE_JOB_RUN_REINDEX_RESULT_SCHEMA,
     KNOWLEDGE_JOB_RUN_REFRESH_RESULT_SCHEMA,
+    KNOWLEDGE_JOB_RUN_BROWSER_SYNC_RESULT_SCHEMA,
     KNOWLEDGE_JOB_RUN_PROJECTIONS_RESULT_SCHEMA,
     KNOWLEDGE_JOB_RUN_CONSOLIDATION_RESULT_SCHEMA,
   ],
@@ -345,6 +354,23 @@ export const KNOWLEDGE_BATCH_INGEST_RESULT_SCHEMA = objectSchema({
   sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
   errors: STRING_LIST_SCHEMA,
 }, ['imported', 'failed', 'sources', 'errors']);
+
+const KNOWLEDGE_BROWSER_PROFILE_SCHEMA = objectSchema({
+  family: STRING_SCHEMA,
+  browser: STRING_SCHEMA,
+  profileName: STRING_SCHEMA,
+  profilePath: STRING_SCHEMA,
+  historyPath: STRING_SCHEMA,
+  bookmarksPath: STRING_SCHEMA,
+}, ['family', 'browser', 'profileName', 'profilePath'], { additionalProperties: true });
+
+export const KNOWLEDGE_BROWSER_SYNC_RESULT_SCHEMA = objectSchema({
+  imported: NUMBER_SCHEMA,
+  failed: NUMBER_SCHEMA,
+  sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
+  errors: STRING_LIST_SCHEMA,
+  profiles: arraySchema(KNOWLEDGE_BROWSER_PROFILE_SCHEMA),
+}, ['imported', 'failed', 'sources', 'errors', 'profiles']);
 
 const KNOWLEDGE_SEARCH_RESULT_SCHEMA = objectSchema({
   kind: STRING_SCHEMA,

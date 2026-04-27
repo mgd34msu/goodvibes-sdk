@@ -14,6 +14,7 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 export const SOURCE_REFRESH_WINDOWS_MS: Record<string, number> = {
   bookmark: 7 * DAY_MS,
   'bookmark-list': 7 * DAY_MS,
+  history: 14 * DAY_MS,
   'url-list': 7 * DAY_MS,
   url: 14 * DAY_MS,
   repo: 14 * DAY_MS,

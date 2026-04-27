@@ -46,6 +46,7 @@ export function createDaemonKnowledgeRouteHandlers(
   | 'getKnowledgeSchedule'
   | 'postKnowledgeIngestUrl'
   | 'postKnowledgeIngestArtifact'
+  | 'postKnowledgeSyncBrowserHistory'
   | 'postKnowledgeImportBookmarks'
   | 'postKnowledgeImportUrls'
   | 'postKnowledgeIngestConnector'
@@ -165,6 +166,7 @@ export function createDaemonKnowledgeRouteHandlers(
     },
     postKnowledgeIngestUrl: async (request) => handleKnowledgeIngestUrl(context, request),
     postKnowledgeIngestArtifact: async (request) => handleKnowledgeIngestArtifact(context, request),
+    postKnowledgeSyncBrowserHistory: async (request) => handleKnowledgeSyncBrowserHistory(context, request),
     postKnowledgeImportBookmarks: async (request) => handleKnowledgeImportBookmarks(context, request),
     postKnowledgeImportUrls: async (request) => handleKnowledgeImportUrls(context, request),
     postKnowledgeIngestConnector: async (request) => handleKnowledgeIngestConnector(context, request),
@@ -420,6 +422,33 @@ async function handleKnowledgeIngestArtifact(context: DaemonKnowledgeRouteContex
       ...(typeof body.connectorId === 'string' ? { connectorId: body.connectorId } : {}),
       ...privateHostFetchOptions,
       ...(typeof body.metadata === 'object' && body.metadata !== null ? { metadata: body.metadata as Record<string, unknown> } : {}),
+    }), { status: 201 });
+  } catch (error) {
+    return jsonErrorResponse(error, { status: 400 });
+  }
+}
+
+async function handleKnowledgeSyncBrowserHistory(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
+  const admin = context.requireAdmin(request);
+  if (admin) return admin;
+  const body = await context.parseOptionalJsonBody(request);
+  if (body instanceof Response) return body;
+  const input = body ?? {};
+  const sourceKinds = Array.isArray(input.sourceKinds)
+    ? input.sourceKinds.filter((entry): entry is string => entry === 'history' || entry === 'bookmark')
+    : undefined;
+  const browsers = Array.isArray(input.browsers)
+    ? input.browsers.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    : undefined;
+  try {
+    return Response.json(await context.knowledgeService.syncBrowserHistory({
+      ...(typeof input.limit === 'number' ? { limit: Math.max(1, input.limit) } : {}),
+      ...(typeof input.sinceMs === 'number' ? { sinceMs: input.sinceMs } : {}),
+      ...(typeof input.homeOverride === 'string' ? { homeOverride: input.homeOverride } : {}),
+      ...(typeof input.sessionId === 'string' ? { sessionId: input.sessionId } : {}),
+      ...(typeof input.connectorId === 'string' ? { connectorId: input.connectorId } : {}),
+      ...(browsers?.length ? { browsers } : {}),
+      ...(sourceKinds?.length ? { sourceKinds } : {}),
     }), { status: 201 });
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });

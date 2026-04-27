@@ -316,6 +316,7 @@ function inferMemoryClassForCandidate(
     case 'bookmark':
     case 'url':
     case 'bookmark-list':
+    case 'history':
       return 'fact';
     case 'document':
       return 'runbook';
@@ -334,6 +335,7 @@ function getSourceRefreshWindowMs(source: KnowledgeSourceRecord): number {
   return {
     bookmark: 7 * 24 * 60 * 60 * 1000,
     'bookmark-list': 7 * 24 * 60 * 60 * 1000,
+    history: 14 * 24 * 60 * 60 * 1000,
     'url-list': 7 * 24 * 60 * 60 * 1000,
     url: 14 * 24 * 60 * 60 * 1000,
     repo: 14 * 24 * 60 * 60 * 1000,

@@ -6,6 +6,7 @@ import {
 } from './operator-contract-schemas-shared.js';
 import {
   KNOWLEDGE_BATCH_INGEST_RESULT_SCHEMA,
+  KNOWLEDGE_BROWSER_SYNC_RESULT_SCHEMA,
   KNOWLEDGE_CONSOLIDATION_DECISION_SCHEMA,
   KNOWLEDGE_CANDIDATE_OUTPUT_SCHEMA,
   KNOWLEDGE_CANDIDATES_OUTPUT_SCHEMA,
@@ -211,6 +212,26 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       metadata: METADATA_SCHEMA,
     }),
     outputSchema: KNOWLEDGE_INGEST_RESULT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'knowledge.ingest.browserHistory',
+    title: 'Sync Browser History Into Knowledge',
+    description: 'Read local browser history and bookmarks and index them as metadata-first structured knowledge.',
+    category: 'knowledge',
+    scopes: ['write:knowledge'],
+    access: 'admin',
+    http: { method: 'POST', path: '/api/knowledge/ingest/browser-history' },
+    inputSchema: bodyEnvelopeSchema({
+      limit: NUMBER_SCHEMA,
+      sinceMs: NUMBER_SCHEMA,
+      browsers: arraySchema(STRING_SCHEMA),
+      sourceKinds: arraySchema(STRING_SCHEMA),
+      homeOverride: STRING_SCHEMA,
+      sessionId: STRING_SCHEMA,
+      connectorId: STRING_SCHEMA,
+      metadata: METADATA_SCHEMA,
+    }),
+    outputSchema: KNOWLEDGE_BROWSER_SYNC_RESULT_SCHEMA,
   }),
   methodDescriptor({
     id: 'knowledge.search',

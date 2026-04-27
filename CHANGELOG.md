@@ -14,13 +14,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
-- none
+- Browser-local knowledge ingestion. The SDK can discover supported Chromium,
+  Gecko, and WebKit browser profiles, read history/bookmark data through locked
+  SQLite snapshots or bookmark files, fold entries by canonical URL, and store
+  provenance-rich metadata in the structured knowledge store. This is exposed
+  through `KnowledgeService.syncBrowserHistory()`,
+  `knowledge.ingest.browserHistory()`, the admin-only
+  `POST /api/knowledge/ingest/browser-history` route, and the
+  `knowledge-sync-browser-history` job.
+- HTML knowledge extraction now tries `jsdom` plus Mozilla Readability before
+  falling back to the lightweight extractor, improving URL/artifact summaries
+  without changing non-HTML extraction behavior.
 
 ### Fixed
 - none
 
 ### Migration
-- none
+- Browser knowledge sync is opt-in and is not scheduled by default. Clients
+  that expose it should present it as a local-data import and request explicit
+  user consent before scanning browser profiles.
 
 ---
 

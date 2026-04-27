@@ -135,6 +135,7 @@ export async function dispatchOperatorRoutes(
     | 'getKnowledgeSchedule'
     | 'postKnowledgeIngestUrl'
     | 'postKnowledgeIngestArtifact'
+    | 'postKnowledgeSyncBrowserHistory'
     | 'postKnowledgeImportBookmarks'
     | 'postKnowledgeImportUrls'
     | 'postKnowledgeIngestConnector'
@@ -384,6 +385,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/knowledge/graphql' && (method === 'GET' || method === 'POST')) return handlers.executeKnowledgeGraphql(req);
   if (pathname === '/api/knowledge/ingest/url' && method === 'POST') return handlers.postKnowledgeIngestUrl(req);
   if (pathname === '/api/knowledge/ingest/artifact' && method === 'POST') return handlers.postKnowledgeIngestArtifact(req);
+  if (pathname === '/api/knowledge/ingest/browser-history' && method === 'POST') return handlers.postKnowledgeSyncBrowserHistory(req);
   if (pathname === '/api/knowledge/ingest/bookmarks' && method === 'POST') return handlers.postKnowledgeImportBookmarks(req);
   if (pathname === '/api/knowledge/ingest/urls' && method === 'POST') return handlers.postKnowledgeImportUrls(req);
   if (pathname === '/api/knowledge/ingest/connector' && method === 'POST') return handlers.postKnowledgeIngestConnector(req);

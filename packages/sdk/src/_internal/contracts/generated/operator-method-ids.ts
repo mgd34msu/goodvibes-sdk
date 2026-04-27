@@ -93,6 +93,7 @@ export const OPERATOR_METHOD_IDS = [
   "knowledge.graphql.schema",
   "knowledge.ingest.artifact",
   "knowledge.ingest.bookmarks",
+  "knowledge.ingest.browserHistory",
   "knowledge.ingest.connector",
   "knowledge.ingest.url",
   "knowledge.ingest.urls",

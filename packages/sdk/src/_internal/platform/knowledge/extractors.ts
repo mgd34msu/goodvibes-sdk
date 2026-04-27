@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import { extname } from 'node:path';
 import type { ArtifactDescriptor, ArtifactRecord } from '../artifacts/types.js';
 import { guessMimeType } from '../artifacts/types.js';
+import { extractReadableHtml } from './html-readability.js';
 import type { KnowledgeExtractionFormat } from './types.js';
 
 export interface KnowledgeExtractionResult {
@@ -107,6 +108,35 @@ function extractLinksFromHtml(html: string): string[] {
 
 function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
   const html = buffer.toString('utf-8');
+  try {
+    const readable = extractReadableHtml(html);
+    if (readable) {
+      const summary = summarizeText([readable.excerpt, readable.paragraphSamples[0], readable.textContent].filter(Boolean).join(' '));
+      return {
+        extractorId: 'html-readability',
+        format: 'html',
+        ...(readable.title ? { title: readable.title } : {}),
+        ...(summary ? { summary } : {}),
+        ...(excerptText(readable.textContent) ? { excerpt: excerptText(readable.textContent) } : {}),
+        sections: readable.headings.length > 0 ? readable.headings.slice(0, 16) : uniqueStrings(readable.textContent.split(/\n+/), 8),
+        links: readable.links,
+        estimatedTokens: estimateTokens(readable.title, summary, readable.textContent),
+        structure: {
+          headings: readable.headings,
+          readableLength: readable.length,
+          paragraphSampleCount: readable.paragraphSamples.length,
+        },
+        metadata: {
+          paragraphSamples: readable.paragraphSamples.slice(0, 4),
+          ...(readable.byline ? { byline: readable.byline } : {}),
+          ...(readable.siteName ? { siteName: readable.siteName } : {}),
+          extractionPath: 'readability',
+        },
+      };
+    }
+  } catch {
+    // Fall back to the lightweight extractor below for malformed or hostile HTML.
+  }
   const title = cleanText(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '')
     || cleanText(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '');
   const headings = uniqueStrings(

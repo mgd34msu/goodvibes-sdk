@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract for product version `0.25.
 
 ## Summary
 
-- Methods: `224`
+- Methods: `225`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -25280,6 +25280,7 @@ Return a single knowledge connector manifest.
             "url",
             "bookmark",
             "bookmark-list",
+            "history",
             "document",
             "repo",
             "dataset",
@@ -25545,6 +25546,7 @@ Return discoverable knowledge ingest connectors with input metadata and examples
               "url",
               "bookmark",
               "bookmark-list",
+              "history",
               "document",
               "repo",
               "dataset",
@@ -26321,6 +26323,7 @@ Snapshot a local path, remote URI, or existing artifact into the structured know
         "url",
         "bookmark",
         "bookmark-list",
+        "history",
         "document",
         "repo",
         "dataset",
@@ -26400,6 +26403,7 @@ Snapshot a local path, remote URI, or existing artifact into the structured know
             "url",
             "bookmark",
             "bookmark-list",
+            "history",
             "document",
             "repo",
             "dataset",
@@ -26674,6 +26678,7 @@ Parse a bookmark export file and ingest its URLs into the structured knowledge s
               "url",
               "bookmark",
               "bookmark-list",
+              "history",
               "document",
               "repo",
               "dataset",
@@ -26783,6 +26788,263 @@ Parse a bookmark export file and ingest its URLs into the structured knowledge s
     "failed",
     "sources",
     "errors"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `knowledge.ingest.browserHistory`
+
+Read local browser history and bookmarks and index them as metadata-first structured knowledge.
+
+- Title: `Sync Browser History Into Knowledge`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/knowledge/ingest/browser-history`
+- Scopes: `write:knowledge`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "number"
+    },
+    "sinceMs": {
+      "type": "number"
+    },
+    "browsers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sourceKinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "homeOverride": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "connectorId": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "imported": {
+      "type": "number"
+    },
+    "failed": {
+      "type": "number"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "connectorId": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "url",
+              "bookmark",
+              "bookmark-list",
+              "history",
+              "document",
+              "repo",
+              "dataset",
+              "image",
+              "manual",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "sourceUri": {
+            "type": "string"
+          },
+          "canonicalUri": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "folderPath": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "artifactId": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "lastCrawledAt": {
+            "type": "number"
+          },
+          "crawlError": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "connectorId",
+          "sourceType",
+          "tags",
+          "status",
+          "metadata",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "browser": {
+            "type": "string"
+          },
+          "profileName": {
+            "type": "string"
+          },
+          "profilePath": {
+            "type": "string"
+          },
+          "historyPath": {
+            "type": "string"
+          },
+          "bookmarksPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "browser",
+          "profileName",
+          "profilePath"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "imported",
+    "failed",
+    "sources",
+    "errors",
+    "profiles"
   ],
   "additionalProperties": false
 }
@@ -26901,6 +27163,7 @@ Resolve a knowledge connector against inline input, inline content, or file-back
               "url",
               "bookmark",
               "bookmark-list",
+              "history",
               "document",
               "repo",
               "dataset",
@@ -27047,6 +27310,7 @@ Fetch, snapshot, and compile a URL into the structured knowledge store.
         "url",
         "bookmark",
         "bookmark-list",
+        "history",
         "document",
         "repo",
         "dataset",
@@ -27126,6 +27390,7 @@ Fetch, snapshot, and compile a URL into the structured knowledge store.
             "url",
             "bookmark",
             "bookmark-list",
+            "history",
             "document",
             "repo",
             "dataset",
@@ -27400,6 +27665,7 @@ Parse a URL list file and ingest its entries into the structured knowledge store
               "url",
               "bookmark",
               "bookmark-list",
+              "history",
               "document",
               "repo",
               "dataset",
@@ -27681,6 +27947,7 @@ Return a single structured knowledge source, node, or issue with linked relation
             "url",
             "bookmark",
             "bookmark-list",
+            "history",
             "document",
             "repo",
             "dataset",
@@ -28020,6 +28287,7 @@ Return a single structured knowledge source, node, or issue with linked relation
               "url",
               "bookmark",
               "bookmark-list",
+              "history",
               "document",
               "repo",
               "dataset",
@@ -28332,6 +28600,30 @@ Return recent knowledge job runs.
               {
                 "type": "object",
                 "properties": {
+                  "imported": {
+                    "type": "number"
+                  },
+                  "failed": {
+                    "type": "number"
+                  },
+                  "profileCount": {
+                    "type": "number"
+                  },
+                  "errorCount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "imported",
+                  "failed",
+                  "profileCount",
+                  "errorCount"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
                   "projections": {
                     "type": "array",
                     "items": {
@@ -28484,6 +28776,7 @@ Return a single knowledge job definition.
             "reindex",
             "refresh-stale",
             "refresh-bookmarks",
+            "sync-browser-history",
             "rebuild-projections",
             "light-consolidation",
             "deep-consolidation"
@@ -28682,6 +28975,30 @@ Queue or run a structured knowledge maintenance job.
             {
               "type": "object",
               "properties": {
+                "imported": {
+                  "type": "number"
+                },
+                "failed": {
+                  "type": "number"
+                },
+                "profileCount": {
+                  "type": "number"
+                },
+                "errorCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "imported",
+                "failed",
+                "profileCount",
+                "errorCount"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
                 "projections": {
                   "type": "array",
                   "items": {
@@ -28828,6 +29145,7 @@ Return built-in structured knowledge maintenance jobs.
               "reindex",
               "refresh-stale",
               "refresh-bookmarks",
+              "sync-browser-history",
               "rebuild-projections",
               "light-consolidation",
               "deep-consolidation"
@@ -31354,6 +31672,7 @@ Search structured knowledge sources and nodes with compact ranked results.
                   "url",
                   "bookmark",
                   "bookmark-list",
+                  "history",
                   "document",
                   "repo",
                   "dataset",
@@ -31763,6 +32082,7 @@ Return ingested structured knowledge sources.
               "url",
               "bookmark",
               "bookmark-list",
+              "history",
               "document",
               "repo",
               "dataset",
