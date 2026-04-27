@@ -2,11 +2,47 @@ import { summarizeError } from '../utils/error-display.js';
 import { DEFAULT_DO_NAMESPACE_NAME } from './constants.js';
 import type {
   CloudflareApiClient,
+  CloudflareDurableObjectNamespaceLike,
   CloudflareProvisionStep,
+  CloudflareWorkerScriptLike,
 } from './types.js';
-import { clean } from './utils.js';
+import { clean, collectAsync } from './utils.js';
 import { GOODVIBES_CLOUDFLARE_WORKER_MODULE } from './worker-source.js';
 import type { CloudflareProvisioningContext } from './resources.js';
+
+const GOODVIBES_DO_MIGRATION_TAG = 'goodvibes-coordinator-v1';
+
+type WorkerMigrationMetadata = {
+  readonly new_tag?: string;
+  readonly old_tag?: string;
+  readonly steps: readonly { readonly new_sqlite_classes: readonly string[] }[];
+};
+
+export interface WorkerUploadResult {
+  readonly durableObjectMigration:
+    | 'disabled'
+    | 'create-sqlite-class'
+    | 'current'
+    | 'existing-namespace'
+    | 'recovered-existing-class';
+  readonly migrationTag?: string;
+  readonly namespaceId?: string;
+}
+
+export function describeWorkerUploadDurableObjectMigration(upload: WorkerUploadResult): string {
+  switch (upload.durableObjectMigration) {
+    case 'create-sqlite-class':
+      return 'Applied Durable Object SQLite class migration for GoodVibesCoordinator.';
+    case 'current':
+      return `Durable Object migration ${upload.migrationTag ?? GOODVIBES_DO_MIGRATION_TAG} is already current.`;
+    case 'existing-namespace':
+      return 'Using existing Durable Object namespace for GoodVibesCoordinator; no new class migration was applied.';
+    case 'recovered-existing-class':
+      return 'Cloudflare reported GoodVibesCoordinator already exists; retried Worker upload without reapplying the new class migration.';
+    case 'disabled':
+      return 'Durable Object migration was skipped because Durable Objects are disabled.';
+  }
+}
 
 export async function uploadWorker(
   client: CloudflareApiClient,
@@ -20,7 +56,7 @@ export async function uploadWorker(
     readonly r2BucketName: string;
     readonly durableObject: boolean;
   },
-): Promise<void> {
+): Promise<WorkerUploadResult> {
   const file = new File(
     [GOODVIBES_CLOUDFLARE_WORKER_MODULE],
     'goodvibes-cloudflare-worker.mjs',
@@ -34,17 +70,149 @@ export async function uploadWorker(
     ...(input.r2BucketName ? [{ type: 'r2_bucket', name: 'GOODVIBES_ARTIFACTS', bucket_name: input.r2BucketName }] : []),
     ...(input.durableObject ? [{ type: 'durable_object_namespace', name: 'GOODVIBES_COORDINATOR', class_name: DEFAULT_DO_NAMESPACE_NAME }] : []),
   ];
-  await client.workers.scripts.update(input.workerName, {
-    account_id: input.accountId,
-    metadata: {
-      main_module: 'goodvibes-cloudflare-worker.mjs',
-      compatibility_date: '2026-04-25',
-      bindings,
-      ...(input.durableObject ? { migrations: { tag: 'goodvibes-coordinator-v1', new_sqlite_classes: [DEFAULT_DO_NAMESPACE_NAME] } } : {}),
-      keep_bindings: ['secret_text'],
+  const migrationPlan = await resolveDurableObjectMigration(client, input.accountId, input.workerName, input.durableObject);
+  const metadata = buildWorkerMetadata(bindings, migrationPlan.migrations);
+  try {
+    await client.workers.scripts.update(input.workerName, {
+      account_id: input.accountId,
+      metadata,
+      files: [file],
+    });
+    return migrationPlan.result;
+  } catch (error: unknown) {
+    if (!migrationPlan.migrations || !isDurableObjectAlreadyMigratedError(error)) throw error;
+    await client.workers.scripts.update(input.workerName, {
+      account_id: input.accountId,
+      metadata: buildWorkerMetadata(bindings, undefined),
+      files: [file],
+    });
+    return {
+      durableObjectMigration: 'recovered-existing-class',
+      migrationTag: GOODVIBES_DO_MIGRATION_TAG,
+    };
+  }
+}
+
+function buildWorkerMetadata(
+  bindings: readonly Record<string, unknown>[],
+  migrations: WorkerMigrationMetadata | undefined,
+): Record<string, unknown> {
+  return {
+    main_module: 'goodvibes-cloudflare-worker.mjs',
+    compatibility_date: '2026-04-25',
+    bindings,
+    ...(migrations ? { migrations } : {}),
+    keep_bindings: ['secret_text'],
+  };
+}
+
+async function resolveDurableObjectMigration(
+  client: CloudflareApiClient,
+  accountId: string,
+  workerName: string,
+  enabled: boolean,
+): Promise<{
+  readonly migrations?: WorkerMigrationMetadata;
+  readonly result: WorkerUploadResult;
+}> {
+  if (!enabled) {
+    return { result: { durableObjectMigration: 'disabled' } };
+  }
+
+  const currentTag = await readWorkerMigrationTag(client, accountId, workerName);
+  if (currentTag === GOODVIBES_DO_MIGRATION_TAG) {
+    return { result: { durableObjectMigration: 'current', migrationTag: currentTag } };
+  }
+
+  const existingNamespace = await findExistingDurableObjectNamespace(client, accountId, workerName);
+  if (existingNamespace) {
+    return {
+      result: {
+        durableObjectMigration: 'existing-namespace',
+        ...(currentTag ? { migrationTag: currentTag } : {}),
+        ...(existingNamespace.id ? { namespaceId: existingNamespace.id } : {}),
+      },
+    };
+  }
+
+  const migrations: WorkerMigrationMetadata = {
+    ...(currentTag ? { old_tag: currentTag } : {}),
+    new_tag: GOODVIBES_DO_MIGRATION_TAG,
+    steps: [{ new_sqlite_classes: [DEFAULT_DO_NAMESPACE_NAME] }],
+  };
+  return {
+    migrations,
+    result: {
+      durableObjectMigration: 'create-sqlite-class',
+      migrationTag: GOODVIBES_DO_MIGRATION_TAG,
     },
-    files: [file],
-  });
+  };
+}
+
+async function readWorkerMigrationTag(
+  client: CloudflareApiClient,
+  accountId: string,
+  workerName: string,
+): Promise<string> {
+  try {
+    const script = await client.workers.scripts.get?.(workerName, { account_id: accountId });
+    const tag = clean(script?.migration_tag);
+    if (tag) return tag;
+  } catch {
+    // Some tokens can deploy Workers but not read script metadata; fall back below.
+  }
+
+  const list = client.workers.scripts.list;
+  if (!list) return '';
+  try {
+    const scripts = await collectAsync(list({ account_id: accountId }));
+    const script = scripts.find((entry) => isMatchingWorkerScript(entry, workerName));
+    return clean(script?.migration_tag);
+  } catch {
+    return '';
+  }
+}
+
+async function findExistingDurableObjectNamespace(
+  client: CloudflareApiClient,
+  accountId: string,
+  workerName: string,
+): Promise<CloudflareDurableObjectNamespaceLike | undefined> {
+  if (!client.durableObjects) return undefined;
+  try {
+    for await (const namespace of client.durableObjects.namespaces.list({ account_id: accountId })) {
+      const className = clean(namespace.class) || clean(namespace.name);
+      const scriptName = clean(namespace.script);
+      if (className === DEFAULT_DO_NAMESPACE_NAME && (!scriptName || scriptName === workerName)) {
+        return namespace;
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function isMatchingWorkerScript(
+  script: CloudflareWorkerScriptLike,
+  workerName: string,
+): boolean {
+  return script.id === workerName || script.name === workerName;
+}
+
+function isDurableObjectAlreadyMigratedError(error: unknown): boolean {
+  const message = `${summarizeError(error)} ${error instanceof Error ? error.message : ''} ${stringifyError(error)}`.toLowerCase();
+  return message.includes('10074') ||
+    (message.includes('new-sqlite-class') && message.includes('already depended')) ||
+    (message.includes('new_sqlite_classes') && message.includes('existing class'));
+}
+
+function stringifyError(error: unknown): string {
+  try {
+    return JSON.stringify(error) ?? '';
+  } catch {
+    return '';
+  }
 }
 
 export async function configureWorkerSubdomain(

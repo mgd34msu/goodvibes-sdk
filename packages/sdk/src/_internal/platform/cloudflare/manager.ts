@@ -83,6 +83,7 @@ import {
 import {
   configureWorkerSchedule,
   configureWorkerSubdomain,
+  describeWorkerUploadDurableObjectMigration,
   disableWorkerSchedule,
   disableWorkerSubdomain,
   uploadWorker,
@@ -415,7 +416,7 @@ export class CloudflareControlPlaneManager {
     let subdomain = '';
     let workerBaseUrl = stripTrailingSlash(clean(input.workerBaseUrl) || config.workerBaseUrl);
     if (components.workers) {
-      await uploadWorker(client, {
+      const workerUpload = await uploadWorker(client, {
         accountId,
         workerName,
         queueName: components.queues ? queueName : '',
@@ -426,6 +427,14 @@ export class CloudflareControlPlaneManager {
         durableObject: components.durableObjects,
       });
       steps.push({ name: 'deploy-worker', status: 'ok', message: `Uploaded Worker ${workerName}.`, resourceId: workerName });
+      if (components.durableObjects) {
+        steps.push({
+          name: 'durable-object-migration',
+          status: workerUpload.durableObjectMigration === 'recovered-existing-class' ? 'warning' : 'ok',
+          message: describeWorkerUploadDurableObjectMigration(workerUpload),
+          resourceId: workerUpload.namespaceId,
+        });
+      }
 
       const operatorToken = await this.resolveOperatorToken(input);
       if (!operatorToken.value) {
