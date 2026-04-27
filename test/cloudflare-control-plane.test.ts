@@ -15,6 +15,7 @@ import type {
   CloudflareR2BucketLike,
   CloudflareSecretsStoreLike,
   CloudflareTunnelLike,
+  CloudflareTokenPolicyParam,
   CloudflareZoneLike,
 } from '../packages/sdk/src/_internal/platform/cloudflare/types.js';
 
@@ -44,6 +45,14 @@ async function* items<T>(entries: readonly T[]): AsyncIterable<T> {
   for (const entry of entries) yield entry;
 }
 
+function hasTokenResource(policies: readonly CloudflareTokenPolicyParam[], resource: string): boolean {
+  return policies.some((policy) => policy.resources[resource] !== undefined);
+}
+
+function tokenPolicyForResource(policies: readonly CloudflareTokenPolicyParam[], resource: string): CloudflareTokenPolicyParam | undefined {
+  return policies.find((policy) => policy.resources[resource] !== undefined);
+}
+
 function makeCloudflareClient() {
   const queues: CloudflareQueueLike[] = [];
   const consumers: CloudflareConsumerLike[] = [];
@@ -54,8 +63,9 @@ function makeCloudflareClient() {
   const r2Buckets: CloudflareR2BucketLike[] = [];
   const secretsStores: CloudflareSecretsStoreLike[] = [];
   const tunnels: CloudflareTunnelLike[] = [];
+  let lastTokenPolicies: readonly CloudflareTokenPolicyParam[] = [];
   const calls = {
-    tokenCreates: [] as Array<{ readonly name: string; readonly resources: Record<string, string> }>,
+    tokenCreates: [] as Array<{ readonly name: string; readonly policies: readonly CloudflareTokenPolicyParam[] }>,
     queueCreates: [] as string[],
     workerUpdates: [] as Array<{ readonly scriptName: string; readonly metadata: Record<string, unknown> }>,
     secretUpdates: [] as Array<{ readonly scriptName: string; readonly name: string; readonly text: string }>,
@@ -79,8 +89,12 @@ function makeCloudflareClient() {
     user: {
       tokens: {
         async create(params) {
-          calls.tokenCreates.push({ name: params.name, resources: params.policies[0]?.resources ?? {} });
-          return { id: 'token-1', name: params.name, value: 'operational-token' };
+          lastTokenPolicies = params.policies;
+          calls.tokenCreates.push({ name: params.name, policies: params.policies });
+          return { id: 'token-1', name: params.name, value: 'operational-token', policies: params.policies };
+        },
+        async get(tokenId) {
+          return { id: tokenId, name: 'GoodVibes Cloudflare Operational', policies: lastTokenPolicies };
         },
         async verify() {
           return { id: 'user-token', status: 'active' };
@@ -452,9 +466,32 @@ describe('CloudflareControlPlaneManager', () => {
     expect(result.apiTokenRef).toBe('goodvibes://secrets/goodvibes/CLOUDFLARE_API_TOKEN');
     expect(secrets.values['CLOUDFLARE_API_TOKEN']).toBe('operational-token');
     expect(configManager.get('cloudflare.apiTokenRef')).toBe('goodvibes://secrets/goodvibes/CLOUDFLARE_API_TOKEN');
-    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.acct-1']).toBe('*');
-    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.zone.zone-1']).toBe('*');
-    expect(calls.tokenCreates[0]?.resources['com.cloudflare.edge.r2.bucket.*']).toBeUndefined();
+    const policies = calls.tokenCreates[0]?.policies ?? [];
+    expect(hasTokenResource(policies, 'com.cloudflare.api.account.acct-1')).toBe(true);
+    expect(hasTokenResource(policies, 'com.cloudflare.api.account.zone.zone-1')).toBe(true);
+    expect(hasTokenResource(policies, 'com.cloudflare.edge.r2.bucket.*')).toBe(false);
+    expect(tokenPolicyForResource(policies, 'com.cloudflare.api.account.acct-1')?.permission_groups.length).toBeGreaterThan(0);
+    expect(tokenPolicyForResource(policies, 'com.cloudflare.api.account.zone.zone-1')?.permission_groups.length).toBeGreaterThan(0);
+  });
+
+  test('rejects Cloudflare-created operational tokens when policies are not persisted', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client } = makeCloudflareClient();
+    client.user!.tokens.create = async (params) => ({ id: 'token-empty-policy', name: params.name, value: 'bad-token', policies: [] });
+    client.user!.tokens.get = async (tokenId) => ({ id: tokenId, name: 'GoodVibes Cloudflare Operational', policies: [] });
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      createClient: async () => client,
+    });
+
+    await expect(manager.createOperationalToken({
+      accountId: 'acct-1',
+      bootstrapToken: 'bootstrap-token',
+      components: { workers: true, queues: true },
+    })).rejects.toThrow('did not persist the expected permission policy');
+    expect(secrets.values['CLOUDFLARE_API_TOKEN']).toBeUndefined();
   });
 
   test('resolves operational token permissions with filtered Cloudflare permission-group lookups', async () => {
@@ -495,13 +532,48 @@ describe('CloudflareControlPlaneManager', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.acct-1']).toBe('*');
-    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.zone.zone-1']).toBe('*');
+    const policies = calls.tokenCreates[0]?.policies ?? [];
+    expect(hasTokenResource(policies, 'com.cloudflare.api.account.acct-1')).toBe(true);
+    expect(hasTokenResource(policies, 'com.cloudflare.api.account.zone.zone-1')).toBe(true);
     expect(queries).toContainEqual({ name: 'Workers Scripts Write', scope: 'com.cloudflare.api.account' });
     expect(queries).toContainEqual({ name: 'Queues Write', scope: 'com.cloudflare.api.account' });
     expect(queries).toContainEqual({ name: 'Workers R2 Storage Write', scope: 'com.cloudflare.api.account' });
     expect(queries).toContainEqual({ name: 'Account Secrets Store Edit', scope: 'com.cloudflare.api.account' });
     expect(queries).not.toContain(null);
+  });
+
+  test('builds an R2 bucket-scoped policy when Cloudflare exposes R2 at bucket scope', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client, calls } = makeCloudflareClient();
+    const queries: Array<{ readonly name?: string; readonly scope?: string } | null> = [];
+    const groups: CloudflarePermissionGroupLike[] = [
+      { id: 'pg-r2', name: 'Workers R2 Storage Write', scopes: ['com.cloudflare.edge.r2.bucket'] },
+    ];
+    (client.user!.tokens.permissionGroups as {
+      list(params?: { readonly name?: string; readonly scope?: string }): AsyncIterable<CloudflarePermissionGroupLike>;
+    }).list = (params?: { readonly name?: string; readonly scope?: string }) => {
+      queries.push(params ?? null);
+      return items(groups.filter((group) =>
+        (!params?.name || group.name === params.name) &&
+        (!params?.scope || group.scopes?.includes(params.scope)),
+      ));
+    };
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      createClient: async () => client,
+    });
+
+    const result = await manager.createOperationalToken({
+      accountId: 'acct-1',
+      bootstrapToken: 'bootstrap-token',
+      components: { workers: false, queues: false, r2: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(queries).toContainEqual({ name: 'Workers R2 Storage Write', scope: 'com.cloudflare.edge.r2.bucket' });
+    expect(hasTokenResource(calls.tokenCreates[0]?.policies ?? [], 'com.cloudflare.edge.r2.bucket.*')).toBe(true);
   });
 
   test('does not add zone resources for account-scoped Zero Trust Access without DNS automation', async () => {
@@ -531,8 +603,9 @@ describe('CloudflareControlPlaneManager', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(calls.tokenCreates[0]?.resources['com.cloudflare.api.account.acct-1']).toBe('*');
-    expect(Object.keys(calls.tokenCreates[0]?.resources ?? {})).not.toContain('com.cloudflare.api.account.zone.*');
+    const policies = calls.tokenCreates[0]?.policies ?? [];
+    expect(hasTokenResource(policies, 'com.cloudflare.api.account.acct-1')).toBe(true);
+    expect(policies.some((policy) => Object.keys(policy.resources).some((key) => key.includes('.zone.')))).toBe(false);
   });
 
   test('provisions optional Cloudflare DNS, Tunnel, Access, KV, Durable Objects, Secrets Store, and R2 resources', async () => {

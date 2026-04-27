@@ -8,7 +8,11 @@ import type {
   CloudflareKvNamespaceLike,
   CloudflarePermissionGroupLike,
   CloudflareQueueLike,
+  CloudflareResolvedPermissionGroup,
   CloudflareTokenPermissionRequirement,
+  CloudflareTokenPolicyParam,
+  CloudflareTokenResourceMap,
+  CloudflareTokenCreateResponseLike,
 } from './types.js';
 import { CloudflareControlPlaneError } from './types.js';
 
@@ -129,6 +133,7 @@ export function buildTokenRequirements(
     requirements.push({
       component: 'r2',
       scope: 'account',
+      scopeAlternatives: ['com.cloudflare.edge.r2.bucket'],
       permission: 'Workers R2 Storage Write',
       alternatives: ['R2 Storage Write', 'Workers R2 Storage Edit'],
       reason: 'Create and bind a Standard R2 bucket for optional GoodVibes artifacts.',
@@ -165,7 +170,14 @@ export async function resolvePermissionGroupIds(
   requirements: readonly CloudflareTokenPermissionRequirement[],
   listPermissionGroups: (params?: { readonly name?: string; readonly scope?: string }) => AsyncIterable<CloudflarePermissionGroupLike>,
 ): Promise<readonly string[]> {
-  const ids: string[] = [];
+  return (await resolvePermissionGroups(requirements, listPermissionGroups)).map((entry) => entry.id);
+}
+
+export async function resolvePermissionGroups(
+  requirements: readonly CloudflareTokenPermissionRequirement[],
+  listPermissionGroups: (params?: { readonly name?: string; readonly scope?: string }) => AsyncIterable<CloudflarePermissionGroupLike>,
+): Promise<readonly CloudflareResolvedPermissionGroup[]> {
+  const resolved: CloudflareResolvedPermissionGroup[] = [];
   const missing: string[] = [];
   let scannedGroups: readonly CloudflarePermissionGroupLike[] | null = null;
   let lastError: unknown;
@@ -177,15 +189,18 @@ export async function resolvePermissionGroupIds(
   };
 
   for (const requirement of requirements) {
-    const scope = cloudflareScopeForRequirement(requirement);
+    const scopes = cloudflareScopesForRequirement(requirement);
     const names = permissionNameCandidates(requirement);
     let group: CloudflarePermissionGroupLike | undefined;
 
     for (const name of names) {
+      if (group) break;
       try {
-        const exactMatches = await collectAsync(listPermissionGroups({ name, scope }), 50);
-        group = findPermissionGroup(requirement, exactMatches);
-        if (group) break;
+        for (const scope of scopes) {
+          const exactMatches = await collectAsync(listPermissionGroups({ name, scope }), 50);
+          group = findPermissionGroup(requirement, exactMatches);
+          if (group) break;
+        }
       } catch (error: unknown) {
         lastError = error;
         break;
@@ -201,7 +216,11 @@ export async function resolvePermissionGroupIds(
     }
 
     if (group?.id) {
-      ids.push(group.id);
+      resolved.push({
+        id: group.id,
+        requirement,
+        cloudflareScope: cloudflareScopeForResolvedGroup(requirement, group),
+      });
     } else {
       missing.push(`${requirement.permission} (${requirement.component})`);
     }
@@ -216,21 +235,61 @@ export async function resolvePermissionGroupIds(
     );
   }
 
-  return Array.from(new Set(ids));
+  return uniqueResolvedPermissionGroups(resolved);
 }
 
-export function buildTokenResources(
+export function buildTokenPolicies(
   accountId: string,
   zoneId: string | undefined,
-  components: Readonly<Record<CloudflareComponent, boolean>>,
-): Record<string, string> {
-  const resources: Record<string, string> = {
-    [`com.cloudflare.api.account.${accountId}`]: '*',
-  };
-  if (components.dns) {
-    resources[zoneId ? `com.cloudflare.api.account.zone.${zoneId}` : 'com.cloudflare.api.account.zone.*'] = '*';
+  groups: readonly CloudflareResolvedPermissionGroup[],
+): readonly CloudflareTokenPolicyParam[] {
+  const byScope = new Map<string, string[]>();
+  for (const group of groups) {
+    const ids = byScope.get(group.cloudflareScope) ?? [];
+    ids.push(group.id);
+    byScope.set(group.cloudflareScope, ids);
   }
-  return resources;
+  const policies: CloudflareTokenPolicyParam[] = [];
+  addTokenPolicy(policies, byScope.get('com.cloudflare.api.account'), accountTokenResources(accountId));
+  addTokenPolicy(policies, byScope.get('com.cloudflare.api.account.zone'), zoneTokenResources(accountId, zoneId));
+  addTokenPolicy(policies, byScope.get('com.cloudflare.edge.r2.bucket'), { 'com.cloudflare.edge.r2.bucket.*': '*' });
+  if ((byScope.get('com.cloudflare.api.user')?.length ?? 0) > 0) {
+    throw new CloudflareControlPlaneError(
+      'Operational Cloudflare tokens cannot include user-scoped permissions. Create the bootstrap token separately from the Cloudflare dashboard.',
+      'CLOUDFLARE_USER_POLICY_UNSUPPORTED',
+      400,
+    );
+  }
+  return policies;
+}
+
+export async function verifyCreatedTokenPolicies(
+  token: CloudflareTokenCreateResponseLike,
+  expectedGroups: readonly CloudflareResolvedPermissionGroup[],
+  loadToken?: (tokenId: string) => Promise<CloudflareTokenCreateResponseLike>,
+): Promise<void> {
+  const expectedIds = new Set(expectedGroups.map((group) => group.id));
+  let policies = token.policies;
+  if ((!policies || policies.length === 0) && token.id && loadToken) {
+    policies = (await loadToken(token.id)).policies;
+  }
+  if (!policies) return;
+
+  const actualIds = new Set<string>();
+  for (const policy of policies) {
+    for (const group of policy.permission_groups ?? []) {
+      if (group.id) actualIds.add(group.id);
+    }
+  }
+  const missing = [...expectedIds].filter((id) => !actualIds.has(id));
+  if (actualIds.size === 0 || missing.length > 0) {
+    throw new CloudflareControlPlaneError(
+      `Cloudflare created the operational token but did not persist the expected permission policy. Missing permission group ids: ${missing.join(', ') || 'all'}. ` +
+        'Delete the unusable token in Cloudflare and retry with this SDK version.',
+      'CLOUDFLARE_TOKEN_POLICY_MISMATCH',
+      502,
+    );
+  }
 }
 
 export async function collectSingleAccount(
@@ -306,22 +365,42 @@ function uniqueRequirements(requirements: readonly CloudflareTokenPermissionRequ
   return unique;
 }
 
+function uniqueResolvedPermissionGroups(groups: readonly CloudflareResolvedPermissionGroup[]): readonly CloudflareResolvedPermissionGroup[] {
+  const seen = new Set<string>();
+  const unique: CloudflareResolvedPermissionGroup[] = [];
+  for (const group of groups) {
+    if (seen.has(group.id)) continue;
+    seen.add(group.id);
+    unique.push(group);
+  }
+  return unique;
+}
+
 function findPermissionGroup(
   requirement: CloudflareTokenPermissionRequirement,
   groups: readonly CloudflarePermissionGroupLike[],
 ): CloudflarePermissionGroupLike | undefined {
   const names = permissionNameCandidates(requirement).map(normalizePermissionName);
-  const scope = cloudflareScopeForRequirement(requirement);
+  const scopes = cloudflareScopesForRequirement(requirement);
   return groups.find((entry) =>
     entry.id &&
     entry.name &&
     names.includes(normalizePermissionName(entry.name)) &&
-    matchesPermissionScope(entry, scope),
+    matchesPermissionScope(entry, scopes),
   );
 }
 
-function matchesPermissionScope(group: CloudflarePermissionGroupLike, scope: string): boolean {
-  return !group.scopes || group.scopes.length === 0 || group.scopes.includes(scope);
+function matchesPermissionScope(group: CloudflarePermissionGroupLike, scopes: readonly string[]): boolean {
+  return !group.scopes || group.scopes.length === 0 || group.scopes.some((scope) => scopes.includes(scope));
+}
+
+function cloudflareScopeForResolvedGroup(requirement: CloudflareTokenPermissionRequirement, group: CloudflarePermissionGroupLike): string {
+  const scopes = cloudflareScopesForRequirement(requirement);
+  return group.scopes?.find((scope) => scopes.includes(scope)) ?? scopes[0]!;
+}
+
+function cloudflareScopesForRequirement(requirement: CloudflareTokenPermissionRequirement): readonly string[] {
+  return [cloudflareScopeForRequirement(requirement), ...(requirement.scopeAlternatives ?? [])];
 }
 
 function cloudflareScopeForRequirement(requirement: CloudflareTokenPermissionRequirement): string {
@@ -349,4 +428,28 @@ function permissionNameCandidates(requirement: CloudflareTokenPermissionRequirem
     names.add(writeVariant);
   }
   return Array.from(names);
+}
+
+function accountTokenResources(accountId: string): CloudflareTokenResourceMap {
+  return { [`com.cloudflare.api.account.${accountId}`]: '*' };
+}
+
+function zoneTokenResources(accountId: string, zoneId: string | undefined): CloudflareTokenResourceMap {
+  return zoneId
+    ? { [`com.cloudflare.api.account.zone.${zoneId}`]: '*' }
+    : { [`com.cloudflare.api.account.${accountId}`]: { 'com.cloudflare.api.account.zone.*': '*' } };
+}
+
+function addTokenPolicy(
+  policies: CloudflareTokenPolicyParam[],
+  ids: readonly string[] | undefined,
+  resources: CloudflareTokenResourceMap,
+): void {
+  const uniqueIds = Array.from(new Set(ids ?? []));
+  if (uniqueIds.length === 0) return;
+  policies.push({
+    effect: 'allow',
+    permission_groups: uniqueIds.map((id) => ({ id })),
+    resources,
+  });
 }

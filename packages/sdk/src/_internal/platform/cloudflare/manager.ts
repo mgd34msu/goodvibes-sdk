@@ -58,7 +58,6 @@ import type {
   CloudflareR2BucketLike,
   CloudflareResolvedSecret,
   CloudflareSecretsStoreLike,
-  CloudflareTokenPermissionRequirement,
   CloudflareTokenRequirementsInput,
   CloudflareTokenRequirementsResult,
   CloudflareTunnelLike,
@@ -69,8 +68,8 @@ import type {
 } from './types.js';
 import { CloudflareControlPlaneError } from './types.js';
 import {
+  buildTokenPolicies,
   buildTokenRequirements,
-  buildTokenResources,
   clean,
   collectAsync,
   collectSingleAccount,
@@ -78,9 +77,10 @@ import {
   requireKvNamespaceId,
   requireQueueId,
   resolveComponents,
-  resolvePermissionGroupIds,
+  resolvePermissionGroups,
   safeResponseText,
   stripTrailingSlash,
+  verifyCreatedTokenPolicies,
 } from './utils.js';
 
 export class CloudflareControlPlaneManager {
@@ -182,20 +182,16 @@ export class CloudflareControlPlaneManager {
         required: components.dns,
       });
     }
-    const permissionIds = await this.resolvePermissionGroupIds(client, requirements);
-    const resources = buildTokenResources(accountId, zone?.id, components);
+    const tokenApi = this.requireUserTokens(client);
+    const permissionGroups = await resolvePermissionGroups(requirements, (params) => tokenApi.permissionGroups.list(params));
+    const policies = buildTokenPolicies(accountId, zone?.id, permissionGroups);
     const tokenName = clean(input.tokenName) || 'GoodVibes Cloudflare Operational';
-    const token = await this.requireUserTokens(client).create({
+    const token = await tokenApi.create({
       name: tokenName,
-      policies: [
-        {
-          effect: 'allow',
-          permission_groups: permissionIds.map((id) => ({ id })),
-          resources,
-        },
-      ],
+      policies,
       ...(clean(input.expiresOn) ? { expires_on: clean(input.expiresOn) } : {}),
     });
+    await verifyCreatedTokenPolicies(token, permissionGroups, tokenApi.get ? (tokenId) => tokenApi.get!(tokenId) : undefined);
     if (!token.value) {
       throw new CloudflareControlPlaneError('Cloudflare did not return a token value for the newly-created operational token.', 'CLOUDFLARE_TOKEN_VALUE_MISSING', 502);
     }
@@ -750,14 +746,6 @@ export class CloudflareControlPlaneManager {
       throw new CloudflareControlPlaneError('The Cloudflare client does not expose user token creation APIs.', 'CLOUDFLARE_TOKEN_API_UNAVAILABLE', 500);
     }
     return client.user.tokens;
-  }
-
-  private async resolvePermissionGroupIds(
-    client: CloudflareApiClient,
-    requirements: readonly CloudflareTokenPermissionRequirement[],
-  ): Promise<readonly string[]> {
-    const tokenApi = this.requireUserTokens(client);
-    return await resolvePermissionGroupIds(requirements, (params) => tokenApi.permissionGroups.list(params));
   }
 
   private createProvisioningContext(): CloudflareProvisioningContext {
