@@ -20,8 +20,10 @@ This document maps every top-level directory under `packages/sdk/src/_internal/p
 | `artifacts/` | Ephemeral artifact store — typed blobs (images, files, diffs) produced during agent runs, keyed by artifact ID |
 | `auth/` | Focused auth classes: `TokenStore`, `SessionManager`, `OAuthClient`, `PermissionResolver`; thin `GoodVibesAuthClient` facade re-exported here |
 | `automation/` | Scheduled job engine: job definitions, run records, schedule management, delivery, reconcile loop, and the `AutomationManager` runtime |
+| `batch/` | Opt-in daemon batch queue manager, provider batch adapters, local queueing, and batch job lifecycle helpers |
 | `bookmarks/` | Session bookmark manager — named save-points within a session for quick navigation and branching |
 | `channels/` | Channel surface registry, delivery router, delivery strategies (core / bridge / enterprise), plugin registry, and builtin channel runtime |
+| `cloudflare/` | Optional Cloudflare control plane integration: token creation, account/zone/resource discovery, Workers, Queues, DNS, Tunnel, Access, KV, Durable Objects, R2, Secrets Store, and verification |
 | `companion/` | Companion-app chat routes and types: bidirectional messaging between companion mobile/web clients and the daemon |
 | `config/` | `ConfigManager`, `SecretsManager`, secret-ref resolution, service registry, API-key management, subscription auth, OAuth local listener, and config schema |
 | `control-plane/` | Control-plane gateway and auth snapshot: operator-level commands, approval broker, conversation-message relay, and web-UI gateway bridge |
@@ -31,7 +33,6 @@ This document maps every top-level directory under `packages/sdk/src/_internal/p
 | `export/` | Session export formatters: JSON, Markdown, and HTML renderers with optional sensitive-data redaction |
 | `git/` | Git service — branch, commit, diff, and file-history operations used by tools and the intelligence layer |
 | `hooks/` | Lifecycle hook system: `HookDispatcher`, chain engine, event matcher, workbench, and runners for prompt / agent / HTTP / TypeScript / command hook types |
-| `input/` | Reserved directory for input-processing extensions (currently unpopulated) |
 | `integrations/` | Third-party integration connectors (non-channel services: Linear, Jira, Notion, etc.) |
 | `intelligence/` | Code-intelligence facade over tree-sitter and LSP: symbol extraction, outline parsing, language detection, diagnostics, and hover — with graceful degradation when either backend is absent |
 | `knowledge/` | Persistent queryable memory store: ingestion pipelines (files, URLs, browser-local history/bookmark metadata, agent output), GraphQL query API, projections for prompt injection, consolidation/deduplication, and scheduling |
@@ -39,7 +40,6 @@ This document maps every top-level directory under `packages/sdk/src/_internal/p
 | `media/` | Media provider registry: metadata, image-understanding, transform, generate, and attachment-store capability surfaces for images and binary attachments |
 | `multimodal/` | Multimodal content service — encodes images and files into provider-specific prompt structures for vision-capable models |
 | `pairing/` | Companion pairing: token generation, `CompanionConnectionInfo` encoding, QR matrix generation and ASCII rendering, token revocation |
-| `panels/` | Reserved directory for daemon diagnostic panel extensions (currently unpopulated) |
 | `permissions/` | `PermissionManager`, layered policy evaluation (allow/deny/auto-approve), per-call approval prompting, and brief generation for operator review |
 | `plugins/` | Plugin loader, `PluginManager` lifecycle (registration → activation → hook dispatch → deactivation), `PluginApi`, hook dispatcher |
 | `profiles/` | Named configuration profiles — display, provider model, and behavior overrides that can be switched per session |
@@ -57,6 +57,7 @@ This document maps every top-level directory under `packages/sdk/src/_internal/p
 | `watchers/` | File system watcher registry and persistent store — tracks active watch subscriptions across sessions |
 | `web-search/` | Web search provider registry and service: supports Tavily, Exa, Brave, DuckDuckGo, SearXNG, Perplexity, and Firecrawl |
 | `workflow/` | Trigger executor — evaluates hook-event conditions against registered `TriggerDefinition`s and dispatches shell or agent actions on match |
+| `workspace/` | Workspace-level helpers for project roots, worktree context, and runtime workspace metadata |
 
 ---
 
@@ -73,9 +74,11 @@ agents ────────────────────────�
 agents ─────────────────────────────────────────► runtime (store, bus)
 daemon ─────────────────────────────────────────► core, agents, channels, automation, plugins
 daemon ─────────────────────────────────────────► control-plane, sessions, security
-daemon ─────────────────────────────────────────► knowledge, mcp, media, voice, web-search
+daemon ─────────────────────────────────────────► knowledge, mcp, media, voice, web-search, cloudflare
 automation ─────────────────────────────────────► core, runtime
+batch ──────────────────────────────────────────► providers, runtime
 channels ───────────────────────────────────────► adapters, config, runtime
+cloudflare ─────────────────────────────────────► config, batch
 auth ───────────────────────────────────────────► config (token storage paths)
 pairing ────────────────────────────────────────► config (surface-root resolution)
 runtime ────────────────────────────────────────► types, utils
@@ -140,7 +143,9 @@ Not all directories are equal candidates for eventual extraction to their own np
 | `adapters/` | Yes (per-adapter) | Each adapter is already isolated; natural package boundary |
 | `auth/` | Possibly | Auth logic is self-contained but depends on `config/` path resolution |
 | `automation/` | Yes | The job-scheduling engine is generic and useful outside GoodVibes |
+| `batch/` | Possibly | Batch job records and provider adapters are generic, but daemon routing and provider policy are GoodVibes-specific |
 | `channels/` | Possibly | Delivery routing is generic, but `builtin-runtime.ts` is GoodVibes-specific |
+| `cloudflare/` | No | Closely tied to GoodVibes config keys, onboarding shape, Worker script generation, and daemon batch wiring |
 | `companion/` | No | Tightly coupled to daemon routes and GoodVibes session model |
 | `config/` | No | Uses GoodVibes-specific schema domains and secret-ref conventions |
 | `control-plane/` | No | Tightly coupled to GoodVibes operator contract types |
@@ -156,5 +161,6 @@ Not all directories are equal candidates for eventual extraction to their own np
 | `tools/` | No | Tool behavior is tied to the GoodVibes permission and config model |
 | `types/` | No | Cross-cutting internal types; no external consumer would import these |
 | `utils/` | No | Internal utilities only |
+| `workspace/` | No | Carries GoodVibes workspace conventions and host runtime metadata |
 
 **Bottom line:** adapters, integrations, and the automation engine are the strongest extraction candidates. Everything in `core/`, `daemon/`, `runtime/`, and `sessions/` is tightly coupled to the GoodVibes product model and should remain internal.

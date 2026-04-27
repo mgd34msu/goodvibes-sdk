@@ -30,6 +30,7 @@ release-history source.
 
 - [Daemon embedding](./daemon-embedding.md)
 - [Provider and model API](./provider-model-api.md)
+- [Runtime orchestration](./runtime-orchestration.md)
 - [Tool system](./tools.md)
 - [Tool safety](./tool-safety.md)
 - [WRFC constraint propagation](./wrfc-constraint-propagation.md)
@@ -46,6 +47,7 @@ release-history source.
 ## Surfaces and Automation
 
 - [Channel surfaces](./surfaces.md)
+- [Channel surface details](./channel-surfaces.md)
 - [Home Assistant integration](./homeassistant-integration.md)
 - [Daemon batch processing and Cloudflare](./daemon-batch-processing.md)
 - [Automation and watchers](./automation.md)
