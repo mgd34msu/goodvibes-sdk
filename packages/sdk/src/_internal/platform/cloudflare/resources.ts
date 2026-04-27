@@ -193,7 +193,6 @@ export async function ensureAccess(
   client: CloudflareApiClient,
   input: {
     readonly accountId: string;
-    readonly zone?: CloudflareZoneLike;
     readonly daemonHostname: string;
     readonly accessAppId: string;
     readonly accessServiceTokenId: string;

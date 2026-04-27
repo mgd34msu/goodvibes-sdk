@@ -212,7 +212,7 @@ export interface CloudflareTokenRequirementsInput {
 
 export interface CloudflareTokenPermissionRequirement {
   readonly component: CloudflareComponent | 'bootstrap';
-  readonly scope: 'account' | 'zone' | 'user' | 'r2';
+  readonly scope: 'account' | 'zone' | 'user';
   readonly permission: string;
   readonly alternatives?: readonly string[];
   readonly reason: string;
