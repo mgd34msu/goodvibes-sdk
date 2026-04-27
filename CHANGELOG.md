@@ -24,6 +24,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.17] - 2026-04-27
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Cloudflare operational-token bootstrap now creates separate resource-scoped
+  policies for account, zone, and R2-bucket permission groups instead of
+  combining every permission group into one mixed-scope policy. This prevents
+  Cloudflare from creating a token shell that appears in the dashboard with
+  `-` permissions/resources.
+- Cloudflare operational-token creation now verifies the created token's
+  persisted policies before storing it as `CLOUDFLARE_API_TOKEN`. If
+  Cloudflare reports that no expected permission groups were persisted, the SDK
+  fails with `CLOUDFLARE_TOKEN_POLICY_MISMATCH` instead of saving an unusable
+  token.
+- R2 permission resolution now accepts Cloudflare accounts that expose
+  `Workers R2 Storage Write/Edit` as either account-scoped or
+  `com.cloudflare.edge.r2.bucket` scoped and emits the matching token resource
+  policy.
+
+### Migration
+- Delete any `GoodVibes Cloudflare Operational` token in Cloudflare that shows
+  `-` for permissions/resources, update to this SDK version, then rerun the
+  Cloudflare wizard with a temporary bootstrap token from **Create additional
+  tokens** / `User > API Tokens Write`.
+
+---
+
 ## [0.25.16] - 2026-04-27
 
 ### Breaking

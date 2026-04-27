@@ -130,6 +130,10 @@ The returned permission list describes the operational token the SDK will create
 
 The SDK resolves Cloudflare permission groups dynamically through the official Cloudflare TypeScript SDK. It resolves each required permission by `name` and Cloudflare scope, with aliases for Cloudflare's `Write`/`Edit` naming variants, before falling back to a broad catalog scan. If Cloudflare still returns account-specific permission names that do not match the SDK candidates, token creation fails with the missing permission names so the client can guide the user to create the operational token manually.
 
+Token policies are emitted per Cloudflare resource scope. Account permissions are placed in an account policy, DNS permissions are placed in a zone policy, and R2 uses a separate bucket policy when Cloudflare exposes `Workers R2 Storage Write/Edit` as `com.cloudflare.edge.r2.bucket` scoped. This mirrors Cloudflare's documented token policy model where permission groups only apply to matching resource types.
+
+After token creation, the SDK asks Cloudflare for the created token policy and refuses to store the token if no expected permission groups were persisted. If the dashboard shows a generated `GoodVibes Cloudflare Operational` token with `-` for permissions/resources, delete that unusable token and rerun the wizard with this SDK version.
+
 Operational-token permissions are scoped to the selected account except for DNS, which uses the selected zone:
 
 | Component | Permission candidates | Scope |
@@ -143,9 +147,9 @@ Operational-token permissions are scoped to the selected account except for DNS,
 | KV | `Workers KV Storage Write`, `Workers KV Storage Edit` | Account |
 | Durable Objects | `Workers Scripts Write`, `Workers Scripts Edit` | Account |
 | Secrets Store | `Account Secrets Store Write`, `Account Secrets Store Edit` | Account |
-| R2 | `Workers R2 Storage Write`, `Workers R2 Storage Edit` | Account |
+| R2 | `Workers R2 Storage Write`, `Workers R2 Storage Edit` | Account or R2 bucket, depending on Cloudflare's permission-group scope |
 
-R2 provisioning uses Cloudflare's account-scoped R2 API for bucket creation/listing. The operational token policy is scoped to the selected account; the SDK does not add a separate `com.cloudflare.edge.r2.bucket.*` resource for the provisioning token.
+R2 provisioning uses Cloudflare's account-scoped R2 API for bucket creation/listing. Most Cloudflare accounts expose the R2 storage permission as account-scoped; accounts that expose it as `com.cloudflare.edge.r2.bucket` receive a separate `com.cloudflare.edge.r2.bucket.*` token policy so the permission group has a matching resource.
 
 A user-owned bootstrap token can create account- and zone-scoped operational tokens when that Cloudflare user has access to those resources. "User" describes ownership of the API token management permission; it does not mean the generated token can only carry user-scoped permissions.
 

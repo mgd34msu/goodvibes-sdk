@@ -213,9 +213,16 @@ export interface CloudflareTokenRequirementsInput {
 export interface CloudflareTokenPermissionRequirement {
   readonly component: CloudflareComponent | 'bootstrap';
   readonly scope: 'account' | 'zone' | 'user';
+  readonly scopeAlternatives?: readonly string[];
   readonly permission: string;
   readonly alternatives?: readonly string[];
   readonly reason: string;
+}
+
+export interface CloudflareResolvedPermissionGroup {
+  readonly id: string;
+  readonly requirement: CloudflareTokenPermissionRequirement;
+  readonly cloudflareScope: string;
 }
 
 export interface CloudflareTokenRequirementsResult {
@@ -402,15 +409,18 @@ export interface CloudflarePermissionGroupLike {
   readonly scopes?: readonly string[];
 }
 
+export type CloudflareTokenResourceMap = Record<string, string | Record<string, string>>;
+
 export interface CloudflareTokenPolicyParam {
   readonly effect: 'allow' | 'deny';
   readonly permission_groups: readonly { readonly id: string }[];
-  readonly resources: Record<string, string>;
+  readonly resources: CloudflareTokenResourceMap;
 }
 
 export interface CloudflareTokenCreateResponseLike {
   readonly id?: string;
   readonly name?: string;
+  readonly policies?: readonly CloudflareTokenPolicyParam[];
   readonly value?: string;
 }
 
@@ -430,6 +440,7 @@ export interface CloudflareApiClient {
         readonly policies: readonly CloudflareTokenPolicyParam[];
         readonly expires_on?: string;
       }): Promise<CloudflareTokenCreateResponseLike>;
+      get?(tokenId: string, params: { readonly account_id: string }): Promise<CloudflareTokenCreateResponseLike>;
       verify(params: { readonly account_id: string }): Promise<CloudflareTokenVerifyResponseLike>;
       readonly permissionGroups: {
         list(params: { readonly account_id: string; readonly name?: string; readonly scope?: string }): AsyncIterable<CloudflarePermissionGroupLike>;
@@ -444,6 +455,7 @@ export interface CloudflareApiClient {
         readonly policies: readonly CloudflareTokenPolicyParam[];
         readonly expires_on?: string;
       }): Promise<CloudflareTokenCreateResponseLike>;
+      get?(tokenId: string): Promise<CloudflareTokenCreateResponseLike>;
       verify(): Promise<CloudflareTokenVerifyResponseLike>;
       readonly permissionGroups: {
         list(params?: { readonly name?: string; readonly scope?: string }): AsyncIterable<CloudflarePermissionGroupLike>;
