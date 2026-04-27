@@ -32,9 +32,9 @@ The companion surface provides auth, transport (HTTP/SSE/WebSocket), runtime eve
 Imported via:
 - `./react-native` — React Native (Hermes)
 - `./browser` — browser environments
-- `./web` — web + service workers (alias of `./browser`)
+- `./web` — web + service workers (same runtime contract as `./browser`)
 - `./workers` — manual Cloudflare Worker bridge for daemon batch proxying, queue tick signals, queue consumers, and scheduled ticks
-- `./expo` — Expo (alias of `./react-native`)
+- `./expo` — Expo (same runtime contract as `./react-native`)
 - `./auth` — auth client, token stores
 - `./errors` — typed error surface
 - `./contracts` — ACP contract types and method IDs
@@ -54,7 +54,7 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 
 ## Runtimes NOT supported
 
-- **Node.js** — Not in the consumer list. The published surface does not advertise Node support. The `engines.node` field and `./node` exports entry have been removed as of 0.19.6. If you need Node support, open an issue.
+- **Node.js** — Not in the consumer list. The published surface does not advertise Node support. If you need Node support, open an issue.
 
 ## Enforcement
 

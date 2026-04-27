@@ -144,11 +144,11 @@ Expo-specific SDK entry built on top of `react-native`.
 
 **Status:** beta
 
-Granular platform internals promoted to the stable public surface as of SDK Wave S-α. Each path re-exports exactly the symbols from the corresponding internal module, with a stable public path that does not expose `_internal`.
+Granular platform modules exposed through stable public subpaths. Each path re-exports the corresponding implementation module through a public path that does not expose `_internal`.
 
 The `platform/*` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
 
-Stability contract: the module shape (exported names and their TypeScript signatures) is stable within a minor version. Modules may be reorganized between minor versions with a deprecation notice; the old path will continue to export until the next major.
+Stability contract: the module shape (exported names and their TypeScript signatures) is stable within a minor version. Pre-1.0 releases may still make breaking changes; current behavior is recorded in `CHANGELOG.md`.
 
 #### Subsystems included in the platform surface
 
@@ -200,6 +200,6 @@ Stability contract: the module shape (exported names and their TypeScript signat
 
 The following paths are intentionally NOT exported and will cause a module resolution error if imported:
 
-- `@pellux/goodvibes-sdk/_internal/**` — Implementation internals. Sealed in S-α.
+- `@pellux/goodvibes-sdk/_internal/**` — implementation internals.
 
-Any consumer that previously imported from `_internal` directly must migrate to the corresponding `platform/*` stable subpath. See [Migration and upgrade guide](./migration.md) for the 0.19.0 breaking changes.
+Consumers must not import `_internal` paths directly. Use the corresponding `platform/*` subpath when one is exported.

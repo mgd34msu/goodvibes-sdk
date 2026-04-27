@@ -40,7 +40,8 @@ References:
 ### Feature Flag
 
 `homeassistant-surface` gates the Home Assistant surface. It is disabled by
-default and is also enabled by the legacy `omnichannel-surface-adapters` alias.
+default and can also be enabled by the `omnichannel-surface-adapters`
+compatibility alias.
 
 ### Config Keys
 

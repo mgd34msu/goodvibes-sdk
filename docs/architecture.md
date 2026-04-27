@@ -453,7 +453,7 @@ The pairing system lets companion apps (mobile, web) establish an authenticated 
 
 ### Flow
 
-1. **Token generation** — `getOrCreateCompanionToken(surface, { daemonHomeDir })` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`) at mode `0600`. Tokens are stable across restarts and regenerated only on explicit request. The `surface` parameter is retained for API compatibility but the token path is global since SDK 0.21.28.
+1. **Token generation** — `getOrCreateCompanionToken(surface, { daemonHomeDir })` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`) at mode `0600`. Tokens are stable across restarts and regenerated only on explicit request. The token path is global for a daemon home directory.
 
 2. **Connection info encoding** — `buildCompanionConnectionInfo()` assembles the `CompanionConnectionInfo` payload: daemon URL, token, username, version, and surface name. `encodeConnectionPayload()` serializes it to JSON.
 

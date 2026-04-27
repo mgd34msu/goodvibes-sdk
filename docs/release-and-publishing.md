@@ -1,367 +1,170 @@
-# Release and Publishing
+# Release And Publishing
 
-The SDK workspace has explicit release automation for local validation, GitHub Actions dry runs, and npm publishing.
+This document describes the current release process for the GoodVibes SDK
+workspace. Historical release narratives live in `CHANGELOG.md`.
 
-Public npm surface:
-- one published package: `@pellux/goodvibes-sdk`
-- consumer-facing pieces are exposed through subpath exports such as `@pellux/goodvibes-sdk/operator`
-- the other workspace packages are internal build units and are not published independently
+## Release Rules
 
-Registry targets:
-- primary public registry: `https://registry.npmjs.org` as `@pellux/goodvibes-sdk`
-- GitHub Packages mirror: `https://npm.pkg.github.com` as `@mgd34msu/goodvibes-sdk`
+- Do not publish from a dirty worktree.
+- Do not publish unless package versions are aligned.
+- Do not publish unless `CHANGELOG.md` has an entry for the package version.
+- Do not publish unless generated contracts/docs are in sync.
+- Do not publish unless validation passes.
+- Do not push or publish when the operator has explicitly said to hold.
 
-The GitHub Packages mirror uses the GitHub repository owner namespace. If the repository moves under a different owner or org, update the GitHub package name override in the release workflow and docs.
+The SDK targets Bun for the full surface and browser/Hermes/Workers for the
+companion surface. Node.js is not a supported runtime target; see
+[Runtime surfaces](./surfaces.md).
 
-## Local Release Checks
+## Local Validation
 
-Run:
+Run the strict local gate before tagging or publishing:
 
 ```bash
+bun install
 bun run validate
-bun run release:verify
+bun run test
 ```
 
-`validate` ensures:
-- generated API docs are up to date
-- docs/examples are complete
-- TypeScript build passes
-- type-level usage checks pass
-- browser/runtime-neutral compatibility checks pass
-- package metadata checks pass
-- `any` type-position checks pass
-- every package can be packed cleanly
-- the staged tarballs can be installed into a clean npm consumer
-
-`bun run sync` refreshes the umbrella package internals from the workspace source before validation or release when needed.
-
-> **Runtime note**: The SDK targets Bun (full surface) and Hermes/browser (companion surface). Node.js is not a supported consumer runtime — `engines.node` and the `./node` exports entry were removed in 0.19.6. See `docs/surfaces.md`.
-
-`release:verify` is the full pre-publish local rehearsal:
-- `bun run validate`
-- `bun run release:dry-run`
-- `bun run install:smoke`
-
-For local dry runs and local publishing, the scripts can use either:
-- `NODE_AUTH_TOKEN`
-- `NPM_TOKEN`
-
-The publish scripts stage package manifests before packing/publishing so the umbrella package publishes as a self-contained flat SDK artifact.
-
-## Publishing
-
-Local commands:
+Useful focused checks:
 
 ```bash
-bun run release:dry-run
-bun run release:publish
-```
-
-The publish flow:
-- publishes one package: `@pellux/goodvibes-sdk`
-- supports dry-run rehearsal
-- skips already-published versions
-- stages normalized publish manifests instead of publishing directly from workspace manifests
-- uses npm provenance automatically when running in GitHub Actions
-
-To publish or verify against GitHub Packages locally:
-
-```bash
-GOODVIBES_PUBLIC_PACKAGE_NAME=@mgd34msu/goodvibes-sdk \
-GOODVIBES_PUBLISH_REGISTRY=https://npm.pkg.github.com \
-GITHUB_PACKAGES_TOKEN=<classic-pat-or-workflow-token> \
-bun run release:dry-run
-```
-
-The same environment overrides work for:
-- `bun run release:publish`
-- `bun run release:verify:published`
-
-## GitHub Workflow
-
-The repo includes:
-- `.github/workflows/ci.yml`
-- `.github/workflows/release.yml`
-
-The release workflow can be triggered:
-- manually with `workflow_dispatch`
-- or by pushing a `v*` tag
-
-Workflow behavior:
-- `CI` runs the full gate set from `.github/workflows/ci.yml`, including
-  `validate`, `build`, `mirror-drift`, `platform-matrix`, `lint-gates`,
-  `types-check`, `types-resolution-check`, `publint-check`, `sbom-check`, and
-  the PR-only `sync-safety-check`
-- `Release` verifies tag/version sync and mirror sync, generates the SBOM, then
-  runs `bun run validate` again before any publish step
-- manual dispatch defaults to dry-run mode
-- tag pushes publish the umbrella SDK to npmjs and GitHub Packages, verify both, then run registry install smoke checks
-- the registry install smoke checks cover both `npm install` and `bun add`
-- tag pushes also create a GitHub release from `CHANGELOG.md`
-
-Repository setup required for publishing:
-- GitHub Actions secret: `NPM_TOKEN`
-- GitHub Actions built-in `GITHUB_TOKEN` with `packages:write` for GitHub Packages
-- npm scope/package ownership for `@pellux/goodvibes-sdk`
-- GitHub Packages install/auth if using the mirror:
-  - package name `@mgd34msu/goodvibes-sdk`
-  - `.npmrc` line `@mgd34msu:registry=https://npm.pkg.github.com`
-  - auth line `//npm.pkg.github.com/:_authToken=TOKEN`
-- tags that match the package version, for example `v0.25.1`
-
-Recommended first-release sequence:
-
-```bash
-bun run validate
-bun run release:dry-run
-bun run release:tag -- --push
-```
-
-Then watch the `Release` workflow and verify that:
-- the GitHub release is created
-- `@pellux/goodvibes-sdk` appears on npm at the tagged version
-- `@mgd34msu/goodvibes-sdk` appears on GitHub Packages at the tagged version
-- `npm install @pellux/goodvibes-sdk@<version>` works
-- `bun add @pellux/goodvibes-sdk@<version>` works
-- `npm install @mgd34msu/goodvibes-sdk@<version>` works with the GitHub Packages `.npmrc` mapping
-
-The workflow performs the npm/bun install smoke checks automatically after publish, but it is still worth confirming the user-facing install path once from a clean machine.
-
-## Versioning Rule
-
-Version the SDK according to SDK changes and published behavior.
-
-## Changelog Gate
-
-Every release of `@pellux/goodvibes-sdk` **must** have a `## [X.Y.Z]` section in `CHANGELOG.md` at the repo root. The publish script and CI enforce this as a hard blocking condition.
-
-### Format
-
-Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions:
-
-```markdown
-## [0.19.0] - 2026-04-17
-
-### Breaking
-- ...
-
-### Added
-- ...
-
-### Fixed
-- ...
-
-### Migration
-- ...
-```
-
-All four sub-sections (`Breaking`, `Added`, `Fixed`, `Migration`) are required. Use `- none` under any section that has no content for the release.
-
-### Check command
-
-```bash
+bun run build
+bun run types:check
+bun run docs:generate
+bun run docs:check
+bun run refresh:contracts:check
+bun run sync:check
 bun run changelog:check
 ```
 
-This reads the version from `packages/sdk/package.json` and greps `CHANGELOG.md` for a matching `## [X.Y.Z]` header. Exit 0 when found; exit 1 with a descriptive error when missing.
+## Version Alignment
 
-The check runs automatically:
-- In CI as the `Changelog gate` step of the `lint-gates` job on every push/PR to `main`.
-- In the publish script (`scripts/publish-packages.ts`) before any staging or npm publish call.
-
-### Adding an entry
-
-Before bumping the version and running `bun run release:publish`, add the CHANGELOG section:
-
-1. Open `CHANGELOG.md`.
-2. Add a new `## [NEW_VERSION] - YYYY-MM-DD` section at the top of the version list.
-3. Fill in `Breaking`, `Added`, `Fixed`, `Migration`. Use `- none` for empty sections.
-4. Run `bun run changelog:check` to confirm.
-
-As of 0.19.0, long-form per-release notes live **directly in `CHANGELOG.md`** — each `## [X.Y.Z]` section contains the full release write-up. Pre-0.19 release notes are archived under `docs/archive/releases/0.18.x/`. The CHANGELOG entry is the machine-verifiable summary; no separate `docs/releases/<version>.md` file is expected.
-
-## Version Consistency
-
-All `package.json` files in the monorepo workspace must carry the same version. The single source of truth is the **root `package.json`** — the `version` field there is what `version-consistency-check.ts` validates against all `packages/*/package.json` files.
-
-> `packages/sdk/package.json` drives the published artifact version (read by `publish-packages.ts` for the changelog gate), and must match the root. Both are bumped together.
-
-When bumping versions, all of the following files must be updated to the same version in a single commit:
-- `package.json` (root)
-- `packages/contracts/package.json`
-- `packages/daemon-sdk/package.json`
-- `packages/errors/package.json`
-- `packages/operator-sdk/package.json`
-- `packages/peer-sdk/package.json`
-- `packages/sdk/package.json`
-- `packages/transport-core/package.json`
-- `packages/transport-direct/package.json`
-- `packages/transport-http/package.json`
-- `packages/transport-realtime/package.json`
-
-### Check command
+The root `package.json` and every `packages/*/package.json` must have the same
+version. The version sync test enforces this:
 
 ```bash
 bun run version:check
 ```
 
-This reads the version from root `package.json` and checks every `packages/*/package.json` against it. Exit 0 when all match; exit 1 with a divergence report when any differ.
-
-The check runs automatically in CI as the `Version consistency` step of the `lint-gates` job on every push/PR to `main`.
-
-## CI Gates
-
-| Job | Command | Purpose |
-|-----|---------|----------|
-| `validate` | `bun run validate` | Kitchen-sink workspace validation: docs, build, type-level checks, browser compatibility, metadata, no-any, pack check, install smoke |
-| `build` | `bun run build` | Builds `packages/sdk/dist` once and uploads it as the artifact consumed by downstream checks |
-| `mirror-drift` | `bun run sync:check` | Ensures transport-http mirror parity — catches body divergence between source and mirror |
-| `platform-matrix` | `bun run build && bun run test` / `bun run test:rn` / `bun run test:workers` / `bun run test:workers:wrangler` | Runs Bun, RN bundle-scan, Miniflare Workers, and wrangler-local Workers lanes |
-| `lint-gates` | inline raw-throw scan + `bun run changelog:check` + `bun run version:check` | Prevents raw public throws, missing changelog sections, and workspace version drift |
-| `types-check` | `bun run types:check` | Compiles type-level usage tests against the uploaded build artifact |
-| `types-resolution-check` | `bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm` | Checks exports-map type resolution against the uploaded build artifact |
-| `publint-check` | `bun run publint:check` | Checks package metadata and export hygiene |
-| `sbom-check` | `bun run sbom:generate` + inline size/schema checks | Generates and validates the CycloneDX SBOM artifact |
-| `sync-safety-check` | `bun run sync:check` + inline stale-delete guard | PR-only guard against mirror drift and accidental mass deletion |
-
-### Root cause of the 0.19.6 divergence
-
-Prior per-wave bumps (0.19.3 through 0.19.6) touched only `packages/sdk/package.json`. The publish script reads the SDK version for the changelog gate but does not propagate it to sibling packages — each package publishes its own `manifest.version` from `stagePackages()`. With no CI gate in place, the divergence went undetected across multiple waves.
-
-## Mirror Drift Guard
-
-`packages/transport-http/src/**` is mirrored byte-for-byte into `packages/sdk/src/_internal/transport-http/**`. The sync script (`bun run sync`) applies two allowed transforms per file: a leading `// Synced from …` header comment, and import-path rewrites (package specifiers rewritten to relative paths, `.ts` → `.js` extensions).
-
-The drift guard catches any body divergence beyond those two transforms:
+The generated contract artifacts also carry the package version. Refresh
+contracts after changing method catalogs, schemas, events, or generated client
+types:
 
 ```bash
+bun run refresh:contracts
+bun run sync:internal --scope=daemon,contracts
+```
+
+## Changelog Gate
+
+Every release must have a matching section in `CHANGELOG.md`:
+
+```md
+## [X.Y.Z] - YYYY-MM-DD
+
+### Breaking
+### Added
+### Changed
+### Fixed
+### Security
+```
+
+Only include sections that apply. The changelog is the canonical release
+narrative and the machine-checked publish gate.
+
+Check it with:
+
+```bash
+bun run changelog:check
+```
+
+## Generated References
+
+The generated docs are:
+
+- `docs/reference-operator.md`
+- `docs/reference-peer.md`
+- `docs/reference-runtime-events.md`
+
+Regenerate them with:
+
+```bash
+bun run docs:generate
+```
+
+Check them without writing:
+
+```bash
+bun run docs:check
+```
+
+## Sync Guard
+
+The SDK package mirrors selected files from workspace packages under
+`packages/sdk/src/_internal/`. Update the package source first, then run:
+
+```bash
+bun run sync:internal
 bun run sync:check
 ```
 
-This runs on every PR via the `mirror-drift` CI job in `.github/workflows/ci.yml`. A non-zero exit prints the drifted file(s) and the first diverging line.
-
-If the check fails, regenerate the mirror and re-check:
+Use scoped sync when the change is intentionally narrow:
 
 ```bash
-bun run sync
-bun run sync:check
+bun run sync:internal --scope=daemon,contracts
 ```
 
-### Optional pre-commit hook
+## Publishing
 
-To catch drift locally before push, add the following to `.git/hooks/pre-commit` (create it if absent, and make it executable with `chmod +x .git/hooks/pre-commit`):
+Publishing is handled by the repo scripts and CI workflow. The normal sequence:
 
 ```bash
-#!/usr/bin/env bash
-bun run sync:check
+bun run validate
+bun run test
+git status --short
+git tag vX.Y.Z
+git push origin main --tags
 ```
 
-The hook is opt-in and not installed automatically. Omit it if you prefer to rely solely on the CI gate.
+CI must pass before npm publishing. The publish workflow stages package
+manifests before packing so the umbrella package publishes as a self-contained
+SDK artifact.
 
-## Release Tags
+## GitHub Release
 
-Use signed release tags when possible. The local `release:tag` helper creates a
-GPG-signed tag and is the preferred path. The GitHub Release workflow verifies
-that pushed `v*` tags match `packages/sdk/package.json`; it does not currently
-perform cryptographic tag-signature enforcement.
-
-### Prerequisites
-
-Ensure your GPG key is configured in git:
+The release tag should match the package version exactly:
 
 ```bash
-git config user.signingkey <your-gpg-key-id>
-git config commit.gpgsign true   # optional but recommended
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
-To list available keys:
+The GitHub release should use the matching `CHANGELOG.md` section as release
+notes and attach generated artifacts when the workflow produces them.
 
-```bash
-gpg --list-secret-keys --keyid-format=long
-```
+## npm Provenance
 
-### Creating a release tag
+The npm publish path should use provenance when available in CI. Local manual
+publishing should be reserved for recovery situations and should still run the
+same validation, changelog, version, docs, contract, and sync gates.
 
-Use the `release:tag` script to create a signed tag:
+## SBOM
 
-```bash
-bun run release:tag
-```
-
-This script:
-- Reads the current SDK version from `packages/sdk/package.json`
-- Verifies the working tree is clean
-- Verifies the tag does not already exist
-- Runs `git tag -s v<version> -m 'release <version>'`
-
-To create and push in one step:
-
-```bash
-bun run release:tag -- --push
-```
-
-Pushing a `v*` tag triggers the Release workflow which:
-1. Verifies the tag matches `packages/sdk/package.json` version
-2. Generates the SBOM
-3. Publishes to npm with `--provenance`
-4. Publishes the GitHub Packages mirror
-5. Creates a GitHub release with the SBOM attached
-
-### Manual tag creation
-
-```bash
-git tag -s v<version> -m 'release <version>'
-git push origin v<version>
-```
-
-Unsigned tags can still trigger the workflow if the tag name matches the package
-version. Treat that as a fallback for environments where local GPG signing is
-not available, not the normal release path.
-
-## SBOM (Software Bill of Materials)
-
-Every release ships a CycloneDX 1.x JSON SBOM covering all dependencies:
-
-- `sbom.cdx.json` is generated via `bun run sbom:generate`
-- It ships inside the npm tarball (listed in `packages/sdk/package.json` `files`)
-- It is attached as a GitHub release artifact
-
-To regenerate locally:
+Generate and validate the CycloneDX SBOM before release:
 
 ```bash
 bun run sbom:generate
 ```
 
-The `sbom-check` CI job validates that the SBOM is non-empty and structurally valid on every push/PR.
+The published package includes `sbom.cdx.json`.
 
-## npm Provenance
+## Failure Handling
 
-When publishing from GitHub Actions (`release:publish:ci`), npm provenance attestation is generated automatically via GitHub's OIDC token. This links the published package to the specific workflow run and commit.
+If any release gate fails:
 
-The `publish-npm` job in `release.yml` has `permissions: { id-token: write }` and calls `bun run release:publish:ci` which passes `--provenance` to `npm publish`.
-
-Local publishes (`bun run release:publish`) do not include provenance — this is expected.
-
-## Validation and Strict Gate
-
-The `validate:strict` script runs the full pre-release gate suite:
-
-```bash
-bun run validate:strict
-```
-
-This is equivalent to:
-
-```bash
-bun run validate && bun run types:check && bun run sync:check
-```
-
-- `validate` — docs, build, type-level checks, browser compatibility, metadata, no-any, pack check, install smoke
-- `types:check` — standalone TypeScript type-level usage checks (`bun x tsc --project tsconfig.type-tests.json`)
-- `sync:check` — verifies the `transport-http` mirror is in sync with its canonical source
-
-Run `validate:strict` before every release tag. CI enforces all three gates independently.
-
-### Error Log
-
-Significant build and runtime errors encountered during development are logged to `.goodvibes/logs/errors.md` with root cause, resolution, and affected files. Consult this log when debugging recurring issues before starting a new investigation.
+1. Fix the source of truth.
+2. Regenerate derived files when needed.
+3. Rerun the focused failing check.
+4. Rerun `bun run validate`.
+5. Do not tag or publish until the worktree is clean and CI is green.

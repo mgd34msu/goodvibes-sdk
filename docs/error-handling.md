@@ -66,9 +66,9 @@ async function safeSnapshot(sdk: OperatorSdk): Promise<ControlSnapshot | null> {
 }
 ```
 
-## Legacy instanceof pattern (deprecated)
+## Class-specific handling
 
-The `HttpStatusError`, `ConfigurationError`, and `ContractError` subclasses are preserved for backward compatibility. Prefer `err.kind` in new code.
+The `HttpStatusError`, `ConfigurationError`, and `ContractError` subclasses remain available when callers need class-specific handling. Prefer `err.kind` for broad control flow.
 
 ```ts
 import { HttpStatusError } from '@pellux/goodvibes-sdk/errors';

@@ -1,6 +1,6 @@
 # Runtime Events Reference
 
-Generated from the synced GoodVibes operator event contract for product version `0.25.21`.
+Generated from the synced GoodVibes operator event contract artifact.
 
 ## Transport endpoints
 
@@ -948,7 +948,7 @@ Emitted at the end of each reviewer cycle.
 | `constraintsTotal` | `number \| undefined` | Total constraint findings evaluated. Present only when `chain.constraints.length > 0`. |
 | `unsatisfiedConstraintIds` | `string[] \| undefined` | IDs of constraints that were not satisfied. Present only when `chain.constraints.length > 0`. |
 
-When the chain has no constraints, `constraintsSatisfied`, `constraintsTotal`, and `unsatisfiedConstraintIds` are absent entirely (pre-0.23 consumers see no new fields).
+When the chain has no constraints, `constraintsSatisfied`, `constraintsTotal`, and `unsatisfiedConstraintIds` are absent entirely.
 
 ---
 
@@ -963,6 +963,6 @@ Emitted at the start of each fixer cycle.
 | `maxAttempts` | `number` | Maximum fix attempts configured for the chain |
 | `targetConstraintIds` | `string[] \| undefined` | IDs of unsatisfied constraints this fix iteration is addressing. Present only when `chain.constraints.length > 0`. |
 
-When the chain has no constraints, `targetConstraintIds` is absent (pre-0.23 consumers see no new fields).
+When the chain has no constraints, `targetConstraintIds` is absent.
 
 For the full constraint propagation lifecycle, see [WRFC Constraint Propagation](./wrfc-constraint-propagation.md).

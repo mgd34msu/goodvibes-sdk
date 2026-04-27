@@ -1,24 +1,17 @@
 # GoodVibes SDK
 
-> ⚠️ **Active early development — pre-1.0.** This project is under active early development. APIs, contracts, file layouts, route paths, event shapes, and config defaults can and do change quickly — sometimes across patch releases. There are no legacy/compat shims. Documentation always describes the **current** behavior, not historical behavior. When 1.0.0 ships the project freezes to enterprise-grade stability guarantees (semver, deprecation windows, migration guides). Until then: pin exact versions and read `CHANGELOG.md` before upgrading.
+GoodVibes SDK is the TypeScript SDK for building clients, daemon hosts, remote
+surfaces, and automation around the GoodVibes daemon. The daemon owns provider
+calls, tools, orchestration, memory, channels, and host resources; SDK clients
+connect to it through typed contracts, authenticated transports, and realtime
+events.
 
-> **What this SDK is:** `@pellux/goodvibes-sdk` is a client SDK for the GoodVibes daemon.
-> It does **not** call Anthropic, OpenAI, Gemini, or any other AI provider directly — the daemon
-> orchestrates those on your behalf. If you need to call a provider directly, use their official
-> SDK instead. If you don't have a daemon yet, see [Daemon embedding](./docs/daemon-embedding.md).
-
-TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.
-
-This package has two surfaces with different runtime requirements. See [Runtime Surfaces](./docs/surfaces.md) for the authoritative two-tier model:
-- **Full surface** — Bun runtime consumers (TUI, daemon, CLI). Gets the complete agentic harness.
-- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers. Gets auth, transport, events, contracts, errors, observer, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. Cloudflare provisioning itself is SDK-owned through daemon `/api/cloudflare/*` routes, including token bootstrap, discovery, Workers, Queues, Tunnel, Access, DNS, KV, Durable Objects, Secrets Store, and R2.
+This project is pre-1.0. The public contract is intentionally moving quickly:
+APIs, config keys, route paths, event shapes, and file layouts can change before
+the 1.0 stability line. Pin exact package versions and read `CHANGELOG.md`
+before upgrading.
 
 ## Install
-
-This is one npm package with subpath exports.
-
-> **Current version: `0.25.12`.** The 0.25.x line is the current pre-1.0 integration target; breaking changes continue to ship as patch/minor per the project's pre-1.0 policy and are documented in `CHANGELOG.md`. The 1.0.0 cut remains blocked on owner sign-off and final roadmap gates. See [the roadmap](./docs/tracking/road-to-1.0.md).
-
 
 ```bash
 bun add @pellux/goodvibes-sdk
@@ -27,86 +20,72 @@ npm install @pellux/goodvibes-sdk
 ```
 
 Alternate registry:
-- npmjs primary: `@pellux/goodvibes-sdk`
-- GitHub Packages mirror: `@mgd34msu/goodvibes-sdk`
-
-GitHub Packages requires a scoped registry mapping:
 
 ```ini
 @mgd34msu:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
-### Security: dependency audit posture
+## What The SDK Provides
 
-The SDK keeps Bash LSP bundled. Because upstream `bash-language-server@5.6.0`
-still pins `editorconfig@2.0.1 -> minimatch@10.0.1`, the release tarball
-vendors a patched `bash-language-server` package at
-`vendor/bash-language-server`. The patch changes only its `editorconfig`
-dependency to `3.0.2`, which resolves to the fixed `minimatch@10.2.5` line.
-
-If your root audit policy needs explicit transitive pins for the SDK source
-workspace, use root-level overrides:
-
-```json
-{
-  "overrides": {
-    "ajv": "8.18.0",
-    "fast-xml-parser": "5.7.1",
-    "google-auth-library": "10.6.2",
-    "lodash": "4.18.1",
-    "minimatch": "^10.2.5"
-  }
-}
-```
-
-The source workspace also carries root-level dependency-audit overrides,
-including repo-local Bash LSP and Verdaccio `uuid` vendor patches. See
-[Security Policy](./SECURITY.md) for the current disclosure.
+- **Client SDKs** for operator, peer, browser, web, React Native, Expo, and
+  Cloudflare Worker environments.
+- **Typed contracts** for operator methods, peer endpoints, auth, scopes,
+  realtime events, schemas, and method IDs.
+- **Daemon embedding** helpers for hosts that run the GoodVibes daemon in a Bun
+  process.
+- **Realtime transports** over SSE and WebSocket with reconnect, typed event
+  domains, and session-filtered event views.
+- **Auth and token storage** for session login, shared bearer tokens, memory
+  stores, browser localStorage, iOS Keychain, Android Keystore, and Expo Secure
+  Store.
+- **Provider/model runtime** for OpenAI, OpenAI subscription/Codex, Anthropic,
+  Gemini, Bedrock, Vertex, GitHub Copilot, local/custom providers,
+  OpenAI-compatible providers, model catalogs, health, pricing, context limits,
+  caching, and failover.
+- **Agentic runtime** with sessions, turns, tools, agents, WRFC review/fix
+  chains, compaction, session memory, and remote companion sessions.
+- **Knowledge/wiki system** with structured SQLite storage, URL/bookmark/file/
+  artifact/browser-history ingest, Readability extraction, graph links,
+  GraphQL, packets, projections, usage records, and consolidation.
+- **Channel surfaces** for Slack, Discord, ntfy, Home Assistant, Telegram,
+  Google Chat, Signal, WhatsApp, iMessage, MSTeams, BlueBubbles, Mattermost,
+  Matrix, generic webhooks, and GitHub automation webhooks.
+- **Cloudflare integration** for optional Workers, Queues, DLQs, cron, token
+  planning/creation, discovery, DNS, Zero Trust Tunnel, Access, KV, Durable
+  Objects, R2, Secrets Store, and verification.
+- **Batch processing** for opt-in provider Batch API usage through local or
+  Cloudflare-backed queueing.
+- **Media, voice, and search** through artifact storage, multimodal analysis,
+  image understanding, generation, streaming TTS, STT, realtime voice sessions,
+  and provider-backed web search.
+- **Security and operations** through permissions, feature gates, fetch
+  protections, secret refs, policy tooling, health, telemetry, diagnostics,
+  performance budgets, retention, services, watchers, and automation.
 
 ## Quick Start
 
-Prerequisite: a reachable GoodVibes daemon endpoint. The SDK is a client — it does not start the platform for you.
-
-### Bun (TUI / daemon / CLI)
-
-For Bun services, TUI apps, and CLI tools, import from the root entry:
+The SDK is a client of a reachable GoodVibes daemon. It does not start the
+daemon for you unless you are using the daemon embedding APIs.
 
 ```ts
-import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
-import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
+import {
+  createGoodVibesSdk,
+  createMemoryTokenStore,
+} from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
   tokenStore: createMemoryTokenStore(process.env.GOODVIBES_TOKEN ?? null),
 });
 
-console.log(await sdk.operator.control.snapshot());
+const snapshot = await sdk.operator.control.snapshot();
+console.log(snapshot);
 ```
 
-For daemon embedding:
+Browser clients:
 
 ```ts
-import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
-```
-
-### Companion (React Native / Expo / browser / Cloudflare Workers)
-
-For mobile and browser companion apps, use the runtime-specific entry point:
-
-```ts
-// React Native / Expo
-import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
-// or: import { createExpoGoodVibesSdk } from '@pellux/goodvibes-sdk/expo';
-
-const sdk = createReactNativeGoodVibesSdk({
-  baseUrl: 'https://goodvibes.example.com',
-  authToken: await SecureStore.getItemAsync('gv-token'),
-});
-```
-
-```ts
-// Browser / web app
 import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
 import { createBrowserTokenStore } from '@pellux/goodvibes-sdk/auth';
 
@@ -116,116 +95,85 @@ const sdk = createWebGoodVibesSdk({
 });
 ```
 
+React Native and Expo clients:
+
 ```ts
-// Manual Cloudflare Worker bridge for optional daemon batch queue/tick integration.
-// Onboarding should usually call daemon /api/cloudflare/provision instead.
+import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
+
+const sdk = createReactNativeGoodVibesSdk({
+  baseUrl: 'https://goodvibes.example.com',
+  authToken: await SecureStore.getItemAsync('gv-token'),
+});
+```
+
+Cloudflare Worker bridge:
+
+```ts
 import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
 
 export default createGoodVibesCloudflareWorker();
 ```
 
-For the full walkthrough — login flows, token persistence, realtime transports, error handling, and observability — see **[Getting Started](./docs/getting-started.md)**.
-
 ## Runtime Entry Points
 
-| Entry point | Consumer | Surface |
-|---|---|---|
-| `@pellux/goodvibes-sdk` | Bun apps (TUI, daemon, CLI) | Full |
-| `@pellux/goodvibes-sdk/daemon` | Bun server hosts embedding daemon routes | Full |
-| `@pellux/goodvibes-sdk/react-native` | React Native (Hermes) | Companion |
-| `@pellux/goodvibes-sdk/expo` | Expo (alias of `/react-native`) | Companion |
-| `@pellux/goodvibes-sdk/browser` | Browser apps | Companion |
-| `@pellux/goodvibes-sdk/web` | Web apps (alias of `/browser`) | Companion |
-| `@pellux/goodvibes-sdk/workers` | Manual Cloudflare Worker bridge for daemon batch queue/tick integration | Companion |
-| `@pellux/goodvibes-sdk/auth` | Token storage and auth flows | Companion |
-| `@pellux/goodvibes-sdk/operator` | Operator/control-plane client only | Companion |
-| `@pellux/goodvibes-sdk/peer` | Peer/distributed-runtime client only | Companion |
-| `@pellux/goodvibes-sdk/contracts` | Runtime-neutral contract types and method IDs | Companion |
-| `@pellux/goodvibes-sdk/contracts/node` | **Artifact path helpers only** (JSON schema file paths) — not a runtime target | N/A |
-| `@pellux/goodvibes-sdk/errors` | Typed error classes | Companion |
-| `@pellux/goodvibes-sdk/platform/*` | Advanced Bun-specific barrels (pairing, port-check, etc.) | Full |
+| Entry point | Purpose |
+|---|---|
+| `@pellux/goodvibes-sdk` | Full Bun SDK: client factory plus contracts, daemon, auth, operator, peer, and transports |
+| `@pellux/goodvibes-sdk/daemon` | Daemon route dispatch and embedding helpers |
+| `@pellux/goodvibes-sdk/operator` | Operator/control-plane client only |
+| `@pellux/goodvibes-sdk/peer` | Peer/distributed-runtime client only |
+| `@pellux/goodvibes-sdk/contracts` | Runtime-neutral contract artifacts, schemas, method IDs, and types |
+| `@pellux/goodvibes-sdk/contracts/node` | Filesystem helpers for contract JSON artifacts |
+| `@pellux/goodvibes-sdk/auth` | Auth client, token stores, OAuth helpers, mobile secure stores |
+| `@pellux/goodvibes-sdk/browser` | Browser client factory with browser defaults |
+| `@pellux/goodvibes-sdk/web` | Web alias of the browser client factory |
+| `@pellux/goodvibes-sdk/react-native` | React Native client factory and mobile secure stores |
+| `@pellux/goodvibes-sdk/expo` | Expo alias of the React Native client factory with Expo token store exports |
+| `@pellux/goodvibes-sdk/workers` | Cloudflare Worker bridge for daemon batch endpoints |
+| `@pellux/goodvibes-sdk/platform/*` | Bun/full-surface platform modules for advanced embedders |
 
-> **Note on `/contracts/node`:** this entry exports filesystem path helpers for locating the JSON contract artifacts on disk. It is a build/tooling convenience, not a runtime surface. It does not indicate Node.js runtime support.
+## Current Documentation
 
-## Agentic Workflows
-
-- **WRFC (Work-Review-Fix-Commit)** — Chains that run an engineer agent, review its output against a 10-dimension rubric, optionally fix, and gate on quality before committing. As of 0.23.0, WRFC chains also extract and enforce user-declared constraints from the task prompt as independent pass/fail criteria. See [WRFC Constraint Propagation](./docs/wrfc-constraint-propagation.md).
-
-## Contract Reference
-
-- [Operator API reference](./docs/reference-operator.md) — every method, scope, schema, and event exposed by the operator contract.
-- [Peer API reference](./docs/reference-peer.md) — every endpoint exposed by the peer/distributed-runtime contract.
-- [Runtime events reference](./docs/reference-runtime-events.md) — every runtime event domain and payload shape.
-
-These three documents are generated from the checked-in contract artifact under `packages/contracts/artifacts/` and are the canonical method/event/endpoint inventory. For live inspection against a running daemon, fetch `/api/control-plane/methods` and `/api/control-plane/events/catalog`.
-
-## Realtime
-
-The SDK supports both realtime transports:
-- SSE via `sdk.realtime.viaSse()`
-- WebSocket via `sdk.realtime.viaWebSocket()`
-
-Recommended defaults:
-- Bun (TUI / daemon): SSE
-- Browser web UI: SSE for same-origin sessions, WebSocket for persistent duplex
-- React Native / Expo: WebSocket
-
-The transport layers support HTTP retry/backoff, SSE replay via `Last-Event-ID`, SSE reconnect, WebSocket reconnect, and dynamic auth token resolution for long-lived clients.
-
-## Platform Configuration
-
-### tools.llmEnabled
-
-Tool LLM calls are opt-in via the `tools.llmEnabled` config key (default: `false`). When disabled, `resolveToolLLM()` returns an empty string instead of silently falling through to the main conversation model.
-
-```ts
-// goodvibes.config.ts
-tools: {
-  llmEnabled: true,
-  // ...provider config
-}
-```
-
-### Component health monitoring
-
-The health monitoring infrastructure uses `ComponentHealthMonitor`, `ComponentResourceContract`, and `ComponentHealthState`. The old `Panel*` names remain as deprecated aliases for backward compatibility.
-
-## Docs
-
-- [Runtime surfaces](./docs/surfaces.md) — two-tier model definition
-- [Public surface reference](./docs/public-surface.md) — full exports map
-- [Docs index](./docs/README.md)
+- [Documentation index](./docs/README.md)
 - [Getting started](./docs/getting-started.md)
-- [Package guide](./docs/packages.md)
+- [Packages and entry points](./docs/packages.md)
+- [Runtime surfaces](./docs/surfaces.md)
 - [Authentication](./docs/authentication.md)
-- [Error handling](./docs/error-handling.md)
-- [Error kinds reference](./docs/error-kinds.md)
-- [Observability](./docs/observability.md)
-- [Browser integration](./docs/browser-integration.md)
-- [Web UI integration](./docs/web-ui-integration.md)
-- [React Native integration](./docs/react-native-integration.md)
-- [Expo integration](./docs/expo-integration.md)
-- [Android integration](./docs/android-integration.md)
-- [iOS integration](./docs/ios-integration.md)
+- [Configuration defaults](./docs/defaults.md)
+- [Secret references](./docs/secrets.md)
+- [Provider and model API](./docs/provider-model-api.md)
 - [Daemon embedding](./docs/daemon-embedding.md)
-- [Daemon batch processing](./docs/daemon-batch-processing.md)
-- [Realtime and telemetry](./docs/realtime-and-telemetry.md)
-- [Retries and reconnect](./docs/retries-and-reconnect.md)
 - [Companion app patterns](./docs/companion-app-patterns.md)
-- [Companion message routing](./docs/companion-message-routing.md)
-- [Companion app pairing](./docs/pairing.md)
-- [Troubleshooting](./docs/troubleshooting.md)
-- [Compatibility](./docs/compatibility.md)
-- [Release and publishing](./docs/release-and-publishing.md)
+- [Realtime and telemetry](./docs/realtime-and-telemetry.md)
+- [Knowledge system](./docs/knowledge.md)
+- [Browser knowledge ingestion](./docs/knowledge-browser-history.md)
+- [Tool system](./docs/tools.md)
+- [Channel surfaces](./docs/surfaces.md)
+- [Home Assistant integration](./docs/homeassistant-integration.md)
+- [Cloudflare and batch processing](./docs/daemon-batch-processing.md)
+- [Voice and streaming TTS](./docs/voice.md)
+- [Security](./docs/security.md)
+- [Feature flags](./docs/feature-flags.md)
 - [Testing and validation](./docs/testing-and-validation.md)
+- [Release and publishing](./docs/release-and-publishing.md)
+
+Generated references:
+
 - [Operator API reference](./docs/reference-operator.md)
 - [Peer API reference](./docs/reference-peer.md)
 - [Runtime events reference](./docs/reference-runtime-events.md)
-- [Changelog](./CHANGELOG.md)
+
+## Security Posture
+
+The SDK carries source-level overrides for reviewed transitive dependencies and
+publishes a release artifact with the patched Bash LSP dependency graph. Bash
+LSP remains bundled because shell language support is part of the SDK feature
+set. See [SECURITY.md](./SECURITY.md) and [Security](./docs/security.md) for
+the current dependency and runtime security posture.
 
 ## Examples
 
-- [Submit turn quickstart](./examples/submit-turn-quickstart.mjs) — create session, submit message, stream tokens to stdout
+- [Submit turn quickstart](./examples/submit-turn-quickstart.mjs)
 - [Operator quickstart](./examples/operator-http-quickstart.mjs)
 - [Peer quickstart](./examples/peer-http-quickstart.mjs)
 - [Realtime quickstart](./examples/realtime-events-quickstart.mjs)
@@ -244,3 +192,4 @@ The health monitoring infrastructure uses `ComponentHealthMonitor`, `ComponentRe
 
 - Contributor workflow: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Security process: [SECURITY.md](./SECURITY.md)
+- Release history: [CHANGELOG.md](./CHANGELOG.md)

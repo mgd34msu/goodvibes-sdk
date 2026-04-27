@@ -126,7 +126,7 @@ Some files in `_internal/` are **synced copies** of upstream sources in `package
 
 ### When sync drift matters
 
-Drift between an upstream package and its synced copy is tolerated under the existing precedent (see the 0.18.46 release note on `transport-realtime/runtime-events.ts`). If you edit a synced file directly, re-running `sync:internal` will revert your change — manually re-apply after sync if the upstream package cannot be updated.
+Drift between an upstream package and its synced copy is not expected in normal development. If you edit a synced file directly, re-running `sync:internal` will revert your change; update the upstream package source first whenever possible.
 
 ---
 

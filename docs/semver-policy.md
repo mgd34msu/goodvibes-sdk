@@ -58,25 +58,24 @@ The following are explicitly out of scope and may change at any time without a m
 
 ---
 
-## Deprecation process
+## Removal process
 
-Before removing or renaming a public export (which requires a major bump), the export must be soft-deprecated for at least one full minor release cycle:
+For pre-1.0 releases, the project may remove or rename public exports when the
+owner accepts the breaking change and `CHANGELOG.md` documents it. For 1.0 and
+later releases, removals require a major bump and a replacement path when one
+exists.
 
-1. Mark the export with a `@deprecated` JSDoc tag including a migration note and the version it was deprecated in.
-2. Ship the deprecation in a minor release.
-3. Remove the export in the next major release.
+When a replacement exists, document the replacement in the changelog and the
+affected feature doc.
 
 Example:
 
 ```ts
 /**
- * @deprecated since 0.20.0 — use `createWebGoodVibesSdk` instead.
- * Will be removed in 1.0.0.
+ * Use `createWebGoodVibesSdk` for browser/web clients.
  */
 export function createBrowserGoodVibesSdk(/* ... */) { /* ... */ }
 ```
-
-Skipping the deprecation cycle and removing an export directly is a policy violation.
 
 ---
 
@@ -94,4 +93,5 @@ If a TypeScript version bump requires consumers to change their application-leve
 
 The CHANGELOG gate (`bun run changelog:check`) verifies that every release has a properly labeled section. Version bump classification is a required part of the PR description for any release PR. Misclassified bumps are caught in review before merge.
 
-The public API surface snapshot gate (Wave 8, tracked in [`docs/tracking/road-to-1.0.md`](tracking/road-to-1.0.md)) will add automated detection of unintended surface changes post-1.0.0.
+API surface checks and changelog review are the enforcement mechanisms for
+unintended public-surface drift.
