@@ -128,7 +128,7 @@ Onboarding clients can either collect a manually-created operational Cloudflare 
 
 The returned permission list describes the operational token the SDK will create. It is not a list of permissions to add to the temporary bootstrap token. If DNS automation should be scoped to one zone, pass `zoneId` during token creation; otherwise the SDK may create a broader zone-scoped operational token so later provisioning can discover/select the zone.
 
-The SDK resolves Cloudflare permission groups dynamically through the official Cloudflare TypeScript SDK. If Cloudflare returns account-specific permission names that do not match the SDK candidates, token creation fails with the missing permission names so the client can guide the user to create the operational token manually.
+The SDK resolves Cloudflare permission groups dynamically through the official Cloudflare TypeScript SDK. It resolves each required permission by `name` and Cloudflare scope, with aliases for Cloudflare's `Write`/`Edit` naming variants, before falling back to a broad catalog scan. If Cloudflare still returns account-specific permission names that do not match the SDK candidates, token creation fails with the missing permission names so the client can guide the user to create the operational token manually.
 
 `POST /api/cloudflare/discover` lists accounts, zones, workers.dev subdomain, queues, KV namespaces, Durable Object namespaces, R2 buckets, Secrets Stores, Zero Trust Tunnels, and Access applications visible to the token. Use this for onboarding account/zone/domain selection. If no zone is available, Workers can still use a `workers.dev` URL.
 
