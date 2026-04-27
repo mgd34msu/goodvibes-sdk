@@ -17,12 +17,8 @@ import {
   DEFAULT_WORKER_CRON,
   DEFAULT_WORKER_NAME,
 } from './constants.js';
-import {
-  discoverZones,
-  resolveZone,
-  selectDiscoveredZone,
-  tryDiscover,
-} from './discovery.js';
+import { discoverZones, resolveZone, selectDiscoveredZone, tryDiscover } from './discovery.js';
+import { normalizeProvisionHostnames } from './hostnames.js';
 import {
   configureDns,
   ensureAccess,
@@ -72,6 +68,7 @@ import {
   collectAsync,
   collectSingleAccount,
   hostnameFromUrl,
+  normalizeHostname,
   requireKvNamespaceId,
   requireQueueId,
   resolveComponents,
@@ -80,14 +77,7 @@ import {
   stripTrailingSlash,
   verifyCreatedTokenPolicies,
 } from './utils.js';
-import {
-  configureWorkerSchedule,
-  configureWorkerSubdomain,
-  describeWorkerUploadDurableObjectMigration,
-  disableWorkerSchedule,
-  disableWorkerSubdomain,
-  uploadWorker,
-} from './worker-settings.js';
+import { configureWorkerSchedule, configureWorkerSubdomain, describeWorkerUploadDurableObjectMigration, disableWorkerSchedule, disableWorkerSubdomain, uploadWorker } from './worker-settings.js';
 
 export class CloudflareControlPlaneManager {
   private readonly createClient: (apiToken: string) => Promise<CloudflareApiClient>;
@@ -331,8 +321,8 @@ export class CloudflareControlPlaneManager {
     const queueName = clean(input.queueName) || config.queueName || DEFAULT_QUEUE_NAME;
     const deadLetterQueueName = clean(input.deadLetterQueueName) || config.deadLetterQueueName || DEFAULT_DLQ_NAME;
     const daemonBaseUrl = stripTrailingSlash(clean(input.daemonBaseUrl) || config.daemonBaseUrl);
-    const daemonHostname = clean(input.daemonHostname) || config.daemonHostname || hostnameFromUrl(daemonBaseUrl);
-    const workerHostname = clean(input.workerHostname) || config.workerHostname;
+    let daemonHostname = normalizeHostname(clean(input.daemonHostname) || config.daemonHostname || hostnameFromUrl(daemonBaseUrl));
+    let workerHostname = normalizeHostname(clean(input.workerHostname) || config.workerHostname);
     const workerCron = clean(input.workerCron) || config.workerCron || DEFAULT_WORKER_CRON;
     const queueJobPayloads = input.queueJobPayloads === true;
 
@@ -379,6 +369,17 @@ export class CloudflareControlPlaneManager {
     } else if (components.dns) {
       steps.push({ name: 'zone', status: 'warning', message: 'No Cloudflare zone was selected; DNS hostname automation was skipped.' });
     }
+    const normalizedHostnames = normalizeProvisionHostnames({
+      zoneName: zone?.name ?? '',
+      workerName,
+      daemonHostname,
+      workerHostname,
+      needsDaemonHostname: components.zeroTrustTunnel || components.zeroTrustAccess || components.dns,
+      needsWorkerHostname: components.dns,
+      steps,
+    });
+    daemonHostname = normalizedHostnames.daemonHostname;
+    workerHostname = normalizedHostnames.workerHostname;
 
     let deadLetterQueue: CloudflareQueueLike | undefined;
     let queue: CloudflareQueueLike | undefined;
@@ -539,6 +540,7 @@ export class CloudflareControlPlaneManager {
         accessAppId: clean(input.accessAppId) || config.accessAppId,
         accessServiceTokenId: clean(input.accessServiceTokenId) || config.accessServiceTokenId,
         accessServiceTokenRef: clean(input.accessServiceTokenRef) || config.accessServiceTokenRef,
+        ...(zone ? { zone } : {}),
         persist,
         returnGeneratedSecrets: input.returnGeneratedSecrets === true,
         steps,
@@ -791,5 +793,4 @@ export class CloudflareControlPlaneManager {
     const set = this.options.configManager.set as unknown as (configKey: ConfigKey, configValue: unknown) => void;
     set.call(this.options.configManager, key, value);
   }
-
 }

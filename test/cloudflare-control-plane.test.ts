@@ -53,10 +53,10 @@ function tokenPolicyForResource(policies: readonly CloudflareTokenPolicyParam[],
   return policies.find((policy) => policy.resources[resource] !== undefined);
 }
 
-function makeCloudflareClient() {
+function makeCloudflareClient(options: { readonly zones?: readonly CloudflareZoneLike[] } = {}) {
   const queues: CloudflareQueueLike[] = [];
   const consumers: CloudflareConsumerLike[] = [];
-  const zones: CloudflareZoneLike[] = [{ id: 'zone-1', name: 'example.com', status: 'active', type: 'full' }];
+  const zones: CloudflareZoneLike[] = [...(options.zones ?? [{ id: 'zone-1', name: 'example.com', status: 'active', type: 'full' }])];
   const dnsRecords: CloudflareDnsRecordLike[] = [];
   const kvNamespaces: CloudflareKvNamespaceLike[] = [];
   const durableObjectNamespaces: CloudflareDurableObjectNamespaceLike[] = [{ id: 'do-1', name: 'GoodVibesCoordinator', class: 'GoodVibesCoordinator', script: 'goodvibes-batch-worker', use_sqlite: true }];
@@ -688,6 +688,88 @@ describe('CloudflareControlPlaneManager', () => {
     expect(configManager.get('cloudflare.zoneId')).toBe('zone-1');
     expect(configManager.get('cloudflare.tunnelId')).toBe('tunnel-1');
     expect(configManager.get('cloudflare.accessAppId')).toBe('access-app-1');
+  });
+
+  test('normalizes placeholder Cloudflare hostnames to the selected zone before provisioning', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client, calls } = makeCloudflareClient({
+      zones: [{ id: 'zone-buzz', name: 'buzznet.dev', status: 'active', type: 'full' }],
+    });
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      authToken: () => 'daemon-operator-token',
+      createClient: async () => client,
+    });
+
+    const result = await manager.provision({
+      accountId: 'acct-1',
+      apiToken: 'cf-token',
+      daemonBaseUrl: 'http://127.0.0.1:3421',
+      daemonHostname: 'daemon.example.com',
+      workerHostname: 'goodvibes.example.com',
+      zoneName: 'buzznet.dev',
+      components: {
+        dns: true,
+        zeroTrustTunnel: true,
+        zeroTrustAccess: true,
+      },
+      returnGeneratedSecrets: true,
+      verify: false,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.tunnel?.hostname).toBe('daemon.buzznet.dev');
+    expect(result.dns?.records.map((record) => record.name)).toEqual(['daemon.buzznet.dev', 'goodvibes-batch-worker.buzznet.dev']);
+    expect(calls.tunnelConfigUpdates[0]?.config).toEqual({
+      ingress: [
+        { hostname: 'daemon.buzznet.dev', service: 'http://127.0.0.1:3421' },
+        { service: 'http_status:404' },
+      ],
+    });
+    expect(calls.accessAppCreates[0]?.['domain']).toBe('daemon.buzznet.dev');
+    expect(configManager.get('cloudflare.daemonHostname')).toBe('daemon.buzznet.dev');
+    expect(configManager.get('cloudflare.workerHostname')).toBe('goodvibes-batch-worker.buzznet.dev');
+    expect(result.steps.map((step) => step.message).join('\n')).toContain('Using daemon.buzznet.dev instead of placeholder/local daemon hostname daemon.example.com');
+    expect(result.steps.map((step) => step.message).join('\n')).toContain('Using goodvibes-batch-worker.buzznet.dev instead of placeholder Worker hostname goodvibes.example.com');
+  });
+
+  test('skips zone-bound Cloudflare hostname calls when configured hostnames do not belong to the selected zone', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client, calls } = makeCloudflareClient({
+      zones: [{ id: 'zone-buzz', name: 'buzznet.dev', status: 'active', type: 'full' }],
+    });
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      authToken: () => 'daemon-operator-token',
+      createClient: async () => client,
+    });
+
+    const result = await manager.provision({
+      accountId: 'acct-1',
+      apiToken: 'cf-token',
+      daemonBaseUrl: 'http://127.0.0.1:3421',
+      daemonHostname: 'daemon.not-owned.test',
+      workerHostname: 'worker.not-owned.test',
+      zoneName: 'buzznet.dev',
+      components: {
+        dns: true,
+        zeroTrustTunnel: true,
+        zeroTrustAccess: true,
+      },
+      verify: false,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(calls.dnsCreates).toEqual([]);
+    expect(calls.accessAppCreates).toEqual([]);
+    expect(calls.tunnelConfigUpdates).toEqual([]);
+    expect(result.steps.map((step) => step.message).join('\n')).toContain('Configured daemonHostname daemon.not-owned.test does not belong to selected zone buzznet.dev');
+    expect(result.steps.map((step) => step.message).join('\n')).toContain('Configured workerHostname worker.not-owned.test does not belong to selected zone buzznet.dev');
+    expect(result.steps.map((step) => step.message).join('\n')).toContain('Access application was skipped because daemonHostname or service token id is missing.');
   });
 
   test('reuses existing Cloudflare resources when provisioning is run again', async () => {

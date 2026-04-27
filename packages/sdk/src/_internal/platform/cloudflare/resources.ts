@@ -21,7 +21,7 @@ import type {
   CloudflareZoneLike,
 } from './types.js';
 import { CloudflareControlPlaneError } from './types.js';
-import { clean, collectAsync, hostnameFromUrl } from './utils.js';
+import { clean, collectAsync, hostnameBelongsToZone, hostnameFromUrl, isPlaceholderHostname } from './utils.js';
 
 export interface CloudflareProvisioningContext {
   readonly readConfig: () => CloudflareControlPlaneConfig;
@@ -247,6 +247,7 @@ export async function ensureAccess(
     readonly accessAppId: string;
     readonly accessServiceTokenId: string;
     readonly accessServiceTokenRef: string;
+    readonly zone?: CloudflareZoneLike;
     readonly persist: boolean;
     readonly returnGeneratedSecrets: boolean;
     readonly steps: CloudflareProvisionStep[];
@@ -294,6 +295,24 @@ export async function ensureAccess(
 
   if (!input.daemonHostname || !serviceToken.id) {
     input.steps.push({ name: 'zero-trust-access-app', status: 'warning', message: 'Access application was skipped because daemonHostname or service token id is missing.' });
+    return {
+      ...(serviceToken.id ? { serviceTokenId: serviceToken.id } : {}),
+      ...(serviceTokenRef ? { serviceTokenRef } : {}),
+      ...(serviceToken.client_id && input.returnGeneratedSecrets ? { clientId: serviceToken.client_id } : {}),
+      ...(serviceToken.client_secret && input.returnGeneratedSecrets ? { clientSecret: serviceToken.client_secret } : {}),
+    };
+  }
+  if (!input.zone && isPlaceholderHostname(input.daemonHostname)) {
+    input.steps.push({ name: 'zero-trust-access-app', status: 'warning', message: `Access application was skipped because daemonHostname ${input.daemonHostname} is a placeholder hostname.` });
+    return {
+      ...(serviceToken.id ? { serviceTokenId: serviceToken.id } : {}),
+      ...(serviceTokenRef ? { serviceTokenRef } : {}),
+      ...(serviceToken.client_id && input.returnGeneratedSecrets ? { clientId: serviceToken.client_id } : {}),
+      ...(serviceToken.client_secret && input.returnGeneratedSecrets ? { clientSecret: serviceToken.client_secret } : {}),
+    };
+  }
+  if (input.zone && !hostnameBelongsToZone(input.daemonHostname, input.zone.name)) {
+    input.steps.push({ name: 'zero-trust-access-app', status: 'warning', message: `Access application was skipped because daemonHostname ${input.daemonHostname} does not belong to selected zone ${input.zone.name}.` });
     return {
       ...(serviceToken.id ? { serviceTokenId: serviceToken.id } : {}),
       ...(serviceTokenRef ? { serviceTokenRef } : {}),
@@ -370,11 +389,19 @@ export async function configureDns(
   }
   const records: CloudflareDnsRecordLike[] = [];
   if (input.daemonHostname && input.tunnelId) {
-    records.push(await ensureCnameRecord(client, input.zone.id, input.daemonHostname, `${input.tunnelId}.cfargotunnel.com`, input.steps, 'dns-daemon-hostname'));
+    if (hostnameBelongsToZone(input.daemonHostname, input.zone.name)) {
+      records.push(await ensureCnameRecord(client, input.zone.id, input.daemonHostname, `${input.tunnelId}.cfargotunnel.com`, input.steps, 'dns-daemon-hostname'));
+    } else {
+      input.steps.push({ name: 'dns-daemon-hostname', status: 'warning', message: `Skipped daemon DNS record because ${input.daemonHostname} does not belong to selected zone ${input.zone.name}.` });
+    }
   }
   const workerTarget = hostnameFromUrl(input.workerBaseUrl);
   if (input.workerHostname && workerTarget) {
-    records.push(await ensureCnameRecord(client, input.zone.id, input.workerHostname, workerTarget, input.steps, 'dns-worker-hostname'));
+    if (hostnameBelongsToZone(input.workerHostname, input.zone.name)) {
+      records.push(await ensureCnameRecord(client, input.zone.id, input.workerHostname, workerTarget, input.steps, 'dns-worker-hostname'));
+    } else {
+      input.steps.push({ name: 'dns-worker-hostname', status: 'warning', message: `Skipped Worker DNS record because ${input.workerHostname} does not belong to selected zone ${input.zone.name}.` });
+    }
   }
   if (records.length === 0) input.steps.push({ name: 'dns', status: 'skipped', message: 'No daemonHostname/tunnelId or workerHostname/workerBaseUrl pair was available for DNS automation.' });
   return records;
