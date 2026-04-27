@@ -373,6 +373,12 @@ export interface CloudflareDurableObjectNamespaceLike {
   readonly use_sqlite?: boolean;
 }
 
+export interface CloudflareWorkerScriptLike {
+  readonly id?: string;
+  readonly name?: string;
+  readonly migration_tag?: string;
+}
+
 export interface CloudflareR2BucketLike {
   readonly name?: string;
   readonly storage_class?: 'Standard' | 'InfrequentAccess';
@@ -598,6 +604,8 @@ export interface CloudflareApiClient {
           readonly files: readonly File[];
         },
       ): Promise<{ readonly id?: string }>;
+      get?(scriptName: string, params: { readonly account_id: string }): Promise<CloudflareWorkerScriptLike>;
+      list?(params: { readonly account_id: string }): AsyncIterable<CloudflareWorkerScriptLike>;
       readonly subdomain: {
         create(
           scriptName: string,

@@ -24,6 +24,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.25.20] - 2026-04-27
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Cloudflare Worker provisioning now treats the `GoodVibesCoordinator`
+  Durable Object SQLite migration as first-run-only. Repeated onboarding reads
+  the Worker migration tag and Durable Object namespace state before upload, and
+  avoids reapplying `new_sqlite_classes` once Cloudflare already has the class.
+- Worker upload now recovers from Cloudflare `10074` Durable Object migration
+  responses by retrying the Worker upload without the new-class migration while
+  preserving the Durable Object binding.
+
+### Migration
+- none
+
+---
+
 ## [0.25.19] - 2026-04-27
 
 ### Breaking
