@@ -170,6 +170,10 @@ All Cloudflare routes require daemon authentication and admin privileges.
 | `/api/cloudflare/verify` | `POST` | Calls the Worker health endpoint and the Worker-to-daemon batch proxy. |
 | `/api/cloudflare/disable` | `POST` | Disables local Cloudflare usage, returns queue backend to `local`, and can remove Worker cron/subdomain settings. |
 
+Provisioning is idempotent for SDK-managed Cloudflare resources. The SDK checks for existing resources before creating Queues, queue consumers, KV namespaces, R2 buckets, Secrets Stores, Zero Trust Tunnels, Access service tokens/apps, DNS CNAMEs, and workers.dev script routes. Saved ids such as `cloudflare.kvNamespaceId`, `cloudflare.secretsStoreId`, `cloudflare.tunnelId`, `cloudflare.accessAppId`, and `cloudflare.accessServiceTokenId` are reused on later onboarding runs. This lets clients rerun provisioning after enabling extra Cloudflare features without recreating resources that already exist.
+
+If Cloudflare returns an exists/quota-style create error after discovery, the SDK performs a second discovery pass and reuses a matching resource when it can. For Cloudflare Secrets Store, this includes the account-level `maximum_stores_exceeded` response: if the requested store already exists, or Cloudflare exposes a single existing store on the account, provisioning records and reuses that store instead of failing the entire onboarding pass.
+
 Provisioning request example:
 
 ```json

@@ -63,10 +63,18 @@ function makeCloudflareClient() {
   const r2Buckets: CloudflareR2BucketLike[] = [];
   const secretsStores: CloudflareSecretsStoreLike[] = [];
   const tunnels: CloudflareTunnelLike[] = [];
+  const accessServiceTokens: Array<{ id: string; name: string; client_id?: string; client_secret?: string }> = [];
+  const accessApplications: Array<{ id: string; name: string; domain: string; type: string }> = [];
+  const enabledScriptSubdomains = new Set<string>();
   let lastTokenPolicies: readonly CloudflareTokenPolicyParam[] = [];
   const calls = {
     tokenCreates: [] as Array<{ readonly name: string; readonly policies: readonly CloudflareTokenPolicyParam[] }>,
     queueCreates: [] as string[],
+    kvCreates: [] as string[],
+    r2Creates: [] as string[],
+    secretsStoreCreates: [] as string[],
+    tunnelCreates: [] as string[],
+    accessServiceTokenCreates: [] as string[],
     workerUpdates: [] as Array<{ readonly scriptName: string; readonly metadata: Record<string, unknown> }>,
     secretUpdates: [] as Array<{ readonly scriptName: string; readonly name: string; readonly text: string }>,
     scheduleUpdates: [] as Array<{ readonly scriptName: string; readonly crons: readonly string[] }>,
@@ -196,6 +204,7 @@ function makeCloudflareClient() {
     kv: {
       namespaces: {
         async create(params) {
+          calls.kvCreates.push(params.title);
           const namespace = { id: `kv-${params.title}`, title: params.title };
           kvNamespaces.push(namespace);
           return namespace;
@@ -215,6 +224,7 @@ function makeCloudflareClient() {
     r2: {
       buckets: {
         async create(params) {
+          calls.r2Creates.push(params.name);
           const bucket = { name: params.name, storage_class: params.storageClass ?? 'Standard' };
           r2Buckets.push(bucket);
           return bucket;
@@ -228,6 +238,7 @@ function makeCloudflareClient() {
       stores: {
         async *create(params) {
           for (const body of params.body) {
+            calls.secretsStoreCreates.push(body.name);
             const store = { id: `store-${body.name}`, name: body.name };
             secretsStores.push(store);
             yield store;
@@ -242,6 +253,7 @@ function makeCloudflareClient() {
       tunnels: {
         cloudflared: {
           async create(params) {
+            calls.tunnelCreates.push(params.name);
             const tunnel = { id: 'tunnel-1', name: params.name, status: 'inactive' };
             tunnels.push(tunnel);
             return tunnel;
@@ -265,23 +277,35 @@ function makeCloudflareClient() {
       access: {
         serviceTokens: {
           async create(params) {
-            return { id: 'service-token-1', name: params.name, client_id: 'access-client-id', client_secret: 'access-client-secret' };
+            calls.accessServiceTokenCreates.push(params.name);
+            const serviceToken = { id: 'service-token-1', name: params.name, client_id: 'access-client-id', client_secret: 'access-client-secret' };
+            accessServiceTokens.push(serviceToken);
+            return serviceToken;
           },
-          list() {
-            return items([]);
+          list(params) {
+            return items(accessServiceTokens.filter((token) => !params.name || token.name === params.name));
           },
         },
         applications: {
           async create(params) {
             calls.accessAppCreates.push(params);
-            return { id: 'access-app-1', name: String(params['name'] ?? ''), domain: String(params['domain'] ?? ''), type: String(params['type'] ?? '') };
+            const app = { id: 'access-app-1', name: String(params['name'] ?? ''), domain: String(params['domain'] ?? ''), type: String(params['type'] ?? '') };
+            accessApplications.push(app);
+            return app;
           },
           async update(_appId, params) {
             calls.accessAppCreates.push(params);
-            return { id: 'access-app-1', name: String(params['name'] ?? ''), domain: String(params['domain'] ?? ''), type: String(params['type'] ?? '') };
+            const app = { id: 'access-app-1', name: String(params['name'] ?? ''), domain: String(params['domain'] ?? ''), type: String(params['type'] ?? '') };
+            const index = accessApplications.findIndex((entry) => entry.id === app.id);
+            if (index >= 0) accessApplications[index] = app;
+            else accessApplications.push(app);
+            return app;
           },
-          list() {
-            return items([]);
+          list(params) {
+            return items(accessApplications.filter((app) =>
+              (!params.domain || app.domain === params.domain) &&
+              (!params.name || app.name === params.name)
+            ));
           },
         },
       },
@@ -303,13 +327,14 @@ function makeCloudflareClient() {
         subdomain: {
           async create(scriptName) {
             calls.scriptSubdomains.push(scriptName);
+            enabledScriptSubdomains.add(scriptName);
             return { enabled: true };
           },
           async delete() {
             return { enabled: false };
           },
-          async get() {
-            return { enabled: true };
+          async get(scriptName) {
+            return { enabled: enabledScriptSubdomains.has(scriptName) };
           },
         },
         schedules: {
@@ -663,5 +688,95 @@ describe('CloudflareControlPlaneManager', () => {
     expect(configManager.get('cloudflare.zoneId')).toBe('zone-1');
     expect(configManager.get('cloudflare.tunnelId')).toBe('tunnel-1');
     expect(configManager.get('cloudflare.accessAppId')).toBe('access-app-1');
+  });
+
+  test('reuses existing Cloudflare resources when provisioning is run again', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client, calls } = makeCloudflareClient();
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      authToken: () => 'daemon-operator-token',
+      createClient: async () => client,
+    });
+    const input = {
+      accountId: 'acct-1',
+      apiToken: 'cf-token',
+      daemonBaseUrl: 'http://127.0.0.1:3421',
+      daemonHostname: 'daemon.example.com',
+      workerHostname: 'worker.example.com',
+      zoneName: 'example.com',
+      components: {
+        dns: true,
+        kv: true,
+        durableObjects: true,
+        secretsStore: true,
+        r2: true,
+        zeroTrustTunnel: true,
+        zeroTrustAccess: true,
+      },
+      verify: false,
+    };
+
+    await manager.provision(input);
+    const createCounts = {
+      queues: calls.queueCreates.length,
+      kv: calls.kvCreates.length,
+      r2: calls.r2Creates.length,
+      secretsStore: calls.secretsStoreCreates.length,
+      tunnels: calls.tunnelCreates.length,
+      accessServiceTokens: calls.accessServiceTokenCreates.length,
+      consumers: calls.consumerCreates.length,
+      scriptSubdomains: calls.scriptSubdomains.length,
+      dns: calls.dnsCreates.length,
+    };
+
+    const second = await manager.provision(input);
+
+    expect(second.ok).toBe(true);
+    expect(calls.queueCreates.length).toBe(createCounts.queues);
+    expect(calls.kvCreates.length).toBe(createCounts.kv);
+    expect(calls.r2Creates.length).toBe(createCounts.r2);
+    expect(calls.secretsStoreCreates.length).toBe(createCounts.secretsStore);
+    expect(calls.tunnelCreates.length).toBe(createCounts.tunnels);
+    expect(calls.accessServiceTokenCreates.length).toBe(createCounts.accessServiceTokens);
+    expect(calls.consumerCreates.length).toBe(createCounts.consumers);
+    expect(calls.scriptSubdomains.length).toBe(createCounts.scriptSubdomains);
+    expect(calls.dnsCreates.length).toBe(createCounts.dns);
+    expect(second.steps.map((step) => step.message).join('\n')).toContain('Using existing KV namespace goodvibes-runtime.');
+    expect(second.steps.map((step) => step.message).join('\n')).toContain('Using existing R2 Standard bucket goodvibes-artifacts.');
+    expect(second.steps.map((step) => step.message).join('\n')).toContain('Using existing Cloudflare Secrets Store goodvibes.');
+  });
+
+  test('recovers from Cloudflare Secrets Store maximum_stores_exceeded by reusing a discovered store', async () => {
+    const configManager = makeConfigManager();
+    const secrets = makeSecrets();
+    const { client } = makeCloudflareClient();
+    let listCalls = 0;
+    client.secretsStore!.stores.list = () => {
+      listCalls += 1;
+      return items(listCalls === 1 ? [] : [{ id: 'store-goodvibes', name: 'goodvibes' }]);
+    };
+    client.secretsStore!.stores.create = async function* () {
+      throw new Error('400 {"errors":[{"code":1003,"message":"maximum_stores_exceeded"}]}');
+    };
+    const manager = new CloudflareControlPlaneManager({
+      configManager,
+      secretsManager: secrets,
+      createClient: async () => client,
+    });
+
+    const result = await manager.provision({
+      accountId: 'acct-1',
+      apiToken: 'cf-token',
+      components: { workers: false, queues: false, secretsStore: true },
+      verify: false,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.secretsStore?.storeId).toBe('store-goodvibes');
+    expect(configManager.get('cloudflare.secretsStoreId')).toBe('store-goodvibes');
+    expect(result.steps.map((step) => step.message).join('\n')).toContain('Using existing Cloudflare Secrets Store goodvibes after create retry');
   });
 });

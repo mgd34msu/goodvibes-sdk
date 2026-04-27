@@ -38,15 +38,23 @@ export async function ensureQueue(
   steps: CloudflareProvisionStep[],
   stepName: string,
 ): Promise<CloudflareQueueLike> {
-  for await (const queue of client.queues.list({ account_id: accountId })) {
-    if (queue.queue_name === queueName) {
-      steps.push({ name: stepName, status: 'ok', message: `Using existing Cloudflare Queue ${queueName}.`, resourceId: queue.queue_id });
-      return queue;
-    }
+  const existing = await findQueueByName(client, accountId, queueName);
+  if (existing) {
+    steps.push({ name: stepName, status: 'ok', message: `Using existing Cloudflare Queue ${queueName}.`, resourceId: existing.queue_id });
+    return existing;
   }
-  const created = await client.queues.create({ account_id: accountId, queue_name: queueName });
-  steps.push({ name: stepName, status: 'ok', message: `Created Cloudflare Queue ${queueName}.`, resourceId: created.queue_id });
-  return created;
+  try {
+    const created = await client.queues.create({ account_id: accountId, queue_name: queueName });
+    steps.push({ name: stepName, status: 'ok', message: `Created Cloudflare Queue ${queueName}.`, resourceId: created.queue_id });
+    return created;
+  } catch (error: unknown) {
+    const recovered = await findQueueByName(client, accountId, queueName);
+    if (recovered) {
+      steps.push({ name: stepName, status: 'ok', message: `Using existing Cloudflare Queue ${queueName} after create retry: ${summarizeError(error)}`, resourceId: recovered.queue_id });
+      return recovered;
+    }
+    throw error;
+  }
 }
 
 export async function ensureKvNamespace(
@@ -54,25 +62,39 @@ export async function ensureKvNamespace(
   client: CloudflareApiClient,
   accountId: string,
   namespaceName: string,
+  configuredNamespaceId: string,
   persist: boolean,
   steps: CloudflareProvisionStep[],
 ): Promise<CloudflareKvNamespaceLike> {
   if (!client.kv) {
     throw new CloudflareControlPlaneError('The Cloudflare client does not expose KV namespace APIs.', 'CLOUDFLARE_KV_API_UNAVAILABLE', 500);
   }
-  for await (const namespace of client.kv.namespaces.list({ account_id: accountId })) {
-    if (namespace.title === namespaceName) {
-      context.setConfig('cloudflare.kvNamespaceName', namespaceName, persist);
-      if (namespace.id) context.setConfig('cloudflare.kvNamespaceId', namespace.id, persist);
-      steps.push({ name: 'kv-namespace', status: 'ok', message: `Using existing KV namespace ${namespaceName}.`, resourceId: namespace.id });
-      return namespace;
-    }
+  const existing = await findKvNamespace(client, accountId, namespaceName, configuredNamespaceId);
+  if (existing) {
+    persistKvNamespace(context, existing, namespaceName, persist);
+    steps.push({ name: 'kv-namespace', status: 'ok', message: `Using existing KV namespace ${namespaceName}.`, resourceId: existing.id });
+    return existing;
   }
-  const created = await client.kv.namespaces.create({ account_id: accountId, title: namespaceName });
-  context.setConfig('cloudflare.kvNamespaceName', namespaceName, persist);
-  if (created.id) context.setConfig('cloudflare.kvNamespaceId', created.id, persist);
-  steps.push({ name: 'kv-namespace', status: 'ok', message: `Created KV namespace ${namespaceName}.`, resourceId: created.id });
-  return created;
+  if (configuredNamespaceId) {
+    const configured = { id: configuredNamespaceId, title: namespaceName };
+    persistKvNamespace(context, configured, namespaceName, persist);
+    steps.push({ name: 'kv-namespace', status: 'ok', message: `Using configured KV namespace ${namespaceName}.`, resourceId: configuredNamespaceId });
+    return configured;
+  }
+  try {
+    const created = await client.kv.namespaces.create({ account_id: accountId, title: namespaceName });
+    persistKvNamespace(context, created, namespaceName, persist);
+    steps.push({ name: 'kv-namespace', status: 'ok', message: `Created KV namespace ${namespaceName}.`, resourceId: created.id });
+    return created;
+  } catch (error: unknown) {
+    const recovered = await findKvNamespace(client, accountId, namespaceName, configuredNamespaceId);
+    if (recovered) {
+      persistKvNamespace(context, recovered, namespaceName, persist);
+      steps.push({ name: 'kv-namespace', status: 'ok', message: `Using existing KV namespace ${namespaceName} after create retry: ${summarizeError(error)}`, resourceId: recovered.id });
+      return recovered;
+    }
+    throw error;
+  }
 }
 
 export async function ensureR2Bucket(
@@ -86,16 +108,26 @@ export async function ensureR2Bucket(
   if (!client.r2) {
     throw new CloudflareControlPlaneError('The Cloudflare client does not expose R2 bucket APIs.', 'CLOUDFLARE_R2_API_UNAVAILABLE', 500);
   }
-  const existing = (await client.r2.buckets.list({ account_id: accountId })).buckets?.find((bucket) => bucket.name === bucketName);
+  const existing = await findR2BucketByName(client, accountId, bucketName);
   if (existing) {
     context.setConfig('cloudflare.r2BucketName', bucketName, persist);
     steps.push({ name: 'r2-bucket', status: 'ok', message: `Using existing R2 Standard bucket ${bucketName}.`, resourceId: bucketName });
     return existing;
   }
-  const created = await client.r2.buckets.create({ account_id: accountId, name: bucketName, storageClass: 'Standard' });
-  context.setConfig('cloudflare.r2BucketName', bucketName, persist);
-  steps.push({ name: 'r2-bucket', status: 'ok', message: `Created R2 Standard bucket ${bucketName}.`, resourceId: bucketName });
-  return created.name ? created : { ...created, name: bucketName, storage_class: 'Standard' };
+  try {
+    const created = await client.r2.buckets.create({ account_id: accountId, name: bucketName, storageClass: 'Standard' });
+    context.setConfig('cloudflare.r2BucketName', bucketName, persist);
+    steps.push({ name: 'r2-bucket', status: 'ok', message: `Created R2 Standard bucket ${bucketName}.`, resourceId: bucketName });
+    return created.name ? created : { ...created, name: bucketName, storage_class: 'Standard' };
+  } catch (error: unknown) {
+    const recovered = await findR2BucketByName(client, accountId, bucketName);
+    if (recovered) {
+      context.setConfig('cloudflare.r2BucketName', bucketName, persist);
+      steps.push({ name: 'r2-bucket', status: 'ok', message: `Using existing R2 bucket ${bucketName} after create retry: ${summarizeError(error)}`, resourceId: bucketName });
+      return recovered;
+    }
+    throw error;
+  }
 }
 
 export async function ensureSecretsStore(
@@ -103,25 +135,39 @@ export async function ensureSecretsStore(
   client: CloudflareApiClient,
   accountId: string,
   storeName: string,
+  configuredStoreId: string,
   persist: boolean,
   steps: CloudflareProvisionStep[],
 ): Promise<CloudflareSecretsStoreLike> {
   if (!client.secretsStore) {
     throw new CloudflareControlPlaneError('The Cloudflare client does not expose Secrets Store APIs.', 'CLOUDFLARE_SECRETS_STORE_API_UNAVAILABLE', 500);
   }
-  for await (const store of client.secretsStore.stores.list({ account_id: accountId })) {
-    if (store.name === storeName) {
-      context.setConfig('cloudflare.secretsStoreName', storeName, persist);
-      context.setConfig('cloudflare.secretsStoreId', store.id, persist);
-      steps.push({ name: 'secrets-store', status: 'ok', message: `Using existing Cloudflare Secrets Store ${storeName}.`, resourceId: store.id });
-      return store;
-    }
+  const existing = await findSecretsStore(client, accountId, storeName, configuredStoreId);
+  if (existing) {
+    persistSecretsStore(context, existing, persist);
+    steps.push({ name: 'secrets-store', status: 'ok', message: `Using existing Cloudflare Secrets Store ${existing.name}.`, resourceId: existing.id });
+    return existing;
   }
-  for await (const created of client.secretsStore.stores.create({ account_id: accountId, body: [{ name: storeName }] })) {
-    context.setConfig('cloudflare.secretsStoreName', storeName, persist);
-    context.setConfig('cloudflare.secretsStoreId', created.id, persist);
-    steps.push({ name: 'secrets-store', status: 'ok', message: `Created Cloudflare Secrets Store ${storeName}.`, resourceId: created.id });
-    return created;
+  if (configuredStoreId) {
+    const configured = { id: configuredStoreId, name: storeName };
+    persistSecretsStore(context, configured, persist);
+    steps.push({ name: 'secrets-store', status: 'warning', message: `Using configured Cloudflare Secrets Store id ${configuredStoreId}; it was not visible during discovery.`, resourceId: configuredStoreId });
+    return configured;
+  }
+  try {
+    for await (const created of client.secretsStore.stores.create({ account_id: accountId, body: [{ name: storeName }] })) {
+      persistSecretsStore(context, created, persist);
+      steps.push({ name: 'secrets-store', status: 'ok', message: `Created Cloudflare Secrets Store ${storeName}.`, resourceId: created.id });
+      return created;
+    }
+  } catch (error: unknown) {
+    const recovered = await findRecoverableSecretsStore(client, accountId, storeName, configuredStoreId, error);
+    if (recovered) {
+      persistSecretsStore(context, recovered, persist);
+      steps.push({ name: 'secrets-store', status: recovered.name === storeName ? 'ok' : 'warning', message: `Using existing Cloudflare Secrets Store ${recovered.name} after create retry: ${summarizeError(error)}`, resourceId: recovered.id });
+      return recovered;
+    }
+    throw error;
   }
   throw new CloudflareControlPlaneError(`Cloudflare Secrets Store '${storeName}' did not return a created store.`, 'CLOUDFLARE_SECRETS_STORE_CREATE_FAILED', 502);
 }
@@ -155,8 +201,14 @@ export async function ensureTunnel(
       }
     }
     if (!tunnel) {
-      tunnel = await api.create({ account_id: input.accountId, name: input.tunnelName, config_src: 'cloudflare' });
-      input.steps.push({ name: 'zero-trust-tunnel', status: 'ok', message: `Created Zero Trust Tunnel ${input.tunnelName}.`, resourceId: tunnel.id });
+      try {
+        tunnel = await api.create({ account_id: input.accountId, name: input.tunnelName, config_src: 'cloudflare' });
+        input.steps.push({ name: 'zero-trust-tunnel', status: 'ok', message: `Created Zero Trust Tunnel ${input.tunnelName}.`, resourceId: tunnel.id });
+      } catch (error: unknown) {
+        tunnel = await findTunnelByName(client, input.accountId, input.tunnelName);
+        if (!tunnel) throw error;
+        input.steps.push({ name: 'zero-trust-tunnel', status: 'ok', message: `Using existing Zero Trust Tunnel ${input.tunnelName} after create retry: ${summarizeError(error)}`, resourceId: tunnel.id });
+      }
     } else {
       input.steps.push({ name: 'zero-trust-tunnel', status: 'ok', message: `Using existing Zero Trust Tunnel ${input.tunnelName}.`, resourceId: tunnel.id });
     }
@@ -216,8 +268,14 @@ export async function ensureAccess(
     }
   }
   if (!serviceToken) {
-    serviceToken = await api.serviceTokens.create({ account_id: input.accountId, name: 'GoodVibes Daemon', duration: '8760h' });
-    input.steps.push({ name: 'zero-trust-access-service-token', status: 'ok', message: 'Created Zero Trust Access service token.', resourceId: serviceToken.id });
+    try {
+      serviceToken = await api.serviceTokens.create({ account_id: input.accountId, name: 'GoodVibes Daemon', duration: '8760h' });
+      input.steps.push({ name: 'zero-trust-access-service-token', status: 'ok', message: 'Created Zero Trust Access service token.', resourceId: serviceToken.id });
+    } catch (error: unknown) {
+      serviceToken = await findAccessServiceTokenByName(api, input.accountId, 'GoodVibes Daemon');
+      if (!serviceToken) throw error;
+      input.steps.push({ name: 'zero-trust-access-service-token', status: 'ok', message: `Using existing Zero Trust Access service token after create retry: ${summarizeError(error)}`, resourceId: serviceToken.id });
+    }
   } else {
     input.steps.push({ name: 'zero-trust-access-service-token', status: 'ok', message: 'Using existing Zero Trust Access service token.', resourceId: serviceToken.id });
   }
@@ -270,9 +328,17 @@ export async function ensureAccess(
       },
     ],
   };
-  app = app?.id
-    ? await api.applications.update(app.id, accessAppParams)
-    : await api.applications.create(accessAppParams);
+  if (app?.id) {
+    app = await api.applications.update(app.id, accessAppParams);
+  } else {
+    try {
+      app = await api.applications.create(accessAppParams);
+    } catch (error: unknown) {
+      const recovered = await findAccessApplicationByDomain(api, input.accountId, input.daemonHostname);
+      if (!recovered?.id) throw error;
+      app = await api.applications.update(recovered.id, accessAppParams);
+    }
+  }
   if (app.id) context.setConfig('cloudflare.accessAppId', app.id, input.persist);
   input.steps.push({ name: 'zero-trust-access-app', status: 'ok', message: `Configured Zero Trust Access application for ${input.daemonHostname}.`, resourceId: app.id });
   return {
@@ -417,12 +483,27 @@ export async function configureWorkerSubdomain(
     }
   }
 
-  await client.workers.scripts.subdomain.create(input.workerName, {
-    account_id: input.accountId,
-    enabled: true,
-    previews_enabled: false,
-  });
-  input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Enabled workers.dev route for ${input.workerName}.` });
+  try {
+    const existing = await client.workers.scripts.subdomain.get(input.workerName, { account_id: input.accountId });
+    if (existing.enabled) {
+      input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Using existing workers.dev route for ${input.workerName}.` });
+      return accountSubdomain;
+    }
+  } catch {
+    // Older accounts may not return script-level subdomain state before it is enabled.
+  }
+  try {
+    await client.workers.scripts.subdomain.create(input.workerName, {
+      account_id: input.accountId,
+      enabled: true,
+      previews_enabled: false,
+    });
+    input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Enabled workers.dev route for ${input.workerName}.` });
+  } catch (error: unknown) {
+    const recovered = await client.workers.scripts.subdomain.get(input.workerName, { account_id: input.accountId });
+    if (!recovered.enabled) throw error;
+    input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Using existing workers.dev route for ${input.workerName} after enable retry: ${summarizeError(error)}` });
+  }
   return accountSubdomain;
 }
 
@@ -455,15 +536,29 @@ export async function ensureQueueConsumer(
       return updated;
     }
   }
-  const created = await client.queues.consumers.create(input.queueId, {
-    account_id: input.accountId,
-    type: 'worker',
-    script_name: input.workerName,
-    dead_letter_queue: input.deadLetterQueueName,
-    settings,
-  });
-  input.steps.push({ name: 'queue-consumer', status: 'ok', message: `Created Queue consumer for ${input.workerName}.`, resourceId: created.consumer_id });
-  return created;
+  try {
+    const created = await client.queues.consumers.create(input.queueId, {
+      account_id: input.accountId,
+      type: 'worker',
+      script_name: input.workerName,
+      dead_letter_queue: input.deadLetterQueueName,
+      settings,
+    });
+    input.steps.push({ name: 'queue-consumer', status: 'ok', message: `Created Queue consumer for ${input.workerName}.`, resourceId: created.consumer_id });
+    return created;
+  } catch (error: unknown) {
+    const recovered = await findQueueConsumer(client, input.accountId, input.queueId, input.workerName);
+    if (!recovered?.consumer_id) throw error;
+    const updated = await client.queues.consumers.update(input.queueId, recovered.consumer_id, {
+      account_id: input.accountId,
+      type: 'worker',
+      script_name: input.workerName,
+      dead_letter_queue: input.deadLetterQueueName,
+      settings,
+    });
+    input.steps.push({ name: 'queue-consumer', status: 'ok', message: `Updated existing Queue consumer for ${input.workerName} after create retry: ${summarizeError(error)}`, resourceId: updated.consumer_id });
+    return updated;
+  }
 }
 
 async function ensureCnameRecord(
@@ -490,7 +585,160 @@ async function ensureCnameRecord(
     steps.push({ name: stepName, status: 'ok', message: `Updated CNAME ${hostname} -> ${target}.`, resourceId: updated.id });
     return updated;
   }
-  const created = await client.dns!.records.create(params);
-  steps.push({ name: stepName, status: 'ok', message: `Created CNAME ${hostname} -> ${target}.`, resourceId: created.id });
-  return created;
+  try {
+    const created = await client.dns!.records.create(params);
+    steps.push({ name: stepName, status: 'ok', message: `Created CNAME ${hostname} -> ${target}.`, resourceId: created.id });
+    return created;
+  } catch (error: unknown) {
+    const recovered = await findCnameRecord(client, zoneId, hostname);
+    if (!recovered?.id) throw error;
+    const updated = await client.dns!.records.update(recovered.id, params);
+    steps.push({ name: stepName, status: 'ok', message: `Updated existing CNAME ${hostname} -> ${target} after create retry: ${summarizeError(error)}`, resourceId: updated.id });
+    return updated;
+  }
+}
+
+async function findQueueByName(
+  client: CloudflareApiClient,
+  accountId: string,
+  queueName: string,
+): Promise<CloudflareQueueLike | undefined> {
+  for await (const queue of client.queues.list({ account_id: accountId })) {
+    if (queue.queue_name === queueName) return queue;
+  }
+  return undefined;
+}
+
+async function findKvNamespace(
+  client: CloudflareApiClient,
+  accountId: string,
+  namespaceName: string,
+  namespaceId: string,
+): Promise<CloudflareKvNamespaceLike | undefined> {
+  for await (const namespace of client.kv!.namespaces.list({ account_id: accountId })) {
+    if (namespace.title === namespaceName || (namespaceId && namespace.id === namespaceId)) return namespace;
+  }
+  return undefined;
+}
+
+function persistKvNamespace(
+  context: CloudflareProvisioningContext,
+  namespace: CloudflareKvNamespaceLike,
+  namespaceName: string,
+  persist: boolean,
+): void {
+  context.setConfig('cloudflare.kvNamespaceName', namespace.title ?? namespaceName, persist);
+  if (namespace.id) context.setConfig('cloudflare.kvNamespaceId', namespace.id, persist);
+}
+
+async function findR2BucketByName(
+  client: CloudflareApiClient,
+  accountId: string,
+  bucketName: string,
+): Promise<CloudflareR2BucketLike | undefined> {
+  const listed = (await client.r2!.buckets.list({ account_id: accountId })).buckets?.find((bucket) => bucket.name === bucketName);
+  if (listed) return listed;
+  if (!client.r2!.buckets.get) return undefined;
+  try {
+    const bucket = await client.r2!.buckets.get(bucketName, { account_id: accountId });
+    return bucket.name ? bucket : { ...bucket, name: bucketName };
+  } catch {
+    return undefined;
+  }
+}
+
+async function findSecretsStore(
+  client: CloudflareApiClient,
+  accountId: string,
+  storeName: string,
+  storeId: string,
+): Promise<CloudflareSecretsStoreLike | undefined> {
+  for await (const store of client.secretsStore!.stores.list({ account_id: accountId })) {
+    if (store.name === storeName || (storeId && store.id === storeId)) return store;
+  }
+  return undefined;
+}
+
+async function findRecoverableSecretsStore(
+  client: CloudflareApiClient,
+  accountId: string,
+  storeName: string,
+  storeId: string,
+  error: unknown,
+): Promise<CloudflareSecretsStoreLike | undefined> {
+  const stores = await collectAsync(client.secretsStore!.stores.list({ account_id: accountId }));
+  const exact = stores.find((store) => store.name === storeName || (storeId && store.id === storeId));
+  if (exact) return exact;
+  if (isMaximumStoresExceeded(error) && stores.length === 1) return stores[0];
+  return undefined;
+}
+
+function persistSecretsStore(
+  context: CloudflareProvisioningContext,
+  store: CloudflareSecretsStoreLike,
+  persist: boolean,
+): void {
+  context.setConfig('cloudflare.secretsStoreName', store.name, persist);
+  context.setConfig('cloudflare.secretsStoreId', store.id, persist);
+}
+
+function isMaximumStoresExceeded(error: unknown): boolean {
+  return summarizeError(error).toLowerCase().includes('maximum_stores_exceeded');
+}
+
+async function findTunnelByName(
+  client: CloudflareApiClient,
+  accountId: string,
+  tunnelName: string,
+): Promise<CloudflareTunnelLike | undefined> {
+  const api = client.zeroTrust!.tunnels!.cloudflared;
+  for await (const tunnel of api.list({ account_id: accountId, name: tunnelName, is_deleted: false })) {
+    if (tunnel.name === tunnelName) return tunnel;
+  }
+  return undefined;
+}
+
+type CloudflareAccessApi = NonNullable<NonNullable<CloudflareApiClient['zeroTrust']>['access']>;
+
+async function findAccessServiceTokenByName(
+  api: CloudflareAccessApi,
+  accountId: string,
+  name: string,
+): Promise<CloudflareAccessServiceTokenLike | undefined> {
+  for await (const token of api.serviceTokens.list({ account_id: accountId, name })) {
+    if (token.name === name) return token;
+  }
+  return undefined;
+}
+
+async function findAccessApplicationByDomain(
+  api: CloudflareAccessApi,
+  accountId: string,
+  domain: string,
+): Promise<CloudflareAccessApplicationLike | undefined> {
+  for await (const app of api.applications.list({ account_id: accountId, domain, exact: true })) {
+    if (app.domain === domain) return app;
+  }
+  return undefined;
+}
+
+async function findQueueConsumer(
+  client: CloudflareApiClient,
+  accountId: string,
+  queueId: string,
+  workerName: string,
+): Promise<CloudflareConsumerLike | undefined> {
+  for await (const consumer of client.queues.consumers.list(queueId, { account_id: accountId })) {
+    if (consumer.type === 'worker' && consumer.script === workerName) return consumer;
+  }
+  return undefined;
+}
+
+async function findCnameRecord(
+  client: CloudflareApiClient,
+  zoneId: string,
+  hostname: string,
+): Promise<CloudflareDnsRecordLike | undefined> {
+  const existing = await collectAsync(client.dns!.records.list({ zone_id: zoneId, type: 'CNAME', name: { exact: hostname } }));
+  return existing.find((record) => record.name === hostname && record.type === 'CNAME');
 }
