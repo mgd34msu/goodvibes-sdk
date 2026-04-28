@@ -96,8 +96,9 @@ describe('Home Graph knowledge spaces', () => {
   });
 
   test('exposes daemon routes for Home Graph clients', async () => {
-    const { service } = createHomeGraphService();
+    const { service, artifactStore } = createHomeGraphService();
     const routes = new HomeGraphRoutes({
+      artifactStore,
       homeGraphService: service,
       parseJsonBody: async (req) => await req.json() as Record<string, unknown>,
       parseOptionalJsonBody: async (req) => {
@@ -124,6 +125,67 @@ describe('Home Graph knowledge spaces', () => {
     expect(status.spaceId).toBe(homeAssistantKnowledgeSpaceId('house-1'));
     expect(status.nodeCount).toBeGreaterThanOrEqual(2);
   });
+
+  test('accepts native Home Assistant snake_case snapshot objects', async () => {
+    const { service, artifactStore } = createHomeGraphService();
+    const routes = new HomeGraphRoutes({
+      artifactStore,
+      homeGraphService: service,
+      parseJsonBody: async (req) => await req.json() as Record<string, unknown>,
+      parseOptionalJsonBody: async (req) => {
+        const text = await req.text();
+        return text ? JSON.parse(text) as Record<string, unknown> : {};
+      },
+      requireAdmin: () => null,
+    });
+
+    const syncResponse = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/sync', {
+      method: 'POST',
+      body: JSON.stringify({
+        installationId: 'house-1',
+        areas: [{ area_id: 'kitchen', name: 'Kitchen' }],
+        devices: [{ device_id: 'device-1', name: 'Kitchen Sensor', area_id: 'kitchen' }],
+        entities: [{
+          entity_id: 'binary_sensor.kitchen_motion',
+          device_id: 'device-1',
+          area_id: 'kitchen',
+          platform: 'zha',
+          attributes: { friendly_name: 'Kitchen Motion' },
+        }],
+      }),
+    }));
+    const browse = await service.browse({ installationId: 'house-1' });
+
+    expect(syncResponse?.status).toBe(200);
+    expect(browse.nodes.some((node) => node.title === 'Kitchen Motion')).toBe(true);
+    expect(browse.nodes.some((node) => readHomeAssistantEntityId(node.metadata) === 'binary_sensor.kitchen_motion')).toBe(true);
+    expect(browse.edges.some((edge) => edge.relation === 'belongs_to_device')).toBe(true);
+    expect(browse.edges.some((edge) => edge.relation === 'located_in')).toBe(true);
+  });
+
+  test('returns JSON errors for admin route failures', async () => {
+    const { artifactStore } = createHomeGraphService();
+    const routes = new HomeGraphRoutes({
+      artifactStore,
+      homeGraphService: {
+        syncSnapshot: async () => {
+          throw new TypeError('synthetic sync failure');
+        },
+      } as unknown as HomeGraphService,
+      parseJsonBody: async () => ({}),
+      parseOptionalJsonBody: async () => ({}),
+      requireAdmin: () => null,
+    });
+
+    const response = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/sync', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }));
+    const body = await response!.json() as { readonly error?: string };
+
+    expect(response?.status).toBe(400);
+    expect(body.error).toContain('synthetic sync failure');
+  });
 });
 
 function createHomeGraphService(): {
@@ -138,4 +200,11 @@ function createHomeGraphService(): {
   const artifactStore = new ArtifactStore({ rootDir: join(root, 'artifacts') });
   const service = new HomeGraphService(store, artifactStore);
   return { root, store, artifactStore, service };
+}
+
+function readHomeAssistantEntityId(metadata: Record<string, unknown>): string | undefined {
+  const homeAssistant = metadata.homeAssistant;
+  return homeAssistant && typeof homeAssistant === 'object' && !Array.isArray(homeAssistant)
+    ? (homeAssistant as { readonly entityId?: string }).entityId
+    : undefined;
 }

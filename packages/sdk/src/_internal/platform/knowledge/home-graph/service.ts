@@ -22,6 +22,7 @@ import {
   homeGraphSourceId,
   namespacedCanonicalUri,
   nodeKindForHomeGraphObject,
+  normalizeHomeGraphObjectInput,
   resolveHomeGraphSpace,
   scoreHomeGraphResults,
   targetToReference,
@@ -640,7 +641,9 @@ export class HomeGraphService {
       integrations: 0,
     };
     const upsertGroup = async (kind: Parameters<typeof buildHomeGraphNodeInput>[2], objects: readonly HomeGraphObjectInput[] | undefined) => {
-      for (const object of objects ?? []) {
+      let count = 0;
+      for (const rawObject of objects ?? []) {
+        const object = normalizeHomeGraphObjectInput(kind, rawObject);
         const nodeInput = buildHomeGraphNodeInput(spaceId, installationId, kind, object);
         const node = await this.store.upsertNode({ ...nodeInput, sourceId, confidence: 90 });
         await this.store.upsertEdge({
@@ -652,24 +655,18 @@ export class HomeGraphService {
           metadata: buildHomeGraphMetadata(spaceId, installationId),
         });
         await this.linkSnapshotObjectRelations(spaceId, installationId, node, object);
+        count += 1;
       }
+      return count;
     };
-    await upsertGroup('area', input.areas);
-    counts.areas = input.areas?.length ?? 0;
-    await upsertGroup('integration', input.integrations);
-    counts.integrations = input.integrations?.length ?? 0;
-    await upsertGroup('device', input.devices);
-    counts.devices = input.devices?.length ?? 0;
-    await upsertGroup('entity', input.entities);
-    counts.entities = input.entities?.length ?? 0;
-    await upsertGroup('automation', input.automations);
-    counts.automations = input.automations?.length ?? 0;
-    await upsertGroup('script', input.scripts);
-    counts.scripts = input.scripts?.length ?? 0;
-    await upsertGroup('scene', input.scenes);
-    counts.scenes = input.scenes?.length ?? 0;
-    await upsertGroup('label', input.labels);
-    counts.labels = input.labels?.length ?? 0;
+    counts.areas = await upsertGroup('area', input.areas);
+    counts.integrations = await upsertGroup('integration', input.integrations);
+    counts.devices = await upsertGroup('device', input.devices);
+    counts.entities = await upsertGroup('entity', input.entities);
+    counts.automations = await upsertGroup('automation', input.automations);
+    counts.scripts = await upsertGroup('script', input.scripts);
+    counts.scenes = await upsertGroup('scene', input.scenes);
+    counts.labels = await upsertGroup('label', input.labels);
     return counts;
   }
 

@@ -69,7 +69,7 @@ export interface HomeGraphSpaceInput {
 }
 
 export interface HomeGraphObjectInput {
-  readonly id: string;
+  readonly id?: string;
   readonly name?: string;
   readonly title?: string;
   readonly entityId?: string;
