@@ -514,6 +514,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     providerOptimizer,
     toolLLM,
     serviceRegistry,
+    secretsManager,
     sessionOrchestration,
     featureFlags,
     overflowHandler,

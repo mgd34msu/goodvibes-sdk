@@ -25,6 +25,7 @@ import type { KnowledgeService } from '../knowledge/index.js';
 import type { ArchetypeLoader } from './archetypes.js';
 import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
+import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 
 const MAX_TURNS = 50;
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000];
@@ -494,7 +495,7 @@ export async function runAgentTask(
               model: activeRoute.modelId,
               messages: conversation.getMessagesForLLM(),
               tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
-              systemPrompt,
+              systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(systemPrompt),
               ...(record.reasoningEffort ? { reasoningEffort: record.reasoningEffort } : {}),
               onDelta,
             });

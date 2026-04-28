@@ -2,8 +2,8 @@
  * conversation-message-routing.test.ts
  *
  * Tests for Problem-2 companion message routing:
- *   - kind='task' (default) preserves existing bindAgent behavior
- *   - kind='message' skips bindAgent, publishes conversation.followup.companion
+ *   - kind='message' (default) skips bindAgent, publishes conversation.followup.companion
+ *   - kind='task' preserves explicit bindAgent behavior
  *   - envelope shape is valid ConversationMessageEnvelope
  *   - unknown kind returns 400
  *   - envelope shape consistency between chat-mode and Problem-2
@@ -193,8 +193,8 @@ function makeContext(opts: {
 // Part D Tests
 // ---------------------------------------------------------------------------
 
-describe('message routing: kind=task (default) preserves existing behavior', () => {
-  test('POST without kind field calls bindAgent (spawn flow)', async () => {
+describe('message routing: kind=message default keeps normal chat out of agent/WRFC routing', () => {
+  test('POST without kind field does not call bindAgent', async () => {
     const sessionId = randomUUID();
     const sessions = new Map([[
       sessionId,
@@ -211,9 +211,31 @@ describe('message routing: kind=task (default) preserves existing behavior', () 
     );
     const res = await handlers.postSharedSessionMessage(sessionId, req);
     expect(res.status).toBe(202);
-    expect(bindAgentCallCount.value).toBe(1);
+    expect(bindAgentCallCount.value).toBe(0);
   });
 
+  test('POST without kind field returns the conversation route shape', async () => {
+    const sessionId = randomUUID();
+    const sessions = new Map([[
+      sessionId,
+      { id: sessionId, status: 'active', messageCount: 0 },
+    ]]);
+    const ctx = makeContext({ sessions });
+    const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
+    const req = makeRequest(
+      'POST',
+      `http://localhost/api/sessions/${sessionId}/messages`,
+      { body: 'Normal question', surfaceKind: 'tui', surfaceId: 'tui:main' },
+    );
+    const res = await handlers.postSharedSessionMessage(sessionId, req);
+    expect(res.status).toBe(202);
+    const body = await res.json() as { routedTo: string; sessionId: string };
+    expect(body.routedTo).toBe('conversation');
+    expect(body.sessionId).toBe(sessionId);
+  });
+});
+
+describe('message routing: kind=task preserves explicit spawn behavior', () => {
   test('POST with kind=task calls bindAgent', async () => {
     const sessionId = randomUUID();
     const sessions = new Map([[

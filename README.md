@@ -45,6 +45,9 @@ Alternate registry:
   caching, and failover.
 - **Agentic runtime** with sessions, turns, tools, agents, WRFC review/fix
   chains, compaction, session memory, and remote companion sessions.
+- **Runtime-aware tool context** so models can inspect redacted settings,
+  configured integrations, host/surface capabilities, provider/model state,
+  tool catalogs, and Cloudflare setup posture without leaking secrets.
 - **Knowledge/wiki system** with structured SQLite storage, knowledge spaces,
   URL/bookmark/file/artifact/browser-history ingest, Readability extraction,
   graph links, GraphQL, packets, projections, usage records, consolidation,

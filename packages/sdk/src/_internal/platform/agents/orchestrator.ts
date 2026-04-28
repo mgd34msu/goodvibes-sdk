@@ -63,6 +63,7 @@ type AgentOrchestratorToolDeps = {
   readonly providerOptimizer?: import('../providers/optimizer.js').ProviderOptimizer;
   readonly toolLLM?: ToolLLM;
   readonly serviceRegistry?: import('../config/service-registry.js').ServiceRegistry;
+  readonly secretsManager?: Pick<import('../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
   readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
   readonly overflowHandler?: import('@pellux/goodvibes-sdk/platform/tools/shared/overflow').OverflowHandler;
   readonly sandboxSessionRegistry: import('../runtime/sandbox/session-registry.js').SandboxSessionRegistry;

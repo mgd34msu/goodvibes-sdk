@@ -36,6 +36,7 @@ import {
   handleToolResponseOutcome,
   type ChatResponseWithReasoning,
 } from './orchestrator-turn-helpers.js';
+import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
 
@@ -218,7 +219,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         model: model.id,
         messages: context.conversation.getMessagesForLLM(),
         tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
-        systemPrompt: context.getSystemPrompt(),
+        systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(context.getSystemPrompt()),
         maxTokens: tokenLimits.maxOutputTokens,
         reasoningEffort: (() => {
           const configured = context.configManager.get('provider.reasoningEffort') as string | undefined;

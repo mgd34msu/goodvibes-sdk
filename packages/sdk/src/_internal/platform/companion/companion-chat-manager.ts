@@ -43,6 +43,7 @@ import type { PermissionManager } from '../permissions/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { HookEvent, HookResult } from '../hooks/types.js';
 import { executeToolCalls as executeOrchestratorToolCalls } from '../core/orchestrator-tool-runtime.js';
+import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 
 // ---------------------------------------------------------------------------
 // Minimal provider types (subset of the real ProviderRegistry interface)
@@ -520,7 +521,7 @@ export class CompanionChatManager {
 
       for (let round = 0; round < MAX_TOOL_ROUNDS_PER_TURN; round++) {
         const stream = this.provider.chatStream([...session.conversation.getMessagesForLLM()], {
-          systemPrompt: session.meta.systemPrompt,
+          systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(session.meta.systemPrompt),
           model: session.meta.model,
           provider: session.meta.provider,
           tools: toolDefinitions,

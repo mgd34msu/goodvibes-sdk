@@ -20,6 +20,8 @@ Source: `packages/sdk/src/_internal/platform/tools/`.
 | `analyze` | Analyze code and changes | impact, dependencies, dead code, security, diff, preview, upgrade, surface |
 | `inspect` | Inspect project shape | project, API, database, components, layout, accessibility, scaffold |
 | `agent` | Spawn and manage agents | spawn, batch-spawn, status, cancel, list, templates, get, budget, plan, wait, message, WRFC, cohorts |
+| `goodvibes_context` | Inspect the current GoodVibes harness safely | runtime summary, redacted config reads/schema, integrations, tool catalog, Cloudflare status/token requirements |
+| `goodvibes_settings` | Change GoodVibes settings through the config manager | set, reset with explicit confirmation; rejects raw credential persistence |
 | `state` | Store and inspect runtime state | get, set, list, clear, budget, context, memory, telemetry, hooks, mode, analytics |
 | `workflow` | Start and control workflows | start, status, transition, cancel, triggers, schedule |
 | `registry` | Discover skills/agents/tools | search, recommend, dependencies, preview, content |
@@ -44,8 +46,40 @@ config manager, provider registry, tool LLM resolver, sandbox session registry,
 session orchestration, working directory, and surface root.
 
 Optional collaborators enable web search, MCP, WRFC, remote runners, channel
-tools, overflow handling, change tracking, and service-backed credential
-resolution.
+tools, overflow handling, change tracking, service-backed credential
+resolution, and secret-aware integration status.
+
+## Runtime And Settings Awareness
+
+The SDK registers `goodvibes_context` and `goodvibes_settings` for all full
+tool runtimes, including TUI turns, companion remote chat, Home Assistant
+chat, ntfy remote chat, agents, and channel-backed surfaces.
+
+`goodvibes_context` is read-oriented. It lets the model inspect:
+
+- the host surface root, working directory, and daemon home directory
+- the current provider/model and provider/model catalog size
+- all config keys by key, category, or prefix, with schema metadata
+- configured channel surfaces, service registry posture, and available channel
+  tools
+- registered tool names and descriptions
+- Cloudflare status and token requirement guidance
+
+Credential-like values are always redacted. Sensitive keys report only whether
+a credential is configured and whether it is a `goodvibes://` secret reference
+or another credential-like value.
+
+`goodvibes_settings` is write-capable and permissioned as a write tool. It can
+set or reset scalar config keys through `ConfigManager`, requires
+`confirm: true`, and refuses raw token/secret/password values. Clients should
+store credentials through the secret system and set config keys to
+`goodvibes://` references.
+
+Every SDK-owned turn path adds a small harness-awareness system instruction
+that tells the model to call `goodvibes_context` before answering questions
+about local settings, configured integrations, host capabilities, tools,
+providers, or surfaces. The same instruction tells the model not to spawn
+agents or WRFC chains for ordinary questions or direct environment inspection.
 
 ## Contract Verification
 

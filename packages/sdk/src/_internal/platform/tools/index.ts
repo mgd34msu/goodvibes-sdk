@@ -44,9 +44,14 @@ import { CrossSessionTaskRegistry } from '../sessions/orchestration/index.js';
 import type { SandboxSessionRegistry } from '../runtime/sandbox/session-registry.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
+import type { SecretsManager } from '../config/secrets.js';
 import { OverflowHandler } from './shared/overflow.js';
 import type { SessionChangeTracker } from '../sessions/change-tracker.js';
 import type { ArchetypeLoader } from '../agents/archetypes.js';
+import {
+  createGoodVibesContextTool,
+  createGoodVibesSettingsTool,
+} from './goodvibes-runtime/index.js';
 
 type ToolContractFeatureFlags = Pick<FeatureFlagManager, 'isEnabled'>;
 
@@ -97,7 +102,8 @@ export function registerAllTools(
     providerRegistry?: ProviderRegistry;
     toolLLM?: ToolLLM;
     featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
-    serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null;
+    serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth' | 'getAll' | 'inspect'> | null;
+    secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
     overflowHandler?: OverflowHandler;
     changeTracker?: SessionChangeTracker;
   },
@@ -146,6 +152,20 @@ export function registerAllTools(
     registerToolWithContractGate(registry, tool, deps.featureFlags);
   };
 
+  registerTool(createGoodVibesContextTool({
+    configManager: deps.configManager,
+    providerRegistry: deps.providerRegistry,
+    toolRegistry: registry,
+    channelRegistry,
+    serviceRegistry: deps.serviceRegistry as Pick<ServiceRegistry, 'getAll' | 'inspect'> | null | undefined,
+    secretsManager: deps.secretsManager ?? null,
+    workingDirectory,
+    homeDirectory: deps.configManager.getHomeDirectory() ?? undefined,
+    surfaceRoot: deps.surfaceRoot,
+  }));
+  registerTool(createGoodVibesSettingsTool({
+    configManager: deps.configManager,
+  }));
   registerTool(new ReadTool(projectIndex, fileCache));
   registerTool(createWriteTool({
     projectRoot: workingDirectory,
