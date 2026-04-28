@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.26.1"
+    "version": "0.26.2"
   },
   "auth": {
     "modes": [
@@ -2281,7 +2281,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "artifacts.create",
         "title": "Create Artifact",
-        "description": "Store a file or attachment artifact for later delivery or analysis.",
+        "description": "Store a file or attachment artifact for later delivery, analysis, or knowledge ingest. JSON supports small inline bodies and daemon-local path/URI references; HTTP callers can also send multipart/form-data or a raw binary body for large uploads.",
         "category": "artifacts",
         "source": "builtin",
         "access": "authenticated",
@@ -2440,7 +2440,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": true,
+        "metadata": {
+          "uploadModes": [
+            "json-inline",
+            "json-path-or-uri",
+            "multipart-file",
+            "raw-body"
+          ],
+          "largeUploadConfigKey": "storage.artifacts.maxBytes"
+        }
       },
       {
         "id": "artifacts.get",
@@ -25882,7 +25891,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "homeassistant.homeGraph.ingestHomeGraphArtifact",
         "title": "Ingest Home Graph Artifact",
-        "description": "Index an artifact, document, receipt, warranty, manual, or photo into a Home Graph space.",
+        "description": "Index an existing artifact reference, JSON path/URI reference, multipart file upload, or raw binary upload as a Home Graph document, receipt, warranty, manual, or photo.",
         "category": "knowledge",
         "source": "builtin",
         "access": "admin",
@@ -26306,7 +26315,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": true
         },
-        "invokable": true
+        "invokable": true,
+        "metadata": {
+          "uploadModes": [
+            "json-artifact-reference",
+            "json-path-or-uri",
+            "multipart-file",
+            "raw-body"
+          ],
+          "largeUploadConfigKey": "storage.artifacts.maxBytes"
+        }
       },
       {
         "id": "homeassistant.homeGraph.ingestHomeGraphNote",
@@ -30652,7 +30670,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "knowledge.ingest.artifact",
         "title": "Ingest Artifact Into Knowledge",
-        "description": "Snapshot a local path, remote URI, or existing artifact into the structured knowledge store and run structured extraction.",
+        "description": "Snapshot an existing artifact, daemon-local path, remote URI, multipart file upload, or raw binary upload into the structured knowledge store and run structured extraction.",
         "category": "knowledge",
         "source": "builtin",
         "access": "admin",
@@ -30943,7 +30961,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": true
         },
-        "invokable": true
+        "invokable": true,
+        "metadata": {
+          "uploadModes": [
+            "json-artifact-reference",
+            "json-path-or-uri",
+            "multipart-file",
+            "raw-body"
+          ],
+          "largeUploadConfigKey": "storage.artifacts.maxBytes"
+        }
       },
       {
         "id": "knowledge.ingest.bookmarks",

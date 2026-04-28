@@ -57,6 +57,22 @@ export interface ArtifactCreateInput {
   readonly metadata?: Record<string, unknown>;
 }
 
+export interface ArtifactStreamCreateInput {
+  readonly stream:
+    | ReadableStream<Uint8Array>
+    | AsyncIterable<Uint8Array | Buffer | string>
+    | Iterable<Uint8Array | Buffer | string>;
+  readonly kind?: ArtifactKind;
+  readonly mimeType?: string;
+  readonly filename?: string;
+  readonly sourceUri?: string;
+  readonly sizeBytes?: number;
+  readonly retentionMs?: number;
+  readonly acquisitionMode?: ArtifactAcquisitionMode;
+  readonly fetchMode?: ArtifactFetchMode;
+  readonly metadata?: Record<string, unknown>;
+}
+
 export const EXTENSION_MIME_TYPES: Record<string, string> = {
   '.txt': 'text/plain',
   '.md': 'text/markdown',

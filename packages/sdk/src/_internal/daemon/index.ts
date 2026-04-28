@@ -87,6 +87,16 @@ export type {
   WebSearchTimeRange,
   WebSearchVerbosity,
 } from './media-route-types.js';
+export {
+  createArtifactFromUploadRequest,
+  isArtifactUploadRequest,
+  isJsonContentType,
+} from './artifact-upload.js';
+export type {
+  ArtifactStoreUploadLike,
+  ArtifactUploadFieldMap,
+  ArtifactUploadResult,
+} from './artifact-upload.js';
 export { createDaemonControlRouteHandlers } from './control-routes.js';
 export { createDaemonTelemetryRouteHandlers } from './telemetry-routes.js';
 export { createDaemonChannelRouteHandlers } from './channel-routes.js';

@@ -38,6 +38,7 @@ function homeGraphDescriptor(input: {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
   readonly write?: boolean;
+  readonly metadata?: Record<string, unknown>;
 }): GatewayMethodDescriptor {
   return methodDescriptor({
     id: input.id,
@@ -49,6 +50,7 @@ function homeGraphDescriptor(input: {
     http: { method: input.method, path: input.path },
     inputSchema: input.inputSchema,
     outputSchema: input.outputSchema,
+    ...(input.metadata ? { metadata: input.metadata } : {}),
   });
 }
 
@@ -113,7 +115,7 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
   homeGraphDescriptor({
     id: 'homeassistant.homeGraph.ingestHomeGraphArtifact',
     title: 'Ingest Home Graph Artifact',
-    description: 'Index an artifact, document, receipt, warranty, manual, or photo into a Home Graph space.',
+    description: 'Index an existing artifact reference, JSON path/URI reference, multipart file upload, or raw binary upload as a Home Graph document, receipt, warranty, manual, or photo.',
     method: 'POST',
     path: '/api/homeassistant/home-graph/ingest/artifact',
     write: true,
@@ -123,6 +125,10 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
       allowPrivateHosts: BOOLEAN_SCHEMA, metadata: METADATA_SCHEMA,
     }),
     outputSchema: HOME_GRAPH_INGEST_OUTPUT_SCHEMA,
+    metadata: {
+      uploadModes: ['json-artifact-reference', 'json-path-or-uri', 'multipart-file', 'raw-body'],
+      largeUploadConfigKey: 'storage.artifacts.maxBytes',
+    },
   }),
   homeGraphDescriptor({
     id: 'homeassistant.homeGraph.linkHomeGraphKnowledge',

@@ -78,6 +78,15 @@ wait between attempts to 30 seconds.
 
 See [Daemon batch processing](./daemon-batch-processing.md) for provider support, routes, and Worker bridge behavior.
 
+## Artifact Storage
+
+| Config key | Default | Notes |
+|------|---------|-------|
+| `storage.artifacts.maxBytes` | `536 870 912` | Maximum stored artifact size for JSON path/URI acquisition, direct multipart upload, and raw binary upload. |
+
+The default is `512 MiB`. JSON control bodies remain intentionally small; send
+large content through multipart or raw binary upload routes.
+
 ## Home Assistant Surface
 
 | Config key | Default | Notes |

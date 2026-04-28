@@ -60,9 +60,10 @@ Alternate registry:
   Objects, R2, Secrets Store, and verification.
 - **Batch processing** for opt-in provider Batch API usage through local or
   Cloudflare-backed queueing.
-- **Media, voice, and search** through artifact storage, multimodal analysis,
-  image understanding, generation, streaming TTS, STT, realtime voice sessions,
-  and provider-backed web search.
+- **Media, voice, and search** through artifact storage with JSON, multipart,
+  and raw binary upload paths, multimodal analysis, image understanding,
+  generation, streaming TTS, STT, realtime voice sessions, and provider-backed
+  web search.
 - **Security and operations** through permissions, feature gates, fetch
   protections, secret refs, policy tooling, health, telemetry, diagnostics,
   performance budgets, retention, services, watchers, and automation.

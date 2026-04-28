@@ -3,6 +3,7 @@ import type { DaemonApiRouteHandlers } from './context.js';
 import { resolvePrivateHostFetchOptions } from './http-policy.js';
 import { jsonErrorResponse } from './error-response.js';
 import { DaemonErrorCategory } from '../errors/index.js';
+import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
 import type {
   ArtifactKind,
   DaemonMediaRouteContext,
@@ -312,6 +313,12 @@ async function handleMediaAnalyze(context: DaemonMediaRouteContext, req: Request
 }
 
 async function handleArtifactCreate(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  if (isArtifactUploadRequest(req)) {
+    const uploaded = await createArtifactFromUploadRequest(context.artifactStore, req);
+    if (uploaded instanceof Response) return uploaded;
+    return Response.json({ artifact: uploaded.artifact }, { status: 201 });
+  }
+
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const privateHostFetchOptions = resolvePrivateHostFetchOptions(body.allowPrivateHosts, {

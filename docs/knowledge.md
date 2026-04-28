@@ -41,10 +41,25 @@ Current ingest paths:
 - `knowledge.ingest.bookmarks`: parse a browser bookmark export.
 - `knowledge.ingest.urls`: parse a URL-list file.
 - `knowledge.ingest.connector`: resolve a registered connector against inline or file-backed input.
-- `knowledge.ingest.artifact`: snapshot a path, remote URI, or existing artifact and run extraction.
+- `knowledge.ingest.artifact`: snapshot a path, remote URI, existing artifact,
+  multipart file upload, or raw binary upload and run extraction.
 - `knowledge.ingest.browserHistory`: index local browser history and bookmarks as metadata-first knowledge.
 - SDK API: `knowledge.ingest.*` on `createKnowledgeApi()`.
 - Service API: `KnowledgeService` methods including `syncBrowserHistory()`, URL/artifact ingest, connector ingest, bookmark import, and URL-list import.
+
+The daemon route `POST /api/knowledge/ingest/artifact` accepts normal JSON
+requests when the caller already has an `artifactId`, a daemon-local `path`, or
+a remote `uri`. It also accepts direct `multipart/form-data` or raw binary
+requests. Direct upload requests are stored as artifacts first, then the stored
+artifact id is passed into `KnowledgeService.ingestArtifact()`. This keeps the
+knowledge/wiki path useful for large manuals, PDFs, photos, website snapshots,
+and other inputs that should not be base64-encoded into JSON.
+
+Direct uploads share the artifact store limit from
+`storage.artifacts.maxBytes`, which defaults to `512 MiB`. JSON request bodies
+keep the daemon's normal small control-body cap; use multipart or raw binary for
+large content. Remote URL and daemon-local path acquisitions are streamed into
+the artifact store and enforce the same artifact cap before extraction.
 
 HTML extraction uses Mozilla Readability through `jsdom` first and falls back to
 the lightweight extractor for malformed or hostile HTML. Non-HTML extractors are

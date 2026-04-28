@@ -1,4 +1,9 @@
 import type { HomeGraphService } from '../../knowledge/index.js';
+import {
+  createArtifactFromUploadRequest,
+  isArtifactUploadRequest,
+  type ArtifactStoreUploadLike,
+} from '../../../daemon/artifact-upload.js';
 import type {
   HomeGraphAskInput,
   HomeGraphExport,
@@ -14,6 +19,7 @@ import type {
 type JsonRecord = Record<string, unknown>;
 
 interface HomeGraphRouteContext {
+  readonly artifactStore: ArtifactStoreUploadLike;
   readonly homeGraphService: HomeGraphService;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
   readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
@@ -67,7 +73,17 @@ export class HomeGraphRoutes {
         return this.admin(req, async () => Response.json(await this.context.homeGraphService.ingestNote(await this.readBody<HomeGraphIngestNoteInput>(req))));
       }
       if (url.pathname === '/api/homeassistant/home-graph/ingest/artifact' && req.method === 'POST') {
-        return this.admin(req, async () => Response.json(await this.context.homeGraphService.ingestArtifact(await this.readBody<HomeGraphIngestArtifactInput>(req))));
+        return this.admin(req, async () => {
+          if (isArtifactUploadRequest(req)) {
+            const uploaded = await createArtifactFromUploadRequest(this.context.artifactStore, req);
+            if (uploaded instanceof Response) return uploaded;
+            return Response.json(await this.context.homeGraphService.ingestArtifact({
+              ...uploaded.fields,
+              artifactId: uploaded.artifactId,
+            } as unknown as HomeGraphIngestArtifactInput));
+          }
+          return Response.json(await this.context.homeGraphService.ingestArtifact(await this.readBody<HomeGraphIngestArtifactInput>(req)));
+        });
       }
       if (url.pathname === '/api/homeassistant/home-graph/link' && req.method === 'POST') {
         return this.admin(req, async () => Response.json(await this.context.homeGraphService.linkKnowledge(await this.readBody<HomeGraphLinkInput>(req))));

@@ -87,7 +87,7 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/sync` | Sync entity/device/area/automation/script/scene/label/integration snapshots. |
 | `POST /api/homeassistant/home-graph/ingest/url` | Ingest a manual/product URL into the HA knowledge space. |
 | `POST /api/homeassistant/home-graph/ingest/note` | Store a note or "remember this about my house" fact. |
-| `POST /api/homeassistant/home-graph/ingest/artifact` | Ingest a document, photo, receipt, warranty, or existing artifact. |
+| `POST /api/homeassistant/home-graph/ingest/artifact` | Ingest an existing artifact, path/URI reference, multipart file upload, or raw binary upload as a document, photo, receipt, or warranty. |
 | `POST /api/homeassistant/home-graph/link` | Attach a source or fact to an HA object. |
 | `POST /api/homeassistant/home-graph/unlink` | Mark a source/object link inactive without deleting history. |
 | `POST /api/homeassistant/home-graph/ask` | Ask source-backed questions over only the HA knowledge space. |
@@ -116,6 +116,22 @@ not written into the default GoodVibes knowledge space. By default the SDK uses
 `homeassistant:<installationId>` as the `knowledgeSpaceId`, and every Home Graph
 source, node, edge, issue, extraction, projection artifact, and export carries
 that space metadata.
+
+`POST /api/homeassistant/home-graph/ingest/artifact` is not limited to JSON.
+The Home Assistant integration can forward uploads through its own authenticated
+frontend bridge without exposing the daemon token:
+
+- JSON for an existing `artifactId`, daemon-local `path`, or remote `uri`.
+- `multipart/form-data` with a `file` field plus `installationId`,
+  `knowledgeSpaceId`, `title`, `tags`, `target`, and JSON-encoded `metadata`
+  fields.
+- Raw binary with `Content-Type` set to the file MIME type and metadata passed
+  in query parameters or headers such as `X-GoodVibes-Filename`.
+
+The SDK stores the upload as an artifact first and then indexes it into the
+isolated Home Graph knowledge space. Large uploads share the global
+`storage.artifacts.maxBytes` cap, which defaults to `512 MiB`; clients should
+avoid JSON `dataBase64` for manuals, receipts, photos, and other large files.
 
 Supported Home Assistant node kinds:
 

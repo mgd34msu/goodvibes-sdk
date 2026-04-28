@@ -155,7 +155,7 @@ export const builtinGatewayMediaMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'artifacts.create',
     title: 'Create Artifact',
-    description: 'Store a file or attachment artifact for later delivery or analysis.',
+    description: 'Store a file or attachment artifact for later delivery, analysis, or knowledge ingest. JSON supports small inline bodies and daemon-local path/URI references; HTTP callers can also send multipart/form-data or a raw binary body for large uploads.',
     category: 'artifacts',
     scopes: ['write:artifacts'],
     http: { method: 'POST', path: '/api/artifacts' },
@@ -172,6 +172,10 @@ export const builtinGatewayMediaMethodDescriptors: readonly GatewayMethodDescrip
       metadata: METADATA_SCHEMA,
     }),
     outputSchema: ARTIFACT_ENTITY_OUTPUT_SCHEMA,
+    metadata: {
+      uploadModes: ['json-inline', 'json-path-or-uri', 'multipart-file', 'raw-body'],
+      largeUploadConfigKey: 'storage.artifacts.maxBytes',
+    },
   }),
   methodDescriptor({
     id: 'artifacts.get',

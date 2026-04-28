@@ -549,6 +549,7 @@ export class DaemonHttpRouter {
       }),
       ...createDaemonKnowledgeRouteHandlers({
         ...buildKnowledgeRouteContext({
+          artifactStore: this.context.artifactStore,
           configManager: this.context.configManager,
           inspectGraphqlAccess: inspectKnowledgeGraphqlAccess,
           normalizeAtSchedule,
@@ -601,6 +602,7 @@ export class DaemonHttpRouter {
   private getHomeGraphRoutes(): HomeGraphRoutes {
     if (!this.homeGraphRoutes) {
       this.homeGraphRoutes = new HomeGraphRoutes({
+        artifactStore: this.context.artifactStore,
         homeGraphService: this.context.homeGraphService,
         parseJsonBody: (request) => this.parseJsonBody(request),
         parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { classifyHostTrustTier, extractHostname } from '../tools/fetch/trust-tiers.js';
@@ -14,6 +14,7 @@ import type {
   ArtifactFetchMode,
   ArtifactRecord,
   ArtifactReference,
+  ArtifactStreamCreateInput,
 } from './types.js';
 import {
   guessMimeType,
@@ -36,10 +37,11 @@ export interface ArtifactStoreConfig {
   readonly allowPrivateHostFetches?: boolean;
 }
 
-const DEFAULT_ARTIFACT_MAX_BYTES = 10 * 1024 * 1024;
+const DEFAULT_ARTIFACT_MAX_BYTES = 512 * 1024 * 1024;
 const DEFAULT_ARTIFACT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const REMOTE_FETCH_MODES = new Set<ArtifactFetchMode>(['public-only', 'allow-private-hosts']);
+const STORAGE_ARTIFACT_MAX_BYTES_KEY = 'storage.artifacts.maxBytes' as ConfigKey;
 
 function resolveArtifactRootDir(config: ArtifactStoreConfig): string {
   const controlPlaneDir = typeof config.configManager?.getControlPlaneConfigDir === 'function'
@@ -69,6 +71,14 @@ function sanitizeRetentionMs(
   const candidate = Number.isFinite(requested) ? Number(requested) : defaultRetentionMs;
   if (candidate <= 0) return undefined;
   return Math.min(candidate, maxRetentionMs);
+}
+
+function readConfiguredArtifactMaxBytes(config: ArtifactStoreConfig): number {
+  const configured = config.configManager?.get?.(STORAGE_ARTIFACT_MAX_BYTES_KEY);
+  const candidate = typeof configured === 'number' && Number.isFinite(configured)
+    ? configured
+    : config.maxBytes;
+  return Math.max(1, candidate ?? DEFAULT_ARTIFACT_MAX_BYTES);
 }
 
 function filenameFromUrl(input: string): string | undefined {
@@ -142,6 +152,93 @@ function resolveArtifactIntent(input: ArtifactCreateInput): {
   };
 }
 
+function isWebReadableStream(
+  stream: ArtifactStreamCreateInput['stream'],
+): stream is ReadableStream<Uint8Array> {
+  return typeof (stream as ReadableStream<Uint8Array>).getReader === 'function';
+}
+
+function isAsyncIterable(
+  stream: ArtifactStreamCreateInput['stream'],
+): stream is AsyncIterable<Uint8Array | Buffer | string> {
+  return typeof (stream as AsyncIterable<Uint8Array | Buffer | string>)[Symbol.asyncIterator] === 'function';
+}
+
+async function* iterateWebStream(stream: ReadableStream<Uint8Array>): AsyncIterable<Uint8Array> {
+  const reader = stream.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) yield value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function streamToAsyncIterable(
+  stream: ArtifactStreamCreateInput['stream'],
+): AsyncIterable<Uint8Array | Buffer | string> {
+  if (isWebReadableStream(stream)) return iterateWebStream(stream);
+  if (isAsyncIterable(stream)) return stream;
+  return (async function* iterateSyncIterable(): AsyncIterable<Uint8Array | Buffer | string> {
+    for (const chunk of stream) yield chunk;
+  })();
+}
+
+function chunkToBuffer(chunk: Uint8Array | Buffer | string): Buffer {
+  return typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk);
+}
+
+async function waitForDrain(writer: ReturnType<typeof createWriteStream>): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = (): void => {
+      writer.off('drain', onDrain);
+      writer.off('error', onError);
+    };
+    const onDrain = (): void => {
+      cleanup();
+      resolve();
+    };
+    const onError = (error: Error): void => {
+      cleanup();
+      reject(error);
+    };
+    writer.once('drain', onDrain);
+    writer.once('error', onError);
+  });
+}
+
+async function finishWriter(writer: ReturnType<typeof createWriteStream>): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = (): void => {
+      writer.off('finish', onFinish);
+      writer.off('error', onError);
+    };
+    const onFinish = (): void => {
+      cleanup();
+      resolve();
+    };
+    const onError = (error: Error): void => {
+      cleanup();
+      reject(error);
+    };
+    writer.once('finish', onFinish);
+    writer.once('error', onError);
+    writer.end();
+  });
+}
+
+interface ResolvedArtifactInput {
+  readonly buffer?: Buffer;
+  readonly stream?: ArtifactStreamCreateInput['stream'];
+  readonly sizeBytes?: number;
+  readonly mimeType: string;
+  readonly filename: string;
+  readonly sourceUri?: string;
+}
+
 export class ArtifactStore {
   private readonly rootDir: string;
   private readonly records = new Map<string, ArtifactRecord>();
@@ -154,7 +251,7 @@ export class ArtifactStore {
 
   constructor(config: ArtifactStoreConfig) {
     this.rootDir = resolveArtifactRootDir(config);
-    this.maxBytes = Math.max(1, config.maxBytes ?? DEFAULT_ARTIFACT_MAX_BYTES);
+    this.maxBytes = readConfiguredArtifactMaxBytes(config);
     this.defaultRetentionMs = Math.max(0, config.defaultRetentionMs ?? DEFAULT_ARTIFACT_RETENTION_MS);
     this.maxRetentionMs = Math.max(this.defaultRetentionMs, config.maxRetentionMs ?? DEFAULT_MAX_RETENTION_MS);
     this.trustedHosts = [...(config.trustedHosts ?? [])];
@@ -167,6 +264,10 @@ export class ArtifactStore {
 
   get storagePath(): string {
     return this.rootDir;
+  }
+
+  getMaxBytes(): number {
+    return this.maxBytes;
   }
 
   list(limit = 100): ArtifactDescriptor[] {
@@ -201,32 +302,33 @@ export class ArtifactStore {
   async create(input: ArtifactCreateInput): Promise<ArtifactDescriptor> {
     const intent = resolveArtifactIntent(input);
     const resolved = await this.resolveInput(input, intent);
-    if (resolved.buffer.length > this.maxBytes) {
-      throw new Error(`Artifact exceeds the ${this.maxBytes}-byte limit.`);
-    }
+    return this.writeResolvedArtifact(input, intent, resolved);
+  }
+
+  async createFromStream(input: ArtifactStreamCreateInput): Promise<ArtifactDescriptor> {
     const id = `artifact-${randomUUID().slice(0, 8)}`;
-    const filename = sanitizeArtifactFilename(resolved.filename, 'artifact');
+    const filename = sanitizeArtifactFilename(input.filename, 'artifact');
     const contentPath = join(this.rootDir, `${id}.data`);
     const metadataPath = join(this.rootDir, `${id}.json`);
     const retentionMs = sanitizeRetentionMs(input.retentionMs, this.defaultRetentionMs, this.maxRetentionMs);
     await mkdir(this.rootDir, { recursive: true });
-    if (resolved.path) {
-      await copyFile(resolved.path, contentPath);
-    } else {
-      await writeFile(contentPath, resolved.buffer);
-    }
+    const { sizeBytes, sha256 } = await this.writeStreamContent({
+      contentPath,
+      stream: input.stream,
+      expectedSizeBytes: input.sizeBytes,
+    });
     const record: ArtifactRecord = {
       id,
-      kind: input.kind ?? inferArtifactKind(resolved.mimeType, filename),
-      mimeType: resolved.mimeType,
+      kind: input.kind ?? inferArtifactKind(normalizeMimeType(input.mimeType, filename), filename),
+      mimeType: normalizeMimeType(input.mimeType, filename),
       filename,
-      sizeBytes: resolved.buffer.length,
-      sha256: createHash('sha256').update(resolved.buffer).digest('hex'),
+      sizeBytes,
+      sha256,
       createdAt: Date.now(),
       ...(retentionMs ? { expiresAt: Date.now() + retentionMs } : {}),
-      ...(resolved.sourceUri ? { sourceUri: resolved.sourceUri } : {}),
-      acquisitionMode: intent.acquisitionMode,
-      fetchMode: intent.fetchMode,
+      ...(input.sourceUri ? { sourceUri: input.sourceUri } : {}),
+      acquisitionMode: input.acquisitionMode ?? 'inline-data',
+      fetchMode: input.fetchMode ?? 'not-applicable',
       metadata: input.metadata ?? {},
       contentPath,
       metadataPath,
@@ -234,6 +336,71 @@ export class ArtifactStore {
     await writeFile(metadataPath, `${JSON.stringify(record, null, 2)}\n`, 'utf-8');
     this.records.set(id, record);
     return this.toDescriptor(record);
+  }
+
+  private async writeResolvedArtifact(
+    input: ArtifactCreateInput,
+    intent: {
+      acquisitionMode: ArtifactAcquisitionMode;
+      fetchMode: ArtifactFetchMode;
+      allowPrivateHosts: boolean;
+    },
+    resolved: ResolvedArtifactInput,
+  ): Promise<ArtifactDescriptor> {
+    const streamInput = resolved.stream
+      ? {
+          stream: resolved.stream,
+          ...(typeof resolved.sizeBytes === 'number' ? { sizeBytes: resolved.sizeBytes } : {}),
+        }
+      : {
+          stream: [resolved.buffer ?? Buffer.alloc(0)],
+          ...(typeof resolved.buffer?.byteLength === 'number' ? { sizeBytes: resolved.buffer.byteLength } : {}),
+        };
+    return this.createFromStream({
+      ...streamInput,
+      ...(input.kind ? { kind: input.kind } : {}),
+      mimeType: resolved.mimeType,
+      filename: resolved.filename,
+      ...(resolved.sourceUri ? { sourceUri: resolved.sourceUri } : {}),
+      ...(typeof input.retentionMs === 'number' ? { retentionMs: input.retentionMs } : {}),
+      acquisitionMode: intent.acquisitionMode,
+      fetchMode: intent.fetchMode,
+      metadata: input.metadata ?? {},
+    });
+  }
+
+  private async writeStreamContent(input: {
+    readonly contentPath: string;
+    readonly stream: ArtifactStreamCreateInput['stream'];
+    readonly expectedSizeBytes?: number;
+  }): Promise<{ sizeBytes: number; sha256: string }> {
+    if (typeof input.expectedSizeBytes === 'number' && input.expectedSizeBytes > this.maxBytes) {
+      throw new Error(`Artifact exceeds the ${this.maxBytes}-byte limit.`);
+    }
+
+    const hash = createHash('sha256');
+    const writer = createWriteStream(input.contentPath, { flags: 'wx' });
+    let sizeBytes = 0;
+    try {
+      for await (const chunk of streamToAsyncIterable(input.stream)) {
+        const buffer = chunkToBuffer(chunk);
+        sizeBytes += buffer.byteLength;
+        if (sizeBytes > this.maxBytes) {
+          writer.destroy();
+          throw new Error(`Artifact exceeds the ${this.maxBytes}-byte limit.`);
+        }
+        hash.update(buffer);
+        if (!writer.write(buffer)) {
+          await waitForDrain(writer);
+        }
+      }
+      await finishWriter(writer);
+      return { sizeBytes, sha256: hash.digest('hex') };
+    } catch (error) {
+      writer.destroy();
+      rmSync(input.contentPath, { force: true });
+      throw error;
+    }
   }
 
   async toAttachment(
@@ -345,13 +512,7 @@ export class ArtifactStore {
       fetchMode: ArtifactFetchMode;
       allowPrivateHosts: boolean;
     },
-  ): Promise<{
-    buffer: Buffer;
-    mimeType: string;
-    filename: string;
-    path?: string;
-    sourceUri?: string;
-  }> {
+  ): Promise<ResolvedArtifactInput> {
     if (typeof input.dataBase64 === 'string') {
       const filename = sanitizeArtifactFilename(input.filename, 'artifact');
       return {
@@ -372,21 +533,21 @@ export class ArtifactStore {
     }
     if (typeof input.path === 'string' && input.path.trim().length > 0) {
       const normalizedPath = input.path.trim();
-      const buffer = await readFile(normalizedPath);
       const filename = sanitizeArtifactFilename(input.filename ?? basename(normalizedPath), 'artifact');
       let mimeType = input.mimeType;
       if (!mimeType) {
         const bunType = Bun.file(normalizedPath).type;
         mimeType = bunType && bunType.trim().length > 0 ? bunType : guessMimeType(filename);
       }
-      if (buffer.length > this.maxBytes) {
+      const fileStat = await stat(normalizedPath);
+      if (fileStat.size > this.maxBytes) {
         throw new Error(`Artifact exceeds the ${this.maxBytes}-byte limit.`);
       }
       return {
-        buffer,
+        stream: createReadStream(normalizedPath),
+        sizeBytes: fileStat.size,
         mimeType: normalizeMimeType(mimeType ?? 'application/octet-stream', filename),
         filename,
-        path: normalizedPath,
         ...(typeof input.sourceUri === 'string' && input.sourceUri.trim().length > 0 ? { sourceUri: input.sourceUri.trim() } : {}),
       };
     }
@@ -402,12 +563,7 @@ export class ArtifactStore {
     filenameOverride?: string,
     fetchMode: ArtifactFetchMode = 'public-only',
     allowPrivateHosts = false,
-  ): Promise<{
-    buffer: Buffer;
-    mimeType: string;
-    filename: string;
-    sourceUri: string;
-  }> {
+  ): Promise<ResolvedArtifactInput> {
     const parsed = new URL(uri);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       throw new Error(`Unsupported artifact URI scheme: ${parsed.protocol}`);
@@ -436,19 +592,24 @@ export class ArtifactStore {
       if (Number.isFinite(contentLength) && contentLength > this.maxBytes) {
         throw new Error(`Remote artifact exceeds the ${this.maxBytes}-byte limit.`);
       }
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      if (buffer.length > this.maxBytes) {
-        throw new Error(`Remote artifact exceeds the ${this.maxBytes}-byte limit.`);
-      }
       const filename = sanitizeArtifactFilename(
         filenameOverride
           ?? this.filenameFromContentDisposition(response.headers.get('content-disposition'))
           ?? filenameFromUrl(current),
         'artifact',
       );
+      if (!response.body) {
+        const arrayBuffer = await response.arrayBuffer();
+        return {
+          buffer: Buffer.from(arrayBuffer),
+          mimeType: normalizeMimeType(mimeTypeOverride ?? response.headers.get('content-type') ?? undefined, filename),
+          filename,
+          sourceUri: current,
+        };
+      }
       return {
-        buffer,
+        stream: response.body,
+        ...(Number.isFinite(contentLength) ? { sizeBytes: contentLength } : {}),
         mimeType: normalizeMimeType(mimeTypeOverride ?? response.headers.get('content-type') ?? undefined, filename),
         filename,
         sourceUri: current,
