@@ -1,7 +1,7 @@
 {
   "name": "goodvibes-sdk",
   "private": true,
-  "version": "0.25.21",
+  "version": "0.26.0",
   "type": "module",
   "packageManager": "bun@1.3.10",
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",

@@ -10,6 +10,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
+- none
+
+### Fixed
+- none
+
+### Migration
+- none
+
+---
+
+## [0.26.0] - 2026-04-27
+
+### Breaking
+- none
+
+### Added
 - Browser-local knowledge ingestion. The SDK can discover supported Chromium,
   Gecko, and WebKit browser profiles, read history/bookmark data through locked
   SQLite snapshots or bookmark files, fold entries by canonical URL, and store
