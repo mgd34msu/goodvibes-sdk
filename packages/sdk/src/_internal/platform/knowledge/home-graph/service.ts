@@ -24,7 +24,6 @@ import {
   nodeKindForHomeGraphObject,
   normalizeHomeGraphObjectInput,
   resolveHomeGraphSpace,
-  scoreHomeGraphResults,
   targetToReference,
   uniqueStrings,
 } from './helpers.js';
@@ -44,6 +43,10 @@ import {
   renderPacketPage,
   renderRoomPage,
 } from './rendering.js';
+import {
+  readHomeGraphSearchState,
+  scoreHomeGraphResults,
+} from './search.js';
 import type {
   HomeGraphAskInput, HomeGraphAskResult, HomeGraphDevicePassportResult, HomeGraphExport,
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
@@ -241,12 +244,12 @@ export class HomeGraphService {
   async ask(input: HomeGraphAskInput): Promise<HomeGraphAskResult> {
     await this.store.init();
     const { spaceId } = resolveHomeGraphSpace(input);
-    const state = readHomeGraphState(this.store, spaceId);
+    const state = readHomeGraphSearchState(this.store, spaceId);
     const results = scoreHomeGraphResults(
       input.query,
       state.sources,
       state.nodes,
-      (sourceId) => this.store.getExtractionBySourceId(sourceId),
+      (sourceId) => state.extractionBySourceId.get(sourceId),
       input.limit ?? 8,
     );
     const sources = results.flatMap((result) => result.source ? [result.source] : []);

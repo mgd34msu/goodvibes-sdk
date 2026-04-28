@@ -5,7 +5,6 @@ import type {
   KnowledgeNodeRecord,
   KnowledgeReferenceKind,
   KnowledgeIssueUpsertInput,
-  KnowledgeSourceRecord,
 } from '../types.js';
 import {
   getKnowledgeSpaceId,
@@ -20,7 +19,6 @@ import type {
   HomeGraphNodeKind,
   HomeGraphObjectInput,
   HomeGraphObjectKind,
-  HomeGraphSearchResult,
   HomeGraphSpaceInput,
 } from './types.js';
 
@@ -181,60 +179,6 @@ export function edgeIsActive(edge: KnowledgeEdgeRecord): boolean {
 
 export function belongsToSpace(record: { readonly metadata?: Record<string, unknown> } | undefined | null, spaceId: string): boolean {
   return record ? getKnowledgeSpaceId(record) === normalizeKnowledgeSpaceId(spaceId) : false;
-}
-
-export function scoreHomeGraphResults(
-  query: string,
-  sources: readonly KnowledgeSourceRecord[],
-  nodes: readonly KnowledgeNodeRecord[],
-  extractionBySourceId: (sourceId: string) => { readonly summary?: string; readonly excerpt?: string; readonly sections: readonly string[] } | null,
-  limit: number,
-): HomeGraphSearchResult[] {
-  const tokens = tokenize(query);
-  if (tokens.length === 0) return [];
-  const sourceResults = sources.map((source) => {
-    const extraction = extractionBySourceId(source.id);
-    const haystack = [
-      source.title ?? '',
-      source.summary ?? '',
-      source.description ?? '',
-      source.sourceUri ?? '',
-      source.tags.join(' '),
-      extraction?.summary ?? '',
-      extraction?.excerpt ?? '',
-      extraction?.sections.join(' ') ?? '',
-    ].join(' ').toLowerCase();
-    const baseScore = scoreHaystack(haystack, tokens);
-    return {
-      kind: 'source' as const,
-      id: source.id,
-      score: baseScore > 0 ? baseScore + (extraction ? 8 : 0) : 0,
-      title: source.title ?? source.sourceUri ?? source.id,
-      summary: extraction?.summary ?? source.summary,
-      source,
-    };
-  });
-  const nodeResults = nodes.map((node) => {
-    const haystack = [
-      node.title,
-      node.summary ?? '',
-      node.aliases.join(' '),
-      JSON.stringify(node.metadata),
-    ].join(' ').toLowerCase();
-    const baseScore = scoreHaystack(haystack, tokens);
-    return {
-      kind: 'node' as const,
-      id: node.id,
-      score: baseScore > 0 ? baseScore + Math.round(node.confidence / 20) : 0,
-      title: node.title,
-      summary: node.summary,
-      node,
-    };
-  });
-  return [...sourceResults, ...nodeResults]
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
-    .slice(0, Math.max(1, limit));
 }
 
 export function targetToReference(target: HomeGraphKnowledgeTarget): {
@@ -418,12 +362,4 @@ function buildObjectSummary(object: HomeGraphObjectInput): string | undefined {
     object.integrationId ? `integration ${object.integrationId}` : undefined,
   ]);
   return parts.length > 0 ? parts.join(' - ') : undefined;
-}
-
-function tokenize(value: string): string[] {
-  return value.toLowerCase().split(/[^a-z0-9_.:-]+/).map((entry) => entry.trim()).filter(Boolean);
-}
-
-function scoreHaystack(haystack: string, tokens: readonly string[]): number {
-  return tokens.reduce((score, token) => score + (haystack.includes(token) ? 10 : 0), 0);
 }

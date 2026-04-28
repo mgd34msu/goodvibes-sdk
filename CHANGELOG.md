@@ -20,6 +20,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.7] - 2026-04-28
+
+### Breaking
+- none
+
+### Added
+- Text-bearing knowledge extractors now persist bounded
+  `structure.searchText` so large manuals, PDFs, website snapshots, and office
+  documents can be searched beyond their short summary/excerpt fields without
+  unbounded document scans.
+
+### Fixed
+- Home Graph ask now uses a lightweight namespace-filtered search state,
+  batches extraction lookup by source id, and scores bounded fields instead of
+  loading full Home Graph state and rescanning extractions per source. This
+  prevents daemon request timeouts when Home Assistant graph questions search
+  large uploaded manuals.
+
+### Migration
+- Existing Home Graph manuals or documents ingested before this release may
+  need reingest or reindex before deep document content is available through
+  the new searchable extraction text.
+
+---
+
 ## [0.26.6] - 2026-04-28
 
 ### Breaking

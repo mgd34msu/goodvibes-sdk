@@ -146,6 +146,15 @@ isolated Home Graph knowledge space. Large uploads share the global
 `storage.artifacts.maxBytes` cap, which defaults to `512 MiB`; clients should
 avoid JSON `dataBase64` for manuals, receipts, photos, and other large files.
 
+`POST /api/homeassistant/home-graph/ask` uses a lightweight Home Graph search
+state instead of loading full issue/export state. It batches extraction lookup
+by source id and scores bounded fields, capped extraction sections, and
+`structure.searchText` when present. Current text, HTML, JSON, CSV/TSV, XML,
+YAML, DOCX, XLSX, PPTX, and PDF extraction paths persist capped searchable text
+for future ingests. Older manual ingests that predate searchable extraction
+text may need reingest or a knowledge reindex before deep manual details can
+answer Home Graph questions.
+
 Supported Home Assistant node kinds:
 
 - `ha_home`
