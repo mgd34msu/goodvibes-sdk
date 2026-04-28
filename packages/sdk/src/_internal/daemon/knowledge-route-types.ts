@@ -1,4 +1,6 @@
 // Synced from packages/daemon-sdk/src/knowledge-route-types.ts
+import type { ArtifactStoreUploadLike } from './artifact-upload.js';
+
 export type AutomationScheduleDefinition = unknown;
 export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue';
 export type KnowledgeUsageKind = string;
@@ -104,6 +106,7 @@ export interface KnowledgeServiceLike {
 }
 
 export interface DaemonKnowledgeRouteContext {
+  readonly artifactStore: ArtifactStoreUploadLike;
   readonly configManager: { get(key: string): unknown };
   readonly inspectGraphqlAccess: (
     query: string,

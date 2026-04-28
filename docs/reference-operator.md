@@ -2095,7 +2095,7 @@ Return the raw content bytes for a stored artifact.
 
 #### `artifacts.create`
 
-Store a file or attachment artifact for later delivery or analysis.
+Store a file or attachment artifact for later delivery, analysis, or knowledge ingest. JSON supports small inline bodies and daemon-local path/URI references; HTTP callers can also send multipart/form-data or a raw binary body for large uploads.
 
 - Title: `Create Artifact`
 - Source: `builtin`
@@ -26039,7 +26039,7 @@ Restore a Home Graph knowledge space export into the current daemon knowledge st
 
 #### `homeassistant.homeGraph.ingestHomeGraphArtifact`
 
-Index an artifact, document, receipt, warranty, manual, or photo into a Home Graph space.
+Index an existing artifact reference, JSON path/URI reference, multipart file upload, or raw binary upload as a Home Graph document, receipt, warranty, manual, or photo.
 
 - Title: `Ingest Home Graph Artifact`
 - Source: `builtin`
@@ -30893,7 +30893,7 @@ Return the SDL for the dedicated knowledge GraphQL endpoint.
 
 #### `knowledge.ingest.artifact`
 
-Snapshot a local path, remote URI, or existing artifact into the structured knowledge store and run structured extraction.
+Snapshot an existing artifact, daemon-local path, remote URI, multipart file upload, or raw binary upload into the structured knowledge store and run structured extraction.
 
 - Title: `Ingest Artifact Into Knowledge`
 - Source: `builtin`

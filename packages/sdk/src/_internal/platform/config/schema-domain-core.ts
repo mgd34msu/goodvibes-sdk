@@ -31,6 +31,9 @@ export const coreConfigDefaults = {
   },
   storage: {
     secretPolicy: 'preferred_secure',
+    artifacts: {
+      maxBytes: 512 * 1024 * 1024,
+    },
   },
   permissions: {
     mode: 'prompt',
@@ -257,6 +260,13 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     default: 'preferred_secure',
     description: 'Secret persistence policy: plaintext allowed, preferred secure, or require secure',
     enumValues: ['plaintext_allowed', 'preferred_secure', 'require_secure'],
+  },
+  {
+    key: 'storage.artifacts.maxBytes',
+    type: 'number',
+    default: 512 * 1024 * 1024,
+    description: 'Maximum stored artifact size for file, URL, multipart, and raw upload ingest in bytes',
+    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 * 1024 * 1024 && v <= 10 * 1024 * 1024 * 1024,
   },
   {
     key: 'permissions.mode',

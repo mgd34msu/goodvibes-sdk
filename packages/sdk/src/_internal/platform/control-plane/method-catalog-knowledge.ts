@@ -194,7 +194,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'knowledge.ingest.artifact',
     title: 'Ingest Artifact Into Knowledge',
-    description: 'Snapshot a local path, remote URI, or existing artifact into the structured knowledge store and run structured extraction.',
+    description: 'Snapshot an existing artifact, daemon-local path, remote URI, multipart file upload, or raw binary upload into the structured knowledge store and run structured extraction.',
     category: 'knowledge',
     scopes: ['write:knowledge'],
     access: 'admin',
@@ -213,6 +213,10 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       metadata: METADATA_SCHEMA,
     }),
     outputSchema: KNOWLEDGE_INGEST_RESULT_SCHEMA,
+    metadata: {
+      uploadModes: ['json-artifact-reference', 'json-path-or-uri', 'multipart-file', 'raw-body'],
+      largeUploadConfigKey: 'storage.artifacts.maxBytes',
+    },
   }),
   methodDescriptor({
     id: 'knowledge.ingest.browserHistory',

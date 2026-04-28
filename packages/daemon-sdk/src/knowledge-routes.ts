@@ -5,6 +5,7 @@ import {
 } from './http-policy.js';
 import { GoodVibesSdkError, DaemonErrorCategory } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
+import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
 import type {
   AutomationScheduleDefinition,
   DaemonKnowledgeRouteContext,
@@ -405,6 +406,20 @@ async function handleKnowledgeIngestUrl(context: DaemonKnowledgeRouteContext, re
 async function handleKnowledgeIngestArtifact(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
   const admin = context.requireAdmin(request);
   if (admin) return admin;
+
+  if (isArtifactUploadRequest(request)) {
+    const uploaded = await createArtifactFromUploadRequest(context.artifactStore, request);
+    if (uploaded instanceof Response) return uploaded;
+    try {
+      return Response.json(await context.knowledgeService.ingestArtifact({
+        ...uploaded.fields,
+        artifactId: uploaded.artifactId,
+      }), { status: 201 });
+    } catch (error) {
+      return jsonErrorResponse(error, { status: 400 });
+    }
+  }
+
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
   const privateHostFetchOptions = buildKnowledgePrivateHostFetchOptions(context, body.allowPrivateHosts);

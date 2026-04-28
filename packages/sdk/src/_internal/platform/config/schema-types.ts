@@ -370,6 +370,9 @@ export interface GoodVibesConfig {
   };
   storage: {
     secretPolicy: 'plaintext_allowed' | 'preferred_secure' | 'require_secure'; // default: 'preferred_secure'
+    artifacts: {
+      maxBytes: number;          // default: 512 MiB
+    };
   };
   permissions: {
     mode: PermissionMode;       // default: 'prompt'
@@ -489,6 +492,7 @@ export type ConfigKey =
   | 'behavior.returnContextMode'
   | 'behavior.guidanceMode'
   | 'storage.secretPolicy'
+  | 'storage.artifacts.maxBytes'
   | 'permissions.mode'
   | 'permissions.tools.read'
   | 'permissions.tools.write'
@@ -745,6 +749,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'behavior.returnContextMode' ? 'off' | 'local' | 'assisted' :
   K extends 'behavior.guidanceMode' ? 'off' | 'minimal' | 'guided' :
   K extends 'storage.secretPolicy' ? 'plaintext_allowed' | 'preferred_secure' | 'require_secure' :
+  K extends 'storage.artifacts.maxBytes' ? number :
   K extends 'permissions.mode' ? PermissionMode :
   K extends 'permissions.tools.read' ? PermissionAction :
   K extends 'permissions.tools.write' ? PermissionAction :

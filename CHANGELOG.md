@@ -20,6 +20,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.2] - 2026-04-28
+
+### Breaking
+- none
+
+### Added
+- Streaming artifact ingestion for large files. `POST /api/artifacts`,
+  `POST /api/knowledge/ingest/artifact`, and
+  `POST /api/homeassistant/home-graph/ingest/artifact` now accept multipart
+  file uploads and raw binary request bodies in addition to JSON references.
+- `storage.artifacts.maxBytes` configures artifact storage size limits. The
+  default is now `512 MiB`, with schema validation up to `10 GiB`.
+
+### Fixed
+- Artifact creation from daemon-local paths and remote URIs now streams into the
+  artifact store instead of reading the whole file into memory before writing.
+- Knowledge and Home Graph artifact ingest no longer require large PDFs,
+  photos, website snapshots, or other binary inputs to be base64 encoded inside
+  JSON control bodies.
+
+### Migration
+- Existing JSON artifact calls continue to work. Clients sending large content
+  should switch to multipart or raw binary upload bodies and tune
+  `storage.artifacts.maxBytes` for their host's disk and memory budget.
+
+---
+
 ## [0.26.1] - 2026-04-27
 
 ### Breaking

@@ -206,6 +206,7 @@ export function buildSystemRouteContext(input: {
 }
 
 export function buildKnowledgeRouteContext(input: {
+  readonly artifactStore: ArtifactStore;
   readonly configManager: ConfigManager;
   readonly inspectGraphqlAccess: DaemonKnowledgeRouteContext['inspectGraphqlAccess'];
   readonly normalizeAtSchedule: DaemonKnowledgeRouteContext['normalizeAtSchedule'];
@@ -220,6 +221,7 @@ export function buildKnowledgeRouteContext(input: {
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;
 }): DaemonKnowledgeRouteContext {
   return {
+    artifactStore: input.artifactStore,
     configManager: input.configManager,
     inspectGraphqlAccess: input.inspectGraphqlAccess,
     normalizeAtSchedule: input.normalizeAtSchedule,
