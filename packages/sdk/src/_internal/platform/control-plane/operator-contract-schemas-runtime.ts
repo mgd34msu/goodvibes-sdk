@@ -166,6 +166,12 @@ export const SHARED_SESSION_CREATE_OUTPUT_SCHEMA = objectSchema({
   session: SHARED_SESSION_RECORD_SCHEMA,
 }, ['session']);
 
+export const SHARED_SESSION_CONVERSATION_ROUTE_OUTPUT_SCHEMA = objectSchema({
+  messageId: STRING_SCHEMA,
+  routedTo: STRING_SCHEMA,
+  sessionId: STRING_SCHEMA,
+}, ['messageId', 'routedTo', 'sessionId']);
+
 export const SHARED_SESSION_MESSAGE_CREATE_OUTPUT_SCHEMA = objectSchema({
   session: nullableSchema(SHARED_SESSION_RECORD_SCHEMA),
   message: SHARED_SESSION_MESSAGE_SCHEMA,
@@ -173,6 +179,13 @@ export const SHARED_SESSION_MESSAGE_CREATE_OUTPUT_SCHEMA = objectSchema({
   mode: SHARED_SESSION_MESSAGE_MODE_SCHEMA,
   agentId: nullableSchema(STRING_SCHEMA),
 }, ['session', 'message', 'input', 'mode', 'agentId']);
+
+export const SHARED_SESSION_MESSAGE_ROUTE_OUTPUT_SCHEMA = {
+  anyOf: [
+    SHARED_SESSION_CONVERSATION_ROUTE_OUTPUT_SCHEMA,
+    SHARED_SESSION_MESSAGE_CREATE_OUTPUT_SCHEMA,
+  ],
+} as const;
 
 const TASK_RETRY_POLICY_SCHEMA = objectSchema({
   maxAttempts: NUMBER_SCHEMA,

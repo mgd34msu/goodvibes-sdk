@@ -9,7 +9,9 @@ messages surfaced through `conversation.followup.companion` and the runtime
 A companion process may inject a message into the operator's live session
 without spawning WRFC or agent work. This is called a companion main-chat
 message. The SDK routes these through `POST /api/sessions/:sessionId/messages`
-with `kind: 'message'` in the request body.
+with `kind: 'message'` in the request body. If `kind` is omitted, the SDK now
+uses the same conversation route. Callers that want agent/task behavior must
+send `kind: 'task'` explicitly.
 
 The message is not an agent task. It is appended to the target session and
 emitted as `COMPANION_MESSAGE_RECEIVED`; a TUI that wants live companion chat
@@ -34,7 +36,9 @@ Response:
 - No agent is spawned.
 - The live TUI should treat the event as operator chat and start a normal LLM
   turn.
-- The `kind` field defaults to `'task'` when omitted, preserving existing behavior.
+- The `kind` field defaults to `'message'` when omitted.
+- `kind: 'task'` explicitly routes through the session broker and can spawn an
+  agent/WRFC continuation.
 - `kind: 'followup'` explicitly queues a session follow-up through the broker.
 - Unknown `kind` values return `400 INVALID_KIND`.
 

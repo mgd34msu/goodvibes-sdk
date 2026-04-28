@@ -20,6 +20,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.1] - 2026-04-27
+
+### Breaking
+- `POST /api/sessions/:id/messages` now defaults omitted `kind` to
+  `message`, not `task`. This keeps ordinary shared-session messages in the
+  conversation path and prevents accidental agent/WRFC spawning. Callers that
+  intentionally want task/agent continuation must send `kind: "task"`.
+
+### Added
+- Added the SDK-owned `goodvibes_context` tool for every full tool runtime.
+  It exposes redacted runtime/harness context, config reads and schema,
+  provider/model posture, channel/surface status, registered tool catalog,
+  Cloudflare status, and Cloudflare token requirements to TUI, companion chat,
+  Home Assistant, ntfy, agents, and other surfaces.
+- Added the SDK-owned `goodvibes_settings` tool for validated setting changes.
+  It requires `confirm: true`, uses `ConfigManager`, is permissioned as a
+  write tool, and rejects raw credential persistence in favor of
+  `goodvibes://` secret references.
+- Added a shared harness-awareness system prompt supplement for orchestrator,
+  companion-chat, Home Assistant remote chat, ntfy remote chat, and agent
+  turns. It tells models to inspect settings/capabilities through
+  `goodvibes_context` and not to spawn agents or WRFC chains for ordinary
+  questions, environment inspection, or direct research.
+- Added `homeassistant_automations` as a direct Home Assistant chat/agent tool
+  alias for listing automation entities without requiring the model to infer
+  the `automation` domain filter.
+
+### Fixed
+- Shared-session messages without an explicit `kind` no longer fall through to
+  `sessionBroker.submitMessage()` and accidental agent binding.
+- Models can now answer questions about configured SDK/TUI/daemon/surface
+  settings by calling a redacted runtime context tool instead of guessing from
+  static prompt text.
+
+### Migration
+- Surface clients should omit `kind` or send `kind: "message"` for normal chat
+  turns. Send `kind: "task"` only when agent/WRFC task continuation is desired.
+- Hosts that expose setting changes to models should keep credential writes in
+  the secret store and set config keys to `goodvibes://` references.
+
+---
+
 ## [0.26.0] - 2026-04-27
 
 ### Breaking

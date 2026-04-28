@@ -385,6 +385,7 @@ turns. Side-effecting tools are intentionally explicit.
 | `homeassistant_manifest` | `homeassistant-manifest` | no | Returns daemon/device setup contract. |
 | `homeassistant_status` | `homeassistant-status` | no | Checks configured HA API reachability and token posture. |
 | `homeassistant_states` | `homeassistant-list-states` | no | Lists entity states with optional `domain`, `query`, and `limit`. |
+| `homeassistant_automations` | `homeassistant-list-automations` | no | Lists automation entities without requiring the model to remember the `automation` domain filter. |
 | `homeassistant_state` | `homeassistant-get-state` | no | Reads one entity state. |
 | `homeassistant_services` | `homeassistant-list-services` | no | Lists callable Home Assistant services. |
 | `homeassistant_call_service` | `homeassistant-call-service` | yes | Calls a service such as `light.turn_on`. |

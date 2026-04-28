@@ -53,9 +53,11 @@ const TOOL_CATEGORIES: Record<string, PermissionCategory> = {
   inspect: 'read',
   state: 'read',
   registry: 'read',
+  goodvibes_context: 'read',
   // write — new tool names
   write: 'write',
   edit: 'write',
+  goodvibes_settings: 'write',
   // execute — new tool name
   exec: 'execute',
   // delegate — new tool names
@@ -79,6 +81,8 @@ const TOOL_CONFIG_KEYS: Record<string, keyof PermissionsToolConfig> = {
   state: 'state',
   workflow: 'workflow',
   registry: 'registry',
+  goodvibes_context: 'state',
+  goodvibes_settings: 'write',
   delegate: 'delegate',
   mcp: 'mcp',
 };

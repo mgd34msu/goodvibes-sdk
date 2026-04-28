@@ -22,6 +22,14 @@ provider/model, checks context limits, builds prompt context, streams provider
 deltas, executes requested tools, reconciles unresolved tool calls, records
 usage, emits runtime events, and performs post-turn context maintenance.
 
+All SDK-owned turn paths append a small harness-awareness instruction to the
+system prompt. The instruction tells the model to use `goodvibes_context`
+before answering questions about GoodVibes settings, configured integrations,
+host capabilities, surfaces, provider/model state, or available tools. It also
+tells the model not to spawn agents or WRFC chains for ordinary questions,
+environment inspection, or direct research that can be answered in the current
+turn with tools.
+
 Important pieces:
 
 - `ConversationManager` stores the conversation messages for a session.
@@ -46,6 +54,11 @@ from isolated remote sessions:
   inactivity TTL.
 - ntfy remote chat uses daemon-owned remote chat while ntfy chat-to-TUI uses
   the active shared session.
+
+`POST /api/sessions/:id/messages` defaults to normal conversation routing when
+`kind` is omitted. This keeps shared-session messages from becoming agent/WRFC
+work accidentally. Callers must send `kind: "task"` when they intentionally
+want session-broker task continuation and possible agent spawning.
 
 ## Agents
 

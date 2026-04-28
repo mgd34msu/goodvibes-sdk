@@ -259,8 +259,9 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
 
-  // Validate kind field — 'task' (default), 'message', and 'followup' are accepted
-  const kind = body.kind === undefined ? 'task' : body.kind;
+  // Validate kind field. Ordinary session messages default to conversation
+  // routing; callers must explicitly opt into kind='task' for agent/WRFC work.
+  const kind = body.kind === undefined ? 'message' : body.kind;
   if (kind !== 'task' && kind !== 'message' && kind !== 'followup') {
     return Response.json(
       { error: `Invalid kind '${String(kind)}'. Accepted values: 'task' | 'message' | 'followup'`, code: 'INVALID_KIND' },

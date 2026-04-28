@@ -34,6 +34,7 @@ import {
   SHARED_SESSION_CREATE_OUTPUT_SCHEMA,
   SHARED_SESSION_INPUT_RECORD_SCHEMA,
   SHARED_SESSION_MESSAGE_CREATE_OUTPUT_SCHEMA,
+  SHARED_SESSION_MESSAGE_ROUTE_OUTPUT_SCHEMA,
   SHARED_SESSION_RECORD_SCHEMA,
   SHARED_SESSION_ROUTING_INTENT_SCHEMA,
   SHARED_SESSION_WITH_INPUTS_SCHEMA,
@@ -411,7 +412,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.messages.create',
     title: 'Post Shared Session Message',
-    description: 'Append a user message to a shared session and queue assistant work.',
+    description: 'Append a user message to a shared session. Omitted `kind` defaults to `message` conversation routing; send `kind: "task"` to request agent/WRFC task continuation.',
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/messages' },
@@ -419,9 +420,10 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
       body: STRING_SCHEMA,
       surfaceKind: STRING_SCHEMA,
       surfaceId: STRING_SCHEMA,
+      kind: STRING_SCHEMA,
       routing: SHARED_SESSION_ROUTING_INTENT_SCHEMA,
     }, ['body']),
-    outputSchema: SHARED_SESSION_MESSAGE_CREATE_OUTPUT_SCHEMA,
+    outputSchema: SHARED_SESSION_MESSAGE_ROUTE_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'sessions.inputs.create',

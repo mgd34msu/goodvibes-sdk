@@ -75,6 +75,7 @@ export function listHomeAssistantOperatorActions(): ChannelOperatorActionDescrip
     action(surface, 'homeassistant-manifest', 'Home Assistant manifest', 'Return the daemon/device contract consumed by the Home Assistant integration.'),
     action(surface, 'homeassistant-status', 'Check Home Assistant', 'Check configured Home Assistant API reachability and token posture.'),
     action(surface, 'homeassistant-list-states', 'List Home Assistant states', 'List current Home Assistant entity states with optional domain filtering.'),
+    action(surface, 'homeassistant-list-automations', 'List Home Assistant automations', 'List Home Assistant automation entities and their current states.'),
     action(surface, 'homeassistant-get-state', 'Get Home Assistant state', 'Read a single Home Assistant entity state.', {
       type: 'object',
       properties: { entityId: { type: 'string' } },
@@ -138,6 +139,14 @@ export function listHomeAssistantTools(): ChannelToolDescriptor[] {
       },
       additionalProperties: false,
     }),
+    tool(surface, 'homeassistant:automations', 'homeassistant_automations', 'List Home Assistant automation entities and current states.', ['homeassistant-list-automations'], {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    }),
     tool(surface, 'homeassistant:state', 'homeassistant_state', 'Read one Home Assistant entity state.', ['homeassistant-get-state'], {
       type: 'object',
       properties: { entityId: { type: 'string' } },
@@ -189,6 +198,8 @@ export async function runHomeAssistantOperatorAction(
       return { handled: true, result: await checkHomeAssistantStatus(context.deps) };
     case 'homeassistant-list-states':
       return { handled: true, result: await listHomeAssistantStates(context.deps, input) };
+    case 'homeassistant-list-automations':
+      return { handled: true, result: await listHomeAssistantStates(context.deps, { ...input, domain: 'automation' }) };
     case 'homeassistant-get-state':
       return { handled: true, result: await getHomeAssistantState(context.deps, input) };
     case 'homeassistant-list-services':
