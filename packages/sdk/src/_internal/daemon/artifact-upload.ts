@@ -1,6 +1,5 @@
 // Synced from packages/daemon-sdk/src/artifact-upload.ts
 import { randomUUID } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
 import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -308,45 +307,6 @@ function parseMultipartPartHeaders(headerText: string): MultipartPartHeaders {
   return output;
 }
 
-async function waitForWriterDrain(writer: ReturnType<typeof createWriteStream>): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const cleanup = (): void => {
-      writer.off('drain', onDrain);
-      writer.off('error', onError);
-    };
-    const onDrain = (): void => {
-      cleanup();
-      resolve();
-    };
-    const onError = (error: Error): void => {
-      cleanup();
-      reject(error);
-    };
-    writer.once('drain', onDrain);
-    writer.once('error', onError);
-  });
-}
-
-async function finishWriter(writer: ReturnType<typeof createWriteStream>): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const cleanup = (): void => {
-      writer.off('finish', onFinish);
-      writer.off('error', onError);
-    };
-    const onFinish = (): void => {
-      cleanup();
-      resolve();
-    };
-    const onError = (error: Error): void => {
-      cleanup();
-      reject(error);
-    };
-    writer.once('finish', onFinish);
-    writer.once('error', onError);
-    writer.end();
-  });
-}
-
 async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promise<MultipartUploadSpool> {
   const boundary = multipartBoundary(req.headers.get('content-type') ?? '');
   if (!boundary) throw new Error('Multipart upload is missing a boundary.');
@@ -450,23 +410,21 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
   };
 
   const readFilePart = async (headers: MultipartPartHeaders): Promise<BoundaryState> => {
-    const writer = createWriteStream(filePath, { flags: 'wx' });
+    const handle = await open(filePath, 'wx');
     try {
       const state = await readPart(async (chunk) => {
         sizeBytes += chunk.byteLength;
         if (typeof maxFileBytes === 'number' && sizeBytes > maxFileBytes) {
           throw new Error(`Artifact exceeds the ${maxFileBytes}-byte limit.`);
         }
-        if (!writer.write(chunk)) await waitForWriterDrain(writer);
+        await handle.write(chunk);
       });
-      await finishWriter(writer);
       fileSeen = true;
       filename = headers.filename;
       mimeType = headers.contentType;
       return state;
-    } catch (error) {
-      writer.destroy();
-      throw error;
+    } finally {
+      await handle.close();
     }
   };
 

@@ -20,6 +20,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.3] - 2026-04-28
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Multipart upload cap handling now writes spooled file chunks through
+  explicit file handles instead of stream event emitters, preventing flaky
+  oversized-upload rejection behavior in the Bun test matrix.
+
+### Migration
+- none
+
+---
+
 ## [0.26.2] - 2026-04-28
 
 ### Breaking
