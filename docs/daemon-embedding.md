@@ -58,6 +58,30 @@ The SDK does not replace your server framework. You still own:
 - runtime bootstrapping
 - concrete host policies like CORS, TLS, and deployment-specific auth envelopes
 
+## Connect-or-start daemon startup
+
+Full-surface hosts such as the TUI can call `startExternalServices` or
+`startHostServices` to start SDK-owned local services. When `danger.daemon` is
+enabled, the SDK now treats daemon startup as a connect-or-start decision:
+
+- If the configured `controlPlane.host` and `controlPlane.port` are free, the
+  SDK starts an embedded daemon and returns `daemonStatus.mode: "embedded"`.
+- If the port is occupied, the SDK probes `GET /status` with the configured
+  shared daemon token. A matching GoodVibes status response returns
+  `daemonStatus.mode: "external"` and includes the detected version.
+- If the port is occupied but the process cannot be verified as GoodVibes, the
+  SDK does not start another daemon and returns `daemonStatus.mode: "blocked"`
+  with a reason.
+- If daemon startup times out, the SDK returns
+  `daemonStatus.mode: "unavailable"`.
+
+The legacy `daemonServer` property remains `null` for external, blocked,
+disabled, and unavailable cases because there is no embedded server instance to
+stop. Hosts should read `daemonStatus` to distinguish these cases instead of
+treating every `daemonServer: null` as the same outcome. `httpListenerStatus`
+provides the same disabled, embedded, blocked, and unavailable reporting for the
+HTTP listener.
+
 ## Recommended embedding pattern
 
 1. Build concrete service/context adapters in your host app.
