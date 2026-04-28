@@ -33,6 +33,11 @@ interface ServiceFactories {
   ) => HttpListenerService;
   startupTimeoutMs?: number;
   probeDaemonPortInUse?: (host: string, port: number) => Promise<boolean>;
+  probeDaemonIdentity?: (
+    host: string,
+    port: number,
+    token?: string,
+  ) => Promise<DaemonIdentityProbeResult>;
   probeHttpListenerPortInUse?: (host: string, port: number) => Promise<boolean>;
   /**
    * Shared bearer token the daemon should accept on inbound HTTP requests.
@@ -50,9 +55,31 @@ interface ServiceFactories {
   sharedHttpListenerToken?: string;
 }
 
+export type HostServiceMode = 'disabled' | 'embedded' | 'external' | 'blocked' | 'unavailable';
+
+export interface HostServiceStatus {
+  readonly mode: HostServiceMode;
+  readonly host: string;
+  readonly port: number;
+  readonly baseUrl: string;
+  readonly reason?: string;
+  readonly status?: string;
+  readonly version?: string;
+  readonly authenticated?: boolean;
+}
+
+interface DaemonIdentityProbeResult {
+  readonly kind: 'goodvibes' | 'unauthorized' | 'unknown';
+  readonly status?: string;
+  readonly version?: string;
+  readonly reason?: string;
+}
+
 export interface HostServicesHandle {
   readonly daemonServer: DaemonService | null;
   readonly httpListener: HttpListenerService | null;
+  readonly daemonStatus: HostServiceStatus;
+  readonly httpListenerStatus: HostServiceStatus;
   listRecentControlPlaneEvents(limit: number): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[];
   stop(): Promise<void>;
 }
@@ -86,6 +113,70 @@ async function isTcpPortInUse(host: string, port: number, timeoutMs = 250): Prom
     socket.once('error', () => finish(false));
     socket.connect(port, host);
   });
+}
+
+function normalizeProbeHost(host: string): string {
+  if (host === '0.0.0.0' || host === '::') return '127.0.0.1';
+  return host;
+}
+
+function formatBaseUrl(host: string, port: number): string {
+  const normalized = normalizeProbeHost(host);
+  const urlHost = normalized.includes(':') && !normalized.startsWith('[') ? `[${normalized}]` : normalized;
+  return `http://${urlHost}:${port}`;
+}
+
+function createServiceStatus(
+  mode: HostServiceMode,
+  host: string,
+  port: number,
+  details: Omit<HostServiceStatus, 'mode' | 'host' | 'port' | 'baseUrl'> = {},
+): HostServiceStatus {
+  return {
+    mode,
+    host,
+    port,
+    baseUrl: formatBaseUrl(host, port),
+    ...details,
+  };
+}
+
+async function probeGoodVibesDaemonIdentity(
+  host: string,
+  port: number,
+  token?: string,
+): Promise<DaemonIdentityProbeResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 750);
+  timeout.unref?.();
+  try {
+    const headers = new Headers();
+    if (token?.trim()) headers.set('Authorization', `Bearer ${token.trim()}`);
+    const response = await fetch(`${formatBaseUrl(host, port)}/status`, {
+      headers,
+      signal: controller.signal,
+    });
+    if (response.status === 401 || response.status === 403) {
+      return {
+        kind: 'unauthorized',
+        reason: token?.trim()
+          ? 'GoodVibes daemon identity probe was rejected by the configured token'
+          : 'GoodVibes daemon identity probe needs an auth token',
+      };
+    }
+    if (!response.ok) {
+      return { kind: 'unknown', reason: `Identity probe returned HTTP ${response.status}` };
+    }
+    const body = await response.json().catch(() => null) as { status?: unknown; version?: unknown } | null;
+    if (body?.status === 'running' && typeof body.version === 'string') {
+      return { kind: 'goodvibes', status: body.status, version: body.version };
+    }
+    return { kind: 'unknown', reason: 'Identity probe response did not match GoodVibes daemon status shape' };
+  } catch (error) {
+    return { kind: 'unknown', reason: summarizeError(error) };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function startWithTimeout(
@@ -136,17 +227,45 @@ export async function startHostServices(
   const httpListenerHost = String(config.get('httpListener.host') ?? '127.0.0.1');
   const httpListenerPort = Number(config.get('httpListener.port') ?? 3422);
   const probeDaemonPortInUse = factories.probeDaemonPortInUse ?? ((host: string, port: number) => isTcpPortInUse(host, port));
+  const probeDaemonIdentity = factories.probeDaemonIdentity ?? probeGoodVibesDaemonIdentity;
   const probeHttpListenerPortInUse = factories.probeHttpListenerPortInUse ?? ((host: string, port: number) => isTcpPortInUse(host, port));
 
   let daemonServer: DaemonService | null = null;
   let httpListener: HttpListenerService | null = null;
+  let daemonStatus = createServiceStatus('disabled', daemonHost, daemonPort, { reason: 'danger.daemon is disabled' });
+  let httpListenerStatus = createServiceStatus('disabled', httpListenerHost, httpListenerPort, {
+    reason: 'danger.httpListener is disabled',
+  });
 
   if (config.get('danger.daemon') as boolean) {
     if (await probeDaemonPortInUse(daemonHost, daemonPort)) {
-      logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', {
-        host: daemonHost,
-        port: daemonPort,
-      });
+      const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
+      if (identity.kind === 'goodvibes') {
+        daemonStatus = createServiceStatus('external', daemonHost, daemonPort, {
+          authenticated: true,
+          status: identity.status,
+          version: identity.version,
+          reason: 'Existing GoodVibes daemon verified on configured host/port',
+        });
+        logger.info('Existing GoodVibes daemon detected; continuing without embedded daemon in this host instance', {
+          host: daemonHost,
+          port: daemonPort,
+          version: identity.version,
+        });
+      } else {
+        daemonStatus = createServiceStatus('blocked', daemonHost, daemonPort, {
+          authenticated: identity.kind !== 'unauthorized' ? undefined : false,
+          reason: identity.reason ?? 'Configured daemon port is occupied by an unverified process',
+        });
+        logger.warn(
+          'Daemon server port already in use by an unverified process; continuing without embedded daemon in this host instance',
+          {
+            host: daemonHost,
+            port: daemonPort,
+            reason: identity.reason,
+          },
+        );
+      }
     } else {
       daemonServer = createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
       daemonServer.enable({ daemon: true }, factories.sharedDaemonToken);
@@ -154,12 +273,41 @@ export async function startHostServices(
         const service = daemonServer;
         const result = await startWithTimeout('Daemon server', () => service.start(), startupTimeoutMs, () => service.stop());
         if (result === 'timed_out') {
+          daemonStatus = createServiceStatus('unavailable', daemonHost, daemonPort, {
+            reason: 'Daemon server startup timed out',
+          });
           daemonServer = null;
+        } else {
+          daemonStatus = createServiceStatus('embedded', daemonHost, daemonPort, {
+            reason: 'Embedded daemon started in this host instance',
+          });
         }
       } catch (error) {
         const message = summarizeError(error);
         if (message.includes('EADDRINUSE') || message.includes('Address already in use')) {
-          logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
+          const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
+          if (identity.kind === 'goodvibes') {
+            logger.info(
+              'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
+              {
+                host: daemonHost,
+                port: daemonPort,
+                version: identity.version,
+              },
+            );
+            daemonStatus = createServiceStatus('external', daemonHost, daemonPort, {
+              authenticated: true,
+              status: identity.status,
+              version: identity.version,
+              reason: 'Existing GoodVibes daemon verified after bind conflict',
+            });
+          } else {
+            logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
+            daemonStatus = createServiceStatus('blocked', daemonHost, daemonPort, {
+              authenticated: identity.kind !== 'unauthorized' ? undefined : false,
+              reason: identity.reason ?? message,
+            });
+          }
           daemonServer = null;
         } else {
           throw error;
@@ -170,6 +318,9 @@ export async function startHostServices(
 
   if (config.get('danger.httpListener') as boolean) {
     if (await probeHttpListenerPortInUse(httpListenerHost, httpListenerPort)) {
+      httpListenerStatus = createServiceStatus('blocked', httpListenerHost, httpListenerPort, {
+        reason: 'Configured HTTP listener port is already in use',
+      });
       logger.warn('HTTP listener port already in use; continuing without local listener in this host instance', {
         host: httpListenerHost,
         port: httpListenerPort,
@@ -181,12 +332,20 @@ export async function startHostServices(
         const service = httpListener;
         const result = await startWithTimeout('HTTP listener', () => service.start(), startupTimeoutMs, () => service.stop());
         if (result === 'timed_out') {
+          httpListenerStatus = createServiceStatus('unavailable', httpListenerHost, httpListenerPort, {
+            reason: 'HTTP listener startup timed out',
+          });
           httpListener = null;
+        } else {
+          httpListenerStatus = createServiceStatus('embedded', httpListenerHost, httpListenerPort, {
+            reason: 'Embedded HTTP listener started in this host instance',
+          });
         }
       } catch (error) {
         const message = summarizeError(error);
         if (message.includes('EADDRINUSE') || message.includes('Address already in use')) {
           logger.warn('HTTP listener port already in use; continuing without local listener in this host instance', { error: message });
+          httpListenerStatus = createServiceStatus('blocked', httpListenerHost, httpListenerPort, { reason: message });
           httpListener = null;
         } else {
           throw error;
@@ -198,6 +357,8 @@ export async function startHostServices(
   return {
     daemonServer,
     httpListener,
+    daemonStatus,
+    httpListenerStatus,
     listRecentControlPlaneEvents(limit: number): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[] {
       return daemonServer?.listRecentControlPlaneEvents(limit) ?? [];
     },

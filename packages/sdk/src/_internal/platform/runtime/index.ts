@@ -119,7 +119,14 @@ export type { RuntimeModelSelectionState } from './bootstrap-helpers.js';
 export { registerBootstrapRuntimeEvents, registerHostRuntimeEvents } from './bootstrap-runtime-events.js';
 export type { BootstrapRuntimeEventBridgeOptions, HostRuntimeEventBridgeOptions, HostRuntimeMessageRouter } from './bootstrap-runtime-events.js';
 export { startExternalServices, startHostServices } from './bootstrap-services.js';
-export type { ExternalServicesConfig, ExternalServicesHandle, HostServicesConfig, HostServicesHandle } from './bootstrap-services.js';
+export type {
+  ExternalServicesConfig,
+  ExternalServicesHandle,
+  HostServiceMode,
+  HostServicesConfig,
+  HostServicesHandle,
+  HostServiceStatus,
+} from './bootstrap-services.js';
 
 export { createDiagnosticsProvider, DiagnosticsProvider } from './diagnostics/index.js';
 export type { DiagnosticsProviderConfig, DiagnosticPanelName } from './diagnostics/provider.js';

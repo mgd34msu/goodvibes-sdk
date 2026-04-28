@@ -20,6 +20,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.5] - 2026-04-28
+
+### Breaking
+- none
+
+### Added
+- `startHostServices` / `startExternalServices` now return
+  `daemonStatus` and `httpListenerStatus` so hosts can distinguish embedded,
+  verified external, blocked, disabled, and unavailable service states.
+
+### Fixed
+- Daemon startup now probes an occupied control-plane port with the configured
+  daemon token before deciding how to proceed. Verified GoodVibes daemons are
+  reported as `external`; unverified occupied ports are reported as `blocked`
+  instead of being silently collapsed into `daemonServer: null`.
+
+### Migration
+- Hosts that currently inspect only `daemonServer` should switch UI/status
+  reporting to `daemonStatus`. `daemonServer` remains `null` for external
+  daemons because the current process does not own that server instance.
+
+---
+
 ## [0.26.4] - 2026-04-28
 
 ### Breaking
