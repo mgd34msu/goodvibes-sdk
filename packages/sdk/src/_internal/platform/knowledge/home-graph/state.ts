@@ -55,7 +55,10 @@ export function sourcesLinkedToNode(nodeId: string, state: HomeGraphState): Know
 
 export function collectLinkedObjects(
   results: readonly { readonly source?: KnowledgeSourceRecord; readonly node?: KnowledgeNodeRecord }[],
-  state: HomeGraphState,
+  state: {
+    readonly edges: readonly KnowledgeEdgeRecord[];
+    readonly nodes: readonly KnowledgeNodeRecord[];
+  },
 ): KnowledgeNodeRecord[] {
   const nodeIds = new Set<string>();
   for (const result of results) {

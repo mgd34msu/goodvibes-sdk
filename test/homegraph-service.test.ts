@@ -95,6 +95,84 @@ describe('Home Graph knowledge spaces', () => {
     expect(browse.edges.some((edge) => edge.id === unlinked.edge.id)).toBe(false);
   });
 
+  test('asks large manual-backed graphs through bounded searchable extraction text', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'living-room', name: 'Living Room' }],
+      devices: [{ id: 'living-room-tv', name: 'Living Room TV', areaId: 'living-room' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = {
+      knowledgeSpaceId: spaceId,
+      namespace: spaceId,
+      homeGraph: true,
+      homeAssistant: { installationId: 'house-1' },
+    };
+    const manual = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'manual',
+      title: 'Living Room TV manual',
+      canonicalUri: 'homegraph://house-1/living-room-tv-manual',
+      tags: ['homeassistant', 'home-graph', 'manual', 'tv'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: manual.id,
+      extractorId: 'test-pdf',
+      format: 'pdf',
+      title: 'Living Room TV manual',
+      summary: 'Television owner manual.',
+      excerpt: 'Owner manual feature overview.',
+      sections: ['Features'],
+      links: [],
+      estimatedTokens: 200,
+      structure: {
+        searchText: 'The TV supports HDR10, HDMI eARC, low latency game mode, filmmaker mode, and voice remote features.',
+      },
+      metadata,
+    });
+    await service.linkKnowledge({
+      installationId: 'house-1',
+      sourceId: manual.id,
+      target: { kind: 'device', id: 'living-room-tv', relation: 'has_manual' },
+    });
+
+    for (let index = 0; index < 32; index += 1) {
+      const source = await store.upsertSource({
+        connectorId: 'homeassistant',
+        sourceType: 'manual',
+        title: `Decoy manual ${index}`,
+        canonicalUri: `homegraph://house-1/decoy-${index}`,
+        tags: ['homeassistant', 'home-graph', 'manual'],
+        status: 'indexed',
+        metadata,
+      });
+      await store.upsertExtraction({
+        sourceId: source.id,
+        extractorId: 'test-pdf',
+        format: 'pdf',
+        summary: 'Decoy appliance manual.',
+        sections: ['x'.repeat(128 * 1024)],
+        links: [],
+        estimatedTokens: 50_000,
+        structure: { searchText: 'decoy appliance instructions' },
+        metadata,
+      });
+    }
+
+    const ask = await service.ask({
+      installationId: 'house-1',
+      query: 'what features does the tv have hdr10 earc game mode',
+      includeLinkedObjects: true,
+    });
+
+    expect(ask.results[0]?.id).toBe(manual.id);
+    expect(ask.answer.text).toContain('Living Room TV manual');
+    expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
+  });
+
   test('exposes daemon routes for Home Graph clients', async () => {
     const { service, artifactStore } = createHomeGraphService();
     const routes = new HomeGraphRoutes({

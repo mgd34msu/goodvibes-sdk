@@ -66,6 +66,14 @@ the lightweight extractor for malformed or hostile HTML. Non-HTML extractors are
 format-specific and produce extraction metadata plus best-effort limitations
 when specialized parsing is unavailable.
 
+Text-bearing extractors also persist capped `structure.searchText` for
+retrieval. This field is intentionally bounded and separate from the short
+summary/excerpt/section fields so large manuals, PDFs, website snapshots, and
+office documents remain searchable without turning every query into an
+unbounded full-document scan. Existing sources created before this searchable
+text field exists should be reindexed or reingested when callers need answers
+from deep document content.
+
 ## Browser-Local Knowledge
 
 Browser history and bookmarks add behavioral signal to the graph. The SDK reads
@@ -106,6 +114,10 @@ Home Graph relation names include `controls`, `located_in`,
 `belongs_to_device`, `has_manual`, `has_receipt`, `has_warranty`, `has_issue`,
 `fixed_by`, `uses_battery`, `connected_via`, `part_of_network`,
 `mentioned_by`, and `source_for`.
+
+Home Graph ask uses a namespace-filtered search state, batches extraction
+lookup by source id, and scores bounded document fields. It does not load the
+full graph export state or repeatedly scan every extraction for each source.
 
 See [Home Assistant integration](./homeassistant-integration.md) for daemon
 routes and operator method ids.

@@ -5,6 +5,8 @@ import { guessMimeType } from '../artifacts/types.js';
 import { extractReadableHtml } from './html-readability.js';
 import type { KnowledgeExtractionFormat } from './types.js';
 
+const MAX_STRUCTURE_SEARCH_TEXT_CHARS = 128 * 1024;
+
 export interface KnowledgeExtractionResult {
   readonly extractorId: string;
   readonly format: KnowledgeExtractionFormat;
@@ -48,6 +50,19 @@ function cleanText(value: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
+}
+
+function searchTextPayload(value: string): string | undefined {
+  const cleaned = cleanText(value);
+  if (!cleaned) return undefined;
+  return cleaned.length <= MAX_STRUCTURE_SEARCH_TEXT_CHARS
+    ? cleaned
+    : cleaned.slice(0, MAX_STRUCTURE_SEARCH_TEXT_CHARS);
+}
+
+function searchTextStructure(value: string): { readonly searchText?: string } {
+  const searchText = searchTextPayload(value);
+  return searchText ? { searchText } : {};
 }
 
 function estimateTokens(...chunks: Array<string | undefined | null>): number {
@@ -125,6 +140,7 @@ function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
           headings: readable.headings,
           readableLength: readable.length,
           paragraphSampleCount: readable.paragraphSamples.length,
+          ...searchTextStructure(readable.textContent),
         },
         metadata: {
           paragraphSamples: readable.paragraphSamples.slice(0, 4),
@@ -162,6 +178,7 @@ function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
       headings,
       paragraphCount: paragraphs.length,
       readableLength: readable.length,
+      ...searchTextStructure(readable),
     },
     metadata: {
       paragraphSamples: paragraphs.slice(0, 4),
@@ -196,6 +213,7 @@ function extractTextLike(
     structure: {
       lineCount: lines.length,
       headingCount: headings.length,
+      ...searchTextStructure(text),
     },
     metadata: {},
   };
@@ -225,6 +243,7 @@ function extractJson(buffer: Buffer): KnowledgeExtractionResult {
         rootType: Array.isArray(parsed) ? 'array' : typeof parsed,
         rootKeys,
         itemCount: Array.isArray(parsed) ? parsed.length : undefined,
+        ...searchTextStructure(text),
       },
       metadata: {},
     };
@@ -286,6 +305,7 @@ function extractDelimited(buffer: Buffer, delimiter: ',' | '\t', format: 'csv' |
       headers,
       sampleRows: rows,
       rowCountSampled: rows.length,
+      ...searchTextStructure(text),
     },
     metadata: {},
   };
@@ -304,7 +324,7 @@ function extractXml(buffer: Buffer): KnowledgeExtractionResult {
     sections: tags,
     links: uniqueStrings(Array.from(text.matchAll(/\bhttps?:\/\/[^\s"'<]+/g), (match) => match[0]), 50),
     estimatedTokens: estimateTokens(readable),
-    structure: { tags },
+    structure: { tags, ...searchTextStructure(readable) },
     metadata: {},
   };
 }
@@ -324,7 +344,7 @@ function extractYaml(buffer: Buffer): KnowledgeExtractionResult {
     sections: keys.length > 0 ? keys : uniqueStrings(text.split(/\n+/), 8),
     links: uniqueStrings(Array.from(text.matchAll(/\bhttps?:\/\/[^\s"']+/g), (match) => match[0]), 50),
     estimatedTokens: estimateTokens(text),
-    structure: { keys },
+    structure: { keys, ...searchTextStructure(text) },
     metadata: {},
   };
 }
@@ -352,6 +372,8 @@ function extractPdf(buffer: Buffer): KnowledgeExtractionResult {
     }
   }
   const combined = uniqueStrings(texts, 64).join('\n');
+  const searchable = uniqueStrings(texts, 512).join('\n');
+  const searchText = searchTextPayload(searchable);
   return {
     extractorId: 'pdf',
     format: 'pdf',
@@ -363,6 +385,7 @@ function extractPdf(buffer: Buffer): KnowledgeExtractionResult {
     estimatedTokens: estimateTokens(combined),
     structure: {
       extractedStringCount: texts.length,
+      ...(searchText ? { searchText } : {}),
     },
     metadata: {
       limitations: texts.length === 0
@@ -404,6 +427,7 @@ async function extractDocx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
     structure: {
       paragraphCount: paragraphs.length,
       headingCount: headings.length,
+      ...searchTextStructure(text),
     },
     metadata: {},
   };
@@ -463,6 +487,7 @@ async function extractXlsx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
     structure: {
       sheetNames,
       sampleSheets,
+      ...searchTextStructure(flatText),
     },
     metadata: {},
   };
@@ -498,6 +523,7 @@ async function extractPptx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
     structure: {
       slideCount: slides.length,
       slides: slides.slice(0, 6),
+      ...searchTextStructure(combined),
     },
     metadata: {},
   };
