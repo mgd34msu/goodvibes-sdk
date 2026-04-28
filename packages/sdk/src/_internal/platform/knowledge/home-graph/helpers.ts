@@ -125,7 +125,7 @@ export function buildHomeGraphNodeInput(
   const nodeKind = nodeKindForHomeGraphObject(kind);
   const objectKind = objectKindForNodeKind(nodeKind);
   const objectId = homeGraphObjectId(nodeKind, object);
-  const title = object.title ?? object.name ?? object.entityId ?? object.id;
+  const title = object.title ?? object.name ?? object.entityId ?? object.id ?? objectId;
   const aliases = uniqueStrings([
     ...(object.aliases ?? []),
     ...(object.labels ?? []),
@@ -158,19 +158,20 @@ export function buildHomeGraphNodeInput(
 }
 
 function homeGraphObjectId(kind: HomeGraphNodeKind, object: HomeGraphObjectInput): string {
+  const fallback = () => `unknown-${stableHash(`${kind}:${stableJson(object)}`, 16)}`;
   switch (kind) {
     case 'ha_entity':
-      return object.entityId ?? object.id;
+      return object.entityId ?? object.id ?? fallback();
     case 'ha_device':
     case 'ha_device_passport':
-      return object.deviceId ?? object.id;
+      return object.deviceId ?? object.id ?? fallback();
     case 'ha_area':
     case 'ha_room':
-      return object.areaId ?? object.id;
+      return object.areaId ?? object.id ?? fallback();
     case 'ha_integration':
-      return object.integrationId ?? object.id;
+      return object.integrationId ?? object.id ?? fallback();
     default:
-      return object.id;
+      return object.id ?? fallback();
   }
 }
 
@@ -289,6 +290,123 @@ export function uniqueStrings(values: Iterable<string | undefined | null>): stri
 
 export function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+export function normalizeHomeGraphObjectInput(
+  kind: HomeGraphObjectKind | HomeGraphNodeKind,
+  value: HomeGraphObjectInput | Record<string, unknown>,
+): HomeGraphObjectInput {
+  const raw = readRecord(value);
+  const attributes = readRecord(raw.attributes);
+  const entityId = readString(raw.entityId) ?? readString(raw.entity_id);
+  const deviceId = readString(raw.deviceId) ?? readString(raw.device_id);
+  const areaId = readString(raw.areaId) ?? readString(raw.area_id);
+  const integrationId = readString(raw.integrationId)
+    ?? readString(raw.integration_id)
+    ?? readString(raw.platform)
+    ?? readString(raw.domain);
+  const name = readString(raw.name)
+    ?? readString(raw.originalName)
+    ?? readString(raw.original_name)
+    ?? readString(attributes.friendly_name);
+  const title = readString(raw.title) ?? name ?? entityId ?? deviceId ?? areaId ?? integrationId;
+  const id = readString(raw.id)
+    ?? idForKind(kind, { entityId, deviceId, areaId, integrationId })
+    ?? readString(raw.uniqueId)
+    ?? readString(raw.unique_id)
+    ?? readString(raw.slug)
+    ?? title
+    ?? `unknown-${stableHash(`${nodeKindForHomeGraphObject(kind)}:${stableJson(raw)}`, 16)}`;
+  const labels = uniqueStrings([
+    ...readStringArray(raw.labels),
+    ...readStringArray(raw.labelIds),
+    ...readStringArray(raw.label_ids),
+  ]);
+  const manufacturer = readString(raw.manufacturer);
+  const model = readString(raw.model) ?? readString(raw.modelId) ?? readString(raw.model_id);
+  const aliases = uniqueStrings([
+    ...readStringArray(raw.aliases),
+    ...readStringArray(raw.alternateNames),
+    ...readStringArray(raw.alternate_names),
+    readString(raw.friendlyName),
+    readString(raw.friendly_name),
+    readString(attributes.friendly_name),
+  ]);
+  const metadata = {
+    ...readRecord(raw.metadata),
+    ...(Object.keys(attributes).length > 0 ? { attributes } : {}),
+    ...(readString(raw.state) ? { state: readString(raw.state) } : {}),
+    sourceFieldStyle: hasSnakeCaseHomeAssistantFields(raw) ? 'homeassistant-snake-case' : 'sdk-camel-case',
+  };
+  return {
+    id,
+    ...(name ? { name } : {}),
+    ...(title ? { title } : {}),
+    ...(entityId ? { entityId } : {}),
+    ...(deviceId ? { deviceId } : {}),
+    ...(areaId ? { areaId } : {}),
+    ...(integrationId ? { integrationId } : {}),
+    ...(labels.length > 0 ? { labels } : {}),
+    ...(aliases.length > 0 ? { aliases } : {}),
+    ...(manufacturer ? { manufacturer } : {}),
+    ...(model ? { model } : {}),
+    metadata,
+  };
+}
+
+function idForKind(
+  kind: HomeGraphObjectKind | HomeGraphNodeKind,
+  input: {
+    readonly entityId?: string;
+    readonly deviceId?: string;
+    readonly areaId?: string;
+    readonly integrationId?: string;
+  },
+): string | undefined {
+  switch (nodeKindForHomeGraphObject(kind)) {
+    case 'ha_entity':
+      return input.entityId;
+    case 'ha_device':
+    case 'ha_device_passport':
+      return input.deviceId;
+    case 'ha_area':
+    case 'ha_room':
+      return input.areaId;
+    case 'ha_integration':
+      return input.integrationId;
+    default:
+      return input.entityId ?? input.deviceId ?? input.areaId ?? input.integrationId;
+  }
+}
+
+function readString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return uniqueStrings(value.map((entry) => readString(entry)));
+}
+
+function hasSnakeCaseHomeAssistantFields(raw: Record<string, unknown>): boolean {
+  return ['entity_id', 'device_id', 'area_id', 'integration_id', 'unique_id', 'original_name', 'model_id', 'label_ids']
+    .some((key) => key in raw);
+}
+
+function stableJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, (_key, entry) => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+      return Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right)));
+    });
+  } catch {
+    return String(value);
+  }
 }
 
 function buildObjectSummary(object: HomeGraphObjectInput): string | undefined {

@@ -117,6 +117,19 @@ not written into the default GoodVibes knowledge space. By default the SDK uses
 source, node, edge, issue, extraction, projection artifact, and export carries
 that space metadata.
 
+Snapshot sync accepts Home Assistant-native object fields at the HTTP boundary.
+The integration can send registry objects with snake_case identifiers such as
+`entity_id`, `device_id`, `area_id`, `integration_id`, `unique_id`, and
+`friendly_name`; the daemon normalizes them into the SDK's internal graph
+shape before creating nodes and relations. This keeps Home Assistant-specific
+wire format handling in the SDK route/service layer while preserving the
+canonical graph metadata fields (`entityId`, `deviceId`, `areaId`,
+`integrationId`) for stored Home Graph records.
+
+Home Graph routes return JSON errors for validation or sync failures. Clients
+should treat non-2xx responses as daemon API errors and read the JSON `error`
+field; they should not receive Bun fallback HTML for handled route failures.
+
 `POST /api/homeassistant/home-graph/ingest/artifact` is not limited to JSON.
 The Home Assistant integration can forward uploads through its own authenticated
 frontend bridge without exposing the daemon token:

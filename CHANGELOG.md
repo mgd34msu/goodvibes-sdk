@@ -20,6 +20,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.6] - 2026-04-28
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph snapshot sync now accepts Home Assistant-native snake_case object
+  fields such as `entity_id`, `device_id`, `area_id`, `integration_id`,
+  `unique_id`, and `friendly_name` at the daemon HTTP boundary and normalizes
+  them into canonical SDK graph metadata before storage.
+- Home Graph admin routes now await their guarded async handlers so sync,
+  ingest, link, projection, review, and import failures return JSON API errors
+  instead of leaking Bun fallback HTML 500 responses.
+- Home Graph object id and slug generation now has a deterministic fallback for
+  incomplete registry objects, preventing missing ids from crashing snapshot
+  sync.
+
+### Migration
+- Home Assistant integrations can send native registry snapshots directly; no
+  client-side shim is required to rename snake_case Home Assistant ids into
+  SDK camelCase fields.
+
+---
+
 ## [0.26.5] - 2026-04-28
 
 ### Breaking

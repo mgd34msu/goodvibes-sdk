@@ -72,8 +72,12 @@ export function isInKnowledgeSpace(input: KnowledgeSpaceBackedRecord | undefined
   return getKnowledgeSpaceId(input) === normalizeKnowledgeSpaceId(spaceId);
 }
 
-export function normalizeSpaceComponent(value: string): string {
-  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_.:-]+/g, '-').replace(/^-+|-+$/g, '');
+export function normalizeSpaceComponent(value?: string | null): string {
+  const normalized = (typeof value === 'string' ? value : '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.:-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
   return normalized.length > 0 ? normalized : 'default';
 }
 
