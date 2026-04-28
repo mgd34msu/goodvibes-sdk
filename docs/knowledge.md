@@ -20,6 +20,19 @@ Source: `packages/sdk/src/_internal/platform/knowledge/`.
 | Job/run/schedule | Background maintenance, refresh, reindex, and consolidation execution records |
 | Consolidation candidate/report | Reviewable proposal to promote, refresh, reject, or supersede high-signal knowledge |
 
+## Knowledge Spaces
+
+Knowledge records can carry `metadata.knowledgeSpaceId` to isolate a feature or
+client domain from the default GoodVibes knowledge space. Records without this
+metadata are treated as the default space. Space helpers live in
+`knowledge/spaces.ts` and normalize the default space plus Home Assistant
+spaces such as `homeassistant:<installationId>`.
+
+The generic GraphQL service accepts `knowledgeSpaceId` on source, node, issue,
+extraction, and search queries. Feature-specific services can also implement
+their own namespace-aware packet/projection behavior when they need stricter
+domain defaults.
+
 ## Ingestion
 
 Current ingest paths:
@@ -46,6 +59,41 @@ metadata, and links sources to domain, profile, folder, and topic nodes.
 
 The browser ingest route is admin-only because it reads local browser profile
 data. See [Browser knowledge ingestion](./knowledge-browser-history.md).
+
+## Home Graph
+
+Home Graph is a first-class Home Assistant knowledge space built on the same
+store. It keeps Home Assistant data out of the default wiki while reusing
+sources, artifacts, extractions, nodes, edges, issues, markdown artifacts, and
+operator contracts.
+
+The SDK-owned `HomeGraphService` supports:
+
+- snapshot sync for entities, devices, areas, automations, scripts, scenes,
+  labels, integrations, and helpers
+- URL, note, and artifact ingestion for manuals, warranties, receipts, photos,
+  troubleshooting notes, network notes, and "remember this" facts
+- source/object link and unlink flows for Home Assistant ids
+- source-backed `askHomeGraph` answers with sources, confidence, and linked HA
+  object references
+- device passport generation
+- room/area page generation
+- packet generation with field inclusion/exclusion profiles
+- issue listing and review actions
+- source inventory, graph browse, export, and import
+
+Home Graph node kinds include `ha_home`, `ha_entity`, `ha_device`, `ha_area`,
+`ha_automation`, `ha_script`, `ha_scene`, `ha_label`, `ha_integration`,
+`ha_room`, `ha_device_passport`, `ha_maintenance_item`,
+`ha_troubleshooting_case`, `ha_purchase`, and `ha_network_node`.
+
+Home Graph relation names include `controls`, `located_in`,
+`belongs_to_device`, `has_manual`, `has_receipt`, `has_warranty`, `has_issue`,
+`fixed_by`, `uses_battery`, `connected_via`, `part_of_network`,
+`mentioned_by`, and `source_for`.
+
+See [Home Assistant integration](./homeassistant-integration.md) for daemon
+routes and operator method ids.
 
 ## Retrieval And Packets
 

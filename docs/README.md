@@ -41,6 +41,7 @@ release-history source.
 
 - [Knowledge system](./knowledge.md)
 - [Browser knowledge ingestion](./knowledge-browser-history.md)
+- [Home Assistant Home Graph](./homeassistant-integration.md#home-graph)
 - [Voice and streaming TTS](./voice.md)
 - [Media and multimodal runtime](./media-and-search.md)
 

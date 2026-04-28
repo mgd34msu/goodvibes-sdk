@@ -17,7 +17,7 @@ import {
 import type { RouteBindingManager, ChannelPolicyManager, ChannelPluginRegistry, SurfaceRegistry } from '../../channels/index.js';
 import type { WatcherRegistry } from '../../watchers/index.js';
 import type { DistributedPeerAuth, DistributedRuntimeManager } from '../../runtime/remote/index.js';
-import type { KnowledgeGraphqlService, KnowledgeService } from '../../knowledge/index.js';
+import type { HomeGraphService, KnowledgeGraphqlService, KnowledgeService } from '../../knowledge/index.js';
 import { inspectKnowledgeGraphqlAccess } from '../../knowledge/index.js';
 import type { VoiceService } from '../../voice/index.js';
 import type { WebSearchService } from '../../web-search/index.js';
@@ -70,6 +70,7 @@ import { dispatchProviderRoutes } from './provider-routes.js';
 import { dispatchBatchRoutes } from './batch-routes.js';
 import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
 import { HomeAssistantConversationRoutes } from './homeassistant-routes.js';
+import { HomeGraphRoutes } from './home-graph-routes.js';
 import { readTextBodyWithinLimit } from '../../utils/request-body.js';
 
 interface DaemonHttpRouterContext {
@@ -92,6 +93,7 @@ interface DaemonHttpRouterContext {
   readonly voiceService: VoiceService;
   readonly webSearchService: WebSearchService;
   readonly knowledgeService: KnowledgeService;
+  readonly homeGraphService: HomeGraphService;
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;
   readonly mediaProviders: MediaProviderRegistry;
   readonly multimodalService: MultimodalService;
@@ -177,6 +179,7 @@ interface DaemonHttpRouterContext {
 export class DaemonHttpRouter {
   private readonly telemetryApi: TelemetryApiService | null;
   private homeAssistantRoutes: HomeAssistantConversationRoutes | null = null;
+  private homeGraphRoutes: HomeGraphRoutes | null = null;
 
   constructor(private readonly context: DaemonHttpRouterContext) {
     this.telemetryApi = context.runtimeStore
@@ -306,6 +309,8 @@ export class DaemonHttpRouter {
     }
 
     if (url.pathname.startsWith('/api/homeassistant')) {
+      const homeGraphResponse = await this.getHomeGraphRoutes().handle(req);
+      if (homeGraphResponse) return homeGraphResponse;
       const homeAssistantResponse = await this.getHomeAssistantRoutes().handle(req);
       if (homeAssistantResponse) return homeAssistantResponse;
     }
@@ -591,6 +596,18 @@ export class DaemonHttpRouter {
       });
     }
     return this.homeAssistantRoutes;
+  }
+
+  private getHomeGraphRoutes(): HomeGraphRoutes {
+    if (!this.homeGraphRoutes) {
+      this.homeGraphRoutes = new HomeGraphRoutes({
+        homeGraphService: this.context.homeGraphService,
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
+        requireAdmin: (request) => this.context.requireAdmin(request),
+      });
+    }
+    return this.homeGraphRoutes;
   }
 
   async parseJsonBody(req: Request): Promise<JsonRecord | Response> {

@@ -27,6 +27,21 @@ export type KnowledgeNodeKind =
   | 'environment'
   | 'user'
   | 'source_group'
+  | 'ha_home'
+  | 'ha_entity'
+  | 'ha_device'
+  | 'ha_area'
+  | 'ha_automation'
+  | 'ha_script'
+  | 'ha_scene'
+  | 'ha_label'
+  | 'ha_integration'
+  | 'ha_room'
+  | 'ha_device_passport'
+  | 'ha_maintenance_item'
+  | 'ha_troubleshooting_case'
+  | 'ha_purchase'
+  | 'ha_network_node'
   | 'other';
 
 export type KnowledgeNodeStatus = 'active' | 'draft' | 'stale';

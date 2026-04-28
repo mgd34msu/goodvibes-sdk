@@ -26,7 +26,7 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { PlatformServiceManager } from './service-manager.js';
 import type { WatcherRegistry } from '../watchers/index.js';
 import type { DistributedPeerAuth } from '../runtime/remote/index.js';
-import type { KnowledgeGraphqlService, KnowledgeService } from '../knowledge/index.js';
+import type { HomeGraphService, KnowledgeGraphqlService, KnowledgeService } from '../knowledge/index.js';
 import type { IntegrationHelperService } from '../runtime/integration/helpers.js';
 import type { DaemonControlPlaneHelper } from './control-plane.js';
 import type { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
@@ -65,6 +65,7 @@ export interface ResolvedDaemonFacadeRuntime {
   readonly voiceService: RuntimeServices['voiceService'];
   readonly webSearchService: RuntimeServices['webSearchService'];
   readonly knowledgeService: KnowledgeService;
+  readonly homeGraphService: HomeGraphService;
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;
   readonly mediaProviders: RuntimeServices['mediaProviders'];
   readonly multimodalService: RuntimeServices['multimodalService'];

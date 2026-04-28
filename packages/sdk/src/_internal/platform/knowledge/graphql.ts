@@ -15,6 +15,7 @@ import {
   toPacketDetail,
   toProjectionKind,
 } from './graphql-schema.js';
+import { isInKnowledgeSpace } from './spaces.js';
 
 export interface KnowledgeGraphqlAccessProfile {
   readonly operation: 'query' | 'mutation';
@@ -92,9 +93,21 @@ export class KnowledgeGraphqlService {
   private createRootValue() {
     return {
       status: async () => this.service.getStatus(),
-      sources: ({ limit }: { limit?: number }) => this.service.listSources(clampInt(limit, 100)),
-      nodes: ({ limit }: { limit?: number }) => this.service.listNodes(clampInt(limit, 100)),
-      issues: ({ limit }: { limit?: number }) => this.service.listIssues(clampInt(limit, 100)),
+      sources: ({ limit, knowledgeSpaceId }: { limit?: number; knowledgeSpaceId?: string }) => (
+        this.service.listSources(knowledgeSpaceId ? 10_000 : clampInt(limit, 100))
+          .filter((source) => !knowledgeSpaceId || isInKnowledgeSpace(source, knowledgeSpaceId))
+          .slice(0, clampInt(limit, 100))
+      ),
+      nodes: ({ limit, knowledgeSpaceId }: { limit?: number; knowledgeSpaceId?: string }) => (
+        this.service.listNodes(knowledgeSpaceId ? 10_000 : clampInt(limit, 100))
+          .filter((node) => !knowledgeSpaceId || isInKnowledgeSpace(node, knowledgeSpaceId))
+          .slice(0, clampInt(limit, 100))
+      ),
+      issues: ({ limit, knowledgeSpaceId }: { limit?: number; knowledgeSpaceId?: string }) => (
+        this.service.listIssues(knowledgeSpaceId ? 10_000 : clampInt(limit, 100))
+          .filter((issue) => !knowledgeSpaceId || isInKnowledgeSpace(issue, knowledgeSpaceId))
+          .slice(0, clampInt(limit, 100))
+      ),
       source: ({ id }: { id: string }) => this.service.listSources(10_000).find((source) => source.id === id) ?? null,
       node: ({ id }: { id: string }) => this.service.listNodes(10_000).find((node) => node.id === id) ?? null,
       issue: ({ id }: { id: string }) => this.service.listIssues(10_000).find((issue) => issue.id === id) ?? null,
@@ -132,7 +145,11 @@ export class KnowledgeGraphqlService {
         code: args.code,
         query: args.query,
       }),
-      extractions: ({ limit, sourceId }: { limit?: number; sourceId?: string }) => this.service.listExtractions(clampInt(limit, 100), sourceId),
+      extractions: ({ limit, sourceId, knowledgeSpaceId }: { limit?: number; sourceId?: string; knowledgeSpaceId?: string }) => (
+        this.service.listExtractions(clampInt(limit, 100), sourceId)
+          .filter((extraction) => !knowledgeSpaceId || isInKnowledgeSpace(extraction, knowledgeSpaceId))
+          .slice(0, clampInt(limit, 100))
+      ),
       sourceExtraction: ({ sourceId }: { sourceId: string }) => this.service.getSourceExtraction(sourceId),
       neighbors: ({ kind, id, relation, limit }: { kind: 'source' | 'node'; id: string; relation?: string; limit?: number }) => {
         if (kind !== 'source' && kind !== 'node') {
@@ -140,7 +157,11 @@ export class KnowledgeGraphqlService {
         }
         return this.service.getNeighbors(kind, id, { relation, limit: clampInt(limit, 20) });
       },
-      search: ({ query, limit }: { query: string; limit?: number }) => this.service.search(query, clampInt(limit, 10)),
+      search: ({ query, limit, knowledgeSpaceId }: { query: string; limit?: number; knowledgeSpaceId?: string }) => (
+        this.service.search(query, knowledgeSpaceId ? 10_000 : clampInt(limit, 10))
+          .filter((result) => !knowledgeSpaceId || isInKnowledgeSpace(result.source ?? result.node, knowledgeSpaceId))
+          .slice(0, clampInt(limit, 10))
+      ),
       packet: async ({ task, writeScope, limit, detail, budgetLimit }: { task: string; writeScope?: string[]; limit?: number; detail?: string; budgetLimit?: number }) => mapPacket(await this.service.buildPacket(
         task,
         writeScope ?? [],
