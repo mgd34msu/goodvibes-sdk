@@ -1,5 +1,6 @@
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 import { EMPTY_OBJECT_SCHEMA, STRING_SCHEMA, BOOLEAN_SCHEMA, NUMBER_SCHEMA, arraySchema, objectSchema, bodyEnvelopeSchema, methodDescriptor, runtimeEventId } from './method-catalog-shared.js';
+import { builtinGatewayHomeGraphMethodDescriptors } from './method-catalog-homegraph.js';
 import {
   GRAPHQL_VARIABLES_SCHEMA,
   METADATA_SCHEMA,
@@ -549,4 +550,5 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     }, ['query']),
     outputSchema: KNOWLEDGE_GRAPHQL_EXECUTE_OUTPUT_SCHEMA,
   }),
+  ...builtinGatewayHomeGraphMethodDescriptors,
 ];

@@ -10,7 +10,7 @@ import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker } from '../control-plane/index.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { ArtifactStore } from '../artifacts/index.js';
-import { KnowledgeService, KnowledgeStore } from '../knowledge/index.js';
+import { HomeGraphService, KnowledgeService, KnowledgeStore } from '../knowledge/index.js';
 import { MediaProviderRegistry, ensureBuiltinMediaProviders } from '../media/index.js';
 import { MultimodalService } from '../multimodal/index.js';
 import { AgentManager } from '../tools/agent/index.js';
@@ -116,6 +116,7 @@ export interface RuntimeServices {
   readonly gatewayMethods: GatewayMethodCatalog;
   readonly artifactStore: ArtifactStore;
   readonly knowledgeService: KnowledgeService;
+  readonly homeGraphService: HomeGraphService;
   readonly memoryStore: MemoryStore;
   readonly memoryRegistry: MemoryRegistry;
   readonly serviceRegistry: ServiceRegistry;
@@ -398,6 +399,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
   });
   knowledgeService.attachRuntimeBus(options.runtimeBus);
+  const homeGraphService = new HomeGraphService(knowledgeStore, artifactStore);
   const voiceProviders = new VoiceProviderRegistry();
   ensureBuiltinVoiceProviders(voiceProviders);
   const voiceService = new VoiceService(voiceProviders);
@@ -542,6 +544,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     gatewayMethods,
     artifactStore,
     knowledgeService,
+    homeGraphService,
     memoryStore,
     memoryRegistry,
     serviceRegistry,

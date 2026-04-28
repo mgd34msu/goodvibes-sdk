@@ -26,15 +26,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   secrets, automation, media/search, and knowledge-system docs were refreshed
   against source, and generated API docs no longer include version-pinned
   prose.
+- Home Assistant Home Graph support. The daemon now exposes an isolated
+  `homeassistant:<installationId>` knowledge space with snapshot sync, URL/note/
+  artifact ingest, source/object linking, source-backed answers, device
+  passports, room pages, packets, source inventory, graph browse, issue review,
+  export/import, and operator methods under `homeassistant.homeGraph.*`.
+- Knowledge space helpers and namespace-aware GraphQL filters for source, node,
+  issue, extraction, and search queries.
 
 ### Fixed
 - Control-plane method catalog descriptions now avoid stale restoration and
   historical implementation notes in generated references.
+- Home Graph search no longer ranks every Home Assistant node only because it
+  has confidence metadata; lexical matches are required before confidence
+  boosts apply.
 
 ### Migration
 - Browser knowledge sync is opt-in and is not scheduled by default. Clients
   that expose it should present it as a local-data import and request explicit
   user consent before scanning browser profiles.
+- Home Assistant integrations should treat Home Graph as daemon-owned state:
+  collect HA snapshots and call the Home Graph routes, but do not duplicate
+  graph storage, wiki rendering, export/import, or review queues locally.
 - Historical docs folders that duplicated release notes, audit notes, UAT
   handoffs, and roadmap tracking were removed from the live docs tree. Use
   `CHANGELOG.md` for release history and the docs under `docs/` for current

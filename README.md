@@ -45,9 +45,10 @@ Alternate registry:
   caching, and failover.
 - **Agentic runtime** with sessions, turns, tools, agents, WRFC review/fix
   chains, compaction, session memory, and remote companion sessions.
-- **Knowledge/wiki system** with structured SQLite storage, URL/bookmark/file/
-  artifact/browser-history ingest, Readability extraction, graph links,
-  GraphQL, packets, projections, usage records, and consolidation.
+- **Knowledge/wiki system** with structured SQLite storage, knowledge spaces,
+  URL/bookmark/file/artifact/browser-history ingest, Readability extraction,
+  graph links, GraphQL, packets, projections, usage records, consolidation,
+  and Home Assistant Home Graph support.
 - **Channel surfaces** for Slack, Discord, ntfy, Home Assistant, Telegram,
   Google Chat, Signal, WhatsApp, iMessage, MSTeams, BlueBubbles, Mattermost,
   Matrix, generic webhooks, and GitHub automation webhooks.

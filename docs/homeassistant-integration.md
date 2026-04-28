@@ -83,12 +83,99 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/conversation` | Submit an Assist-style conversation turn and wait for the final assistant reply. |
 | `POST /api/homeassistant/conversation/stream` | Submit a conversation turn over SSE and receive one `final` or `error` event. |
 | `POST /api/homeassistant/conversation/cancel` | Close a running Home Assistant conversation by `sessionId` or known `messageId`. |
+| `GET /api/homeassistant/home-graph/status` | Home Graph status for an isolated HA knowledge space. |
+| `POST /api/homeassistant/home-graph/sync` | Sync entity/device/area/automation/script/scene/label/integration snapshots. |
+| `POST /api/homeassistant/home-graph/ingest/url` | Ingest a manual/product URL into the HA knowledge space. |
+| `POST /api/homeassistant/home-graph/ingest/note` | Store a note or "remember this about my house" fact. |
+| `POST /api/homeassistant/home-graph/ingest/artifact` | Ingest a document, photo, receipt, warranty, or existing artifact. |
+| `POST /api/homeassistant/home-graph/link` | Attach a source or fact to an HA object. |
+| `POST /api/homeassistant/home-graph/unlink` | Mark a source/object link inactive without deleting history. |
+| `POST /api/homeassistant/home-graph/ask` | Ask source-backed questions over only the HA knowledge space. |
+| `POST /api/homeassistant/home-graph/device-passport` | Refresh and materialize a device passport page. |
+| `POST /api/homeassistant/home-graph/room-page` | Generate a room/area page as markdown artifact. |
+| `POST /api/homeassistant/home-graph/packet` | Generate guest, sitter, emergency, contractor, network, or custom packets. |
+| `GET /api/homeassistant/home-graph/issues` | List Home Graph data-quality/review issues. |
+| `POST /api/homeassistant/home-graph/facts/review` | Accept, reject, resolve, edit, or forget a graph issue/source/node. |
+| `GET /api/homeassistant/home-graph/sources` | Browse source inventory and provenance for the HA space. |
+| `GET /api/homeassistant/home-graph/browse` | Browse namespace-filtered nodes, edges, sources, and issues. |
+| `POST /api/homeassistant/home-graph/export` | Export the HA knowledge space. |
+| `POST /api/homeassistant/home-graph/import` | Import a HA knowledge space export. |
 
 All daemon API calls require normal daemon authentication. The inbound webhook
 below additionally requires the Home Assistant webhook secret because webhook
 routes are evaluated before daemon bearer auth. The `/api/homeassistant/*`
 conversation routes use normal daemon bearer auth and are the preferred path
 for Home Assistant Assist conversation agents.
+
+### Home Graph
+
+Home Graph is the SDK-owned knowledge/wiki layer for Home Assistant. The HA
+integration collects context and calls daemon APIs; the daemon stores,
+searches, links, reviews, exports, and renders the graph. Home Graph records are
+not written into the default GoodVibes knowledge space. By default the SDK uses
+`homeassistant:<installationId>` as the `knowledgeSpaceId`, and every Home Graph
+source, node, edge, issue, extraction, projection artifact, and export carries
+that space metadata.
+
+Supported Home Assistant node kinds:
+
+- `ha_home`
+- `ha_entity`
+- `ha_device`
+- `ha_area`
+- `ha_automation`
+- `ha_script`
+- `ha_scene`
+- `ha_label`
+- `ha_integration`
+- `ha_room`
+- `ha_device_passport`
+- `ha_maintenance_item`
+- `ha_troubleshooting_case`
+- `ha_purchase`
+- `ha_network_node`
+
+Supported relation names:
+
+- `controls`
+- `located_in`
+- `belongs_to_device`
+- `has_manual`
+- `has_receipt`
+- `has_warranty`
+- `has_issue`
+- `fixed_by`
+- `uses_battery`
+- `connected_via`
+- `part_of_network`
+- `mentioned_by`
+- `source_for`
+
+The HA integration should keep graph storage transient on its side. It should
+collect registry snapshots, expose services/entities/repairs, and pass stable
+Home Assistant ids to the daemon. The daemon owns source provenance,
+confidence/review state, materialized room/device/packet markdown, exports, and
+namespace-filtered search.
+
+Home Graph operator methods mirror the HTTP routes:
+
+- `homeassistant.homeGraph.syncHomeGraph`
+- `homeassistant.homeGraph.ingestHomeGraphUrl`
+- `homeassistant.homeGraph.ingestHomeGraphNote`
+- `homeassistant.homeGraph.ingestHomeGraphArtifact`
+- `homeassistant.homeGraph.linkHomeGraphKnowledge`
+- `homeassistant.homeGraph.unlinkHomeGraphKnowledge`
+- `homeassistant.homeGraph.askHomeGraph`
+- `homeassistant.homeGraph.refreshDevicePassport`
+- `homeassistant.homeGraph.generateRoomPage`
+- `homeassistant.homeGraph.generateHomeGraphPacket`
+- `homeassistant.homeGraph.listHomeGraphIssues`
+- `homeassistant.homeGraph.reviewHomeGraphFact`
+
+Additional browse/export methods are available for source inventory and future
+knowledge UIs: `homeassistant.homeGraph.sources.list`,
+`homeassistant.homeGraph.browse`, `homeassistant.homeGraph.export`, and
+`homeassistant.homeGraph.import`.
 
 Home Assistant prompt ingress uses isolated remote-chat sessions backed by the
 same daemon chat manager used by companion-app remote chat. It does not use a

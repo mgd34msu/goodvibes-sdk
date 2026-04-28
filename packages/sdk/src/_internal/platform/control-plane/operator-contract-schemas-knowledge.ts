@@ -606,3 +606,110 @@ export const KNOWLEDGE_CONNECTOR_ENTITY_OUTPUT_SCHEMA = entityOutputSchema('conn
 export const KNOWLEDGE_CONNECTOR_DOCTOR_OUTPUT_SCHEMA = entityOutputSchema('report', KNOWLEDGE_CONNECTOR_DOCTOR_REPORT_SCHEMA);
 export const KNOWLEDGE_EXTRACTIONS_OUTPUT_SCHEMA = listOutputSchema('extractions', KNOWLEDGE_EXTRACTION_SCHEMA);
 export const KNOWLEDGE_USAGE_LIST_OUTPUT_SCHEMA = KNOWLEDGE_USAGE_OUTPUT_SCHEMA;
+
+export const HOME_GRAPH_SPACE_INPUT_SCHEMA = objectSchema({
+  installationId: STRING_SCHEMA,
+  knowledgeSpaceId: STRING_SCHEMA,
+}, [], { additionalProperties: true });
+
+export const HOME_GRAPH_STATUS_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  installationId: STRING_SCHEMA,
+  sourceCount: NUMBER_SCHEMA,
+  nodeCount: NUMBER_SCHEMA,
+  edgeCount: NUMBER_SCHEMA,
+  issueCount: NUMBER_SCHEMA,
+  extractionCount: NUMBER_SCHEMA,
+  lastSnapshotAt: NUMBER_SCHEMA,
+  capabilities: STRING_LIST_SCHEMA,
+}, ['ok', 'spaceId', 'installationId', 'sourceCount', 'nodeCount', 'edgeCount', 'issueCount', 'extractionCount', 'capabilities'], { additionalProperties: true });
+
+export const HOME_GRAPH_SYNC_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  installationId: STRING_SCHEMA,
+  source: KNOWLEDGE_SOURCE_SCHEMA,
+  home: KNOWLEDGE_NODE_SCHEMA,
+  created: JSON_RECORD_SCHEMA,
+  counts: JSON_RECORD_SCHEMA,
+}, ['ok', 'spaceId', 'installationId', 'source', 'home', 'created', 'counts'], { additionalProperties: true });
+
+export const HOME_GRAPH_INGEST_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  source: KNOWLEDGE_SOURCE_SCHEMA,
+  artifactId: STRING_SCHEMA,
+  extraction: KNOWLEDGE_EXTRACTION_SCHEMA,
+  linked: KNOWLEDGE_EDGE_SCHEMA,
+}, ['ok', 'spaceId', 'source'], { additionalProperties: true });
+
+export const HOME_GRAPH_LINK_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  edge: KNOWLEDGE_EDGE_SCHEMA,
+  target: JSON_RECORD_SCHEMA,
+}, ['ok', 'spaceId', 'edge'], { additionalProperties: true });
+
+export const HOME_GRAPH_ASK_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  query: STRING_SCHEMA,
+  answer: JSON_RECORD_SCHEMA,
+  results: GENERIC_LIST_SCHEMA,
+}, ['ok', 'spaceId', 'query', 'answer', 'results'], { additionalProperties: true });
+
+export const HOME_GRAPH_PROJECTION_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  markdown: STRING_SCHEMA,
+  artifact: JSON_RECORD_SCHEMA,
+}, ['ok', 'spaceId', 'title', 'markdown', 'artifact'], { additionalProperties: true });
+
+export const HOME_GRAPH_ISSUES_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  issues: arraySchema(KNOWLEDGE_ISSUE_SCHEMA),
+}, ['ok', 'spaceId', 'issues'], { additionalProperties: true });
+
+export const HOME_GRAPH_SOURCES_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
+}, ['ok', 'spaceId', 'sources'], { additionalProperties: true });
+
+export const HOME_GRAPH_BROWSE_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  nodes: arraySchema(KNOWLEDGE_NODE_SCHEMA),
+  edges: arraySchema(KNOWLEDGE_EDGE_SCHEMA),
+  sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
+  issues: arraySchema(KNOWLEDGE_ISSUE_SCHEMA),
+}, ['ok', 'spaceId', 'nodes', 'edges', 'sources', 'issues'], { additionalProperties: true });
+
+export const HOME_GRAPH_REVIEW_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  issue: KNOWLEDGE_ISSUE_SCHEMA,
+  node: KNOWLEDGE_NODE_SCHEMA,
+  source: KNOWLEDGE_SOURCE_SCHEMA,
+}, ['ok', 'spaceId'], { additionalProperties: true });
+
+export const HOME_GRAPH_EXPORT_OUTPUT_SCHEMA = objectSchema({
+  version: NUMBER_SCHEMA,
+  exportedAt: NUMBER_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  installationId: STRING_SCHEMA,
+  sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
+  nodes: arraySchema(KNOWLEDGE_NODE_SCHEMA),
+  edges: arraySchema(KNOWLEDGE_EDGE_SCHEMA),
+  issues: arraySchema(KNOWLEDGE_ISSUE_SCHEMA),
+  extractions: arraySchema(KNOWLEDGE_EXTRACTION_SCHEMA),
+}, ['version', 'exportedAt', 'spaceId', 'installationId', 'sources', 'nodes', 'edges', 'issues', 'extractions'], { additionalProperties: true });
+
+export const HOME_GRAPH_IMPORT_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  imported: JSON_RECORD_SCHEMA,
+}, ['ok', 'spaceId', 'imported'], { additionalProperties: true });
