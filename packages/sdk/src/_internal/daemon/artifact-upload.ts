@@ -516,7 +516,13 @@ async function* iterateUploadStream(
         if (value) yield value;
       }
     } finally {
-      reader.releaseLock();
+      try {
+        reader.releaseLock();
+      } catch {
+        // Some server runtimes expose request body readers whose releaseLock
+        // throws after successful consumption. Upload cleanup must not fail the
+        // artifact write.
+      }
     }
     return;
   }

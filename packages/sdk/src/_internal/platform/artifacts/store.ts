@@ -173,7 +173,13 @@ async function* iterateWebStream(stream: ReadableStream<Uint8Array>): AsyncItera
       if (value) yield value;
     }
   } finally {
-    reader.releaseLock();
+    try {
+      reader.releaseLock();
+    } catch (error) {
+      logger.debug('[artifacts] Ignored upload stream reader release failure', {
+        error: summarizeError(error),
+      });
+    }
   }
 }
 

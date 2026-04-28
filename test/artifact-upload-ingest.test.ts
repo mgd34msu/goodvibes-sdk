@@ -35,6 +35,28 @@ function createStore(name: string): ArtifactStore {
   return new ArtifactStore({ rootDir: tempDir(name) });
 }
 
+function webStreamWithFailingReleaseLock(data: Uint8Array): ReadableStream<Uint8Array> {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(data);
+      controller.close();
+    },
+  });
+  const getReader = stream.getReader.bind(stream);
+  Object.defineProperty(stream, 'getReader', {
+    value: () => {
+      const reader = getReader();
+      const releaseLock = reader.releaseLock.bind(reader);
+      reader.releaseLock = () => {
+        releaseLock();
+        throw new Error('Bun request stream releaseLock failure');
+      };
+      return reader;
+    },
+  });
+  return stream;
+}
+
 describe('artifact uploads and ingest', () => {
   test('ArtifactStore accepts streamed artifacts larger than the legacy 10 MiB cap', async () => {
     const store = createStore('large-stream');
@@ -47,6 +69,20 @@ describe('artifact uploads and ingest', () => {
     expect(artifact.sizeBytes).toBe(11 * 1024 * 1024);
     expect(artifact.filename).toBe('large-manual.pdf');
     expect(artifact.mimeType).toBe('application/pdf');
+  });
+
+  test('ArtifactStore ignores web stream reader release failures after upload consumption', async () => {
+    const store = createStore('release-lock');
+    const data = new TextEncoder().encode('raw upload from Bun request stream');
+    const artifact = await store.createFromStream({
+      stream: webStreamWithFailingReleaseLock(data),
+      filename: 'bun-upload.txt',
+      mimeType: 'text/plain',
+    });
+
+    expect(artifact.sizeBytes).toBe(data.byteLength);
+    expect(artifact.filename).toBe('bun-upload.txt');
+    expect(artifact.mimeType).toBe('text/plain');
   });
 
   test('POST /api/artifacts accepts multipart file uploads without JSON parsing', async () => {
