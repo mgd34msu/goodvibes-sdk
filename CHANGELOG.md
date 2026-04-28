@@ -20,6 +20,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.4] - 2026-04-28
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Raw and streaming artifact uploads now ignore non-critical
+  `ReadableStreamDefaultReader.releaseLock()` cleanup failures after the body
+  has already been consumed. This fixes Bun-hosted daemon uploads returning 500
+  responses from `/api/artifacts` even though the request stream was read
+  successfully.
+
+### Migration
+- Host apps can remove upload-stream normalization shims added only to work
+  around Bun request body reader cleanup failures.
+
+---
+
 ## [0.26.3] - 2026-04-28
 
 ### Breaking
