@@ -311,6 +311,9 @@ export function buildKnowledgeRouteContext(input: {
       materializeProjection: (projection) => input.knowledgeService.materializeProjection(
         projection as Parameters<KnowledgeService['materializeProjection']>[0],
       ),
+      map: (mapInput) => input.knowledgeService.map(
+        mapInput as Parameters<KnowledgeService['map']>[0],
+      ),
     },
     knowledgeGraphqlService: input.knowledgeGraphqlService,
   };

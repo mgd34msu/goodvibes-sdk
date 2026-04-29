@@ -6,6 +6,7 @@ import { ArtifactStore } from '../artifacts/index.js';
 import type { MemoryRegistry } from '../state/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { createDefaultKnowledgeConnectorRegistry, KnowledgeConnectorRegistry } from './connectors.js';
+import { renderKnowledgeMap } from './map.js';
 import { KnowledgeProjectionService } from './projections.js';
 import { KnowledgeStore } from './store.js';
 import { ingestBrowserKnowledge } from './browser-history/index.js';
@@ -25,6 +26,7 @@ import type {
   KnowledgeJobRunRecord,
   KnowledgeMaterializedProjection,
   KnowledgeItemView,
+  KnowledgeMapResult,
   KnowledgeNodeRecord,
   KnowledgePacket,
   KnowledgePacketDetail,
@@ -521,6 +523,22 @@ export class KnowledgeService {
       pageCount: materialized.bundle.pageCount,
     }));
     return materialized;
+  }
+
+  async map(input: {
+    readonly limit?: number;
+    readonly includeSources?: boolean;
+    readonly includeIssues?: boolean;
+    readonly includeGenerated?: boolean;
+  } = {}): Promise<KnowledgeMapResult> {
+    await this.store.init();
+    return renderKnowledgeMap({
+      title: 'Knowledge Map',
+      sources: this.store.listSources(10_000),
+      nodes: this.store.listNodes(10_000),
+      edges: this.store.listEdges(),
+      issues: this.store.listIssues(10_000),
+    }, input);
   }
 
   async reindex(): Promise<{ status: KnowledgeStatus; issues: readonly KnowledgeIssueRecord[] }> {

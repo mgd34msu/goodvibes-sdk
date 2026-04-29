@@ -1,4 +1,21 @@
 import type { ArtifactStore } from '../artifacts/index.js';
+import {
+  generatedKnowledgeCanonicalUri,
+  generatedKnowledgeSourceId,
+  isGeneratedKnowledgeSource,
+  materializeGeneratedKnowledgeProjection,
+} from './generated-projections.js';
+import {
+  buildBulletList,
+  codeFenceJson,
+  dedupe,
+  formatDateTime,
+  joinSections,
+  materializedTargetReference,
+  quote,
+  slugify,
+  sortByTitle,
+} from './projection-utils.js';
 import type { KnowledgeStore } from './store.js';
 import type {
   KnowledgeConnector,
@@ -11,53 +28,6 @@ import type {
   KnowledgeProjectionTargetKind,
   KnowledgeSourceRecord,
 } from './types.js';
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80) || 'item';
-}
-
-function quote(value: string | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? `> ${trimmed.replace(/\n+/g, '\n> ')}` : null;
-}
-
-function formatDateTime(timestamp: number | undefined): string | null {
-  if (!timestamp || !Number.isFinite(timestamp)) return null;
-  return new Date(timestamp).toISOString();
-}
-
-function codeFenceJson(value: Record<string, unknown> | undefined): string | null {
-  if (!value || Object.keys(value).length === 0) return null;
-  return ['```json', JSON.stringify(value, null, 2), '```'].join('\n');
-}
-
-function joinSections(...sections: Array<string | null | undefined>): string {
-  return sections.filter((section): section is string => typeof section === 'string' && section.trim().length > 0).join('\n\n');
-}
-
-function dedupe<T>(values: readonly T[], key: (value: T) => string): T[] {
-  const seen = new Set<string>();
-  const result: T[] = [];
-  for (const value of values) {
-    const id = key(value);
-    if (seen.has(id)) continue;
-    seen.add(id);
-    result.push(value);
-  }
-  return result;
-}
-
-function buildBulletList(items: readonly string[]): string {
-  return items.length > 0 ? items.map((item) => `- ${item}`).join('\n') : '- none';
-}
-
-function sortByTitle<T extends { title?: string }>(values: readonly T[]): T[] {
-  return [...values].sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
-}
 
 export interface KnowledgeProjectionServiceOptions {
   readonly connectors?: () => readonly KnowledgeConnector[];
@@ -135,20 +105,42 @@ export class KnowledgeProjectionService {
   ): Promise<KnowledgeMaterializedProjection> {
     const bundle = await this.render(input);
     const content = this.combineBundleMarkdown(bundle);
-    const artifact = await this.artifactStore.create({
-      text: content,
-      mimeType: 'text/markdown',
+    const projectionKind = `knowledge-${bundle.target.kind}`;
+    const sourceId = generatedKnowledgeSourceId(projectionKind, bundle.target.targetId);
+    const canonicalUri = generatedKnowledgeCanonicalUri(projectionKind, bundle.target.targetId);
+    const target = materializedTargetReference(bundle.target);
+    const metadata = {
+      projectionId: bundle.id,
+      targetId: bundle.target.targetId,
+      targetKind: bundle.target.kind,
+      pageCount: bundle.pageCount,
+      pagePaths: bundle.pages.map((page) => page.path),
+      itemIds: dedupe(bundle.pages.flatMap((page) => page.itemIds), (id) => id),
+    };
+    const generated = await materializeGeneratedKnowledgeProjection({
+      store: this.store,
+      artifactStore: this.artifactStore,
+      connectorId: 'knowledge-projection',
+      sourceId,
+      canonicalUri,
+      title: bundle.target.title,
+      summary: `Generated markdown projection for ${bundle.target.title}.`,
+      tags: ['knowledge', 'generated-page', 'projection', bundle.target.kind],
       filename: input.filename?.trim() || bundle.target.defaultFilename,
-      metadata: {
-        projectionId: bundle.id,
-        targetId: bundle.target.targetId,
-        targetKind: bundle.target.kind,
-        pageCount: bundle.pageCount,
-        pagePaths: bundle.pages.map((page) => page.path),
-        itemIds: dedupe(bundle.pages.flatMap((page) => page.itemIds), (id) => id),
-      },
+      markdown: content,
+      projectionKind,
+      metadata,
+      sourceMetadata: metadata,
+      artifactMetadata: metadata,
+      ...(target ? { target } : {}),
     });
-    return { bundle, artifact };
+    return {
+      bundle,
+      artifact: generated.artifact,
+      source: generated.source,
+      ...(generated.linked ? { linked: generated.linked } : {}),
+      artifactCreated: generated.artifactCreated,
+    };
   }
 
   private resolveTarget(kind: KnowledgeProjectionTargetKind, id?: string): KnowledgeProjectionTarget | null {
@@ -482,9 +474,15 @@ export class KnowledgeProjectionService {
     const view = this.store.getItem(id);
     const target = this.createSourceTarget(source);
     const relatedNodes = view?.linkedNodes ?? [];
-    const relatedSources = view?.linkedSources.filter((entry) => entry.id !== source.id) ?? [];
+    const relatedSources = view?.linkedSources.filter((entry) => (
+      entry.id !== source.id && !isGeneratedKnowledgeSource(entry)
+    )) ?? [];
     const issues = this.store.listIssues(10_000).filter((issue) => issue.sourceId === source.id);
-    const incoming = this.store.listEdges().filter((edge) => edge.toKind === 'source' && edge.toId === source.id);
+    const incoming = this.store.listEdges().filter((edge) => (
+      edge.toKind === 'source'
+      && edge.toId === source.id
+      && !this.isGeneratedSourceReference(edge.fromKind, edge.fromId)
+    ));
     const content = joinSections(
       `# ${target.title}`,
       extraction?.summary ?? source.summary,
@@ -570,7 +568,9 @@ export class KnowledgeProjectionService {
       ].join('\n'),
       [
         '## Linked Sources',
-        buildBulletList((view?.linkedSources ?? []).map((source) => this.linkToTarget(this.createSourceTarget(source)))),
+        buildBulletList((view?.linkedSources ?? [])
+          .filter((source) => !isGeneratedKnowledgeSource(source))
+          .map((source) => this.linkToTarget(this.createSourceTarget(source)))),
       ].join('\n'),
       [
         '## Linked Nodes',
@@ -578,7 +578,9 @@ export class KnowledgeProjectionService {
       ].join('\n'),
       [
         '## Backlinks',
-        buildBulletList(incoming.map((edge) => `${edge.fromKind}:${edge.fromId} via \`${edge.relation}\``)),
+        buildBulletList(incoming
+          .filter((edge) => !this.isGeneratedSourceReference(edge.fromKind, edge.fromId))
+          .map((edge) => `${edge.fromKind}:${edge.fromId} via \`${edge.relation}\``)),
       ].join('\n'),
       [
         '## Issues',
@@ -770,5 +772,11 @@ export class KnowledgeProjectionService {
       page.content,
     ].join('\n'));
     return [index, ...pages].join('\n\n---\n\n');
+  }
+
+  private isGeneratedSourceReference(kind: string, id: string): boolean {
+    if (kind !== 'source') return false;
+    const source = this.store.getSource(id);
+    return source ? isGeneratedKnowledgeSource(source) : false;
   }
 }

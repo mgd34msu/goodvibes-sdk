@@ -31,6 +31,7 @@ export function createDaemonKnowledgeRouteHandlers(
   | 'getKnowledgeConnector'
   | 'getKnowledgeConnectorDoctor'
   | 'getKnowledgeProjectionTargets'
+  | 'getKnowledgeMap'
   | 'getKnowledgeGraphqlSchema'
   | 'getKnowledgeExtractions'
   | 'getKnowledgeUsage'
@@ -90,6 +91,12 @@ export function createDaemonKnowledgeRouteHandlers(
         : Response.json({ error: 'Unknown knowledge connector' }, { status: 404 });
     },
     getKnowledgeProjectionTargets: async (url) => Response.json({ targets: await context.knowledgeService.listProjectionTargets(readLimit(url, 25)) }),
+    getKnowledgeMap: async (url) => Response.json(await context.knowledgeService.map({
+      limit: readLimit(url, 500),
+      includeSources: readBooleanQuery(url, 'includeSources'),
+      includeIssues: readBooleanQuery(url, 'includeIssues'),
+      includeGenerated: readBooleanQuery(url, 'includeGenerated'),
+    })),
     getKnowledgeGraphqlSchema: () => Response.json({
       language: 'graphql',
       domain: 'knowledge',
@@ -207,6 +214,12 @@ function readLimit(url: URL, fallback: number): number {
   return Math.max(1, Number(url.searchParams.get('limit') ?? fallback) || fallback);
 }
 
+function readBooleanQuery(url: URL, key: string): boolean | undefined {
+  const raw = url.searchParams.get(key);
+  if (raw === null || raw.trim() === '') return undefined;
+  return raw === '1' || raw.toLowerCase() === 'true' || raw.toLowerCase() === 'yes';
+}
+
 function readKnowledgeProjectionRequest(
   body: JsonBody,
 ): { kind: KnowledgeProjectionTargetKind; id?: string; limit?: number } | Response {
@@ -217,11 +230,15 @@ function readKnowledgeProjectionRequest(
     && rawKind !== 'source'
     && rawKind !== 'node'
     && rawKind !== 'issue'
+    && rawKind !== 'dashboard'
+    && rawKind !== 'rollup'
   ) {
-    return Response.json({ error: 'Projection kind must be one of overview, bundle, source, node, or issue.' }, { status: 400 });
+    return Response.json({
+      error: 'Projection kind must be one of overview, bundle, source, node, issue, dashboard, or rollup.',
+    }, { status: 400 });
   }
   const id = typeof body.id === 'string' ? body.id.trim() : '';
-  if ((rawKind === 'source' || rawKind === 'node' || rawKind === 'issue') && !id) {
+  if ((rawKind === 'source' || rawKind === 'node' || rawKind === 'issue' || rawKind === 'rollup') && !id) {
     return Response.json({ error: `Projection kind ${rawKind} requires id.` }, { status: 400 });
   }
   return {

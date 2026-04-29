@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.26.10"
+    "version": "0.26.11"
   },
   "auth": {
     "modes": [
@@ -25623,6 +25623,190 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "markdown": {
               "type": "string"
             },
+            "source": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "connectorId": {
+                  "type": "string"
+                },
+                "sourceType": {
+                  "type": "string",
+                  "enum": [
+                    "url",
+                    "bookmark",
+                    "bookmark-list",
+                    "history",
+                    "document",
+                    "repo",
+                    "dataset",
+                    "image",
+                    "manual",
+                    "other"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "sourceUri": {
+                  "type": "string"
+                },
+                "canonicalUri": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "folderPath": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "artifactId": {
+                  "type": "string"
+                },
+                "contentHash": {
+                  "type": "string"
+                },
+                "lastCrawledAt": {
+                  "type": "number"
+                },
+                "crawlError": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "connectorId",
+                "sourceType",
+                "tags",
+                "status",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "linked": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "fromKind": {
+                  "type": "string"
+                },
+                "fromId": {
+                  "type": "string"
+                },
+                "toKind": {
+                  "type": "string"
+                },
+                "toId": {
+                  "type": "string"
+                },
+                "relation": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "fromKind",
+                "fromId",
+                "toKind",
+                "toId",
+                "relation",
+                "weight",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
             "artifact": {
               "type": "object",
               "additionalProperties": {
@@ -25742,6 +25926,190 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "markdown": {
               "type": "string"
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "connectorId": {
+                  "type": "string"
+                },
+                "sourceType": {
+                  "type": "string",
+                  "enum": [
+                    "url",
+                    "bookmark",
+                    "bookmark-list",
+                    "history",
+                    "document",
+                    "repo",
+                    "dataset",
+                    "image",
+                    "manual",
+                    "other"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "sourceUri": {
+                  "type": "string"
+                },
+                "canonicalUri": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "folderPath": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "artifactId": {
+                  "type": "string"
+                },
+                "contentHash": {
+                  "type": "string"
+                },
+                "lastCrawledAt": {
+                  "type": "number"
+                },
+                "crawlError": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "connectorId",
+                "sourceType",
+                "tags",
+                "status",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "linked": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "fromKind": {
+                  "type": "string"
+                },
+                "fromId": {
+                  "type": "string"
+                },
+                "toKind": {
+                  "type": "string"
+                },
+                "toId": {
+                  "type": "string"
+                },
+                "relation": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "fromKind",
+                "fromId",
+                "toKind",
+                "toId",
+                "relation",
+                "weight",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
             },
             "artifact": {
               "type": "object",
@@ -27527,6 +27895,218 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "homeassistant.homeGraph.map",
+        "title": "Map Home Graph",
+        "description": "Return a visual Home Graph node/edge map with deterministic layout data and SVG.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/homeassistant/home-graph/map"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "includeSources": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "generatedAt": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "nodeCount": {
+              "type": "number"
+            },
+            "edgeCount": {
+              "type": "number"
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "recordKind": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "radius": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "recordKind",
+                  "kind",
+                  "title",
+                  "x",
+                  "y",
+                  "radius",
+                  "metadata"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "fromId": {
+                    "type": "string"
+                  },
+                  "toId": {
+                    "type": "string"
+                  },
+                  "relation": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "fromId",
+                  "toId",
+                  "relation",
+                  "weight",
+                  "metadata"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "svg": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ok",
+            "title",
+            "generatedAt",
+            "width",
+            "height",
+            "nodeCount",
+            "edgeCount",
+            "nodes",
+            "edges",
+            "svg"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "homeassistant.homeGraph.refreshDevicePassport",
         "title": "Refresh Device Passport",
         "description": "Generate or refresh the living passport page for one Home Assistant device.",
@@ -27603,6 +28183,190 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "markdown": {
               "type": "string"
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "connectorId": {
+                  "type": "string"
+                },
+                "sourceType": {
+                  "type": "string",
+                  "enum": [
+                    "url",
+                    "bookmark",
+                    "bookmark-list",
+                    "history",
+                    "document",
+                    "repo",
+                    "dataset",
+                    "image",
+                    "manual",
+                    "other"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "sourceUri": {
+                  "type": "string"
+                },
+                "canonicalUri": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "folderPath": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "artifactId": {
+                  "type": "string"
+                },
+                "contentHash": {
+                  "type": "string"
+                },
+                "lastCrawledAt": {
+                  "type": "number"
+                },
+                "crawlError": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "connectorId",
+                "sourceType",
+                "tags",
+                "status",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "linked": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "fromKind": {
+                  "type": "string"
+                },
+                "fromId": {
+                  "type": "string"
+                },
+                "toKind": {
+                  "type": "string"
+                },
+                "toId": {
+                  "type": "string"
+                },
+                "relation": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "fromKind",
+                "fromId",
+                "toKind",
+                "toId",
+                "relation",
+                "weight",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
             },
             "artifact": {
               "type": "object",
@@ -28705,6 +29469,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 ]
               }
             },
+            "pageAutomation": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
             "metadata": {
               "type": "object",
               "additionalProperties": {
@@ -28967,6 +29758,55 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 ]
               }
             },
+            "generated": {
+              "type": "object",
+              "properties": {
+                "devicePassports": {
+                  "type": "number"
+                },
+                "roomPages": {
+                  "type": "number"
+                },
+                "artifacts": {
+                  "type": "number"
+                },
+                "sources": {
+                  "type": "number"
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "devicePassports",
+                "roomPages",
+                "artifacts",
+                "sources",
+                "errors"
+              ],
+              "additionalProperties": true
+            },
             "counts": {
               "type": "object",
               "additionalProperties": {
@@ -29002,6 +29842,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "source",
             "home",
             "created",
+            "generated",
             "counts"
           ],
           "additionalProperties": true
@@ -34266,6 +35107,218 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "knowledge.map",
+        "title": "Map Knowledge Graph",
+        "description": "Return a deterministic visual map of structured knowledge nodes, sources, edges, and optional issues.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/knowledge/map"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "includeSources": {
+              "type": "boolean"
+            },
+            "includeIssues": {
+              "type": "boolean"
+            },
+            "includeGenerated": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "generatedAt": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "nodeCount": {
+              "type": "number"
+            },
+            "edgeCount": {
+              "type": "number"
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "recordKind": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "radius": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "recordKind",
+                  "kind",
+                  "title",
+                  "x",
+                  "y",
+                  "radius",
+                  "metadata"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "fromId": {
+                    "type": "string"
+                  },
+                  "toId": {
+                    "type": "string"
+                  },
+                  "relation": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "fromId",
+                  "toId",
+                  "relation",
+                  "weight",
+                  "metadata"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "svg": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ok",
+            "title",
+            "generatedAt",
+            "width",
+            "height",
+            "nodeCount",
+            "edgeCount",
+            "nodes",
+            "edges",
+            "svg"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "knowledge.nodes.list",
         "title": "List Knowledge Nodes",
         "description": "Return compiled knowledge nodes.",
@@ -34852,13 +35905,200 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "metadata"
               ],
               "additionalProperties": true
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "connectorId": {
+                  "type": "string"
+                },
+                "sourceType": {
+                  "type": "string",
+                  "enum": [
+                    "url",
+                    "bookmark",
+                    "bookmark-list",
+                    "history",
+                    "document",
+                    "repo",
+                    "dataset",
+                    "image",
+                    "manual",
+                    "other"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "sourceUri": {
+                  "type": "string"
+                },
+                "canonicalUri": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "folderPath": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "artifactId": {
+                  "type": "string"
+                },
+                "contentHash": {
+                  "type": "string"
+                },
+                "lastCrawledAt": {
+                  "type": "number"
+                },
+                "crawlError": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "connectorId",
+                "sourceType",
+                "tags",
+                "status",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "linked": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "fromKind": {
+                  "type": "string"
+                },
+                "fromId": {
+                  "type": "string"
+                },
+                "toKind": {
+                  "type": "string"
+                },
+                "toId": {
+                  "type": "string"
+                },
+                "relation": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "fromKind",
+                "fromId",
+                "toKind",
+                "toId",
+                "relation",
+                "weight",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "artifactCreated": {
+              "type": "boolean"
             }
           },
           "required": [
             "bundle",
             "artifact"
           ],
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "invokable": true
       },
@@ -60658,10 +61898,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 244,
-      "typedInputs": 244,
+      "methods": 246,
+      "typedInputs": 246,
       "genericInputs": 0,
-      "typedOutputs": 244,
+      "typedOutputs": 246,
       "genericOutputs": 0
     },
     "eventCoverage": {

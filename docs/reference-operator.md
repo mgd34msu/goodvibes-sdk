@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `244`
+- Methods: `246`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -25764,6 +25764,190 @@ Render a scoped Home Graph packet with SDK-owned inclusion/exclusion profile rul
     "markdown": {
       "type": "string"
     },
+    "source": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "connectorId": {
+          "type": "string"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "url",
+            "bookmark",
+            "bookmark-list",
+            "history",
+            "document",
+            "repo",
+            "dataset",
+            "image",
+            "manual",
+            "other"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "sourceUri": {
+          "type": "string"
+        },
+        "canonicalUri": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "folderPath": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "artifactId": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": "string"
+        },
+        "lastCrawledAt": {
+          "type": "number"
+        },
+        "crawlError": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "connectorId",
+        "sourceType",
+        "tags",
+        "status",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    },
+    "linked": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fromKind": {
+          "type": "string"
+        },
+        "fromId": {
+          "type": "string"
+        },
+        "toKind": {
+          "type": "string"
+        },
+        "toId": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "fromKind",
+        "fromId",
+        "toKind",
+        "toId",
+        "relation",
+        "weight",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    },
     "artifact": {
       "type": "object",
       "additionalProperties": {
@@ -25887,6 +26071,190 @@ Render a Home Graph room/area page and materialize it as markdown.
     },
     "markdown": {
       "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "connectorId": {
+          "type": "string"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "url",
+            "bookmark",
+            "bookmark-list",
+            "history",
+            "document",
+            "repo",
+            "dataset",
+            "image",
+            "manual",
+            "other"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "sourceUri": {
+          "type": "string"
+        },
+        "canonicalUri": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "folderPath": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "artifactId": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": "string"
+        },
+        "lastCrawledAt": {
+          "type": "number"
+        },
+        "crawlError": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "connectorId",
+        "sourceType",
+        "tags",
+        "status",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    },
+    "linked": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fromKind": {
+          "type": "string"
+        },
+        "fromId": {
+          "type": "string"
+        },
+        "toKind": {
+          "type": "string"
+        },
+        "toId": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "fromKind",
+        "fromId",
+        "toKind",
+        "toId",
+        "relation",
+        "weight",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
     },
     "artifact": {
       "type": "object",
@@ -27686,6 +28054,222 @@ Return Home Graph data quality, review, and maintenance issues.
 }
 ```
 
+#### `homeassistant.homeGraph.map`
+
+Return a visual Home Graph node/edge map with deterministic layout data and SVG.
+
+- Title: `Map Home Graph`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/homeassistant/home-graph/map`
+- Scopes: `read:knowledge`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "installationId": {
+      "type": "string"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "includeSources": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "spaceId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "number"
+    },
+    "width": {
+      "type": "number"
+    },
+    "height": {
+      "type": "number"
+    },
+    "nodeCount": {
+      "type": "number"
+    },
+    "edgeCount": {
+      "type": "number"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "recordKind": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "recordKind",
+          "kind",
+          "title",
+          "x",
+          "y",
+          "radius",
+          "metadata"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromId": {
+            "type": "string"
+          },
+          "toId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "fromId",
+          "toId",
+          "relation",
+          "weight",
+          "metadata"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "svg": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "title",
+    "generatedAt",
+    "width",
+    "height",
+    "nodeCount",
+    "edgeCount",
+    "nodes",
+    "edges",
+    "svg"
+  ],
+  "additionalProperties": true
+}
+```
+
 #### `homeassistant.homeGraph.refreshDevicePassport`
 
 Generate or refresh the living passport page for one Home Assistant device.
@@ -27767,6 +28351,190 @@ Generate or refresh the living passport page for one Home Assistant device.
     },
     "markdown": {
       "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "connectorId": {
+          "type": "string"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "url",
+            "bookmark",
+            "bookmark-list",
+            "history",
+            "document",
+            "repo",
+            "dataset",
+            "image",
+            "manual",
+            "other"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "sourceUri": {
+          "type": "string"
+        },
+        "canonicalUri": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "folderPath": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "artifactId": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": "string"
+        },
+        "lastCrawledAt": {
+          "type": "number"
+        },
+        "crawlError": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "connectorId",
+        "sourceType",
+        "tags",
+        "status",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    },
+    "linked": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fromKind": {
+          "type": "string"
+        },
+        "fromId": {
+          "type": "string"
+        },
+        "toKind": {
+          "type": "string"
+        },
+        "toId": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "fromKind",
+        "fromId",
+        "toKind",
+        "toId",
+        "relation",
+        "weight",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
     },
     "artifact": {
       "type": "object",
@@ -28884,6 +29652,33 @@ Ingest a Home Assistant registry snapshot into an isolated Home Graph knowledge 
         ]
       }
     },
+    "pageAutomation": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
     "metadata": {
       "type": "object",
       "additionalProperties": {
@@ -29151,6 +29946,55 @@ Ingest a Home Assistant registry snapshot into an isolated Home Graph knowledge 
         ]
       }
     },
+    "generated": {
+      "type": "object",
+      "properties": {
+        "devicePassports": {
+          "type": "number"
+        },
+        "roomPages": {
+          "type": "number"
+        },
+        "artifacts": {
+          "type": "number"
+        },
+        "sources": {
+          "type": "number"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {}
+            ]
+          }
+        }
+      },
+      "required": [
+        "devicePassports",
+        "roomPages",
+        "artifacts",
+        "sources",
+        "errors"
+      ],
+      "additionalProperties": true
+    },
     "counts": {
       "type": "object",
       "additionalProperties": {
@@ -29186,6 +30030,7 @@ Ingest a Home Assistant registry snapshot into an isolated Home Graph knowledge 
     "source",
     "home",
     "created",
+    "generated",
     "counts"
   ],
   "additionalProperties": true
@@ -34534,6 +35379,222 @@ Run deterministic knowledge lint checks and return the current issues.
 }
 ```
 
+#### `knowledge.map`
+
+Return a deterministic visual map of structured knowledge nodes, sources, edges, and optional issues.
+
+- Title: `Map Knowledge Graph`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/knowledge/map`
+- Scopes: `read:knowledge`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "number"
+    },
+    "includeSources": {
+      "type": "boolean"
+    },
+    "includeIssues": {
+      "type": "boolean"
+    },
+    "includeGenerated": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "spaceId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "number"
+    },
+    "width": {
+      "type": "number"
+    },
+    "height": {
+      "type": "number"
+    },
+    "nodeCount": {
+      "type": "number"
+    },
+    "edgeCount": {
+      "type": "number"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "recordKind": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "recordKind",
+          "kind",
+          "title",
+          "x",
+          "y",
+          "radius",
+          "metadata"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromId": {
+            "type": "string"
+          },
+          "toId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "fromId",
+          "toId",
+          "relation",
+          "weight",
+          "metadata"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "svg": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "title",
+    "generatedAt",
+    "width",
+    "height",
+    "nodeCount",
+    "edgeCount",
+    "nodes",
+    "edges",
+    "svg"
+  ],
+  "additionalProperties": true
+}
+```
+
 #### `knowledge.nodes.list`
 
 Return compiled knowledge nodes.
@@ -35133,13 +36194,200 @@ Render and persist a markdown/wiki projection as a derived artifact.
         "metadata"
       ],
       "additionalProperties": true
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "connectorId": {
+          "type": "string"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "url",
+            "bookmark",
+            "bookmark-list",
+            "history",
+            "document",
+            "repo",
+            "dataset",
+            "image",
+            "manual",
+            "other"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "sourceUri": {
+          "type": "string"
+        },
+        "canonicalUri": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "folderPath": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "artifactId": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": "string"
+        },
+        "lastCrawledAt": {
+          "type": "number"
+        },
+        "crawlError": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "connectorId",
+        "sourceType",
+        "tags",
+        "status",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    },
+    "linked": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fromKind": {
+          "type": "string"
+        },
+        "fromId": {
+          "type": "string"
+        },
+        "toKind": {
+          "type": "string"
+        },
+        "toId": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "fromKind",
+        "fromId",
+        "toKind",
+        "toId",
+        "relation",
+        "weight",
+        "metadata",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    },
+    "artifactCreated": {
+      "type": "boolean"
     }
   },
   "required": [
     "bundle",
     "artifact"
   ],
-  "additionalProperties": false
+  "additionalProperties": true
 }
 ```
 

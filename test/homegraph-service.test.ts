@@ -48,12 +48,103 @@ describe('Home Graph knowledge spaces', () => {
 
     const status = await service.status({ installationId: 'house-1' });
     const answer = await service.ask({ installationId: 'house-1', query: 'manualdefault' });
+    const browse = await service.browse({ installationId: 'house-1' });
+    const map = await service.map({ installationId: 'house-1' });
+    const generatedSources = browse.sources.filter((source) => source.metadata.homeGraphGeneratedPage === true);
+    const projectionKinds = generatedSources.map((source) => source.metadata.projectionKind);
 
     expect(synced.spaceId).toBe(homeAssistantKnowledgeSpaceId('house-1'));
+    expect(synced.generated.devicePassports).toBe(1);
+    expect(synced.generated.roomPages).toBe(1);
+    expect(synced.generated.errors).toHaveLength(0);
     expect(status.nodeCount).toBeGreaterThanOrEqual(4);
-    expect(status.sourceCount).toBe(1);
+    expect(status.sourceCount).toBeGreaterThanOrEqual(3);
     expect(status.capabilities).toContain('knowledge-space-isolation');
+    expect(status.capabilities).toContain('automatic-page-generation');
+    expect(status.capabilities).toContain('visual-knowledge-map');
+    expect(projectionKinds).toContain('device-passport');
+    expect(projectionKinds).toContain('room-page');
+    expect(browse.nodes.some((node) => node.kind === 'ha_device_passport')).toBe(true);
+    expect(map.nodeCount).toBeGreaterThanOrEqual(5);
+    expect(map.edgeCount).toBeGreaterThan(0);
+    expect(map.svg).toContain('<svg');
+    expect(map.svg).toContain('Front Door Sensor');
     expect(answer.results).toHaveLength(0);
+  });
+
+  test('allows snapshot callers to direct automatic page generation', async () => {
+    const { service } = createHomeGraphService();
+
+    const synced = await service.syncSnapshot({
+      installationId: 'house-1',
+      pageAutomation: {
+        devicePassports: false,
+        roomPages: false,
+      },
+      areas: [{ id: 'office', name: 'Office' }],
+      devices: [{ id: 'desk-lamp', name: 'Desk Lamp', areaId: 'office' }],
+    });
+    const browse = await service.browse({ installationId: 'house-1' });
+
+    expect(synced.generated.devicePassports).toBe(0);
+    expect(synced.generated.roomPages).toBe(0);
+    expect(synced.generated.artifacts).toBe(0);
+    expect(browse.sources.some((source) => source.metadata.homeGraphGeneratedPage === true)).toBe(false);
+  });
+
+  test('keeps automatic generated pages stable across repeated syncs', async () => {
+    const { service, artifactStore } = createHomeGraphService();
+    const snapshot = {
+      installationId: 'house-1',
+      areas: [{ id: 'kitchen', name: 'Kitchen' }],
+      devices: [{ id: 'kitchen-sensor', name: 'Kitchen Sensor', areaId: 'kitchen' }],
+    };
+
+    const first = await service.syncSnapshot(snapshot);
+    const firstArtifactIds = artifactStore.list(20).map((artifact) => artifact.id).sort();
+    const second = await service.syncSnapshot(snapshot);
+    const secondArtifactIds = artifactStore.list(20).map((artifact) => artifact.id).sort();
+    const roomPage = await service.generateRoomPage({ installationId: 'house-1', areaId: 'kitchen' });
+
+    expect(first.generated.artifacts).toBe(2);
+    expect(second.generated.devicePassports).toBe(1);
+    expect(second.generated.roomPages).toBe(1);
+    expect(second.generated.artifacts).toBe(0);
+    expect(secondArtifactIds).toEqual(firstArtifactIds);
+    expect(roomPage.markdown).not.toContain('Living Home Graph room page for Kitchen');
+  });
+
+  test('scopes room pages to room objects and linked source evidence', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [
+        { id: 'kitchen', name: 'Kitchen' },
+        { id: 'garage', name: 'Garage' },
+      ],
+      devices: [
+        { id: 'kitchen-sensor', name: 'Kitchen Sensor', areaId: 'kitchen' },
+        { id: 'garage-opener', name: 'Garage Opener', areaId: 'garage' },
+      ],
+      automations: [
+        { id: 'automation.kitchen_lights', name: 'Kitchen Lights', areaId: 'kitchen' },
+        { id: 'automation.garage_door', name: 'Garage Door', areaId: 'garage' },
+      ],
+    });
+    await service.ingestNote({
+      installationId: 'house-1',
+      title: 'Kitchen sensor manual',
+      body: 'The kitchen sensor reports temperature and motion.',
+      target: { kind: 'device', id: 'kitchen-sensor', relation: 'has_manual' },
+    });
+
+    const page = await service.generateRoomPage({ installationId: 'house-1', areaId: 'kitchen' });
+
+    expect(page.markdown).toContain('Kitchen Sensor');
+    expect(page.markdown).toContain('Kitchen Lights');
+    expect(page.markdown).toContain('Kitchen sensor manual');
+    expect(page.markdown).not.toContain('Garage Opener');
+    expect(page.markdown).not.toContain('Garage Door');
   });
 
   test('ingests notes, links and unlinks targets, and renders device passports', async () => {
@@ -533,15 +624,28 @@ describe('Home Graph knowledge spaces', () => {
       method: 'POST',
       body: JSON.stringify({ installationId: 'house-1' }),
     }));
+    const mapResponse = await routes.handle(new Request(
+      'http://daemon.local/api/homeassistant/home-graph/map?installationId=house-1',
+    ));
+    const svgResponse = await routes.handle(new Request(
+      'http://daemon.local/api/homeassistant/home-graph/map?installationId=house-1&format=svg',
+    ));
 
     expect(syncResponse?.status).toBe(200);
     expect(statusResponse?.status).toBe(200);
     expect(reindexResponse?.status).toBe(200);
+    expect(mapResponse?.status).toBe(200);
+    expect(svgResponse?.status).toBe(200);
     const status = await statusResponse!.json() as Record<string, unknown>;
     const reindex = await reindexResponse!.json() as Record<string, unknown>;
+    const map = await mapResponse!.json() as Record<string, unknown>;
+    const svg = await svgResponse!.text();
     expect(status.spaceId).toBe(homeAssistantKnowledgeSpaceId('house-1'));
     expect(status.nodeCount).toBeGreaterThanOrEqual(2);
     expect(reindex.scanned).toBe(0);
+    expect(map.svg).toContain('<svg');
+    expect(svgResponse!.headers.get('content-type') ?? '').toContain('image/svg+xml');
+    expect(svg).toContain('Thermostat');
   });
 
   test('accepts native Home Assistant snake_case snapshot objects', async () => {

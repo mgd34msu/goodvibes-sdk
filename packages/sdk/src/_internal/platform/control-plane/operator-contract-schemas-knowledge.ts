@@ -535,7 +535,45 @@ export const KNOWLEDGE_PROJECTION_BUNDLE_SCHEMA = objectSchema({
 export const KNOWLEDGE_MATERIALIZED_PROJECTION_SCHEMA = objectSchema({
   bundle: KNOWLEDGE_PROJECTION_BUNDLE_SCHEMA,
   artifact: ARTIFACT_DESCRIPTOR_SCHEMA,
-}, ['bundle', 'artifact']);
+  source: KNOWLEDGE_SOURCE_SCHEMA,
+  linked: KNOWLEDGE_EDGE_SCHEMA,
+  artifactCreated: BOOLEAN_SCHEMA,
+}, ['bundle', 'artifact'], { additionalProperties: true });
+
+const KNOWLEDGE_MAP_NODE_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  recordKind: STRING_SCHEMA,
+  kind: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  summary: STRING_SCHEMA,
+  x: NUMBER_SCHEMA,
+  y: NUMBER_SCHEMA,
+  radius: NUMBER_SCHEMA,
+  metadata: METADATA_SCHEMA,
+}, ['id', 'recordKind', 'kind', 'title', 'x', 'y', 'radius', 'metadata'], { additionalProperties: true });
+
+const KNOWLEDGE_MAP_EDGE_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  fromId: STRING_SCHEMA,
+  toId: STRING_SCHEMA,
+  relation: STRING_SCHEMA,
+  weight: NUMBER_SCHEMA,
+  metadata: METADATA_SCHEMA,
+}, ['id', 'fromId', 'toId', 'relation', 'weight', 'metadata'], { additionalProperties: true });
+
+export const KNOWLEDGE_MAP_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  generatedAt: NUMBER_SCHEMA,
+  width: NUMBER_SCHEMA,
+  height: NUMBER_SCHEMA,
+  nodeCount: NUMBER_SCHEMA,
+  edgeCount: NUMBER_SCHEMA,
+  nodes: arraySchema(KNOWLEDGE_MAP_NODE_SCHEMA),
+  edges: arraySchema(KNOWLEDGE_MAP_EDGE_SCHEMA),
+  svg: STRING_SCHEMA,
+}, ['ok', 'title', 'generatedAt', 'width', 'height', 'nodeCount', 'edgeCount', 'nodes', 'edges', 'svg'], { additionalProperties: true });
 
 export const KNOWLEDGE_GRAPHQL_SCHEMA_OUTPUT_SCHEMA = objectSchema({
   language: STRING_SCHEMA,
@@ -640,8 +678,15 @@ export const HOME_GRAPH_SYNC_OUTPUT_SCHEMA = objectSchema({
   source: KNOWLEDGE_SOURCE_SCHEMA,
   home: KNOWLEDGE_NODE_SCHEMA,
   created: JSON_RECORD_SCHEMA,
+  generated: objectSchema({
+    devicePassports: NUMBER_SCHEMA,
+    roomPages: NUMBER_SCHEMA,
+    artifacts: NUMBER_SCHEMA,
+    sources: NUMBER_SCHEMA,
+    errors: GENERIC_LIST_SCHEMA,
+  }, ['devicePassports', 'roomPages', 'artifacts', 'sources', 'errors'], { additionalProperties: true }),
   counts: JSON_RECORD_SCHEMA,
-}, ['ok', 'spaceId', 'installationId', 'source', 'home', 'created', 'counts'], { additionalProperties: true });
+}, ['ok', 'spaceId', 'installationId', 'source', 'home', 'created', 'generated', 'counts'], { additionalProperties: true });
 
 export const HOME_GRAPH_INGEST_OUTPUT_SCHEMA = objectSchema({
   ok: BOOLEAN_SCHEMA,
@@ -667,6 +712,8 @@ export const HOME_GRAPH_ASK_OUTPUT_SCHEMA = objectSchema({
   results: GENERIC_LIST_SCHEMA,
 }, ['ok', 'spaceId', 'query', 'answer', 'results'], { additionalProperties: true });
 
+export const HOME_GRAPH_MAP_OUTPUT_SCHEMA = KNOWLEDGE_MAP_OUTPUT_SCHEMA;
+
 export const HOME_GRAPH_REINDEX_OUTPUT_SCHEMA = objectSchema({
   ok: BOOLEAN_SCHEMA,
   spaceId: STRING_SCHEMA,
@@ -683,6 +730,8 @@ export const HOME_GRAPH_PROJECTION_OUTPUT_SCHEMA = objectSchema({
   spaceId: STRING_SCHEMA,
   title: STRING_SCHEMA,
   markdown: STRING_SCHEMA,
+  source: KNOWLEDGE_SOURCE_SCHEMA,
+  linked: KNOWLEDGE_EDGE_SCHEMA,
   artifact: JSON_RECORD_SCHEMA,
 }, ['ok', 'spaceId', 'title', 'markdown', 'artifact'], { additionalProperties: true });
 

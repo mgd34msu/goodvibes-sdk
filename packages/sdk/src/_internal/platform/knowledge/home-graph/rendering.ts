@@ -4,7 +4,9 @@ import type {
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
-import { edgeIsActive } from './helpers.js';
+import { renderKnowledgeMap } from '../map.js';
+import { edgeIsActive, isGeneratedPageSource } from './helpers.js';
+import type { HomeGraphMapResult } from './types.js';
 
 export interface HomeGraphRenderState {
   readonly spaceId: string;
@@ -29,10 +31,18 @@ export function renderRoomPage(state: HomeGraphRenderState, areaId?: string): st
     node.kind === 'ha_device'
     && (!areaNodeId || hasActiveEdge(state.edges, node.id, 'located_in', areaNodeId))
   ));
-  const automations = state.nodes.filter((node) => node.kind === 'ha_automation');
-  const scenes = state.nodes.filter((node) => node.kind === 'ha_scene');
-  const scripts = state.nodes.filter((node) => node.kind === 'ha_script');
-  const sources = relatedSources(state.sources, state.edges, areaNodeId);
+  const automations = filterNodesForArea(state.nodes, state.edges, 'ha_automation', areaNodeId);
+  const scenes = filterNodesForArea(state.nodes, state.edges, 'ha_scene', areaNodeId);
+  const scripts = filterNodesForArea(state.nodes, state.edges, 'ha_script', areaNodeId);
+  const relatedNodeIds = new Set([
+    ...(areaNodeId ? [areaNodeId] : []),
+    ...devices.map((node) => node.id),
+    ...entities.map((node) => node.id),
+    ...automations.map((node) => node.id),
+    ...scenes.map((node) => node.id),
+    ...scripts.map((node) => node.id),
+  ]);
+  const sources = relatedSources(state.sources, state.edges, relatedNodeIds);
   return [
     `# ${title}`,
     '',
@@ -97,9 +107,20 @@ export function renderPacketPage(state: HomeGraphRenderState, options: {
     excluded.has('maintenance') ? '' : renderNodeList('Maintenance', state.nodes.filter((node) => node.kind === 'ha_maintenance_item')),
     excluded.has('troubleshooting') ? '' : renderNodeList('Troubleshooting', state.nodes.filter((node) => node.kind === 'ha_troubleshooting_case')),
     excluded.has('network') ? '' : renderNodeList('Network', state.nodes.filter((node) => node.kind === 'ha_network_node')),
-    excluded.has('sources') ? '' : renderSourceList('Sources', state.sources),
+    excluded.has('sources') ? '' : renderSourceList('Sources', state.sources.filter((source) => !isGeneratedPageSource(source))),
     excluded.has('issues') ? '' : renderIssueList('Open Issues', state.issues.filter((issue) => issue.status === 'open')),
   ].filter(Boolean).join('\n');
+}
+
+export function renderHomeGraphMap(state: HomeGraphRenderState, options: {
+  readonly limit?: number;
+  readonly includeSources?: boolean;
+} = {}): HomeGraphMapResult {
+  return renderKnowledgeMap(state, {
+    ...options,
+    title: state.title,
+    spaceId: state.spaceId,
+  }) as HomeGraphMapResult;
 }
 
 function renderNodeList(title: string, nodes: readonly KnowledgeNodeRecord[]): string {
@@ -142,16 +163,29 @@ function renderMetadataField(label: string, value: unknown): string {
 function relatedSources(
   sources: readonly KnowledgeSourceRecord[],
   edges: readonly KnowledgeEdgeRecord[],
-  nodeId?: string,
+  nodeIds: ReadonlySet<string>,
 ): KnowledgeSourceRecord[] {
-  if (!nodeId) return [...sources];
+  const visibleSources = sources.filter((source) => !isGeneratedPageSource(source));
+  if (nodeIds.size === 0) return visibleSources;
   const sourceIds = new Set(edges.filter((edge) => (
     edgeIsActive(edge)
     && edge.fromKind === 'source'
     && edge.toKind === 'node'
-    && edge.toId === nodeId
+    && nodeIds.has(edge.toId)
   )).map((edge) => edge.fromId));
-  return sources.filter((source) => sourceIds.has(source.id));
+  return visibleSources.filter((source) => sourceIds.has(source.id));
+}
+
+function filterNodesForArea(
+  nodes: readonly KnowledgeNodeRecord[],
+  edges: readonly KnowledgeEdgeRecord[],
+  kind: string,
+  areaNodeId?: string,
+): KnowledgeNodeRecord[] {
+  return nodes.filter((node) => (
+    node.kind === kind
+    && (!areaNodeId || hasActiveEdge(edges, node.id, 'located_in', areaNodeId))
+  ));
 }
 
 function hasActiveEdge(

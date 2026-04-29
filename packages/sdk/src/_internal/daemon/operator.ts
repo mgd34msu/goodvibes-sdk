@@ -120,6 +120,7 @@ export async function dispatchOperatorRoutes(
     | 'getKnowledgeConnector'
     | 'getKnowledgeConnectorDoctor'
     | 'getKnowledgeProjectionTargets'
+    | 'getKnowledgeMap'
     | 'getKnowledgeGraphqlSchema'
     | 'getKnowledgeExtractions'
     | 'getKnowledgeUsage'
@@ -383,6 +384,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/knowledge/job-runs' && method === 'GET') return handlers.getKnowledgeJobRuns(url);
   if (pathname === '/api/knowledge/schedules' && method === 'GET') return handlers.getKnowledgeSchedules(url);
   if (pathname === '/api/knowledge/projections' && method === 'GET') return handlers.getKnowledgeProjectionTargets(url);
+  if (pathname === '/api/knowledge/map' && method === 'GET') return handlers.getKnowledgeMap(url);
   if (pathname === '/api/knowledge/graphql/schema' && method === 'GET') return handlers.getKnowledgeGraphqlSchema();
   if (pathname === '/api/knowledge/graphql' && (method === 'GET' || method === 'POST')) return handlers.executeKnowledgeGraphql(req);
   if (pathname === '/api/knowledge/ingest/url' && method === 'POST') return handlers.postKnowledgeIngestUrl(req);

@@ -20,6 +20,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.11] - 2026-04-29
+
+### Breaking
+- none
+
+### Added
+- Added `GET /api/knowledge/map`, `knowledge.map`, and
+  `knowledge.graph.map()` for base knowledge/wiki visual node/source/edge maps
+  with deterministic layout data and embeddable SVG.
+- Base knowledge projection materialization now creates stable generated-page
+  sources with durable markdown artifacts, unchanged-artifact reuse, and
+  generated projection metadata.
+- Home Graph snapshot sync now automatically materializes device passport and
+  room-page generated sources, with `pageAutomation` controls for disabling or
+  bounding automatic page work.
+- Added `GET /api/homeassistant/home-graph/map` and
+  `homeassistant.homeGraph.map` for visual Home Graph node/edge maps as JSON
+  layout data plus SVG, or SVG directly via `format=svg`.
+
+### Fixed
+- Generated base knowledge/wiki projection sources are excluded from projection
+  backlinks and linked-source lists so generated pages do not pollute later
+  projection output.
+- Generated Home Graph pages are excluded from ask/reindex source ranking so
+  living pages do not compete with manuals, receipts, notes, and other source
+  evidence.
+- Automatic Home Graph page refreshes now reuse unchanged generated markdown
+  artifacts instead of creating duplicate artifact records on every snapshot
+  sync.
+- Room-page generation now scopes automations, scenes, scripts, and linked
+  source evidence to the requested area/room and excludes generated pages from
+  linked-source lists.
+
+### Migration
+- none
+
+---
+
 ## [0.26.10] - 2026-04-29
 
 ### Breaking

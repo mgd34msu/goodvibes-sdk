@@ -3,9 +3,13 @@ import type {
   KnowledgeEdgeRecord,
   KnowledgeNodeKind,
   KnowledgeNodeRecord,
+  KnowledgeSourceRecord,
   KnowledgeReferenceKind,
   KnowledgeIssueUpsertInput,
 } from '../types.js';
+import {
+  isGeneratedKnowledgeSource,
+} from '../generated-projections.js';
 import {
   getKnowledgeSpaceId,
   homeAssistantKnowledgeSpaceId,
@@ -175,6 +179,10 @@ function homeGraphObjectId(kind: HomeGraphNodeKind, object: HomeGraphObjectInput
 
 export function edgeIsActive(edge: KnowledgeEdgeRecord): boolean {
   return edge.metadata.linkStatus !== 'unlinked';
+}
+
+export function isGeneratedPageSource(source: KnowledgeSourceRecord): boolean {
+  return isGeneratedKnowledgeSource(source);
 }
 
 export function belongsToSpace(record: { readonly metadata?: Record<string, unknown> } | undefined | null, spaceId: string): boolean {
