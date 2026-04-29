@@ -237,6 +237,9 @@ export function buildKnowledgeRouteContext(input: {
       listSources: (limit) => input.knowledgeService.listSources(limit),
       listNodes: (limit) => input.knowledgeService.listNodes(limit),
       listIssues: (limit) => input.knowledgeService.listIssues(limit),
+      reviewIssue: (body) => input.knowledgeService.reviewIssue(
+        body as unknown as Parameters<KnowledgeService['reviewIssue']>[0],
+      ),
       getItem: (id) => input.knowledgeService.getItem(id),
       listConnectors: () => input.knowledgeService.listConnectors(),
       getConnector: (id) => input.knowledgeService.getConnector(id),

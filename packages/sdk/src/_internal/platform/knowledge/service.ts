@@ -61,6 +61,11 @@ import {
   decideKnowledgeConsolidationCandidate,
   runKnowledgeConsolidation,
 } from './consolidation.js';
+import {
+  reviewKnowledgeIssue,
+  type KnowledgeIssueReviewInput,
+  type KnowledgeIssueReviewResult,
+} from './review.js';
 import { KnowledgeScheduleService } from './scheduling.js';
 import { lintKnowledgeStore } from './lint.js';
 import { syncKnowledgeMemoryNodes } from './memory-sync.js';
@@ -309,6 +314,10 @@ export class KnowledgeService {
       total: items.length,
       items: items.slice(offset, offset + limit),
     };
+  }
+
+  async reviewIssue(input: KnowledgeIssueReviewInput): Promise<KnowledgeIssueReviewResult> {
+    return reviewKnowledgeIssue(this.store, input);
   }
 
   listExtractions(limit = 100, sourceId?: string): KnowledgeExtractionRecord[] {

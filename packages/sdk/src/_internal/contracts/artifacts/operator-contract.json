@@ -3,7 +3,7 @@
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.26.3"
+    "version": "0.26.8"
   },
   "auth": {
     "modes": [
@@ -32146,6 +32146,402 @@
         "invokable": true
       },
       {
+        "id": "knowledge.issue.review",
+        "title": "Review Knowledge Issue",
+        "description": "Record an LLM or user review decision for a knowledge issue and optionally apply semantic facts to the linked source or node.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/knowledge/issues/{id}/review"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "reviewer": {
+              "type": "string"
+            },
+            "value": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "id",
+            "action"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "issue": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "sourceId": {
+                  "type": "string"
+                },
+                "nodeId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "severity",
+                "code",
+                "message",
+                "status",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "node": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "aliases": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "status": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "number"
+                },
+                "sourceId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "slug",
+                "title",
+                "aliases",
+                "status",
+                "confidence",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "connectorId": {
+                  "type": "string"
+                },
+                "sourceType": {
+                  "type": "string",
+                  "enum": [
+                    "url",
+                    "bookmark",
+                    "bookmark-list",
+                    "history",
+                    "document",
+                    "repo",
+                    "dataset",
+                    "image",
+                    "manual",
+                    "other"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "sourceUri": {
+                  "type": "string"
+                },
+                "canonicalUri": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "folderPath": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "artifactId": {
+                  "type": "string"
+                },
+                "contentHash": {
+                  "type": "string"
+                },
+                "lastCrawledAt": {
+                  "type": "number"
+                },
+                "crawlError": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "connectorId",
+                "sourceType",
+                "tags",
+                "status",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "suppression": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "appliedFacts": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "ok",
+            "issue"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "knowledge.issues.list",
         "title": "List Knowledge Issues",
         "description": "Return current knowledge lint and health issues.",
@@ -60055,10 +60451,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 242,
-      "typedInputs": 242,
+      "methods": 243,
+      "typedInputs": 243,
       "genericInputs": 0,
-      "typedOutputs": 242,
+      "typedOutputs": 243,
       "genericOutputs": 0
     },
     "eventCoverage": {

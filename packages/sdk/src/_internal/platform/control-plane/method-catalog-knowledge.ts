@@ -3,6 +3,7 @@ import { EMPTY_OBJECT_SCHEMA, STRING_SCHEMA, BOOLEAN_SCHEMA, NUMBER_SCHEMA, arra
 import { builtinGatewayHomeGraphMethodDescriptors } from './method-catalog-homegraph.js';
 import {
   GRAPHQL_VARIABLES_SCHEMA,
+  JSON_RECORD_SCHEMA,
   METADATA_SCHEMA,
 } from './operator-contract-schemas-shared.js';
 import {
@@ -43,6 +44,7 @@ import {
   KNOWLEDGE_SOURCE_TYPE_SCHEMA,
   KNOWLEDGE_SOURCES_OUTPUT_SCHEMA,
   KNOWLEDGE_STATUS_SCHEMA,
+  KNOWLEDGE_ISSUE_REVIEW_OUTPUT_SCHEMA,
   KNOWLEDGE_ISSUES_OUTPUT_SCHEMA,
   KNOWLEDGE_USAGE_OUTPUT_SCHEMA,
 } from './operator-contract-schemas-knowledge.js';
@@ -87,6 +89,22 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     http: { method: 'GET', path: '/api/knowledge/issues' },
     inputSchema: objectSchema({ limit: NUMBER_SCHEMA }),
     outputSchema: KNOWLEDGE_ISSUES_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'knowledge.issue.review',
+    title: 'Review Knowledge Issue',
+    description: 'Record an LLM or user review decision for a knowledge issue and optionally apply semantic facts to the linked source or node.',
+    category: 'knowledge',
+    access: 'admin',
+    scopes: ['write:knowledge'],
+    http: { method: 'POST', path: '/api/knowledge/issues/{id}/review' },
+    inputSchema: objectSchema({
+      id: STRING_SCHEMA,
+      action: STRING_SCHEMA,
+      reviewer: STRING_SCHEMA,
+      value: JSON_RECORD_SCHEMA,
+    }, ['id', 'action']),
+    outputSchema: KNOWLEDGE_ISSUE_REVIEW_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'knowledge.item.get',

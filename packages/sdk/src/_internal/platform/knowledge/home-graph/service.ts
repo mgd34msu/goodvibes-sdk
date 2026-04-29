@@ -16,7 +16,6 @@ import {
   belongsToSpace,
   buildHomeGraphMetadata,
   buildHomeGraphNodeInput,
-  buildIssue,
   edgeIsActive,
   homeGraphNodeId,
   homeGraphSourceId,
@@ -27,6 +26,9 @@ import {
   targetToReference,
   uniqueStrings,
 } from './helpers.js';
+import { upsertIntegrationDocumentationCandidates } from './documentation.js';
+import { refreshHomeGraphQualityIssues } from './quality.js';
+import { reviewHomeGraphFact, type HomeGraphReviewResult } from './review.js';
 import {
   collectLinkedObjects,
   findHomeAssistantNode,
@@ -374,80 +376,10 @@ export class HomeGraphService {
     return { ok: true, spaceId, issues };
   }
 
-  async reviewFact(input: HomeGraphReviewInput): Promise<{
-    readonly ok: true;
-    readonly spaceId: string;
-    readonly issue?: KnowledgeIssueRecord;
-    readonly node?: KnowledgeNodeRecord;
-    readonly source?: KnowledgeSourceRecord;
-  }> {
+  async reviewFact(input: HomeGraphReviewInput): Promise<HomeGraphReviewResult> {
+    await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
-    const reviewedAt = Date.now();
-    const metadata = buildHomeGraphMetadata(spaceId, installationId, {
-      review: {
-        action: input.action,
-        reviewer: input.reviewer ?? 'homeassistant',
-        reviewedAt,
-        ...(input.value ? { value: input.value } : {}),
-      },
-    });
-    if (input.issueId) {
-      const issue = this.store.getIssue(input.issueId);
-      if (!issue || !belongsToSpace(issue, spaceId)) throw new Error(`Unknown Home Graph issue: ${input.issueId}`);
-      const updated = await this.store.upsertIssue({
-        id: issue.id,
-        severity: issue.severity,
-        code: issue.code,
-        message: issue.message,
-        status: input.action === 'reject' || input.action === 'resolve' || input.action === 'accept' ? 'resolved' : issue.status,
-        sourceId: issue.sourceId,
-        nodeId: issue.nodeId,
-        metadata,
-      });
-      return { ok: true, spaceId, issue: updated };
-    }
-    if (input.nodeId) {
-      const node = this.store.getNode(input.nodeId);
-      if (!node || !belongsToSpace(node, spaceId)) throw new Error(`Unknown Home Graph node: ${input.nodeId}`);
-      const updated = await this.store.upsertNode({
-        id: node.id,
-        kind: node.kind,
-        slug: node.slug,
-        title: node.title,
-        summary: node.summary,
-        aliases: node.aliases,
-        status: input.action === 'forget' ? 'stale' : node.status,
-        confidence: input.action === 'accept' ? 100 : node.confidence,
-        sourceId: node.sourceId,
-        metadata,
-      });
-      return { ok: true, spaceId, node: updated };
-    }
-    if (input.sourceId) {
-      const source = this.store.getSource(input.sourceId);
-      if (!source || !belongsToSpace(source, spaceId)) throw new Error(`Unknown Home Graph source: ${input.sourceId}`);
-      const updated = await this.store.upsertSource({
-        id: source.id,
-        connectorId: source.connectorId,
-        sourceType: source.sourceType,
-        title: source.title,
-        sourceUri: source.sourceUri,
-        canonicalUri: source.canonicalUri,
-        summary: source.summary,
-        description: source.description,
-        tags: source.tags,
-        folderPath: source.folderPath,
-        status: input.action === 'forget' ? 'stale' : source.status,
-        artifactId: source.artifactId,
-        contentHash: source.contentHash,
-        lastCrawledAt: source.lastCrawledAt,
-        crawlError: source.crawlError,
-        sessionId: source.sessionId,
-        metadata,
-      });
-      return { ok: true, spaceId, source: updated };
-    }
-    throw new Error('reviewFact requires issueId, nodeId, or sourceId.');
+    return reviewHomeGraphFact(this.store, spaceId, installationId, input);
   }
 
   async listSources(input: HomeGraphSpaceInput & { readonly limit?: number } = {}): Promise<{
@@ -658,6 +590,9 @@ export class HomeGraphService {
           metadata: buildHomeGraphMetadata(spaceId, installationId),
         });
         await this.linkSnapshotObjectRelations(spaceId, installationId, node, object);
+        if (node.kind === 'ha_integration') {
+          await upsertIntegrationDocumentationCandidates(this.store, spaceId, installationId, node, object);
+        }
         count += 1;
       }
       return count;
@@ -711,18 +646,7 @@ export class HomeGraphService {
   }
 
   private async refreshQualityIssues(spaceId: string, installationId: string): Promise<readonly KnowledgeIssueRecord[]> {
-    const state = readHomeGraphState(this.store, spaceId);
-    const inputs = [
-      ...state.nodes
-        .filter((node) => node.kind === 'ha_device')
-        .filter((node) => sourcesLinkedToNode(node.id, state).length === 0)
-        .map((node) => buildIssue(spaceId, installationId, 'homegraph.device.missing_manual', `${node.title} has no linked manual or source.`, { nodeId: node.id })),
-      ...state.nodes
-        .filter((node) => node.kind === 'ha_device')
-        .filter((node) => typeof node.metadata.batteryType !== 'string')
-        .map((node) => buildIssue(spaceId, installationId, 'homegraph.device.unknown_battery', `${node.title} has no known battery type.`, { nodeId: node.id })),
-    ];
-    return this.store.replaceIssues(inputs, `homegraph:${spaceId}:quality`);
+    return refreshHomeGraphQualityIssues(this.store, spaceId, installationId);
   }
 
   private resolveLinkSource(spaceId: string, input: HomeGraphLinkInput): { readonly kind: 'source' | 'node'; readonly id: string } {

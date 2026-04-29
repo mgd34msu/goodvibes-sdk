@@ -26,7 +26,7 @@ import type {
   KnowledgeUsageUpsertInput,
 } from './types.js';
 import {
-  createSchema,
+  createSchema, issueStatusForUpsert,
   nowMs,
   resolveKnowledgeDbPathFromControlPlaneDir,
   stableText,
@@ -414,18 +414,20 @@ export class KnowledgeStore {
 
   async replaceIssues(inputs: readonly KnowledgeIssueUpsertInput[], namespace?: string): Promise<KnowledgeIssueRecord[]> {
     await this.init();
-    if (namespace) {
-      for (const issue of [...this.issues.values()]) {
-        if (issue.metadata.namespace === namespace) {
-          this.sqlite.run('DELETE FROM knowledge_issues WHERE id = ?', [issue.id]);
-          this.issues.delete(issue.id);
-        }
-      }
-    }
     const created: KnowledgeIssueRecord[] = [];
+    const activeIds = new Set<string>();
     for (const input of inputs) {
       const record = await this.upsertIssue(input);
+      activeIds.add(record.id);
       created.push(record);
+    }
+    if (namespace) {
+      for (const issue of [...this.issues.values()]) {
+        if (issue.metadata.namespace !== namespace) continue;
+        if (activeIds.has(issue.id) || issue.status === 'resolved') continue;
+        this.sqlite.run('DELETE FROM knowledge_issues WHERE id = ?', [issue.id]);
+        this.issues.delete(issue.id);
+      }
     }
     await this.sqlite.save();
     return created;
@@ -442,7 +444,7 @@ export class KnowledgeStore {
       severity: input.severity,
       code: input.code,
       message: input.message.trim(),
-      status: input.status ?? existing?.status ?? 'open',
+      status: input.status ?? issueStatusForUpsert(existing, input),
       ...(_sourceId !== null ? { sourceId: _sourceId } : {}),
       ...(_nodeId !== null ? { nodeId: _nodeId } : {}),
       metadata: {

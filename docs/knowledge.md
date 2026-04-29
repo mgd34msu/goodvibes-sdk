@@ -74,6 +74,27 @@ unbounded full-document scan. Existing sources created before this searchable
 text field exists should be reindexed or reingested when callers need answers
 from deep document content.
 
+## Review Pathways
+
+The knowledge/wiki feature is designed for frequent LLM and user review. There
+are two durable review lanes:
+
+- issue review: `POST /api/knowledge/issues/{id}/review`, exposed as
+  `knowledge.issue.review`, records accept/reject/resolve/reopen/edit/forget
+  decisions for deterministic knowledge issues. The decision can include a
+  semantic `value.fact` object that the SDK applies to the linked source or
+  node as reviewed facts.
+- consolidation review: `POST /api/knowledge/candidates/{id}/decide`, exposed
+  as `knowledge.candidate.decide`, accepts, rejects, or supersedes generated
+  memory-promotion/review/source-refresh candidates. Accepted memory-promotion
+  candidates are written into reviewed memory with provenance.
+
+Generated issue refreshes preserve resolved review state. If a deterministic
+lint or quality pass emits the same issue id again, the SDK keeps the resolved
+status and review metadata instead of recreating it as an open issue. When a
+generator provides `metadata.subjectFingerprint` and that fingerprint changes,
+the issue can reopen because the underlying subject materially changed.
+
 ## Browser-Local Knowledge
 
 Browser history and bookmarks add behavioral signal to the graph. The SDK reads
@@ -103,6 +124,8 @@ The SDK-owned `HomeGraphService` supports:
 - room/area page generation
 - packet generation with field inclusion/exclusion profiles
 - issue listing and review actions
+- durable semantic review decisions for generated issues
+- integration documentation-candidate source discovery
 - source inventory, graph browse, export, and import
 
 Home Graph node kinds include `ha_home`, `ha_entity`, `ha_device`, `ha_area`,
@@ -118,6 +141,14 @@ Home Graph relation names include `controls`, `located_in`,
 Home Graph ask uses a namespace-filtered search state, batches extraction
 lookup by source id, and scores bounded document fields. It does not load the
 full graph export state or repeatedly scan every extraction for each source.
+
+Home Graph quality checks use Home Assistant metadata to avoid noisy issues.
+Unknown-battery checks are limited to plausible battery-powered physical
+devices, and missing-manual checks are limited to likely physical devices that
+do not already have a linked source. Review decisions on Home Graph issues can
+apply semantic facts such as `batteryPowered: false`, `batteryType: "none"`,
+or `manualRequired: false`, and those facts suppress future generated issues
+for the same subject.
 
 See [Home Assistant integration](./homeassistant-integration.md) for daemon
 routes and operator method ids.

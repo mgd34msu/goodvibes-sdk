@@ -41,6 +41,7 @@ export interface KnowledgeServiceLike {
   listSources(limit: number): readonly unknown[];
   listNodes(limit: number): readonly unknown[];
   listIssues(limit: number): readonly unknown[];
+  reviewIssue(input: Record<string, unknown>): Promise<unknown>;
   getItem(id: string): unknown | null;
   listConnectors(): readonly unknown[];
   getConnector(id: string): unknown | null;

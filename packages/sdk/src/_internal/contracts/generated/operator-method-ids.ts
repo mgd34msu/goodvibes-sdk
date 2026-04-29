@@ -114,6 +114,7 @@ export const OPERATOR_METHOD_IDS = [
   "knowledge.ingest.connector",
   "knowledge.ingest.url",
   "knowledge.ingest.urls",
+  "knowledge.issue.review",
   "knowledge.issues.list",
   "knowledge.item.get",
   "knowledge.job-runs.list",

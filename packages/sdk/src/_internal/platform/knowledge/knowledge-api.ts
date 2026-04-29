@@ -35,6 +35,7 @@ type UsageListInput = Parameters<KnowledgeService['listUsageRecords']>[1];
 type SourceQueryInput = Parameters<KnowledgeService['querySources']>[0];
 type NodeQueryInput = Parameters<KnowledgeService['queryNodes']>[0];
 type IssueQueryInput = Parameters<KnowledgeService['queryIssues']>[0];
+type IssueReviewInput = Parameters<KnowledgeService['reviewIssue']>[0];
 type NeighborInput = Parameters<KnowledgeService['getNeighbors']>[2];
 type RecordUsageInput = Parameters<KnowledgeService['recordUsage']>[0];
 type IngestUrlInput = Parameters<KnowledgeService['ingestUrl']>[0];
@@ -136,6 +137,7 @@ export interface KnowledgeApi {
     issues: {
       list(limit?: number): ReturnType<KnowledgeService['listIssues']>;
       query(input?: IssueQueryInput): ReturnType<KnowledgeService['queryIssues']>;
+      review(input: IssueReviewInput): ReturnType<KnowledgeService['reviewIssue']>;
     };
     extractions: {
       list(limit?: number, sourceId?: string): ReturnType<KnowledgeService['listExtractions']>;
@@ -318,6 +320,7 @@ export function createKnowledgeApi(
       issues: Object.freeze({
         list: (limit = 100) => knowledgeService.listIssues(limit),
         query: (input = {}) => knowledgeService.queryIssues(input),
+        review: (input: IssueReviewInput) => knowledgeService.reviewIssue(input),
       }),
       extractions: Object.freeze({
         list: (limit: number = 100, sourceId?: string) => knowledgeService.listExtractions(limit, sourceId),

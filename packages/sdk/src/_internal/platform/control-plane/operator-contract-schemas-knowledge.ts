@@ -388,6 +388,14 @@ export const KNOWLEDGE_SEARCH_OUTPUT_SCHEMA = objectSchema({
 export const KNOWLEDGE_SOURCES_OUTPUT_SCHEMA = listOutputSchema('sources', KNOWLEDGE_SOURCE_SCHEMA);
 export const KNOWLEDGE_NODES_OUTPUT_SCHEMA = listOutputSchema('nodes', KNOWLEDGE_NODE_SCHEMA);
 export const KNOWLEDGE_ISSUES_OUTPUT_SCHEMA = listOutputSchema('issues', KNOWLEDGE_ISSUE_SCHEMA);
+export const KNOWLEDGE_ISSUE_REVIEW_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  issue: KNOWLEDGE_ISSUE_SCHEMA,
+  node: KNOWLEDGE_NODE_SCHEMA,
+  source: KNOWLEDGE_SOURCE_SCHEMA,
+  suppression: JSON_RECORD_SCHEMA,
+  appliedFacts: JSON_RECORD_SCHEMA,
+}, ['ok', 'issue'], { additionalProperties: true });
 export const KNOWLEDGE_CONNECTORS_OUTPUT_SCHEMA = listOutputSchema('connectors', KNOWLEDGE_CONNECTOR_SCHEMA);
 
 const KNOWLEDGE_PACKET_ITEM_SCHEMA = objectSchema({
