@@ -116,14 +116,14 @@ export function safeHomeGraphFilename(value: string): string {
 
 export function renderAskAnswer(
   query: string,
-  results: readonly { readonly title: string; readonly summary?: string; readonly source?: KnowledgeSourceRecord }[],
+  results: readonly { readonly title: string; readonly summary?: string; readonly excerpt?: string; readonly source?: KnowledgeSourceRecord; readonly node?: KnowledgeNodeRecord }[],
   mode: 'concise' | 'standard' | 'detailed',
 ): string {
   if (results.length === 0) {
     return `No Home Graph knowledge matched "${query}".`;
   }
   const lines = results.slice(0, mode === 'detailed' ? 5 : mode === 'concise' ? 1 : 3).map((result) => {
-    const detail = result.summary ?? result.source?.description ?? result.source?.sourceUri ?? '';
+    const detail = result.excerpt ?? result.summary ?? result.source?.description ?? result.source?.sourceUri ?? '';
     return detail ? `${result.title}: ${detail}` : result.title;
   });
   return mode === 'concise' ? lines[0]! : lines.map((line) => `- ${line}`).join('\n');

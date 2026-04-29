@@ -173,6 +173,107 @@ describe('Home Graph knowledge spaces', () => {
     expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
   });
 
+  test('anchors ask results to linked Home Assistant objects instead of generic feature hits', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'living-room', name: 'Living Room' }],
+      devices: [{ id: 'living-room-tv', name: 'Living Room TV', areaId: 'living-room' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = {
+      knowledgeSpaceId: spaceId,
+      namespace: spaceId,
+      homeGraph: true,
+      homeAssistant: { installationId: 'house-1' },
+    };
+    const manual = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'manual',
+      title: 'Living Room Television manual',
+      canonicalUri: 'homegraph://house-1/living-room-television-manual',
+      tags: ['homeassistant', 'home-graph', 'manual'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: manual.id,
+      extractorId: 'test-pdf',
+      format: 'pdf',
+      title: 'Living Room Television manual',
+      summary: 'Television owner manual.',
+      sections: ['Specifications', 'Picture and sound features'],
+      links: [],
+      estimatedTokens: 200,
+      structure: {
+        searchText: 'Picture and sound features include HDR10, HDMI eARC, filmmaker mode, low latency game mode, and voice remote support.',
+      },
+      metadata,
+    });
+    await service.linkKnowledge({
+      installationId: 'house-1',
+      sourceId: manual.id,
+      target: { kind: 'device', id: 'living-room-tv', relation: 'has_manual' },
+    });
+
+    const unrelatedPlug = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'manual',
+      title: 'Kasa Smart Wi-Fi Plug Slim with Energy Monitoring',
+      canonicalUri: 'homegraph://house-1/kasa-plug',
+      tags: ['homeassistant', 'home-graph', 'manual'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: unrelatedPlug.id,
+      extractorId: 'test-html',
+      format: 'html',
+      title: 'Kasa Smart Wi-Fi Plug Slim with Energy Monitoring',
+      summary: 'Keep Track of Your Energy Use.',
+      sections: ['Features'],
+      links: [],
+      estimatedTokens: 200,
+      structure: { searchText: 'Features include energy monitoring and Matter support.' },
+      metadata,
+    });
+
+    const unrelatedTvIntegration = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'url',
+      title: 'LG webOS Smart TV integration webostv',
+      canonicalUri: 'https://www.home-assistant.io/integrations/webostv/',
+      tags: ['homeassistant', 'home-graph', 'integration'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: unrelatedTvIntegration.id,
+      extractorId: 'test-html',
+      format: 'html',
+      title: 'LG webOS Smart TV integration webostv',
+      summary: 'Home Assistant integration documentation.',
+      sections: ['Features'],
+      links: [],
+      estimatedTokens: 200,
+      structure: { searchText: 'Features include media playback controls for LG webOS Smart TV devices.' },
+      metadata,
+    });
+
+    const ask = await service.ask({
+      installationId: 'house-1',
+      query: 'what features does the tv have',
+      includeLinkedObjects: true,
+    });
+
+    expect(ask.results.map((result) => result.id)).toEqual([manual.id]);
+    expect(ask.answer.text).toContain('HDR10');
+    expect(ask.answer.text).toContain('HDMI eARC');
+    expect(ask.answer.text).not.toContain('Kasa');
+    expect(ask.answer.text).not.toContain('webOS');
+    expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
+  });
+
   test('keeps Home Graph review decisions durable across quality refreshes', async () => {
     const { service } = createHomeGraphService();
     await service.syncSnapshot({

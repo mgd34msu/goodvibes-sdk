@@ -141,6 +141,10 @@ Home Graph relation names include `controls`, `located_in`,
 Home Graph ask uses a namespace-filtered search state, batches extraction
 lookup by source id, and scores bounded document fields. It does not load the
 full graph export state or repeatedly scan every extraction for each source.
+Object-specific questions are anchored to matching Home Assistant nodes, then
+indexed sources linked to those nodes are preferred over unrelated generic
+keyword hits. The response includes bounded excerpts from matched extraction
+text when available, plus the source list and linked HA object references.
 
 Home Graph quality checks use Home Assistant metadata to avoid noisy issues.
 Unknown-battery checks are limited to plausible battery-powered physical

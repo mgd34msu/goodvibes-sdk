@@ -1,7 +1,7 @@
 // Synced from packages/contracts/src/generated/foundation-metadata.ts
 export const FOUNDATION_METADATA = {
   "productId": "goodvibes",
-  "productVersion": "0.26.8",
+  "productVersion": "0.26.9",
   "operatorMethodCount": 243,
   "operatorEventCount": 30,
   "peerEndpointCount": 6
