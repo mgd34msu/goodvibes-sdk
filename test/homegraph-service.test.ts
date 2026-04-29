@@ -173,6 +173,93 @@ describe('Home Graph knowledge spaces', () => {
     expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
   });
 
+  test('keeps Home Graph review decisions durable across quality refreshes', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'entry', name: 'Entry' }, { id: 'living-room', name: 'Living Room' }],
+      devices: [
+        { id: 'front-door-sensor', name: 'Front Door Sensor', areaId: 'entry' },
+        { id: 'living-room-tv', name: 'Living Room TV', manufacturer: 'Sony', model: 'Bravia', areaId: 'living-room' },
+        { id: 'zha-bridge', name: 'ZHA Bridge', manufacturer: 'Home Assistant', model: 'Coordinator' },
+      ],
+      entities: [
+        {
+          entity_id: 'binary_sensor.front_door',
+          device_id: 'front-door-sensor',
+          area_id: 'entry',
+          attributes: { friendly_name: 'Front Door', device_class: 'door' },
+        },
+        {
+          entity_id: 'media_player.living_room_tv',
+          device_id: 'living-room-tv',
+          area_id: 'living-room',
+          attributes: { friendly_name: 'Living Room TV' },
+        },
+      ],
+    });
+
+    const initial = await service.listIssues({ installationId: 'house-1', status: 'open' });
+    const batteryIssues = initial.issues.filter((issue) => issue.code === 'homegraph.device.unknown_battery');
+    const frontDoorIssue = batteryIssues.find((issue) => issue.message.includes('Front Door Sensor'));
+
+    expect(frontDoorIssue).toBeDefined();
+    expect(batteryIssues.some((issue) => issue.message.includes('Living Room TV'))).toBe(false);
+    expect(initial.issues.some((issue) => issue.message.includes('ZHA Bridge'))).toBe(false);
+
+    const reviewed = await service.reviewFact({
+      installationId: 'house-1',
+      issueId: frontDoorIssue!.id,
+      action: 'reject',
+      reviewer: 'homeassistant',
+      value: {
+        category: 'not_applicable',
+        reason: 'The device should not be tracked for batteries in this installation.',
+      },
+    });
+    expect(reviewed.issue?.status).toBe('resolved');
+    expect(reviewed.appliedFacts?.batteryPowered).toBe(false);
+
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'entry', name: 'Entry' }],
+      devices: [{ id: 'front-door-sensor', name: 'Front Door Sensor', areaId: 'entry' }],
+      entities: [{
+        entity_id: 'binary_sensor.front_door',
+        device_id: 'front-door-sensor',
+        area_id: 'entry',
+        attributes: { friendly_name: 'Front Door', device_class: 'door' },
+      }],
+    });
+    const afterRefresh = await service.listIssues({ installationId: 'house-1', status: 'open' });
+    const browse = await service.browse({ installationId: 'house-1' });
+    const frontDoorNode = browse.nodes.find((node) => node.title === 'Front Door Sensor');
+
+    expect(afterRefresh.issues.some((issue) => issue.id === frontDoorIssue!.id)).toBe(false);
+    expect(frontDoorNode?.metadata.batteryPowered).toBe(false);
+    expect(frontDoorNode?.metadata.batteryType).toBe('none');
+  });
+
+  test('creates Home Assistant integration documentation candidates during sync', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      integrations: [{
+        integration_id: 'zha',
+        name: 'ZHA',
+        metadata: {
+          documentation_url: 'https://example.test/zha-docs',
+          source_url: 'https://github.com/home-assistant/core/tree/dev/homeassistant/components/zha',
+        },
+      }],
+    });
+
+    const sources = await service.listSources({ installationId: 'house-1', limit: 10 });
+    expect(sources.sources.some((source) => source.sourceUri === 'https://www.home-assistant.io/integrations/zha/')).toBe(true);
+    expect(sources.sources.some((source) => source.sourceUri === 'https://example.test/zha-docs')).toBe(true);
+    expect(sources.sources.filter((source) => source.metadata.homeGraphSourceKind === 'documentation-candidate').length).toBeGreaterThanOrEqual(2);
+  });
+
   test('exposes daemon routes for Home Graph clients', async () => {
     const { service, artifactStore } = createHomeGraphService();
     const routes = new HomeGraphRoutes({

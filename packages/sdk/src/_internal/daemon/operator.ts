@@ -142,6 +142,7 @@ export async function dispatchOperatorRoutes(
     | 'postKnowledgeIngestConnector'
     | 'postKnowledgeSearch'
     | 'postKnowledgePacket'
+    | 'postKnowledgeReviewIssue'
     | 'postKnowledgeDecideCandidate'
     | 'postKnowledgeRunJob'
     | 'postKnowledgeLint'
@@ -403,6 +404,8 @@ export async function dispatchOperatorRoutes(
   if (knowledgeConnectorMatch && method === 'GET') return handlers.getKnowledgeConnector(decodeURIComponent(knowledgeConnectorMatch[1]));
   const knowledgeExtractionMatch = pathname.match(/^\/api\/knowledge\/extractions\/([^/]+)$/);
   if (knowledgeExtractionMatch && method === 'GET') return handlers.getKnowledgeExtraction(decodeURIComponent(knowledgeExtractionMatch[1]));
+  const knowledgeIssueReviewMatch = pathname.match(/^\/api\/knowledge\/issues\/([^/]+)\/review$/);
+  if (knowledgeIssueReviewMatch && method === 'POST') return handlers.postKnowledgeReviewIssue(decodeURIComponent(knowledgeIssueReviewMatch[1]), req);
   const knowledgeCandidateDecideMatch = pathname.match(/^\/api\/knowledge\/candidates\/([^/]+)\/decide$/);
   if (knowledgeCandidateDecideMatch && method === 'POST') return handlers.postKnowledgeDecideCandidate(decodeURIComponent(knowledgeCandidateDecideMatch[1]), req);
   const knowledgeCandidateMatch = pathname.match(/^\/api\/knowledge\/candidates\/([^/]+)$/);

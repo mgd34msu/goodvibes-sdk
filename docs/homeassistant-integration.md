@@ -155,6 +155,47 @@ for future ingests. Older manual ingests that predate searchable extraction
 text may need reingest or a knowledge reindex before deep manual details can
 answer Home Graph questions.
 
+Home Graph quality issues are generated from the current graph but review
+decisions are durable. When a user or LLM resolves/rejects an issue through
+`POST /api/homeassistant/home-graph/facts/review`, the SDK records review and
+suppression metadata separately from the generated issue row. Future sync or
+quality refreshes do not reopen that issue unless the subject fingerprint
+changes. For known quality issues, semantic review values can also update the
+underlying node facts:
+
+```json
+{
+  "installationId": "house-1",
+  "issueId": "hg-issue-...",
+  "action": "reject",
+  "reviewer": "homeassistant",
+  "value": {
+    "category": "not_applicable",
+    "fact": {
+      "batteryPowered": false,
+      "batteryType": "none"
+    },
+    "reason": "This object does not use batteries."
+  }
+}
+```
+
+`homegraph.device.unknown_battery` applies only to plausible battery-powered
+physical devices. The SDK skips integrations, add-ons, Home Assistant
+host/core/supervisor/software objects, helpers, Sun/weather-only objects,
+bridges, hubs, coordinators, adapters, and obvious mains-powered media or
+appliance devices unless explicit metadata says the device is battery-powered.
+`homegraph.device.missing_manual` is similarly limited to likely physical
+devices and is suppressed by `manualRequired: false`.
+
+Home Assistant integration snapshots can include integration documentation
+metadata such as `documentation_url`, `source_url`, and `issue_tracker_url`.
+The SDK also derives the standard
+`https://www.home-assistant.io/integrations/<domain>/` URL for integration
+nodes. These are stored as linked documentation-candidate sources in the
+isolated Home Graph space. They are not fetched during snapshot sync; clients
+can ingest selected candidates explicitly when full source content is needed.
+
 Supported Home Assistant node kinds:
 
 - `ha_home`

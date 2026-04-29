@@ -20,6 +20,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.8] - 2026-04-28
+
+### Breaking
+- none
+
+### Added
+- Home Graph sync now creates linked documentation-candidate sources for Home
+  Assistant integrations from the standard integration docs URL plus manifest
+  documentation/source/issue-tracker URLs when provided by the snapshot.
+- Generic knowledge/wiki issues now have an admin review path through
+  `POST /api/knowledge/issues/{id}/review` and the
+  `knowledge.issue.review` operator method, allowing LLM or user review
+  decisions to resolve/reopen issues and apply semantic facts to linked
+  sources or nodes.
+
+### Fixed
+- Generated knowledge issues now preserve resolved review state across
+  namespace refreshes instead of deleting reviewed issues and recreating them
+  as open rows.
+- Home Graph review decisions are now durable across snapshot sync and quality
+  refresh. Semantic review values can update node facts, including
+  `batteryPowered`, `batteryType`, and `manualRequired`, and the review
+  response reports applied facts and suppression metadata.
+- Home Graph quality checks now avoid battery/manual prompts for obvious
+  software, Home Assistant host/core/supervisor objects, integrations,
+  helpers, Sun/weather-only objects, bridges, hubs, coordinators, adapters,
+  and obvious mains-powered media/appliance devices unless metadata provides
+  battery/manual evidence.
+
+### Migration
+- Home Assistant clients should send semantic review values to
+  `/api/homeassistant/home-graph/facts/review` when possible, for example
+  `{ "category": "not_applicable", "fact": { "batteryPowered": false,
+  "batteryType": "none" } }`. The SDK still handles simple reject/resolve
+  decisions for known Home Graph quality issues.
+
+---
+
 ## [0.26.7] - 2026-04-28
 
 ### Breaking

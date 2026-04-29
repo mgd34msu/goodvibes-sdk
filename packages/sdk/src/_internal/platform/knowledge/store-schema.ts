@@ -6,6 +6,7 @@ import type {
   KnowledgeEdgeRecord,
   KnowledgeExtractionRecord,
   KnowledgeIssueRecord,
+  KnowledgeIssueUpsertInput,
   KnowledgeJobRunRecord,
   KnowledgeNodeRecord,
   KnowledgeScheduleRecord,
@@ -35,6 +36,18 @@ export function stableText(value: string | undefined): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function issueStatusForUpsert(
+  existing: KnowledgeIssueRecord | null | undefined,
+  input: KnowledgeIssueUpsertInput,
+): KnowledgeIssueRecord['status'] {
+  if (!existing) return 'open';
+  const existingFingerprint = typeof existing.metadata.subjectFingerprint === 'string' ? existing.metadata.subjectFingerprint : undefined;
+  const inputFingerprint = typeof input.metadata?.subjectFingerprint === 'string' ? input.metadata.subjectFingerprint : undefined;
+  return existing.status === 'resolved' && existingFingerprint && inputFingerprint && existingFingerprint !== inputFingerprint
+    ? 'open'
+    : existing.status;
 }
 
 export function uniq(values: readonly string[] | undefined): string[] {

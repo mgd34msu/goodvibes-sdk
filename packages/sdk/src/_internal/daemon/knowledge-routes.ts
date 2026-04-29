@@ -54,6 +54,7 @@ export function createDaemonKnowledgeRouteHandlers(
   | 'postKnowledgeIngestConnector'
   | 'postKnowledgeSearch'
   | 'postKnowledgePacket'
+  | 'postKnowledgeReviewIssue'
   | 'postKnowledgeDecideCandidate'
   | 'postKnowledgeRunJob'
   | 'postKnowledgeLint'
@@ -174,6 +175,7 @@ export function createDaemonKnowledgeRouteHandlers(
     postKnowledgeIngestConnector: async (request) => handleKnowledgeIngestConnector(context, request),
     postKnowledgeSearch: async (request) => handleKnowledgeSearch(context, request),
     postKnowledgePacket: async (request) => handleKnowledgePacket(context, request),
+    postKnowledgeReviewIssue: async (id, request) => handleKnowledgeReviewIssue(context, id, request),
     postKnowledgeDecideCandidate: async (id, request) => handleKnowledgeDecideCandidate(context, id, request),
     postKnowledgeRunJob: async (jobId, request) => handleKnowledgeRunJob(context, jobId, request),
     postKnowledgeLint: async (request) => {
@@ -558,6 +560,30 @@ async function handleKnowledgePacket(context: DaemonKnowledgeRouteContext, reque
     ...(detail ? { detail } : {}),
     ...(typeof budgetLimit === 'number' ? { budgetLimit } : {}),
   }));
+}
+
+async function handleKnowledgeReviewIssue(context: DaemonKnowledgeRouteContext, id: string, request: Request): Promise<Response> {
+  const admin = context.requireAdmin(request);
+  if (admin) return admin;
+  const body = await context.parseOptionalJsonBody(request);
+  if (body instanceof Response) return body;
+  const action = typeof body?.action === 'string' ? body.action.trim().toLowerCase() : '';
+  if (!['accept', 'reject', 'resolve', 'reopen', 'edit', 'forget'].includes(action)) {
+    return Response.json({ error: 'Action must be accept, reject, resolve, reopen, edit, or forget.' }, { status: 400 });
+  }
+  try {
+    return Response.json(await context.knowledgeService.reviewIssue({
+      issueId: id,
+      action,
+      ...(typeof body?.reviewer === 'string' ? { reviewer: body.reviewer } : {}),
+      ...(body?.value && typeof body.value === 'object' && !Array.isArray(body.value) ? { value: body.value as Record<string, unknown> } : {}),
+    }));
+  } catch (error) {
+    const message = summarizeErrorForRecord(error);
+    return jsonErrorResponse(error, {
+      status: message.startsWith('Unknown knowledge issue:') ? 404 : 400,
+    });
+  }
 }
 
 async function handleKnowledgeDecideCandidate(context: DaemonKnowledgeRouteContext, id: string, request: Request): Promise<Response> {

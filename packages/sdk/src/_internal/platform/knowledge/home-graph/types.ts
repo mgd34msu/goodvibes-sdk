@@ -44,7 +44,23 @@ export const HOME_GRAPH_RELATIONS = [
 
 export type HomeGraphRelation = typeof HOME_GRAPH_RELATIONS[number];
 
-export const HOME_GRAPH_CAPABILITIES = ['knowledge-space-isolation', 'snapshot-sync', 'source-backed-ingest', 'knowledge-linking', 'ask-home-graph', 'device-passports', 'room-pages', 'packets', 'source-inventory', 'review-queue', 'export-import', 'namespace-aware-graph-browse'] as const;
+export const HOME_GRAPH_CAPABILITIES = [
+  'knowledge-space-isolation',
+  'snapshot-sync',
+  'source-backed-ingest',
+  'knowledge-linking',
+  'ask-home-graph',
+  'device-passports',
+  'room-pages',
+  'packets',
+  'source-inventory',
+  'review-queue',
+  'durable-review-decisions',
+  'quality-rule-heuristics',
+  'documentation-candidates',
+  'export-import',
+  'namespace-aware-graph-browse',
+] as const;
 
 export type HomeGraphObjectKind =
   | 'home'
