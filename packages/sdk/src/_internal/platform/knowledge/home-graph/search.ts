@@ -58,6 +58,20 @@ const STOPWORDS = new Set([
 
 const SHORT_MEANINGFUL_TOKENS = new Set(['ac', 'av', 'dc', 'ha', 'ip', 'ir', 'lg', 'pc', 'tv']);
 
+const GENERIC_ANCHOR_TOKENS = new Set([
+  'area',
+  'assistant',
+  'device',
+  'entity',
+  'graph',
+  'home',
+  'living',
+  'media',
+  'media_player',
+  'room',
+  'smart',
+]);
+
 const QUERY_EXPANSIONS: Record<string, readonly string[]> = {
   capability: ['capabilities', 'feature', 'features', 'function', 'functions', 'mode', 'modes', 'spec', 'specs', 'support', 'supports'],
   capabilities: ['capability', 'feature', 'features', 'function', 'functions', 'mode', 'modes', 'spec', 'specs', 'support', 'supports'],
@@ -132,6 +146,7 @@ export function scoreHomeGraphResults(
   const expandedTokens = expandTokens(tokens);
   const anchors = selectAnchorNodes(tokens, nodes);
   const anchorIds = new Set(anchors.map((anchor) => anchor.node.id));
+  const anchorIdentityTokens = collectAnchorIdentityTokens(anchors.map((anchor) => anchor.node));
   const sourceLinks = buildSourceLinkIndex(edges);
   const useAnchorScope = anchors.length > 0 && anchors.length <= ANCHOR_SCOPE_LIMIT;
   const sourceEvidenceQuery = queryNeedsSourceEvidence(expandedTokens);
@@ -146,6 +161,9 @@ export function scoreHomeGraphResults(
     }
     const linkedNodeIds = sourceLinks.get(source.id) ?? new Set<string>();
     const linkedToAnchor = useAnchorScope && intersects(linkedNodeIds, anchorIds);
+    const anchorIdentityScore = useAnchorScope
+      ? sourceAnchorIdentityScore(anchorIdentityTokens, source, extraction)
+      : 0;
     const identityScore = scoreFields(tokens, [
       source.title,
       source.summary,
@@ -163,11 +181,12 @@ export function scoreHomeGraphResults(
     ]);
     const baseScore = identityScore + contentScore;
     const linkBoost = linkedToAnchor ? 120 + relationBoost(source.id, anchorIds, edges) : 0;
+    const inferredAnchorBoost = !linkedToAnchor && anchorIdentityScore > 0 ? Math.min(90, 30 + anchorIdentityScore) : 0;
     const manualBoost = isManualLikeSource(source) ? 24 : 0;
     const indexedBoost = source.status === 'indexed' ? 18 : source.status === 'stale' ? 6 : 0;
     const extractionBoost = extraction ? 20 : 0;
-    const score = baseScore > 0 || linkBoost > 0
-      ? baseScore + linkBoost + manualBoost + indexedBoost + extractionBoost
+    const score = baseScore > 0 || linkBoost > 0 || inferredAnchorBoost > 0
+      ? baseScore + linkBoost + inferredAnchorBoost + manualBoost + indexedBoost + extractionBoost
       : 0;
     return sourceResult(source, extraction, score, selectRelevantExcerpt(expandedTokens, source, extraction));
   });
@@ -188,13 +207,17 @@ export function scoreHomeGraphResults(
     .filter((entry) => entry.score > 0)
     .sort(compareHomeGraphResults);
   const anchoredSourceResults = useAnchorScope
-    ? results.filter((result) => result.source && intersects(sourceLinks.get(result.source.id) ?? new Set<string>(), anchorIds))
+    ? results.filter((result) => {
+        if (!result.source) return false;
+        return intersects(sourceLinks.get(result.source.id) ?? new Set<string>(), anchorIds)
+          || sourceAnchorIdentityScore(anchorIdentityTokens, result.source, extractionBySourceId(result.source.id)) > 0;
+      })
     : [];
   if (anchoredSourceResults.length > 0) {
     results = anchoredSourceResults.sort(compareHomeGraphResults);
   }
   if (sourceEvidenceQuery) {
-    results = pruneWeakSourceEvidence(results, tokens, sourceLinks, anchorIds);
+    results = pruneWeakSourceEvidence(results, tokens, sourceLinks, anchorIds, anchorIdentityTokens, extractionBySourceId);
   }
   const strongResults = pruneWeakTokenCoverage(results, tokens);
   return strongResults.slice(0, Math.max(1, limit));
@@ -212,12 +235,16 @@ export function selectHomeGraphExtractionRepairCandidates(
   if (tokens.length === 0) return [];
   const anchors = selectAnchorNodes(tokens, nodes);
   const anchorIds = new Set(anchors.map((anchor) => anchor.node.id));
+  const anchorIdentityTokens = collectAnchorIdentityTokens(anchors.map((anchor) => anchor.node));
   const sourceLinks = buildSourceLinkIndex(edges);
   return sources
     .map((source) => {
       if (!source.artifactId || !homeGraphExtractionNeedsRepair(extractionBySourceId(source.id))) return { source, score: 0 };
       const linkedNodeIds = sourceLinks.get(source.id) ?? new Set<string>();
       const linkedToAnchor = anchors.length > 0 && intersects(linkedNodeIds, anchorIds);
+      const anchorIdentityScore = anchors.length > 0
+        ? sourceAnchorIdentityScore(anchorIdentityTokens, source, extractionBySourceId(source.id))
+        : 0;
       const identityScore = scoreFields(tokens, [
         source.title,
         source.summary,
@@ -229,7 +256,9 @@ export function selectHomeGraphExtractionRepairCandidates(
       const sourceKindBoost = isManualLikeSource(source) ? 30 : 0;
       const score = linkedToAnchor
         ? 140 + relationBoost(source.id, anchorIds, edges) + sourceKindBoost + identityScore
-        : identityScore > 0 ? identityScore + sourceKindBoost : 0;
+        : identityScore > 0 || anchorIdentityScore > 0
+          ? identityScore + anchorIdentityScore + sourceKindBoost
+          : 0;
       return { source, score };
     })
     .filter((entry) => entry.score > 0)
@@ -294,6 +323,39 @@ function nodeIdentityFields(node: KnowledgeNodeRecord): string[] {
     node.aliases.join(' '),
     readNodeMetadataText(node),
   ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+}
+
+function collectAnchorIdentityTokens(nodes: readonly KnowledgeNodeRecord[]): string[] {
+  const tokens = new Set<string>();
+  for (const node of nodes) {
+    for (const field of nodeIdentityFields(node)) {
+      for (const token of tokenizeQuery(field)) {
+        if (GENERIC_ANCHOR_TOKENS.has(token)) continue;
+        tokens.add(token);
+      }
+    }
+  }
+  return [...tokens];
+}
+
+function sourceAnchorIdentityScore(
+  anchorTokens: readonly string[],
+  source: KnowledgeSourceRecord,
+  extraction: KnowledgeExtractionRecord | null | undefined,
+): number {
+  if (anchorTokens.length === 0) return 0;
+  return scoreFields(anchorTokens, [
+    source.title,
+    source.summary,
+    source.description,
+    source.sourceUri,
+    source.canonicalUri,
+    source.tags.join(' '),
+    extraction?.title,
+    extraction?.summary,
+    extraction?.excerpt,
+    readSearchText(extraction),
+  ]);
 }
 
 function selectAnchorNodes(tokens: readonly string[], nodes: readonly KnowledgeNodeRecord[]): Array<{ readonly node: KnowledgeNodeRecord; readonly score: number }> {
@@ -420,6 +482,8 @@ function pruneWeakSourceEvidence(
   tokens: readonly string[],
   sourceLinks: ReadonlyMap<string, ReadonlySet<string>>,
   anchorIds: ReadonlySet<string>,
+  anchorIdentityTokens: readonly string[],
+  extractionBySourceId: (sourceId: string) => KnowledgeExtractionRecord | null | undefined,
 ): HomeGraphSearchResult[] {
   const sourceResults = results.filter((result) => result.source);
   if (sourceResults.length === 0) return [...results];
@@ -428,7 +492,11 @@ function pruneWeakSourceEvidence(
     if (!source) return false;
     if (!hasUsefulSourceAnswerText(result)) return false;
     const linkedToAnchor = intersects(sourceLinks.get(source.id) ?? new Set<string>(), anchorIds);
-    return linkedToAnchor || tokenCoverage(tokens, resultText(result)) >= Math.min(2, tokens.length);
+    const matchesAnchorIdentity = sourceAnchorIdentityScore(anchorIdentityTokens, source, extractionBySourceId(source.id)) > 0;
+    const coverage = tokenCoverage(tokens, resultText(result));
+    return linkedToAnchor
+      || (matchesAnchorIdentity && coverage >= 1)
+      || coverage >= Math.min(2, tokens.length);
   });
   return strongSourceResults;
 }
@@ -443,7 +511,7 @@ function selectRelevantExcerpt(
   source: KnowledgeSourceRecord,
   extraction: KnowledgeExtractionRecord | null | undefined,
 ): string | undefined {
-  const chunks = candidateExcerptChunks(source, extraction);
+  const chunks = candidateExcerptChunks(tokens, source, extraction);
   let best: { readonly score: number; readonly text: string } | undefined;
   for (const chunk of chunks) {
     const text = cleanWhitespace(chunk);
@@ -460,6 +528,7 @@ function selectRelevantExcerpt(
 }
 
 function candidateExcerptChunks(
+  tokens: readonly string[],
   source: KnowledgeSourceRecord,
   extraction: KnowledgeExtractionRecord | null | undefined,
 ): string[] {
@@ -468,6 +537,7 @@ function candidateExcerptChunks(
     extraction?.excerpt,
     extraction?.summary,
     ...limitedSections(extraction),
+    ...searchTextWindows(tokens, searchText),
     ...sentenceChunks(searchText),
     source.description,
     source.summary,
@@ -492,6 +562,26 @@ function sentenceChunks(value: string | undefined): string[] {
   if (!text) return [];
   const matches = text.match(/[^.!?\n]+[.!?]?/g) ?? [text];
   return matches.map((entry) => entry.trim()).filter(Boolean).slice(0, 80);
+}
+
+function searchTextWindows(tokens: readonly string[], value: string | undefined): string[] {
+  const text = cleanWhitespace(value ?? '');
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  const windows: string[] = [];
+  const seen = new Set<string>();
+  for (const token of tokens) {
+    const index = lower.indexOf(token.toLowerCase());
+    if (index < 0) continue;
+    const start = Math.max(0, index - Math.floor(MAX_ANSWER_EXCERPT_CHARS / 3));
+    const end = Math.min(text.length, start + MAX_ANSWER_EXCERPT_CHARS);
+    const window = `${start > 0 ? '...' : ''}${text.slice(start, end).trim()}${end < text.length ? '...' : ''}`;
+    if (window && !seen.has(window)) {
+      seen.add(window);
+      windows.push(window);
+    }
+  }
+  return windows;
 }
 
 function clampAroundBestToken(value: string, tokens: readonly string[], maxLength: number): string {

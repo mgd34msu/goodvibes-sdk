@@ -10,7 +10,13 @@ import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker } from '../control-plane/index.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { ArtifactStore } from '../artifacts/index.js';
-import { HomeGraphService, KnowledgeService, KnowledgeStore } from '../knowledge/index.js';
+import {
+  HomeGraphService,
+  KnowledgeService,
+  KnowledgeStore,
+  ProjectPlanningService,
+  projectPlanningProjectIdFromPath,
+} from '../knowledge/index.js';
 import { MediaProviderRegistry, ensureBuiltinMediaProviders } from '../media/index.js';
 import { MultimodalService } from '../multimodal/index.js';
 import { AgentManager } from '../tools/agent/index.js';
@@ -117,6 +123,7 @@ export interface RuntimeServices {
   readonly artifactStore: ArtifactStore;
   readonly knowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
+  readonly projectPlanningService: ProjectPlanningService;
   readonly memoryStore: MemoryStore;
   readonly memoryRegistry: MemoryRegistry;
   readonly serviceRegistry: ServiceRegistry;
@@ -400,6 +407,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   knowledgeService.attachRuntimeBus(options.runtimeBus);
   const homeGraphService = new HomeGraphService(knowledgeStore, artifactStore);
+  const projectPlanningService = new ProjectPlanningService(knowledgeStore, {
+    defaultProjectId: projectPlanningProjectIdFromPath(workingDirectory),
+  });
   const voiceProviders = new VoiceProviderRegistry();
   ensureBuiltinVoiceProviders(voiceProviders);
   const voiceService = new VoiceService(voiceProviders);
@@ -546,6 +556,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     artifactStore,
     knowledgeService,
     homeGraphService,
+    projectPlanningService,
     memoryStore,
     memoryRegistry,
     serviceRegistry,

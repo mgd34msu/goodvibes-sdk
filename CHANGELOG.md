@@ -20,6 +20,54 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.0] - 2026-04-29
+
+### Breaking
+- none
+
+### Added
+- Added project-scoped planning artifacts backed by isolated
+  `project:<projectId>` knowledge spaces. The SDK now stores planning state,
+  project language, and decision records as durable knowledge sources without
+  creating a daemon-owned planning loop.
+- Added `ProjectPlanningService`, readiness evaluation helpers, and public
+  planning types for TUI clients that need structured goal, question,
+  decision, task, dependency, verification, and agent-assignment state.
+- Added daemon routes under `/api/projects/planning/*` and operator methods
+  `projectPlanning.status`, `projectPlanning.state.get`,
+  `projectPlanning.state.upsert`, `projectPlanning.evaluate`,
+  `projectPlanning.decisions.list`, `projectPlanning.decisions.record`,
+  `projectPlanning.language.get`, and `projectPlanning.language.upsert`.
+- Added project planning documentation describing the SDK/TUI boundary, project
+  knowledge-space isolation, route contracts, readiness gaps, decision records,
+  and project-language artifacts.
+
+### Fixed
+- Home Graph read-only routes now resolve existing Home Assistant knowledge
+  spaces by Home Assistant installation id even when the stored
+  `knowledgeSpaceId` preserved Home Assistant's uppercase config-entry id.
+  This fixes `ask`, `status`, `browse`, `sources`, `issues`, `map`,
+  `reindex`, and `export` returning empty/default-space results when clients
+  sent only `installationId`.
+- Home Graph ask now treats Home Assistant space ids as case-tolerant during
+  search-state reads, so already-uploaded manuals, sources, nodes, edges, and
+  extraction records remain visible without reuploading or migrating user data.
+- Home Graph ask excerpt selection now scans bounded windows across the stored
+  searchable extraction text, not only the first sentence chunks. Questions
+  about device features can now match useful manual sections that appear later
+  in a parsed PDF while still excluding unrelated device manuals.
+
+### Migration
+- Home Assistant clients do not need to reupload manuals. If older PDF
+  extraction rows are weak, the SDK can still repair them lazily during ask or
+  eagerly through `POST /api/homeassistant/home-graph/reindex`.
+- TUI clients can opt into project planning by passing a stable `projectId` or
+  `knowledgeSpaceId` to the new planning routes. The SDK does not start
+  planning automatically for companion apps, Home Assistant, or other daemon
+  surfaces.
+
+---
+
 ## [0.26.11] - 2026-04-29
 
 ### Breaking

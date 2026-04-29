@@ -51,6 +51,7 @@ import {
   scoreHomeGraphResults,
   selectHomeGraphExtractionRepairCandidates,
 } from './search.js';
+import { resolveReadableHomeGraphSpace } from './space-selection.js';
 import type {
   HomeGraphAskInput, HomeGraphAskResult, HomeGraphDevicePassportResult, HomeGraphExport,
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
@@ -69,7 +70,7 @@ export class HomeGraphService {
 
   async status(input: { readonly installationId?: string; readonly knowledgeSpaceId?: string } = {}): Promise<HomeGraphStatus> {
     await this.store.init();
-    const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
     const state = readHomeGraphState(this.store, spaceId);
     const snapshotSources = state.sources
       .filter((source) => source.metadata.homeGraphSourceKind === 'snapshot')
@@ -256,7 +257,7 @@ export class HomeGraphService {
 
   async ask(input: HomeGraphAskInput): Promise<HomeGraphAskResult> {
     await this.store.init();
-    const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
     let state = readHomeGraphSearchState(this.store, spaceId);
     if (await this.repairWeakExtractionsForAsk(spaceId, installationId, input.query, state) > 0) {
       state = readHomeGraphSearchState(this.store, spaceId);
@@ -289,7 +290,7 @@ export class HomeGraphService {
 
   async reindex(input: HomeGraphSpaceInput = {}): Promise<HomeGraphReindexResult> {
     await this.store.init();
-    const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
     const state = readHomeGraphSearchState(this.store, spaceId);
     return reindexHomeGraphSources({
       spaceId,
@@ -368,7 +369,8 @@ export class HomeGraphService {
     readonly code?: string;
     readonly limit?: number;
   }): Promise<{ readonly ok: true; readonly spaceId: string; readonly issues: readonly KnowledgeIssueRecord[] }> {
-    const { spaceId } = resolveHomeGraphSpace(input);
+    await this.store.init();
+    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
     const limit = Math.max(1, input.limit ?? 100);
     const issues = readHomeGraphState(this.store, spaceId).issues
       .filter((issue) => !input.status || issue.status === input.status)
@@ -390,7 +392,7 @@ export class HomeGraphService {
     readonly sources: readonly KnowledgeSourceRecord[];
   }> {
     await this.store.init();
-    const { spaceId } = resolveHomeGraphSpace(input);
+    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
     return { ok: true, spaceId, sources: readHomeGraphState(this.store, spaceId).sources.slice(0, Math.max(1, input.limit ?? 100)) };
   }
 
@@ -403,7 +405,7 @@ export class HomeGraphService {
     readonly issues: readonly KnowledgeIssueRecord[];
   }> {
     await this.store.init();
-    const { spaceId } = resolveHomeGraphSpace(input);
+    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
     const limit = Math.max(1, input.limit ?? 250);
     const state = readHomeGraphState(this.store, spaceId);
     return {
@@ -418,7 +420,7 @@ export class HomeGraphService {
 
   async map(input: HomeGraphMapInput = {}): Promise<HomeGraphMapResult> {
     await this.store.init();
-    const { spaceId } = resolveHomeGraphSpace(input);
+    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
     return renderHomeGraphMap(renderHomeGraphState(this.store, spaceId, 'Home Graph Map'), {
       limit: input.limit,
       includeSources: input.includeSources,
@@ -427,7 +429,7 @@ export class HomeGraphService {
 
   async exportSpace(input: HomeGraphSpaceInput = {}): Promise<HomeGraphExport> {
     await this.store.init();
-    const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
     const state = readHomeGraphState(this.store, spaceId);
     return {
       version: 1,

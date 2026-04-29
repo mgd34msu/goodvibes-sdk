@@ -11,6 +11,7 @@ import {
   isGeneratedKnowledgeSource,
 } from '../generated-projections.js';
 import {
+  HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX,
   getKnowledgeSpaceId,
   homeAssistantKnowledgeSpaceId,
   knowledgeSpaceMetadata,
@@ -186,7 +187,22 @@ export function isGeneratedPageSource(source: KnowledgeSourceRecord): boolean {
 }
 
 export function belongsToSpace(record: { readonly metadata?: Record<string, unknown> } | undefined | null, spaceId: string): boolean {
-  return record ? getKnowledgeSpaceId(record) === normalizeKnowledgeSpaceId(spaceId) : false;
+  if (!record) return false;
+  const recordSpaceId = getKnowledgeSpaceId(record);
+  const targetSpaceId = normalizeKnowledgeSpaceId(spaceId);
+  return recordSpaceId === targetSpaceId || sameHomeAssistantSpace(recordSpaceId, targetSpaceId);
+}
+
+export function sameHomeAssistantSpace(left: string, right: string): boolean {
+  const leftComponent = homeAssistantSpaceComponent(left);
+  const rightComponent = homeAssistantSpaceComponent(right);
+  return Boolean(leftComponent && rightComponent && leftComponent === rightComponent);
+}
+
+export function homeAssistantSpaceComponent(spaceId: string): string | undefined {
+  const normalized = normalizeKnowledgeSpaceId(spaceId);
+  if (!normalized.toLowerCase().startsWith(HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX)) return undefined;
+  return normalizeSpaceComponent(normalized.slice(HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX.length));
 }
 
 export function targetToReference(target: HomeGraphKnowledgeTarget): {

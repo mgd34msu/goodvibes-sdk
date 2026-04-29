@@ -27,6 +27,10 @@ client domain from the default GoodVibes knowledge space. Records without this
 metadata are treated as the default space. Space helpers live in
 `knowledge/spaces.ts` and normalize the default space plus Home Assistant
 spaces such as `homeassistant:<installationId>`.
+Project Planning uses `project:<projectId>` spaces for project-specific
+planning state, project language, and decision records. Clients should pass a
+stable `projectId` for the current workspace so planning memory does not leak
+between unrelated projects.
 
 The generic GraphQL service accepts `knowledgeSpaceId` on source, node, issue,
 extraction, and search queries. Feature-specific services can also implement
@@ -149,6 +153,12 @@ Home Graph relation names include `controls`, `located_in`,
 Home Graph ask uses a namespace-filtered search state, batches extraction
 lookup by source id, and scores bounded document fields. It does not load the
 full graph export state or repeatedly scan every extraction for each source.
+Read-only Home Graph routes infer the active Home Assistant space when clients
+omit the space fields, and they resolve existing Home Assistant spaces by
+installation id even if older records stored the config-entry id with different
+letter casing. Home Assistant space reads are case-tolerant so existing
+manuals, graph nodes, links, and extraction rows remain visible without
+reuploading or migrating data.
 Object-specific questions are anchored to matching Home Assistant nodes, then
 indexed sources linked to those nodes are preferred over unrelated generic
 keyword hits. The response includes bounded excerpts from matched extraction
@@ -157,6 +167,9 @@ Source-evidence questions such as device features, manuals, specs, reset steps,
 batteries, and warranties require useful source text; low-information
 extraction placeholders and unrelated integration documentation are not treated
 as answer material.
+Excerpt selection scans bounded windows across stored searchable text, so
+sections that appear later in a large manual can be used as answer evidence
+without an unbounded document scan.
 
 Home Graph snapshot sync creates living generated-page sources for device
 passports and room pages by default. This uses the shared knowledge generated
@@ -190,6 +203,40 @@ for the same subject.
 
 See [Home Assistant integration](./homeassistant-integration.md) for daemon
 routes and operator method ids.
+
+## Project Planning
+
+Project Planning is a passive SDK-backed knowledge feature for the TUI's
+conversational planning loop. The TUI owns intent detection, repo/doc
+inspection, the relentless one-question-at-a-time interview, the planning
+panel, user approval, and agent execution handoff. The daemon stores and
+evaluates artifacts only; it never starts or resumes a planning conversation,
+and non-TUI surfaces are not pulled into planning loops.
+
+Planning artifacts are stored as knowledge sources in project spaces:
+
+- `state`: goal, known context, open and answered questions, assumptions,
+  constraints, risks, tasks, dependency edges, verification gates, agent
+  assignments, readiness, and execution approval
+- `decision`: durable project decisions with context, rejected alternatives,
+  reasoning, consequences, and status
+- `language`: canonical project terms, avoid terms, aliases, relationships,
+  examples, and resolved ambiguities
+
+The readiness evaluator checks for missing goals, scope gaps, open questions,
+ambiguous language, missing tasks, missing dependency data, missing
+verification gates, and missing execution approval. It returns gaps plus a
+suggested next question, but it does not mutate state unless the client calls
+the state upsert route.
+
+Daemon routes live under `/api/projects/planning/*`, and operator method ids
+are `projectPlanning.status`, `projectPlanning.state.get`,
+`projectPlanning.state.upsert`, `projectPlanning.evaluate`,
+`projectPlanning.decisions.list`, `projectPlanning.decisions.record`,
+`projectPlanning.language.get`, and `projectPlanning.language.upsert`.
+
+See [Project Planning](./project-planning.md) for route details and TUI
+integration guidance.
 
 ## Retrieval And Packets
 

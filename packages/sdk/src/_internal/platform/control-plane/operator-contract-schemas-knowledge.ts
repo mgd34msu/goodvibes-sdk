@@ -189,7 +189,7 @@ export const KNOWLEDGE_INJECTION_PROMPT_SCHEMA = objectSchema({
   prompt: nullableSchema(STRING_SCHEMA),
 }, ['injections'], { additionalProperties: true });
 
-const KNOWLEDGE_SOURCE_SCHEMA = objectSchema({
+export const KNOWLEDGE_SOURCE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   connectorId: STRING_SCHEMA,
   sourceType: KNOWLEDGE_SOURCE_TYPE_SCHEMA,

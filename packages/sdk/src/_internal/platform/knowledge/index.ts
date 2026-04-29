@@ -12,13 +12,17 @@ export type { KnowledgeGraphqlAccessProfile, KnowledgeGraphqlExecuteInput } from
 export {
   DEFAULT_KNOWLEDGE_SPACE_ID,
   HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX,
+  PROJECT_KNOWLEDGE_SPACE_PREFIX,
   getKnowledgeSpaceId,
   homeAssistantKnowledgeSpaceId,
   isHomeAssistantKnowledgeSpace,
   isInKnowledgeSpace,
+  isProjectKnowledgeSpace,
   knowledgeSpaceMetadata,
+  normalizeProjectId,
   normalizeHomeAssistantInstallationId,
   normalizeKnowledgeSpaceId,
+  projectKnowledgeSpaceId,
   withKnowledgeSpace,
 } from './spaces.js';
 export type { KnowledgeSpaceId } from './spaces.js';
@@ -35,6 +39,46 @@ export type {
 export { renderKnowledgeMap } from './map.js';
 export type { KnowledgeMapRenderOptions, KnowledgeMapRenderState } from './map.js';
 export { HomeGraphService, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS } from './home-graph/index.js';
+export {
+  ProjectPlanningService,
+  evaluateProjectPlanningReadiness,
+  projectPlanningCanonicalUri,
+  projectPlanningProjectIdFromPath,
+  projectPlanningSourceId,
+  resolveProjectPlanningSpace,
+} from './project-planning/index.js';
+export type {
+  ProjectPlanningAgentAssignment,
+  ProjectPlanningAmbiguity,
+  ProjectPlanningDecision,
+  ProjectPlanningDecisionRecordInput,
+  ProjectPlanningDecisionResult,
+  ProjectPlanningDecisionsResult,
+  ProjectPlanningDecisionStatus,
+  ProjectPlanningDependency,
+  ProjectPlanningEvaluateInput,
+  ProjectPlanningEvaluation,
+  ProjectPlanningGap,
+  ProjectPlanningGapKind,
+  ProjectPlanningGapSeverity,
+  ProjectPlanningGateStatus,
+  ProjectPlanningLanguageArtifact,
+  ProjectPlanningLanguageResult,
+  ProjectPlanningLanguageUpsertInput,
+  ProjectPlanningQuestion,
+  ProjectPlanningQuestionStatus,
+  ProjectPlanningReadiness,
+  ProjectPlanningServiceOptions,
+  ProjectPlanningSpaceInput,
+  ProjectPlanningState,
+  ProjectPlanningStateResult,
+  ProjectPlanningStateUpsertInput,
+  ProjectPlanningStatus,
+  ProjectPlanningTask,
+  ProjectPlanningTaskStatus,
+  ProjectPlanningTerm,
+  ProjectPlanningVerificationGate,
+} from './project-planning/index.js';
 export type {
   HomeGraphAskInput,
   HomeGraphAskResult,

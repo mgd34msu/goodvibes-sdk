@@ -17,7 +17,7 @@ import type { DistributedRuntimeManager } from '../runtime/remote/index.js';
 import type { WatcherRegistry } from '../watchers/index.js';
 import type { VoiceService } from '../voice/index.js';
 import type { WebSearchService } from '../web-search/index.js';
-import type { HomeGraphService, KnowledgeGraphqlService, KnowledgeService } from '../knowledge/index.js';
+import type { HomeGraphService, KnowledgeGraphqlService, KnowledgeService, ProjectPlanningService } from '../knowledge/index.js';
 import type { MediaProviderRegistry } from '../media/index.js';
 import type { MultimodalService } from '../multimodal/index.js';
 import type { ArtifactStore } from '../artifacts/index.js';
@@ -147,6 +147,7 @@ export interface DaemonRouteContext {
   readonly webSearchService: WebSearchService;
   readonly knowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
+  readonly projectPlanningService: ProjectPlanningService;
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;
   readonly mediaProviders: MediaProviderRegistry;
   readonly multimodalService: MultimodalService;
