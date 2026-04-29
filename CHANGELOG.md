@@ -20,6 +20,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.9] - 2026-04-29
+
+### Breaking
+- none
+
+### Added
+- Home Graph ask results now include a source-backed excerpt when matching
+  extraction text is available, so clients can show the answer evidence instead
+  of only source titles and summaries.
+
+### Fixed
+- Home Graph ask now anchors object-specific questions to matching Home
+  Assistant nodes and strongly prefers sources linked to those objects. A query
+  such as "what features does the tv have" now uses the TV's linked manual
+  instead of returning unrelated generic "features" hits from other devices or
+  integrations.
+- Pending Home Assistant integration documentation candidates without indexed
+  extraction content are no longer treated as answer material for Home Graph
+  ask.
+- Home Graph ask token matching now ignores common question words and uses
+  bounded token matches for short terms such as `tv`, reducing accidental hits
+  from unrelated source text.
+
+### Migration
+- Home Assistant clients do not need an API change. For best answers, continue
+  linking manuals/documents to the target HA object with relations such as
+  `has_manual`; the SDK now uses those links during ask ranking.
+
+---
+
 ## [0.26.8] - 2026-04-28
 
 ### Breaking

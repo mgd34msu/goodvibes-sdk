@@ -251,6 +251,7 @@ export class HomeGraphService {
       input.query,
       state.sources,
       state.nodes,
+      state.edges,
       (sourceId) => state.extractionBySourceId.get(sourceId),
       input.limit ?? 8,
     );

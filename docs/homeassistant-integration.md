@@ -155,6 +155,15 @@ for future ingests. Older manual ingests that predate searchable extraction
 text may need reingest or a knowledge reindex before deep manual details can
 answer Home Graph questions.
 
+Ask ranking is object-aware. When a question names a Home Assistant object,
+such as "the TV" or "front door sensor", the SDK matches that query to Home
+Graph nodes and strongly prefers indexed sources linked to those nodes. Pending
+integration documentation candidates are source suggestions, not answer
+material, until they are indexed. Answers include bounded excerpts from the
+matched extraction text when available; clients should display the answer text,
+sources, and linked objects returned by the SDK rather than locally re-ranking
+the graph.
+
 Home Graph quality issues are generated from the current graph but review
 decisions are durable. When a user or LLM resolves/rejects an issue through
 `POST /api/homeassistant/home-graph/facts/review`, the SDK records review and

@@ -240,6 +240,7 @@ export interface HomeGraphSearchResult {
   readonly score: number;
   readonly title: string;
   readonly summary?: string;
+  readonly excerpt?: string;
   readonly source?: KnowledgeSourceRecord;
   readonly node?: KnowledgeNodeRecord;
 }
