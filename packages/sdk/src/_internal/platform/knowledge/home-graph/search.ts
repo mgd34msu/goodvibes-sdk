@@ -5,7 +5,7 @@ import type {
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
-import { belongsToSpace, edgeIsActive, readRecord } from './helpers.js';
+import { belongsToSpace, edgeIsActive, isGeneratedPageSource, readRecord } from './helpers.js';
 import type { HomeGraphSearchResult } from './types.js';
 
 const MAX_FIELD_CHARS = 4_096;
@@ -95,7 +95,9 @@ export interface HomeGraphSearchState {
 }
 
 export function readHomeGraphSearchState(store: KnowledgeStore, spaceId: string): HomeGraphSearchState {
-  const sources = store.listSources(10_000).filter((source) => belongsToSpace(source, spaceId));
+  const sources = store.listSources(10_000).filter((source) => (
+    belongsToSpace(source, spaceId) && !isGeneratedPageSource(source)
+  ));
   const nodes = store.listNodes(10_000).filter((node) => belongsToSpace(node, spaceId));
   const sourceIds = new Set(sources.map((source) => source.id));
   const nodeIds = new Set(nodes.map((node) => node.id));

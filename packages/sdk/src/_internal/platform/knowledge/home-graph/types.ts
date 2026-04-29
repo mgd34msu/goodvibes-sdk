@@ -2,6 +2,9 @@ import type {
   KnowledgeEdgeRecord,
   KnowledgeExtractionRecord,
   KnowledgeIssueRecord,
+  KnowledgeMapEdge,
+  KnowledgeMapNode,
+  KnowledgeMapResult,
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
@@ -52,6 +55,8 @@ export const HOME_GRAPH_CAPABILITIES = [
   'ask-home-graph',
   'device-passports',
   'room-pages',
+  'automatic-page-generation',
+  'visual-knowledge-map',
   'packets',
   'source-inventory',
   'review-queue',
@@ -103,6 +108,7 @@ export interface HomeGraphSnapshotInput extends HomeGraphSpaceInput {
   readonly homeId?: string;
   readonly title?: string;
   readonly capturedAt?: number;
+  readonly pageAutomation?: HomeGraphPageAutomationOptions;
   readonly entities?: readonly HomeGraphObjectInput[];
   readonly devices?: readonly HomeGraphObjectInput[];
   readonly areas?: readonly HomeGraphObjectInput[];
@@ -113,6 +119,26 @@ export interface HomeGraphSnapshotInput extends HomeGraphSpaceInput {
   readonly integrations?: readonly HomeGraphObjectInput[];
   readonly helpers?: readonly HomeGraphObjectInput[];
   readonly metadata?: Record<string, unknown>;
+}
+
+export interface HomeGraphPageAutomationOptions {
+  readonly enabled?: boolean;
+  readonly devicePassports?: boolean;
+  readonly roomPages?: boolean;
+  readonly maxDevicePassports?: number;
+  readonly maxRoomPages?: number;
+}
+
+export interface HomeGraphGeneratedPagesSummary {
+  readonly devicePassports: number;
+  readonly roomPages: number;
+  readonly artifacts: number;
+  readonly sources: number;
+  readonly errors: readonly {
+    readonly kind: 'device-passport' | 'room-page';
+    readonly targetId: string;
+    readonly error: string;
+  }[];
 }
 
 export interface HomeGraphStatus {
@@ -139,6 +165,7 @@ export interface HomeGraphSyncResult {
     readonly edges: number;
     readonly issues: number;
   };
+  readonly generated: HomeGraphGeneratedPagesSummary;
   readonly counts: {
     readonly entities: number;
     readonly devices: number;
@@ -234,6 +261,15 @@ export interface HomeGraphAskResult {
   readonly results: readonly HomeGraphSearchResult[];
 }
 
+export interface HomeGraphMapInput extends HomeGraphSpaceInput {
+  readonly limit?: number;
+  readonly includeSources?: boolean;
+}
+
+export type HomeGraphMapNode = KnowledgeMapNode;
+export type HomeGraphMapEdge = KnowledgeMapEdge;
+export type HomeGraphMapResult = KnowledgeMapResult & { readonly spaceId: string };
+
 export interface HomeGraphReindexResult {
   readonly ok: true;
   readonly spaceId: string;
@@ -273,6 +309,8 @@ export interface HomeGraphProjectionResult {
   readonly spaceId: string;
   readonly title: string;
   readonly markdown: string;
+  readonly source?: KnowledgeSourceRecord;
+  readonly linked?: KnowledgeEdgeRecord;
   readonly artifact: {
     readonly id: string;
     readonly mimeType: string;

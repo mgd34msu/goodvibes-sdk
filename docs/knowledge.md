@@ -126,8 +126,10 @@ The SDK-owned `HomeGraphService` supports:
 - source/object link and unlink flows for Home Assistant ids
 - source-backed `askHomeGraph` answers with sources, confidence, and linked HA
   object references
-- device passport generation
-- room/area page generation
+- automatic device passport and room/area page generation during snapshot sync
+- explicit device passport, room/area page, and packet generation when clients
+  need to direct or refresh a projection
+- visual knowledge-base maps from Home Graph nodes, sources, and edges
 - packet generation with field inclusion/exclusion profiles
 - issue listing and review actions
 - durable semantic review decisions for generated issues
@@ -155,6 +157,28 @@ Source-evidence questions such as device features, manuals, specs, reset steps,
 batteries, and warranties require useful source text; low-information
 extraction placeholders and unrelated integration documentation are not treated
 as answer material.
+
+Home Graph snapshot sync creates living generated-page sources for device
+passports and room pages by default. This uses the shared knowledge generated
+projection helper, so Home Graph pages and base wiki projections both get
+stable source ids, durable markdown artifacts, generated-page metadata, and
+unchanged-artifact reuse. Clients can disable or bound this with the sync
+`pageAutomation` object, and Home Graph generated sources carry stable ids plus
+`homeGraphGeneratedPage`, `projectionKind`, and `pageEditable` metadata. The
+generated pages are excluded from answer/reindex ranking and from linked-source
+page lists so they do not compete with manuals, receipts, notes, and other
+source evidence.
+
+Room pages are area-scoped. Devices, entities, automations, scenes, scripts, and
+linked sources are included only when they are attached to the requested room or
+area, so generated room pages do not accidentally pull unrelated house objects
+into every room.
+
+The Home Graph map route uses the shared knowledge map renderer. It returns
+both layout data and SVG for visualizing the knowledge base, can include sources
+or show only graph nodes, and filters edges to the rendered node set so clients
+can embed the SDK SVG or build a native interactive map from the same node/edge
+payload.
 
 Home Graph quality checks use Home Assistant metadata to avoid noisy issues.
 Unknown-battery checks are limited to plausible battery-powered physical
@@ -195,8 +219,32 @@ The projection service renders structured knowledge as markdown:
 - backlinks dashboard
 - rollup pages for domains, topics, and bookmark folders
 
-`knowledge.projection.materialize` stores a generated projection as an artifact.
-Projection files are inspectable outputs, not the canonical database.
+`knowledge.projection.materialize` stores a generated projection as a durable
+markdown artifact and a stable generated source. Generated projection sources
+use `metadata.generatedProjection: true`, `metadata.generatedKnowledgePage:
+true`, `metadata.projectionKind`, and `metadata.pageEditable: true`. If a
+projection is rendered again with identical markdown, the SDK reuses the
+existing artifact instead of creating duplicate artifact records. Projection
+files are inspectable outputs, not the canonical database.
+
+Generated projection sources are filtered out of source/node backlinks and
+linked-source lists while rendering pages. That prevents generated wiki pages
+from feeding back into later projections or competing with original evidence.
+
+## Visual Map
+
+`GET /api/knowledge/map` and `knowledge.map` return a deterministic visual map
+of the base structured knowledge graph. The response includes:
+
+- `nodes`: source, node, and optional issue records with stable x/y positions
+- `edges`: filtered to the rendered node set
+- `svg`: an embeddable static SVG rendering
+- counts, dimensions, and generation metadata
+
+Query options are `limit`, `includeSources`, `includeIssues`, and
+`includeGenerated`. Home Graph uses the same renderer through
+`GET /api/homeassistant/home-graph/map`, adding the Home Assistant knowledge
+space id and preserving the same JSON/SVG shape.
 
 ## GraphQL
 
@@ -242,6 +290,6 @@ candidates; manual decisions remain available for review flows.
 
 The operator contract exposes knowledge status, listing, item lookup,
 connector discovery, ingest, search, packets, usage, consolidation, jobs,
-schedules, projections, GraphQL, lint, and reindex methods. The generated
+schedules, projections, visual maps, GraphQL, lint, and reindex methods. The generated
 [Operator API reference](./reference-operator.md) is the complete method/schema
 inventory.

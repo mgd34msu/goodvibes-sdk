@@ -2,7 +2,7 @@
 import type { ArtifactStoreUploadLike } from './artifact-upload.js';
 
 export type AutomationScheduleDefinition = unknown;
-export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue';
+export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue' | 'dashboard' | 'rollup';
 export type KnowledgeUsageKind = string;
 export type KnowledgeCandidateStatus = string;
 export type KnowledgeSourceType = string;
@@ -47,6 +47,7 @@ export interface KnowledgeServiceLike {
   getConnector(id: string): unknown | null;
   doctorConnector(id: string): Promise<unknown | null>;
   listProjectionTargets(limit: number): Promise<readonly unknown[]>;
+  map(input: Record<string, unknown>): Promise<unknown>;
   listExtractions(limit: number, sourceId?: string): readonly unknown[];
   listUsageRecords(
     limit: number,

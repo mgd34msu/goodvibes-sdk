@@ -252,6 +252,7 @@ describe('daemon sdk', () => {
         getConnector: () => null,
         doctorConnector: async () => null,
         listProjectionTargets: async () => [],
+        map: async () => ({}),
         listExtractions: () => [],
         listUsageRecords: () => [],
         listConsolidationCandidates: () => [],

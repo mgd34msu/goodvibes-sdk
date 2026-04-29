@@ -45,6 +45,7 @@ type ImportUrlsInput = Parameters<KnowledgeService['importUrlsFromFile']>[0];
 type BrowserHistoryInput = Parameters<KnowledgeService['syncBrowserHistory']>[0];
 type BookmarkSeedsInput = Parameters<KnowledgeService['ingestBookmarkSeeds']>[0];
 type ConnectorInput = Parameters<KnowledgeService['ingestConnectorInput']>[0];
+type KnowledgeMapInput = Parameters<KnowledgeService['map']>[0];
 type ProjectionRenderInput = Parameters<KnowledgeService['renderProjection']>[0];
 type ProjectionMaterializeInput = Parameters<KnowledgeService['materializeProjection']>[0];
 type PacketTask = Parameters<KnowledgeService['buildPacket']>[0];
@@ -154,6 +155,7 @@ export interface KnowledgeApi {
       ): ReturnType<KnowledgeService['getNeighbors']>;
       search(query: string, limit?: number): ReturnType<KnowledgeService['search']>;
     };
+    map(input?: KnowledgeMapInput): ReturnType<KnowledgeService['map']>;
   };
   readonly usage: {
     list(limit?: number, input?: UsageListInput): ReturnType<KnowledgeService['listUsageRecords']>;
@@ -337,6 +339,7 @@ export function createKnowledgeApi(
         ) => knowledgeService.getNeighbors(kind, id, input),
         search: (query: string, limit = 10) => knowledgeService.search(query, limit),
       }),
+      map: (input: KnowledgeMapInput = {}) => knowledgeService.map(input),
     }),
     usage: Object.freeze({
       list: (limit = 100, input = {}) => knowledgeService.listUsageRecords(limit, input),

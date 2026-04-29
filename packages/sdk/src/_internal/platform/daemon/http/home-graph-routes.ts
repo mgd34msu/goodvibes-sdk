@@ -11,6 +11,7 @@ import type {
   HomeGraphIngestNoteInput,
   HomeGraphIngestUrlInput,
   HomeGraphLinkInput,
+  HomeGraphMapInput,
   HomeGraphProjectionInput,
   HomeGraphReviewInput,
   HomeGraphSnapshotInput,
@@ -56,6 +57,21 @@ export class HomeGraphRoutes {
           ...readSpaceFromUrl(url),
           limit: readLimit(url, 250),
         }));
+      }
+      if (url.pathname === '/api/homeassistant/home-graph/map' && req.method === 'GET') {
+        const result = await this.context.homeGraphService.map({
+          ...readSpaceFromUrl(url),
+          limit: readLimit(url, 500),
+          includeSources: readBoolean(url, 'includeSources', true),
+        } satisfies HomeGraphMapInput);
+        if (url.searchParams.get('format') === 'svg') {
+          return new Response(result.svg, {
+            headers: {
+              'content-type': 'image/svg+xml; charset=utf-8',
+            },
+          });
+        }
+        return Response.json(result);
       }
       if (url.pathname === '/api/homeassistant/home-graph/export' && req.method === 'POST') {
         return Response.json(await this.context.homeGraphService.exportSpace(await this.readOptionalBody(req)));
@@ -150,4 +166,10 @@ function readSpaceFromUrl(url: URL): JsonRecord {
 function readLimit(url: URL, fallback: number): number {
   const parsed = Number(url.searchParams.get('limit') ?? fallback);
   return Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : fallback;
+}
+
+function readBoolean(url: URL, key: string, fallback: boolean): boolean {
+  const value = url.searchParams.get(key);
+  if (value === null) return fallback;
+  return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase());
 }

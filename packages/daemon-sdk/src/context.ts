@@ -128,6 +128,7 @@ export interface DaemonApiRouteHandlers {
   getKnowledgeConnector(id: string): MaybeResponse;
   getKnowledgeConnectorDoctor(id: string): MaybeResponse;
   getKnowledgeProjectionTargets(url: URL): MaybeResponse;
+  getKnowledgeMap(url: URL): MaybeResponse;
   getKnowledgeGraphqlSchema(): MaybeResponse;
   getKnowledgeExtractions(url: URL): MaybeResponse;
   getKnowledgeUsage(url: URL): MaybeResponse;

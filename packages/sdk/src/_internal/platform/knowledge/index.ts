@@ -22,12 +22,25 @@ export {
   withKnowledgeSpace,
 } from './spaces.js';
 export type { KnowledgeSpaceId } from './spaces.js';
+export {
+  generatedKnowledgeCanonicalUri,
+  generatedKnowledgeSourceId,
+  isGeneratedKnowledgeSource,
+  materializeGeneratedKnowledgeProjection,
+} from './generated-projections.js';
+export type {
+  GeneratedKnowledgeProjectionInput,
+  GeneratedKnowledgeProjectionResult,
+} from './generated-projections.js';
+export { renderKnowledgeMap } from './map.js';
+export type { KnowledgeMapRenderOptions, KnowledgeMapRenderState } from './map.js';
 export { HomeGraphService, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS } from './home-graph/index.js';
 export type {
   HomeGraphAskInput,
   HomeGraphAskResult,
   HomeGraphDevicePassportResult,
   HomeGraphExport,
+  HomeGraphGeneratedPagesSummary,
   HomeGraphIngestArtifactInput,
   HomeGraphIngestNoteInput,
   HomeGraphIngestResult,
@@ -35,9 +48,14 @@ export type {
   HomeGraphKnowledgeTarget,
   HomeGraphLinkInput,
   HomeGraphLinkResult,
+  HomeGraphMapEdge,
+  HomeGraphMapInput,
+  HomeGraphMapNode,
+  HomeGraphMapResult,
   HomeGraphNodeKind,
   HomeGraphObjectInput,
   HomeGraphObjectKind,
+  HomeGraphPageAutomationOptions,
   HomeGraphProjectionInput,
   HomeGraphProjectionResult,
   HomeGraphRelation,
@@ -88,6 +106,9 @@ export type {
   KnowledgeJobRecord,
   KnowledgeJobRunRecord,
   KnowledgeMaterializedProjection,
+  KnowledgeMapEdge,
+  KnowledgeMapNode,
+  KnowledgeMapResult,
   KnowledgeNodeRecord,
   KnowledgePacket,
   KnowledgePacketDetail,

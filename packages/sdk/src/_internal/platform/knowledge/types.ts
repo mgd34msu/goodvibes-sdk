@@ -563,4 +563,42 @@ export interface KnowledgeMaterializedProjection {
     readonly sourceUri?: string;
     readonly metadata: Record<string, unknown>;
   };
+  readonly source?: KnowledgeSourceRecord;
+  readonly linked?: KnowledgeEdgeRecord;
+  readonly artifactCreated?: boolean;
+}
+
+export interface KnowledgeMapNode {
+  readonly id: string;
+  readonly recordKind: 'source' | 'node' | 'issue';
+  readonly kind: string;
+  readonly title: string;
+  readonly summary?: string;
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly metadata: Record<string, unknown>;
+}
+
+export interface KnowledgeMapEdge {
+  readonly id: string;
+  readonly fromId: string;
+  readonly toId: string;
+  readonly relation: string;
+  readonly weight: number;
+  readonly metadata: Record<string, unknown>;
+}
+
+export interface KnowledgeMapResult {
+  readonly ok: true;
+  readonly spaceId?: string;
+  readonly title: string;
+  readonly generatedAt: number;
+  readonly width: number;
+  readonly height: number;
+  readonly nodeCount: number;
+  readonly edgeCount: number;
+  readonly nodes: readonly KnowledgeMapNode[];
+  readonly edges: readonly KnowledgeMapEdge[];
+  readonly svg: string;
 }

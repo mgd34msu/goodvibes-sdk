@@ -99,6 +99,7 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/facts/review` | Accept, reject, resolve, edit, or forget a graph issue/source/node. |
 | `GET /api/homeassistant/home-graph/sources` | Browse source inventory and provenance for the HA space. |
 | `GET /api/homeassistant/home-graph/browse` | Browse namespace-filtered nodes, edges, sources, and issues. |
+| `GET /api/homeassistant/home-graph/map` | Return a visual node/edge map as JSON layout data plus SVG, or SVG directly with `format=svg`. |
 | `POST /api/homeassistant/home-graph/export` | Export the HA knowledge space. |
 | `POST /api/homeassistant/home-graph/import` | Import a HA knowledge space export. |
 
@@ -126,6 +127,36 @@ shape before creating nodes and relations. This keeps Home Assistant-specific
 wire format handling in the SDK route/service layer while preserving the
 canonical graph metadata fields (`entityId`, `deviceId`, `areaId`,
 `integrationId`) for stored Home Graph records.
+
+Snapshot sync also refreshes living Home Graph pages by default. For each active
+Home Assistant device, the SDK materializes a device passport markdown artifact
+and a stable generated-page source. For each active room/area, it materializes a
+room page. This is built on the same generated-projection primitive used by the
+base knowledge/wiki system, so generated Home Graph pages are stable sources
+with durable markdown artifacts instead of temporary one-off files. Generated
+page sources are marked with
+`metadata.homeGraphGeneratedPage: true`, `metadata.projectionKind`, and
+`metadata.pageEditable: true`; the source id stays stable across regenerations
+while the artifact id points at the latest rendered markdown. If the rendered
+markdown is unchanged, the SDK reuses the existing generated artifact instead of
+creating a duplicate on every snapshot sync. Generated markdown artifacts are
+stored durably because they back living wiki pages. Clients can let this run
+automatically, call the explicit device/room/packet endpoints to direct
+generation, or pass `pageAutomation` to snapshot sync to disable or limit
+automatic work:
+
+```json
+{
+  "installationId": "house-1",
+  "pageAutomation": {
+    "enabled": true,
+    "devicePassports": true,
+    "roomPages": true,
+    "maxDevicePassports": 100,
+    "maxRoomPages": 50
+  }
+}
+```
 
 Home Graph routes return JSON errors for validation or sync failures. Clients
 should treat non-2xx responses as daemon API errors and read the JSON `error`
@@ -175,6 +206,17 @@ answer unless the query is explicitly about the integration. Answers include
 bounded excerpts from the matched extraction text when available; clients should
 display the answer text, sources, and linked objects returned by the SDK rather
 than locally re-ranking the graph.
+
+`GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
+map data with deterministic node positions, filtered edges, and an SVG string.
+It uses the shared knowledge map renderer also exposed by `GET /api/knowledge/map`,
+so Home Assistant panels can rely on the same node/edge/SVG response shape as
+the base knowledge/wiki map.
+Pass `includeSources=false` to show only graph nodes, `limit` to cap the
+rendered graph, or `format=svg` to receive `image/svg+xml` directly for an
+embedded preview. The JSON response includes `nodes`, `edges`, `width`,
+`height`, `nodeCount`, `edgeCount`, and `svg`, so clients can either render the
+SDK SVG immediately or build a native graph view from the same layout data.
 
 Home Graph quality issues are generated from the current graph but review
 decisions are durable. When a user or LLM resolves/rejects an issue through
@@ -271,6 +313,7 @@ Home Graph operator methods mirror the HTTP routes:
 - `homeassistant.homeGraph.generateHomeGraphPacket`
 - `homeassistant.homeGraph.listHomeGraphIssues`
 - `homeassistant.homeGraph.reviewHomeGraphFact`
+- `homeassistant.homeGraph.map`
 
 Additional browse/export methods are available for source inventory and future
 knowledge UIs: `homeassistant.homeGraph.sources.list`,

@@ -32,20 +32,19 @@ import { refreshHomeGraphQualityIssues } from './quality.js';
 import { reviewHomeGraphFact, type HomeGraphReviewResult } from './review.js';
 import {
   collectLinkedObjects,
-  findHomeAssistantNode,
   inferHomeGraphSourceType,
-  missingDevicePassportFields,
   readHomeGraphState,
   renderAskAnswer,
   renderHomeGraphState,
   safeHomeGraphFilename,
-  sourcesLinkedToNode,
 } from './state.js';
+import { renderHomeGraphMap } from './rendering.js';
 import {
-  renderDevicePassportPage,
-  renderPacketPage,
-  renderRoomPage,
-} from './rendering.js';
+  generateAutomaticHomeGraphPages,
+  generateHomeGraphPacket,
+  generateHomeGraphRoomPage,
+  refreshHomeGraphDevicePassport,
+} from './generated-pages.js';
 import { reindexHomeGraphSources } from './reindex.js';
 import {
   readHomeGraphSearchState,
@@ -56,7 +55,8 @@ import type {
   HomeGraphAskInput, HomeGraphAskResult, HomeGraphDevicePassportResult, HomeGraphExport,
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
   HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphObjectInput,
-  HomeGraphProjectionInput, HomeGraphProjectionResult, HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
+  HomeGraphMapInput, HomeGraphMapResult, HomeGraphProjectionInput, HomeGraphProjectionResult,
+  HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
 import { HOME_GRAPH_CAPABILITIES } from './types.js';
@@ -113,6 +113,13 @@ export class HomeGraphService {
     const beforeEdgeIds = new Set(readHomeGraphState(this.store, spaceId).edges.map((edge) => edge.id));
     const groups = await this.upsertSnapshotObjects(spaceId, installationId, input, home.id, source.id);
     const issues = await this.refreshQualityIssues(spaceId, installationId);
+    const generated = await generateAutomaticHomeGraphPages({
+      store: this.store,
+      artifactStore: this.artifactStore,
+      spaceId,
+      installationId,
+      input,
+    });
     const after = readHomeGraphState(this.store, spaceId);
     return {
       ok: true,
@@ -125,6 +132,7 @@ export class HomeGraphService {
         edges: after.edges.filter((edge) => !beforeEdgeIds.has(edge.id)).length,
         issues: issues.length,
       },
+      generated,
       counts: groups,
     };
   }
@@ -321,89 +329,37 @@ export class HomeGraphService {
   async refreshDevicePassport(input: HomeGraphProjectionInput): Promise<HomeGraphDevicePassportResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
-    if (!input.deviceId) throw new Error('refreshDevicePassport requires deviceId.');
-    const state = readHomeGraphState(this.store, spaceId);
-    const device = findHomeAssistantNode(state.nodes, 'ha_device', input.deviceId);
-    if (!device) throw new Error(`Unknown Home Assistant device: ${input.deviceId}`);
-    const entities = state.nodes.filter((node) => (
-      node.kind === 'ha_entity' && state.edges.some((edge) => (
-        edgeIsActive(edge)
-        && edge.fromKind === 'node'
-        && edge.fromId === node.id
-        && edge.toKind === 'node'
-        && edge.toId === device.id
-        && edge.relation === 'belongs_to_device'
-      ))
-    ));
-    const sources = sourcesLinkedToNode(device.id, state);
-    const issues = state.issues.filter((issue) => issue.nodeId === device.id);
-    const missingFields = missingDevicePassportFields(device, sources);
-    const passport = await this.store.upsertNode({
-      id: homeGraphNodeId(spaceId, 'ha_device_passport', input.deviceId),
-      kind: 'ha_device_passport',
-      slug: `${device.slug}-passport`,
-      title: `${device.title} passport`,
-      summary: `Living device profile for ${device.title}.`,
-      aliases: [`${device.title} passport`],
-      confidence: 80,
-      metadata: buildHomeGraphMetadata(spaceId, installationId, {
-        homeAssistant: { installationId, objectKind: 'device_passport', objectId: input.deviceId },
-        deviceId: input.deviceId,
-        missingFields,
-        refreshedAt: Date.now(),
-      }),
-    });
-    await this.store.upsertEdge({
-      fromKind: 'node',
-      fromId: passport.id,
-      toKind: 'node',
-      toId: device.id,
-      relation: 'source_for',
-      metadata: buildHomeGraphMetadata(spaceId, installationId),
-    });
-    const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields });
-    const artifact = await this.materializeMarkdown(spaceId, installationId, `${safeHomeGraphFilename(device.title)}-passport.md`, markdown, {
-      projectionKind: 'device-passport',
-      deviceId: input.deviceId,
-    });
-    return {
-      ok: true,
+    return refreshHomeGraphDevicePassport({
+      store: this.store,
+      artifactStore: this.artifactStore,
       spaceId,
-      title: `${device.title} passport`,
-      markdown,
-      artifact,
-      device,
-      passport,
-      missingFields,
-    };
+      installationId,
+      input,
+    });
   }
 
   async generateRoomPage(input: HomeGraphProjectionInput): Promise<HomeGraphProjectionResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
-    const state = renderHomeGraphState(this.store, spaceId, input.title ?? 'Home Graph Room');
-    const markdown = renderRoomPage(state, input.areaId ?? input.roomId);
-    const filename = `${safeHomeGraphFilename(input.title ?? input.areaId ?? input.roomId ?? 'room')}.md`;
-    const artifact = await this.materializeMarkdown(spaceId, installationId, filename, markdown, {
-      projectionKind: 'room-page',
-      areaId: input.areaId ?? input.roomId,
+    return generateHomeGraphRoomPage({
+      store: this.store,
+      artifactStore: this.artifactStore,
+      spaceId,
+      installationId,
+      input,
     });
-    return { ok: true, spaceId, title: input.title ?? 'Home Graph Room', markdown, artifact };
   }
 
   async generatePacket(input: HomeGraphProjectionInput): Promise<HomeGraphProjectionResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
-    const title = input.title ?? `${input.packetKind ?? 'home'} packet`;
-    const markdown = renderPacketPage(renderHomeGraphState(this.store, spaceId, title), input);
-    const artifact = await this.materializeMarkdown(spaceId, installationId, `${safeHomeGraphFilename(title)}.md`, markdown, {
-      projectionKind: 'packet',
-      packetKind: input.packetKind ?? 'home',
-      sharingProfile: input.sharingProfile ?? 'default',
-      includeFields: input.includeFields ? [...input.includeFields] : [],
-      excludeFields: input.excludeFields ? [...input.excludeFields] : [],
+    return generateHomeGraphPacket({
+      store: this.store,
+      artifactStore: this.artifactStore,
+      spaceId,
+      installationId,
+      input,
     });
-    return { ok: true, spaceId, title, markdown, artifact };
   }
 
   async listIssues(input: HomeGraphSpaceInput & {
@@ -458,6 +414,15 @@ export class HomeGraphService {
       sources: state.sources.slice(0, limit),
       issues: state.issues.slice(0, limit),
     };
+  }
+
+  async map(input: HomeGraphMapInput = {}): Promise<HomeGraphMapResult> {
+    await this.store.init();
+    const { spaceId } = resolveHomeGraphSpace(input);
+    return renderHomeGraphMap(renderHomeGraphState(this.store, spaceId, 'Home Graph Map'), {
+      limit: input.limit,
+      includeSources: input.includeSources,
+    });
   }
 
   async exportSpace(input: HomeGraphSpaceInput = {}): Promise<HomeGraphExport> {
@@ -744,28 +709,6 @@ export class HomeGraphService {
     return { kind: 'node', id: node.id, record: node };
   }
 
-  private async materializeMarkdown(
-    spaceId: string,
-    installationId: string,
-    filename: string,
-    markdown: string,
-    metadata: Record<string, unknown>,
-  ): Promise<HomeGraphProjectionResult['artifact']> {
-    const artifact = await this.artifactStore.create({
-      kind: 'document',
-      mimeType: 'text/markdown',
-      filename,
-      text: markdown,
-      metadata: buildHomeGraphMetadata(spaceId, installationId, metadata),
-    });
-    return {
-      id: artifact.id,
-      mimeType: artifact.mimeType,
-      filename: artifact.filename,
-      createdAt: artifact.createdAt,
-      metadata: artifact.metadata,
-    };
-  }
 }
 
 function extractionHasSearchableText(extraction: KnowledgeExtractionRecord): boolean {
