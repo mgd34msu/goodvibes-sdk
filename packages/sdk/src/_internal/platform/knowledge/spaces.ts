@@ -10,6 +10,7 @@ export type KnowledgeSpaceId = string;
 
 export const DEFAULT_KNOWLEDGE_SPACE_ID = 'default';
 export const HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX = 'homeassistant:';
+export const PROJECT_KNOWLEDGE_SPACE_PREFIX = 'project:';
 
 export type KnowledgeSpaceBackedRecord =
   | KnowledgeSourceRecord
@@ -35,6 +36,18 @@ export function normalizeHomeAssistantInstallationId(value?: string | null): str
 
 export function isHomeAssistantKnowledgeSpace(spaceId: string): boolean {
   return normalizeKnowledgeSpaceId(spaceId).startsWith(HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX);
+}
+
+export function projectKnowledgeSpaceId(projectId?: string | null): KnowledgeSpaceId {
+  return `${PROJECT_KNOWLEDGE_SPACE_PREFIX}${normalizeProjectId(projectId ?? 'default')}`;
+}
+
+export function normalizeProjectId(value?: string | null): string {
+  return normalizeSpaceComponent(value ?? 'default');
+}
+
+export function isProjectKnowledgeSpace(spaceId: string): boolean {
+  return normalizeKnowledgeSpaceId(spaceId).startsWith(PROJECT_KNOWLEDGE_SPACE_PREFIX);
 }
 
 export function knowledgeSpaceMetadata(

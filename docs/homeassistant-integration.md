@@ -119,6 +119,14 @@ not written into the default GoodVibes knowledge space. By default the SDK uses
 source, node, edge, issue, extraction, projection artifact, and export carries
 that space metadata.
 
+Read-only Home Graph routes can infer the active Home Assistant knowledge space
+when a client omits `installationId` and `knowledgeSpaceId`. When a client sends
+only `installationId`, the SDK resolves the existing Home Assistant space for
+that installation even if older records preserved Home Assistant's uppercase
+config-entry id in `knowledgeSpaceId`. The SDK also reads Home Assistant spaces
+case-tolerantly, so existing manuals, graph nodes, links, and extraction rows
+remain queryable without reuploading or migrating data.
+
 Snapshot sync accepts Home Assistant-native object fields at the HTTP boundary.
 The integration can send registry objects with snake_case identifiers such as
 `entity_id`, `device_id`, `area_id`, `integration_id`, `unique_id`, and
@@ -185,6 +193,12 @@ by source id and scores bounded fields, capped extraction sections, and
 YAML, DOCX, XLSX, PPTX, and PDF extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
 fallback only when the dedicated parser cannot load the file.
+
+Ask excerpt selection scans bounded windows throughout the stored searchable
+text, so a query can match a feature/spec/reset section that appears later in a
+large manual instead of being limited to the first parsed chunks. This is still
+bounded by the SDK search caps and does not rescan whole documents on every
+question.
 
 Older Home Graph artifact sources do not need to be uploaded again. When ask
 finds a relevant linked source with missing, placeholder, or old weak PDF

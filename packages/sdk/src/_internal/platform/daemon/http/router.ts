@@ -17,7 +17,7 @@ import {
 import type { RouteBindingManager, ChannelPolicyManager, ChannelPluginRegistry, SurfaceRegistry } from '../../channels/index.js';
 import type { WatcherRegistry } from '../../watchers/index.js';
 import type { DistributedPeerAuth, DistributedRuntimeManager } from '../../runtime/remote/index.js';
-import type { HomeGraphService, KnowledgeGraphqlService, KnowledgeService } from '../../knowledge/index.js';
+import type { HomeGraphService, KnowledgeGraphqlService, KnowledgeService, ProjectPlanningService } from '../../knowledge/index.js';
 import { inspectKnowledgeGraphqlAccess } from '../../knowledge/index.js';
 import type { VoiceService } from '../../voice/index.js';
 import type { WebSearchService } from '../../web-search/index.js';
@@ -71,6 +71,7 @@ import { dispatchBatchRoutes } from './batch-routes.js';
 import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
 import { HomeAssistantConversationRoutes } from './homeassistant-routes.js';
 import { HomeGraphRoutes } from './home-graph-routes.js';
+import { ProjectPlanningRoutes } from './project-planning-routes.js';
 import { readTextBodyWithinLimit } from '../../utils/request-body.js';
 
 interface DaemonHttpRouterContext {
@@ -94,6 +95,7 @@ interface DaemonHttpRouterContext {
   readonly webSearchService: WebSearchService;
   readonly knowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
+  readonly projectPlanningService: ProjectPlanningService;
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;
   readonly mediaProviders: MediaProviderRegistry;
   readonly multimodalService: MultimodalService;
@@ -180,6 +182,7 @@ export class DaemonHttpRouter {
   private readonly telemetryApi: TelemetryApiService | null;
   private homeAssistantRoutes: HomeAssistantConversationRoutes | null = null;
   private homeGraphRoutes: HomeGraphRoutes | null = null;
+  private projectPlanningRoutes: ProjectPlanningRoutes | null = null;
 
   constructor(private readonly context: DaemonHttpRouterContext) {
     this.telemetryApi = context.runtimeStore
@@ -313,6 +316,11 @@ export class DaemonHttpRouter {
       if (homeGraphResponse) return homeGraphResponse;
       const homeAssistantResponse = await this.getHomeAssistantRoutes().handle(req);
       if (homeAssistantResponse) return homeAssistantResponse;
+    }
+
+    if (url.pathname.startsWith('/api/projects/planning')) {
+      const projectPlanningResponse = await this.getProjectPlanningRoutes().handle(req);
+      if (projectPlanningResponse) return projectPlanningResponse;
     }
 
     // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.
@@ -610,6 +618,18 @@ export class DaemonHttpRouter {
       });
     }
     return this.homeGraphRoutes;
+  }
+
+  private getProjectPlanningRoutes(): ProjectPlanningRoutes {
+    if (!this.projectPlanningRoutes) {
+      this.projectPlanningRoutes = new ProjectPlanningRoutes({
+        projectPlanningService: this.context.projectPlanningService,
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
+        requireAdmin: (request) => this.context.requireAdmin(request),
+      });
+    }
+    return this.projectPlanningRoutes;
   }
 
   async parseJsonBody(req: Request): Promise<JsonRecord | Response> {

@@ -51,7 +51,7 @@ Alternate registry:
 - **Knowledge/wiki system** with structured SQLite storage, knowledge spaces,
   URL/bookmark/file/artifact/browser-history ingest, Readability extraction,
   graph links, GraphQL, packets, projections, usage records, consolidation,
-  and Home Assistant Home Graph support.
+  project-scoped planning artifacts, and Home Assistant Home Graph support.
 - **Channel surfaces** for Slack, Discord, ntfy, Home Assistant, Telegram,
   Google Chat, Signal, WhatsApp, iMessage, MSTeams, BlueBubbles, Mattermost,
   Matrix, generic webhooks, and GitHub automation webhooks.
@@ -153,6 +153,7 @@ export default createGoodVibesCloudflareWorker();
 - [Realtime and telemetry](./docs/realtime-and-telemetry.md)
 - [Knowledge system](./docs/knowledge.md)
 - [Browser knowledge ingestion](./docs/knowledge-browser-history.md)
+- [Project Planning](./docs/project-planning.md)
 - [Tool system](./docs/tools.md)
 - [Channel surfaces](./docs/channel-surfaces.md)
 - [Home Assistant integration](./docs/homeassistant-integration.md)
