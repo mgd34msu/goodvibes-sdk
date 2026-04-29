@@ -20,6 +20,7 @@ export type {
   HomeGraphObjectKind,
   HomeGraphProjectionInput,
   HomeGraphProjectionResult,
+  HomeGraphReindexResult,
   HomeGraphRelation,
   HomeGraphReviewInput,
   HomeGraphSnapshotInput,

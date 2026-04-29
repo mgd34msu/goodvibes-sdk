@@ -234,6 +234,17 @@ export interface HomeGraphAskResult {
   readonly results: readonly HomeGraphSearchResult[];
 }
 
+export interface HomeGraphReindexResult {
+  readonly ok: true;
+  readonly spaceId: string;
+  readonly scanned: number;
+  readonly reparsed: number;
+  readonly skipped: number;
+  readonly failed: number;
+  readonly sources: readonly KnowledgeSourceRecord[];
+  readonly failures: readonly { readonly sourceId: string; readonly error: string }[];
+}
+
 export interface HomeGraphSearchResult {
   readonly kind: 'source' | 'node';
   readonly id: string;

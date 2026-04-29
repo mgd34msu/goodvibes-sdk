@@ -67,6 +67,25 @@ const QUERY_EXPANSIONS: Record<string, readonly string[]> = {
   tv: ['television', 'media_player'],
 };
 
+const SOURCE_EVIDENCE_TOKENS = new Set([
+  'battery',
+  'capabilities',
+  'capability',
+  'feature',
+  'features',
+  'manual',
+  'model',
+  'reset',
+  'serial',
+  'spec',
+  'specs',
+  'support',
+  'supports',
+  'warranty',
+]);
+
+const INTEGRATION_QUERY_TOKENS = new Set(['automation', 'automations', 'homeassistant', 'integration', 'integrations', 'webostv']);
+
 export interface HomeGraphSearchState {
   readonly spaceId: string;
   readonly sources: readonly KnowledgeSourceRecord[];
@@ -113,9 +132,14 @@ export function scoreHomeGraphResults(
   const anchorIds = new Set(anchors.map((anchor) => anchor.node.id));
   const sourceLinks = buildSourceLinkIndex(edges);
   const useAnchorScope = anchors.length > 0 && anchors.length <= ANCHOR_SCOPE_LIMIT;
+  const sourceEvidenceQuery = queryNeedsSourceEvidence(expandedTokens);
+  const integrationQuery = queryMentionsIntegration(tokens);
   const sourceResults: HomeGraphSearchResult[] = sources.map((source) => {
     const extraction = extractionBySourceId(source.id);
     if (isPendingDocumentationCandidate(source, extraction)) {
+      return sourceResult(source, extraction, 0);
+    }
+    if (sourceEvidenceQuery && !integrationQuery && isHomeAssistantIntegrationSource(source)) {
       return sourceResult(source, extraction, 0);
     }
     const linkedNodeIds = sourceLinks.get(source.id) ?? new Set<string>();
@@ -137,10 +161,11 @@ export function scoreHomeGraphResults(
     ]);
     const baseScore = identityScore + contentScore;
     const linkBoost = linkedToAnchor ? 120 + relationBoost(source.id, anchorIds, edges) : 0;
+    const manualBoost = isManualLikeSource(source) ? 24 : 0;
     const indexedBoost = source.status === 'indexed' ? 18 : source.status === 'stale' ? 6 : 0;
     const extractionBoost = extraction ? 20 : 0;
     const score = baseScore > 0 || linkBoost > 0
-      ? baseScore + linkBoost + indexedBoost + extractionBoost
+      ? baseScore + linkBoost + manualBoost + indexedBoost + extractionBoost
       : 0;
     return sourceResult(source, extraction, score, selectRelevantExcerpt(expandedTokens, source, extraction));
   });
@@ -166,8 +191,49 @@ export function scoreHomeGraphResults(
   if (anchoredSourceResults.length > 0) {
     results = anchoredSourceResults.sort(compareHomeGraphResults);
   }
+  if (sourceEvidenceQuery) {
+    results = pruneWeakSourceEvidence(results, tokens, sourceLinks, anchorIds);
+  }
   const strongResults = pruneWeakTokenCoverage(results, tokens);
   return strongResults.slice(0, Math.max(1, limit));
+}
+
+export function selectHomeGraphExtractionRepairCandidates(
+  query: string,
+  sources: readonly KnowledgeSourceRecord[],
+  nodes: readonly KnowledgeNodeRecord[],
+  edges: readonly KnowledgeEdgeRecord[],
+  extractionBySourceId: (sourceId: string) => KnowledgeExtractionRecord | null | undefined,
+  limit: number,
+): KnowledgeSourceRecord[] {
+  const tokens = tokenizeQuery(query);
+  if (tokens.length === 0) return [];
+  const anchors = selectAnchorNodes(tokens, nodes);
+  const anchorIds = new Set(anchors.map((anchor) => anchor.node.id));
+  const sourceLinks = buildSourceLinkIndex(edges);
+  return sources
+    .map((source) => {
+      if (!source.artifactId || !homeGraphExtractionNeedsRepair(extractionBySourceId(source.id))) return { source, score: 0 };
+      const linkedNodeIds = sourceLinks.get(source.id) ?? new Set<string>();
+      const linkedToAnchor = anchors.length > 0 && intersects(linkedNodeIds, anchorIds);
+      const identityScore = scoreFields(tokens, [
+        source.title,
+        source.summary,
+        source.description,
+        source.sourceUri,
+        source.canonicalUri,
+        source.tags.join(' '),
+      ]);
+      const sourceKindBoost = isManualLikeSource(source) ? 30 : 0;
+      const score = linkedToAnchor
+        ? 140 + relationBoost(source.id, anchorIds, edges) + sourceKindBoost + identityScore
+        : identityScore > 0 ? identityScore + sourceKindBoost : 0;
+      return { source, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score || left.source.id.localeCompare(right.source.id))
+    .slice(0, Math.max(1, limit))
+    .map((entry) => entry.source);
 }
 
 function sourceResult(
@@ -181,7 +247,7 @@ function sourceResult(
     id: source.id,
     score,
     title: source.title ?? source.sourceUri ?? source.id,
-    summary: extraction?.summary ?? source.summary,
+    summary: usefulExtractionSummary(extraction) ?? source.summary,
     ...(excerpt ? { excerpt } : {}),
     source,
   };
@@ -306,6 +372,70 @@ function isPendingDocumentationCandidate(
     && source.metadata.homeGraphSourceKind === 'documentation-candidate';
 }
 
+export function homeGraphExtractionNeedsRepair(extraction: KnowledgeExtractionRecord | null | undefined): boolean {
+  if (!extraction) return true;
+  if (extraction.format === 'pdf' && extraction.extractorId !== 'pdfjs') return true;
+  const searchText = readSearchText(extraction);
+  if (searchText && searchText.trim().length > 0) return false;
+  if ((extraction.excerpt?.trim() && !isLowInformationExtractionText(extraction.excerpt))
+    || (extraction.summary?.trim() && !isLowInformationExtractionText(extraction.summary))
+    || extraction.sections.some((section) => section.trim() && !isLowInformationExtractionText(section))) {
+    return false;
+  }
+  return true;
+}
+
+function queryNeedsSourceEvidence(tokens: readonly string[]): boolean {
+  return tokens.some((token) => SOURCE_EVIDENCE_TOKENS.has(token));
+}
+
+function queryMentionsIntegration(tokens: readonly string[]): boolean {
+  return tokens.some((token) => INTEGRATION_QUERY_TOKENS.has(token));
+}
+
+function isManualLikeSource(source: KnowledgeSourceRecord): boolean {
+  const tags = source.tags.map((tag) => tag.toLowerCase());
+  return source.sourceType === 'manual'
+    || source.sourceType === 'document'
+    || source.sourceType === 'url'
+    || tags.includes('manual')
+    || tags.includes('artifact')
+    || tags.includes('document');
+}
+
+function isHomeAssistantIntegrationSource(source: KnowledgeSourceRecord): boolean {
+  const tags = source.tags.map((tag) => tag.toLowerCase());
+  const sourceKind = typeof source.metadata.homeGraphSourceKind === 'string'
+    ? source.metadata.homeGraphSourceKind.toLowerCase()
+    : '';
+  return tags.includes('integration')
+    || tags.includes('documentation')
+    || sourceKind === 'documentation-candidate';
+}
+
+function pruneWeakSourceEvidence(
+  results: readonly HomeGraphSearchResult[],
+  tokens: readonly string[],
+  sourceLinks: ReadonlyMap<string, ReadonlySet<string>>,
+  anchorIds: ReadonlySet<string>,
+): HomeGraphSearchResult[] {
+  const sourceResults = results.filter((result) => result.source);
+  if (sourceResults.length === 0) return [...results];
+  const strongSourceResults = sourceResults.filter((result) => {
+    const source = result.source;
+    if (!source) return false;
+    if (!hasUsefulSourceAnswerText(result)) return false;
+    const linkedToAnchor = intersects(sourceLinks.get(source.id) ?? new Set<string>(), anchorIds);
+    return linkedToAnchor || tokenCoverage(tokens, resultText(result)) >= Math.min(2, tokens.length);
+  });
+  return strongSourceResults;
+}
+
+function hasUsefulSourceAnswerText(result: HomeGraphSearchResult): boolean {
+  const detail = result.excerpt ?? result.summary ?? result.source?.description;
+  return typeof detail === 'string' && detail.trim().length > 0 && !isLowInformationExtractionText(detail);
+}
+
 function selectRelevantExcerpt(
   tokens: readonly string[],
   source: KnowledgeSourceRecord,
@@ -315,13 +445,15 @@ function selectRelevantExcerpt(
   let best: { readonly score: number; readonly text: string } | undefined;
   for (const chunk of chunks) {
     const text = cleanWhitespace(chunk);
-    if (!text) continue;
+    if (!text || isLowInformationExtractionText(text)) continue;
     const score = scoreFields(tokens, [text]);
     if (!best || score > best.score || (score === best.score && text.length < best.text.length)) {
       best = { score, text };
     }
   }
-  if (!best || best.score <= 0) return firstBoundedText(chunks, MAX_ANSWER_EXCERPT_CHARS);
+  if (!best || best.score <= 0) {
+    return firstBoundedText(chunks.filter((chunk) => !isLowInformationExtractionText(chunk)), MAX_ANSWER_EXCERPT_CHARS);
+  }
   return clampAroundBestToken(best.text, tokens, MAX_ANSWER_EXCERPT_CHARS);
 }
 
@@ -338,6 +470,19 @@ function candidateExcerptChunks(
     source.description,
     source.summary,
   ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+}
+
+function usefulExtractionSummary(extraction: KnowledgeExtractionRecord | null | undefined): string | undefined {
+  const summary = extraction?.summary?.trim();
+  return summary && !isLowInformationExtractionText(summary) ? summary : undefined;
+}
+
+function isLowInformationExtractionText(value: string): boolean {
+  const normalized = value.toLowerCase();
+  return normalized.includes('pdf extraction produced limited text')
+    || normalized.includes('no readable text streams')
+    || normalized.includes('no specialized extractor matched')
+    || normalized.includes('has no specialized in-core extractor');
 }
 
 function sentenceChunks(value: string | undefined): string[] {

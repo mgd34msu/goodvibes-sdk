@@ -22,6 +22,7 @@ import {
   namespacedCanonicalUri,
   nodeKindForHomeGraphObject,
   normalizeHomeGraphObjectInput,
+  readRecord,
   resolveHomeGraphSpace,
   targetToReference,
   uniqueStrings,
@@ -45,15 +46,17 @@ import {
   renderPacketPage,
   renderRoomPage,
 } from './rendering.js';
+import { reindexHomeGraphSources } from './reindex.js';
 import {
   readHomeGraphSearchState,
   scoreHomeGraphResults,
+  selectHomeGraphExtractionRepairCandidates,
 } from './search.js';
 import type {
   HomeGraphAskInput, HomeGraphAskResult, HomeGraphDevicePassportResult, HomeGraphExport,
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
   HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphObjectInput,
-  HomeGraphProjectionInput, HomeGraphProjectionResult, HomeGraphReviewInput, HomeGraphSpaceInput,
+  HomeGraphProjectionInput, HomeGraphProjectionResult, HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
 import { HOME_GRAPH_CAPABILITIES } from './types.js';
@@ -245,8 +248,11 @@ export class HomeGraphService {
 
   async ask(input: HomeGraphAskInput): Promise<HomeGraphAskResult> {
     await this.store.init();
-    const { spaceId } = resolveHomeGraphSpace(input);
-    const state = readHomeGraphSearchState(this.store, spaceId);
+    const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    let state = readHomeGraphSearchState(this.store, spaceId);
+    if (await this.repairWeakExtractionsForAsk(spaceId, installationId, input.query, state) > 0) {
+      state = readHomeGraphSearchState(this.store, spaceId);
+    }
     const results = scoreHomeGraphResults(
       input.query,
       state.sources,
@@ -271,6 +277,45 @@ export class HomeGraphService {
       },
       results,
     };
+  }
+
+  async reindex(input: HomeGraphSpaceInput = {}): Promise<HomeGraphReindexResult> {
+    await this.store.init();
+    const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    const state = readHomeGraphSearchState(this.store, spaceId);
+    return reindexHomeGraphSources({
+      spaceId,
+      sources: state.sources,
+      extractionBySourceId: state.extractionBySourceId,
+      artifactStore: this.artifactStore,
+      extract: (source, artifact) => this.extractArtifact(source, artifact, spaceId, installationId),
+    });
+  }
+
+  private async repairWeakExtractionsForAsk(
+    spaceId: string,
+    installationId: string,
+    query: string,
+    state: ReturnType<typeof readHomeGraphSearchState>,
+  ): Promise<number> {
+    const candidates = selectHomeGraphExtractionRepairCandidates(
+      query,
+      state.sources,
+      state.nodes,
+      state.edges,
+      (sourceId) => state.extractionBySourceId.get(sourceId),
+      8,
+    );
+    let repaired = 0;
+    for (const source of candidates) {
+      const artifactId = typeof source.artifactId === 'string' ? source.artifactId : undefined;
+      if (!artifactId) continue;
+      const artifact = this.artifactStore.get(artifactId);
+      if (!artifact) continue;
+      const extraction = await this.extractArtifact(source, artifact, spaceId, installationId);
+      if (extraction && extractionHasSearchableText(extraction)) repaired += 1;
+    }
+    return repaired;
   }
 
   async refreshDevicePassport(input: HomeGraphProjectionInput): Promise<HomeGraphDevicePassportResult> {
@@ -520,8 +565,9 @@ export class HomeGraphService {
       if (!record) return undefined;
       const { buffer } = await this.artifactStore.readContent(artifact.id);
       const extracted = await extractKnowledgeArtifact(record, buffer);
+      const existing = this.store.getExtractionBySourceId(source.id);
       return this.store.upsertExtraction({
-        id: `hg-extract-${source.id.replace(/^hg-src-/, '')}`,
+        id: existing?.id ?? `hg-extract-${source.id.replace(/^hg-src-/, '')}`,
         sourceId: source.id,
         artifactId: artifact.id,
         extractorId: extracted.extractorId,
@@ -720,4 +766,9 @@ export class HomeGraphService {
       metadata: artifact.metadata,
     };
   }
+}
+
+function extractionHasSearchableText(extraction: KnowledgeExtractionRecord): boolean {
+  const structure = readRecord(extraction.structure);
+  return typeof structure.searchText === 'string' && structure.searchText.trim().length > 0;
 }

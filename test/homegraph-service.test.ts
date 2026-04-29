@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { deflateSync } from 'node:zlib';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
 import { HomeGraphRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/home-graph-routes.js';
@@ -274,6 +275,150 @@ describe('Home Graph knowledge spaces', () => {
     expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
   });
 
+  test('repairs already-uploaded weak PDF manual extractions during ask', async () => {
+    const { service, store, artifactStore } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'living-room', name: 'Living Room' }],
+      devices: [{ id: 'lg-tv', name: 'LG TV', manufacturer: 'LG', model: '86NANO90UNA', areaId: 'living-room' }],
+      entities: [{
+        entityId: 'media_player.lg_webos_smart_tv',
+        name: 'LG webOS Smart TV',
+        deviceId: 'lg-tv',
+        areaId: 'living-room',
+      }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = {
+      knowledgeSpaceId: spaceId,
+      namespace: spaceId,
+      homeGraph: true,
+      homeAssistant: { installationId: 'house-1' },
+    };
+    const artifact = await artifactStore.createFromStream({
+      kind: 'document',
+      mimeType: 'application/pdf',
+      filename: 'lg-86nano90una-manual.pdf',
+      stream: [createCompressedPdfBuffer('LG TV features include HDR10, HDMI eARC, Filmmaker Mode, Game Optimizer, and Magic Remote voice control.')],
+      metadata,
+    });
+    const manual = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'homegraph://house-1/lg-86nano90una-manual',
+      tags: ['homeassistant', 'home-graph', 'manual', 'tv'],
+      status: 'indexed',
+      artifactId: artifact.id,
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: manual.id,
+      artifactId: artifact.id,
+      extractorId: 'pdf',
+      format: 'pdf',
+      summary: 'PDF extraction produced limited text; OCR is not used in-core.',
+      sections: [],
+      links: [],
+      estimatedTokens: 1,
+      structure: { extractedStringCount: 0 },
+      metadata,
+    });
+    await service.linkKnowledge({
+      installationId: 'house-1',
+      sourceId: manual.id,
+      target: { kind: 'device', id: 'lg-tv', relation: 'has_manual' },
+    });
+    const unrelatedPlug = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'manual',
+      title: 'Kasa Smart Wi-Fi Plug Slim with Energy Monitoring',
+      canonicalUri: 'homegraph://house-1/kasa-plug',
+      tags: ['homeassistant', 'home-graph', 'manual'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: unrelatedPlug.id,
+      extractorId: 'test-html',
+      format: 'html',
+      title: 'Kasa Smart Wi-Fi Plug Slim with Energy Monitoring',
+      summary: 'Keep Track of Your Energy Use.',
+      sections: ['Features'],
+      links: [],
+      estimatedTokens: 200,
+      structure: { searchText: 'Features include energy monitoring and Matter support.' },
+      metadata,
+    });
+
+    const ask = await service.ask({
+      installationId: 'house-1',
+      query: 'what features does the LG TV have?',
+      includeLinkedObjects: true,
+    });
+    const repairedExtraction = store.listExtractions().find((entry) => entry.sourceId === manual.id);
+
+    expect(repairedExtraction?.extractorId).toBe('pdfjs');
+    expect(ask.results.map((result) => result.id)).toEqual([manual.id]);
+    expect(ask.answer.text).toContain('HDR10');
+    expect(ask.answer.text).toContain('HDMI eARC');
+    expect(ask.answer.text).toContain('Magic Remote');
+    expect(ask.answer.text).not.toContain('Kasa');
+    expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('LG TV');
+  });
+
+  test('reindexes already-uploaded Home Graph PDF artifacts without reuploading', async () => {
+    const { service, store, artifactStore } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = {
+      knowledgeSpaceId: spaceId,
+      namespace: spaceId,
+      homeGraph: true,
+      homeAssistant: { installationId: 'house-1' },
+    };
+    const artifact = await artifactStore.createFromStream({
+      kind: 'document',
+      mimeType: 'application/pdf',
+      filename: 'lg-tv-manual.pdf',
+      stream: [createCompressedPdfBuffer('The uploaded LG TV manual says supported features include Dolby Vision and HDMI eARC.')],
+      metadata,
+    });
+    const manual = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'manual',
+      title: 'LG TV manual',
+      canonicalUri: 'homegraph://house-1/lg-tv-manual',
+      tags: ['homeassistant', 'home-graph', 'manual'],
+      status: 'indexed',
+      artifactId: artifact.id,
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: manual.id,
+      artifactId: artifact.id,
+      extractorId: 'pdf',
+      format: 'pdf',
+      summary: 'PDF extraction produced limited text; OCR is not used in-core.',
+      sections: [],
+      links: [],
+      estimatedTokens: 1,
+      structure: { extractedStringCount: 0 },
+      metadata,
+    });
+
+    const reindex = await service.reindex({ installationId: 'house-1' });
+    const extraction = store.getExtractionBySourceId(manual.id);
+
+    expect(reindex.scanned).toBe(1);
+    expect(reindex.reparsed).toBe(1);
+    expect(extraction?.extractorId).toBe('pdfjs');
+    expect(JSON.stringify(extraction?.structure)).toContain('Dolby Vision');
+  });
+
   test('keeps Home Graph review decisions durable across quality refreshes', async () => {
     const { service } = createHomeGraphService();
     await service.syncSnapshot({
@@ -384,12 +529,19 @@ describe('Home Graph knowledge spaces', () => {
     const statusResponse = await routes.handle(new Request(
       'http://daemon.local/api/homeassistant/home-graph/status?installationId=house-1',
     ));
+    const reindexResponse = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/reindex', {
+      method: 'POST',
+      body: JSON.stringify({ installationId: 'house-1' }),
+    }));
 
     expect(syncResponse?.status).toBe(200);
     expect(statusResponse?.status).toBe(200);
+    expect(reindexResponse?.status).toBe(200);
     const status = await statusResponse!.json() as Record<string, unknown>;
+    const reindex = await reindexResponse!.json() as Record<string, unknown>;
     expect(status.spaceId).toBe(homeAssistantKnowledgeSpaceId('house-1'));
     expect(status.nodeCount).toBeGreaterThanOrEqual(2);
+    expect(reindex.scanned).toBe(0);
   });
 
   test('accepts native Home Assistant snake_case snapshot objects', async () => {
@@ -473,4 +625,45 @@ function readHomeAssistantEntityId(metadata: Record<string, unknown>): string | 
   return homeAssistant && typeof homeAssistant === 'object' && !Array.isArray(homeAssistant)
     ? (homeAssistant as { readonly entityId?: string }).entityId
     : undefined;
+}
+
+function createCompressedPdfBuffer(text: string): Buffer {
+  const content = `BT /F1 12 Tf 72 720 Td (${escapePdfText(text)}) Tj ET`;
+  const compressed = deflateSync(Buffer.from(content, 'utf-8'));
+  const chunks: Buffer[] = [];
+  const offsets: number[] = [];
+  let size = 0;
+  const add = (chunk: string | Buffer): void => {
+    const buffer = typeof chunk === 'string' ? Buffer.from(chunk, 'binary') : chunk;
+    chunks.push(buffer);
+    size += buffer.length;
+  };
+  const object = (id: number, body: string | Buffer): void => {
+    offsets[id] = size;
+    add(`${id} 0 obj\n`);
+    add(body);
+    add('\nendobj\n');
+  };
+
+  add('%PDF-1.4\n');
+  object(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  object(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  object(3, '<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>');
+  object(4, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  object(5, Buffer.concat([
+    Buffer.from(`<< /Length ${compressed.length} /Filter /FlateDecode >>\nstream\n`, 'binary'),
+    compressed,
+    Buffer.from('\nendstream', 'binary'),
+  ]));
+  const xrefOffset = size;
+  add('xref\n0 6\n0000000000 65535 f \n');
+  for (let id = 1; id <= 5; id += 1) {
+    add(`${String(offsets[id] ?? 0).padStart(10, '0')} 00000 n \n`);
+  }
+  add(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
+  return Buffer.concat(chunks);
+}
+
+function escapePdfText(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }

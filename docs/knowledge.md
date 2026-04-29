@@ -62,17 +62,23 @@ large content. Remote URL and daemon-local path acquisitions are streamed into
 the artifact store and enforce the same artifact cap before extraction.
 
 HTML extraction uses Mozilla Readability through `jsdom` first and falls back to
-the lightweight extractor for malformed or hostile HTML. Non-HTML extractors are
-format-specific and produce extraction metadata plus best-effort limitations
+the lightweight extractor for malformed or hostile HTML. PDF extraction uses
+PDF.js for text-layer parsing and falls back to a lightweight raw-stream reader
+only when the dedicated parser cannot load the file. Other non-HTML extractors
+are format-specific and produce extraction metadata plus best-effort limitations
 when specialized parsing is unavailable.
 
 Text-bearing extractors also persist capped `structure.searchText` for
 retrieval. This field is intentionally bounded and separate from the short
 summary/excerpt/section fields so large manuals, PDFs, website snapshots, and
 office documents remain searchable without turning every query into an
-unbounded full-document scan. Existing sources created before this searchable
-text field exists should be reindexed or reingested when callers need answers
-from deep document content.
+unbounded full-document scan. Home Graph also repairs older artifact-backed
+sources in place: when ask finds a relevant source with missing or weak
+extraction text, it re-extracts the stored artifact once and saves the improved
+extraction record for later queries. The general knowledge reindex path also
+re-extracts stored artifacts whose extraction is missing, placeholder-only, or
+from the old weak PDF extractor, so existing non-Home-Graph PDFs can be repaired
+without reuploading.
 
 ## Review Pathways
 
@@ -145,6 +151,10 @@ Object-specific questions are anchored to matching Home Assistant nodes, then
 indexed sources linked to those nodes are preferred over unrelated generic
 keyword hits. The response includes bounded excerpts from matched extraction
 text when available, plus the source list and linked HA object references.
+Source-evidence questions such as device features, manuals, specs, reset steps,
+batteries, and warranties require useful source text; low-information
+extraction placeholders and unrelated integration documentation are not treated
+as answer material.
 
 Home Graph quality checks use Home Assistant metadata to avoid noisy issues.
 Unknown-battery checks are limited to plausible battery-powered physical

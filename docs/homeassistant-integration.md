@@ -91,6 +91,7 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/link` | Attach a source or fact to an HA object. |
 | `POST /api/homeassistant/home-graph/unlink` | Mark a source/object link inactive without deleting history. |
 | `POST /api/homeassistant/home-graph/ask` | Ask source-backed questions over only the HA knowledge space. |
+| `POST /api/homeassistant/home-graph/reindex` | Reparse already-stored HA Home Graph artifacts whose extraction is missing, placeholder-only, or from the old weak PDF extractor. |
 | `POST /api/homeassistant/home-graph/device-passport` | Refresh and materialize a device passport page. |
 | `POST /api/homeassistant/home-graph/room-page` | Generate a room/area page as markdown artifact. |
 | `POST /api/homeassistant/home-graph/packet` | Generate guest, sitter, emergency, contractor, network, or custom packets. |
@@ -150,19 +151,30 @@ avoid JSON `dataBase64` for manuals, receipts, photos, and other large files.
 state instead of loading full issue/export state. It batches extraction lookup
 by source id and scores bounded fields, capped extraction sections, and
 `structure.searchText` when present. Current text, HTML, JSON, CSV/TSV, XML,
-YAML, DOCX, XLSX, PPTX, and PDF extraction paths persist capped searchable text
-for future ingests. Older manual ingests that predate searchable extraction
-text may need reingest or a knowledge reindex before deep manual details can
-answer Home Graph questions.
+YAML, DOCX, XLSX, PPTX, and PDF extraction paths persist capped searchable text.
+PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
+fallback only when the dedicated parser cannot load the file.
+
+Older Home Graph artifact sources do not need to be uploaded again. When ask
+finds a relevant linked source with missing, placeholder, or old weak PDF
+extraction data, the SDK re-extracts the already-stored artifact and saves the
+new extraction record before ranking the answer. Later questions reuse that
+stored extraction instead of parsing the manual on every request. Clients that
+want to repair the whole Home Assistant knowledge space immediately can call
+`POST /api/homeassistant/home-graph/reindex`; the response reports `scanned`,
+`reparsed`, `skipped`, `failed`, repaired `sources`, and per-source `failures`.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
 Graph nodes and strongly prefers indexed sources linked to those nodes. Pending
 integration documentation candidates are source suggestions, not answer
-material, until they are indexed. Answers include bounded excerpts from the
-matched extraction text when available; clients should display the answer text,
-sources, and linked objects returned by the SDK rather than locally re-ranking
-the graph.
+material, until they are indexed. Device feature/spec/manual questions require
+useful source evidence, so low-information extraction placeholders, unrelated
+device manuals, and Home Assistant integration docs are excluded from the
+answer unless the query is explicitly about the integration. Answers include
+bounded excerpts from the matched extraction text when available; clients should
+display the answer text, sources, and linked objects returned by the SDK rather
+than locally re-ranking the graph.
 
 Home Graph quality issues are generated from the current graph but review
 decisions are durable. When a user or LLM resolves/rejects an issue through

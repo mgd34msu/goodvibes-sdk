@@ -667,6 +667,17 @@ export const HOME_GRAPH_ASK_OUTPUT_SCHEMA = objectSchema({
   results: GENERIC_LIST_SCHEMA,
 }, ['ok', 'spaceId', 'query', 'answer', 'results'], { additionalProperties: true });
 
+export const HOME_GRAPH_REINDEX_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  scanned: NUMBER_SCHEMA,
+  reparsed: NUMBER_SCHEMA,
+  skipped: NUMBER_SCHEMA,
+  failed: NUMBER_SCHEMA,
+  sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
+  failures: GENERIC_LIST_SCHEMA,
+}, ['ok', 'spaceId', 'scanned', 'reparsed', 'skipped', 'failed', 'sources', 'failures'], { additionalProperties: true });
+
 export const HOME_GRAPH_PROJECTION_OUTPUT_SCHEMA = objectSchema({
   ok: BOOLEAN_SCHEMA,
   spaceId: STRING_SCHEMA,
