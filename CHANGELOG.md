@@ -20,6 +20,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.26.10] - 2026-04-29
+
+### Breaking
+- none
+
+### Added
+- Added `POST /api/homeassistant/home-graph/reindex` and
+  `homeassistant.homeGraph.reindex` so Home Assistant clients can reparse
+  already-stored Home Graph artifacts with missing, placeholder-only, or old
+  weak PDF extraction records without reuploading files.
+- Added PDF.js-backed PDF text extraction for the shared knowledge extractor.
+  New and reindexed knowledge/wiki and Home Graph PDF artifacts now parse real
+  PDF text layers instead of relying only on the previous raw stream heuristic.
+
+### Fixed
+- Home Graph ask now repairs relevant already-uploaded artifact-backed manuals
+  before ranking when their extraction is missing or was produced by the old
+  weak PDF extractor. The repaired extraction is saved in the graph and reused
+  on later asks.
+- General knowledge reindex now re-extracts existing weak artifact extractions,
+  including old PDF records, instead of leaving stale placeholder extraction
+  rows in place.
+- Home Graph device feature/spec/manual questions now require useful source
+  evidence and exclude low-information extraction placeholders, unrelated
+  manuals, and Home Assistant integration documentation unless the query is
+  explicitly about an integration.
+
+### Migration
+- Home Assistant clients should call
+  `POST /api/homeassistant/home-graph/reindex` once after updating if they want
+  all previously uploaded Home Graph PDFs reparsed immediately. Otherwise,
+  relevant linked manuals are repaired lazily on the next Home Graph ask.
+
+---
+
 ## [0.26.9] - 2026-04-29
 
 ### Breaking

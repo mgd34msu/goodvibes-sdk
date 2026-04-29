@@ -349,7 +349,77 @@ function extractYaml(buffer: Buffer): KnowledgeExtractionResult {
   };
 }
 
-function extractPdf(buffer: Buffer): KnowledgeExtractionResult {
+async function extractPdf(buffer: Buffer): Promise<KnowledgeExtractionResult> {
+  const parsed = await extractPdfWithPdfJs(buffer);
+  if (parsed) return parsed;
+  return extractPdfRawStreams(buffer);
+}
+
+async function extractPdfWithPdfJs(buffer: Buffer): Promise<KnowledgeExtractionResult | undefined> {
+  try {
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const loadingTask = pdfjs.getDocument({
+      data: new Uint8Array(buffer),
+      useSystemFonts: true,
+    });
+    const document = await loadingTask.promise;
+    const pageCount = document.numPages;
+    const pageTexts: string[] = [];
+    for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const lines = textContentItemsToLines(content.items);
+      if (lines.length > 0) pageTexts.push(lines.join('\n'));
+      page.cleanup();
+    }
+    await document.destroy();
+    const text = cleanText(pageTexts.join('\n\n'));
+    if (!text) return undefined;
+    const searchText = searchTextPayload(text);
+    return {
+      extractorId: 'pdfjs',
+      format: 'pdf',
+      title: firstNonEmptyLine(text) ?? 'PDF document',
+      summary: summarizeText(text) ?? 'PDF document.',
+      excerpt: excerptText(text),
+      sections: uniqueStrings(text.split(/\n+/), 24),
+      links: uniqueStrings(Array.from(text.matchAll(/\bhttps?:\/\/[^\s)]+/g), (match) => match[0]), 50),
+      estimatedTokens: estimateTokens(text),
+      structure: {
+        pageCount,
+        extractedTextChars: text.length,
+        ...(searchText ? { searchText } : {}),
+      },
+      metadata: {
+        limitations: ['PDF text extraction does not perform OCR for scanned images.'],
+      },
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function textContentItemsToLines(items: readonly unknown[]): string[] {
+  const lines: string[] = [];
+  let current = '';
+  for (const item of items) {
+    const record = unknownRecord(item);
+    const text = typeof record.str === 'string' ? cleanText(record.str) : '';
+    if (text) current = current ? `${current} ${text}` : text;
+    if (record.hasEOL === true && current) {
+      lines.push(current);
+      current = '';
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function unknownRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {};
+}
+
+function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult {
   const body = buffer.toString('latin1');
   const texts: string[] = [];
   const streamRe = /stream\r?\n([\s\S]*?)\r?\nendstream/g;

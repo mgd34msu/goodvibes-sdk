@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `243`
+- Methods: `244`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -27802,6 +27802,215 @@ Generate or refresh the living passport page for one Home Assistant device.
     "title",
     "markdown",
     "artifact"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `homeassistant.homeGraph.reindex`
+
+Re-extract already-stored Home Graph artifacts with missing or weak extraction records.
+
+- Title: `Reindex Home Graph Sources`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/homeassistant/home-graph/reindex`
+- Scopes: `write:knowledge`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "installationId": {
+      "type": "string"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "spaceId": {
+      "type": "string"
+    },
+    "scanned": {
+      "type": "number"
+    },
+    "reparsed": {
+      "type": "number"
+    },
+    "skipped": {
+      "type": "number"
+    },
+    "failed": {
+      "type": "number"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "connectorId": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "url",
+              "bookmark",
+              "bookmark-list",
+              "history",
+              "document",
+              "repo",
+              "dataset",
+              "image",
+              "manual",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "sourceUri": {
+            "type": "string"
+          },
+          "canonicalUri": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "folderPath": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "artifactId": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "lastCrawledAt": {
+            "type": "number"
+          },
+          "crawlError": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "connectorId",
+          "sourceType",
+          "tags",
+          "status",
+          "metadata",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {}
+        ]
+      }
+    }
+  },
+  "required": [
+    "ok",
+    "spaceId",
+    "scanned",
+    "reparsed",
+    "skipped",
+    "failed",
+    "sources",
+    "failures"
   ],
   "additionalProperties": true
 }

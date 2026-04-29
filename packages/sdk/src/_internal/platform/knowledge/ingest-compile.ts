@@ -100,7 +100,7 @@ export async function finalizeKnowledgeIngestedSource(
 
 export async function recompileKnowledgeSource(context: KnowledgeIngestContext, source: KnowledgeSourceRecord): Promise<void> {
   const extraction = source.id ? context.store.getExtractionBySourceId(source.id) : null;
-  if (!extraction && source.artifactId) {
+  if (source.artifactId && extractionNeedsRefresh(extraction)) {
     const content = await context.artifactStore.readContent(source.artifactId);
     const extracted = await extractKnowledgeArtifact(content.record, content.buffer);
     await context.store.upsertExtraction({
@@ -119,6 +119,29 @@ export async function recompileKnowledgeSource(context: KnowledgeIngestContext, 
     });
   }
   await compileKnowledgeSource(context, context.store.getSource(source.id) ?? source, context.store.getExtractionBySourceId(source.id));
+}
+
+function extractionNeedsRefresh(extraction: KnowledgeExtractionRecord | null): boolean {
+  if (!extraction) return true;
+  if (extraction.format === 'pdf' && extraction.extractorId !== 'pdfjs') return true;
+  const searchText = readSearchText(extraction.structure) ?? readSearchText(extraction.metadata);
+  if (searchText) return false;
+  if (hasUsefulText(extraction.excerpt) || hasUsefulText(extraction.summary) || extraction.sections.some(hasUsefulText)) return false;
+  return true;
+}
+
+function readSearchText(record: Record<string, unknown>): string | undefined {
+  const value = record.searchText ?? record.text ?? record.content;
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function hasUsefulText(value: string | undefined): boolean {
+  if (!value?.trim()) return false;
+  const normalized = value.toLowerCase();
+  return !normalized.includes('pdf extraction produced limited text')
+    && !normalized.includes('no readable text streams')
+    && !normalized.includes('no specialized extractor matched')
+    && !normalized.includes('has no specialized in-core extractor');
 }
 
 export async function compileKnowledgeSource(

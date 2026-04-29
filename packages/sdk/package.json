@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.26.9",
+  "version": "0.26.10",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
@@ -23,6 +23,7 @@
     "jszip": "^3.10.1",
     "node-edge-tts": "^1.2.10",
     "openai": "^6.29.0",
+    "pdfjs-dist": "5.7.284",
     "pyright": "^1.1.408",
     "simple-git": "^3.33.0",
     "sql.js": "^1.14.1",

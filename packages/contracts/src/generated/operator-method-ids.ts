@@ -91,6 +91,7 @@ export const OPERATOR_METHOD_IDS = [
   "homeassistant.homeGraph.linkHomeGraphKnowledge",
   "homeassistant.homeGraph.listHomeGraphIssues",
   "homeassistant.homeGraph.refreshDevicePassport",
+  "homeassistant.homeGraph.reindex",
   "homeassistant.homeGraph.reviewHomeGraphFact",
   "homeassistant.homeGraph.sources.list",
   "homeassistant.homeGraph.status",

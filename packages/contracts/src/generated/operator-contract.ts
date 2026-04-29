@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.26.9"
+    "version": "0.26.10"
   },
   "auth": {
     "modes": [
@@ -27638,6 +27638,211 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "title",
             "markdown",
             "artifact"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "homeassistant.homeGraph.reindex",
+        "title": "Reindex Home Graph Sources",
+        "description": "Re-extract already-stored Home Graph artifacts with missing or weak extraction records.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/homeassistant/home-graph/reindex"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "scanned": {
+              "type": "number"
+            },
+            "reparsed": {
+              "type": "number"
+            },
+            "skipped": {
+              "type": "number"
+            },
+            "failed": {
+              "type": "number"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "connectorId": {
+                    "type": "string"
+                  },
+                  "sourceType": {
+                    "type": "string",
+                    "enum": [
+                      "url",
+                      "bookmark",
+                      "bookmark-list",
+                      "history",
+                      "document",
+                      "repo",
+                      "dataset",
+                      "image",
+                      "manual",
+                      "other"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "sourceUri": {
+                    "type": "string"
+                  },
+                  "canonicalUri": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "folderPath": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "artifactId": {
+                    "type": "string"
+                  },
+                  "contentHash": {
+                    "type": "string"
+                  },
+                  "lastCrawledAt": {
+                    "type": "number"
+                  },
+                  "crawlError": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "connectorId",
+                  "sourceType",
+                  "tags",
+                  "status",
+                  "metadata",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "failures": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {}
+                ]
+              }
+            }
+          },
+          "required": [
+            "ok",
+            "spaceId",
+            "scanned",
+            "reparsed",
+            "skipped",
+            "failed",
+            "sources",
+            "failures"
           ],
           "additionalProperties": true
         },
@@ -60453,10 +60658,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 243,
-      "typedInputs": 243,
+      "methods": 244,
+      "typedInputs": 244,
       "genericInputs": 0,
-      "typedOutputs": 243,
+      "typedOutputs": 244,
       "genericOutputs": 0
     },
     "eventCoverage": {

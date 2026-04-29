@@ -63,6 +63,9 @@ export class HomeGraphRoutes {
       if (url.pathname === '/api/homeassistant/home-graph/ask' && req.method === 'POST') {
         return Response.json(await this.context.homeGraphService.ask(await this.readBody<HomeGraphAskInput>(req)));
       }
+      if (url.pathname === '/api/homeassistant/home-graph/reindex' && req.method === 'POST') {
+        return await this.admin(req, async () => Response.json(await this.context.homeGraphService.reindex(await this.readOptionalBody(req))));
+      }
       if (url.pathname === '/api/homeassistant/home-graph/sync' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.syncSnapshot(await this.readBody<HomeGraphSnapshotInput>(req))));
       }
