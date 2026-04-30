@@ -8,6 +8,7 @@ import type {
   KnowledgeSemanticEnrichmentResult,
   KnowledgeSemanticLlm,
 } from './types.js';
+import { readRecord, readString, sourceSemanticHash, sourceSemanticText } from './utils.js';
 
 export interface KnowledgeSemanticServiceOptions {
   readonly llm?: KnowledgeSemanticLlm | null;
@@ -67,7 +68,9 @@ export class KnowledgeSemanticService {
     const errors: { sourceId: string; error: string }[] = [];
     for (const source of sources) {
       try {
-        const llm = this.options.llm && llmAttempts < maxLlmSources ? this.options.llm : null;
+        const llm = this.options.llm && llmAttempts < maxLlmSources && sourceCanUseLlmUpgrade(this.store, source)
+          ? this.options.llm
+          : null;
         if (llm) llmAttempts += 1;
         const result = await enrichKnowledgeSource({ store: this.store, llm }, source, input);
         if (result?.skipped) skipped += 1;
@@ -84,4 +87,13 @@ export class KnowledgeSemanticService {
     await this.store.init();
     return answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
   }
+}
+
+function sourceCanUseLlmUpgrade(store: KnowledgeStore, source: KnowledgeSourceRecord): boolean {
+  const extraction = store.getExtractionBySourceId(source.id);
+  const text = sourceSemanticText(source, extraction);
+  if (text.length < 40) return false;
+  const existingSemantic = readRecord(source.metadata.semanticEnrichment);
+  return existingSemantic.textHash !== sourceSemanticHash(source, extraction)
+    || readString(existingSemantic.extractor) !== 'llm';
 }

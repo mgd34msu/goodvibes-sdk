@@ -101,7 +101,12 @@ describe('semantic knowledge/wiki enrichment', () => {
       extractorId: 'test',
       format: 'text',
       structure: {
-        searchText: 'The TV supports Dolby Vision. Warning: do not use uncertified HDMI cables.',
+        searchText: [
+          'The TV supports Dolby Vision.',
+          'Product specifications or contents of this manual may be changed without prior notice.',
+          'The items supplied with your product may vary depending upon the model.',
+          'Warning: do not use uncertified HDMI cables.',
+        ].join(' '),
       },
     });
     const plug = await store.upsertSource({
@@ -133,7 +138,10 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.text).toContain('Dolby Vision');
     expect(answer.answer.text).not.toContain('Kasa');
     expect(answer.answer.text).not.toContain('uncertified HDMI cables');
+    expect(answer.answer.text).not.toContain('prior notice');
+    expect(answer.answer.text).not.toContain('items supplied');
     expect(answer.answer.facts.every((fact) => fact.sourceId === tv.id)).toBe(true);
+    expect(answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`).join('\n')).not.toContain('prior notice');
   });
 
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
@@ -167,6 +175,58 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.sources.some((source) => source.title === 'Living Room TV manual')).toBe(true);
     expect(page.markdown).toContain('Extracted Device Facts');
     expect(page.markdown).toContain('HDMI inputs');
+  });
+
+  test('Home Graph semantic ask does not let unrelated semantic pages become object anchors', async () => {
+    const { store, artifactStore } = createStores();
+    const semantic = new KnowledgeSemanticService(store);
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.syncSnapshot({
+      installationId: 'house',
+      areas: [{ id: 'living-room', name: 'Living Room' }],
+      devices: [
+        { id: 'tv', name: 'LG webOS Smart TV', areaId: 'living-room', manufacturer: 'LG', model: '86NANO90UNA' },
+        { id: 'plug', name: 'Kasa Smart Wi-Fi Plug', areaId: 'living-room', manufacturer: 'Kasa', model: 'KP125M' },
+      ],
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'LG 86NANO90UNA manual',
+      body: 'The LG TV supports HDR10, HDMI eARC, Filmmaker Mode, Game Optimizer, and Magic Remote voice control.',
+      tags: ['manual', 'tv'],
+      target: { kind: 'device', id: 'tv', relation: 'has_manual' },
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'Kasa Smart Wi-Fi Plug Slim with Energy Monitoring',
+      body: 'Features include energy monitoring, Matter support, scheduling, and away mode.',
+      tags: ['manual', 'plug'],
+      target: { kind: 'device', id: 'plug', relation: 'has_manual' },
+    });
+    await semantic.reindex({
+      knowledgeSpaceId: homeAssistantKnowledgeSpaceId('house'),
+      force: true,
+    });
+
+    const answer = await service.ask({
+      installationId: 'house',
+      query: 'what features does the TV have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+    });
+    const answerText = [
+      answer.answer.text,
+      ...answer.answer.sources.map((source) => source.title ?? ''),
+      ...answer.answer.linkedObjects.map((node) => node.title),
+      ...answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`),
+    ].join('\n');
+
+    expect(answer.answer.text).toContain('HDR10');
+    expect(answer.answer.text).toContain('HDMI eARC');
+    expect(answer.answer.sources.map((source) => source.title)).toEqual(['LG 86NANO90UNA manual']);
+    expect(answer.answer.linkedObjects.map((node) => node.title)).toContain('LG webOS Smart TV');
+    expect(answerText).not.toContain('Kasa');
+    expect(answerText).not.toContain('energy monitoring');
   });
 
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {

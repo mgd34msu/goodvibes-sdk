@@ -42,6 +42,31 @@ interface EvidenceItem {
   readonly facts: readonly KnowledgeNodeRecord[];
 }
 
+const GENERIC_ANSWER_INTENT_TOKENS = new Set([
+  'capabilities',
+  'capability',
+  'configuration',
+  'configure',
+  'feature',
+  'features',
+  'function',
+  'functions',
+  'install',
+  'mode',
+  'modes',
+  'procedure',
+  'setting',
+  'settings',
+  'setup',
+  'spec',
+  'specification',
+  'specifications',
+  'specs',
+  'support',
+  'supported',
+  'supports',
+]);
+
 export async function answerKnowledgeQuery(
   context: KnowledgeAnswerContext,
   input: KnowledgeSemanticAnswerInput,
@@ -104,6 +129,7 @@ function collectAnswerEvidence(
 ): EvidenceItem[] {
   const tokens = expandQueryTokens(tokenizeSemanticQuery(input.query));
   if (tokens.length === 0) return [];
+  const subjectTokens = tokens.filter((token) => !GENERIC_ANSWER_INTENT_TOKENS.has(token));
   const candidateSourceIds = new Set(input.candidateSourceIds ?? []);
   const candidateNodeIds = new Set(input.candidateNodeIds ?? []);
   const linkedObjectIds = new Set((input.linkedObjects ?? []).map((node) => node.id));
@@ -120,17 +146,28 @@ function collectAnswerEvidence(
       const extraction = store.getExtractionBySourceId(source.id);
       const facts = filterFactsForQuery(input.query, sourceFacts.get(source.id) ?? []);
       const text = sourceSemanticText(source, extraction);
-      const baseScore = scoreSemanticText([
+      const scoringText = [
         source.title,
         source.summary,
         source.description,
         source.tags.join(' '),
         text,
         facts.map(renderFactForScoring).join(' '),
-      ].join('\n'), tokens);
+      ].join('\n');
+      const baseScore = scoreSemanticText(scoringText, tokens);
+      const subjectScore = subjectTokens.length > 0 ? scoreSemanticText(scoringText, subjectTokens) : 0;
       const candidateBoost = candidateSourceIds.has(source.id) ? 220 : 0;
       const linkedBoost = linkedSourceIds.has(source.id) ? 160 : 0;
-      const score = baseScore + candidateBoost + linkedBoost + Math.min(60, facts.length * 6);
+      const genericOnly = subjectTokens.length > 0 && subjectScore === 0;
+      const weakStrictCandidate = strictCandidates
+        && candidateSourceIds.size > 1
+        && candidateSourceIds.has(source.id)
+        && !linkedSourceIds.has(source.id)
+        && genericOnly;
+      const weakBroadMatch = !strictCandidates && genericOnly;
+      const score = weakStrictCandidate || weakBroadMatch
+        ? 0
+        : baseScore + candidateBoost + linkedBoost + Math.min(60, facts.length * 6);
       return {
         kind: 'source' as const,
         id: source.id,
@@ -143,18 +180,25 @@ function collectAnswerEvidence(
     });
 
   const nodeItems = store.listNodes(10_000)
-    .filter((node) => belongsToAnswerSpace(node, spaceId))
+    .filter((node) => belongsToAnswerSpace(node, spaceId) && node.status !== 'stale')
     .filter((node) => !strictCandidates
       || candidateNodeIds.has(node.id)
       || linkedObjectIds.has(node.id)
       || (typeof node.sourceId === 'string' && candidateSourceIds.has(node.sourceId)))
     .map((node) => {
-      const score = scoreSemanticText([
+      const scoringText = [
         node.title,
         node.summary,
         node.aliases.join(' '),
         JSON.stringify(node.metadata),
-      ].join('\n'), tokens) + (candidateNodeIds.has(node.id) || linkedObjectIds.has(node.id) ? 120 : 0) + semanticKindBoost(node);
+      ].join('\n');
+      const baseScore = scoreSemanticText(scoringText, tokens);
+      const subjectScore = subjectTokens.length > 0 ? scoreSemanticText(scoringText, subjectTokens) : 0;
+      const genericOnly = subjectTokens.length > 0 && subjectScore === 0;
+      const candidateOrLinked = candidateNodeIds.has(node.id) || linkedObjectIds.has(node.id);
+      const score = genericOnly && !candidateOrLinked
+        ? 0
+        : baseScore + (candidateOrLinked ? 120 : 0) + semanticKindBoost(node);
       return {
         kind: 'node' as const,
         id: node.id,
@@ -250,9 +294,14 @@ function renderFallbackAnswer(
 }
 
 function filterFactsForQuery(query: string, facts: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
-  const intent = factIntent(tokenizeSemanticQuery(query));
-  if (!intent) return [...facts];
-  return facts.filter((fact) => intent.has(readString(fact.metadata.factKind) ?? 'note'));
+  const tokens = tokenizeSemanticQuery(query);
+  const intent = factIntent(tokens);
+  const matching = intent
+    ? facts.filter((fact) => intent.has(readString(fact.metadata.factKind) ?? 'note'))
+    : [...facts];
+  return matching
+    .filter((fact) => fact.status !== 'stale' && !isLowValueFactForQuery(tokens, intent, fact))
+    .sort(compareFactQuality);
 }
 
 function factIntent(tokens: readonly string[]): ReadonlySet<string> | null {
@@ -272,6 +321,55 @@ function factIntent(tokens: readonly string[]): ReadonlySet<string> | null {
 
 function hasAny(values: ReadonlySet<string>, candidates: readonly string[]): boolean {
   return candidates.some((candidate) => values.has(candidate));
+}
+
+function isLowValueFactForQuery(
+  tokens: readonly string[],
+  intent: ReadonlySet<string> | null,
+  fact: KnowledgeNodeRecord,
+): boolean {
+  if (!intent || !hasFeatureIntent(intent)) return false;
+  const kind = readString(fact.metadata.factKind) ?? 'note';
+  if (!['feature', 'capability', 'specification', 'compatibility', 'configuration', 'identity'].includes(kind)) return false;
+  const text = [
+    fact.title,
+    fact.summary,
+    readString(fact.metadata.value),
+    readString(fact.metadata.evidence),
+    Array.isArray(fact.metadata.labels) ? fact.metadata.labels.join(' ') : '',
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (isManualBoilerplateFeatureText(text)) return true;
+  const extractor = readString(fact.metadata.extractor);
+  const confidence = typeof fact.confidence === 'number' ? fact.confidence : 0;
+  if (extractor !== 'deterministic' || confidence > 60) return false;
+  const subjectTokens = tokens.filter((token) => !GENERIC_ANSWER_INTENT_TOKENS.has(token));
+  return subjectTokens.length > 0 && !hasConcreteFeatureSignal(text);
+}
+
+function hasFeatureIntent(intent: ReadonlySet<string>): boolean {
+  return intent.has('feature') || intent.has('capability') || intent.has('specification') || intent.has('compatibility');
+}
+
+function isManualBoilerplateFeatureText(text: string): boolean {
+  return /\b(items? supplied|accessories supplied|contents? of (this )?manual|may vary|may be changed|without prior notice|depending (upon|on) (the )?model|available menus? and options?|product specifications?|power cord|electric shock|fire hazard|certified cable|do not|warning|caution|risk|hazard|clean only|near water|ventilation|antenna grounding)\b/.test(text);
+}
+
+function hasConcreteFeatureSignal(text: string): boolean {
+  return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation)\b/.test(text);
+}
+
+function compareFactQuality(left: KnowledgeNodeRecord, right: KnowledgeNodeRecord): number {
+  return factQuality(right) - factQuality(left) || left.title.localeCompare(right.title);
+}
+
+function factQuality(fact: KnowledgeNodeRecord): number {
+  const extractor = readString(fact.metadata.extractor);
+  const kind = readString(fact.metadata.factKind);
+  const value = readString(fact.metadata.value);
+  return (extractor === 'llm' ? 40 : 0)
+    + (value ? 12 : 0)
+    + (kind === 'capability' || kind === 'feature' ? 8 : kind === 'specification' ? 6 : 0)
+    + Math.round(fact.confidence / 10);
 }
 
 async function persistAnswerGap(
@@ -325,7 +423,7 @@ async function persistAnswerGaps(
 
 function buildSourceFactIndex(store: KnowledgeStore, spaceId: string): Map<string, KnowledgeNodeRecord[]> {
   const facts = store.listNodes(10_000).filter((node) => (
-    node.metadata.semanticKind === 'fact' && belongsToAnswerSpace(node, spaceId)
+    node.status !== 'stale' && node.metadata.semanticKind === 'fact' && belongsToAnswerSpace(node, spaceId)
   ));
   const bySource = new Map<string, KnowledgeNodeRecord[]>();
   for (const fact of facts) {

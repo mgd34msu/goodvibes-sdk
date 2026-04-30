@@ -115,10 +115,15 @@ Semantic enrichment runs from the shared knowledge ingest path, can be refreshed
 with the `knowledge-semantic-enrichment` job, and is also run by
 `KnowledgeService.reindex()`. Enrichment is hash-aware: if the source and
 extraction have not changed, the SDK skips the source instead of reprocessing it
-on every run. Broad reindex uses a small provider-backed LLM budget and then
-continues deterministically, so a large knowledge space can refresh without
-opening unbounded provider requests. Existing uploads can therefore be repaired
-and enriched by reindexing; users do not need to reupload documents.
+on every run. Deterministic enrichment is a lower-quality fallback, not a final
+interpretation: when an LLM becomes available later, ask/reindex can upgrade
+deterministic semantic records for the matched source. Replacement semantic
+records supersede stale facts/pages for that source so old deterministic
+fragments do not remain in maps, pages, or answers beside upgraded facts. Broad
+reindex uses a small provider-backed LLM budget and then continues
+deterministically, so a large knowledge space can refresh without opening
+unbounded provider requests. Existing uploads can therefore be repaired and
+enriched by reindexing; users do not need to reupload documents.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
@@ -131,7 +136,12 @@ snippet-to-answer logic.
 Clients that already performed object-scoped retrieval can pass
 `candidateSourceIds`, `candidateNodeIds`, and `strictCandidates: true` so answer
 synthesis stays inside that candidate set instead of re-scanning unrelated
-sources in the same knowledge space.
+sources in the same knowledge space. Answer evidence distinguishes subject
+tokens from broad intent tokens such as "features", "supports", and "specs";
+sources that only match those generic words are not answer evidence for
+object-specific questions. Feature/spec answers filter deterministic
+manual-boilerplate facts such as "items may vary", "specifications may change",
+and safety/cable warnings unless those facts are the actual query intent.
 
 ## Review Pathways
 
@@ -219,7 +229,10 @@ object references, extracted facts, and gaps when the graph cannot answer the
 question. Home Graph passes strict semantic answer candidates after its
 object-scoped search, so a question about one device cannot pull in another
 device's manual only because both manuals contain generic words such as
-"features" or "supports".
+"features" or "supports". Object anchoring is limited to Home Assistant graph
+objects; generated semantic pages and extracted fact nodes never become anchors
+for another ask query. This keeps previously generated appliance, integration,
+or device pages from becoming false matches for an unrelated device question.
 Source-evidence questions such as device features, manuals, specs, reset steps,
 batteries, and warranties require useful source text; low-information
 extraction placeholders and unrelated integration documentation are not treated

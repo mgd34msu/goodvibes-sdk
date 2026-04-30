@@ -16,7 +16,7 @@ export interface HomeGraphState extends Omit<HomeGraphRenderState, 'title'> {
 
 export function readHomeGraphState(store: KnowledgeStore, spaceId: string): HomeGraphState {
   const sources = store.listSources(10_000).filter((source) => belongsToSpace(source, spaceId));
-  const nodes = store.listNodes(10_000).filter((node) => belongsToSpace(node, spaceId));
+  const nodes = store.listNodes(10_000).filter((node) => belongsToSpace(node, spaceId) && node.status !== 'stale');
   const sourceIds = new Set(sources.map((source) => source.id));
   const nodeIds = new Set(nodes.map((node) => node.id));
   const edges = store.listEdges().filter((edge) => (
