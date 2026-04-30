@@ -20,6 +20,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.10] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- Knowledge ask now supports source-backed semantic gap repair. When an answer
+  identifies explicit gaps for a concrete subject, the daemon can search the
+  web, require at least two distinct external source domains, ingest those
+  sources into the same knowledge space, and link them to the gap with
+  `repairs_gap` edges. This improves future answers without inventing missing
+  facts in the current response.
+
+### Fixed
+- Feature/spec answer synthesis now post-filters provider-returned text so USB
+  fit guidance, future-feature boilerplate, platform/cabinet safety guidance,
+  and similar manual fragments cannot leak back into generated answers after
+  they were removed from fact evidence.
+- Feature/spec evidence windows now prefer sentence-sized excerpts over broad
+  manual chunks, reducing mixed useful-and-boilerplate evidence sent to the LLM.
+- Semantic gap repair is idempotent for already-linked repair sources and
+  suppresses duplicate concurrent repair searches for the same knowledge space
+  and gap set.
+
+### Migration
+- none
+
+---
+
 ## [0.27.9] - 2026-04-30
 
 ### Breaking

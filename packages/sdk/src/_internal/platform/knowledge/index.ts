@@ -40,6 +40,7 @@ export { renderKnowledgeMap } from './map.js';
 export type { KnowledgeMapRenderOptions, KnowledgeMapRenderState } from './map.js';
 export {
   KnowledgeSemanticService,
+  createWebKnowledgeGapRepairer,
   createProviderBackedKnowledgeSemanticLlm,
 } from './semantic/index.js';
 export type {
@@ -50,10 +51,14 @@ export type {
   KnowledgeSemanticExtraction,
   KnowledgeSemanticFactInput,
   KnowledgeSemanticFactKind,
+  KnowledgeSemanticGapRepairer,
+  KnowledgeSemanticGapRepairRequest,
+  KnowledgeSemanticGapRepairResult,
   KnowledgeSemanticGapInput,
   KnowledgeSemanticLlm,
   KnowledgeSemanticLlmAnswer,
   KnowledgeSemanticServiceOptions,
+  WebGapRepairOptions,
 } from './semantic/index.js';
 export { HomeGraphService, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS } from './home-graph/index.js';
 export {

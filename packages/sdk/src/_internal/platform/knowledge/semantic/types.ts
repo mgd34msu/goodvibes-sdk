@@ -137,3 +137,24 @@ export interface KnowledgeSemanticLlmAnswer {
   readonly usedNodeIds?: readonly string[];
   readonly gaps?: readonly KnowledgeSemanticGapInput[];
 }
+
+export interface KnowledgeSemanticGapRepairRequest {
+  readonly spaceId: string;
+  readonly query: string;
+  readonly gaps: readonly KnowledgeNodeRecord[];
+  readonly sources: readonly KnowledgeSourceRecord[];
+  readonly linkedObjects: readonly KnowledgeNodeRecord[];
+  readonly facts: readonly KnowledgeNodeRecord[];
+}
+
+export interface KnowledgeSemanticGapRepairResult {
+  readonly searched: boolean;
+  readonly query?: string;
+  readonly ingestedSourceIds: readonly string[];
+  readonly skippedUrls: readonly string[];
+  readonly reason?: string;
+}
+
+export type KnowledgeSemanticGapRepairer = (
+  request: KnowledgeSemanticGapRepairRequest,
+) => Promise<KnowledgeSemanticGapRepairResult | void>;

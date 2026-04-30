@@ -6,6 +6,7 @@ import type {
   KnowledgeSemanticAnswerInput,
   KnowledgeSemanticAnswerResult,
   KnowledgeSemanticEnrichmentResult,
+  KnowledgeSemanticGapRepairer,
   KnowledgeSemanticLlm,
 } from './types.js';
 import { readRecord, readString, sourceSemanticHash, sourceSemanticText } from './utils.js';
@@ -13,13 +14,23 @@ import { readRecord, readString, sourceSemanticHash, sourceSemanticText } from '
 export interface KnowledgeSemanticServiceOptions {
   readonly llm?: KnowledgeSemanticLlm | null;
   readonly maxLlmSourcesPerReindex?: number;
+  readonly gapRepairer?: KnowledgeSemanticGapRepairer | null;
 }
 
 export class KnowledgeSemanticService {
+  private readonly activeGapRepairs = new Set<string>();
+
   constructor(
     private readonly store: KnowledgeStore,
-    private readonly options: KnowledgeSemanticServiceOptions = {},
+    private options: KnowledgeSemanticServiceOptions = {},
   ) {}
+
+  setGapRepairer(gapRepairer: KnowledgeSemanticGapRepairer | null | undefined): void {
+    this.options = {
+      ...this.options,
+      gapRepairer: gapRepairer ?? null,
+    };
+  }
 
   async enrichSource(
     sourceId: string,
@@ -85,7 +96,62 @@ export class KnowledgeSemanticService {
 
   async answer(input: KnowledgeSemanticAnswerInput): Promise<KnowledgeSemanticAnswerResult> {
     await this.store.init();
-    return answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
+    const answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
+    this.queueGapRepair(answer);
+    return answer;
+  }
+
+  private queueGapRepair(answer: KnowledgeSemanticAnswerResult): void {
+    if (!this.options.gapRepairer || answer.answer.gaps.length === 0 || answer.answer.sources.length === 0) return;
+    const gaps = answer.answer.gaps.filter((gap) => !this.hasGapRepairSource(answer.spaceId, gap.id));
+    if (gaps.length === 0) return;
+    const repairKey = `${answer.spaceId}:${gaps.map((gap) => gap.id).sort().join(',')}`;
+    if (this.activeGapRepairs.has(repairKey)) return;
+    this.activeGapRepairs.add(repairKey);
+    const repairer = this.options.gapRepairer;
+    void repairer({
+      spaceId: answer.spaceId,
+      query: answer.query,
+      gaps,
+      sources: answer.answer.sources,
+      linkedObjects: answer.answer.linkedObjects,
+      facts: answer.answer.facts,
+    })
+      .then(async (result) => {
+        if (!result?.ingestedSourceIds.length) return;
+        for (const sourceId of result.ingestedSourceIds) {
+          for (const gap of gaps) {
+            await this.store.upsertEdge({
+              fromKind: 'source',
+              fromId: sourceId,
+              toKind: 'node',
+              toId: gap.id,
+              relation: 'repairs_gap',
+              weight: 0.8,
+              metadata: {
+                semantic: true,
+                knowledgeSpaceId: answer.spaceId,
+                query: result.query ?? answer.query,
+                repairedAt: Date.now(),
+              },
+            });
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        this.activeGapRepairs.delete(repairKey);
+      });
+  }
+
+  private hasGapRepairSource(spaceId: string, gapId: string): boolean {
+    return this.store.listEdges().some((edge) => (
+      edge.relation === 'repairs_gap'
+      && edge.toKind === 'node'
+      && edge.toId === gapId
+      && edge.fromKind === 'source'
+      && readString(edge.metadata.knowledgeSpaceId) === spaceId
+    ));
   }
 }
 
