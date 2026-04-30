@@ -61,15 +61,22 @@ const SHORT_MEANINGFUL_TOKENS = new Set(['ac', 'av', 'dc', 'ha', 'ip', 'ir', 'lg
 const GENERIC_ANCHOR_TOKENS = new Set([
   'area',
   'assistant',
+  'automation',
+  'calendar',
   'device',
   'entity',
   'graph',
   'home',
+  'library',
   'living',
   'media',
   'media_player',
   'room',
+  'sensor',
+  'shows',
   'smart',
+  'storage',
+  'switch',
 ]);
 
 const QUERY_EXPANSIONS: Record<string, readonly string[]> = {
@@ -145,10 +152,12 @@ export function scoreHomeGraphResults(
   if (tokens.length === 0) return [];
   const expandedTokens = expandTokens(tokens);
   const anchors = selectAnchorNodes(tokens, nodes);
-  const anchorIds = new Set(anchors.map((anchor) => anchor.node.id));
-  const anchorIdentityTokens = collectAnchorIdentityTokens(anchors.map((anchor) => anchor.node));
+  const sourceAnchors = selectSourceAnchors(tokens, anchors.map((anchor) => anchor.node));
+  const anchorIds = new Set(sourceAnchors.map((node) => node.id));
+  const anchorIdentityTokens = collectAnchorIdentityTokens(sourceAnchors);
   const sourceLinks = buildSourceLinkIndex(edges);
-  const useAnchorScope = anchors.length > 0 && anchors.length <= ANCHOR_SCOPE_LIMIT;
+  const useAnchorScope = sourceAnchors.length > 0 && sourceAnchors.length <= ANCHOR_SCOPE_LIMIT;
+  const objectScopedQuery = sourceAnchors.length > 0;
   const sourceEvidenceQuery = queryNeedsSourceEvidence(expandedTokens);
   const integrationQuery = queryMentionsIntegration(tokens);
   const sourceResults: HomeGraphSearchResult[] = sources.map((source) => {
@@ -161,7 +170,7 @@ export function scoreHomeGraphResults(
     }
     const linkedNodeIds = sourceLinks.get(source.id) ?? new Set<string>();
     const linkedToAnchor = useAnchorScope && intersects(linkedNodeIds, anchorIds);
-    const anchorIdentityScore = useAnchorScope
+    const anchorIdentityScore = objectScopedQuery
       ? sourceAnchorIdentityScore(anchorIdentityTokens, source, extraction)
       : 0;
     const identityScore = scoreFields(tokens, [
@@ -217,7 +226,7 @@ export function scoreHomeGraphResults(
     results = anchoredSourceResults.sort(compareHomeGraphResults);
   }
   if (sourceEvidenceQuery) {
-    results = pruneWeakSourceEvidence(results, tokens, sourceLinks, anchorIds, anchorIdentityTokens, extractionBySourceId);
+    results = pruneWeakSourceEvidence(results, tokens, sourceLinks, anchorIds, anchorIdentityTokens, objectScopedQuery, extractionBySourceId);
   }
   const strongResults = pruneWeakTokenCoverage(results, tokens);
   return strongResults.slice(0, Math.max(1, limit));
@@ -234,15 +243,16 @@ export function selectHomeGraphExtractionRepairCandidates(
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
   const anchors = selectAnchorNodes(tokens, nodes);
-  const anchorIds = new Set(anchors.map((anchor) => anchor.node.id));
-  const anchorIdentityTokens = collectAnchorIdentityTokens(anchors.map((anchor) => anchor.node));
+  const sourceAnchors = selectSourceAnchors(tokens, anchors.map((anchor) => anchor.node));
+  const anchorIds = new Set(sourceAnchors.map((anchor) => anchor.id));
+  const anchorIdentityTokens = collectAnchorIdentityTokens(sourceAnchors);
   const sourceLinks = buildSourceLinkIndex(edges);
   return sources
     .map((source) => {
       if (!source.artifactId || !homeGraphExtractionNeedsRepair(extractionBySourceId(source.id))) return { source, score: 0 };
       const linkedNodeIds = sourceLinks.get(source.id) ?? new Set<string>();
-      const linkedToAnchor = anchors.length > 0 && intersects(linkedNodeIds, anchorIds);
-      const anchorIdentityScore = anchors.length > 0
+      const linkedToAnchor = sourceAnchors.length > 0 && intersects(linkedNodeIds, anchorIds);
+      const anchorIdentityScore = sourceAnchors.length > 0
         ? sourceAnchorIdentityScore(anchorIdentityTokens, source, extractionBySourceId(source.id))
         : 0;
       const identityScore = scoreFields(tokens, [
@@ -361,14 +371,42 @@ function sourceAnchorIdentityScore(
 function selectAnchorNodes(tokens: readonly string[], nodes: readonly KnowledgeNodeRecord[]): Array<{ readonly node: KnowledgeNodeRecord; readonly score: number }> {
   return nodes.map((node) => {
     const baseScore = scoreFields(tokens, nodeIdentityFields(node));
+    const intentBoost = sourceAnchorIntentBoost(tokens, node);
     return {
       node,
-      score: baseScore > 0 ? baseScore + nodeKindBoost(node.kind) : 0,
+      score: baseScore > 0 ? baseScore + nodeKindBoost(node.kind) + intentBoost : 0,
     };
   })
     .filter((entry) => entry.score >= 10)
     .sort((a, b) => b.score - a.score || a.node.id.localeCompare(b.node.id))
     .slice(0, 12);
+}
+
+function selectSourceAnchors(tokens: readonly string[], nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
+  const preferred = nodes.filter((node) => sourceAnchorIntentBoost(tokens, node) >= 0);
+  if (preferred.length > 0) return preferred.slice(0, 8);
+  return nodes.slice(0, ANCHOR_SCOPE_LIMIT);
+}
+
+function sourceAnchorIntentBoost(tokens: readonly string[], node: KnowledgeNodeRecord): number {
+  const metadata = readRecord(node.metadata);
+  const homeAssistant = readRecord(metadata.homeAssistant);
+  const domain = typeof metadata.domain === 'string' ? metadata.domain.toLowerCase() : '';
+  const platform = typeof metadata.platform === 'string' ? metadata.platform.toLowerCase() : '';
+  const objectKind = typeof homeAssistant.objectKind === 'string' ? homeAssistant.objectKind.toLowerCase() : '';
+  const text = nodeIdentityFields(node).join(' ').toLowerCase();
+  const tvQuery = tokens.some((token) => token === 'tv' || token === 'television' || token === 'media_player');
+  if (tvQuery) {
+    if (node.kind === 'ha_device' && /\b(tv|television|webos|bravia)\b/.test(text)) return 80;
+    if (node.kind === 'ha_entity' && (domain === 'media_player' || platform === 'webostv')) return 70;
+    if (node.kind === 'ha_integration' && (platform === 'webostv' || text.includes('webos'))) return 40;
+    if (domain === 'calendar' || domain === 'sensor' || domain === 'automation' || domain === 'switch'
+      || objectKind === 'automation' || node.kind === 'ha_automation') return -80;
+  }
+  if (node.kind === 'ha_device') return 30;
+  if (node.kind === 'ha_entity') return 10;
+  if (node.kind === 'ha_integration' && queryMentionsIntegration(tokens)) return 8;
+  return node.kind === 'ha_integration' ? -10 : 0;
 }
 
 function buildSourceLinkIndex(edges: readonly KnowledgeEdgeRecord[]): Map<string, Set<string>> {
@@ -483,6 +521,7 @@ function pruneWeakSourceEvidence(
   sourceLinks: ReadonlyMap<string, ReadonlySet<string>>,
   anchorIds: ReadonlySet<string>,
   anchorIdentityTokens: readonly string[],
+  objectScopedQuery: boolean,
   extractionBySourceId: (sourceId: string) => KnowledgeExtractionRecord | null | undefined,
 ): HomeGraphSearchResult[] {
   const sourceResults = results.filter((result) => result.source);
@@ -496,7 +535,7 @@ function pruneWeakSourceEvidence(
     const coverage = tokenCoverage(tokens, resultText(result));
     return linkedToAnchor
       || (matchesAnchorIdentity && coverage >= 1)
-      || coverage >= Math.min(2, tokens.length);
+      || (!objectScopedQuery && coverage >= Math.min(2, tokens.length));
   });
   return strongSourceResults;
 }

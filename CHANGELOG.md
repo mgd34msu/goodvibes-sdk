@@ -20,6 +20,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.1] - 2026-04-29
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph map routes now tolerate a trailing slash and JSON `POST` input in
+  addition to the documented query-string `GET` shape, preventing harmless
+  client route variants from falling through to `Unknown Home Graph route`.
+- Home Graph ask now scopes object-specific source evidence more tightly. A
+  question such as "What features does the TV have?" prefers physical TV,
+  media-player, and matching integration anchors and rejects unrelated
+  documents that merely contain generic words like "features".
+- Home Graph PDF repair/reindex behavior was validated against existing
+  uploaded Home Assistant artifacts so older weak PDF extraction rows can be
+  replaced without reuploading the source file.
+
+### Migration
+- Rebuild/restart any daemon sidecar after updating the TUI or another host to
+  this SDK. Existing daemon processes keep serving their embedded SDK version
+  until they are stopped and restarted.
+- Home Assistant users with older uploaded PDFs should run Home Graph reindex
+  once after the daemon reports this version or newer.
+
+---
+
 ## [0.27.0] - 2026-04-29
 
 ### Breaking

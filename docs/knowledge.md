@@ -291,7 +291,10 @@ of the base structured knowledge graph. The response includes:
 Query options are `limit`, `includeSources`, `includeIssues`, and
 `includeGenerated`. Home Graph uses the same renderer through
 `GET /api/homeassistant/home-graph/map`, adding the Home Assistant knowledge
-space id and preserving the same JSON/SVG shape.
+space id and preserving the same JSON/SVG shape. The Home Graph route accepts
+query-string `GET`, trailing-slash `GET`, and JSON `POST` forms so authenticated
+Home Assistant panel bridges can call the same SDK map renderer without
+depending on one exact URL spelling.
 
 ## GraphQL
 
