@@ -2,6 +2,7 @@ import type {
   KnowledgeEdgeRecord,
   KnowledgeExtractionRecord,
   KnowledgeIssueRecord,
+  KnowledgeMapFilterInput,
   KnowledgeMapEdge,
   KnowledgeMapNode,
   KnowledgeMapResult,
@@ -264,6 +265,36 @@ export interface HomeGraphAskResult {
 export interface HomeGraphMapInput extends HomeGraphSpaceInput {
   readonly limit?: number;
   readonly includeSources?: boolean;
+  readonly includeIssues?: boolean;
+  readonly includeGenerated?: boolean;
+  readonly filters?: KnowledgeMapFilterInput;
+  readonly query?: string;
+  readonly recordKinds?: readonly ('source' | 'node' | 'issue')[];
+  readonly ids?: readonly string[];
+  readonly linkedToIds?: readonly string[];
+  readonly nodeKinds?: readonly string[];
+  readonly sourceTypes?: readonly string[];
+  readonly sourceStatuses?: readonly string[];
+  readonly nodeStatuses?: readonly string[];
+  readonly issueCodes?: readonly string[];
+  readonly issueStatuses?: readonly string[];
+  readonly issueSeverities?: readonly string[];
+  readonly edgeRelations?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly minConfidence?: number;
+  readonly ha?: HomeGraphMapHaFilterInput;
+}
+
+export interface HomeGraphMapHaFilterInput {
+  readonly objectKinds?: readonly string[];
+  readonly entityIds?: readonly string[];
+  readonly deviceIds?: readonly string[];
+  readonly areaIds?: readonly string[];
+  readonly integrationIds?: readonly string[];
+  readonly integrationDomains?: readonly string[];
+  readonly domains?: readonly string[];
+  readonly deviceClasses?: readonly string[];
+  readonly labels?: readonly string[];
 }
 
 export type HomeGraphMapNode = KnowledgeMapNode;

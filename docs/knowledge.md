@@ -289,7 +289,25 @@ of the base structured knowledge graph. The response includes:
 - counts, dimensions, and generation metadata
 
 Query options are `limit`, `includeSources`, `includeIssues`, and
-`includeGenerated`. Home Graph uses the same renderer through
+`includeGenerated`. The map also accepts shared multi-select filters:
+
+- `recordKinds`: `source`, `node`, `issue`
+- `nodeKinds`, `sourceTypes`, `sourceStatuses`, `nodeStatuses`
+- `issueCodes`, `issueStatuses`, `issueSeverities`
+- `edgeRelations`, `tags`, `ids`, `linkedToIds`
+- `query` and `minConfidence`
+
+Values may be provided as repeated query parameters, comma-separated query
+values, or JSON arrays where the caller uses a JSON bridge. Values inside one
+filter field are ORed together. Different filter fields are ANDed together.
+Filtering happens before map layout so large graphs do not have to be fetched
+and hidden client-side.
+
+Responses include `facets` with available values and counts for the current
+knowledge space. Clients should build filter controls from those facets instead
+of hardcoding known source, node, issue, or edge types.
+
+Home Graph uses the same renderer through
 `GET /api/homeassistant/home-graph/map`, adding the Home Assistant knowledge
 space id and preserving the same JSON/SVG shape. The Home Graph route accepts
 query-string `GET`, trailing-slash `GET`, and JSON `POST` forms so authenticated

@@ -17,6 +17,7 @@ export type {
   HomeGraphLinkInput,
   HomeGraphLinkResult,
   HomeGraphMapEdge,
+  HomeGraphMapHaFilterInput,
   HomeGraphMapInput,
   HomeGraphMapNode,
   HomeGraphMapResult,

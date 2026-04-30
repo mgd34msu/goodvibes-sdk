@@ -1,12 +1,14 @@
 import type {
   KnowledgeEdgeRecord,
   KnowledgeIssueRecord,
+  KnowledgeMapFacetValue,
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
 import { renderKnowledgeMap } from '../map.js';
+import { countFacet, normalizeStringArray, readString } from '../map-filters.js';
 import { edgeIsActive, isGeneratedPageSource } from './helpers.js';
-import type { HomeGraphMapResult } from './types.js';
+import type { HomeGraphMapHaFilterInput, HomeGraphMapInput, HomeGraphMapResult } from './types.js';
 
 export interface HomeGraphRenderState {
   readonly spaceId: string;
@@ -112,15 +114,158 @@ export function renderPacketPage(state: HomeGraphRenderState, options: {
   ].filter(Boolean).join('\n');
 }
 
-export function renderHomeGraphMap(state: HomeGraphRenderState, options: {
-  readonly limit?: number;
-  readonly includeSources?: boolean;
-} = {}): HomeGraphMapResult {
-  return renderKnowledgeMap(state, {
+export function renderHomeGraphMap(state: HomeGraphRenderState, options: HomeGraphMapInput = {}): HomeGraphMapResult {
+  const filtered = applyHomeGraphMapFilters(state, options.ha);
+  const result = renderKnowledgeMap(filtered, {
     ...options,
     title: state.title,
     spaceId: state.spaceId,
-  }) as HomeGraphMapResult;
+  });
+  return {
+    ...result,
+    facets: {
+      ...result.facets,
+      homeAssistant: buildHomeAssistantMapFacets(state),
+    },
+  } as HomeGraphMapResult;
+}
+
+function applyHomeGraphMapFilters(
+  state: HomeGraphRenderState,
+  input: HomeGraphMapHaFilterInput | undefined,
+): HomeGraphRenderState {
+  const filters = normalizeHomeGraphMapFilters(input);
+  if (!hasHomeGraphFilters(filters)) return state;
+  const nodes = state.nodes.filter((node) => matchesHomeGraphNode(node, state.edges, filters, state.nodes));
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const sourceIds = sourceIdsLinkedToNodes(state.edges, nodeIds);
+  const sources = state.sources.filter((source) => sourceIds.has(source.id) || matchesHomeGraphSource(source, filters));
+  const sourceSet = new Set(sources.map((source) => source.id));
+  const issues = state.issues.filter((issue) => (
+    (issue.nodeId && nodeIds.has(issue.nodeId))
+    || (issue.sourceId && sourceSet.has(issue.sourceId))
+  ));
+  const visibleIds = new Set([...nodeIds, ...sourceSet, ...issues.map((issue) => issue.id)]);
+  const edges = state.edges.filter((edge) => visibleIds.has(edge.fromId) && visibleIds.has(edge.toId));
+  return { ...state, nodes, sources, issues, edges };
+}
+
+function buildHomeAssistantMapFacets(state: HomeGraphRenderState): Record<string, readonly KnowledgeMapFacetValue[]> {
+  return {
+    objectKinds: countFacet(state.nodes.map((node) => readHomeAssistantRecord(node).objectKind ?? node.kind)),
+    entityIds: countFacet(state.nodes.map((node) => readHomeAssistantRecord(node).entityId)),
+    deviceIds: countFacet(state.nodes.map((node) => readHomeAssistantRecord(node).deviceId)),
+    areaIds: countFacet(state.nodes.map((node) => readHomeAssistantRecord(node).areaId)),
+    integrationIds: countFacet(state.nodes.map((node) => readHomeAssistantRecord(node).integrationId)),
+    integrationDomains: countFacet(state.nodes.map((node) => readIntegrationDomain(node))),
+    domains: countFacet(state.nodes.map((node) => readEntityDomain(node))),
+    deviceClasses: countFacet(state.nodes.map((node) => readDeviceClass(node))),
+    labels: countFacet(state.nodes.flatMap((node) => normalizeStringArray(node.metadata.labels))),
+  };
+}
+
+function normalizeHomeGraphMapFilters(input: HomeGraphMapHaFilterInput | undefined): Required<HomeGraphMapHaFilterInput> {
+  return {
+    objectKinds: normalizeStringArray(input?.objectKinds),
+    entityIds: normalizeStringArray(input?.entityIds),
+    deviceIds: normalizeStringArray(input?.deviceIds),
+    areaIds: normalizeStringArray(input?.areaIds),
+    integrationIds: normalizeStringArray(input?.integrationIds),
+    integrationDomains: normalizeStringArray(input?.integrationDomains),
+    domains: normalizeStringArray(input?.domains),
+    deviceClasses: normalizeStringArray(input?.deviceClasses),
+    labels: normalizeStringArray(input?.labels),
+  };
+}
+
+function hasHomeGraphFilters(filters: Required<HomeGraphMapHaFilterInput>): boolean {
+  return Object.values(filters).some((value) => value.length > 0);
+}
+
+function matchesHomeGraphNode(
+  node: KnowledgeNodeRecord,
+  edges: readonly KnowledgeEdgeRecord[],
+  filters: Required<HomeGraphMapHaFilterInput>,
+  nodes: readonly KnowledgeNodeRecord[],
+): boolean {
+  const ha = readHomeAssistantRecord(node);
+  return matchesFilter(filters.objectKinds, String(ha.objectKind ?? node.kind), node.kind)
+    && matchesFilter(filters.entityIds, readString(ha.entityId), readString(ha.objectId))
+    && matchesFilter(filters.deviceIds, readString(ha.deviceId), node.kind === 'ha_device' ? readString(ha.objectId) : undefined)
+    && matchesAreaFilter(filters.areaIds, node, edges, nodes)
+    && matchesFilter(filters.integrationIds, readString(ha.integrationId), node.kind === 'ha_integration' ? readString(ha.objectId) : undefined)
+    && matchesFilter(filters.integrationDomains, readIntegrationDomain(node))
+    && matchesFilter(filters.domains, readEntityDomain(node))
+    && matchesFilter(filters.deviceClasses, readDeviceClass(node))
+    && matchesAny(filters.labels, normalizeStringArray(node.metadata.labels));
+}
+
+function matchesHomeGraphSource(source: KnowledgeSourceRecord, filters: Required<HomeGraphMapHaFilterInput>): boolean {
+  return matchesAny(filters.labels, [...source.tags, ...normalizeStringArray(source.metadata.labels)]);
+}
+
+function matchesAreaFilter(
+  areaIds: readonly string[],
+  node: KnowledgeNodeRecord,
+  edges: readonly KnowledgeEdgeRecord[],
+  nodes: readonly KnowledgeNodeRecord[],
+): boolean {
+  if (areaIds.length === 0) return true;
+  const ha = readHomeAssistantRecord(node);
+  if (matchesFilter(areaIds, readString(ha.areaId), node.kind === 'ha_area' || node.kind === 'ha_room' ? readString(ha.objectId) : undefined)) {
+    return true;
+  }
+  const targetAreaNodeIds = new Set(nodes
+    .filter((candidate) => (candidate.kind === 'ha_area' || candidate.kind === 'ha_room')
+      && matchesFilter(areaIds, readString(readHomeAssistantRecord(candidate).objectId), readString(readHomeAssistantRecord(candidate).areaId)))
+    .map((candidate) => candidate.id));
+  return edges.some((edge) => edgeIsActive(edge)
+    && edge.fromId === node.id
+    && edge.relation === 'located_in'
+    && targetAreaNodeIds.has(edge.toId));
+}
+
+function sourceIdsLinkedToNodes(edges: readonly KnowledgeEdgeRecord[], nodeIds: ReadonlySet<string>): Set<string> {
+  const sourceIds = new Set<string>();
+  for (const edge of edges) {
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && nodeIds.has(edge.toId)) sourceIds.add(edge.fromId);
+    if (edge.fromKind === 'node' && nodeIds.has(edge.fromId) && edge.toKind === 'source') sourceIds.add(edge.toId);
+  }
+  return sourceIds;
+}
+
+function readHomeAssistantRecord(node: KnowledgeNodeRecord): Record<string, unknown> {
+  const value = node.metadata.homeAssistant;
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function readIntegrationDomain(node: KnowledgeNodeRecord): string | undefined {
+  const ha = readHomeAssistantRecord(node);
+  return readString(ha.integrationId)
+    ?? readString(node.metadata.integrationDomain)
+    ?? readString(node.metadata.platform)
+    ?? readString(node.metadata.domain);
+}
+
+function readEntityDomain(node: KnowledgeNodeRecord): string | undefined {
+  const entityId = readString(readHomeAssistantRecord(node).entityId);
+  const fromEntity = entityId?.includes('.') ? entityId.split('.')[0] : undefined;
+  return fromEntity ?? readString(node.metadata.domain);
+}
+
+function readDeviceClass(node: KnowledgeNodeRecord): string | undefined {
+  const attributes = node.metadata.attributes && typeof node.metadata.attributes === 'object' && !Array.isArray(node.metadata.attributes)
+    ? node.metadata.attributes as Record<string, unknown>
+    : {};
+  return readString(node.metadata.deviceClass) ?? readString(node.metadata.device_class) ?? readString(attributes.device_class);
+}
+
+function matchesFilter(allowed: readonly string[], ...values: readonly (string | undefined)[]): boolean {
+  return allowed.length === 0 || values.some((value) => value !== undefined && allowed.includes(value));
+}
+
+function matchesAny(allowed: readonly string[], values: readonly string[]): boolean {
+  return allowed.length === 0 || values.some((value) => allowed.includes(value));
 }
 
 function renderNodeList(title: string, nodes: readonly KnowledgeNodeRecord[]): string {

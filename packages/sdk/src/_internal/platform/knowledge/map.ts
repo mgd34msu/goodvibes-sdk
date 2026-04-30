@@ -1,9 +1,14 @@
 import {
+  applyKnowledgeMapFilters,
+  buildKnowledgeMapFacets,
+} from './map-filters.js';
+import {
   isGeneratedKnowledgeSource,
 } from './generated-projections.js';
 import type {
   KnowledgeEdgeRecord,
   KnowledgeIssueRecord,
+  KnowledgeMapFilterInput,
   KnowledgeMapNode,
   KnowledgeMapResult,
   KnowledgeNodeRecord,
@@ -25,6 +30,21 @@ export interface KnowledgeMapRenderOptions {
   readonly includeGenerated?: boolean;
   readonly title?: string;
   readonly spaceId?: string;
+  readonly filters?: KnowledgeMapFilterInput;
+  readonly query?: string;
+  readonly recordKinds?: readonly ('source' | 'node' | 'issue')[];
+  readonly ids?: readonly string[];
+  readonly linkedToIds?: readonly string[];
+  readonly nodeKinds?: readonly string[];
+  readonly sourceTypes?: readonly string[];
+  readonly sourceStatuses?: readonly string[];
+  readonly nodeStatuses?: readonly string[];
+  readonly issueCodes?: readonly string[];
+  readonly issueStatuses?: readonly string[];
+  readonly issueSeverities?: readonly string[];
+  readonly edgeRelations?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly minConfidence?: number;
 }
 
 export function renderKnowledgeMap(
@@ -32,22 +52,24 @@ export function renderKnowledgeMap(
   options: KnowledgeMapRenderOptions = {},
 ): KnowledgeMapResult {
   const limit = sanitizeMapLimit(options.limit);
-  const nodes = state.nodes
-    .filter((node) => node.status !== 'stale')
+  const filtered = applyKnowledgeMapFilters({
+    sources: state.sources,
+    nodes: state.nodes,
+    edges: state.edges,
+    issues: state.issues ?? [],
+  }, options);
+  const nodes = [...filtered.nodes]
     .sort(compareRecordTitle)
     .slice(0, limit);
   let remaining = Math.max(0, limit - nodes.length);
   const sources = options.includeSources === false
     ? []
-    : state.sources
-        .filter((source) => source.status !== 'stale')
-        .filter((source) => options.includeGenerated !== false || !isGeneratedKnowledgeSource(source))
+    : [...filtered.sources]
         .sort(compareRecordTitle)
         .slice(0, remaining);
   remaining = Math.max(0, remaining - sources.length);
   const issues = options.includeIssues
-    ? (state.issues ?? [])
-        .filter((issue) => issue.status === 'open')
+    ? [...filtered.issues]
         .sort(compareIssue)
         .slice(0, remaining)
     : [];
@@ -86,7 +108,7 @@ export function renderKnowledgeMap(
     })),
   ]);
   const nodeIds = new Set(mapNodes.map((node) => node.id));
-  const visibleEdges = state.edges
+  const visibleEdges = filtered.edges
     .filter((edge) => nodeIds.has(edge.fromId) && nodeIds.has(edge.toId))
     .map((edge) => ({
       id: edge.id,
@@ -108,6 +130,14 @@ export function renderKnowledgeMap(
     height,
     nodeCount: mapNodes.length,
     edgeCount: visibleEdges.length,
+    totalNodeCount: filtered.sources.length + filtered.nodes.length + filtered.issues.length,
+    totalEdgeCount: filtered.edges.length,
+    facets: buildKnowledgeMapFacets({
+      sources: state.sources,
+      nodes: state.nodes,
+      edges: state.edges,
+      issues: state.issues ?? [],
+    }),
     nodes: mapNodes,
     edges: visibleEdges,
     svg: renderMapSvg({ width, height, title, nodes: mapNodes, edges: visibleEdges }),

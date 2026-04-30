@@ -46,6 +46,7 @@ import {
   refreshHomeGraphDevicePassport,
 } from './generated-pages.js';
 import { reindexHomeGraphSources } from './reindex.js';
+import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
 import {
   readHomeGraphSearchState,
   scoreHomeGraphResults,
@@ -422,8 +423,8 @@ export class HomeGraphService {
     await this.store.init();
     const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
     return renderHomeGraphMap(renderHomeGraphState(this.store, spaceId, 'Home Graph Map'), {
-      limit: input.limit,
-      includeSources: input.includeSources,
+      ...input,
+      knowledgeSpaceId: spaceId,
     });
   }
 
@@ -715,5 +716,5 @@ export class HomeGraphService {
 
 function extractionHasSearchableText(extraction: KnowledgeExtractionRecord): boolean {
   const structure = readRecord(extraction.structure);
-  return typeof structure.searchText === 'string' && structure.searchText.trim().length > 0;
+  return typeof structure.searchText === 'string' && !isUnusableHomeGraphExtractionText(structure.searchText);
 }

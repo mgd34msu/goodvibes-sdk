@@ -6,7 +6,7 @@ import { ArtifactStore } from '../artifacts/index.js';
 import type { MemoryRegistry } from '../state/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { createDefaultKnowledgeConnectorRegistry, KnowledgeConnectorRegistry } from './connectors.js';
-import { renderKnowledgeMap } from './map.js';
+import { renderKnowledgeMap, type KnowledgeMapRenderOptions } from './map.js';
 import { KnowledgeProjectionService } from './projections.js';
 import { KnowledgeStore } from './store.js';
 import { ingestBrowserKnowledge } from './browser-history/index.js';
@@ -525,12 +525,7 @@ export class KnowledgeService {
     return materialized;
   }
 
-  async map(input: {
-    readonly limit?: number;
-    readonly includeSources?: boolean;
-    readonly includeIssues?: boolean;
-    readonly includeGenerated?: boolean;
-  } = {}): Promise<KnowledgeMapResult> {
+  async map(input: KnowledgeMapRenderOptions = {}): Promise<KnowledgeMapResult> {
     await this.store.init();
     return renderKnowledgeMap({
       title: 'Knowledge Map',

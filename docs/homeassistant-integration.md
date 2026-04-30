@@ -220,25 +220,39 @@ documentation candidates are source suggestions, not answer material, until
 they are indexed. Device feature/spec/manual questions require useful source
 evidence, so low-information extraction placeholders, unrelated device manuals,
 and Home Assistant integration docs are excluded from the answer unless the
-query is explicitly about the integration. Answers include bounded excerpts from
-the matched extraction text when available; clients should display the answer
-text, sources, and linked objects returned by the SDK rather than locally
-re-ranking the graph.
+query is explicitly about the integration. Binary-like raw PDF payloads and
+other garbled extraction text are treated as unusable and repair-needed, not as
+answer evidence. Answers include bounded excerpts from the matched extraction
+text when available; clients should display the answer text, sources, and linked
+objects returned by the SDK rather than locally re-ranking the graph.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.
 It uses the shared knowledge map renderer also exposed by `GET /api/knowledge/map`,
 so Home Assistant panels can rely on the same node/edge/SVG response shape as
-the base knowledge/wiki map.
-Pass `includeSources=false` to show only graph nodes, `limit` to cap the
-rendered graph, or `format=svg` to receive `image/svg+xml` directly for an
-embedded preview. The JSON response includes `nodes`, `edges`, `width`,
-`height`, `nodeCount`, `edgeCount`, and `svg`, so clients can either render the
-SDK SVG immediately or build a native graph view from the same layout data. The
-route also accepts a trailing slash and JSON `POST` input with the same
-`installationId`, `knowledgeSpaceId`, `limit`, and `includeSources` fields so
-panel bridges can use either query-string or JSON dispatch without route
-fallback errors.
+the base knowledge/wiki map. Pass `includeSources=false` to show only graph
+nodes, `limit` to cap the rendered graph, or `format=svg` to receive
+`image/svg+xml` directly for an embedded preview.
+
+The Home Graph map supports all generic knowledge map filters plus
+Home Assistant-specific filters. Generic filters include `recordKinds`,
+`nodeKinds`, `sourceTypes`, `sourceStatuses`, `nodeStatuses`, `issueCodes`,
+`issueStatuses`, `issueSeverities`, `edgeRelations`, `tags`, `ids`,
+`linkedToIds`, `query`, and `minConfidence`. Home Assistant filters live under
+`ha` for JSON requests and include `objectKinds`, `entityIds`, `deviceIds`,
+`areaIds`, `integrationIds`, `integrationDomains`, `domains`, `deviceClasses`,
+and `labels`. Each field is multi-select: values inside one field are ORed
+together, and different fields are ANDed together.
+
+The JSON response includes `nodes`, `edges`, `width`, `height`, `nodeCount`,
+`edgeCount`, `svg`, and `facets`. `facets.homeAssistant` contains the actual
+areas, devices, entity domains, integrations, labels, and other Home Assistant
+values present in the graph, with counts. Panels should build filter controls
+from those facets and send selected filters back to the SDK; they should not
+fetch the whole graph and implement graph filtering locally. The route also
+accepts a trailing slash and JSON `POST` input with the same fields so panel
+bridges can use either query-string or JSON dispatch without route fallback
+errors.
 
 Home Graph quality issues are generated from the current graph but review
 decisions are durable. When a user or LLM resolves/rejects an issue through
