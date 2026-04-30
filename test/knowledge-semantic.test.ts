@@ -108,6 +108,12 @@ describe('semantic knowledge/wiki enrichment', () => {
         'Use a USB extension cable if the USB flash drive does not fit your TV USB port.',
         'Fasten the stand screws to prevent the TV from overturning during setup.',
         'Product specifications or contents of this manual may be changed without prior notice.',
+        'Recommended HDMI cable types (3 m (9.',
+        'New features may be added to this TV in the future.',
+        'Magic Remote Control buttons ▲ ▼ ◄ ► may vary depending upon model.',
+        'The Magic Remote batteries may be low.',
+        'Refer all servicing to qualified personnel and contact customer service for repair.',
+        'Clean the TV with a dry cloth.',
         'The items supplied with your product may vary depending upon the model.',
         'Warning: do not use uncertified HDMI cables.',
         ].join(' '),
@@ -153,6 +159,10 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(factText).not.toContain('bezels');
     expect(factText).not.toContain('USB extension cable');
     expect(factText).not.toContain('overturning');
+    expect(factText).not.toContain('Recommended HDMI cable types');
+    expect(factText).not.toContain('New features may be added');
+    expect(factText).not.toContain('qualified personnel');
+    expect(factText).not.toContain('dry cloth');
   });
 
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
@@ -210,6 +220,12 @@ describe('semantic knowledge/wiki enrichment', () => {
         'The LG TV supports HDR10, HDMI eARC, Filmmaker Mode, Game Optimizer, and Magic Remote voice control.',
         'Ultra High Speed HDMI cables are optional extras and may be purchased separately.',
         'Fasten the stand screws to prevent the TV from overturning during setup.',
+        'Recommended HDMI cable types (3 m (9.',
+        'New features may be added to this TV in the future.',
+        'Magic Remote Control buttons ▲ ▼ ◄ ► may vary depending upon model.',
+        'The Magic Remote batteries may be low.',
+        'Refer all servicing to qualified personnel and contact customer service for repair.',
+        'Clean the TV with a dry cloth.',
       ].join(' '),
       tags: ['manual', 'tv'],
       target: { kind: 'device', id: 'tv', relation: 'has_manual' },
@@ -250,6 +266,12 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answerText).not.toContain('energy monitoring');
     expect(answerText).not.toContain('optional extras');
     expect(answerText).not.toContain('overturning');
+    expect(answerText).not.toContain('Recommended HDMI cable types');
+    expect(answerText).not.toContain('New features may be added');
+    expect(answerText).not.toContain('qualified personnel');
+    expect(answerText).not.toContain('dry cloth');
+    expect(answerText).not.toContain('batteries may be low');
+    expect(answerText).not.toContain('▲');
   });
 
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
