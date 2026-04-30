@@ -38,6 +38,23 @@ export type {
 } from './generated-projections.js';
 export { renderKnowledgeMap } from './map.js';
 export type { KnowledgeMapRenderOptions, KnowledgeMapRenderState } from './map.js';
+export {
+  KnowledgeSemanticService,
+  createProviderBackedKnowledgeSemanticLlm,
+} from './semantic/index.js';
+export type {
+  KnowledgeSemanticAnswer,
+  KnowledgeSemanticAnswerInput,
+  KnowledgeSemanticAnswerResult,
+  KnowledgeSemanticEnrichmentResult,
+  KnowledgeSemanticExtraction,
+  KnowledgeSemanticFactInput,
+  KnowledgeSemanticFactKind,
+  KnowledgeSemanticGapInput,
+  KnowledgeSemanticLlm,
+  KnowledgeSemanticLlmAnswer,
+  KnowledgeSemanticServiceOptions,
+} from './semantic/index.js';
 export { HomeGraphService, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS } from './home-graph/index.js';
 export {
   ProjectPlanningService,

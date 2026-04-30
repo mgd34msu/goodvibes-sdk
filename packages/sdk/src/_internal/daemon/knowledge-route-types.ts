@@ -74,6 +74,7 @@ export interface KnowledgeServiceLike {
   importUrlsFromFile(input: Record<string, unknown>): Promise<unknown>;
   ingestConnectorInput(input: Record<string, unknown>): Promise<unknown>;
   search(query: string, limit: number): readonly unknown[];
+  ask(input: Record<string, unknown>): Promise<unknown>;
   buildPacket(
     task: string,
     writeScope: readonly string[],

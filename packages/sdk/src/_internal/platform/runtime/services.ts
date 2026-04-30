@@ -13,8 +13,10 @@ import { ArtifactStore } from '../artifacts/index.js';
 import {
   HomeGraphService,
   KnowledgeService,
+  KnowledgeSemanticService,
   KnowledgeStore,
   ProjectPlanningService,
+  createProviderBackedKnowledgeSemanticLlm,
   projectPlanningProjectIdFromPath,
 } from '../knowledge/index.js';
 import { MediaProviderRegistry, ensureBuiltinMediaProviders } from '../media/index.js';
@@ -401,12 +403,18 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     },
   });
   const knowledgeStore = new KnowledgeStore({ configManager });
+  const knowledgeSemanticService = new KnowledgeSemanticService(knowledgeStore, {
+    llm: createProviderBackedKnowledgeSemanticLlm(providerRegistry),
+  });
   const knowledgeService = new KnowledgeService(knowledgeStore, artifactStore, undefined, {
     memoryRegistry,
     runtimeBus: options.runtimeBus,
+    semanticService: knowledgeSemanticService,
   });
   knowledgeService.attachRuntimeBus(options.runtimeBus);
-  const homeGraphService = new HomeGraphService(knowledgeStore, artifactStore);
+  const homeGraphService = new HomeGraphService(knowledgeStore, artifactStore, {
+    semanticService: knowledgeSemanticService,
+  });
   const projectPlanningService = new ProjectPlanningService(knowledgeStore, {
     defaultProjectId: projectPlanningProjectIdFromPath(workingDirectory),
   });

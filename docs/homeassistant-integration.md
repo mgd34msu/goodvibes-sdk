@@ -90,8 +90,8 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/ingest/artifact` | Ingest an existing artifact, path/URI reference, multipart file upload, or raw binary upload as a document, photo, receipt, or warranty. |
 | `POST /api/homeassistant/home-graph/link` | Attach a source or fact to an HA object. |
 | `POST /api/homeassistant/home-graph/unlink` | Mark a source/object link inactive without deleting history. |
-| `POST /api/homeassistant/home-graph/ask` | Ask source-backed questions over only the HA knowledge space. |
-| `POST /api/homeassistant/home-graph/reindex` | Reparse already-stored HA Home Graph artifacts whose extraction is missing, placeholder-only, or from the old weak PDF extractor. |
+| `POST /api/homeassistant/home-graph/ask` | Ask source-backed questions over only the HA knowledge space; responses use the shared semantic wiki answer layer instead of raw snippet dumps. |
+| `POST /api/homeassistant/home-graph/reindex` | Reparse already-stored HA Home Graph artifacts whose extraction is missing, placeholder-only, or from the old weak PDF extractor, then refresh semantic facts/pages/gaps. |
 | `POST /api/homeassistant/home-graph/device-passport` | Refresh and materialize a device passport page. |
 | `POST /api/homeassistant/home-graph/room-page` | Generate a room/area page as markdown artifact. |
 | `POST /api/homeassistant/home-graph/packet` | Generate guest, sitter, emergency, contractor, network, or custom packets. |
@@ -144,9 +144,10 @@ room page. This is built on the same generated-projection primitive used by the
 base knowledge/wiki system, so generated Home Graph pages are stable sources
 with durable markdown artifacts instead of temporary one-off files. Generated
 page markdown includes Home Assistant identity, exposed entities, linked source
-evidence, quality issues, and open questions. Linked manuals and other sources
-contribute bounded extracted snippets, so device passport pages act like real
-wiki pages rather than source inventory cards. Generated page sources are marked with
+evidence, extracted semantic facts, quality issues, and open questions. Linked
+manuals and other sources contribute bounded extracted snippets and durable fact
+nodes, so device passport pages act like real wiki pages rather than source
+inventory cards. Generated page sources are marked with
 `metadata.homeGraphGeneratedPage: true`, `metadata.projectionKind`, and
 `metadata.pageEditable: true`; the source id stays stable across regenerations
 while the artifact id points at the latest rendered markdown. If the rendered
@@ -196,8 +197,14 @@ avoid JSON `dataBase64` for manuals, receipts, photos, and other large files.
 `POST /api/homeassistant/home-graph/ask` uses a lightweight Home Graph search
 state instead of loading full issue/export state. It batches extraction lookup
 by source id and scores bounded fields, capped extraction sections, and
-`structure.searchText` when present. Current text, HTML, JSON, CSV/TSV, XML,
-YAML, DOCX, XLSX, PPTX, and PDF extraction paths persist capped searchable text.
+`structure.searchText` when present. Matched sources are passed through the
+shared semantic enrichment layer, which extracts durable features,
+capabilities, specifications, procedures, maintenance facts, warnings,
+compatibility, configuration, troubleshooting notes, wiki pages, and gaps. The
+answer is synthesized from those facts and source snippets by the daemon's
+current LLM provider/model, with deterministic fact rendering as the fallback.
+Current text, HTML, JSON, CSV/TSV, XML, YAML, DOCX, XLSX, PPTX, and PDF
+extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
 fallback only when the dedicated parser cannot load the file. The raw fallback
 inflates Flate-compressed streams before reading literal strings and refuses to
@@ -218,11 +225,12 @@ stored extraction instead of parsing the manual on every request. Clients that
 want to repair the whole Home Assistant knowledge space immediately can call
 `POST /api/homeassistant/home-graph/reindex`. Reindex reparses weak stored
 artifacts, auto-links matching manuals and documents to Home Assistant devices
-or entities when model/entity/source identity is strong enough, and regenerates
-living pages when repaired or newly linked evidence changes the wiki. The
-response reports `scanned`, `reparsed`, `skipped`, `failed`, repaired
-`sources`, auto-link `linked` summaries, regenerated page `generated` counts,
-and per-source `failures`.
+or entities when model/entity/source identity is strong enough, refreshes
+semantic facts/pages/gaps, and regenerates living pages when repaired or newly
+linked evidence changes the wiki. The response reports `scanned`, `reparsed`,
+`skipped`, `failed`, repaired `sources`, auto-link `linked` summaries, semantic
+enrichment counts, regenerated page `generated` counts, and per-source
+`failures`.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
@@ -237,9 +245,10 @@ evidence, so low-information extraction placeholders, unrelated device manuals,
 and Home Assistant integration docs are excluded from the answer unless the
 query is explicitly about the integration. Binary-like raw PDF payloads and
 other garbled extraction text are treated as unusable and repair-needed, not as
-answer evidence. Answers include bounded excerpts from the matched extraction
-text when available; clients should display the answer text, sources, and linked
-objects returned by the SDK rather than locally re-ranking the graph.
+answer evidence. Answers include synthesized text, sources, linked objects,
+semantic facts, and knowledge gaps when available; clients should display the
+answer text, sources, facts, and linked objects returned by the SDK rather than
+locally re-ranking the graph or rendering raw extraction snippets.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

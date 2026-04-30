@@ -27,6 +27,10 @@ export type KnowledgeNodeKind =
   | 'environment'
   | 'user'
   | 'source_group'
+  | 'knowledge_entity'
+  | 'fact'
+  | 'wiki_page'
+  | 'knowledge_gap'
   | 'ha_home'
   | 'ha_entity'
   | 'ha_device'
@@ -73,6 +77,7 @@ export type KnowledgeJobKind =
   | 'refresh-bookmarks'
   | 'sync-browser-history'
   | 'rebuild-projections'
+  | 'semantic-enrichment'
   | 'light-consolidation'
   | 'deep-consolidation';
 export type KnowledgeUsageKind =

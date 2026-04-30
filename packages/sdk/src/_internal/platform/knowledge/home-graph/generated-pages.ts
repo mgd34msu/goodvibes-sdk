@@ -152,6 +152,7 @@ export async function refreshHomeGraphDevicePassport(
     ))
   ));
   const sources = sourcesLinkedToNode(device.id, state).filter((source) => !isGeneratedPageSource(source));
+  const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges);
   const issues = state.issues.filter((issue) => issue.nodeId === device.id);
   const missingFields = missingDevicePassportFields(device, sources);
   const passport = await store.upsertNode({
@@ -177,7 +178,7 @@ export async function refreshHomeGraphDevicePassport(
     relation: 'source_for',
     metadata: buildHomeGraphMetadata(spaceId, installationId),
   });
-  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, extractions: state.extractions, issues, missingFields });
+  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, extractions: state.extractions, issues, missingFields, semanticFacts });
   const generated = await materializeGeneratedMarkdown({
     store,
     artifactStore,
@@ -375,6 +376,22 @@ function createGeneratedPagesSummary(): {
 
 function compareByTitle(left: KnowledgeNodeRecord, right: KnowledgeNodeRecord): number {
   return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+}
+
+function semanticFactsLinkedToSources(
+  sources: readonly KnowledgeSourceRecord[],
+  nodes: readonly KnowledgeNodeRecord[],
+  edges: readonly KnowledgeEdgeRecord[],
+): KnowledgeNodeRecord[] {
+  const sourceIds = new Set(sources.map((source) => source.id));
+  const factIds = new Set(edges.filter((edge) => (
+    edgeIsActive(edge)
+    && edge.fromKind === 'source'
+    && sourceIds.has(edge.fromId)
+    && edge.toKind === 'node'
+    && edge.relation === 'supports_fact'
+  )).map((edge) => edge.toId));
+  return nodes.filter((node) => factIds.has(node.id));
 }
 
 function limitRecords<T>(records: readonly T[], limit: number | undefined): readonly T[] {

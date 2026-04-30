@@ -53,6 +53,7 @@ export function createDaemonKnowledgeRouteHandlers(
   | 'postKnowledgeImportUrls'
   | 'postKnowledgeIngestConnector'
   | 'postKnowledgeSearch'
+  | 'postKnowledgeAsk'
   | 'postKnowledgePacket'
   | 'postKnowledgeReviewIssue'
   | 'postKnowledgeDecideCandidate'
@@ -181,6 +182,7 @@ export function createDaemonKnowledgeRouteHandlers(
     postKnowledgeImportUrls: async (request) => handleKnowledgeImportUrls(context, request),
     postKnowledgeIngestConnector: async (request) => handleKnowledgeIngestConnector(context, request),
     postKnowledgeSearch: async (request) => handleKnowledgeSearch(context, request),
+    postKnowledgeAsk: async (request) => handleKnowledgeAsk(context, request),
     postKnowledgePacket: async (request) => handleKnowledgePacket(context, request),
     postKnowledgeReviewIssue: async (id, request) => handleKnowledgeReviewIssue(context, id, request),
     postKnowledgeDecideCandidate: async (id, request) => handleKnowledgeDecideCandidate(context, id, request),
@@ -588,6 +590,22 @@ async function handleKnowledgeSearch(context: DaemonKnowledgeRouteContext, reque
   if (!query) return Response.json({ error: 'Missing query' }, { status: 400 });
   const limit = typeof body.limit === 'number' ? body.limit : 10;
   return Response.json({ results: context.knowledgeService.search(query, limit) });
+}
+
+async function handleKnowledgeAsk(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
+  const body = await context.parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const query = typeof body.query === 'string' ? body.query.trim() : '';
+  if (!query) return Response.json({ error: 'Missing query' }, { status: 400 });
+  return Response.json(await context.knowledgeService.ask({
+    query,
+    ...(typeof body.knowledgeSpaceId === 'string' ? { knowledgeSpaceId: body.knowledgeSpaceId } : {}),
+    ...(typeof body.limit === 'number' ? { limit: Math.max(1, body.limit) } : {}),
+    ...(typeof body.mode === 'string' && ['concise', 'standard', 'detailed'].includes(body.mode) ? { mode: body.mode } : {}),
+    ...(typeof body.includeSources === 'boolean' ? { includeSources: body.includeSources } : {}),
+    ...(typeof body.includeConfidence === 'boolean' ? { includeConfidence: body.includeConfidence } : {}),
+    ...(typeof body.includeLinkedObjects === 'boolean' ? { includeLinkedObjects: body.includeLinkedObjects } : {}),
+  }));
 }
 
 async function handleKnowledgePacket(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {

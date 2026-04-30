@@ -87,6 +87,7 @@ export async function finalizeKnowledgeIngestedSource(
     });
 
     await compileKnowledgeSource(context, source, extraction);
+    void Promise.resolve(context.semanticEnrichSource?.(source.id, readKnowledgeSpaceId(source.metadata))).catch(() => {});
     await context.syncReviewedMemory();
     return { source, artifactId: input.artifactId, extraction };
   } catch (error) {
@@ -96,6 +97,11 @@ export async function finalizeKnowledgeIngestedSource(
     }), input.sessionId);
     throw error;
   }
+}
+
+function readKnowledgeSpaceId(metadata: Record<string, unknown>): string | undefined {
+  const value = metadata.knowledgeSpaceId ?? metadata.spaceId ?? metadata.namespace;
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 export async function recompileKnowledgeSource(context: KnowledgeIngestContext, source: KnowledgeSourceRecord): Promise<void> {

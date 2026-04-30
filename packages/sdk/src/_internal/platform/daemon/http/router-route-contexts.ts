@@ -283,6 +283,9 @@ export function buildKnowledgeRouteContext(input: {
         body as Parameters<KnowledgeService['ingestConnectorInput']>[0],
       ),
       search: (query, limit) => input.knowledgeService.search(query, limit),
+      ask: (body) => input.knowledgeService.ask(
+        body as Parameters<KnowledgeService['ask']>[0],
+      ),
       buildPacket: (task, writeScope, limit, options) => input.knowledgeService.buildPacket(
         task,
         writeScope,

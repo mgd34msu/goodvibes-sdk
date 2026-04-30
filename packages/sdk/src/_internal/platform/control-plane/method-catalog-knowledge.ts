@@ -10,6 +10,7 @@ import {
 import {
   KNOWLEDGE_BATCH_INGEST_RESULT_SCHEMA,
   KNOWLEDGE_BROWSER_SYNC_RESULT_SCHEMA,
+  KNOWLEDGE_ASK_OUTPUT_SCHEMA,
   KNOWLEDGE_CONSOLIDATION_DECISION_SCHEMA,
   KNOWLEDGE_CANDIDATE_OUTPUT_SCHEMA,
   KNOWLEDGE_CANDIDATES_OUTPUT_SCHEMA,
@@ -282,6 +283,25 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       metadata: METADATA_SCHEMA,
     }, ['query']),
     outputSchema: KNOWLEDGE_SEARCH_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'knowledge.ask',
+    title: 'Ask Knowledge',
+    description: 'Search, semantically synthesize, and return a source-backed answer from the structured knowledge/wiki store.',
+    category: 'knowledge',
+    scopes: ['read:knowledge'],
+    http: { method: 'POST', path: '/api/knowledge/ask' },
+    inputSchema: bodyEnvelopeSchema({
+      query: STRING_SCHEMA,
+      knowledgeSpaceId: STRING_SCHEMA,
+      limit: NUMBER_SCHEMA,
+      mode: STRING_SCHEMA,
+      includeSources: BOOLEAN_SCHEMA,
+      includeConfidence: BOOLEAN_SCHEMA,
+      includeLinkedObjects: BOOLEAN_SCHEMA,
+      metadata: METADATA_SCHEMA,
+    }, ['query']),
+    outputSchema: KNOWLEDGE_ASK_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'knowledge.extractions.list',

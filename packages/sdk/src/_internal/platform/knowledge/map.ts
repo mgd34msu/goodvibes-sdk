@@ -240,15 +240,18 @@ function ringForKind(kind: string, recordKind: KnowledgeMapNode['recordKind']): 
   if (recordKind === 'source') return kind.startsWith('generated_') ? 5 : 6;
   if (kind === 'ha_home') return 0;
   if (kind === 'domain' || kind === 'topic' || kind === 'ha_area' || kind === 'ha_room') return 1;
+  if (kind === 'wiki_page') return 1;
   if (kind === 'ha_device' || kind === 'ha_device_passport') return 2;
+  if (kind === 'fact' || kind === 'knowledge_entity' || kind === 'knowledge_gap') return 3;
   if (kind === 'ha_entity') return 3;
   return 4;
 }
 
 function radiusForNodeKind(kind: string): number {
   if (kind === 'ha_home' || kind === 'domain') return 30;
-  if (kind === 'topic' || kind === 'ha_area' || kind === 'ha_room') return 23;
+  if (kind === 'topic' || kind === 'ha_area' || kind === 'ha_room' || kind === 'wiki_page') return 23;
   if (kind === 'ha_device') return 18;
+  if (kind === 'fact') return 14;
   if (kind === 'ha_entity') return 13;
   return 12;
 }
@@ -264,6 +267,10 @@ function colorForKind(kind: string, recordKind: KnowledgeMapNode['recordKind']):
   if (kind === 'ha_device') return { fill: '#f2b880', stroke: '#a86028' };
   if (kind === 'ha_entity') return { fill: '#b8c7e0', stroke: '#5d7092' };
   if (kind === 'ha_device_passport') return { fill: '#f6df90', stroke: '#9a7725' };
+  if (kind === 'wiki_page') return { fill: '#f7f0d2', stroke: '#8f7a32' };
+  if (kind === 'fact') return { fill: '#d7e7c5', stroke: '#5e7f39' };
+  if (kind === 'knowledge_entity') return { fill: '#d9cfef', stroke: '#67509c' };
+  if (kind === 'knowledge_gap') return { fill: '#f5d5cf', stroke: '#a25042' };
   return { fill: '#d7d0c2', stroke: '#70695e' };
 }
 

@@ -52,6 +52,8 @@ export const HOME_GRAPH_CAPABILITIES = [
   'knowledge-space-isolation',
   'snapshot-sync',
   'source-backed-ingest',
+  'semantic-enrichment',
+  'llm-answer-synthesis',
   'knowledge-linking',
   'ask-home-graph',
   'device-passports',
@@ -258,6 +260,9 @@ export interface HomeGraphAskResult {
     readonly confidence: number;
     readonly sources: readonly KnowledgeSourceRecord[];
     readonly linkedObjects: readonly KnowledgeNodeRecord[];
+    readonly facts?: readonly KnowledgeNodeRecord[];
+    readonly gaps?: readonly KnowledgeNodeRecord[];
+    readonly synthesized?: boolean;
   };
   readonly results: readonly HomeGraphSearchResult[];
 }
@@ -318,6 +323,13 @@ export interface HomeGraphReindexResult {
     readonly reasons: readonly string[];
   }[];
   readonly generated?: HomeGraphGeneratedPagesSummary;
+  readonly semantic?: {
+    readonly scanned: number;
+    readonly enriched: number;
+    readonly skipped: number;
+    readonly failed: number;
+    readonly errors: readonly { readonly sourceId: string; readonly error: string }[];
+  };
 }
 
 export interface HomeGraphSearchResult {

@@ -48,6 +48,7 @@ export function renderRoomPage(state: HomeGraphRenderState, areaId?: string): st
     ...scripts.map((node) => node.id),
   ]);
   const sources = relatedSources(state.sources, state.edges, relatedNodeIds);
+  const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges);
   return [
     `# ${title}`,
     '',
@@ -68,6 +69,7 @@ export function renderRoomPage(state: HomeGraphRenderState, areaId?: string): st
       maxSources: 12,
       maxSnippetsPerSource: 2,
     }),
+    renderSemanticFacts('Extracted Facts', semanticFacts),
     renderSourceList('Linked Sources', sources),
     renderIssueList('Open Issues', state.issues.filter((issue) => issue.status === 'open')),
   ].filter(Boolean).join('\n');
@@ -81,6 +83,7 @@ export function renderDevicePassportPage(input: {
   readonly extractions?: readonly KnowledgeExtractionRecord[];
   readonly issues: readonly KnowledgeIssueRecord[];
   readonly missingFields: readonly string[];
+  readonly semanticFacts?: readonly KnowledgeNodeRecord[];
 }): string {
   const deviceTokens = deviceEvidenceTokens(input.device, input.entities);
   return [
@@ -100,6 +103,7 @@ export function renderDevicePassportPage(input: {
     renderMetadataField('Device id', readHa(input.device, 'deviceId')),
     '',
     renderNodeList('Entities Exposed To Home Assistant', input.entities),
+    renderSemanticFacts('Extracted Device Facts', input.semanticFacts ?? []),
     renderSourceEvidence('Source-Backed Features And Notes', input.sources, input.extractions ?? [], {
       tokens: deviceTokens,
       maxSources: 8,
@@ -474,6 +478,65 @@ function renderSourceList(title: string, sources: readonly KnowledgeSourceRecord
     }),
     '',
   ].join('\n');
+}
+
+function renderSemanticFacts(title: string, facts: readonly KnowledgeNodeRecord[]): string {
+  const entries = facts
+    .filter((node) => node.metadata.semanticKind === 'fact')
+    .sort((left, right) => semanticFactSortKey(left).localeCompare(semanticFactSortKey(right)) || left.title.localeCompare(right.title))
+    .slice(0, 80);
+  if (entries.length === 0) return '';
+  const groups = new Map<string, KnowledgeNodeRecord[]>();
+  for (const fact of entries) {
+    const kind = readString(fact.metadata.factKind) ?? 'fact';
+    groups.set(kind, [...(groups.get(kind) ?? []), fact]);
+  }
+  return [
+    `## ${title}`,
+    '',
+    ...[...groups.entries()].flatMap(([kind, group]) => [
+      `### ${titleCase(kind)}`,
+      '',
+      ...group.slice(0, 24).map((fact) => {
+        const value = readString(fact.metadata.value);
+        const evidence = readString(fact.metadata.evidence);
+        const detail = fact.summary ?? evidence;
+        return `- ${fact.title}${value ? `: ${value}` : ''}${detail ? ` - ${detail}` : ''}`;
+      }),
+      '',
+    ]),
+  ].join('\n');
+}
+
+function semanticFactsLinkedToSources(
+  sources: readonly KnowledgeSourceRecord[],
+  nodes: readonly KnowledgeNodeRecord[],
+  edges: readonly KnowledgeEdgeRecord[],
+): KnowledgeNodeRecord[] {
+  const sourceIds = new Set(sources.map((source) => source.id));
+  const factIds = new Set(edges.filter((edge) => (
+    edgeIsActive(edge)
+    && edge.fromKind === 'source'
+    && sourceIds.has(edge.fromId)
+    && edge.toKind === 'node'
+    && edge.relation === 'supports_fact'
+  )).map((edge) => edge.toId));
+  return nodes.filter((node) => factIds.has(node.id));
+}
+
+function semanticFactSortKey(node: KnowledgeNodeRecord): string {
+  const order: Record<string, string> = {
+    feature: '01',
+    capability: '02',
+    specification: '03',
+    configuration: '04',
+    compatibility: '05',
+    procedure: '06',
+    maintenance: '07',
+    troubleshooting: '08',
+    warning: '09',
+  };
+  return order[readString(node.metadata.factKind) ?? ''] ?? '99';
 }
 
 function renderIssueList(title: string, issues: readonly KnowledgeIssueRecord[]): string {

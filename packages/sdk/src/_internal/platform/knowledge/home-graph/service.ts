@@ -31,13 +31,13 @@ import { upsertIntegrationDocumentationCandidates } from './documentation.js';
 import { refreshHomeGraphQualityIssues } from './quality.js';
 import { reviewHomeGraphFact, type HomeGraphReviewResult } from './review.js';
 import {
-  collectLinkedObjects,
   inferHomeGraphSourceType,
   readHomeGraphState,
-  renderAskAnswer,
   renderHomeGraphState,
   safeHomeGraphFilename,
 } from './state.js';
+import { answerHomeGraphQuery } from './ask.js';
+import type { KnowledgeSemanticService } from '../semantic/index.js';
 import { renderHomeGraphMap } from './rendering.js';
 import {
   autoLinkHomeGraphSource,
@@ -74,6 +74,7 @@ export class HomeGraphService {
   constructor(
     private readonly store: KnowledgeStore,
     private readonly artifactStore: ArtifactStore,
+    private readonly options: { readonly semanticService?: KnowledgeSemanticService } = {},
   ) {}
 
   async status(input: { readonly installationId?: string; readonly knowledgeSpaceId?: string } = {}): Promise<HomeGraphStatus> {
@@ -279,22 +280,7 @@ export class HomeGraphService {
       (sourceId) => state.extractionBySourceId.get(sourceId),
       input.limit ?? 8,
     );
-    const sources = results.flatMap((result) => result.source ? [result.source] : []);
-    const linkedObjects = collectLinkedObjects(results, state);
-    const confidence = Math.min(100, Math.max(10, results[0]?.score ?? 10));
-    return {
-      ok: true,
-      spaceId,
-      query: input.query,
-      answer: {
-        text: renderAskAnswer(input.query, results, input.mode ?? 'standard'),
-        mode: input.mode ?? 'standard',
-        confidence,
-        sources: input.includeSources === false ? [] : sources,
-        linkedObjects: input.includeLinkedObjects === false ? [] : linkedObjects,
-      },
-      results,
-    };
+    return answerHomeGraphQuery({ store: this.store, semanticService: this.options.semanticService, spaceId, query: input, state, results });
   }
 
   async reindex(input: HomeGraphSpaceInput = {}): Promise<HomeGraphReindexResult> {
@@ -309,12 +295,18 @@ export class HomeGraphService {
       extract: (source, artifact) => this.extractArtifact(source, artifact, spaceId, installationId),
     });
     const linked = await this.autoLinkExistingSources(spaceId, installationId);
+    const semantic = await this.options.semanticService?.reindex({
+      knowledgeSpaceId: spaceId,
+      sourceIds: state.sources.map((source) => source.id),
+      force: false,
+    });
     const generated = reindex.reparsed > 0 || linked.length > 0
       ? await refreshAutomaticHomeGraphPages({ store: this.store, artifactStore: this.artifactStore, spaceId, installationId })
       : undefined;
     return {
       ...reindex,
       ...(linked.length > 0 ? { linked } : {}),
+      ...(semantic ? { semantic } : {}),
       ...(generated ? { generated } : {}),
     };
   }
@@ -358,6 +350,7 @@ export class HomeGraphService {
   async refreshDevicePassport(input: HomeGraphProjectionInput): Promise<HomeGraphDevicePassportResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    await this.enrichSpaceSources(spaceId);
     return refreshHomeGraphDevicePassport({
       store: this.store,
       artifactStore: this.artifactStore,
@@ -370,6 +363,7 @@ export class HomeGraphService {
   async generateRoomPage(input: HomeGraphProjectionInput): Promise<HomeGraphProjectionResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    await this.enrichSpaceSources(spaceId);
     return generateHomeGraphRoomPage({
       store: this.store,
       artifactStore: this.artifactStore,
@@ -382,6 +376,7 @@ export class HomeGraphService {
   async generatePacket(input: HomeGraphProjectionInput): Promise<HomeGraphProjectionResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
+    await this.enrichSpaceSources(spaceId);
     return generateHomeGraphPacket({
       store: this.store,
       artifactStore: this.artifactStore,
@@ -559,6 +554,7 @@ export class HomeGraphService {
           ...(extraction ? { extraction } : {}),
           state: readHomeGraphState(this.store, input.spaceId),
         }))?.edge;
+    void this.options.semanticService?.enrichSource(source.id, { knowledgeSpaceId: input.spaceId }).catch(() => {});
     return {
       ok: true,
       spaceId: input.spaceId,
@@ -725,6 +721,12 @@ export class HomeGraphService {
 
   private async refreshQualityIssues(spaceId: string, installationId: string): Promise<readonly KnowledgeIssueRecord[]> {
     return refreshHomeGraphQualityIssues(this.store, spaceId, installationId);
+  }
+
+  private async enrichSpaceSources(spaceId: string): Promise<void> {
+    if (!this.options.semanticService) return;
+    const sources = readHomeGraphSearchState(this.store, spaceId).sources;
+    await this.options.semanticService.enrichSources(sources, { knowledgeSpaceId: spaceId });
   }
 
   private resolveLinkSource(spaceId: string, input: HomeGraphLinkInput): { readonly kind: 'source' | 'node'; readonly id: string } {

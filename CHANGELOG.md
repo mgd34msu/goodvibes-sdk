@@ -20,6 +20,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.4] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- Added the shared semantic knowledge/wiki layer. Ingest, reindex, and the new
+  `knowledge-semantic-enrichment` job can compile extracted source text into
+  durable `knowledge_entity`, `fact`, `wiki_page`, and `knowledge_gap` nodes.
+- Added `POST /api/knowledge/ask` and `knowledge.ask` for source-backed,
+  LLM-synthesized answers over the base knowledge store with deterministic
+  fact rendering as the fallback.
+
+### Fixed
+- Home Graph ask now uses the shared semantic answer layer. Matched manuals and
+  notes are enriched into durable facts/pages/gaps and answers are synthesized
+  from that evidence instead of returning raw extraction snippets.
+- Home Graph reindex now refreshes semantic enrichment for repaired/relinked
+  sources, and generated device passport/room pages include extracted semantic
+  facts in addition to source snippets.
+
+### Migration
+- Clients that currently call `/api/knowledge/search` or render Home Graph ask
+  snippets locally should move answer UI to `/api/knowledge/ask` or
+  `/api/homeassistant/home-graph/ask` and display the returned answer, sources,
+  facts, linked objects, and gaps.
+
+---
+
 ## [0.27.3] - 2026-04-30
 
 ### Breaking
