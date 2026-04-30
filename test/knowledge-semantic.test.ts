@@ -201,6 +201,39 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(page.markdown).toContain('HDMI inputs');
   });
 
+  test('Home Graph ask prioritizes answer synthesis before background semantic enrichment', async () => {
+    const { store, artifactStore } = createStores();
+    const llm = new OrderedHomeGraphAskLlm();
+    const semantic = new KnowledgeSemanticService(store, { llm });
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.syncSnapshot({
+      installationId: 'house',
+      areas: [{ id: 'living-room', name: 'Living Room' }],
+      devices: [{ id: 'tv', name: 'Living Room TV', areaId: 'living-room', model: 'MODEL-1' }],
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'Living Room TV manual',
+      body: 'The Living Room TV supports Dolby Vision and includes four HDMI ports.',
+      tags: ['manual', 'tv'],
+      target: { kind: 'device', id: 'tv', relation: 'has_manual' },
+    });
+
+    llm.calls.length = 0;
+    const answer = await service.ask({
+      installationId: 'house',
+      query: 'what features does the living room tv have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+      includeConfidence: true,
+    });
+
+    expect(llm.calls[0]).toBe('knowledge-answer-synthesis');
+    expect(answer.answer.synthesized).toBe(true);
+    expect(answer.answer.text).toContain('Dolby Vision');
+    expect(answer.answer.gaps?.map((gap) => gap.title)).toContain('What are the complete TV feature specifications?');
+  });
+
   test('Home Graph semantic ask does not let unrelated semantic pages become object anchors', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store);
@@ -224,6 +257,10 @@ describe('semantic knowledge/wiki enrichment', () => {
         'New features may be added to this TV in the future.',
         'Magic Remote Control buttons ▲ ▼ ◄ ► may vary depending upon model.',
         'The Magic Remote batteries may be low.',
+        'REFER TO QUALIFIED SERVICE PERSONNEL.',
+        'This remote uses infrared light and must be pointed toward the remote control sensor on the TV.',
+        'However, if the device does not support it, it may not work properly.',
+        'In that case, change the TV HDMI Ultra HD Deep Color setting to off.',
         'Refer all servicing to qualified personnel and contact customer service for repair.',
         'Clean the TV with a dry cloth.',
       ].join(' '),
@@ -271,6 +308,11 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answerText).not.toContain('qualified personnel');
     expect(answerText).not.toContain('dry cloth');
     expect(answerText).not.toContain('batteries may be low');
+    expect(answerText).not.toContain('QUALIFIED SERVICE PERSONNEL');
+    expect(answerText).not.toContain('infrared light');
+    expect(answerText).not.toContain('remote control sensor');
+    expect(answerText).not.toContain('may not work properly');
+    expect(answerText).not.toContain('setting to off');
     expect(answerText).not.toContain('▲');
   });
 
@@ -350,6 +392,48 @@ class FakeKnowledgeLlm implements KnowledgeSemanticLlm {
       usedSourceIds: [],
       usedNodeIds: [],
       gaps: [],
+    };
+  }
+
+  async completeText(): Promise<string | null> {
+    return null;
+  }
+}
+
+class OrderedHomeGraphAskLlm implements KnowledgeSemanticLlm {
+  readonly calls: string[] = [];
+
+  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+    this.calls.push(input.purpose);
+    if (input.purpose === 'knowledge-answer-synthesis') {
+      return {
+        answer: 'The TV supports Dolby Vision and includes four HDMI ports. The available evidence does not include the full feature specification list.',
+        confidence: 82,
+        usedSourceIds: [],
+        usedNodeIds: [],
+        gaps: [{
+          question: 'What are the complete TV feature specifications?',
+          reason: 'The linked manual excerpt does not provide every display, audio, network, and app feature.',
+          severity: 'info',
+        }],
+      };
+    }
+    return {
+      summary: 'Manual describing display and input features.',
+      entities: [],
+      facts: [{
+        kind: 'feature',
+        title: 'Dolby Vision support',
+        summary: 'The TV supports Dolby Vision.',
+        evidence: 'supports Dolby Vision',
+        confidence: 90,
+      }],
+      relations: [],
+      gaps: [],
+      wikiPage: {
+        title: 'Living Room TV knowledge page',
+        markdown: '# Living Room TV\n\n- Supports Dolby Vision.\n',
+      },
     };
   }
 

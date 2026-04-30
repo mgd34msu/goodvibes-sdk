@@ -239,6 +239,7 @@ async function synthesizeAnswer(
       'You answer questions from a GoodVibes self-improving knowledge wiki.',
       'Use only the supplied evidence. Synthesize the answer for the user intent rather than dumping snippets.',
       'If evidence is insufficient, say what is missing. Prefer concrete features, specs, procedures, and relationships.',
+      'For feature or specification questions, ignore manual boilerplate about accessories, cable recommendations, button maps, batteries, cleaning, servicing, safety, and future product changes unless the user asks about those topics.',
       'Return only JSON with answer, confidence, usedSourceIds, usedNodeIds, and optional gaps.',
     ].join(' '),
     prompt: JSON.stringify({

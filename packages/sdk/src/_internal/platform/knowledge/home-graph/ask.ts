@@ -16,10 +16,6 @@ export async function answerHomeGraphQuery(input: {
   const sources = input.results.flatMap((result) => result.source ? [result.source] : []);
   const linkedObjects = collectLinkedObjects(input.results, input.state);
   if (input.semanticService) {
-    void input.semanticService.enrichSources(uniqueSources(sources), {
-      knowledgeSpaceId: input.spaceId,
-      limit: Math.min(3, Math.max(1, sources.length)),
-    }).catch(() => {});
     const answer = await input.semanticService.answer({
       query: input.query.query,
       knowledgeSpaceId: input.spaceId,
@@ -34,6 +30,10 @@ export async function answerHomeGraphQuery(input: {
       linkedObjects,
       noMatchMessage: `No Home Graph knowledge matched "${input.query.query}".`,
     });
+    void input.semanticService.enrichSources(uniqueSources(sources), {
+      knowledgeSpaceId: input.spaceId,
+      limit: Math.min(3, Math.max(1, sources.length)),
+    }).catch(() => {});
     return {
       ok: true,
       spaceId: input.spaceId,
