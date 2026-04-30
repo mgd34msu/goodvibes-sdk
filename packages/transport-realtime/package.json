@@ -1,7 +1,7 @@
 {
   "name": "@pellux/goodvibes-transport-realtime",
   "private": true,
-  "version": "0.27.8",
+  "version": "0.27.9",
   "description": "Realtime event-domain connectors for GoodVibes SSE and WebSocket integrations.",
   "type": "module",
   "main": "./dist/index.js",

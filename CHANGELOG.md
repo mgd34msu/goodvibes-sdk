@@ -20,6 +20,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.9] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph ask now runs provider-backed answer synthesis before kicking off
+  any background semantic enrichment. This keeps single-concurrency semantic
+  LLM wrappers focused on the user's answer first, so Home Graph answers keep
+  the synthesized text and knowledge gaps returned by the shared
+  `knowledge.ask` layer instead of timing out behind enrichment work.
+- Feature/spec answer prompts now explicitly tell the LLM to ignore manual
+  boilerplate about accessories, cable recommendations, button maps, remote
+  batteries, cleaning, servicing, safety, and future product changes unless
+  those topics are the user's actual question.
+- Generated Home Graph device passports and room pages filter additional
+  low-value source-backed notes, including exact "qualified service personnel"
+  maintenance boilerplate, remote infrared/sensor usage instructions, generic
+  "device may not work properly" setup fragments, and "change setting to off"
+  snippets.
+
+### Migration
+- none
+
+---
+
 ## [0.27.8] - 2026-04-30
 
 ### Breaking

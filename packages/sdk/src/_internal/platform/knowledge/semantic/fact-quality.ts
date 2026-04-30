@@ -48,7 +48,16 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (!magicRemoteDetail && /\b(may vary|depending (upon|on) (the )?model|depending on country|depending on region)\b/.test(lower)) {
     return true;
   }
-  if (/\b(fasten|screws?|stand|tip over|overturn|fall over|transporting|move the tv|moving the tv|oils?|lubricants?|cleaning cloth|dry cloth|power cord|electric shock|fire hazard|near water|ventilation|antenna grounding|qualified personnel|customer service|servicing|repair is required|refer all servicing)\b/.test(lower)) {
+  if (/\b(fasten|screws?|stand|tip over|overturn|fall over|transporting|move the tv|moving the tv|oils?|lubricants?|cleaning cloth|dry cloth|power cord|electric shock|fire hazard|near water|ventilation|antenna grounding|qualified personnel|qualified service personnel|service personnel|customer service|servicing|repair is required|refer all servicing)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(infrared light|remote control sensor|point (the )?(magic )?remote|aim (the )?(magic )?remote)\b/.test(lower)) {
+    return true;
+  }
+  if (/\bif (the )?device (doesn'?t|does not) support\b/.test(lower) && /\bmay not work properly\b/.test(lower)) {
+    return true;
+  }
+  if (/\bchange\b/.test(lower) && /\bsetting to off\b/.test(lower)) {
     return true;
   }
   if (/\bbatter(y|ies)\b/.test(lower) && /\b(remote|magic remote|button)\b/.test(lower)) {
