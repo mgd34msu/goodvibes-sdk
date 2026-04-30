@@ -203,6 +203,10 @@ capabilities, specifications, procedures, maintenance facts, warnings,
 compatibility, configuration, troubleshooting notes, wiki pages, and gaps. The
 answer is synthesized from those facts and source snippets by the daemon's
 current LLM provider/model, with deterministic fact rendering as the fallback.
+Provider-backed semantic calls are bounded by SDK timeouts and abort signals,
+and broad reindex uses a small LLM budget before continuing deterministically,
+so Home Assistant panels should not add host-side shims to avoid hung provider
+requests.
 Current text, HTML, JSON, CSV/TSV, XML, YAML, DOCX, XLSX, PPTX, and PDF
 extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
@@ -249,6 +253,10 @@ answer evidence. Answers include synthesized text, sources, linked objects,
 semantic facts, and knowledge gaps when available; clients should display the
 answer text, sources, facts, and linked objects returned by the SDK rather than
 locally re-ranking the graph or rendering raw extraction snippets.
+Home Graph ask passes strict candidate ids into the shared semantic answer
+layer after object-scoped ranking. That keeps answer synthesis inside the
+matched Home Assistant object/source set and prevents unrelated manuals from
+appearing only because they contain generic feature/specification vocabulary.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

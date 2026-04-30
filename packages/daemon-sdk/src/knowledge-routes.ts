@@ -605,6 +605,9 @@ async function handleKnowledgeAsk(context: DaemonKnowledgeRouteContext, request:
     ...(typeof body.includeSources === 'boolean' ? { includeSources: body.includeSources } : {}),
     ...(typeof body.includeConfidence === 'boolean' ? { includeConfidence: body.includeConfidence } : {}),
     ...(typeof body.includeLinkedObjects === 'boolean' ? { includeLinkedObjects: body.includeLinkedObjects } : {}),
+    ...(Array.isArray(body.candidateSourceIds) ? { candidateSourceIds: body.candidateSourceIds.filter(isString) } : {}),
+    ...(Array.isArray(body.candidateNodeIds) ? { candidateNodeIds: body.candidateNodeIds.filter(isString) } : {}),
+    ...(typeof body.strictCandidates === 'boolean' ? { strictCandidates: body.strictCandidates } : {}),
   }));
 }
 
@@ -762,4 +765,8 @@ async function handleKnowledgeMaterializeProjection(context: DaemonKnowledgeRout
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });
   }
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }

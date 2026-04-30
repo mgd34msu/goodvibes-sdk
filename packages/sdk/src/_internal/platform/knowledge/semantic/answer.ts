@@ -71,7 +71,7 @@ export async function answerKnowledgeQuery(
   }
 
   const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence);
-  const facts = uniqueNodes(evidence.flatMap((item) => item.facts)).slice(0, 24);
+  const facts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
   const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : [])).slice(0, limit);
   const linkedObjects = input.includeLinkedObjects === false
     ? []
@@ -107,14 +107,18 @@ function collectAnswerEvidence(
   const candidateSourceIds = new Set(input.candidateSourceIds ?? []);
   const candidateNodeIds = new Set(input.candidateNodeIds ?? []);
   const linkedObjectIds = new Set((input.linkedObjects ?? []).map((node) => node.id));
+  const strictCandidates = input.strictCandidates === true && (candidateSourceIds.size > 0 || candidateNodeIds.size > 0);
   const sourceFacts = buildSourceFactIndex(store, spaceId);
   const linkedSourceIds = sourceIdsLinkedToNodes(store, new Set([...candidateNodeIds, ...linkedObjectIds]), spaceId);
 
   const sourceItems = store.listSources(10_000)
     .filter((source) => belongsToAnswerSpace(source, spaceId))
+    .filter((source) => !strictCandidates || candidateSourceIds.has(source.id) || (
+      candidateSourceIds.size === 0 && linkedSourceIds.has(source.id)
+    ))
     .map((source) => {
       const extraction = store.getExtractionBySourceId(source.id);
-      const facts = sourceFacts.get(source.id) ?? [];
+      const facts = filterFactsForQuery(input.query, sourceFacts.get(source.id) ?? []);
       const text = sourceSemanticText(source, extraction);
       const baseScore = scoreSemanticText([
         source.title,
@@ -140,6 +144,10 @@ function collectAnswerEvidence(
 
   const nodeItems = store.listNodes(10_000)
     .filter((node) => belongsToAnswerSpace(node, spaceId))
+    .filter((node) => !strictCandidates
+      || candidateNodeIds.has(node.id)
+      || linkedObjectIds.has(node.id)
+      || (typeof node.sourceId === 'string' && candidateSourceIds.has(node.sourceId)))
     .map((node) => {
       const score = scoreSemanticText([
         node.title,
@@ -174,6 +182,7 @@ async function synthesizeAnswer(
   const response = await llm.completeJson({
     purpose: 'knowledge-answer-synthesis',
     maxTokens: mode === 'detailed' ? 2200 : mode === 'concise' ? 700 : 1400,
+    timeoutMs: 15_000,
     systemPrompt: [
       'You answer questions from a GoodVibes self-improving knowledge wiki.',
       'Use only the supplied evidence. Synthesize the answer for the user intent rather than dumping snippets.',
@@ -225,7 +234,7 @@ function renderFallbackAnswer(
   mode: string,
   evidence: readonly EvidenceItem[],
 ): string {
-  const facts = uniqueNodes(evidence.flatMap((item) => item.facts));
+  const facts = filterFactsForQuery(query, uniqueNodes(evidence.flatMap((item) => item.facts)));
   const factLines = facts
     .filter((fact) => fact.metadata.semanticKind === 'fact')
     .slice(0, mode === 'detailed' ? 12 : mode === 'concise' ? 3 : 6)
@@ -238,6 +247,31 @@ function renderFallbackAnswer(
   const lines = evidence.slice(0, mode === 'detailed' ? 8 : mode === 'concise' ? 1 : 4)
     .map((item) => `- ${item.title}${item.excerpt ? `: ${clampText(item.excerpt, 360)}` : ''}`);
   return lines.length > 0 ? lines.join('\n') : `No knowledge matched "${query}".`;
+}
+
+function filterFactsForQuery(query: string, facts: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
+  const intent = factIntent(tokenizeSemanticQuery(query));
+  if (!intent) return [...facts];
+  return facts.filter((fact) => intent.has(readString(fact.metadata.factKind) ?? 'note'));
+}
+
+function factIntent(tokens: readonly string[]): ReadonlySet<string> | null {
+  const tokenSet = new Set(tokens);
+  if (hasAny(tokenSet, ['feature', 'features', 'capability', 'capabilities', 'function', 'functions', 'support', 'supports', 'spec', 'specs', 'specification', 'specifications'])) {
+    return new Set(['feature', 'capability', 'specification', 'compatibility', 'configuration', 'identity']);
+  }
+  if (hasAny(tokenSet, ['reset', 'setup', 'install', 'configure', 'pair'])) {
+    return new Set(['procedure', 'configuration', 'troubleshooting']);
+  }
+  if (hasAny(tokenSet, ['battery', 'filter', 'maintenance', 'warranty', 'replace', 'clean'])) {
+    return new Set(['maintenance', 'specification', 'warning']);
+  }
+  if (hasAny(tokenSet, ['warning', 'caution', 'risk', 'hazard'])) return new Set(['warning']);
+  return null;
+}
+
+function hasAny(values: ReadonlySet<string>, candidates: readonly string[]): boolean {
+  return candidates.some((candidate) => values.has(candidate));
 }
 
 async function persistAnswerGap(
