@@ -141,7 +141,11 @@ tokens from broad intent tokens such as "features", "supports", and "specs";
 sources that only match those generic words are not answer evidence for
 object-specific questions. Feature/spec answers filter deterministic
 manual-boilerplate facts such as "items may vary", "specifications may change",
-and safety/cable warnings unless those facts are the actual query intent.
+optional accessory/setup fragments, and safety/cable warnings unless those
+facts are the actual query intent. `linkedObjects` is reserved for real graph
+objects supplied by the caller or retrieved from the graph; semantic extraction
+artifacts such as fact nodes, generated wiki pages, and knowledge gaps stay in
+the `facts`/`gaps` fields instead of being reported as linked objects.
 
 ## Review Pathways
 
@@ -233,6 +237,9 @@ device's manual only because both manuals contain generic words such as
 objects; generated semantic pages and extracted fact nodes never become anchors
 for another ask query. This keeps previously generated appliance, integration,
 or device pages from becoming false matches for an unrelated device question.
+Home Graph also uses the shared linked-object filter, so extracted facts and
+generated semantic pages do not appear as Home Assistant linked objects in ask
+responses.
 Source-evidence questions such as device features, manuals, specs, reset steps,
 batteries, and warranties require useful source text; low-information
 extraction placeholders and unrelated integration documentation are not treated
@@ -251,8 +258,10 @@ unchanged-artifact reuse. Clients can disable or bound this with the sync
 generated pages are excluded from answer/reindex ranking and from linked-source
 page lists so they do not compete with manuals, receipts, notes, and other
 source evidence. Generated Home Graph pages include Home Assistant identity,
-entity lists, linked source-backed snippets, extracted semantic facts, issues,
-and open questions. Clients
+entity lists, linked source-backed snippets, high-value extracted semantic
+facts, issues, and open questions. Page rendering filters manual boilerplate,
+optional-accessory/setup fragments, and generic safety/handling facts so living
+pages do not become dumps of low-value manual text. Clients
 can read the current page index and markdown through
 `GET /api/homeassistant/home-graph/pages` or the
 `homeassistant.homeGraph.pages.list` operator method instead of reconstructing

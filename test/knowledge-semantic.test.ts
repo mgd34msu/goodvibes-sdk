@@ -102,10 +102,14 @@ describe('semantic knowledge/wiki enrichment', () => {
       format: 'text',
       structure: {
         searchText: [
-          'The TV supports Dolby Vision.',
-          'Product specifications or contents of this manual may be changed without prior notice.',
-          'The items supplied with your product may vary depending upon the model.',
-          'Warning: do not use uncertified HDMI cables.',
+        'The TV supports Dolby Vision.',
+        'Ultra High Speed HDMI cables are optional extras and may be purchased separately.',
+        'HDMI and USB devices should have bezels less than 10 mm so they fit the TV port.',
+        'Use a USB extension cable if the USB flash drive does not fit your TV USB port.',
+        'Fasten the stand screws to prevent the TV from overturning during setup.',
+        'Product specifications or contents of this manual may be changed without prior notice.',
+        'The items supplied with your product may vary depending upon the model.',
+        'Warning: do not use uncertified HDMI cables.',
         ].join(' '),
       },
     });
@@ -132,6 +136,7 @@ describe('semantic knowledge/wiki enrichment', () => {
       candidateSourceIds: [tv.id],
       strictCandidates: true,
       includeSources: true,
+      includeLinkedObjects: true,
     });
 
     expect(answer.answer.sources.map((source) => source.id)).toEqual([tv.id]);
@@ -141,7 +146,13 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.text).not.toContain('prior notice');
     expect(answer.answer.text).not.toContain('items supplied');
     expect(answer.answer.facts.every((fact) => fact.sourceId === tv.id)).toBe(true);
-    expect(answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`).join('\n')).not.toContain('prior notice');
+    expect(answer.answer.linkedObjects).toHaveLength(0);
+    const factText = answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`).join('\n');
+    expect(factText).not.toContain('prior notice');
+    expect(factText).not.toContain('optional extras');
+    expect(factText).not.toContain('bezels');
+    expect(factText).not.toContain('USB extension cable');
+    expect(factText).not.toContain('overturning');
   });
 
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
@@ -170,9 +181,12 @@ describe('semantic knowledge/wiki enrichment', () => {
     const page = await service.refreshDevicePassport({ installationId: 'house', deviceId: 'tv' });
 
     expect(answer.spaceId).toBe(homeAssistantKnowledgeSpaceId('house'));
+    expect(answer.answer.synthesized).toBe(true);
     expect(answer.answer.text).toContain('Dolby Vision');
     expect(answer.answer.text).toContain('four HDMI ports');
     expect(answer.answer.sources.some((source) => source.title === 'Living Room TV manual')).toBe(true);
+    expect(answer.answer.linkedObjects.map((node) => node.title)).toEqual(['Living Room TV']);
+    expect(answer.answer.linkedObjects.every((node) => typeof node.metadata.semanticKind !== 'string')).toBe(true);
     expect(page.markdown).toContain('Extracted Device Facts');
     expect(page.markdown).toContain('HDMI inputs');
   });
@@ -192,7 +206,11 @@ describe('semantic knowledge/wiki enrichment', () => {
     await service.ingestNote({
       installationId: 'house',
       title: 'LG 86NANO90UNA manual',
-      body: 'The LG TV supports HDR10, HDMI eARC, Filmmaker Mode, Game Optimizer, and Magic Remote voice control.',
+      body: [
+        'The LG TV supports HDR10, HDMI eARC, Filmmaker Mode, Game Optimizer, and Magic Remote voice control.',
+        'Ultra High Speed HDMI cables are optional extras and may be purchased separately.',
+        'Fasten the stand screws to prevent the TV from overturning during setup.',
+      ].join(' '),
       tags: ['manual', 'tv'],
       target: { kind: 'device', id: 'tv', relation: 'has_manual' },
     });
@@ -214,19 +232,24 @@ describe('semantic knowledge/wiki enrichment', () => {
       includeSources: true,
       includeLinkedObjects: true,
     });
+    const page = await service.refreshDevicePassport({ installationId: 'house', deviceId: 'tv' });
     const answerText = [
       answer.answer.text,
       ...answer.answer.sources.map((source) => source.title ?? ''),
       ...answer.answer.linkedObjects.map((node) => node.title),
       ...answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`),
+      page.markdown,
     ].join('\n');
 
     expect(answer.answer.text).toContain('HDR10');
     expect(answer.answer.text).toContain('HDMI eARC');
     expect(answer.answer.sources.map((source) => source.title)).toEqual(['LG 86NANO90UNA manual']);
     expect(answer.answer.linkedObjects.map((node) => node.title)).toContain('LG webOS Smart TV');
+    expect(answer.answer.linkedObjects.every((node) => typeof node.metadata.semanticKind !== 'string')).toBe(true);
     expect(answerText).not.toContain('Kasa');
     expect(answerText).not.toContain('energy monitoring');
+    expect(answerText).not.toContain('optional extras');
+    expect(answerText).not.toContain('overturning');
   });
 
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
