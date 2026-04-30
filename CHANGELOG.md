@@ -20,6 +20,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.7] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Filtered semantic extraction artifacts out of knowledge answer
+  `linkedObjects`. Fact nodes, generated wiki pages, and knowledge gaps now
+  remain in `facts` and `gaps` instead of being reported as linked objects.
+- Tightened feature/spec fact quality filtering for base knowledge and Home
+  Graph answers. Optional accessory fragments, setup/handling instructions,
+  warranty/safety boilerplate, USB/HDMI fit notes, and other weak manual
+  fragments are no longer treated as high-value feature facts.
+- Home Graph ask now starts answer synthesis without waiting for synchronous
+  semantic source enrichment to finish. Source enrichment still runs through
+  the SDK semantic layer, but ask responses use the same provider-backed
+  synthesis path as base `knowledge.ask` instead of timing out behind a full
+  enrichment pass.
+- Generated Home Graph device passports and room pages now apply the same
+  fact-quality filter used by ask, so living pages focus on useful
+  source-backed capabilities, specifications, maintenance, troubleshooting,
+  and notes instead of low-value manual boilerplate.
+
+### Migration
+- none
+
+---
+
 ## [0.27.6] - 2026-04-30
 
 ### Breaking

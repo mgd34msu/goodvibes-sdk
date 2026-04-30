@@ -203,6 +203,10 @@ capabilities, specifications, procedures, maintenance facts, warnings,
 compatibility, configuration, troubleshooting notes, wiki pages, and gaps. The
 answer is synthesized from those facts and source snippets by the daemon's
 current LLM provider/model, with deterministic fact rendering as the fallback.
+Home Graph uses the same provider-backed answer synthesis path as
+`POST /api/knowledge/ask`; semantic source enrichment is allowed to continue as
+self-improving background work so a question is not forced to wait behind a
+full enrichment pass before answer synthesis starts.
 Provider-backed semantic calls are bounded by SDK timeouts and abort signals,
 and broad reindex uses a small LLM budget before continuing deterministically,
 so Home Assistant panels should not add host-side shims to avoid hung provider
@@ -256,6 +260,9 @@ answer evidence. Answers include synthesized text, sources, linked objects,
 semantic facts, and knowledge gaps when available; clients should display the
 answer text, sources, facts, and linked objects returned by the SDK rather than
 locally re-ranking the graph or rendering raw extraction snippets.
+`linkedObjects` contains real Home Assistant graph objects only. Semantic
+extraction artifacts such as generated wiki pages, fact nodes, and knowledge
+gaps remain in `facts`/`gaps` and are not reported as linked HA objects.
 Home Graph ask passes strict candidate ids into the shared semantic answer
 layer after object-scoped ranking. That keeps answer synthesis inside the
 matched Home Assistant object/source set and prevents unrelated manuals from
@@ -264,8 +271,12 @@ Generated semantic wiki pages and extracted fact nodes are not used as Home
 Assistant object anchors, so a generated Kasa page or generic "features" fact
 cannot make a TV query pull Kasa sources into the answer. Feature/spec answers
 also suppress deterministic manual boilerplate such as "items may vary",
-"specifications may change", and safety/cable warnings unless the user asked
-for that kind of warning or compatibility detail.
+"specifications may change", optional accessory/setup fragments, and
+safety/cable warnings unless the user asked for that kind of warning or
+compatibility detail. Generated device passports and room pages apply the same
+fact-quality filter so living pages focus on useful device capabilities,
+specifications, maintenance, troubleshooting, and source-backed notes rather
+than generic handling/safety fragments from manuals.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

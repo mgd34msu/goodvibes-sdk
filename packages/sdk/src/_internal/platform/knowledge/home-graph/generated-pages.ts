@@ -33,6 +33,7 @@ import {
   renderPacketPage,
   renderRoomPage,
 } from './rendering.js';
+import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
 import type {
   HomeGraphDevicePassportResult,
   HomeGraphGeneratedPagesSummary,
@@ -391,7 +392,7 @@ function semanticFactsLinkedToSources(
     && edge.toKind === 'node'
     && edge.relation === 'supports_fact'
   )).map((edge) => edge.toId));
-  return nodes.filter((node) => factIds.has(node.id));
+  return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
 }
 
 function limitRecords<T>(records: readonly T[], limit: number | undefined): readonly T[] {

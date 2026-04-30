@@ -11,6 +11,7 @@ import { countFacet, normalizeStringArray, readString } from '../map-filters.js'
 import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
 import { edgeIsActive, isGeneratedPageSource, readRecord, uniqueStrings } from './helpers.js';
 import type { HomeGraphMapHaFilterInput, HomeGraphMapInput, HomeGraphMapResult } from './types.js';
+import { isLowValueFeatureOrSpecText, isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
 
 export interface HomeGraphRenderState {
   readonly spaceId: string;
@@ -385,7 +386,7 @@ function sourceEvidenceSnippets(
     ...featureSentences(searchText),
     source.summary,
     source.description,
-  ]).filter((entry) => !isUnusableHomeGraphExtractionText(entry)).slice(0, 80);
+  ]).filter((entry) => !isUnusableHomeGraphExtractionText(entry) && !isLowValueFeatureOrSpecText(entry)).slice(0, 80);
   const scored = candidates
     .map((text) => ({ text: clampEvidence(text), score: evidenceScore(text, tokens) }))
     .filter((entry) => entry.text.length > 0)
@@ -415,7 +416,7 @@ function featureSentences(value: string | undefined): string[] {
   const keywords = /\b(feature|features|support|supports|capability|capabilities|specification|specifications|mode|modes|hdmi|hdr|dolby|battery|reset|warranty|firmware|voice|remote)\b/i;
   return (text.match(/[^.!?\n]+[.!?]?/g) ?? [])
     .map((entry) => entry.trim())
-    .filter((entry) => keywords.test(entry))
+    .filter((entry) => keywords.test(entry) && !isLowValueFeatureOrSpecText(entry))
     .slice(0, 24);
 }
 
@@ -482,7 +483,7 @@ function renderSourceList(title: string, sources: readonly KnowledgeSourceRecord
 
 function renderSemanticFacts(title: string, facts: readonly KnowledgeNodeRecord[]): string {
   const entries = facts
-    .filter((node) => node.metadata.semanticKind === 'fact')
+    .filter(isUsefulHomeGraphPageFact)
     .sort((left, right) => semanticFactSortKey(left).localeCompare(semanticFactSortKey(right)) || left.title.localeCompare(right.title))
     .slice(0, 80);
   if (entries.length === 0) return '';
@@ -521,7 +522,7 @@ function semanticFactsLinkedToSources(
     && edge.toKind === 'node'
     && edge.relation === 'supports_fact'
   )).map((edge) => edge.toId));
-  return nodes.filter((node) => factIds.has(node.id));
+  return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
 }
 
 function semanticFactSortKey(node: KnowledgeNodeRecord): string {

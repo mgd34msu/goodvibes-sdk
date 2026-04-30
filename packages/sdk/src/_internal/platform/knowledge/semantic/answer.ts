@@ -25,6 +25,12 @@ import {
   tokenizeSemanticQuery,
   uniqueStrings,
 } from './utils.js';
+import {
+  hasConcreteFeatureSignal,
+  isLowValueFeatureOrSpecText,
+  isSemanticAnswerLinkedObject,
+  semanticFactText,
+} from './fact-quality.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -100,7 +106,9 @@ export async function answerKnowledgeQuery(
   const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : [])).slice(0, limit);
   const linkedObjects = input.includeLinkedObjects === false
     ? []
-    : uniqueNodes([...(input.linkedObjects ?? []), ...evidence.flatMap((item) => item.node ? [item.node] : [])]).slice(0, 24);
+    : uniqueNodes([...(input.linkedObjects ?? []), ...evidence.flatMap((item) => item.node ? [item.node] : [])])
+      .filter(isSemanticAnswerLinkedObject)
+      .slice(0, 24);
   const gaps = await persistAnswerGaps(context.store, spaceId, input.query, llmAnswer?.gaps ?? []);
   const text = llmAnswer?.answer?.trim() || renderFallbackAnswer(input.query, mode, evidence);
   return {
@@ -331,14 +339,8 @@ function isLowValueFactForQuery(
   if (!intent || !hasFeatureIntent(intent)) return false;
   const kind = readString(fact.metadata.factKind) ?? 'note';
   if (!['feature', 'capability', 'specification', 'compatibility', 'configuration', 'identity'].includes(kind)) return false;
-  const text = [
-    fact.title,
-    fact.summary,
-    readString(fact.metadata.value),
-    readString(fact.metadata.evidence),
-    Array.isArray(fact.metadata.labels) ? fact.metadata.labels.join(' ') : '',
-  ].filter(Boolean).join(' ').toLowerCase();
-  if (isManualBoilerplateFeatureText(text)) return true;
+  const text = semanticFactText(fact);
+  if (isLowValueFeatureOrSpecText(text)) return true;
   const extractor = readString(fact.metadata.extractor);
   const confidence = typeof fact.confidence === 'number' ? fact.confidence : 0;
   if (extractor !== 'deterministic' || confidence > 60) return false;
@@ -348,14 +350,6 @@ function isLowValueFactForQuery(
 
 function hasFeatureIntent(intent: ReadonlySet<string>): boolean {
   return intent.has('feature') || intent.has('capability') || intent.has('specification') || intent.has('compatibility');
-}
-
-function isManualBoilerplateFeatureText(text: string): boolean {
-  return /\b(items? supplied|accessories supplied|contents? of (this )?manual|may vary|may be changed|without prior notice|depending (upon|on) (the )?model|available menus? and options?|product specifications?|power cord|electric shock|fire hazard|certified cable|do not|warning|caution|risk|hazard|clean only|near water|ventilation|antenna grounding)\b/.test(text);
-}
-
-function hasConcreteFeatureSignal(text: string): boolean {
-  return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation)\b/.test(text);
 }
 
 function compareFactQuality(left: KnowledgeNodeRecord, right: KnowledgeNodeRecord): number {
@@ -451,12 +445,17 @@ function selectEvidenceExcerpt(
   facts: readonly KnowledgeNodeRecord[],
 ): string {
   const tokens = expandQueryTokens(tokenizeSemanticQuery(query));
+  const intent = factIntent(tokenizeSemanticQuery(query));
+  const featureIntent = Boolean(intent && hasFeatureIntent(intent));
   const factLines = facts
     .map(renderFactForPrompt)
     .filter((line) => scoreSemanticText(line, tokens) > 0)
     .slice(0, 12);
-  const windows = evidenceWindows(text, tokens).slice(0, 4);
-  return uniqueStrings([...factLines, ...windows, clampText(text, 720)]).join('\n');
+  const windows = evidenceWindows(text, tokens)
+    .filter((line) => !featureIntent || !isLowValueFeatureOrSpecText(line))
+    .slice(0, 4);
+  const fallback = featureIntent && (factLines.length > 0 || windows.length > 0) ? [] : [clampText(text, 720)];
+  return uniqueStrings([...factLines, ...windows, ...fallback]).join('\n');
 }
 
 function evidenceWindows(text: string, tokens: readonly string[]): string[] {
