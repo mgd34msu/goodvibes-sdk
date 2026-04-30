@@ -51,15 +51,28 @@ interface HomeGraphPageContext {
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
 ): Promise<HomeGraphGeneratedPagesSummary> {
-  const options = context.input.pageAutomation ?? {};
+  return generateHomeGraphPagesForCurrentState(context, context.input.pageAutomation ?? {});
+}
+
+export async function refreshAutomaticHomeGraphPages(
+  context: HomeGraphPageContext,
+): Promise<HomeGraphGeneratedPagesSummary> {
+  return generateHomeGraphPagesForCurrentState(context, {});
+}
+
+async function generateHomeGraphPagesForCurrentState(
+  context: HomeGraphPageContext,
+  options: HomeGraphSnapshotInput['pageAutomation'],
+): Promise<HomeGraphGeneratedPagesSummary> {
+  const effectiveOptions = options ?? {};
   const summary = createGeneratedPagesSummary();
-  if (options.enabled === false) return summary;
+  if (effectiveOptions.enabled === false) return summary;
 
   const state = readHomeGraphState(context.store, context.spaceId);
-  if (options.devicePassports !== false) {
+  if (effectiveOptions.devicePassports !== false) {
     const devices = limitRecords(
       state.nodes.filter((node) => node.kind === 'ha_device' && node.status !== 'stale').sort(compareByTitle),
-      options.maxDevicePassports,
+      effectiveOptions.maxDevicePassports,
     );
     for (const device of devices) {
       const deviceId = readHomeAssistantObjectId(device, 'objectId', 'deviceId') ?? device.id;
@@ -85,12 +98,12 @@ export async function generateAutomaticHomeGraphPages(
     }
   }
 
-  if (options.roomPages !== false) {
+  if (effectiveOptions.roomPages !== false) {
     const rooms = limitRecords(
       state.nodes
         .filter((node) => (node.kind === 'ha_area' || node.kind === 'ha_room') && node.status !== 'stale')
         .sort(compareByTitle),
-      options.maxRoomPages,
+      effectiveOptions.maxRoomPages,
     );
     for (const room of rooms) {
       const areaId = readHomeAssistantObjectId(room, 'objectId', 'areaId') ?? room.id;
@@ -164,7 +177,7 @@ export async function refreshHomeGraphDevicePassport(
     relation: 'source_for',
     metadata: buildHomeGraphMetadata(spaceId, installationId),
   });
-  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields });
+  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, extractions: state.extractions, issues, missingFields });
   const generated = await materializeGeneratedMarkdown({
     store,
     artifactStore,
@@ -205,7 +218,7 @@ export async function generateHomeGraphRoomPage(
   const state = readHomeGraphState(store, spaceId);
   const areaId = input.areaId ?? input.roomId;
   const title = input.title ?? resolveRoomTitle(state.nodes, areaId) ?? 'Home Graph Room';
-  const markdown = renderRoomPage({ ...state, title }, areaId);
+  const markdown = renderRoomPage({ ...state, title, extractions: state.extractions }, areaId);
   const filename = `${safeHomeGraphFilename(title)}.md`;
   const targetNode = areaId
     ? findHomeAssistantNode(state.nodes, 'ha_area', areaId) ?? findHomeAssistantNode(state.nodes, 'ha_room', areaId)

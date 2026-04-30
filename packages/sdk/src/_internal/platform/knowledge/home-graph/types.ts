@@ -310,6 +310,14 @@ export interface HomeGraphReindexResult {
   readonly failed: number;
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly failures: readonly { readonly sourceId: string; readonly error: string }[];
+  readonly linked?: readonly {
+    readonly edge: KnowledgeEdgeRecord;
+    readonly node: KnowledgeNodeRecord;
+    readonly relation: string;
+    readonly score: number;
+    readonly reasons: readonly string[];
+  }[];
+  readonly generated?: HomeGraphGeneratedPagesSummary;
 }
 
 export interface HomeGraphSearchResult {
@@ -355,6 +363,16 @@ export interface HomeGraphDevicePassportResult extends HomeGraphProjectionResult
   readonly device: KnowledgeNodeRecord;
   readonly passport: KnowledgeNodeRecord;
   readonly missingFields: readonly string[];
+}
+
+export interface HomeGraphPageListResult {
+  readonly ok: true;
+  readonly spaceId: string;
+  readonly pages: readonly {
+    readonly source: KnowledgeSourceRecord;
+    readonly artifact?: HomeGraphProjectionResult['artifact'];
+    readonly markdown?: string;
+  }[];
 }
 
 export interface HomeGraphReviewInput extends HomeGraphSpaceInput {

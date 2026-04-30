@@ -20,6 +20,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.3] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- Added `GET /api/homeassistant/home-graph/pages` and
+  `homeassistant.homeGraph.pages.list` so Home Assistant panels can list
+  generated Home Graph wiki pages with markdown content instead of trying to
+  reconstruct pages from source inventory.
+
+### Fixed
+- Hardened shared PDF extraction. The raw fallback now inflates
+  Flate-compressed streams and refuses to persist binary-like PDF stream bytes
+  as searchable text, summaries, sections, or generated page content.
+- Home Graph reindex now repairs existing uploaded manuals more completely: it
+  reparses weak stored artifacts, auto-links matching manuals/documents to HA
+  devices or entities from strong model/entity/source identity, and regenerates
+  living pages when repaired evidence changes the wiki.
+- Generated Home Graph device passport and room pages now include
+  source-backed extracted snippets, Home Assistant identity, linked entities,
+  issues, and open questions so they behave as useful wiki pages rather than
+  metadata-only generated source cards.
+
+### Migration
+- Home Assistant users with already-uploaded manuals should run
+  `POST /api/homeassistant/home-graph/reindex` once after updating. The SDK
+  reparses and relinks existing artifacts; users do not need to reupload PDFs.
+- Home Assistant panels should prefer
+  `GET /api/homeassistant/home-graph/pages` for the Pages view and use
+  `/api/homeassistant/home-graph/reindex` when a user asks to repair existing
+  uploads.
+
+---
+
 ## [0.27.2] - 2026-04-29
 
 ### Breaking

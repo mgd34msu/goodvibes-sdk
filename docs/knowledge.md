@@ -68,8 +68,11 @@ the artifact store and enforce the same artifact cap before extraction.
 HTML extraction uses Mozilla Readability through `jsdom` first and falls back to
 the lightweight extractor for malformed or hostile HTML. PDF extraction uses
 PDF.js for text-layer parsing and falls back to a lightweight raw-stream reader
-only when the dedicated parser cannot load the file. Other non-HTML extractors
-are format-specific and produce extraction metadata plus best-effort limitations
+only when the dedicated parser cannot load the file. The raw PDF fallback
+inflates Flate-compressed streams before extracting text literals and rejects
+binary-like stream data, so compressed PDF bytes are not stored as searchable
+text, summaries, sections, or wiki page material. Other non-HTML extractors are
+format-specific and produce extraction metadata plus best-effort limitations
 when specialized parsing is unavailable.
 
 Text-bearing extractors also persist capped `structure.searchText` for
@@ -133,6 +136,8 @@ The SDK-owned `HomeGraphService` supports:
 - automatic device passport and room/area page generation during snapshot sync
 - explicit device passport, room/area page, and packet generation when clients
   need to direct or refresh a projection
+- generated Home Graph page listing with markdown content for panels and
+  editors
 - visual knowledge-base maps from Home Graph nodes, sources, and edges
 - packet generation with field inclusion/exclusion profiles
 - issue listing and review actions
@@ -180,7 +185,19 @@ unchanged-artifact reuse. Clients can disable or bound this with the sync
 `homeGraphGeneratedPage`, `projectionKind`, and `pageEditable` metadata. The
 generated pages are excluded from answer/reindex ranking and from linked-source
 page lists so they do not compete with manuals, receipts, notes, and other
-source evidence.
+source evidence. Generated Home Graph pages include Home Assistant identity,
+entity lists, linked source-backed snippets, issues, and open questions. Clients
+can read the current page index and markdown through
+`GET /api/homeassistant/home-graph/pages` or the
+`homeassistant.homeGraph.pages.list` operator method instead of reconstructing
+page content from source inventory locally.
+
+Home Graph reindex repairs existing uploads in place. It re-extracts
+placeholder or old weak PDF extraction rows, auto-links sources to matching Home
+Assistant devices/entities when identity evidence is strong enough, and
+regenerates generated pages when repaired or newly linked evidence changes what
+the wiki should show. This lets users fix already-uploaded manuals without
+reuploading them.
 
 Room pages are area-scoped. Devices, entities, automations, scenes, scripts, and
 linked sources are included only when they are attached to the requested room or

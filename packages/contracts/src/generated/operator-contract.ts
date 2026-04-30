@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.27.2"
+    "version": "0.27.3"
   },
   "auth": {
     "modes": [
@@ -28508,6 +28508,85 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "homeassistant.homeGraph.pages.list",
+        "title": "List Home Graph Pages",
+        "description": "Return generated Home Graph wiki pages with optional markdown content.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/homeassistant/home-graph/pages"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "includeMarkdown": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {}
+                ]
+              }
+            }
+          },
+          "required": [
+            "ok",
+            "spaceId",
+            "pages"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "homeassistant.homeGraph.refreshDevicePassport",
         "title": "Refresh Device Passport",
         "description": "Generate or refresh the living passport page for one Home Assistant device.",
@@ -28995,6 +29074,57 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "additionalProperties": {}
                   },
                   {}
+                ]
+              }
+            },
+            "linked": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {}
+                ]
+              }
+            },
+            "generated": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
                 ]
               }
             }
@@ -65740,10 +65870,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 254,
-      "typedInputs": 254,
+      "methods": 255,
+      "typedInputs": 255,
       "genericInputs": 0,
-      "typedOutputs": 254,
+      "typedOutputs": 255,
       "genericOutputs": 0
     },
     "eventCoverage": {

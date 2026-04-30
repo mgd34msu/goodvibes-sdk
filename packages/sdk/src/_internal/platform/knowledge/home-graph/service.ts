@@ -40,12 +40,19 @@ import {
 } from './state.js';
 import { renderHomeGraphMap } from './rendering.js';
 import {
+  autoLinkHomeGraphSource,
+  autoLinkHomeGraphSources,
+  type HomeGraphAutoLinkResult,
+} from './auto-link.js';
+import {
   generateAutomaticHomeGraphPages,
   generateHomeGraphPacket,
   generateHomeGraphRoomPage,
+  refreshAutomaticHomeGraphPages,
   refreshHomeGraphDevicePassport,
 } from './generated-pages.js';
 import { reindexHomeGraphSources } from './reindex.js';
+import { listHomeGraphPages } from './pages.js';
 import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
 import {
   readHomeGraphSearchState,
@@ -58,7 +65,7 @@ import type {
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
   HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphObjectInput,
   HomeGraphMapInput, HomeGraphMapResult, HomeGraphProjectionInput, HomeGraphProjectionResult,
-  HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
+  HomeGraphPageListResult, HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
 import { HOME_GRAPH_CAPABILITIES } from './types.js';
@@ -114,6 +121,7 @@ export class HomeGraphService {
     const beforeNodeIds = new Set(readHomeGraphState(this.store, spaceId).nodes.map((node) => node.id));
     const beforeEdgeIds = new Set(readHomeGraphState(this.store, spaceId).edges.map((edge) => edge.id));
     const groups = await this.upsertSnapshotObjects(spaceId, installationId, input, home.id, source.id);
+    await this.autoLinkExistingSources(spaceId, installationId);
     const issues = await this.refreshQualityIssues(spaceId, installationId);
     const generated = await generateAutomaticHomeGraphPages({
       store: this.store,
@@ -293,13 +301,22 @@ export class HomeGraphService {
     await this.store.init();
     const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
     const state = readHomeGraphSearchState(this.store, spaceId);
-    return reindexHomeGraphSources({
+    const reindex = await reindexHomeGraphSources({
       spaceId,
       sources: state.sources,
       extractionBySourceId: state.extractionBySourceId,
       artifactStore: this.artifactStore,
       extract: (source, artifact) => this.extractArtifact(source, artifact, spaceId, installationId),
     });
+    const linked = await this.autoLinkExistingSources(spaceId, installationId);
+    const generated = reindex.reparsed > 0 || linked.length > 0
+      ? await refreshAutomaticHomeGraphPages({ store: this.store, artifactStore: this.artifactStore, spaceId, installationId })
+      : undefined;
+    return {
+      ...reindex,
+      ...(linked.length > 0 ? { linked } : {}),
+      ...(generated ? { generated } : {}),
+    };
   }
 
   private async repairWeakExtractionsForAsk(
@@ -323,6 +340,16 @@ export class HomeGraphService {
       const artifact = this.artifactStore.get(artifactId);
       if (!artifact) continue;
       const extraction = await this.extractArtifact(source, artifact, spaceId, installationId);
+      if (extraction) {
+        await autoLinkHomeGraphSource({
+          store: this.store,
+          spaceId,
+          installationId,
+          source,
+          extraction,
+          state: readHomeGraphState(this.store, spaceId),
+        });
+      }
       if (extraction && extractionHasSearchableText(extraction)) repaired += 1;
     }
     return repaired;
@@ -395,6 +422,19 @@ export class HomeGraphService {
     await this.store.init();
     const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
     return { ok: true, spaceId, sources: readHomeGraphState(this.store, spaceId).sources.slice(0, Math.max(1, input.limit ?? 100)) };
+  }
+
+  async listPages(input: HomeGraphSpaceInput & { readonly limit?: number; readonly includeMarkdown?: boolean } = {}): Promise<HomeGraphPageListResult> {
+    await this.store.init();
+    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
+    const state = readHomeGraphState(this.store, spaceId);
+    return listHomeGraphPages({
+      artifactStore: this.artifactStore,
+      spaceId,
+      sources: state.sources,
+      limit: Math.max(1, input.limit ?? 100),
+      includeMarkdown: input.includeMarkdown !== false,
+    });
   }
 
   async browse(input: HomeGraphSpaceInput & { readonly limit?: number } = {}): Promise<{
@@ -511,7 +551,14 @@ export class HomeGraphService {
     const extraction = await this.extractArtifact(source, input.artifact, input.spaceId, input.installationId);
     const linked = input.target
       ? (await this.linkKnowledge({ knowledgeSpaceId: input.spaceId, sourceId: source.id, target: input.target })).edge
-      : undefined;
+      : (await autoLinkHomeGraphSource({
+          store: this.store,
+          spaceId: input.spaceId,
+          installationId: input.installationId,
+          source,
+          ...(extraction ? { extraction } : {}),
+          state: readHomeGraphState(this.store, input.spaceId),
+        }))?.edge;
     return {
       ok: true,
       spaceId: input.spaceId,
@@ -552,6 +599,22 @@ export class HomeGraphService {
     } catch {
       return undefined;
     }
+  }
+
+  private async autoLinkExistingSources(
+    spaceId: string,
+    installationId: string,
+  ): Promise<readonly HomeGraphAutoLinkResult[]> {
+    const state = readHomeGraphState(this.store, spaceId);
+    const extractionBySourceId = new Map(state.extractions.map((extraction) => [extraction.sourceId, extraction]));
+    return autoLinkHomeGraphSources({
+      store: this.store,
+      spaceId,
+      installationId,
+      sources: state.sources,
+      extractionBySourceId,
+      state,
+    });
   }
 
   private async upsertHomeNode(
