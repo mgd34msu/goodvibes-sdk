@@ -20,6 +20,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.8] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Tightened shared semantic fact filtering for feature/spec answers and
+  generated Home Graph pages. Truncated manual fragments, recommended cable
+  type snippets, remote button-map noise, remote battery-low notes, generic
+  service/repair boilerplate, dry-cloth cleaning notes, and "new features may
+  be added" boilerplate are no longer presented as device features or useful
+  passport facts.
+- Answer synthesis evidence now applies the same feature/spec low-value filter
+  to fact prompt lines that it already applied to source text windows, so the
+  provider-backed answer layer does not receive weak deterministic facts as
+  usable feature evidence.
+
+### Migration
+- none
+
+---
+
 ## [0.27.7] - 2026-04-30
 
 ### Breaking

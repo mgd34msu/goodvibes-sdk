@@ -271,12 +271,15 @@ Generated semantic wiki pages and extracted fact nodes are not used as Home
 Assistant object anchors, so a generated Kasa page or generic "features" fact
 cannot make a TV query pull Kasa sources into the answer. Feature/spec answers
 also suppress deterministic manual boilerplate such as "items may vary",
-"specifications may change", optional accessory/setup fragments, and
+"specifications may change", "new features may be added", recommended
+cable-type fragments, remote button-map noise, remote battery-low notes,
+optional accessory/setup fragments, generic service/repair boilerplate, and
 safety/cable warnings unless the user asked for that kind of warning or
-compatibility detail. Generated device passports and room pages apply the same
-fact-quality filter so living pages focus on useful device capabilities,
-specifications, maintenance, troubleshooting, and source-backed notes rather
-than generic handling/safety fragments from manuals.
+compatibility detail. Truncated deterministic fragments are dropped instead of
+presented as specifications. Generated device passports and room pages apply
+the same fact-quality filter so living pages focus on useful device
+capabilities, specifications, actionable maintenance, troubleshooting, and
+source-backed notes rather than generic handling/safety fragments from manuals.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

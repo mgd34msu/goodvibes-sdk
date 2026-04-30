@@ -450,6 +450,7 @@ function selectEvidenceExcerpt(
   const factLines = facts
     .map(renderFactForPrompt)
     .filter((line) => scoreSemanticText(line, tokens) > 0)
+    .filter((line) => !featureIntent || !isLowValueFeatureOrSpecText(line))
     .slice(0, 12);
   const windows = evidenceWindows(text, tokens)
     .filter((line) => !featureIntent || !isLowValueFeatureOrSpecText(line))
