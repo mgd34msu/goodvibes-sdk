@@ -139,9 +139,10 @@ export async function dispatchOperatorRoutes(
     | 'postKnowledgeSyncBrowserHistory'
     | 'postKnowledgeImportBookmarks'
     | 'postKnowledgeImportUrls'
-    | 'postKnowledgeIngestConnector'
-    | 'postKnowledgeSearch'
-    | 'postKnowledgePacket'
+  | 'postKnowledgeIngestConnector'
+  | 'postKnowledgeSearch'
+  | 'postKnowledgeAsk'
+  | 'postKnowledgePacket'
     | 'postKnowledgeReviewIssue'
     | 'postKnowledgeDecideCandidate'
     | 'postKnowledgeRunJob'
@@ -393,6 +394,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/knowledge/ingest/urls' && method === 'POST') return handlers.postKnowledgeImportUrls(req);
   if (pathname === '/api/knowledge/ingest/connector' && method === 'POST') return handlers.postKnowledgeIngestConnector(req);
   if (pathname === '/api/knowledge/search' && method === 'POST') return handlers.postKnowledgeSearch(req);
+  if (pathname === '/api/knowledge/ask' && method === 'POST') return handlers.postKnowledgeAsk(req);
   if (pathname === '/api/knowledge/packet' && method === 'POST') return handlers.postKnowledgePacket(req);
   if (pathname === '/api/knowledge/lint' && method === 'POST') return handlers.postKnowledgeLint(req);
   if (pathname === '/api/knowledge/reindex' && method === 'POST') return handlers.postKnowledgeReindex(req);

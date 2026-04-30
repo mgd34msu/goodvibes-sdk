@@ -8,6 +8,7 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { createDefaultKnowledgeConnectorRegistry, KnowledgeConnectorRegistry } from './connectors.js';
 import { renderKnowledgeMap, type KnowledgeMapRenderOptions } from './map.js';
 import { KnowledgeProjectionService } from './projections.js';
+import { KnowledgeSemanticService } from './semantic/index.js';
 import { KnowledgeStore } from './store.js';
 import { ingestBrowserKnowledge } from './browser-history/index.js';
 import type { BrowserKnowledgeIngestOptions, BrowserKnowledgeProfile } from './browser-history/index.js';
@@ -103,6 +104,7 @@ export interface KnowledgeServiceConfig {
   };
   readonly memoryRegistry: Pick<MemoryRegistry, 'add' | 'getAll' | 'getStore'>;
   readonly runtimeBus?: RuntimeEventBus | null;
+  readonly semanticService?: KnowledgeSemanticService;
 }
 
 export interface KnowledgeServiceStatus extends KnowledgeStatus {
@@ -112,6 +114,7 @@ export interface KnowledgeServiceStatus extends KnowledgeStatus {
 export class KnowledgeService {
   private readonly projectionService: KnowledgeProjectionService;
   private readonly scheduleService: KnowledgeScheduleService;
+  private readonly semanticService: KnowledgeSemanticService;
   private runtimeBus: RuntimeEventBus | null;
 
   constructor(
@@ -125,6 +128,7 @@ export class KnowledgeService {
     this.projectionService = new KnowledgeProjectionService(this.store, this.artifactStore, {
       connectors: () => this.listConnectors(),
     });
+    this.semanticService = options.semanticService ?? new KnowledgeSemanticService(this.store);
     this.scheduleService = new KnowledgeScheduleService({
       store: this.store,
       emitIfReady: this.emitIfReady.bind(this),
@@ -139,6 +143,7 @@ export class KnowledgeService {
       connectorRegistry: this.connectorRegistry,
       emitIfReady: this.emitIfReady.bind(this),
       syncReviewedMemory: this.syncReviewedMemory.bind(this),
+      semanticEnrichSource: (sourceId: string, knowledgeSpaceId?: string) => this.semanticService.enrichSource(sourceId, { knowledgeSpaceId }).then(() => undefined),
       lint: this.lint.bind(this),
       listConnectors: () => this.listConnectors(),
     };
@@ -541,6 +546,7 @@ export class KnowledgeService {
     for (const source of this.store.listSources(10_000)) {
       await recompileKnowledgeSource(this.getIngestContext(), source);
     }
+    await this.semanticService.reindex({ force: false });
     await this.syncReviewedMemory();
     const issues = await lintKnowledgeStore({ store: this.store, emitIfReady: this.emitIfReady.bind(this) });
     return { status: this.store.status(), issues };
@@ -548,6 +554,18 @@ export class KnowledgeService {
 
   search(query: string, limit = 10): KnowledgeSearchResult[] {
     return searchKnowledge(this.getPacketContext(), query, limit);
+  }
+
+  async ask(input: {
+    readonly query: string;
+    readonly limit?: number;
+    readonly mode?: 'concise' | 'standard' | 'detailed';
+    readonly knowledgeSpaceId?: string;
+    readonly includeSources?: boolean;
+    readonly includeConfidence?: boolean;
+    readonly includeLinkedObjects?: boolean;
+  }) {
+    return this.semanticService.answer(input);
   }
 
   async buildPacket(
@@ -688,6 +706,12 @@ export class KnowledgeService {
             { targetId: bundle.bundle.target.targetId, artifactId: bundle.artifact.id },
           ],
         };
+      }
+      case 'semantic-enrichment': {
+        return this.semanticService.reindex({
+          sourceIds: input.sourceIds,
+          limit: input.limit,
+        });
       }
       case 'light-consolidation': {
         const report = await runKnowledgeConsolidation(this.getConsolidationContext(), 'light-consolidation', {

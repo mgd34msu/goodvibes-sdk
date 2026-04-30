@@ -150,6 +150,7 @@ export interface DaemonApiRouteHandlers {
   postKnowledgeImportUrls(req: Request): MaybeResponse;
   postKnowledgeIngestConnector(req: Request): MaybeResponse;
   postKnowledgeSearch(req: Request): MaybeResponse;
+  postKnowledgeAsk(req: Request): MaybeResponse;
   postKnowledgePacket(req: Request): MaybeResponse;
   postKnowledgeReviewIssue(id: string, req: Request): MaybeResponse;
   postKnowledgeDecideCandidate(id: string, req: Request): MaybeResponse;

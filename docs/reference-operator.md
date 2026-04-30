@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `255`
+- Methods: `256`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -30785,6 +30785,721 @@ Remove an active Home Graph source/object link without deleting source history.
     "ok",
     "spaceId",
     "edge"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `knowledge.ask`
+
+Search, semantically synthesize, and return a source-backed answer from the structured knowledge/wiki store.
+
+- Title: `Ask Knowledge`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/knowledge/ask`
+- Scopes: `read:knowledge`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "includeSources": {
+      "type": "boolean"
+    },
+    "includeConfidence": {
+      "type": "boolean"
+    },
+    "includeLinkedObjects": {
+      "type": "boolean"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "query"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "spaceId": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "answer": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "connectorId": {
+                "type": "string"
+              },
+              "sourceType": {
+                "type": "string",
+                "enum": [
+                  "url",
+                  "bookmark",
+                  "bookmark-list",
+                  "history",
+                  "document",
+                  "repo",
+                  "dataset",
+                  "image",
+                  "manual",
+                  "other"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "sourceUri": {
+                "type": "string"
+              },
+              "canonicalUri": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "folderPath": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "artifactId": {
+                "type": "string"
+              },
+              "contentHash": {
+                "type": "string"
+              },
+              "lastCrawledAt": {
+                "type": "number"
+              },
+              "crawlError": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
+              },
+              "createdAt": {
+                "type": "number"
+              },
+              "updatedAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "connectorId",
+              "sourceType",
+              "tags",
+              "status",
+              "metadata",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "linkedObjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "sourceId": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
+              },
+              "createdAt": {
+                "type": "number"
+              },
+              "updatedAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "slug",
+              "title",
+              "aliases",
+              "status",
+              "confidence",
+              "metadata",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "sourceId": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
+              },
+              "createdAt": {
+                "type": "number"
+              },
+              "updatedAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "slug",
+              "title",
+              "aliases",
+              "status",
+              "confidence",
+              "metadata",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "sourceId": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
+              },
+              "createdAt": {
+                "type": "number"
+              },
+              "updatedAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "slug",
+              "title",
+              "aliases",
+              "status",
+              "confidence",
+              "metadata",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "synthesized": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text",
+        "mode",
+        "confidence",
+        "sources",
+        "linkedObjects"
+      ],
+      "additionalProperties": true
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "connectorId": {
+                "type": "string"
+              },
+              "sourceType": {
+                "type": "string",
+                "enum": [
+                  "url",
+                  "bookmark",
+                  "bookmark-list",
+                  "history",
+                  "document",
+                  "repo",
+                  "dataset",
+                  "image",
+                  "manual",
+                  "other"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "sourceUri": {
+                "type": "string"
+              },
+              "canonicalUri": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "folderPath": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "artifactId": {
+                "type": "string"
+              },
+              "contentHash": {
+                "type": "string"
+              },
+              "lastCrawledAt": {
+                "type": "number"
+              },
+              "crawlError": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
+              },
+              "createdAt": {
+                "type": "number"
+              },
+              "updatedAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "connectorId",
+              "sourceType",
+              "tags",
+              "status",
+              "metadata",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          },
+          "node": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "sourceId": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
+              },
+              "createdAt": {
+                "type": "number"
+              },
+              "updatedAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "slug",
+              "title",
+              "aliases",
+              "status",
+              "confidence",
+              "metadata",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "score",
+          "reason"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "ok",
+    "spaceId",
+    "query",
+    "answer",
+    "results"
   ],
   "additionalProperties": true
 }

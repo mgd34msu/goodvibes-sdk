@@ -385,6 +385,23 @@ export const KNOWLEDGE_SEARCH_OUTPUT_SCHEMA = objectSchema({
   results: arraySchema(KNOWLEDGE_SEARCH_RESULT_SCHEMA),
 }, ['results']);
 
+export const KNOWLEDGE_ASK_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  query: STRING_SCHEMA,
+  answer: objectSchema({
+    text: STRING_SCHEMA,
+    mode: STRING_SCHEMA,
+    confidence: NUMBER_SCHEMA,
+    sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
+    linkedObjects: arraySchema(KNOWLEDGE_NODE_SCHEMA),
+    facts: arraySchema(KNOWLEDGE_NODE_SCHEMA),
+    gaps: arraySchema(KNOWLEDGE_NODE_SCHEMA),
+    synthesized: BOOLEAN_SCHEMA,
+  }, ['text', 'mode', 'confidence', 'sources', 'linkedObjects'], { additionalProperties: true }),
+  results: arraySchema(KNOWLEDGE_SEARCH_RESULT_SCHEMA),
+}, ['ok', 'spaceId', 'query', 'answer', 'results'], { additionalProperties: true });
+
 export const KNOWLEDGE_SOURCES_OUTPUT_SCHEMA = listOutputSchema('sources', KNOWLEDGE_SOURCE_SCHEMA);
 export const KNOWLEDGE_NODES_OUTPUT_SCHEMA = listOutputSchema('nodes', KNOWLEDGE_NODE_SCHEMA);
 export const KNOWLEDGE_ISSUES_OUTPUT_SCHEMA = listOutputSchema('issues', KNOWLEDGE_ISSUE_SCHEMA);

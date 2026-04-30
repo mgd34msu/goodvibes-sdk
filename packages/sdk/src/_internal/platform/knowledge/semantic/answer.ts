@@ -1,0 +1,487 @@
+import type { KnowledgeStore } from '../store.js';
+import type {
+  KnowledgeNodeRecord,
+  KnowledgeSearchResult,
+  KnowledgeSourceRecord,
+} from '../types.js';
+import { getKnowledgeSpaceId, isInKnowledgeSpace, normalizeKnowledgeSpaceId } from '../spaces.js';
+import type {
+  KnowledgeSemanticAnswerInput,
+  KnowledgeSemanticAnswerResult,
+  KnowledgeSemanticGapInput,
+  KnowledgeSemanticLlm,
+  KnowledgeSemanticLlmAnswer,
+} from './types.js';
+import {
+  MAX_ANSWER_EVIDENCE_CHARS,
+  clampText,
+  normalizeWhitespace,
+  readRecord,
+  readString,
+  scoreSemanticText,
+  semanticHash,
+  semanticMetadata,
+  sourceSemanticText,
+  tokenizeSemanticQuery,
+  uniqueStrings,
+} from './utils.js';
+
+interface KnowledgeAnswerContext {
+  readonly store: KnowledgeStore;
+  readonly llm?: KnowledgeSemanticLlm | null;
+}
+
+interface EvidenceItem {
+  readonly kind: 'source' | 'node';
+  readonly id: string;
+  readonly title: string;
+  readonly score: number;
+  readonly source?: KnowledgeSourceRecord;
+  readonly node?: KnowledgeNodeRecord;
+  readonly excerpt?: string;
+  readonly facts: readonly KnowledgeNodeRecord[];
+}
+
+export async function answerKnowledgeQuery(
+  context: KnowledgeAnswerContext,
+  input: KnowledgeSemanticAnswerInput,
+): Promise<KnowledgeSemanticAnswerResult> {
+  const spaceId = normalizeKnowledgeSpaceId(input.knowledgeSpaceId);
+  const mode = input.mode ?? 'standard';
+  const limit = Math.max(1, input.limit ?? 8);
+  const evidence = collectAnswerEvidence(context.store, input, spaceId, limit);
+  if (evidence.length === 0) {
+    const gap = await persistAnswerGap(context.store, spaceId, input.query, 'No indexed evidence matched the question.');
+    return {
+      ok: true,
+      spaceId,
+      query: input.query,
+      answer: {
+        text: input.noMatchMessage ?? `No knowledge matched "${input.query}".`,
+        mode,
+        confidence: 0,
+        sources: [],
+        linkedObjects: input.includeLinkedObjects === false ? [] : [...input.linkedObjects ?? []],
+        facts: [],
+        gaps: [gap],
+        synthesized: false,
+      },
+      results: [],
+    };
+  }
+
+  const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence);
+  const facts = uniqueNodes(evidence.flatMap((item) => item.facts)).slice(0, 24);
+  const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : [])).slice(0, limit);
+  const linkedObjects = input.includeLinkedObjects === false
+    ? []
+    : uniqueNodes([...(input.linkedObjects ?? []), ...evidence.flatMap((item) => item.node ? [item.node] : [])]).slice(0, 24);
+  const gaps = await persistAnswerGaps(context.store, spaceId, input.query, llmAnswer?.gaps ?? []);
+  const text = llmAnswer?.answer?.trim() || renderFallbackAnswer(input.query, mode, evidence);
+  return {
+    ok: true,
+    spaceId,
+    query: input.query,
+    answer: {
+      text,
+      mode,
+      confidence: input.includeConfidence === false ? 0 : answerConfidence(llmAnswer, evidence),
+      sources: input.includeSources === false ? [] : sources,
+      linkedObjects,
+      facts,
+      gaps,
+      synthesized: Boolean(llmAnswer?.answer),
+    },
+    results: evidence.map(toSearchResult),
+  };
+}
+
+function collectAnswerEvidence(
+  store: KnowledgeStore,
+  input: KnowledgeSemanticAnswerInput,
+  spaceId: string,
+  limit: number,
+): EvidenceItem[] {
+  const tokens = expandQueryTokens(tokenizeSemanticQuery(input.query));
+  if (tokens.length === 0) return [];
+  const candidateSourceIds = new Set(input.candidateSourceIds ?? []);
+  const candidateNodeIds = new Set(input.candidateNodeIds ?? []);
+  const linkedObjectIds = new Set((input.linkedObjects ?? []).map((node) => node.id));
+  const sourceFacts = buildSourceFactIndex(store, spaceId);
+  const linkedSourceIds = sourceIdsLinkedToNodes(store, new Set([...candidateNodeIds, ...linkedObjectIds]), spaceId);
+
+  const sourceItems = store.listSources(10_000)
+    .filter((source) => belongsToAnswerSpace(source, spaceId))
+    .map((source) => {
+      const extraction = store.getExtractionBySourceId(source.id);
+      const facts = sourceFacts.get(source.id) ?? [];
+      const text = sourceSemanticText(source, extraction);
+      const baseScore = scoreSemanticText([
+        source.title,
+        source.summary,
+        source.description,
+        source.tags.join(' '),
+        text,
+        facts.map(renderFactForScoring).join(' '),
+      ].join('\n'), tokens);
+      const candidateBoost = candidateSourceIds.has(source.id) ? 220 : 0;
+      const linkedBoost = linkedSourceIds.has(source.id) ? 160 : 0;
+      const score = baseScore + candidateBoost + linkedBoost + Math.min(60, facts.length * 6);
+      return {
+        kind: 'source' as const,
+        id: source.id,
+        title: source.title ?? source.canonicalUri ?? source.sourceUri ?? source.id,
+        score,
+        source,
+        excerpt: selectEvidenceExcerpt(input.query, text, facts),
+        facts,
+      };
+    });
+
+  const nodeItems = store.listNodes(10_000)
+    .filter((node) => belongsToAnswerSpace(node, spaceId))
+    .map((node) => {
+      const score = scoreSemanticText([
+        node.title,
+        node.summary,
+        node.aliases.join(' '),
+        JSON.stringify(node.metadata),
+      ].join('\n'), tokens) + (candidateNodeIds.has(node.id) || linkedObjectIds.has(node.id) ? 120 : 0) + semanticKindBoost(node);
+      return {
+        kind: 'node' as const,
+        id: node.id,
+        title: node.title,
+        score,
+        node,
+        excerpt: renderNodeEvidence(node),
+        facts: node.metadata.semanticKind === 'fact' ? [node] : [],
+      };
+    });
+
+  const items = [...sourceItems, ...nodeItems]
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
+  return pruneEvidence(items, limit);
+}
+
+async function synthesizeAnswer(
+  llm: KnowledgeSemanticLlm | null,
+  query: string,
+  mode: string,
+  evidence: readonly EvidenceItem[],
+): Promise<KnowledgeSemanticLlmAnswer | null> {
+  if (!llm) return null;
+  const response = await llm.completeJson({
+    purpose: 'knowledge-answer-synthesis',
+    maxTokens: mode === 'detailed' ? 2200 : mode === 'concise' ? 700 : 1400,
+    systemPrompt: [
+      'You answer questions from a GoodVibes self-improving knowledge wiki.',
+      'Use only the supplied evidence. Synthesize the answer for the user intent rather than dumping snippets.',
+      'If evidence is insufficient, say what is missing. Prefer concrete features, specs, procedures, and relationships.',
+      'Return only JSON with answer, confidence, usedSourceIds, usedNodeIds, and optional gaps.',
+    ].join(' '),
+    prompt: JSON.stringify({
+      query,
+      mode,
+      evidence: renderEvidenceForPrompt(evidence),
+      outputShape: {
+        answer: 'source-backed natural language answer',
+        confidence: 0,
+        usedSourceIds: ['source ids used'],
+        usedNodeIds: ['node ids used'],
+        gaps: [{ question: 'unanswered follow-up gap', reason: 'missing evidence', severity: 'info' }],
+      },
+    }),
+  });
+  return normalizeLlmAnswer(response);
+}
+
+function renderEvidenceForPrompt(evidence: readonly EvidenceItem[]): readonly Record<string, unknown>[] {
+  let budget = MAX_ANSWER_EVIDENCE_CHARS;
+  const rendered: Record<string, unknown>[] = [];
+  for (const item of evidence.slice(0, 12)) {
+    if (budget <= 0) break;
+    const factText = item.facts.slice(0, 16).map(renderFactForPrompt).join('\n');
+    const excerpt = clampText(item.excerpt, Math.min(1600, budget));
+    const record = {
+      kind: item.kind,
+      id: item.id,
+      title: item.title,
+      sourceId: item.source?.id,
+      nodeId: item.node?.id,
+      sourceType: item.source?.sourceType,
+      nodeKind: item.node?.kind,
+      excerpt,
+      facts: factText,
+    };
+    budget -= JSON.stringify(record).length;
+    rendered.push(record);
+  }
+  return rendered;
+}
+
+function renderFallbackAnswer(
+  query: string,
+  mode: string,
+  evidence: readonly EvidenceItem[],
+): string {
+  const facts = uniqueNodes(evidence.flatMap((item) => item.facts));
+  const factLines = facts
+    .filter((fact) => fact.metadata.semanticKind === 'fact')
+    .slice(0, mode === 'detailed' ? 12 : mode === 'concise' ? 3 : 6)
+    .map((fact) => {
+      const value = readString(fact.metadata.value);
+      const summary = fact.summary ?? readString(fact.metadata.evidence);
+      return `- ${fact.title}${value ? `: ${value}` : ''}${summary ? ` - ${summary}` : ''}`;
+    });
+  if (factLines.length > 0) return factLines.join('\n');
+  const lines = evidence.slice(0, mode === 'detailed' ? 8 : mode === 'concise' ? 1 : 4)
+    .map((item) => `- ${item.title}${item.excerpt ? `: ${clampText(item.excerpt, 360)}` : ''}`);
+  return lines.length > 0 ? lines.join('\n') : `No knowledge matched "${query}".`;
+}
+
+async function persistAnswerGap(
+  store: KnowledgeStore,
+  spaceId: string,
+  query: string,
+  reason: string,
+): Promise<KnowledgeNodeRecord> {
+  const node = await store.upsertNode({
+    id: `sem-answer-gap-${semanticHash(spaceId, query)}`,
+    kind: 'knowledge_gap',
+    slug: `answer-gap-${semanticHash(spaceId, query)}`,
+    title: query,
+    summary: reason,
+    confidence: 70,
+    metadata: semanticMetadata(spaceId, {
+      semanticKind: 'gap',
+      gapKind: 'answer',
+      query,
+      reason,
+    }),
+  });
+  await store.upsertIssue({
+    id: `sem-answer-gap-issue-${semanticHash(spaceId, query)}`,
+    severity: 'info',
+    code: 'knowledge.answer_gap',
+    message: `No knowledge answer available for: ${query}`,
+    status: 'open',
+    nodeId: node.id,
+    metadata: semanticMetadata(spaceId, {
+      namespace: `knowledge:${spaceId}:answers`,
+      query,
+      reason,
+    }),
+  });
+  return node;
+}
+
+async function persistAnswerGaps(
+  store: KnowledgeStore,
+  spaceId: string,
+  query: string,
+  gaps: readonly KnowledgeSemanticGapInput[],
+): Promise<readonly KnowledgeNodeRecord[]> {
+  const nodes: KnowledgeNodeRecord[] = [];
+  for (const gap of gaps.slice(0, 8)) {
+    nodes.push(await persistAnswerGap(store, spaceId, gap.question || query, gap.reason ?? 'Answer synthesis identified a missing knowledge gap.'));
+  }
+  return nodes;
+}
+
+function buildSourceFactIndex(store: KnowledgeStore, spaceId: string): Map<string, KnowledgeNodeRecord[]> {
+  const facts = store.listNodes(10_000).filter((node) => (
+    node.metadata.semanticKind === 'fact' && belongsToAnswerSpace(node, spaceId)
+  ));
+  const bySource = new Map<string, KnowledgeNodeRecord[]>();
+  for (const fact of facts) {
+    const sourceId = readString(fact.metadata.sourceId) ?? fact.sourceId;
+    if (!sourceId) continue;
+    bySource.set(sourceId, [...(bySource.get(sourceId) ?? []), fact]);
+  }
+  return bySource;
+}
+
+function sourceIdsLinkedToNodes(store: KnowledgeStore, nodeIds: ReadonlySet<string>, spaceId: string): Set<string> {
+  const sourceIds = new Set<string>();
+  if (nodeIds.size === 0) return sourceIds;
+  for (const edge of store.listEdges()) {
+    if (!belongsToAnswerSpace(edge, spaceId)) continue;
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && nodeIds.has(edge.toId)) sourceIds.add(edge.fromId);
+    if (edge.fromKind === 'node' && nodeIds.has(edge.fromId) && edge.toKind === 'source') sourceIds.add(edge.toId);
+  }
+  return sourceIds;
+}
+
+function selectEvidenceExcerpt(
+  query: string,
+  text: string,
+  facts: readonly KnowledgeNodeRecord[],
+): string {
+  const tokens = expandQueryTokens(tokenizeSemanticQuery(query));
+  const factLines = facts
+    .map(renderFactForPrompt)
+    .filter((line) => scoreSemanticText(line, tokens) > 0)
+    .slice(0, 12);
+  const windows = evidenceWindows(text, tokens).slice(0, 4);
+  return uniqueStrings([...factLines, ...windows, clampText(text, 720)]).join('\n');
+}
+
+function evidenceWindows(text: string, tokens: readonly string[]): string[] {
+  const normalized = normalizeWhitespace(text);
+  const lower = normalized.toLowerCase();
+  const windows: string[] = [];
+  for (const token of tokens) {
+    if (token.length < 3) continue;
+    const index = lower.indexOf(token);
+    if (index < 0) continue;
+    const start = Math.max(0, index - 220);
+    const end = Math.min(normalized.length, index + 620);
+    windows.push(`${start > 0 ? '...' : ''}${normalized.slice(start, end)}${end < normalized.length ? '...' : ''}`);
+  }
+  return uniqueStrings(windows);
+}
+
+function expandQueryTokens(tokens: readonly string[]): string[] {
+  const expansions: Record<string, readonly string[]> = {
+    capabilities: ['capability', 'feature', 'features', 'function', 'functions', 'supports', 'specifications'],
+    capability: ['capabilities', 'feature', 'features', 'function', 'functions', 'supports', 'specifications'],
+    feature: ['features', 'capability', 'capabilities', 'function', 'functions', 'supports', 'specifications'],
+    features: ['feature', 'capability', 'capabilities', 'function', 'functions', 'supports', 'specifications'],
+    settings: ['configuration', 'configure', 'options'],
+    setup: ['install', 'configure', 'pair'],
+  };
+  return uniqueStrings(tokens.flatMap((token) => [token, ...(expansions[token] ?? [])]));
+}
+
+function pruneEvidence(items: readonly EvidenceItem[], limit: number): EvidenceItem[] {
+  const sourceSeen = new Set<string>();
+  const nodeSeen = new Set<string>();
+  const out: EvidenceItem[] = [];
+  for (const item of items) {
+    if (item.kind === 'source') {
+      if (sourceSeen.has(item.id)) continue;
+      sourceSeen.add(item.id);
+    } else {
+      if (nodeSeen.has(item.id)) continue;
+      nodeSeen.add(item.id);
+    }
+    out.push(item);
+    if (out.length >= Math.max(1, limit)) break;
+  }
+  return out;
+}
+
+function toSearchResult(item: EvidenceItem): KnowledgeSearchResult {
+  return {
+    kind: item.kind,
+    id: item.id,
+    score: item.score,
+    reason: 'semantic evidence match',
+    ...(item.source ? { source: item.source } : {}),
+    ...(item.node ? { node: item.node } : {}),
+  };
+}
+
+function normalizeLlmAnswer(value: unknown): KnowledgeSemanticLlmAnswer | null {
+  const record = readRecord(value);
+  const answer = readString(record.answer);
+  if (!answer) return null;
+  return {
+    answer,
+    ...(typeof record.confidence === 'number' ? { confidence: Math.max(0, Math.min(100, Math.round(record.confidence))) } : {}),
+    usedSourceIds: readStringArray(record.usedSourceIds),
+    usedNodeIds: readStringArray(record.usedNodeIds),
+    gaps: readGapArray(record.gaps),
+  };
+}
+
+function answerConfidence(answer: KnowledgeSemanticLlmAnswer | null, evidence: readonly EvidenceItem[]): number {
+  if (typeof answer?.confidence === 'number') return answer.confidence;
+  const top = evidence[0]?.score ?? 0;
+  const factBoost = Math.min(35, uniqueNodes(evidence.flatMap((item) => item.facts)).length * 4);
+  return Math.max(10, Math.min(92, Math.round(top / 5) + factBoost));
+}
+
+function renderFactForScoring(fact: KnowledgeNodeRecord): string {
+  return [
+    fact.title,
+    fact.summary,
+    readString(fact.metadata.value),
+    readString(fact.metadata.evidence),
+    Array.isArray(fact.metadata.labels) ? fact.metadata.labels.join(' ') : '',
+  ].filter(Boolean).join(' ');
+}
+
+function renderFactForPrompt(fact: KnowledgeNodeRecord): string {
+  const kind = readString(fact.metadata.factKind) ?? 'fact';
+  const value = readString(fact.metadata.value);
+  const evidence = readString(fact.metadata.evidence);
+  return `${kind}: ${fact.title}${value ? ` = ${value}` : ''}${fact.summary ? ` - ${fact.summary}` : ''}${evidence ? ` Evidence: ${evidence}` : ''}`;
+}
+
+function renderNodeEvidence(node: KnowledgeNodeRecord): string {
+  if (node.metadata.semanticKind === 'fact') return renderFactForPrompt(node);
+  if (node.metadata.semanticKind === 'wiki_page') return readString(node.metadata.markdown) ?? node.summary ?? '';
+  return [node.summary, node.aliases.join(', ')].filter(Boolean).join('\n');
+}
+
+function semanticKindBoost(node: KnowledgeNodeRecord): number {
+  if (node.metadata.semanticKind === 'fact') return 45;
+  if (node.metadata.semanticKind === 'wiki_page') return 24;
+  if (node.metadata.semanticKind === 'entity') return 18;
+  return 0;
+}
+
+function belongsToAnswerSpace(
+  record: { readonly metadata?: Record<string, unknown> } | undefined | null,
+  spaceId: string,
+): boolean {
+  return normalizeKnowledgeSpaceId(spaceId) === 'default'
+    ? normalizeKnowledgeSpaceId(getKnowledgeSpaceId(record)) === 'default'
+    : isInKnowledgeSpace(record, spaceId);
+}
+
+function uniqueNodes(nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
+  const seen = new Set<string>();
+  const out: KnowledgeNodeRecord[] = [];
+  for (const node of nodes) {
+    if (seen.has(node.id)) continue;
+    seen.add(node.id);
+    out.push(node);
+  }
+  return out;
+}
+
+function uniqueSources(sources: readonly KnowledgeSourceRecord[]): KnowledgeSourceRecord[] {
+  const seen = new Set<string>();
+  const out: KnowledgeSourceRecord[] = [];
+  for (const source of sources) {
+    if (seen.has(source.id)) continue;
+    seen.add(source.id);
+    out.push(source);
+  }
+  return out;
+}
+
+function readStringArray(value: unknown): readonly string[] {
+  return Array.isArray(value)
+    ? uniqueStrings(value.map((entry) => typeof entry === 'string' ? entry : undefined))
+    : [];
+}
+
+function readGapArray(value: unknown): readonly KnowledgeSemanticGapInput[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const record = readRecord(entry);
+    const question = readString(record.question);
+    if (!question) return [];
+    const severity = readString(record.severity);
+    return [{
+      question,
+      ...(readString(record.reason) ? { reason: readString(record.reason) } : {}),
+      ...(readString(record.subject) ? { subject: readString(record.subject) } : {}),
+      severity: severity === 'warning' || severity === 'error' ? severity : 'info',
+    }];
+  });
+}

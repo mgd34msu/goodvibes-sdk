@@ -100,6 +100,7 @@ export const OPERATOR_METHOD_IDS = [
   "homeassistant.homeGraph.syncHomeGraph",
   "homeassistant.homeGraph.unlinkHomeGraphKnowledge",
   "intelligence.snapshot",
+  "knowledge.ask",
   "knowledge.candidate.decide",
   "knowledge.candidate.get",
   "knowledge.candidates.list",
