@@ -568,9 +568,48 @@ export interface KnowledgeMaterializedProjection {
   readonly artifactCreated?: boolean;
 }
 
+export type KnowledgeMapRecordKind = 'source' | 'node' | 'issue';
+
+export interface KnowledgeMapFilterInput {
+  readonly query?: string;
+  readonly recordKinds?: readonly KnowledgeMapRecordKind[];
+  readonly ids?: readonly string[];
+  readonly linkedToIds?: readonly string[];
+  readonly nodeKinds?: readonly string[];
+  readonly sourceTypes?: readonly string[];
+  readonly sourceStatuses?: readonly string[];
+  readonly nodeStatuses?: readonly string[];
+  readonly issueCodes?: readonly string[];
+  readonly issueStatuses?: readonly string[];
+  readonly issueSeverities?: readonly string[];
+  readonly edgeRelations?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly minConfidence?: number;
+}
+
+export interface KnowledgeMapFacetValue {
+  readonly value: string;
+  readonly count: number;
+  readonly label?: string;
+}
+
+export interface KnowledgeMapFacets {
+  readonly recordKinds: readonly KnowledgeMapFacetValue[];
+  readonly nodeKinds: readonly KnowledgeMapFacetValue[];
+  readonly sourceTypes: readonly KnowledgeMapFacetValue[];
+  readonly sourceStatuses: readonly KnowledgeMapFacetValue[];
+  readonly nodeStatuses: readonly KnowledgeMapFacetValue[];
+  readonly issueCodes: readonly KnowledgeMapFacetValue[];
+  readonly issueStatuses: readonly KnowledgeMapFacetValue[];
+  readonly issueSeverities: readonly KnowledgeMapFacetValue[];
+  readonly edgeRelations: readonly KnowledgeMapFacetValue[];
+  readonly tags: readonly KnowledgeMapFacetValue[];
+  readonly homeAssistant?: Record<string, readonly KnowledgeMapFacetValue[]>;
+}
+
 export interface KnowledgeMapNode {
   readonly id: string;
-  readonly recordKind: 'source' | 'node' | 'issue';
+  readonly recordKind: KnowledgeMapRecordKind;
   readonly kind: string;
   readonly title: string;
   readonly summary?: string;
@@ -598,6 +637,9 @@ export interface KnowledgeMapResult {
   readonly height: number;
   readonly nodeCount: number;
   readonly edgeCount: number;
+  readonly totalNodeCount?: number;
+  readonly totalEdgeCount?: number;
+  readonly facets?: KnowledgeMapFacets;
   readonly nodes: readonly KnowledgeMapNode[];
   readonly edges: readonly KnowledgeMapEdge[];
   readonly svg: string;

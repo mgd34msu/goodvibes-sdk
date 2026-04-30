@@ -20,7 +20,15 @@ describe('Home Graph map routes', () => {
     const { service, artifactStore } = createHomeGraphService();
     await service.syncSnapshot({
       installationId: 'house-1',
-      devices: [{ id: 'thermostat', name: 'Thermostat' }],
+      areas: [{ id: 'living-room', name: 'Living Room' }],
+      devices: [
+        { id: 'thermostat', name: 'Thermostat', areaId: 'living-room' },
+        { id: 'tv', name: 'Living Room TV', areaId: 'living-room' },
+      ],
+      entities: [
+        { entityId: 'climate.thermostat', name: 'Thermostat', deviceId: 'thermostat', areaId: 'living-room', metadata: { domain: 'climate' } },
+        { entityId: 'media_player.tv', name: 'Living Room TV', deviceId: 'tv', areaId: 'living-room', metadata: { domain: 'media_player' } },
+      ],
     });
     const routes = new HomeGraphRoutes({
       artifactStore,
@@ -37,13 +45,17 @@ describe('Home Graph map routes', () => {
     const slash = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/map/?installationId=house-1'));
     const post = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/map', {
       method: 'POST',
-      body: JSON.stringify({ installationId: 'house-1', limit: 10, includeSources: false }),
+      body: JSON.stringify({ installationId: 'house-1', limit: 10, includeSources: false, ha: { domains: ['media_player'] } }),
     }));
 
     expect(query?.status).toBe(200);
     expect(slash?.status).toBe(200);
     expect(post?.status).toBe(200);
     expect((await slash!.json() as { readonly svg: string }).svg).toContain('Thermostat');
+    const filtered = await post!.json() as { readonly nodes: readonly { readonly title: string }[]; readonly facets?: { readonly homeAssistant?: Record<string, readonly { readonly value: string; readonly count: number }[]> } };
+    expect(filtered.nodes.some((node) => node.title === 'Living Room TV')).toBe(true);
+    expect(filtered.nodes.some((node) => node.title === 'Thermostat')).toBe(false);
+    expect(filtered.facets?.homeAssistant?.domains?.some((entry) => entry.value === 'media_player')).toBe(true);
   });
 });
 

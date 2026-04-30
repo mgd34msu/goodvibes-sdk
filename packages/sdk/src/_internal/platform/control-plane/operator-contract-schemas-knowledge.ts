@@ -561,6 +561,26 @@ const KNOWLEDGE_MAP_EDGE_SCHEMA = objectSchema({
   metadata: METADATA_SCHEMA,
 }, ['id', 'fromId', 'toId', 'relation', 'weight', 'metadata'], { additionalProperties: true });
 
+const KNOWLEDGE_MAP_FACET_VALUE_SCHEMA = objectSchema({
+  value: STRING_SCHEMA,
+  count: NUMBER_SCHEMA,
+  label: STRING_SCHEMA,
+}, ['value', 'count'], { additionalProperties: true });
+
+const KNOWLEDGE_MAP_FACETS_SCHEMA = objectSchema({
+  recordKinds: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  nodeKinds: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  sourceTypes: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  sourceStatuses: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  nodeStatuses: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  issueCodes: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  issueStatuses: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  issueSeverities: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  edgeRelations: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  tags: arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA),
+  homeAssistant: recordSchema(arraySchema(KNOWLEDGE_MAP_FACET_VALUE_SCHEMA)),
+}, [], { additionalProperties: true });
+
 export const KNOWLEDGE_MAP_OUTPUT_SCHEMA = objectSchema({
   ok: BOOLEAN_SCHEMA,
   spaceId: STRING_SCHEMA,
@@ -570,6 +590,9 @@ export const KNOWLEDGE_MAP_OUTPUT_SCHEMA = objectSchema({
   height: NUMBER_SCHEMA,
   nodeCount: NUMBER_SCHEMA,
   edgeCount: NUMBER_SCHEMA,
+  totalNodeCount: NUMBER_SCHEMA,
+  totalEdgeCount: NUMBER_SCHEMA,
+  facets: KNOWLEDGE_MAP_FACETS_SCHEMA,
   nodes: arraySchema(KNOWLEDGE_MAP_NODE_SCHEMA),
   edges: arraySchema(KNOWLEDGE_MAP_EDGE_SCHEMA),
   svg: STRING_SCHEMA,

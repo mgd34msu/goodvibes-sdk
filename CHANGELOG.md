@@ -20,6 +20,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.2] - 2026-04-29
+
+### Breaking
+- none
+
+### Added
+- Added shared knowledge/wiki map filters and facets. `knowledge.map` now
+  supports multi-select filters for record kinds, node kinds, source types,
+  statuses, issue codes/severities, edge relations, tags, IDs, linked records,
+  query text, and minimum node confidence.
+- Extended Home Graph map filtering with Home Assistant-specific multi-select
+  filters for object kinds, entities, devices, areas, integrations, integration
+  domains, entity domains, device classes, and labels. Map responses now return
+  facet counts that clients can use to build filter controls without hardcoding
+  graph contents.
+
+### Fixed
+- Home Graph ask now treats binary-like or raw-PDF extraction text as unusable
+  and repair-needed. Garbled text from an unrelated manual can no longer be used
+  as source evidence or rendered as an answer for object-scoped questions such
+  as "What features does the TV have?".
+
+### Migration
+- Home Assistant and TUI clients can add filter UI directly against the SDK map
+  response facets. The Home Assistant integration should send selected filters
+  to `/api/homeassistant/home-graph/map`; it should not implement graph
+  filtering locally.
+
+---
+
 ## [0.27.1] - 2026-04-29
 
 ### Breaking

@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.27.1"
+    "version": "0.27.2"
   },
   "auth": {
     "modes": [
@@ -27927,6 +27927,150 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "includeSources": {
               "type": "boolean"
+            },
+            "includeIssues": {
+              "type": "boolean"
+            },
+            "includeGenerated": {
+              "type": "boolean"
+            },
+            "query": {
+              "type": "string"
+            },
+            "recordKinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "linkedToIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nodeKinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sourceTypes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sourceStatuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nodeStatuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issueCodes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issueStatuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issueSeverities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "edgeRelations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "minConfidence": {
+              "type": "number"
+            },
+            "ha": {
+              "type": "object",
+              "properties": {
+                "objectKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "entityIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "deviceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "areaIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "integrationIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "integrationDomains": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "domains": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "deviceClasses": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "labels": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -27957,6 +28101,263 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "edgeCount": {
               "type": "number"
+            },
+            "totalNodeCount": {
+              "type": "number"
+            },
+            "totalEdgeCount": {
+              "type": "number"
+            },
+            "facets": {
+              "type": "object",
+              "properties": {
+                "recordKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "nodeKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "sourceTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "sourceStatuses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "nodeStatuses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "issueCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "issueStatuses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "issueSeverities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "edgeRelations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "homeAssistant": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "number"
+                        },
+                        "label": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "count"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              },
+              "additionalProperties": true
             },
             "nodes": {
               "type": "array",
@@ -35139,6 +35540,84 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "includeGenerated": {
               "type": "boolean"
+            },
+            "query": {
+              "type": "string"
+            },
+            "recordKinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "linkedToIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nodeKinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sourceTypes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sourceStatuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nodeStatuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issueCodes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issueStatuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issueSeverities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "edgeRelations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "minConfidence": {
+              "type": "number"
             }
           },
           "additionalProperties": false
@@ -35169,6 +35648,263 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "edgeCount": {
               "type": "number"
+            },
+            "totalNodeCount": {
+              "type": "number"
+            },
+            "totalEdgeCount": {
+              "type": "number"
+            },
+            "facets": {
+              "type": "object",
+              "properties": {
+                "recordKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "nodeKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "sourceTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "sourceStatuses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "nodeStatuses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "issueCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "issueStatuses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "issueSeverities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "edgeRelations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "count"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "homeAssistant": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "number"
+                        },
+                        "label": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "count"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              },
+              "additionalProperties": true
             },
             "nodes": {
               "type": "array",

@@ -28085,6 +28085,150 @@ Return a visual Home Graph node/edge map with deterministic layout data and SVG.
     },
     "includeSources": {
       "type": "boolean"
+    },
+    "includeIssues": {
+      "type": "boolean"
+    },
+    "includeGenerated": {
+      "type": "boolean"
+    },
+    "query": {
+      "type": "string"
+    },
+    "recordKinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "linkedToIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nodeKinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sourceTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sourceStatuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nodeStatuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issueCodes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issueStatuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issueSeverities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "edgeRelations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "minConfidence": {
+      "type": "number"
+    },
+    "ha": {
+      "type": "object",
+      "properties": {
+        "objectKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entityIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deviceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "areaIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "integrationIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "integrationDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deviceClasses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
@@ -28120,6 +28264,263 @@ Return a visual Home Graph node/edge map with deterministic layout data and SVG.
     },
     "edgeCount": {
       "type": "number"
+    },
+    "totalNodeCount": {
+      "type": "number"
+    },
+    "totalEdgeCount": {
+      "type": "number"
+    },
+    "facets": {
+      "type": "object",
+      "properties": {
+        "recordKinds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "nodeKinds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "sourceTypes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "sourceStatuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "nodeStatuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "issueCodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "issueStatuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "issueSeverities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "edgeRelations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "homeAssistant": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "count"
+              ],
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "additionalProperties": true
     },
     "nodes": {
       "type": "array",
@@ -35410,6 +35811,84 @@ Return a deterministic visual map of structured knowledge nodes, sources, edges,
     },
     "includeGenerated": {
       "type": "boolean"
+    },
+    "query": {
+      "type": "string"
+    },
+    "recordKinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "linkedToIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nodeKinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sourceTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sourceStatuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nodeStatuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issueCodes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issueStatuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issueSeverities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "edgeRelations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "minConfidence": {
+      "type": "number"
     }
   },
   "additionalProperties": false
@@ -35445,6 +35924,263 @@ Return a deterministic visual map of structured knowledge nodes, sources, edges,
     },
     "edgeCount": {
       "type": "number"
+    },
+    "totalNodeCount": {
+      "type": "number"
+    },
+    "totalEdgeCount": {
+      "type": "number"
+    },
+    "facets": {
+      "type": "object",
+      "properties": {
+        "recordKinds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "nodeKinds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "sourceTypes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "sourceStatuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "nodeStatuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "issueCodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "issueStatuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "issueSeverities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "edgeRelations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "homeAssistant": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "count"
+              ],
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "additionalProperties": true
     },
     "nodes": {
       "type": "array",

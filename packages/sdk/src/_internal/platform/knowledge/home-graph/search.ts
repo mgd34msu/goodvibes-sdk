@@ -6,6 +6,7 @@ import type {
   KnowledgeSourceRecord,
 } from '../types.js';
 import { belongsToSpace, edgeIsActive, isGeneratedPageSource, readRecord } from './helpers.js';
+import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
 import type { HomeGraphSearchResult } from './types.js';
 
 const MAX_FIELD_CHARS = 4_096;
@@ -303,12 +304,13 @@ function readSearchText(extraction: KnowledgeExtractionRecord | null | undefined
   if (!extraction) return undefined;
   const structure = readRecord(extraction.structure);
   const metadata = readRecord(extraction.metadata);
-  return firstBoundedText([
+  const text = firstBoundedText([
     structure.searchText,
     structure.text,
     structure.content,
     metadata.searchText,
   ], MAX_SEARCH_TEXT_CHARS);
+  return isUnusableHomeGraphExtractionText(text) ? undefined : text;
 }
 
 function readNodeMetadataText(node: KnowledgeNodeRecord): string | undefined {
@@ -589,11 +591,7 @@ function usefulExtractionSummary(extraction: KnowledgeExtractionRecord | null | 
 }
 
 function isLowInformationExtractionText(value: string): boolean {
-  const normalized = value.toLowerCase();
-  return normalized.includes('pdf extraction produced limited text')
-    || normalized.includes('no readable text streams')
-    || normalized.includes('no specialized extractor matched')
-    || normalized.includes('has no specialized in-core extractor');
+  return isUnusableHomeGraphExtractionText(value);
 }
 
 function sentenceChunks(value: string | undefined): string[] {

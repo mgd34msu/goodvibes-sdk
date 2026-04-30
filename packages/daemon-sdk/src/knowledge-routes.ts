@@ -96,6 +96,7 @@ export function createDaemonKnowledgeRouteHandlers(
       includeSources: readBooleanQuery(url, 'includeSources'),
       includeIssues: readBooleanQuery(url, 'includeIssues'),
       includeGenerated: readBooleanQuery(url, 'includeGenerated'),
+      ...readKnowledgeMapFilters(url),
     })),
     getKnowledgeGraphqlSchema: () => Response.json({
       language: 'graphql',
@@ -218,6 +219,34 @@ function readBooleanQuery(url: URL, key: string): boolean | undefined {
   const raw = url.searchParams.get(key);
   if (raw === null || raw.trim() === '') return undefined;
   return raw === '1' || raw.toLowerCase() === 'true' || raw.toLowerCase() === 'yes';
+}
+
+function readKnowledgeMapFilters(url: URL): JsonBody {
+  const minConfidence = Number(url.searchParams.get('minConfidence'));
+  return {
+    ...(url.searchParams.get('query') ? { query: url.searchParams.get('query')! } : {}),
+    ...(Number.isFinite(minConfidence) ? { minConfidence } : {}),
+    recordKinds: readStringList(url, 'recordKinds', 'recordKind'),
+    ids: readStringList(url, 'ids', 'id'),
+    linkedToIds: readStringList(url, 'linkedToIds', 'linkedToId'),
+    nodeKinds: readStringList(url, 'nodeKinds', 'nodeKind'),
+    sourceTypes: readStringList(url, 'sourceTypes', 'sourceType'),
+    sourceStatuses: readStringList(url, 'sourceStatuses', 'sourceStatus'),
+    nodeStatuses: readStringList(url, 'nodeStatuses', 'nodeStatus'),
+    issueCodes: readStringList(url, 'issueCodes', 'issueCode'),
+    issueStatuses: readStringList(url, 'issueStatuses', 'issueStatus'),
+    issueSeverities: readStringList(url, 'issueSeverities', 'issueSeverity'),
+    edgeRelations: readStringList(url, 'edgeRelations', 'edgeRelation'),
+    tags: readStringList(url, 'tags', 'tag'),
+  };
+}
+
+function readStringList(url: URL, ...names: readonly string[]): readonly string[] {
+  return names
+    .flatMap((name) => url.searchParams.getAll(name))
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 function readKnowledgeProjectionRequest(

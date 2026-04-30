@@ -60,6 +60,48 @@ describe('knowledge generated projections and maps', () => {
     expect(map.nodes.some((entry) => entry.id === generatedSources[0]!.id)).toBe(true);
     expect(map.svg).toContain('Project Manual');
   });
+
+  test('filters base knowledge maps with multi-select facets before layout', async () => {
+    const { store } = createStores();
+    const manual = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'Operations Manual',
+      canonicalUri: 'manual://operations',
+      tags: ['ops', 'manual'],
+      status: 'indexed',
+    });
+    const note = await store.upsertSource({
+      connectorId: 'notes',
+      sourceType: 'document',
+      title: 'Deployment Notes',
+      canonicalUri: 'notes://deployment',
+      tags: ['deploy'],
+      status: 'indexed',
+    });
+    const topic = await store.upsertNode({ kind: 'topic', slug: 'operations', title: 'Operations' });
+    const capability = await store.upsertNode({ kind: 'capability', slug: 'deploy', title: 'Deployment' });
+    await store.upsertEdge({ fromKind: 'source', fromId: manual.id, toKind: 'node', toId: topic.id, relation: 'documents' });
+    await store.upsertEdge({ fromKind: 'source', fromId: note.id, toKind: 'node', toId: capability.id, relation: 'documents' });
+
+    const map = renderKnowledgeMap({
+      sources: store.listSources(20),
+      nodes: store.listNodes(20),
+      edges: store.listEdges(),
+      issues: store.listIssues(20),
+    }, {
+      includeSources: true,
+      nodeKinds: ['topic', 'capability'],
+      sourceTypes: ['manual'],
+    });
+
+    expect(map.nodes.map((entry) => entry.id)).toContain(manual.id);
+    expect(map.nodes.map((entry) => entry.id)).not.toContain(note.id);
+    expect(map.nodes.map((entry) => entry.id)).toContain(topic.id);
+    expect(map.nodes.map((entry) => entry.id)).toContain(capability.id);
+    expect(map.facets?.sourceTypes.some((entry) => entry.value === 'manual' && entry.count === 1)).toBe(true);
+    expect(map.facets?.nodeKinds.some((entry) => entry.value === 'capability')).toBe(true);
+  });
 });
 
 function createStores(): {

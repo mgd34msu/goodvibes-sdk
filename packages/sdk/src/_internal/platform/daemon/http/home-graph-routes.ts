@@ -63,9 +63,12 @@ export class HomeGraphRoutes {
         const body = req.method === 'POST' ? await this.readOptionalBody(req) : {};
         const result = await this.context.homeGraphService.map({
           ...readSpaceFromUrl(url),
+          ...readMapFiltersFromUrl(url),
           ...body,
           limit: readNumber(body.limit) ?? readLimit(url, 500),
           includeSources: readBooleanValue(body.includeSources) ?? readBoolean(url, 'includeSources', true),
+          includeIssues: readBooleanValue(body.includeIssues) ?? readBoolean(url, 'includeIssues', false),
+          includeGenerated: readBooleanValue(body.includeGenerated) ?? readBoolean(url, 'includeGenerated', true),
         } satisfies HomeGraphMapInput);
         if (url.searchParams.get('format') === 'svg') {
           return new Response(result.svg, {
@@ -190,4 +193,49 @@ function readBooleanValue(value: unknown): boolean | undefined {
   if (typeof value === 'boolean') return value;
   if (typeof value !== 'string') return undefined;
   return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase());
+}
+
+function readMapFiltersFromUrl(url: URL): Partial<HomeGraphMapInput> {
+  const minConfidence = readNumber(url.searchParams.get('minConfidence'));
+  return {
+    ...(url.searchParams.get('query') ? { query: url.searchParams.get('query')! } : {}),
+    ...(minConfidence !== undefined ? { minConfidence } : {}),
+    recordKinds: readRecordKinds(url, 'recordKinds', 'recordKind'),
+    ids: readList(url, 'ids', 'id'),
+    linkedToIds: readList(url, 'linkedToIds', 'linkedToId'),
+    nodeKinds: readList(url, 'nodeKinds', 'nodeKind'),
+    sourceTypes: readList(url, 'sourceTypes', 'sourceType'),
+    sourceStatuses: readList(url, 'sourceStatuses', 'sourceStatus'),
+    nodeStatuses: readList(url, 'nodeStatuses', 'nodeStatus'),
+    issueCodes: readList(url, 'issueCodes', 'issueCode'),
+    issueStatuses: readList(url, 'issueStatuses', 'issueStatus'),
+    issueSeverities: readList(url, 'issueSeverities', 'issueSeverity'),
+    edgeRelations: readList(url, 'edgeRelations', 'edgeRelation'),
+    tags: readList(url, 'tags', 'tag'),
+    ha: {
+      objectKinds: readList(url, 'haObjectKinds', 'haObjectKind', 'objectKind'),
+      entityIds: readList(url, 'entityIds', 'entityId'),
+      deviceIds: readList(url, 'deviceIds', 'deviceId'),
+      areaIds: readList(url, 'areaIds', 'areaId'),
+      integrationIds: readList(url, 'integrationIds', 'integrationId'),
+      integrationDomains: readList(url, 'integrationDomains', 'integrationDomain'),
+      domains: readList(url, 'domains', 'domain'),
+      deviceClasses: readList(url, 'deviceClasses', 'deviceClass'),
+      labels: readList(url, 'labels', 'label'),
+    },
+  };
+}
+
+function readList(url: URL, ...names: readonly string[]): readonly string[] {
+  return names
+    .flatMap((name) => url.searchParams.getAll(name))
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function readRecordKinds(url: URL, ...names: readonly string[]): HomeGraphMapInput['recordKinds'] {
+  return readList(url, ...names).filter((value): value is 'source' | 'node' | 'issue' => (
+    value === 'source' || value === 'node' || value === 'issue'
+  ));
 }

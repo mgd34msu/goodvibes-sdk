@@ -93,6 +93,49 @@ describe('Home Graph object-scoped search', () => {
     expect(ask.answer.text).toContain('Magic Remote');
     expect(ask.answer.text).not.toContain('OpenWrt');
   });
+
+  test('does not answer object-scoped questions from garbled unrelated PDF text', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+      entities: [
+        { entityId: 'media_player.lg_webos_smart_tv', name: 'LG webOS Smart TV', deviceId: 'lg-tv', metadata: { domain: 'media_player', platform: 'webostv' } },
+      ],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = homeGraphMetadata(spaceId, 'house-1');
+    await store.upsertSource({
+      id: 'espresso-manual',
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'MANUAL_6420-010-01628_GAG_CLASSIC_PRO_USA_Rev_00.pdf',
+      canonicalUri: 'homegraph://house-1/espresso',
+      tags: ['homeassistant', 'home-graph', 'artifact'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: 'espresso-manual',
+      extractorId: 'pdf',
+      format: 'pdf',
+      summary: 'MANUAL_6420-010-01628_GAG_CLASSIC_PRO_USA_Rev_00.pdf: âÓÒó977 ç^Å‰zÇmÇì É¥NKºÚZjì†ÅjÒ(íÚD_EQ¥>ÅE',
+      sections: [],
+      links: [],
+      estimatedTokens: 200,
+      structure: { searchText: '%PDF-1.7 7 0 obj /Filter /FlateDecode stream âÓÒó977 ç^Å‰zÇmÇì É¥NKºÚZjì†ÅjÒ(íÚD_EQ¥>ÅE yEx¥µržSã‹irvus Æw÷ùçùy¼4°' },
+      metadata,
+    });
+
+    const ask = await service.ask({
+      installationId: 'house-1',
+      query: 'What features does the TV have?',
+    });
+
+    expect(ask.results.some((result) => result.id === 'espresso-manual')).toBe(false);
+    expect(ask.answer.text).not.toContain('GAG_CLASSIC_PRO');
+    expect(ask.answer.text).not.toContain('âÓÒ');
+  });
 });
 
 function createHomeGraphService(): {
