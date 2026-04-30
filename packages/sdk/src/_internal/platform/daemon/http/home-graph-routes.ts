@@ -32,12 +32,13 @@ export class HomeGraphRoutes {
 
   async handle(req: Request): Promise<Response | null> {
     const url = new URL(req.url);
-    if (!url.pathname.startsWith('/api/homeassistant/home-graph')) return null;
+    const pathname = normalizeHomeGraphPath(url.pathname);
+    if (!pathname.startsWith('/api/homeassistant/home-graph')) return null;
     try {
-      if (url.pathname === '/api/homeassistant/home-graph/status' && req.method === 'GET') {
+      if (pathname === '/api/homeassistant/home-graph/status' && req.method === 'GET') {
         return Response.json(await this.context.homeGraphService.status(readSpaceFromUrl(url)));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/issues' && req.method === 'GET') {
+      if (pathname === '/api/homeassistant/home-graph/issues' && req.method === 'GET') {
         return Response.json(await this.context.homeGraphService.listIssues({
           ...readSpaceFromUrl(url),
           status: url.searchParams.get('status') ?? undefined,
@@ -46,23 +47,25 @@ export class HomeGraphRoutes {
           limit: readLimit(url, 100),
         }));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/sources' && req.method === 'GET') {
+      if (pathname === '/api/homeassistant/home-graph/sources' && req.method === 'GET') {
         return Response.json(await this.context.homeGraphService.listSources({
           ...readSpaceFromUrl(url),
           limit: readLimit(url, 100),
         }));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/browse' && req.method === 'GET') {
+      if (pathname === '/api/homeassistant/home-graph/browse' && req.method === 'GET') {
         return Response.json(await this.context.homeGraphService.browse({
           ...readSpaceFromUrl(url),
           limit: readLimit(url, 250),
         }));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/map' && req.method === 'GET') {
+      if (pathname === '/api/homeassistant/home-graph/map' && (req.method === 'GET' || req.method === 'POST')) {
+        const body = req.method === 'POST' ? await this.readOptionalBody(req) : {};
         const result = await this.context.homeGraphService.map({
           ...readSpaceFromUrl(url),
-          limit: readLimit(url, 500),
-          includeSources: readBoolean(url, 'includeSources', true),
+          ...body,
+          limit: readNumber(body.limit) ?? readLimit(url, 500),
+          includeSources: readBooleanValue(body.includeSources) ?? readBoolean(url, 'includeSources', true),
         } satisfies HomeGraphMapInput);
         if (url.searchParams.get('format') === 'svg') {
           return new Response(result.svg, {
@@ -73,25 +76,25 @@ export class HomeGraphRoutes {
         }
         return Response.json(result);
       }
-      if (url.pathname === '/api/homeassistant/home-graph/export' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/export' && req.method === 'POST') {
         return Response.json(await this.context.homeGraphService.exportSpace(await this.readOptionalBody(req)));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/ask' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/ask' && req.method === 'POST') {
         return Response.json(await this.context.homeGraphService.ask(await this.readBody<HomeGraphAskInput>(req)));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/reindex' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/reindex' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.reindex(await this.readOptionalBody(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/sync' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/sync' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.syncSnapshot(await this.readBody<HomeGraphSnapshotInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/ingest/url' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/ingest/url' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.ingestUrl(await this.readBody<HomeGraphIngestUrlInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/ingest/note' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/ingest/note' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.ingestNote(await this.readBody<HomeGraphIngestNoteInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/ingest/artifact' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/ingest/artifact' && req.method === 'POST') {
         return await this.admin(req, async () => {
           if (isArtifactUploadRequest(req)) {
             const uploaded = await createArtifactFromUploadRequest(this.context.artifactStore, req);
@@ -104,25 +107,25 @@ export class HomeGraphRoutes {
           return Response.json(await this.context.homeGraphService.ingestArtifact(await this.readBody<HomeGraphIngestArtifactInput>(req)));
         });
       }
-      if (url.pathname === '/api/homeassistant/home-graph/link' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/link' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.linkKnowledge(await this.readBody<HomeGraphLinkInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/unlink' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/unlink' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.unlinkKnowledge(await this.readBody<HomeGraphLinkInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/device-passport' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/device-passport' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.refreshDevicePassport(await this.readBody<HomeGraphProjectionInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/room-page' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/room-page' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.generateRoomPage(await this.readBody<HomeGraphProjectionInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/packet' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/packet' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.generatePacket(await this.readBody<HomeGraphProjectionInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/facts/review' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/facts/review' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.reviewFact(await this.readBody<HomeGraphReviewInput>(req))));
       }
-      if (url.pathname === '/api/homeassistant/home-graph/import' && req.method === 'POST') {
+      if (pathname === '/api/homeassistant/home-graph/import' && req.method === 'POST') {
         return await this.admin(req, async () => Response.json(await this.context.homeGraphService.importSpace(await this.readBody<HomeGraphSpaceImportInput>(req))));
       }
       return Response.json({ error: 'Unknown Home Graph route' }, { status: 404 });
@@ -150,6 +153,10 @@ export class HomeGraphRoutes {
   }
 }
 
+function normalizeHomeGraphPath(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/g, '') : pathname;
+}
+
 type HomeGraphSpaceImportInput = {
   readonly installationId?: string;
   readonly knowledgeSpaceId?: string;
@@ -171,5 +178,16 @@ function readLimit(url: URL, fallback: number): number {
 function readBoolean(url: URL, key: string, fallback: boolean): boolean {
   const value = url.searchParams.get(key);
   if (value === null) return fallback;
+  return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase());
+}
+
+function readNumber(value: unknown): number | undefined {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : undefined;
+}
+
+function readBooleanValue(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return undefined;
   return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase());
 }
