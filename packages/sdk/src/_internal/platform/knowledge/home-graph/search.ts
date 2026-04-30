@@ -106,6 +106,37 @@ const SOURCE_EVIDENCE_TOKENS = new Set([
   'warranty',
 ]);
 
+const ANCHOR_INTENT_TOKENS = new Set([
+  ...SOURCE_EVIDENCE_TOKENS,
+  'function',
+  'functions',
+  'mode',
+  'modes',
+  'setup',
+  'install',
+  'configure',
+  'documentation',
+  'manual',
+]);
+
+const HOME_GRAPH_ANCHOR_KINDS = new Set([
+  'ha_home',
+  'ha_entity',
+  'ha_device',
+  'ha_area',
+  'ha_automation',
+  'ha_script',
+  'ha_scene',
+  'ha_label',
+  'ha_integration',
+  'ha_room',
+  'ha_device_passport',
+  'ha_maintenance_item',
+  'ha_troubleshooting_case',
+  'ha_purchase',
+  'ha_network_node',
+]);
+
 const INTEGRATION_QUERY_TOKENS = new Set(['automation', 'automations', 'homeassistant', 'integration', 'integrations', 'webostv']);
 
 export interface HomeGraphSearchState {
@@ -120,7 +151,7 @@ export function readHomeGraphSearchState(store: KnowledgeStore, spaceId: string)
   const sources = store.listSources(10_000).filter((source) => (
     belongsToSpace(source, spaceId) && !isGeneratedPageSource(source)
   ));
-  const nodes = store.listNodes(10_000).filter((node) => belongsToSpace(node, spaceId));
+  const nodes = store.listNodes(10_000).filter((node) => belongsToSpace(node, spaceId) && node.status !== 'stale');
   const sourceIds = new Set(sources.map((source) => source.id));
   const nodeIds = new Set(nodes.map((node) => node.id));
   const edges = store.listEdges().filter((edge) => (
@@ -152,8 +183,9 @@ export function scoreHomeGraphResults(
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
   const expandedTokens = expandTokens(tokens);
-  const anchors = selectAnchorNodes(tokens, nodes);
-  const sourceAnchors = selectSourceAnchors(tokens, anchors.map((anchor) => anchor.node));
+  const anchorTokens = selectAnchorQueryTokens(tokens);
+  const anchors = selectAnchorNodes(anchorTokens, nodes);
+  const sourceAnchors = selectSourceAnchors(anchorTokens, anchors.map((anchor) => anchor.node));
   const anchorIds = new Set(sourceAnchors.map((node) => node.id));
   const anchorIdentityTokens = collectAnchorIdentityTokens(sourceAnchors);
   const sourceLinks = buildSourceLinkIndex(edges);
@@ -371,7 +403,9 @@ function sourceAnchorIdentityScore(
 }
 
 function selectAnchorNodes(tokens: readonly string[], nodes: readonly KnowledgeNodeRecord[]): Array<{ readonly node: KnowledgeNodeRecord; readonly score: number }> {
+  if (tokens.length === 0) return [];
   return nodes.map((node) => {
+    if (!isHomeGraphAnchorNode(node)) return { node, score: 0 };
     const baseScore = scoreFields(tokens, nodeIdentityFields(node));
     const intentBoost = sourceAnchorIntentBoost(tokens, node);
     return {
@@ -382,6 +416,15 @@ function selectAnchorNodes(tokens: readonly string[], nodes: readonly KnowledgeN
     .filter((entry) => entry.score >= 10)
     .sort((a, b) => b.score - a.score || a.node.id.localeCompare(b.node.id))
     .slice(0, 12);
+}
+
+function selectAnchorQueryTokens(tokens: readonly string[]): string[] {
+  return tokens.filter((token) => !ANCHOR_INTENT_TOKENS.has(token));
+}
+
+function isHomeGraphAnchorNode(node: KnowledgeNodeRecord): boolean {
+  if (typeof node.metadata.semanticKind === 'string') return false;
+  return HOME_GRAPH_ANCHOR_KINDS.has(node.kind);
 }
 
 function selectSourceAnchors(tokens: readonly string[], nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {

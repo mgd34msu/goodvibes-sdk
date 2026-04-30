@@ -20,6 +20,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.6] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Tightened semantic knowledge/wiki evidence ranking so object-specific
+  questions distinguish subject terms from generic intent terms such as
+  "features", "supports", and "specs". Sources that only match generic words no
+  longer appear in answers for another device or object.
+- Home Graph ask no longer lets generated semantic pages or extracted fact
+  nodes become Home Assistant object anchors. A previously generated Kasa page,
+  appliance page, or broad feature fact cannot pull unrelated sources into a TV
+  or sensor answer.
+- Deterministic semantic enrichment is now upgradable. If a source was enriched
+  deterministically because no LLM was available or the broad reindex LLM
+  budget was exhausted, later ask/reindex calls can upgrade the matched source
+  with the provider-backed semantic LLM and stale the old deterministic facts.
+- Feature/spec answers now suppress deterministic manual boilerplate such as
+  "items may vary", "specifications may change", and safety/cable warnings
+  unless that boilerplate is the user's actual query intent.
+
+### Migration
+- none
+
+---
+
 ## [0.27.5] - 2026-04-30
 
 ### Breaking

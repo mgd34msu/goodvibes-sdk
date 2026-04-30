@@ -59,7 +59,9 @@ export async function enrichKnowledgeSource(
   const text = sourceSemanticText(source, extraction);
   const textHash = sourceSemanticHash(source, extraction);
   const existingSemantic = readRecord(source.metadata.semanticEnrichment);
-  if (!options.force && existingSemantic.textHash === textHash) {
+  const currentExtractor = readString(existingSemantic.extractor);
+  const shouldUpgradeDeterministic = Boolean(context.llm && existingSemantic.textHash === textHash && currentExtractor !== 'llm');
+  if (!options.force && existingSemantic.textHash === textHash && !shouldUpgradeDeterministic) {
     return emptyResult(source, true, 'semantic enrichment is current');
   }
   if (text.length < 40) {
@@ -331,7 +333,46 @@ async function persistSemanticExtraction(
   }
 
   const wikiPage = await persistWikiPage(store, source, semantic, spaceId, options.textHash);
+  await markPreviousSemanticNodesStale(store, source.id, spaceId, new Set([
+    ...entities.map((node) => node.id),
+    ...facts.map((node) => node.id),
+    ...gaps.map((node) => node.id),
+    ...(wikiPage ? [wikiPage.id] : []),
+  ]));
   return { source, skipped: false, extractor: semantic.extractor, facts, entities, gaps, ...(wikiPage ? { wikiPage } : {}) };
+}
+
+async function markPreviousSemanticNodesStale(
+  store: KnowledgeStore,
+  sourceId: string,
+  spaceId: string,
+  activeIds: ReadonlySet<string>,
+): Promise<void> {
+  const supersededAt = Date.now();
+  const semanticNodes = store.listNodes(10_000).filter((node) => (
+    node.sourceId === sourceId
+    && typeof node.metadata.semanticKind === 'string'
+    && node.status !== 'stale'
+    && !activeIds.has(node.id)
+  ));
+  for (const node of semanticNodes) {
+    await store.upsertNode({
+      id: node.id,
+      kind: node.kind,
+      slug: node.slug,
+      title: node.title,
+      summary: node.summary,
+      aliases: node.aliases,
+      status: 'stale',
+      confidence: node.confidence,
+      ...(node.sourceId ? { sourceId: node.sourceId } : {}),
+      metadata: {
+        ...node.metadata,
+        supersededAt,
+        supersededInSpaceId: spaceId,
+      },
+    });
+  }
 }
 
 async function persistWikiPage(

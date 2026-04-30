@@ -206,7 +206,10 @@ current LLM provider/model, with deterministic fact rendering as the fallback.
 Provider-backed semantic calls are bounded by SDK timeouts and abort signals,
 and broad reindex uses a small LLM budget before continuing deterministically,
 so Home Assistant panels should not add host-side shims to avoid hung provider
-requests.
+requests. If a source was previously enriched deterministically because no LLM
+was available or the LLM budget was exhausted, the SDK can upgrade that source
+during a later ask/reindex and supersede the old deterministic semantic
+facts/pages instead of returning both old and new interpretations.
 Current text, HTML, JSON, CSV/TSV, XML, YAML, DOCX, XLSX, PPTX, and PDF
 extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
@@ -257,6 +260,12 @@ Home Graph ask passes strict candidate ids into the shared semantic answer
 layer after object-scoped ranking. That keeps answer synthesis inside the
 matched Home Assistant object/source set and prevents unrelated manuals from
 appearing only because they contain generic feature/specification vocabulary.
+Generated semantic wiki pages and extracted fact nodes are not used as Home
+Assistant object anchors, so a generated Kasa page or generic "features" fact
+cannot make a TV query pull Kasa sources into the answer. Feature/spec answers
+also suppress deterministic manual boilerplate such as "items may vary",
+"specifications may change", and safety/cable warnings unless the user asked
+for that kind of warning or compatibility detail.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.
