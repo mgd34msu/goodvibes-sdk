@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
 import {
   createProviderBackedKnowledgeSemanticLlm,
+  createWebKnowledgeGapRepairer,
   HomeGraphService,
   KnowledgeSemanticService,
   homeAssistantKnowledgeSpaceId,
@@ -114,6 +115,9 @@ describe('semantic knowledge/wiki enrichment', () => {
         'The Magic Remote batteries may be low.',
         'Refer all servicing to qualified personnel and contact customer service for repair.',
         'Clean the TV with a dry cloth.',
+        'This remote uses infrared light and must be pointed toward the remote control sensor on the TV.',
+        'Use an extension cable that supports USB if the USB flash drive does not fit into your TV USB port.',
+        'Use a platform or cabinet that is strong and large enough to support the TV securely.',
         'The items supplied with your product may vary depending upon the model.',
         'Warning: do not use uncertified HDMI cables.',
         ].join(' '),
@@ -163,6 +167,9 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(factText).not.toContain('New features may be added');
     expect(factText).not.toContain('qualified personnel');
     expect(factText).not.toContain('dry cloth');
+    expect(factText).not.toContain('remote control sensor');
+    expect(factText).not.toContain('USB flash drive does not fit');
+    expect(factText).not.toContain('platform or cabinet');
   });
 
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
@@ -313,7 +320,185 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answerText).not.toContain('remote control sensor');
     expect(answerText).not.toContain('may not work properly');
     expect(answerText).not.toContain('setting to off');
+    expect(answerText).not.toContain('platform or cabinet');
     expect(answerText).not.toContain('▲');
+  });
+
+  test('feature answer synthesis strips provider-returned setup boilerplate', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store, { llm: new BoilerplateAnswerLlm() });
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'manual://lg-tv',
+      tags: ['manual', 'tv'],
+      status: 'indexed',
+    });
+    await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'test',
+      format: 'text',
+      structure: {
+        searchText: [
+          'The TV supports HDMI Ultra HD Deep Color with 4K at 100/120 Hz on ports 3 and 4.',
+          'The TV supports True HD, Dolby Digital, Dolby Digital Plus, and PCM HDMI audio formats.',
+          'The wireless module supports IEEE 802.11a/b/g/n/ac wireless LAN and Bluetooth.',
+          'Use an extension cable if the USB flash drive does not fit into your TV USB port.',
+          'New features may be added to this TV in the future.',
+          'Use a platform or cabinet that is strong and large enough to support the TV securely.',
+        ].join(' '),
+      },
+    });
+
+    const answer = await semantic.answer({
+      query: 'what features does the LG TV have?',
+      candidateSourceIds: [source.id],
+      strictCandidates: true,
+      includeSources: true,
+      includeConfidence: true,
+    });
+
+    expect(answer.answer.synthesized).toBe(true);
+    expect(answer.answer.text).toContain('HDMI Ultra HD Deep Color');
+    expect(answer.answer.text).toContain('wireless LAN');
+    expect(answer.answer.text).not.toContain('USB flash drive does not fit');
+    expect(answer.answer.text).not.toContain('New features may be added');
+    expect(answer.answer.text).not.toContain('platform or cabinet');
+  });
+
+  test('web gap repair ingests at least two distinct sources for answer gaps', async () => {
+    const ingested: Array<{ url: string; title?: string; tags?: readonly string[]; metadata?: Record<string, unknown> }> = [];
+    const repairer = createWebKnowledgeGapRepairer({
+      searchService: {
+        async search(request) {
+          return {
+            providerId: 'test-search',
+            providerLabel: 'Test Search',
+            query: request.query,
+            verbosity: 'snippets',
+            results: [
+              {
+                rank: 1,
+                url: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+                title: 'LG 86NANO90UNA specs',
+                snippet: 'LG 86NANO90UNA product specifications.',
+                domain: 'www.lg.com',
+                type: 'organic',
+                providerId: 'test-search',
+                metadata: {},
+              },
+              {
+                rank: 2,
+                url: 'https://www.displayspecifications.com/en/model/example',
+                title: 'LG 86NANO90UNA display specifications',
+                snippet: 'Display and input specifications for LG 86NANO90UNA.',
+                domain: 'www.displayspecifications.com',
+                type: 'organic',
+                providerId: 'test-search',
+                metadata: {},
+              },
+            ],
+            metadata: {},
+          };
+        },
+      },
+      ingestService: {
+        async ingestUrl(input) {
+          ingested.push(input);
+          return { source: { id: `source-${ingested.length}`, status: 'indexed' } };
+        },
+      },
+    });
+
+    const result = await repairer({
+      spaceId: 'homeassistant:house',
+      query: 'what features does the TV have?',
+      gaps: [{
+        id: 'gap-1',
+        kind: 'knowledge_gap',
+        slug: 'gap',
+        title: 'What are the full TV display, smart platform, audio, and port specifications?',
+        summary: 'The manual does not include the product spec sheet.',
+        aliases: [],
+        status: 'active',
+        confidence: 70,
+        metadata: { knowledgeSpaceId: 'homeassistant:house' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      sources: [{
+        id: 'manual-source',
+        connectorId: 'artifact',
+        sourceType: 'manual',
+        title: 'LG-86NANO90UNA-manual.pdf',
+        canonicalUri: 'file://manual.pdf',
+        tags: ['manual', 'tv'],
+        status: 'indexed',
+        metadata: { knowledgeSpaceId: 'homeassistant:house' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      linkedObjects: [{
+        id: 'tv-node',
+        kind: 'ha_device',
+        slug: 'tv',
+        title: 'LG webOS Smart TV',
+        aliases: [],
+        status: 'active',
+        confidence: 90,
+        metadata: { knowledgeSpaceId: 'homeassistant:house', manufacturer: 'LG', model: '86NANO90UNA' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      facts: [],
+    });
+
+    expect(result?.searched).toBe(true);
+    expect(result?.ingestedSourceIds).toEqual(['source-1', 'source-2']);
+    expect(ingested).toHaveLength(2);
+    expect(ingested[0]?.metadata?.sourceDiscovery).toBeDefined();
+    expect(ingested[0]?.tags).toContain('semantic-gap-repair');
+  });
+
+  test('semantic gap repair is idempotent once a repair source is linked', async () => {
+    const { store } = createStores();
+    const calls: unknown[] = [];
+    const semantic = new KnowledgeSemanticService(store, {
+      llm: new GapRepairAnswerLlm(),
+      gapRepairer: async (request) => {
+        calls.push(request);
+        return {
+          searched: true,
+          query: 'lg 86nano90una full specifications',
+          ingestedSourceIds: ['repair-source'],
+          skippedUrls: [],
+        };
+      },
+    });
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'manual://lg-tv-gap',
+      tags: ['manual', 'tv'],
+      status: 'indexed',
+    });
+    await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'test',
+      format: 'text',
+      structure: {
+        searchText: 'The LG TV supports Magic Remote MR20GA when the wireless module includes Bluetooth.',
+      },
+    });
+
+    await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
+    await waitFor(() => store.listEdges().some((edge) => edge.relation === 'repairs_gap'), 250);
+    await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
+    await waitFor(() => calls.length >= 1, 250);
+
+    expect(calls).toHaveLength(1);
   });
 
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
@@ -400,6 +585,36 @@ class FakeKnowledgeLlm implements KnowledgeSemanticLlm {
   }
 }
 
+class GapRepairAnswerLlm implements KnowledgeSemanticLlm {
+  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+    if (input.purpose !== 'knowledge-answer-synthesis') return null;
+    return {
+      answer: 'The manual only confirms Magic Remote Bluetooth compatibility.',
+      confidence: 45,
+      usedSourceIds: [],
+      usedNodeIds: [],
+      gaps: [{
+        question: 'What are the complete display, smart platform, audio, and port specifications?',
+        reason: 'The manual is not a complete product specification sheet.',
+        severity: 'info',
+      }],
+    };
+  }
+
+  async completeText(): Promise<string | null> {
+    return null;
+  }
+}
+
+async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error('Timed out waiting for condition.');
+}
+
 class OrderedHomeGraphAskLlm implements KnowledgeSemanticLlm {
   readonly calls: string[] = [];
 
@@ -434,6 +649,34 @@ class OrderedHomeGraphAskLlm implements KnowledgeSemanticLlm {
         title: 'Living Room TV knowledge page',
         markdown: '# Living Room TV\n\n- Supports Dolby Vision.\n',
       },
+    };
+  }
+
+  async completeText(): Promise<string | null> {
+    return null;
+  }
+}
+
+class BoilerplateAnswerLlm implements KnowledgeSemanticLlm {
+  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+    if (input.purpose !== 'knowledge-answer-synthesis') return null;
+    return {
+      answer: [
+        '- The TV supports HDMI Ultra HD Deep Color, including 4K at 100/120 Hz on ports 3 and 4.',
+        '- It supports True HD, Dolby Digital, Dolby Digital Plus, and PCM HDMI audio formats.',
+        '- It includes IEEE 802.11a/b/g/n/ac wireless LAN and Bluetooth support.',
+        '- Use an extension cable if the USB flash drive does not fit into your TV USB port.',
+        '- New features may be added to this TV in the future.',
+        '- Use a platform or cabinet that is strong and large enough to support the TV securely.',
+      ].join('\n'),
+      confidence: 84,
+      usedSourceIds: [],
+      usedNodeIds: [],
+      gaps: [{
+        question: 'What are the full display, smart platform, audio, and port specifications for this TV?',
+        reason: 'The manual is a safety/reference manual and does not include a complete product feature sheet.',
+        severity: 'info',
+      }],
     };
   }
 

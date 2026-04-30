@@ -17,6 +17,7 @@ import {
   KnowledgeStore,
   ProjectPlanningService,
   createProviderBackedKnowledgeSemanticLlm,
+  createWebKnowledgeGapRepairer,
   projectPlanningProjectIdFromPath,
 } from '../knowledge/index.js';
 import { MediaProviderRegistry, ensureBuiltinMediaProviders } from '../media/index.js';
@@ -433,6 +434,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     serviceRegistry,
     featureFlags,
   });
+  knowledgeSemanticService.setGapRepairer(createWebKnowledgeGapRepairer({
+    searchService: webSearchService,
+    ingestService: knowledgeService,
+  }));
   const mediaProviders = new MediaProviderRegistry();
   ensureBuiltinMediaProviders(mediaProviders, artifactStore, providerRegistry);
   const multimodalService = new MultimodalService(artifactStore, mediaProviders, voiceService, knowledgeService);

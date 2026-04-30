@@ -22,6 +22,7 @@ import {
   semanticHash,
   semanticMetadata,
   sourceSemanticText,
+  splitSentences,
   tokenizeSemanticQuery,
   uniqueStrings,
 } from './utils.js';
@@ -110,7 +111,11 @@ export async function answerKnowledgeQuery(
       .filter(isSemanticAnswerLinkedObject)
       .slice(0, 24);
   const gaps = await persistAnswerGaps(context.store, spaceId, input.query, llmAnswer?.gaps ?? []);
-  const text = llmAnswer?.answer?.trim() || renderFallbackAnswer(input.query, mode, evidence);
+  const featureIntent = hasFeatureIntentForQuery(input.query);
+  const text = cleanSynthesizedAnswer(
+    llmAnswer?.answer?.trim() || renderFallbackAnswer(input.query, mode, evidence),
+    featureIntent,
+  );
   return {
     ok: true,
     spaceId,
@@ -239,7 +244,8 @@ async function synthesizeAnswer(
       'You answer questions from a GoodVibes self-improving knowledge wiki.',
       'Use only the supplied evidence. Synthesize the answer for the user intent rather than dumping snippets.',
       'If evidence is insufficient, say what is missing. Prefer concrete features, specs, procedures, and relationships.',
-      'For feature or specification questions, ignore manual boilerplate about accessories, cable recommendations, button maps, batteries, cleaning, servicing, safety, and future product changes unless the user asks about those topics.',
+      'For feature or specification questions, ignore manual boilerplate about accessories, cable recommendations, USB/HDMI physical-fit guidance, button maps, remote aiming instructions, batteries, cleaning, servicing, safety, furniture, wall mounting, and future product changes unless the user asks about those topics.',
+      'Do not mention future features, specifications changing without notice, cable fit, USB extension cables, remote sensor aiming, service personnel, or child-safety/furniture/platform guidance in a feature/spec answer.',
       'Return only JSON with answer, confidence, usedSourceIds, usedNodeIds, and optional gaps.',
     ].join(' '),
     prompt: JSON.stringify({
@@ -353,6 +359,11 @@ function hasFeatureIntent(intent: ReadonlySet<string>): boolean {
   return intent.has('feature') || intent.has('capability') || intent.has('specification') || intent.has('compatibility');
 }
 
+function hasFeatureIntentForQuery(query: string): boolean {
+  const intent = factIntent(tokenizeSemanticQuery(query));
+  return Boolean(intent && hasFeatureIntent(intent));
+}
+
 function compareFactQuality(left: KnowledgeNodeRecord, right: KnowledgeNodeRecord): number {
   return factQuality(right) - factQuality(left) || left.title.localeCompare(right.title);
 }
@@ -462,17 +473,40 @@ function selectEvidenceExcerpt(
 
 function evidenceWindows(text: string, tokens: readonly string[]): string[] {
   const normalized = normalizeWhitespace(text);
+  const sentences = splitSentences(normalized, 420);
+  const sentenceMatches = sentences.filter((sentence) => scoreSemanticText(sentence, tokens) > 0);
+  if (sentenceMatches.length > 0) return uniqueStrings(sentenceMatches).slice(0, 12);
   const lower = normalized.toLowerCase();
   const windows: string[] = [];
   for (const token of tokens) {
     if (token.length < 3) continue;
     const index = lower.indexOf(token);
     if (index < 0) continue;
-    const start = Math.max(0, index - 220);
-    const end = Math.min(normalized.length, index + 620);
-    windows.push(`${start > 0 ? '...' : ''}${normalized.slice(start, end)}${end < normalized.length ? '...' : ''}`);
+    const start = Math.max(0, normalized.lastIndexOf('.', index - 1) + 1, index - 160);
+    const nextPeriod = normalized.indexOf('.', index + token.length);
+    const end = nextPeriod >= 0 ? Math.min(normalized.length, nextPeriod + 1) : Math.min(normalized.length, index + 360);
+    windows.push(`${start > 0 ? '...' : ''}${normalized.slice(start, end).trim()}${end < normalized.length ? '...' : ''}`);
   }
   return uniqueStrings(windows);
+}
+
+function cleanSynthesizedAnswer(text: string, featureIntent: boolean): string {
+  if (!featureIntent) return text;
+  const blocks = text.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+  const cleanedBlocks = blocks.map((block) => {
+    const lines = block.split(/\n/).map((line) => line.trim()).filter(Boolean);
+    const kept = lines.filter((line) => !isLowValueFeatureOrSpecText(line));
+    if (kept.length > 0 && kept.length < lines.length) return kept.join('\n');
+    if (lines.length > 1) return kept.join('\n');
+    const sentences = splitSentences(block, 600);
+    const keptSentences = sentences.filter((sentence) => !isLowValueFeatureOrSpecText(sentence));
+    return keptSentences.length > 0 && keptSentences.length < sentences.length
+      ? keptSentences.join(' ')
+      : block;
+  }).filter(Boolean);
+  return cleanedBlocks.length > 0
+    ? cleanedBlocks.join('\n\n')
+    : 'The available evidence did not contain source-backed feature or specification details after filtering manual boilerplate.';
 }
 
 function expandQueryTokens(tokens: readonly string[]): string[] {

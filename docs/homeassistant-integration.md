@@ -277,12 +277,24 @@ optional accessory/setup fragments, remote infrared/sensor instructions, generic
 "may not work properly" setup fragments, generic service/repair boilerplate, and
 safety/cable warnings unless the user asked for that kind of warning or
 compatibility detail. Truncated deterministic fragments are dropped instead of
-presented as specifications. Home Graph answer synthesis runs before background
-semantic enrichment so single-concurrency provider wrappers answer the user
-before refreshing source semantics. Generated device passports and room pages apply
-the same fact-quality filter so living pages focus on useful device
-capabilities, specifications, actionable maintenance, troubleshooting, and
-source-backed notes rather than generic handling/safety fragments from manuals.
+presented as specifications. Provider-returned answer text is also post-filtered
+for those low-value feature/spec fragments, so a synthesis model cannot
+reintroduce boilerplate that the evidence filter already removed. Home Graph
+answer synthesis runs before background semantic enrichment so
+single-concurrency provider wrappers answer the user before refreshing source
+semantics. Generated device passports and room pages apply the same fact-quality
+filter so living pages focus on useful device capabilities, specifications,
+actionable maintenance, troubleshooting, and source-backed notes rather than
+generic handling/safety fragments from manuals.
+
+When Home Graph ask can identify the object and source but also finds missing
+knowledge gaps, the shared semantic gap-repair layer can search the web in the
+background. It requires at least two distinct external source domains, ingests
+accepted URLs into the same Home Assistant knowledge space, and links them to
+the gap with `repairs_gap` edges. This is source discovery for future answers,
+not unsupported inference in the current response. Clients can call reindex or
+ask again later to use the newly indexed sources once extraction/enrichment has
+finished.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

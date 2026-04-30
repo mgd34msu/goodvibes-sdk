@@ -51,6 +51,10 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(fasten|screws?|stand|tip over|overturn|fall over|transporting|move the tv|moving the tv|oils?|lubricants?|cleaning cloth|dry cloth|power cord|electric shock|fire hazard|near water|ventilation|antenna grounding|qualified personnel|qualified service personnel|service personnel|customer service|servicing|repair is required|refer all servicing)\b/.test(lower)) {
     return true;
   }
+  if (/\b(platform|cabinet|furniture|supporting furniture|television placement|child safety|proper television placement|wall mount|mounting bracket|stand hole)\b/.test(lower)
+    && /\b(support|supports|safe|safely|recommended|install|installation|place|placement|mount|mounting)\b/.test(lower)) {
+    return true;
+  }
   if (/\b(infrared light|remote control sensor|point (the )?(magic )?remote|aim (the )?(magic )?remote)\b/.test(lower)) {
     return true;
   }
@@ -63,7 +67,7 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\bbatter(y|ies)\b/.test(lower) && /\b(remote|magic remote|button)\b/.test(lower)) {
     return true;
   }
-  if (/\b(bezel|less than \d+(?:\.\d+)?\s*(mm|cm|inches?)|does not fit|will not fit|fit your tv'?s usb port|usb port may not fit)\b/.test(lower)) {
+  if (/\b(bezel|less than \d+(?:\.\d+)?\s*(mm|cm|inches?)|does not fit|will not fit|fit your tv'?s usb port|usb port may not fit|usb flash drive does not fit|usb cable does not fit)\b/.test(lower)) {
     return true;
   }
   if (/\b(warning|caution|risk|hazard|do not|never)\b/.test(lower) && !/\b(feature|supports?|hdmi|usb|hdr|remote|bluetooth)\b/.test(lower)) {
@@ -82,7 +86,7 @@ function isTruncatedManualFragment(value: string): boolean {
 }
 
 export function hasConcreteFeatureSignal(text: string): boolean {
-  return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation)\b/.test(text.toLowerCase());
+  return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|wireless lan|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation|atsc|ntsc|qam|tuner|broadcast|rs-?232c|external control)\b/.test(text.toLowerCase());
 }
 
 export function isUsefulHomeGraphPageFact(fact: KnowledgeNodeRecord): boolean {

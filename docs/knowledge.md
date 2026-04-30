@@ -154,6 +154,17 @@ extraction artifacts such as fact nodes, generated wiki pages, and knowledge
 gaps stay in the `facts`/`gaps` fields instead of being reported as linked
 objects.
 
+When an answer still has explicit gaps for a concrete subject, the daemon can
+run source-backed gap repair in the background. The repair path builds a narrow
+query from the linked object, source titles, and gap text; searches the web
+through the configured GoodVibes web-search service; requires at least two
+distinct external source domains; ingests accepted URLs into the same
+`knowledgeSpaceId`; and links those new sources to the gap with `repairs_gap`
+edges. Gap repair does not change the current answer or invent facts from
+search snippets. It gives the normal ingest, extraction, semantic enrichment,
+review, and future ask paths more source evidence to work with. Existing
+`repairs_gap` edges suppress repeated searches for the same gap.
+
 ## Review Pathways
 
 The knowledge/wiki feature is designed for frequent LLM and user review. There
