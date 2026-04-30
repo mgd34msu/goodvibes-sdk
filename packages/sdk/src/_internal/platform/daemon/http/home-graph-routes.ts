@@ -53,6 +53,13 @@ export class HomeGraphRoutes {
           limit: readLimit(url, 100),
         }));
       }
+      if (pathname === '/api/homeassistant/home-graph/pages' && req.method === 'GET') {
+        return Response.json(await this.context.homeGraphService.listPages({
+          ...readSpaceFromUrl(url),
+          limit: readLimit(url, 100),
+          includeMarkdown: readBoolean(url, 'includeMarkdown', true),
+        }));
+      }
       if (pathname === '/api/homeassistant/home-graph/browse' && req.method === 'GET') {
         return Response.json(await this.context.homeGraphService.browse({
           ...readSpaceFromUrl(url),

@@ -25,6 +25,7 @@ export type {
   HomeGraphObjectInput,
   HomeGraphObjectKind,
   HomeGraphPageAutomationOptions,
+  HomeGraphPageListResult,
   HomeGraphProjectionInput,
   HomeGraphProjectionResult,
   HomeGraphReindexResult,

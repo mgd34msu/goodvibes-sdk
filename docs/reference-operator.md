@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `254`
+- Methods: `255`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -28671,6 +28671,89 @@ Return a visual Home Graph node/edge map with deterministic layout data and SVG.
 }
 ```
 
+#### `homeassistant.homeGraph.pages.list`
+
+Return generated Home Graph wiki pages with optional markdown content.
+
+- Title: `List Home Graph Pages`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/homeassistant/home-graph/pages`
+- Scopes: `read:knowledge`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "installationId": {
+      "type": "string"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "includeMarkdown": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "spaceId": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {}
+        ]
+      }
+    }
+  },
+  "required": [
+    "ok",
+    "spaceId",
+    "pages"
+  ],
+  "additionalProperties": true
+}
+```
+
 #### `homeassistant.homeGraph.refreshDevicePassport`
 
 Generate or refresh the living passport page for one Home Assistant device.
@@ -29167,6 +29250,57 @@ Re-extract already-stored Home Graph artifacts with missing or weak extraction r
             "additionalProperties": {}
           },
           {}
+        ]
+      }
+    },
+    "linked": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {}
+        ]
+      }
+    },
+    "generated": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
         ]
       }
     }

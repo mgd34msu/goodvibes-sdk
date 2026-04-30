@@ -746,6 +746,8 @@ export const HOME_GRAPH_REINDEX_OUTPUT_SCHEMA = objectSchema({
   failed: NUMBER_SCHEMA,
   sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
   failures: GENERIC_LIST_SCHEMA,
+  linked: GENERIC_LIST_SCHEMA,
+  generated: JSON_RECORD_SCHEMA,
 }, ['ok', 'spaceId', 'scanned', 'reparsed', 'skipped', 'failed', 'sources', 'failures'], { additionalProperties: true });
 
 export const HOME_GRAPH_PROJECTION_OUTPUT_SCHEMA = objectSchema({
@@ -769,6 +771,12 @@ export const HOME_GRAPH_SOURCES_OUTPUT_SCHEMA = objectSchema({
   spaceId: STRING_SCHEMA,
   sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
 }, ['ok', 'spaceId', 'sources'], { additionalProperties: true });
+
+export const HOME_GRAPH_PAGES_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  pages: GENERIC_LIST_SCHEMA,
+}, ['ok', 'spaceId', 'pages'], { additionalProperties: true });
 
 export const HOME_GRAPH_BROWSE_OUTPUT_SCHEMA = objectSchema({
   ok: BOOLEAN_SCHEMA,

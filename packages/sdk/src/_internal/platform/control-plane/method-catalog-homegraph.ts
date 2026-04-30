@@ -22,6 +22,7 @@ import {
   HOME_GRAPH_ISSUES_OUTPUT_SCHEMA,
   HOME_GRAPH_LINK_OUTPUT_SCHEMA,
   HOME_GRAPH_MAP_OUTPUT_SCHEMA,
+  HOME_GRAPH_PAGES_OUTPUT_SCHEMA,
   HOME_GRAPH_PROJECTION_OUTPUT_SCHEMA,
   HOME_GRAPH_REINDEX_OUTPUT_SCHEMA,
   HOME_GRAPH_REVIEW_OUTPUT_SCHEMA,
@@ -238,6 +239,15 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     path: '/api/homeassistant/home-graph/sources',
     inputSchema: SPACE_QUERY_SCHEMA,
     outputSchema: HOME_GRAPH_SOURCES_OUTPUT_SCHEMA,
+  }),
+  homeGraphDescriptor({
+    id: 'homeassistant.homeGraph.pages.list',
+    title: 'List Home Graph Pages',
+    description: 'Return generated Home Graph wiki pages with optional markdown content.',
+    method: 'GET',
+    path: '/api/homeassistant/home-graph/pages',
+    inputSchema: objectSchema({ ...SPACE_QUERY_PROPS, includeMarkdown: BOOLEAN_SCHEMA }),
+    outputSchema: HOME_GRAPH_PAGES_OUTPUT_SCHEMA,
   }),
   homeGraphDescriptor({
     id: 'homeassistant.homeGraph.browse',

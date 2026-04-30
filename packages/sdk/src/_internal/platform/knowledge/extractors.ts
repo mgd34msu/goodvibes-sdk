@@ -3,6 +3,7 @@ import { extname } from 'node:path';
 import type { ArtifactDescriptor, ArtifactRecord } from '../artifacts/types.js';
 import { guessMimeType } from '../artifacts/types.js';
 import { extractReadableHtml } from './html-readability.js';
+import { extractPdf } from './pdf-extractor.js';
 import type { KnowledgeExtractionFormat } from './types.js';
 
 const MAX_STRUCTURE_SEARCH_TEXT_CHARS = 128 * 1024;
@@ -346,122 +347,6 @@ function extractYaml(buffer: Buffer): KnowledgeExtractionResult {
     estimatedTokens: estimateTokens(text),
     structure: { keys, ...searchTextStructure(text) },
     metadata: {},
-  };
-}
-
-async function extractPdf(buffer: Buffer): Promise<KnowledgeExtractionResult> {
-  const parsed = await extractPdfWithPdfJs(buffer);
-  if (parsed) return parsed;
-  return extractPdfRawStreams(buffer);
-}
-
-async function extractPdfWithPdfJs(buffer: Buffer): Promise<KnowledgeExtractionResult | undefined> {
-  try {
-    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    const loadingTask = pdfjs.getDocument({
-      data: new Uint8Array(buffer),
-      useSystemFonts: true,
-    });
-    const document = await loadingTask.promise;
-    const pageCount = document.numPages;
-    const pageTexts: string[] = [];
-    for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
-      const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const lines = textContentItemsToLines(content.items);
-      if (lines.length > 0) pageTexts.push(lines.join('\n'));
-      page.cleanup();
-    }
-    await document.destroy();
-    const text = cleanText(pageTexts.join('\n\n'));
-    if (!text) return undefined;
-    const searchText = searchTextPayload(text);
-    return {
-      extractorId: 'pdfjs',
-      format: 'pdf',
-      title: firstNonEmptyLine(text) ?? 'PDF document',
-      summary: summarizeText(text) ?? 'PDF document.',
-      excerpt: excerptText(text),
-      sections: uniqueStrings(text.split(/\n+/), 24),
-      links: uniqueStrings(Array.from(text.matchAll(/\bhttps?:\/\/[^\s)]+/g), (match) => match[0]), 50),
-      estimatedTokens: estimateTokens(text),
-      structure: {
-        pageCount,
-        extractedTextChars: text.length,
-        ...(searchText ? { searchText } : {}),
-      },
-      metadata: {
-        limitations: ['PDF text extraction does not perform OCR for scanned images.'],
-      },
-    };
-  } catch {
-    return undefined;
-  }
-}
-
-function textContentItemsToLines(items: readonly unknown[]): string[] {
-  const lines: string[] = [];
-  let current = '';
-  for (const item of items) {
-    const record = unknownRecord(item);
-    const text = typeof record.str === 'string' ? cleanText(record.str) : '';
-    if (text) current = current ? `${current} ${text}` : text;
-    if (record.hasEOL === true && current) {
-      lines.push(current);
-      current = '';
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
-
-function unknownRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? value as Record<string, unknown> : {};
-}
-
-function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult {
-  const body = buffer.toString('latin1');
-  const texts: string[] = [];
-  const streamRe = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
-  let match: RegExpExecArray | null;
-  while ((match = streamRe.exec(body)) !== null) {
-    const chunk = match[1];
-    const parenRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g;
-    let textMatch: RegExpExecArray | null;
-    while ((textMatch = parenRe.exec(chunk)) !== null) {
-      const text = cleanText(
-        textMatch[1]
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '\r')
-          .replace(/\\t/g, '\t')
-          .replace(/\\\\/g, '\\')
-          .replace(/\\\(/g, '(')
-          .replace(/\\\)/g, ')'),
-      );
-      if (text.length > 1) texts.push(text);
-    }
-  }
-  const combined = uniqueStrings(texts, 64).join('\n');
-  const searchable = uniqueStrings(texts, 512).join('\n');
-  const searchText = searchTextPayload(searchable);
-  return {
-    extractorId: 'pdf',
-    format: 'pdf',
-    title: firstNonEmptyLine(combined) ?? 'PDF document',
-    summary: summarizeText(combined) ?? 'PDF extraction produced limited text; OCR is not used in-core.',
-    excerpt: excerptText(combined),
-    sections: uniqueStrings(combined.split(/\n+/), 8),
-    links: uniqueStrings(Array.from(combined.matchAll(/\bhttps?:\/\/[^\s)]+/g), (match) => match[0]), 50),
-    estimatedTokens: estimateTokens(combined),
-    structure: {
-      extractedStringCount: texts.length,
-      ...(searchText ? { searchText } : {}),
-    },
-    metadata: {
-      limitations: texts.length === 0
-        ? ['No readable text streams were found. Complex PDFs need OCR or a dedicated provider.']
-        : ['PDF extraction is best-effort and does not use OCR.'],
-    },
   };
 }
 

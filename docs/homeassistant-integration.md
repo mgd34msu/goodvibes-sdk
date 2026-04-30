@@ -95,6 +95,7 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/device-passport` | Refresh and materialize a device passport page. |
 | `POST /api/homeassistant/home-graph/room-page` | Generate a room/area page as markdown artifact. |
 | `POST /api/homeassistant/home-graph/packet` | Generate guest, sitter, emergency, contractor, network, or custom packets. |
+| `GET /api/homeassistant/home-graph/pages` | List generated Home Graph wiki pages with markdown content for previews/editors. |
 | `GET /api/homeassistant/home-graph/issues` | List Home Graph data-quality/review issues. |
 | `POST /api/homeassistant/home-graph/facts/review` | Accept, reject, resolve, edit, or forget a graph issue/source/node. |
 | `GET /api/homeassistant/home-graph/sources` | Browse source inventory and provenance for the HA space. |
@@ -142,16 +143,22 @@ and a stable generated-page source. For each active room/area, it materializes a
 room page. This is built on the same generated-projection primitive used by the
 base knowledge/wiki system, so generated Home Graph pages are stable sources
 with durable markdown artifacts instead of temporary one-off files. Generated
-page sources are marked with
+page markdown includes Home Assistant identity, exposed entities, linked source
+evidence, quality issues, and open questions. Linked manuals and other sources
+contribute bounded extracted snippets, so device passport pages act like real
+wiki pages rather than source inventory cards. Generated page sources are marked with
 `metadata.homeGraphGeneratedPage: true`, `metadata.projectionKind`, and
 `metadata.pageEditable: true`; the source id stays stable across regenerations
 while the artifact id points at the latest rendered markdown. If the rendered
 markdown is unchanged, the SDK reuses the existing generated artifact instead of
 creating a duplicate on every snapshot sync. Generated markdown artifacts are
-stored durably because they back living wiki pages. Clients can let this run
-automatically, call the explicit device/room/packet endpoints to direct
-generation, or pass `pageAutomation` to snapshot sync to disable or limit
-automatic work:
+stored durably because they back living wiki pages. Clients can retrieve the
+current generated page list and markdown through
+`GET /api/homeassistant/home-graph/pages`; pass `includeMarkdown=false` when a
+panel needs only the page index. Clients can let page generation run
+automatically, call the explicit device/room/packet endpoints to direct or
+refresh generation, or pass `pageAutomation` to snapshot sync to disable or
+limit automatic work:
 
 ```json
 {
@@ -192,7 +199,10 @@ by source id and scores bounded fields, capped extraction sections, and
 `structure.searchText` when present. Current text, HTML, JSON, CSV/TSV, XML,
 YAML, DOCX, XLSX, PPTX, and PDF extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
-fallback only when the dedicated parser cannot load the file.
+fallback only when the dedicated parser cannot load the file. The raw fallback
+inflates Flate-compressed streams before reading literal strings and refuses to
+persist binary-like stream data as `searchText`, summaries, sections, or page
+content.
 
 Ask excerpt selection scans bounded windows throughout the stored searchable
 text, so a query can match a feature/spec/reset section that appears later in a
@@ -206,8 +216,13 @@ extraction data, the SDK re-extracts the already-stored artifact and saves the
 new extraction record before ranking the answer. Later questions reuse that
 stored extraction instead of parsing the manual on every request. Clients that
 want to repair the whole Home Assistant knowledge space immediately can call
-`POST /api/homeassistant/home-graph/reindex`; the response reports `scanned`,
-`reparsed`, `skipped`, `failed`, repaired `sources`, and per-source `failures`.
+`POST /api/homeassistant/home-graph/reindex`. Reindex reparses weak stored
+artifacts, auto-links matching manuals and documents to Home Assistant devices
+or entities when model/entity/source identity is strong enough, and regenerates
+living pages when repaired or newly linked evidence changes the wiki. The
+response reports `scanned`, `reparsed`, `skipped`, `failed`, repaired
+`sources`, auto-link `linked` summaries, regenerated page `generated` counts,
+and per-source `failures`.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
@@ -350,6 +365,7 @@ Home Graph operator methods mirror the HTTP routes:
 - `homeassistant.homeGraph.listHomeGraphIssues`
 - `homeassistant.homeGraph.reviewHomeGraphFact`
 - `homeassistant.homeGraph.map`
+- `homeassistant.homeGraph.pages.list`
 
 Additional browse/export methods are available for source inventory and future
 knowledge UIs: `homeassistant.homeGraph.sources.list`,
