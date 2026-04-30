@@ -11,6 +11,7 @@ import type {
 
 export interface KnowledgeSemanticServiceOptions {
   readonly llm?: KnowledgeSemanticLlm | null;
+  readonly maxLlmSourcesPerReindex?: number;
 }
 
 export class KnowledgeSemanticService {
@@ -58,13 +59,17 @@ export class KnowledgeSemanticService {
     const sources = this.store.listSources(10_000)
       .filter((source) => !allowed || allowed.has(source.id))
       .slice(0, Math.max(1, input.limit ?? 10_000));
+    const maxLlmSources = Math.max(0, this.options.maxLlmSourcesPerReindex ?? 3);
+    let llmAttempts = 0;
     let enriched = 0;
     let skipped = 0;
     let failed = 0;
     const errors: { sourceId: string; error: string }[] = [];
     for (const source of sources) {
       try {
-        const result = await this.enrichSource(source.id, input);
+        const llm = this.options.llm && llmAttempts < maxLlmSources ? this.options.llm : null;
+        if (llm) llmAttempts += 1;
+        const result = await enrichKnowledgeSource({ store: this.store, llm }, source, input);
         if (result?.skipped) skipped += 1;
         else if (result) enriched += 1;
       } catch (error) {

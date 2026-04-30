@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
 import {
+  createProviderBackedKnowledgeSemanticLlm,
   HomeGraphService,
   KnowledgeSemanticService,
   homeAssistantKnowledgeSpaceId,
@@ -84,6 +85,57 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.text).toContain('local control mode');
   });
 
+  test('strict candidate answers exclude unrelated sources and off-intent facts', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store);
+    const tv = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG TV manual',
+      canonicalUri: 'manual://tv',
+      tags: ['manual', 'tv'],
+      status: 'indexed',
+    });
+    await store.upsertExtraction({
+      sourceId: tv.id,
+      extractorId: 'test',
+      format: 'text',
+      structure: {
+        searchText: 'The TV supports Dolby Vision. Warning: do not use uncertified HDMI cables.',
+      },
+    });
+    const plug = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'Kasa plug manual',
+      canonicalUri: 'manual://plug',
+      tags: ['manual', 'plug'],
+      status: 'indexed',
+    });
+    await store.upsertExtraction({
+      sourceId: plug.id,
+      extractorId: 'test',
+      format: 'text',
+      structure: {
+        searchText: 'The smart plug features energy monitoring and scheduling.',
+      },
+    });
+    await semantic.reindex({ force: true });
+
+    const answer = await semantic.answer({
+      query: 'what features does the TV have?',
+      candidateSourceIds: [tv.id],
+      strictCandidates: true,
+      includeSources: true,
+    });
+
+    expect(answer.answer.sources.map((source) => source.id)).toEqual([tv.id]);
+    expect(answer.answer.text).toContain('Dolby Vision');
+    expect(answer.answer.text).not.toContain('Kasa');
+    expect(answer.answer.text).not.toContain('uncertified HDMI cables');
+    expect(answer.answer.facts.every((fact) => fact.sourceId === tv.id)).toBe(true);
+  });
+
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
@@ -115,6 +167,40 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.sources.some((source) => source.title === 'Living Room TV manual')).toBe(true);
     expect(page.markdown).toContain('Extracted Device Facts');
     expect(page.markdown).toContain('HDMI inputs');
+  });
+
+  test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
+    let aborted = false;
+    const semanticLlm = createProviderBackedKnowledgeSemanticLlm({
+      getCurrentModel: () => ({ id: 'model', provider: 'test' }),
+      getForModel: () => ({
+        name: 'test',
+        models: ['model'],
+        chat: ({ signal }: { readonly signal?: AbortSignal }) => new Promise((resolve) => {
+          signal?.addEventListener('abort', () => {
+            aborted = true;
+            resolve({
+              content: '',
+              toolCalls: [],
+              usage: { inputTokens: 0, outputTokens: 0 },
+              stopReason: 'error',
+            });
+          }, { once: true });
+        }),
+      }),
+    } as never, { timeoutMs: 25 });
+
+    const startedAt = Date.now();
+    const result = await semanticLlm.completeText({
+      purpose: 'test-timeout',
+      systemPrompt: 'test',
+      prompt: 'test',
+      timeoutMs: 25,
+    });
+
+    expect(result).toBeNull();
+    expect(aborted).toBe(true);
+    expect(Date.now() - startedAt).toBeLessThan(3_000);
   });
 });
 

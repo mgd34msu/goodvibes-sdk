@@ -106,14 +106,19 @@ provider/model. If no provider is available or a provider call fails, the SDK
 falls back to deterministic extraction so ingest/reindex still produces
 source-grounded facts, pages, and gaps. LLM output is accepted only as JSON and
 is treated as an interpretation of stored evidence, not as a replacement for
-the source artifact or extraction record.
+the source artifact or extraction record. Provider-backed semantic calls are
+bounded: the SDK serializes semantic LLM requests by default, passes abort
+signals into provider calls, and treats timeouts as a deterministic fallback
+rather than letting reindex or ask hang indefinitely.
 
 Semantic enrichment runs from the shared knowledge ingest path, can be refreshed
 with the `knowledge-semantic-enrichment` job, and is also run by
 `KnowledgeService.reindex()`. Enrichment is hash-aware: if the source and
 extraction have not changed, the SDK skips the source instead of reprocessing it
-on every run. Existing uploads can therefore be repaired and enriched by
-reindexing; users do not need to reupload documents.
+on every run. Broad reindex uses a small provider-backed LLM budget and then
+continues deterministically, so a large knowledge space can refresh without
+opening unbounded provider requests. Existing uploads can therefore be repaired
+and enriched by reindexing; users do not need to reupload documents.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
@@ -123,6 +128,10 @@ available. Responses include answer text, confidence, sources, linked objects,
 facts, gaps, and ranked search results. This is the generic layer used by Home
 Graph and future knowledge spaces, so clients should not implement their own
 snippet-to-answer logic.
+Clients that already performed object-scoped retrieval can pass
+`candidateSourceIds`, `candidateNodeIds`, and `strictCandidates: true` so answer
+synthesis stays inside that candidate set instead of re-scanning unrelated
+sources in the same knowledge space.
 
 ## Review Pathways
 
@@ -207,7 +216,10 @@ keyword hits. The matched sources are semantically enriched into durable facts
 and pages when needed, and the answer is synthesized from that evidence instead
 of returning raw snippets. The response includes answer text, sources, linked HA
 object references, extracted facts, and gaps when the graph cannot answer the
-question.
+question. Home Graph passes strict semantic answer candidates after its
+object-scoped search, so a question about one device cannot pull in another
+device's manual only because both manuals contain generic words such as
+"features" or "supports".
 Source-evidence questions such as device features, manuals, specs, reset steps,
 batteries, and warranties require useful source text; low-information
 extraction placeholders and unrelated integration documentation are not treated

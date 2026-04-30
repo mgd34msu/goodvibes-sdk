@@ -20,6 +20,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.5] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- Added strict candidate controls to `knowledge.ask` so callers that already
+  performed scoped retrieval can keep answer synthesis inside explicit source
+  and node candidates.
+
+### Fixed
+- Provider-backed semantic knowledge/wiki calls now use SDK-owned timeout,
+  abort, and concurrency controls. Broad semantic reindex attempts a bounded
+  number of LLM enrichments and then continues deterministically instead of
+  letting provider sockets stall the daemon.
+- Home Graph ask now passes strict semantic candidates after object-scoped
+  search, preventing unrelated manuals from appearing in answers only because
+  they contain generic feature/spec vocabulary.
+- Deterministic semantic answers now filter facts by query intent, so feature
+  questions prefer features, capabilities, specifications, compatibility, and
+  configuration facts instead of warning/procedure fragments.
+
+### Migration
+- TUI and Home Assistant clients can remove host-side semantic LLM safety
+  shims once they update to this version. Clients should continue rendering the
+  SDK answer fields and should not locally re-rank Home Graph sources.
+
+---
+
 ## [0.27.4] - 2026-04-30
 
 ### Breaking

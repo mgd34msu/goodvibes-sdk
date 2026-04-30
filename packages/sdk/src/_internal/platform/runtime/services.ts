@@ -404,7 +404,11 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const knowledgeStore = new KnowledgeStore({ configManager });
   const knowledgeSemanticService = new KnowledgeSemanticService(knowledgeStore, {
-    llm: createProviderBackedKnowledgeSemanticLlm(providerRegistry),
+    llm: createProviderBackedKnowledgeSemanticLlm(providerRegistry, {
+      timeoutMs: 20_000,
+      maxConcurrent: 1,
+    }),
+    maxLlmSourcesPerReindex: 3,
   });
   const knowledgeService = new KnowledgeService(knowledgeStore, artifactStore, undefined, {
     memoryRegistry,

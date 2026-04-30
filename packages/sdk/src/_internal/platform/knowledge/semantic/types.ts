@@ -72,12 +72,16 @@ export interface KnowledgeSemanticLlm {
     readonly prompt: string;
     readonly maxTokens?: number;
     readonly purpose: string;
+    readonly signal?: AbortSignal;
+    readonly timeoutMs?: number;
   }): Promise<unknown | null>;
   completeText(input: {
     readonly systemPrompt: string;
     readonly prompt: string;
     readonly maxTokens?: number;
     readonly purpose: string;
+    readonly signal?: AbortSignal;
+    readonly timeoutMs?: number;
   }): Promise<string | null>;
 }
 
@@ -102,6 +106,7 @@ export interface KnowledgeSemanticAnswerInput {
   readonly includeLinkedObjects?: boolean;
   readonly candidateSourceIds?: readonly string[];
   readonly candidateNodeIds?: readonly string[];
+  readonly strictCandidates?: boolean;
   readonly linkedObjects?: readonly KnowledgeNodeRecord[];
   readonly noMatchMessage?: string;
 }

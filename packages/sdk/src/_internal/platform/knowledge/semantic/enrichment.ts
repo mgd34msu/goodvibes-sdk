@@ -95,6 +95,7 @@ async function extractSemanticsWithLlm(
   return llm.completeJson({
     purpose: 'knowledge-semantic-enrichment',
     maxTokens: 2600,
+    timeoutMs: 20_000,
     systemPrompt: [
       'You extract a durable semantic knowledge graph from source material.',
       'Return only JSON. Do not invent facts. Every fact must be grounded in the supplied source text.',

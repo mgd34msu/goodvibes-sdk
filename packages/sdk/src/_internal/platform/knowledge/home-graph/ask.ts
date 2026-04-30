@@ -30,6 +30,7 @@ export async function answerHomeGraphQuery(input: {
       includeLinkedObjects: input.query.includeLinkedObjects,
       candidateSourceIds: sources.map((source) => source.id),
       candidateNodeIds: input.results.flatMap((result) => result.node ? [result.node.id] : []),
+      strictCandidates: true,
       linkedObjects,
       noMatchMessage: `No Home Graph knowledge matched "${input.query.query}".`,
     });

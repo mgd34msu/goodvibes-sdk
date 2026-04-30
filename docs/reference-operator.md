@@ -30831,6 +30831,21 @@ Search, semantically synthesize, and return a source-backed answer from the stru
     "includeLinkedObjects": {
       "type": "boolean"
     },
+    "candidateSourceIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "candidateNodeIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "strictCandidates": {
+      "type": "boolean"
+    },
     "metadata": {
       "type": "object",
       "additionalProperties": {
