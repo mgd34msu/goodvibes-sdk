@@ -42,11 +42,53 @@ export interface KnowledgeSpaceDeleteStores {
   readonly schedules: Map<string, KnowledgeScheduleRecord>;
 }
 
+interface KnowledgeSpaceDeleteIds {
+  readonly sources: ReadonlySet<string>;
+  readonly nodes: ReadonlySet<string>;
+  readonly edges: ReadonlySet<string>;
+  readonly issues: ReadonlySet<string>;
+  readonly extractions: ReadonlySet<string>;
+  readonly jobRuns: ReadonlySet<string>;
+  readonly refinementTasks: ReadonlySet<string>;
+  readonly usageRecords: ReadonlySet<string>;
+  readonly consolidationCandidates: ReadonlySet<string>;
+  readonly consolidationReports: ReadonlySet<string>;
+  readonly schedules: ReadonlySet<string>;
+}
+
+export function planKnowledgeSpaceDeleteRows(
+  stores: KnowledgeSpaceDeleteStores,
+  spaceId: string,
+): KnowledgeSpaceDeleteResult {
+  return summarizeDeleteIds(collectKnowledgeSpaceDeleteIds(stores, spaceId));
+}
+
 export function deleteKnowledgeSpaceRows(
   sqlite: SQLiteStore,
   stores: KnowledgeSpaceDeleteStores,
   spaceId: string,
 ): KnowledgeSpaceDeleteResult {
+  const ids = collectKnowledgeSpaceDeleteIds(stores, spaceId);
+
+  deleteRows(sqlite, 'knowledge_usage_records', ids.usageRecords, stores.usageRecords);
+  deleteRows(sqlite, 'knowledge_consolidation_candidates', ids.consolidationCandidates, stores.consolidationCandidates);
+  deleteRows(sqlite, 'knowledge_consolidation_reports', ids.consolidationReports, stores.consolidationReports);
+  deleteRows(sqlite, 'knowledge_refinement_tasks', ids.refinementTasks, stores.refinementTasks);
+  deleteRows(sqlite, 'knowledge_job_runs', ids.jobRuns, stores.jobRuns);
+  deleteRows(sqlite, 'knowledge_edges', ids.edges, stores.edges);
+  deleteRows(sqlite, 'knowledge_issues', ids.issues, stores.issues);
+  deleteRows(sqlite, 'knowledge_extractions', ids.extractions, stores.extractions);
+  deleteRows(sqlite, 'knowledge_nodes', ids.nodes, stores.nodes);
+  deleteRows(sqlite, 'knowledge_sources', ids.sources, stores.sources);
+  deleteRows(sqlite, 'knowledge_schedules', ids.schedules, stores.schedules);
+
+  return summarizeDeleteIds(ids);
+}
+
+function collectKnowledgeSpaceDeleteIds(
+  stores: KnowledgeSpaceDeleteStores,
+  spaceId: string,
+): KnowledgeSpaceDeleteIds {
   const normalized = normalizeKnowledgeSpaceId(spaceId);
   const sourceIds = matchingIds(stores.sources, (record) => getKnowledgeSpaceId(record) === normalized);
   const nodeIds = matchingIds(stores.nodes, (record) => getKnowledgeSpaceId(record) === normalized);
@@ -85,30 +127,34 @@ export function deleteKnowledgeSpaceRows(
   const consolidationReportIds = matchingIds(stores.consolidationReports, (record) => getKnowledgeSpaceId(record) === normalized);
   const scheduleIds = matchingIds(stores.schedules, (record) => getKnowledgeSpaceId(record) === normalized);
 
-  deleteRows(sqlite, 'knowledge_usage_records', usageRecordIds, stores.usageRecords);
-  deleteRows(sqlite, 'knowledge_consolidation_candidates', consolidationCandidateIds, stores.consolidationCandidates);
-  deleteRows(sqlite, 'knowledge_consolidation_reports', consolidationReportIds, stores.consolidationReports);
-  deleteRows(sqlite, 'knowledge_refinement_tasks', refinementTaskIds, stores.refinementTasks);
-  deleteRows(sqlite, 'knowledge_job_runs', jobRunIds, stores.jobRuns);
-  deleteRows(sqlite, 'knowledge_edges', edgeIds, stores.edges);
-  deleteRows(sqlite, 'knowledge_issues', issueIds, stores.issues);
-  deleteRows(sqlite, 'knowledge_extractions', extractionIds, stores.extractions);
-  deleteRows(sqlite, 'knowledge_nodes', nodeIds, stores.nodes);
-  deleteRows(sqlite, 'knowledge_sources', sourceIds, stores.sources);
-  deleteRows(sqlite, 'knowledge_schedules', scheduleIds, stores.schedules);
-
   return {
-    sources: sourceIds.size,
-    nodes: nodeIds.size,
-    edges: edgeIds.size,
-    issues: issueIds.size,
-    extractions: extractionIds.size,
-    jobRuns: jobRunIds.size,
-    refinementTasks: refinementTaskIds.size,
-    usageRecords: usageRecordIds.size,
-    consolidationCandidates: consolidationCandidateIds.size,
-    consolidationReports: consolidationReportIds.size,
-    schedules: scheduleIds.size,
+    sources: sourceIds,
+    nodes: nodeIds,
+    edges: edgeIds,
+    issues: issueIds,
+    extractions: extractionIds,
+    jobRuns: jobRunIds,
+    refinementTasks: refinementTaskIds,
+    usageRecords: usageRecordIds,
+    consolidationCandidates: consolidationCandidateIds,
+    consolidationReports: consolidationReportIds,
+    schedules: scheduleIds,
+  };
+}
+
+function summarizeDeleteIds(ids: KnowledgeSpaceDeleteIds): KnowledgeSpaceDeleteResult {
+  return {
+    sources: ids.sources.size,
+    nodes: ids.nodes.size,
+    edges: ids.edges.size,
+    issues: ids.issues.size,
+    extractions: ids.extractions.size,
+    jobRuns: ids.jobRuns.size,
+    refinementTasks: ids.refinementTasks.size,
+    usageRecords: ids.usageRecords.size,
+    consolidationCandidates: ids.consolidationCandidates.size,
+    consolidationReports: ids.consolidationReports.size,
+    schedules: ids.schedules.size,
   };
 }
 

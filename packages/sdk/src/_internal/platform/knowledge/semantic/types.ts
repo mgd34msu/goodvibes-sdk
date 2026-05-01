@@ -109,6 +109,7 @@ export interface KnowledgeSemanticAnswerInput {
   readonly strictCandidates?: boolean;
   readonly linkedObjects?: readonly KnowledgeNodeRecord[];
   readonly noMatchMessage?: string;
+  readonly autoRepairGaps?: boolean;
 }
 
 export interface KnowledgeSemanticAnswer {

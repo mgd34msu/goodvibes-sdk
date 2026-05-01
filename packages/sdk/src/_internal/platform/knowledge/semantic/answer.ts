@@ -42,6 +42,7 @@ import {
   nodeInHomeAssistantAnswerScope,
   sourceInHomeAssistantAnswerScope,
 } from './homeassistant-scope.js';
+import { concreteAnswerGapSpaceId } from './answer-space.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -94,7 +95,8 @@ export async function answerKnowledgeQuery(
   const evidence = collectAnswerEvidence(context.store, input, spaceId, limit);
   if (evidence.length === 0) {
     const linkedObjects = input.includeLinkedObjects === false ? [] : [...input.linkedObjects ?? []];
-    const gap = await persistAnswerGap(context.store, spaceId, input.query, 'No indexed evidence matched the question.', {
+    const gapSpaceId = concreteAnswerGapSpaceId(spaceId, [], [], linkedObjects);
+    const gap = await persistAnswerGap(context.store, gapSpaceId, input.query, 'No indexed evidence matched the question.', {
       linkedObjects,
     });
     return {
@@ -125,7 +127,8 @@ export async function answerKnowledgeQuery(
     : uniqueNodes([...(input.linkedObjects ?? []), ...evidence.flatMap((item) => item.node ? [item.node] : [])])
       .filter(isSemanticAnswerLinkedObject)
       .slice(0, 24);
-  const gaps = await persistAnswerGaps(context.store, spaceId, input.query, llmAnswer?.gaps ?? [], {
+  const gapSpaceId = concreteAnswerGapSpaceId(spaceId, evidence, sources, linkedObjects);
+  const gaps = await persistAnswerGaps(context.store, gapSpaceId, input.query, llmAnswer?.gaps ?? [], {
     sources,
     linkedObjects,
   });

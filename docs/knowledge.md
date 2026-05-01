@@ -208,7 +208,10 @@ snippet-to-answer logic. If Ask identifies answer gaps and semantic gap repair
 is configured, the SDK queues refinement tasks and starts repair in the
 background. Ask does not wait for web search, URL ingest, or re-answering; it
 returns the current best answer plus `refinementTaskIds` so clients can show
-repair progress and ask again after the graph improves.
+repair progress and ask again after the graph improves. When callers use the
+generic `knowledgeSpaceId: "homeassistant"` alias, answer-gap tasks are written
+to the concrete `homeassistant:<installationId>` space inferred from linked
+objects or evidence, rather than to the alias itself.
 Semantic reindex follows the same pattern with an additional daemon-safety
 guard: foreground source enrichment is capped by a run budget, then the SDK
 queues repairable gaps and starts only a small delayed background repair pass.
@@ -544,10 +547,12 @@ Home Graph uses the same renderer through
 space id and preserving the same JSON/SVG shape. Home Assistant-specific
 filters also keep one-hop graph context for matched objects, so filtering to a
 leaf entity domain such as `media_player` still returns the relevant
-device/area/source edges instead of an isolated node list. The Home Graph route
-accepts query-string `GET`, trailing-slash `GET`, and JSON `POST` forms so
-authenticated Home Assistant panel bridges can call the same SDK map renderer
-without depending on one exact URL spelling.
+device/area/source edges instead of an isolated node list. The renderer also
+suppresses self-loop edges so contaminated or self-referential source data does
+not produce visually meaningless links. The Home Graph route accepts
+query-string `GET`, trailing-slash `GET`, and JSON `POST` forms so authenticated
+Home Assistant panel bridges can call the same SDK map renderer without
+depending on one exact URL spelling.
 
 ## GraphQL
 

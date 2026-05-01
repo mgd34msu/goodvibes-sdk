@@ -645,7 +645,7 @@ describe('Home Graph knowledge spaces', () => {
   });
 
   test('keeps graph context edges when Home Assistant map filters match leaf entities', async () => {
-    const { service } = createHomeGraphService();
+    const { service, store } = createHomeGraphService();
     await service.syncSnapshot({
       installationId: 'house-1',
       areas: [{ id: 'living-room', name: 'Living Room' }],
@@ -657,6 +657,16 @@ describe('Home Graph knowledge spaces', () => {
         deviceId: 'living-room-tv',
         areaId: 'living-room',
       }],
+    });
+    const tvNode = store.listNodes(100).find((node) => node.title === 'Living Room TV');
+    expect(tvNode).toBeDefined();
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: tvNode!.id,
+      toKind: 'node',
+      toId: tvNode!.id,
+      relation: 'connected_via',
+      metadata: { knowledgeSpaceId: homeAssistantKnowledgeSpaceId('house-1') },
     });
 
     const map = await service.map({
@@ -670,6 +680,7 @@ describe('Home Graph knowledge spaces', () => {
     expect(map.edges.some((edge) => edge.relation === 'belongs_to_device' || edge.relation === 'located_in')).toBe(true);
     expect(map.edges.every((edge) => typeof edge.source === 'string' && typeof edge.target === 'string')).toBe(true);
     expect(map.edges.some((edge) => typeof edge.sourceTitle === 'string' && typeof edge.targetTitle === 'string')).toBe(true);
+    expect(map.edges.every((edge) => edge.source !== edge.target)).toBe(true);
   });
 
   test('repairs already-uploaded weak PDF manual extractions during ask', async () => {
@@ -953,6 +964,13 @@ describe('Home Graph knowledge spaces', () => {
       method: 'POST',
       body: JSON.stringify({ installationId: 'house-1' }),
     }));
+    const resetDryRunResponse = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/reset', {
+      method: 'POST',
+      body: JSON.stringify({ installationId: 'house-1', dryRun: true }),
+    }));
+    const dryRunStatusResponse = await routes.handle(new Request(
+      'http://daemon.local/api/homeassistant/home-graph/status?installationId=house-1',
+    ));
     const resetResponse = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/reset', {
       method: 'POST',
       body: JSON.stringify({ installationId: 'house-1' }),
@@ -967,6 +985,8 @@ describe('Home Graph knowledge spaces', () => {
     expect(mapResponse?.status).toBe(200);
     expect(svgResponse?.status).toBe(200);
     expect(exportResponse?.status).toBe(200);
+    expect(resetDryRunResponse?.status).toBe(200);
+    expect(dryRunStatusResponse?.status).toBe(200);
     expect(resetResponse?.status).toBe(200);
     expect(resetStatusResponse?.status).toBe(200);
     const status = await statusResponse!.json() as Record<string, unknown>;
@@ -974,7 +994,9 @@ describe('Home Graph knowledge spaces', () => {
     const map = await mapResponse!.json() as Record<string, unknown>;
     const svg = await svgResponse!.text();
     const exported = await exportResponse!.json() as { readonly sources?: readonly unknown[] };
-    const reset = await resetResponse!.json() as { readonly deleted?: { readonly sources?: number; readonly nodes?: number }; readonly artifactsDeleted?: boolean };
+    const resetDryRun = await resetDryRunResponse!.json() as { readonly dryRun?: boolean; readonly deleted?: { readonly sources?: number; readonly nodes?: number } };
+    const dryRunStatus = await dryRunStatusResponse!.json() as Record<string, unknown>;
+    const reset = await resetResponse!.json() as { readonly dryRun?: boolean; readonly deleted?: { readonly sources?: number; readonly nodes?: number }; readonly artifactsDeleted?: boolean };
     const resetStatus = await resetStatusResponse!.json() as Record<string, unknown>;
     expect(status.spaceId).toBe(homeAssistantKnowledgeSpaceId('house-1'));
     expect(status.nodeCount).toBeGreaterThanOrEqual(2);
@@ -983,6 +1005,11 @@ describe('Home Graph knowledge spaces', () => {
     expect(svgResponse!.headers.get('content-type') ?? '').toContain('image/svg+xml');
     expect(svg).toContain('Thermostat');
     expect(exported.sources?.length).toBeGreaterThan(0);
+    expect(resetDryRun.dryRun).toBe(true);
+    expect(resetDryRun.deleted?.sources).toBeGreaterThan(0);
+    expect(resetDryRun.deleted?.nodes).toBeGreaterThan(0);
+    expect(dryRunStatus.nodeCount).toBe(status.nodeCount);
+    expect(reset.dryRun).toBe(false);
     expect(reset.deleted?.sources).toBeGreaterThan(0);
     expect(reset.deleted?.nodes).toBeGreaterThan(0);
     expect(reset.artifactsDeleted).toBe(false);

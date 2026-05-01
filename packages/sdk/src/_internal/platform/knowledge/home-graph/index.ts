@@ -30,6 +30,7 @@ export type {
   HomeGraphProjectionResult,
   HomeGraphReindexResult,
   HomeGraphRelation,
+  HomeGraphResetInput,
   HomeGraphResetResult,
   HomeGraphReviewInput,
   HomeGraphSnapshotInput,

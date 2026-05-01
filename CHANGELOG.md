@@ -20,6 +20,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.11] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Home Graph reset now supports `dryRun: true` as a real non-destructive plan
+  response, including the same delete counts a real reset would apply and a
+  `dryRun` flag in the result.
+
+### Fixed
+- Home Graph reset no longer deletes a knowledge space when callers pass
+  `dryRun: true`.
+- Home Graph Ask now performs one bounded gap-repair and re-answer pass for
+  concrete feature/specification questions when a high-confidence object is
+  already identified. Accepted repair sources are linked back to both the gap
+  and the concrete Home Assistant object so follow-up answers and generated
+  pages can find the repaired evidence from a clean graph.
+- Base Knowledge Ask with `knowledgeSpaceId: "homeassistant"` now stores
+  answer-gap refinement records in the concrete `homeassistant:<installationId>`
+  space inferred from evidence or linked objects instead of creating orphaned
+  tasks in the alias namespace.
+- Knowledge maps and Home Graph snapshot linking now suppress self-loop edges,
+  including `connected_via` loops where an integration object points at itself.
+
+### Migration
+- none
+
+---
+
 ## [0.28.10] - 2026-05-01
 
 ### Breaking

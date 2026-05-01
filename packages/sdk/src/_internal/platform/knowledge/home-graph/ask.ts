@@ -1,16 +1,78 @@
 import type { KnowledgeSemanticService } from '../semantic/index.js';
 import type { KnowledgeStore } from '../store.js';
-import type { KnowledgeSourceRecord } from '../types.js';
+import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import { collectLinkedObjects, renderAskAnswer } from './state.js';
 import type { HomeGraphAskInput, HomeGraphAskResult, HomeGraphSearchResult } from './types.js';
-import type { HomeGraphSearchState } from './search.js';
+import {
+  readHomeGraphSearchState,
+  scoreHomeGraphResults,
+  type HomeGraphSearchState,
+} from './search.js';
 import {
   inferHomeAssistantAnswerScopeForQuery,
   nodeInHomeAssistantAnswerScope,
   sourceInHomeAssistantAnswerScope,
 } from '../semantic/homeassistant-scope.js';
+import { uniqueStrings } from '../semantic/utils.js';
 
 export async function answerHomeGraphQuery(input: {
+  readonly store: KnowledgeStore;
+  readonly semanticService?: KnowledgeSemanticService;
+  readonly spaceId: string;
+  readonly query: HomeGraphAskInput;
+  readonly state: HomeGraphSearchState;
+  readonly results: readonly HomeGraphSearchResult[];
+}): Promise<HomeGraphAskResult> {
+  const answer = await answerHomeGraphQueryOnce(input);
+  if (!shouldRunForegroundRepair(input, answer)) return answer;
+  const refinement = await input.semanticService!.repairAnswerGaps({
+    answer: {
+      ok: true,
+      spaceId: input.spaceId,
+      query: answer.query,
+      answer: {
+        ...answer.answer,
+        facts: answer.answer.facts ?? [],
+        gaps: answer.answer.gaps ?? [],
+        synthesized: answer.answer.synthesized === true,
+      },
+      results: [],
+    },
+    limit: Math.max(1, answer.answer.gaps?.length ?? 1),
+    maxRunMs: 25_000,
+  }).catch(() => null);
+  if (!refinement) return answer;
+  const repairedSources = refinement.ingestedSourceIds
+    .map((sourceId) => input.store.getSource(sourceId))
+    .filter((source): source is KnowledgeSourceRecord => Boolean(source));
+  if (repairedSources.length > 0) {
+    await input.semanticService!.enrichSources(repairedSources, {
+      knowledgeSpaceId: input.spaceId,
+      force: true,
+      limit: Math.min(3, repairedSources.length),
+    });
+  }
+  if (refinement.ingestedSourceIds.length === 0 && refinement.linkedRepairs === 0 && refinement.closedGaps === 0) {
+    return mergeRefinementTaskIds(answer, refinement.taskIds);
+  }
+  const state = readHomeGraphSearchState(input.store, input.spaceId);
+  const results = scoreHomeGraphResults(
+    input.query.query,
+    state.sources,
+    state.nodes,
+    state.edges,
+    (sourceId) => state.extractionBySourceId.get(sourceId),
+    input.query.limit ?? 8,
+  );
+  const repaired = await answerHomeGraphQueryOnce({ ...input, state, results });
+  return mergeRefinementTaskIds(repaired, [
+    ...(answer.answer.refinementTaskIds ?? []),
+    ...refinement.taskIds,
+    ...taskIdsForGaps(input.store, input.spaceId, answer.answer.gaps?.map((gap) => gap.id) ?? []),
+  ]);
+}
+
+async function answerHomeGraphQueryOnce(input: {
   readonly store: KnowledgeStore;
   readonly semanticService?: KnowledgeSemanticService;
   readonly spaceId: string;
@@ -35,6 +97,7 @@ export async function answerHomeGraphQuery(input: {
       strictCandidates: true,
       linkedObjects,
       noMatchMessage: `No Home Graph knowledge matched "${input.query.query}".`,
+      autoRepairGaps: false,
     });
     setTimeout(() => {
       void input.semanticService?.enrichSources(uniqueSources(sources), {
@@ -74,6 +137,50 @@ export async function answerHomeGraphQuery(input: {
     },
     results,
   };
+}
+
+function shouldRunForegroundRepair(
+  input: {
+    readonly semanticService?: KnowledgeSemanticService;
+    readonly query: HomeGraphAskInput;
+  },
+  answer: HomeGraphAskResult,
+): boolean {
+  if (!input.semanticService) return false;
+  if (!hasFeatureOrSpecIntent(input.query.query)) return false;
+  if (!answer.answer.gaps || answer.answer.gaps.length === 0) return false;
+  if (answer.answer.facts && answer.answer.facts.length >= 3 && answer.answer.confidence > 0) return false;
+  return answer.answer.linkedObjects?.some(isConcreteHomeGraphSubject) === true;
+}
+
+function hasFeatureOrSpecIntent(query: string): boolean {
+  return /\b(feature|features|capabilit(?:y|ies)|function|functions|spec|specs|specification|specifications|support|supports|supported)\b/i
+    .test(query);
+}
+
+function isConcreteHomeGraphSubject(node: KnowledgeNodeRecord): boolean {
+  if (node.kind === 'ha_device' || node.kind === 'ha_integration') return true;
+  return typeof node.metadata.manufacturer === 'string' || typeof node.metadata.model === 'string';
+}
+
+function mergeRefinementTaskIds(answer: HomeGraphAskResult, previousTaskIds: readonly string[] | undefined): HomeGraphAskResult {
+  const ids = uniqueStrings([...(answer.answer.refinementTaskIds ?? []), ...(previousTaskIds ?? [])]);
+  if (ids.length === (answer.answer.refinementTaskIds?.length ?? 0)) return answer;
+  return {
+    ...answer,
+    answer: {
+      ...answer.answer,
+      refinementTaskIds: ids,
+    },
+  };
+}
+
+function taskIdsForGaps(store: KnowledgeStore, spaceId: string, gapIds: readonly string[]): readonly string[] {
+  const wanted = new Set(gapIds);
+  if (wanted.size === 0) return [];
+  return store.listRefinementTasks(100, { spaceId })
+    .filter((task) => task.gapId && wanted.has(task.gapId))
+    .map((task) => task.id);
 }
 
 function scopeHomeGraphAnswerResults(

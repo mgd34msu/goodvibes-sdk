@@ -37,6 +37,7 @@ import { resolveKnowledgeDbPath, type KnowledgeStoreConfig } from './store-confi
 import { upsertKnowledgeRefinementTask } from './store-refinement.js';
 import {
   deleteKnowledgeSpaceRows,
+  planKnowledgeSpaceDeleteRows,
   type KnowledgeSpaceDeleteResult,
 } from './store-space-delete.js';
 import {
@@ -739,9 +740,21 @@ export class KnowledgeStore {
     return deleteKnowledgeSchedule(this.sqlite, this.schedules, id);
   }
 
-  async deleteKnowledgeSpace(spaceId: string): Promise<KnowledgeSpaceDeleteResult> {
+  async planKnowledgeSpaceDelete(spaceId: string): Promise<KnowledgeSpaceDeleteResult> {
     await this.init();
-    const deleted = deleteKnowledgeSpaceRows(this.sqlite, {
+    return planKnowledgeSpaceDeleteRows(this.knowledgeSpaceRowStores(), spaceId);
+  }
+
+  async deleteKnowledgeSpace(spaceId: string, input: { readonly dryRun?: boolean } = {}): Promise<KnowledgeSpaceDeleteResult> {
+    await this.init();
+    if (input.dryRun) return this.planKnowledgeSpaceDelete(spaceId);
+    const deleted = deleteKnowledgeSpaceRows(this.sqlite, this.knowledgeSpaceRowStores(), spaceId);
+    await this.sqlite.save();
+    return deleted;
+  }
+
+  private knowledgeSpaceRowStores(): Parameters<typeof planKnowledgeSpaceDeleteRows>[0] {
+    return {
       sources: this.sources,
       nodes: this.nodes,
       edges: this.edges,
@@ -753,9 +766,7 @@ export class KnowledgeStore {
       consolidationCandidates: this.consolidationCandidates,
       consolidationReports: this.consolidationReports,
       schedules: this.schedules,
-    }, spaceId);
-    await this.sqlite.save();
-    return deleted;
+    };
   }
 
   private async initialize(): Promise<void> {

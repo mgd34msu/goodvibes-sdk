@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.10"
+    "version": "0.28.11"
   },
   "auth": {
     "modes": [
@@ -30075,6 +30075,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "knowledgeSpaceId": {
               "type": "string"
+            },
+            "dryRun": {
+              "type": "boolean"
             }
           },
           "additionalProperties": true
@@ -30090,6 +30093,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "installationId": {
               "type": "string"
+            },
+            "dryRun": {
+              "type": "boolean"
             },
             "deleted": {
               "type": "object",
@@ -30126,6 +30132,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "ok",
             "spaceId",
             "installationId",
+            "dryRun",
             "deleted",
             "artifactsDeleted"
           ],

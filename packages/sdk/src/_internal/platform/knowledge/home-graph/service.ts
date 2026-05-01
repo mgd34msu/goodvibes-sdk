@@ -55,6 +55,8 @@ import { listHomeGraphPages } from './pages.js';
 import { browseHomeGraph, listHomeGraphSources } from './inventory.js';
 import { mapHomeGraph } from './map-view.js';
 import { getHomeGraphStatus } from './status.js';
+import { resetHomeGraphSpace } from './reset.js';
+import { linkHomeGraphSnapshotObjectReferences } from './link-node.js';
 import {
   cancelHomeGraphRefinementTask,
   getHomeGraphRefinementTask,
@@ -73,7 +75,7 @@ import type {
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
   HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphObjectInput,
   HomeGraphMapInput, HomeGraphMapResult, HomeGraphProjectionInput, HomeGraphProjectionResult,
-  HomeGraphPageListResult, HomeGraphReindexInput, HomeGraphReindexResult, HomeGraphResetResult, HomeGraphReviewInput, HomeGraphSpaceInput,
+  HomeGraphPageListResult, HomeGraphReindexInput, HomeGraphReindexResult, HomeGraphResetInput, HomeGraphResetResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
 
@@ -513,11 +515,8 @@ export class HomeGraphService {
     return { ok: true, spaceId, imported: { sources, nodes, edges, issues, extractions } };
   }
 
-  async resetSpace(input: HomeGraphSpaceInput): Promise<HomeGraphResetResult> {
-    await this.store.init();
-    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
-    const deleted = await this.store.deleteKnowledgeSpace(spaceId);
-    return { ok: true, spaceId, installationId, deleted, artifactsDeleted: false };
+  async resetSpace(input: HomeGraphResetInput): Promise<HomeGraphResetResult> {
+    return resetHomeGraphSpace(this.store, input);
   }
 
   private async ingestCreatedArtifact(input: {
@@ -700,35 +699,7 @@ export class HomeGraphService {
     node: KnowledgeNodeRecord,
     object: { readonly deviceId?: string; readonly areaId?: string; readonly integrationId?: string },
   ): Promise<void> {
-    if (object.deviceId && node.kind !== 'ha_device') {
-      await this.tryLinkNode(spaceId, installationId, node.id, 'belongs_to_device', 'ha_device', object.deviceId);
-    }
-    if (object.areaId) {
-      await this.tryLinkNode(spaceId, installationId, node.id, 'located_in', 'ha_area', object.areaId);
-    }
-    if (object.integrationId) {
-      await this.tryLinkNode(spaceId, installationId, node.id, 'connected_via', 'ha_integration', object.integrationId);
-    }
-  }
-
-  private async tryLinkNode(
-    spaceId: string,
-    installationId: string,
-    fromId: string,
-    relation: string,
-    toKind: string,
-    toObjectId: string,
-  ): Promise<void> {
-    const toId = homeGraphNodeId(spaceId, toKind, toObjectId);
-    if (!this.store.getNode(toId)) return;
-    await this.store.upsertEdge({
-      fromKind: 'node',
-      fromId,
-      toKind: 'node',
-      toId,
-      relation,
-      metadata: buildHomeGraphMetadata(spaceId, installationId),
-    });
+    await linkHomeGraphSnapshotObjectReferences(this.store, { spaceId, installationId, node, object });
   }
 
   private async refreshQualityIssues(spaceId: string, installationId: string): Promise<readonly KnowledgeIssueRecord[]> {
