@@ -107,6 +107,7 @@ config flow setup. The most useful endpoints are:
 | `GET`/`POST /api/homeassistant/home-graph/map` | Return a visual node/edge map as JSON layout data plus SVG, or SVG directly with `format=svg`. |
 | `POST /api/homeassistant/home-graph/export` | Export the HA knowledge space. |
 | `POST /api/homeassistant/home-graph/import` | Import a HA knowledge space export. |
+| `POST /api/homeassistant/home-graph/reset` | Admin-only reset for one HA knowledge space. Export first if the current graph may be needed for diagnosis. Reset clears graph rows, issues, extractions, refinement tasks, and related bookkeeping for the space; artifact blobs are not deleted. |
 
 All daemon API calls require normal daemon authentication. The inbound webhook
 below additionally requires the Home Assistant webhook secret because webhook
@@ -268,6 +269,19 @@ response reports `scanned`, `reparsed`, `skipped`, `failed`, `truncated`,
 counts, and per-source `failures`. If another Home Graph reindex is already
 running, the SDK returns `coalesced: true` quickly and leaves the active run in
 charge instead of stacking another foreground scan.
+
+If a development or early-preview Home Graph space was populated by older SDK
+builds with bad source links, stale generated pages, or contaminated refinement
+tasks, rebuild it through SDK routes instead of editing the SQLite database.
+First call `POST /api/homeassistant/home-graph/export` and save the JSON for
+diagnosis. Then call the admin-only
+`POST /api/homeassistant/home-graph/reset` route with `installationId` or
+`knowledgeSpaceId`. Reset deletes only the selected Home Assistant knowledge
+space rows: sources, nodes, edges, issues, extractions, refinement tasks, job
+runs, usage records, consolidation records, and schedules. It intentionally
+does not delete artifact blobs from disk. After reset, re-sync the real Home
+Assistant snapshot, reingest or relink manuals/documents from the integration,
+then run reindex/refinement/page generation against the clean space.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home

@@ -4,6 +4,11 @@ import type { KnowledgeSourceRecord } from '../types.js';
 import { collectLinkedObjects, renderAskAnswer } from './state.js';
 import type { HomeGraphAskInput, HomeGraphAskResult, HomeGraphSearchResult } from './types.js';
 import type { HomeGraphSearchState } from './search.js';
+import {
+  inferHomeAssistantAnswerScopeForQuery,
+  nodeInHomeAssistantAnswerScope,
+  sourceInHomeAssistantAnswerScope,
+} from '../semantic/homeassistant-scope.js';
 
 export async function answerHomeGraphQuery(input: {
   readonly store: KnowledgeStore;
@@ -13,8 +18,9 @@ export async function answerHomeGraphQuery(input: {
   readonly state: HomeGraphSearchState;
   readonly results: readonly HomeGraphSearchResult[];
 }): Promise<HomeGraphAskResult> {
-  const sources = input.results.flatMap((result) => result.source ? [result.source] : []).map(withAnswerSourceAliases);
-  const linkedObjects = collectLinkedObjects(input.results, input.state);
+  const results = scopeHomeGraphAnswerResults(input.store, input.spaceId, input.query.query, input.results);
+  const sources = results.flatMap((result) => result.source ? [result.source] : []).map(withAnswerSourceAliases);
+  const linkedObjects = collectLinkedObjects(results, input.state);
   if (input.semanticService) {
     const answer = await input.semanticService.answer({
       query: input.query.query,
@@ -25,7 +31,7 @@ export async function answerHomeGraphQuery(input: {
       includeConfidence: input.query.includeConfidence,
       includeLinkedObjects: input.query.includeLinkedObjects,
       candidateSourceIds: sources.map((source) => source.id),
-      candidateNodeIds: input.results.flatMap((result) => result.node ? [result.node.id] : []),
+      candidateNodeIds: results.flatMap((result) => result.node ? [result.node.id] : []),
       strictCandidates: true,
       linkedObjects,
       noMatchMessage: `No Home Graph knowledge matched "${input.query.query}".`,
@@ -51,23 +57,41 @@ export async function answerHomeGraphQuery(input: {
         refinementTaskIds: answer.answer.refinementTaskIds,
         synthesized: answer.answer.synthesized,
       },
-      results: input.results,
+      results,
     };
   }
-  const confidence = Math.min(100, Math.max(10, input.results[0]?.score ?? 10));
+  const confidence = Math.min(100, Math.max(10, results[0]?.score ?? 10));
   return {
     ok: true,
     spaceId: input.spaceId,
     query: input.query.query,
     answer: {
-      text: renderAskAnswer(input.query.query, input.results, input.query.mode ?? 'standard'),
+      text: renderAskAnswer(input.query.query, results, input.query.mode ?? 'standard'),
       mode: input.query.mode ?? 'standard',
       confidence,
       sources: input.query.includeSources === false ? [] : sources,
       linkedObjects: input.query.includeLinkedObjects === false ? [] : linkedObjects,
     },
-    results: input.results,
+    results,
   };
+}
+
+function scopeHomeGraphAnswerResults(
+  store: KnowledgeStore,
+  spaceId: string,
+  query: string,
+  results: readonly HomeGraphSearchResult[],
+): readonly HomeGraphSearchResult[] {
+  if (results.length === 0) return results;
+  const scope = inferHomeAssistantAnswerScopeForQuery(store, spaceId, query);
+  if (!scope || scope.anchorNodeIds.size === 0) return results;
+  const scoped = results.filter((result) => {
+    if (result.source) return sourceInHomeAssistantAnswerScope(store, result.source, scope);
+    if (result.node) return nodeInHomeAssistantAnswerScope(result.node, scope);
+    return false;
+  });
+  if (scoped.length > 0) return scoped;
+  return [];
 }
 
 function uniqueSources(sources: readonly KnowledgeSourceRecord[]): KnowledgeSourceRecord[] {

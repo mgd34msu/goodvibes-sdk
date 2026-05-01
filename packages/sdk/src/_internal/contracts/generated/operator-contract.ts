@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.9"
+    "version": "0.28.10"
   },
   "auth": {
     "modes": [
@@ -30047,6 +30047,91 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": true
         },
+        "invokable": true
+      },
+      {
+        "id": "homeassistant.homeGraph.reset",
+        "title": "Reset Home Graph Space",
+        "description": "Clear one Home Assistant Home Graph knowledge space after callers export any diagnostic backup they need.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/homeassistant/home-graph/reset"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "installationId": {
+              "type": "string"
+            },
+            "deleted": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "artifactsDeleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok",
+            "spaceId",
+            "installationId",
+            "deleted",
+            "artifactsDeleted"
+          ],
+          "additionalProperties": true
+        },
+        "dangerous": true,
         "invokable": true
       },
       {
@@ -68665,10 +68750,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 264,
-      "typedInputs": 264,
+      "methods": 265,
+      "typedInputs": 265,
       "genericInputs": 0,
-      "typedOutputs": 264,
+      "typedOutputs": 265,
       "genericOutputs": 0
     },
     "eventCoverage": {

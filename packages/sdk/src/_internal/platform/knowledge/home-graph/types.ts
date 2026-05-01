@@ -69,6 +69,7 @@ export const HOME_GRAPH_CAPABILITIES = [
   'quality-rule-heuristics',
   'documentation-candidates',
   'export-import',
+  'space-reset',
   'namespace-aware-graph-browse',
 ] as const;
 
@@ -435,4 +436,24 @@ export interface HomeGraphExport {
   readonly edges: readonly KnowledgeEdgeRecord[];
   readonly issues: readonly KnowledgeIssueRecord[];
   readonly extractions: readonly KnowledgeExtractionRecord[];
+}
+
+export interface HomeGraphResetResult {
+  readonly ok: true;
+  readonly spaceId: string;
+  readonly installationId: string;
+  readonly deleted: {
+    readonly sources: number;
+    readonly nodes: number;
+    readonly edges: number;
+    readonly issues: number;
+    readonly extractions: number;
+    readonly jobRuns: number;
+    readonly refinementTasks: number;
+    readonly usageRecords: number;
+    readonly consolidationCandidates: number;
+    readonly consolidationReports: number;
+    readonly schedules: number;
+  };
+  readonly artifactsDeleted: false;
 }

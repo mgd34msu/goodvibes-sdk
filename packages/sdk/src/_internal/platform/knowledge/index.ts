@@ -130,6 +130,7 @@ export type {
   HomeGraphProjectionResult,
   HomeGraphReindexResult,
   HomeGraphRelation,
+  HomeGraphResetResult,
   HomeGraphReviewInput,
   HomeGraphSnapshotInput,
   HomeGraphStatus,
