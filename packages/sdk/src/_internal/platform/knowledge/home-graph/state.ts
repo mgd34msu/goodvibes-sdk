@@ -69,9 +69,27 @@ export function collectLinkedObjects(
           nodeIds.add(edge.toId);
         }
       }
+      for (const id of sourceLinkedObjectIds(result.source)) {
+        nodeIds.add(id);
+      }
     }
   }
   return state.nodes.filter((node) => nodeIds.has(node.id));
+}
+
+function sourceLinkedObjectIds(source: KnowledgeSourceRecord): string[] {
+  const metadata = source.metadata ?? {};
+  const discovery = readRecord(metadata.sourceDiscovery);
+  return [
+    ...readStringArray(metadata.linkedObjectIds),
+    ...readStringArray(discovery.linkedObjectIds),
+  ];
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    : [];
 }
 
 export function missingDevicePassportFields(

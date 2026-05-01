@@ -355,6 +355,11 @@ Historical `No semantic gap repairer is configured` tasks are also reopened
 when the daemon starts running with a configured repairer, so the Refine tab
 should not keep treating those records as current wiring failures after the
 host is fixed.
+Home Graph Ask also keeps real Home Assistant linked objects when the strongest
+evidence comes from web-repaired semantic sources whose `sourceDiscovery`
+metadata references the HA object. Overlapping repair runs are coalesced by the
+SDK, so repeated broad Refine/Reindex/Ask-triggered repair calls should not
+stack unbounded LLM/search work in the daemon.
 
 `GET` or `POST /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

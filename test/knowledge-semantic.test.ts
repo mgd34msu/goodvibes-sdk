@@ -1047,6 +1047,82 @@ describe('semantic knowledge/wiki enrichment', () => {
     }
   });
 
+  test('self-improvement does not stack overlapping repair runs', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    let releaseRepair!: () => void;
+    const repairStarted = new Promise<void>((resolve) => {
+      releaseRepair = resolve;
+    });
+    const calls: unknown[] = [];
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async (request) => {
+        calls.push(request);
+        await repairStarted;
+        return { searched: true, ingestedSourceIds: [], skippedUrls: [] };
+      },
+    });
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'manual://lg-tv-overlap',
+      tags: ['manual'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-tv-overlap',
+      title: 'LG webOS Smart TV',
+      aliases: [],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const gap = await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'overlap-gap',
+      title: 'What are the complete features and specifications for LG 86NANO90UNA?',
+      aliases: [],
+      confidence: 75,
+      sourceId: source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'gap',
+        gapKind: 'intrinsic_features',
+        sourceIds: [source.id],
+        linkedObjectIds: [device.id],
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: device.id,
+      toKind: 'node',
+      toId: gap.id,
+      relation: 'has_gap',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const first = semantic.selfImprove({ knowledgeSpaceId: spaceId, gapIds: [gap.id], force: true });
+    await waitFor(() => calls.length === 1, 250);
+    const second = await semantic.selfImprove({ knowledgeSpaceId: spaceId, gapIds: [gap.id], force: true });
+    releaseRepair();
+    await first;
+
+    expect(calls).toHaveLength(1);
+    expect(second.skippedGaps).toBe(1);
+    expect(second.truncated).toBe(true);
+    expect(second.budgetExhausted).toBe(true);
+  });
+
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
     let aborted = false;
     const semanticLlm = createProviderBackedKnowledgeSemanticLlm({
