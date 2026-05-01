@@ -16,10 +16,7 @@ import type {
   KnowledgeSemanticSelfImproveInput,
   KnowledgeSemanticSelfImproveResult,
 } from './types.js';
-import {
-  recoverNoRepairerTasks,
-  recoverStaleActiveTasks,
-} from './self-improvement-recovery.js';
+import { recoverNoRepairerTasks, recoverStaleActiveTasks } from './self-improvement-recovery.js';
 import {
   readRecord,
   readString,
@@ -617,6 +614,8 @@ async function linkRepairSources(
   query: string,
 ): Promise<number> {
   let linked = 0;
+  const linkedObjectIds = readStringArray(gap.metadata.linkedObjectIds)
+    .filter((nodeId) => Boolean(store.getNode(nodeId)));
   for (const sourceId of sourceIds) {
     if (!store.getSource(sourceId)) continue;
     await store.upsertEdge({
@@ -632,6 +631,21 @@ async function linkRepairSources(
       }),
     });
     linked += 1;
+    for (const nodeId of linkedObjectIds) {
+      await store.upsertEdge({
+        fromKind: 'source',
+        fromId: sourceId,
+        toKind: 'node',
+        toId: nodeId,
+        relation: 'source_for',
+        weight: 0.78,
+        metadata: semanticMetadata(spaceId, {
+          query,
+          linkedBy: 'semantic-gap-repair',
+          repairedAt: Date.now(),
+        }),
+      });
+    }
   }
   return linked;
 }

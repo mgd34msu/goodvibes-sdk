@@ -95,6 +95,10 @@ export interface HomeGraphSpaceInput {
   readonly knowledgeSpaceId?: string;
 }
 
+export interface HomeGraphResetInput extends HomeGraphSpaceInput {
+  readonly dryRun?: boolean;
+}
+
 export interface HomeGraphObjectInput {
   readonly id?: string;
   readonly name?: string;
@@ -442,6 +446,7 @@ export interface HomeGraphResetResult {
   readonly ok: true;
   readonly spaceId: string;
   readonly installationId: string;
+  readonly dryRun: boolean;
   readonly deleted: {
     readonly sources: number;
     readonly nodes: number;

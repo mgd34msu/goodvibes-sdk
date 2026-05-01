@@ -1,7 +1,7 @@
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeSourceRecord } from '../types.js';
 import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
-import { getKnowledgeSpaceId } from '../spaces.js';
+import { getKnowledgeSpaceId, normalizeKnowledgeSpaceId } from '../spaces.js';
 import { answerKnowledgeQuery } from './answer.js';
 import { enrichKnowledgeSource } from './enrichment.js';
 import type {
@@ -140,18 +140,20 @@ export class KnowledgeSemanticService {
   async answer(input: KnowledgeSemanticAnswerInput): Promise<KnowledgeSemanticAnswerResult> {
     await this.store.init();
     const answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
+    if (input.autoRepairGaps === false) return answer;
     if (this.options.gapRepairer && answer.answer.gaps.length > 0) {
+      const repairSpaceId = answerRepairSpaceId(answer);
       const refinement = await this.selfImprove({
-        knowledgeSpaceId: answer.spaceId,
+        knowledgeSpaceId: repairSpaceId,
         gapIds: answer.answer.gaps.map((gap) => gap.id),
         reason: 'answer',
         limit: Math.max(1, answer.answer.gaps.length),
         deferRepair: true,
       });
-      this.runAnswerRefinementInBackground(answer.spaceId, answer.answer.gaps.map((gap) => gap.id));
+      this.runAnswerRefinementInBackground(repairSpaceId, answer.answer.gaps.map((gap) => gap.id));
       const taskIds = uniqueStrings([
         ...refinement.taskIds,
-        ...this.taskIdsForGaps(answer.spaceId, answer.answer.gaps.map((gap) => gap.id)),
+        ...this.taskIdsForGaps(repairSpaceId, answer.answer.gaps.map((gap) => gap.id)),
       ]);
       if (taskIds.length > 0) {
         return {
@@ -164,6 +166,23 @@ export class KnowledgeSemanticService {
       }
     }
     return answer;
+  }
+
+  async repairAnswerGaps(input: {
+    readonly answer: KnowledgeSemanticAnswerResult;
+    readonly maxRunMs?: number;
+    readonly limit?: number;
+  }): Promise<KnowledgeSemanticSelfImproveResult> {
+    const gaps = input.answer.answer.gaps;
+    if (!this.options.gapRepairer || gaps.length === 0) return emptySelfImproveResult();
+    return this.selfImprove({
+      knowledgeSpaceId: answerRepairSpaceId(input.answer),
+      gapIds: gaps.map((gap) => gap.id),
+      reason: 'answer',
+      limit: Math.max(1, input.limit ?? gaps.length),
+      maxRunMs: input.maxRunMs,
+      force: true,
+    });
   }
 
   private runAnswerRefinementInBackground(spaceId: string, gapIds: readonly string[]): void {
@@ -188,9 +207,9 @@ export class KnowledgeSemanticService {
   async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {
     await this.store.init();
     if (input.deferRepair !== true) {
-      if (this.activeSelfImprovementRun) return activeSelfImproveResult();
+      if (this.activeSelfImprovementRun && !input.gapIds?.length) return activeSelfImproveResult();
       const run = this.runSelfImproveUnlocked(input);
-      this.activeSelfImprovementRun = run;
+      if (!input.gapIds?.length) this.activeSelfImprovementRun = run;
       try {
         return await run;
       } finally {
@@ -232,6 +251,22 @@ export class KnowledgeSemanticService {
       .filter((task) => task.gapId && wanted.has(task.gapId))
       .map((task) => task.id);
   }
+}
+
+function answerRepairSpaceId(answer: KnowledgeSemanticAnswerResult): string {
+  for (const gap of answer.answer.gaps) {
+    const spaceId = normalizeKnowledgeSpaceId(getKnowledgeSpaceId(gap));
+    if (spaceId && spaceId !== 'default' && spaceId !== 'homeassistant') return spaceId;
+  }
+  for (const source of answer.answer.sources) {
+    const spaceId = normalizeKnowledgeSpaceId(getKnowledgeSpaceId(source));
+    if (spaceId && spaceId !== 'default' && spaceId !== 'homeassistant') return spaceId;
+  }
+  for (const node of answer.answer.linkedObjects) {
+    const spaceId = normalizeKnowledgeSpaceId(getKnowledgeSpaceId(node));
+    if (spaceId && spaceId !== 'default' && spaceId !== 'homeassistant') return spaceId;
+  }
+  return answer.spaceId;
 }
 
 function activeSelfImproveResult(): KnowledgeSemanticSelfImproveResult {

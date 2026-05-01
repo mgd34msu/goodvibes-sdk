@@ -58,6 +58,7 @@ export function renderKnowledgeMap(
     edges: state.edges,
     issues: state.issues ?? [],
   }, options);
+  const filteredEdges = filtered.edges.filter((edge) => edge.fromId !== edge.toId);
   const nodes = [...filtered.nodes]
     .sort(compareRecordTitle)
     .slice(0, limit);
@@ -109,7 +110,7 @@ export function renderKnowledgeMap(
   ]);
   const nodeIds = new Set(mapNodes.map((node) => node.id));
   const mapNodeById = new Map(mapNodes.map((node) => [node.id, node]));
-  const visibleEdges = filtered.edges
+  const visibleEdges = filteredEdges
     .filter((edge) => nodeIds.has(edge.fromId) && nodeIds.has(edge.toId))
     .map((edge) => {
       const from = mapNodeById.get(edge.fromId);
@@ -140,7 +141,7 @@ export function renderKnowledgeMap(
     nodeCount: mapNodes.length,
     edgeCount: visibleEdges.length,
     totalNodeCount: filtered.sources.length + filtered.nodes.length + filtered.issues.length,
-    totalEdgeCount: filtered.edges.length,
+    totalEdgeCount: filteredEdges.length,
     facets: buildKnowledgeMapFacets({
       sources: state.sources,
       nodes: state.nodes,

@@ -28,6 +28,7 @@ import {
   HOME_GRAPH_REFINEMENT_RUN_OUTPUT_SCHEMA,
   HOME_GRAPH_REFINEMENT_TASK_OUTPUT_SCHEMA,
   HOME_GRAPH_REFINEMENT_TASKS_OUTPUT_SCHEMA,
+  HOME_GRAPH_RESET_INPUT_SCHEMA,
   HOME_GRAPH_RESET_OUTPUT_SCHEMA,
   HOME_GRAPH_REVIEW_OUTPUT_SCHEMA,
   HOME_GRAPH_SOURCES_OUTPUT_SCHEMA,
@@ -391,7 +392,7 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     path: '/api/homeassistant/home-graph/reset',
     write: true,
     dangerous: true,
-    inputSchema: HOME_GRAPH_SPACE_INPUT_SCHEMA,
+    inputSchema: HOME_GRAPH_RESET_INPUT_SCHEMA,
     outputSchema: HOME_GRAPH_RESET_OUTPUT_SCHEMA,
   }),
 ];

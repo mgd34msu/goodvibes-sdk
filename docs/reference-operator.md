@@ -30265,6 +30265,9 @@ Clear one Home Assistant Home Graph knowledge space after callers export any dia
     },
     "knowledgeSpaceId": {
       "type": "string"
+    },
+    "dryRun": {
+      "type": "boolean"
     }
   },
   "additionalProperties": true
@@ -30285,6 +30288,9 @@ Clear one Home Assistant Home Graph knowledge space after callers export any dia
     },
     "installationId": {
       "type": "string"
+    },
+    "dryRun": {
+      "type": "boolean"
     },
     "deleted": {
       "type": "object",
@@ -30321,6 +30327,7 @@ Clear one Home Assistant Home Graph knowledge space after callers export any dia
     "ok",
     "spaceId",
     "installationId",
+    "dryRun",
     "deleted",
     "artifactsDeleted"
   ],

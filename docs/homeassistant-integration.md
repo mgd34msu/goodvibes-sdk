@@ -107,7 +107,7 @@ config flow setup. The most useful endpoints are:
 | `GET`/`POST /api/homeassistant/home-graph/map` | Return a visual node/edge map as JSON layout data plus SVG, or SVG directly with `format=svg`. |
 | `POST /api/homeassistant/home-graph/export` | Export the HA knowledge space. |
 | `POST /api/homeassistant/home-graph/import` | Import a HA knowledge space export. |
-| `POST /api/homeassistant/home-graph/reset` | Admin-only reset for one HA knowledge space. Export first if the current graph may be needed for diagnosis. Reset clears graph rows, issues, extractions, refinement tasks, and related bookkeeping for the space; artifact blobs are not deleted. |
+| `POST /api/homeassistant/home-graph/reset` | Admin-only reset for one HA knowledge space. Pass `dryRun: true` to preview delete counts without changing storage. Export first if the current graph may be needed for diagnosis. Reset clears graph rows, issues, extractions, refinement tasks, and related bookkeeping for the space; artifact blobs are not deleted. |
 
 All daemon API calls require normal daemon authentication. The inbound webhook
 below additionally requires the Home Assistant webhook secret because webhook
@@ -276,12 +276,15 @@ tasks, rebuild it through SDK routes instead of editing the SQLite database.
 First call `POST /api/homeassistant/home-graph/export` and save the JSON for
 diagnosis. Then call the admin-only
 `POST /api/homeassistant/home-graph/reset` route with `installationId` or
-`knowledgeSpaceId`. Reset deletes only the selected Home Assistant knowledge
-space rows: sources, nodes, edges, issues, extractions, refinement tasks, job
-runs, usage records, consolidation records, and schedules. It intentionally
-does not delete artifact blobs from disk. After reset, re-sync the real Home
-Assistant snapshot, reingest or relink manuals/documents from the integration,
-then run reindex/refinement/page generation against the clean space.
+`knowledgeSpaceId`. Use `dryRun: true` first to get the exact delete counts
+without mutating the graph; the response includes `dryRun: true` and the same
+`deleted` summary shape as the real reset. A non-dry run deletes only the
+selected Home Assistant knowledge space rows: sources, nodes, edges, issues,
+extractions, refinement tasks, job runs, usage records, consolidation records,
+and schedules. It intentionally does not delete artifact blobs from disk. After
+reset, re-sync the real Home Assistant snapshot, reingest or relink
+manuals/documents from the integration, then run reindex/refinement/page
+generation against the clean space.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
@@ -358,9 +361,14 @@ answers, not unsupported inference in the current response. Clients can call
 reindex or ask again later to use the newly indexed sources once
 extraction/enrichment has finished. Existing repair sources only suppress the
 specific gap they repair, not every gap attached to the same device or service.
-Ask-created gaps queue refinement tasks and start repair asynchronously; the
-Ask route returns the current best source-backed answer and any
-`refinementTaskIds` without waiting for web search or URL ingest to finish.
+Ask-created gaps usually queue refinement tasks and start repair
+asynchronously. For concrete object feature/specification questions where Home
+Graph can already identify the subject, Ask performs one bounded repair pass,
+links accepted sources back to both the exact gap and the HA object, refreshes
+the candidate search state, and re-synthesizes once before returning. If that
+bounded pass cannot close the gap quickly, the Ask route still returns the
+current best source-backed answer and any `refinementTaskIds` for continued
+repair.
 Home Graph reindex also queues repairable gaps, caps foreground source
 enrichment with a run budget, and starts only a small delayed background repair
 pass after returning source-enrichment and queued-task metadata. Panels should
@@ -412,7 +420,10 @@ It uses the shared knowledge map renderer also exposed by `GET /api/knowledge/ma
 so Home Assistant panels can rely on the same node/edge/SVG response shape as
 the base knowledge/wiki map. Pass `includeSources=false` to show only graph
 nodes, `limit` to cap the rendered graph, or `format=svg` to receive
-`image/svg+xml` directly for an embedded preview.
+`image/svg+xml` directly for an embedded preview. Self-loop edges are suppressed
+at write time for snapshot object links and at render time for maps, so objects
+such as integrations do not produce `connected_via` edges pointing back to
+themselves.
 
 The Home Graph map supports all generic knowledge map filters plus
 Home Assistant-specific filters. Generic filters include `recordKinds`,

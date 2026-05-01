@@ -301,6 +301,42 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(text).not.toContain('BRAVIA');
   });
 
+  test('base Home Assistant alias stores answer-gap refinement in the concrete installation space', async () => {
+    const { store, artifactStore } = createStores();
+    const semantic = new KnowledgeSemanticService(store, {
+      llm: new GapRepairAnswerLlm(),
+      gapRepairer: async () => ({ searched: true, ingestedSourceIds: [], skippedUrls: [] }),
+    });
+    const snapshotService = new HomeGraphService(store, artifactStore);
+    await snapshotService.syncSnapshot({
+      installationId: 'house',
+      devices: [{ id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'LG TV setup note',
+      body: 'The LG webOS Smart TV is installed in Home Assistant.',
+      target: { kind: 'device', id: 'tv', relation: 'source_for' },
+    });
+
+    const answer = await semantic.answer({
+      knowledgeSpaceId: 'homeassistant',
+      query: 'what features does the TV have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+    });
+    const concreteSpaceId = homeAssistantKnowledgeSpaceId('house');
+
+    expect(answer.spaceId).toBe('homeassistant');
+    expect(answer.answer.gaps).toHaveLength(1);
+    expect(answer.answer.gaps[0]?.metadata.knowledgeSpaceId).toBe(concreteSpaceId);
+    expect(store.listRefinementTasks(10, { spaceId: concreteSpaceId })
+      .filter((task) => task.gapId === answer.answer.gaps?.[0]?.id)).toHaveLength(1);
+    expect(store.listRefinementTasks(10, { spaceId: 'homeassistant' })
+      .filter((task) => task.gapId === answer.answer.gaps?.[0]?.id)).toHaveLength(0);
+  });
+
   test('Home Graph ask prioritizes answer synthesis before background semantic enrichment', async () => {
     const { store, artifactStore } = createStores();
     const llm = new OrderedHomeGraphAskLlm();
@@ -332,6 +368,71 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.synthesized).toBe(true);
     expect(answer.answer.text).toContain('Dolby Vision');
     expect(answer.answer.gaps?.map((gap) => gap.title)).toContain('What are the complete TV feature specifications?');
+  });
+
+  test('Home Graph ask performs bounded repair for concrete feature gaps and re-answers from repaired sources', async () => {
+    const { store, artifactStore } = createStores();
+    const semantic = new KnowledgeSemanticService(store, {
+      llm: new ForegroundRepairLlm(),
+      gapRepairer: async (request) => {
+        const source = await store.upsertSource({
+          connectorId: 'semantic-gap-repair',
+          sourceType: 'url',
+          title: 'LG 86NANO90UNA product specifications',
+          canonicalUri: 'https://example.test/lg-86nano90una-specs',
+          tags: ['semantic-gap-repair', 'tv'],
+          status: 'indexed',
+          metadata: {
+            knowledgeSpaceId: request.spaceId,
+            sourceDiscovery: {
+              purpose: 'semantic-gap-repair',
+              linkedObjectIds: request.linkedObjects.map((node) => node.id),
+            },
+          },
+        });
+        await store.upsertExtraction({
+          sourceId: source.id,
+          extractorId: 'test-html',
+          format: 'html',
+          structure: {
+            searchText: 'LG 86NANO90UNA features include NanoCell 4K display, HDR10, Dolby Vision, HDMI eARC, webOS, and Game Optimizer.',
+          },
+          metadata: { knowledgeSpaceId: request.spaceId },
+        });
+        return {
+          searched: true,
+          query: request.query,
+          ingestedSourceIds: [source.id],
+          skippedUrls: [],
+        };
+      },
+    });
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.syncSnapshot({
+      installationId: 'house',
+      devices: [{ id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+
+    const answer = await service.ask({
+      installationId: 'house',
+      query: 'what features does the TV have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+    });
+    const tvNode = store.listNodes(100).find((node) => node.title === 'LG webOS Smart TV');
+    const repairSource = answer.answer.sources.find((source) => source.title === 'LG 86NANO90UNA product specifications');
+
+    expect(answer.answer.text).toContain('NanoCell 4K');
+    expect(answer.answer.gaps).toHaveLength(0);
+    expect(repairSource).toBeDefined();
+    expect(tvNode).toBeDefined();
+    expect(store.listEdges().some((edge) => (
+      edge.fromKind === 'source'
+      && edge.fromId === repairSource?.id
+      && edge.toKind === 'node'
+      && edge.toId === tvNode?.id
+      && edge.relation === 'source_for'
+    ))).toBe(true);
   });
 
   test('Home Graph semantic ask does not let unrelated semantic pages become object anchors', async () => {
@@ -1218,8 +1319,8 @@ describe('semantic knowledge/wiki enrichment', () => {
 
     expect(calls).toHaveLength(1);
     expect(second.skippedGaps).toBe(1);
-    expect(second.truncated).toBe(true);
-    expect(second.budgetExhausted).toBe(true);
+    expect(second.truncated).toBe(false);
+    expect(second.budgetExhausted).toBe(false);
   });
 
   test('semantic reindex honors a run budget instead of processing every LLM source inline', async () => {
@@ -1351,6 +1452,54 @@ class GapRepairAnswerLlm implements KnowledgeSemanticLlm {
         severity: 'info',
       }],
     };
+  }
+
+  async completeText(): Promise<string | null> {
+    return null;
+  }
+}
+
+class ForegroundRepairLlm implements KnowledgeSemanticLlm {
+  async completeJson(input: { readonly purpose: string; readonly prompt?: string }): Promise<unknown | null> {
+    if (input.purpose === 'knowledge-semantic-enrichment') {
+      return {
+        summary: 'LG 86NANO90UNA product specifications.',
+        entities: [],
+        facts: [{
+          kind: 'feature',
+          title: 'NanoCell 4K feature set',
+          summary: 'The TV supports NanoCell 4K, HDR10, Dolby Vision, HDMI eARC, webOS, and Game Optimizer.',
+          evidence: 'NanoCell 4K display, HDR10, Dolby Vision, HDMI eARC, webOS, and Game Optimizer',
+          confidence: 92,
+        }],
+        relations: [],
+        gaps: [],
+      };
+    }
+    if (input.purpose === 'knowledge-answer-synthesis') {
+      const prompt = input.prompt ?? '';
+      if (prompt.includes('NanoCell 4K')) {
+        return {
+          answer: 'The LG 86NANO90UNA feature set includes NanoCell 4K display, HDR10, Dolby Vision, HDMI eARC, webOS, and Game Optimizer.',
+          confidence: 90,
+          usedSourceIds: [],
+          usedNodeIds: [],
+          gaps: [],
+        };
+      }
+      return {
+        answer: 'The evidence only identifies the device as an LG webOS Smart TV.',
+        confidence: 0,
+        usedSourceIds: [],
+        usedNodeIds: [],
+        gaps: [{
+          question: 'What are the complete features and specifications for LG 86NANO90UNA?',
+          reason: 'The current evidence lacks product feature/specification details.',
+          severity: 'info',
+        }],
+      };
+    }
+    return null;
   }
 
   async completeText(): Promise<string | null> {
