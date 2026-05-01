@@ -24641,6 +24641,9 @@ Search a Home Graph knowledge space and return a source-backed answer.
     },
     "includeLinkedObjects": {
       "type": "boolean"
+    },
+    "timeoutMs": {
+      "type": "number"
     }
   },
   "required": [
@@ -31897,6 +31900,9 @@ Search, semantically synthesize, and return a source-backed answer from the stru
     },
     "strictCandidates": {
       "type": "boolean"
+    },
+    "timeoutMs": {
+      "type": "number"
     },
     "metadata": {
       "type": "object",

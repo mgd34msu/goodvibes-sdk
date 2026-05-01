@@ -170,6 +170,7 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     inputSchema: bodyEnvelopeSchema({
       installationId: STRING_SCHEMA, knowledgeSpaceId: STRING_SCHEMA, query: STRING_SCHEMA, limit: NUMBER_SCHEMA,
       mode: STRING_SCHEMA, includeSources: BOOLEAN_SCHEMA, includeConfidence: BOOLEAN_SCHEMA, includeLinkedObjects: BOOLEAN_SCHEMA,
+      timeoutMs: NUMBER_SCHEMA,
     }, ['query']),
     outputSchema: HOME_GRAPH_ASK_OUTPUT_SCHEMA,
   }),

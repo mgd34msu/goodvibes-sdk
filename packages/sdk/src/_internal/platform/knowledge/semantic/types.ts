@@ -110,6 +110,7 @@ export interface KnowledgeSemanticAnswerInput {
   readonly linkedObjects?: readonly KnowledgeNodeRecord[];
   readonly noMatchMessage?: string;
   readonly autoRepairGaps?: boolean;
+  readonly timeoutMs?: number;
 }
 
 export interface KnowledgeSemanticAnswer {
@@ -147,6 +148,9 @@ export interface KnowledgeSemanticGapRepairRequest {
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly linkedObjects: readonly KnowledgeNodeRecord[];
   readonly facts: readonly KnowledgeNodeRecord[];
+  readonly maxSources?: number;
+  readonly deadlineAt?: number;
+  readonly signal?: AbortSignal;
 }
 
 export interface KnowledgeSemanticGapRepairResult {

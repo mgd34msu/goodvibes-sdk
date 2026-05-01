@@ -263,10 +263,8 @@ export class HomeGraphService {
   async ask(input: HomeGraphAskInput): Promise<HomeGraphAskResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
-    let state = readHomeGraphSearchState(this.store, spaceId);
-    if (await this.repairWeakExtractionsForAsk(spaceId, installationId, input.query, state) > 0) {
-      state = readHomeGraphSearchState(this.store, spaceId);
-    }
+    const state = readHomeGraphSearchState(this.store, spaceId);
+    void this.repairWeakExtractionsForAsk(spaceId, installationId, input.query, state).catch(() => {});
     const results = scoreHomeGraphResults(
       input.query,
       state.sources,
@@ -309,7 +307,7 @@ export class HomeGraphService {
       state.nodes,
       state.edges,
       (sourceId) => state.extractionBySourceId.get(sourceId),
-      8,
+      2,
     );
     let repaired = 0;
     for (const [index, source] of candidates.entries()) {
