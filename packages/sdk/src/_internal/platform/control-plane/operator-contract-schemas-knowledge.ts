@@ -165,6 +165,8 @@ const KNOWLEDGE_JOB_RUN_SEMANTIC_RESULT_SCHEMA = objectSchema({
 }, ['scanned', 'enriched', 'skipped', 'failed', 'errors'], { additionalProperties: true });
 const KNOWLEDGE_JOB_RUN_SELF_IMPROVEMENT_RESULT_SCHEMA = objectSchema({
   scannedGaps: NUMBER_SCHEMA,
+  candidateGaps: NUMBER_SCHEMA,
+  processedGaps: NUMBER_SCHEMA,
   createdGaps: NUMBER_SCHEMA,
   repairableGaps: NUMBER_SCHEMA,
   suppressedGaps: NUMBER_SCHEMA,
@@ -175,6 +177,10 @@ const KNOWLEDGE_JOB_RUN_SELF_IMPROVEMENT_RESULT_SCHEMA = objectSchema({
   blockedGaps: NUMBER_SCHEMA,
   closedGaps: NUMBER_SCHEMA,
   queuedTasks: NUMBER_SCHEMA,
+  requestedLimit: NUMBER_SCHEMA,
+  effectiveLimit: NUMBER_SCHEMA,
+  truncated: BOOLEAN_SCHEMA,
+  budgetExhausted: BOOLEAN_SCHEMA,
   taskIds: STRING_LIST_SCHEMA,
   ingestedSourceIds: STRING_LIST_SCHEMA,
   errors: GENERIC_LIST_SCHEMA,
@@ -369,6 +375,8 @@ export const KNOWLEDGE_REFINEMENT_TASK_OUTPUT_SCHEMA = objectSchema({
 
 export const KNOWLEDGE_REFINEMENT_RUN_OUTPUT_SCHEMA = objectSchema({
   scannedGaps: NUMBER_SCHEMA,
+  candidateGaps: NUMBER_SCHEMA,
+  processedGaps: NUMBER_SCHEMA,
   createdGaps: NUMBER_SCHEMA,
   repairableGaps: NUMBER_SCHEMA,
   suppressedGaps: NUMBER_SCHEMA,
@@ -379,6 +387,10 @@ export const KNOWLEDGE_REFINEMENT_RUN_OUTPUT_SCHEMA = objectSchema({
   blockedGaps: NUMBER_SCHEMA,
   closedGaps: NUMBER_SCHEMA,
   queuedTasks: NUMBER_SCHEMA,
+  requestedLimit: NUMBER_SCHEMA,
+  effectiveLimit: NUMBER_SCHEMA,
+  truncated: BOOLEAN_SCHEMA,
+  budgetExhausted: BOOLEAN_SCHEMA,
   taskIds: STRING_LIST_SCHEMA,
   ingestedSourceIds: STRING_LIST_SCHEMA,
   errors: GENERIC_LIST_SCHEMA,

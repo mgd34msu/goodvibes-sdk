@@ -297,6 +297,7 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
       gapIds: STRING_LIST_SCHEMA,
       sourceIds: STRING_LIST_SCHEMA,
       limit: NUMBER_SCHEMA,
+      maxRunMs: NUMBER_SCHEMA,
       force: BOOLEAN_SCHEMA,
     }),
     outputSchema: HOME_GRAPH_REFINEMENT_RUN_OUTPUT_SCHEMA,

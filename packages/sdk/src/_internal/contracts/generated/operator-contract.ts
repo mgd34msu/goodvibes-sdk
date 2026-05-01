@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.0"
+    "version": "0.28.1"
   },
   "auth": {
     "modes": [
@@ -28629,6 +28629,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "limit": {
               "type": "number"
             },
+            "maxRunMs": {
+              "type": "number"
+            },
             "force": {
               "type": "boolean"
             }
@@ -28648,6 +28651,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "object",
               "properties": {
                 "scannedGaps": {
+                  "type": "number"
+                },
+                "candidateGaps": {
+                  "type": "number"
+                },
+                "processedGaps": {
                   "type": "number"
                 },
                 "createdGaps": {
@@ -28679,6 +28688,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "queuedTasks": {
                   "type": "number"
+                },
+                "requestedLimit": {
+                  "type": "number"
+                },
+                "effectiveLimit": {
+                  "type": "number"
+                },
+                "truncated": {
+                  "type": "boolean"
+                },
+                "budgetExhausted": {
+                  "type": "boolean"
                 },
                 "taskIds": {
                   "type": "array",
@@ -36607,6 +36628,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "scannedGaps": {
                             "type": "number"
                           },
+                          "candidateGaps": {
+                            "type": "number"
+                          },
+                          "processedGaps": {
+                            "type": "number"
+                          },
                           "createdGaps": {
                             "type": "number"
                           },
@@ -36636,6 +36663,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           "queuedTasks": {
                             "type": "number"
+                          },
+                          "requestedLimit": {
+                            "type": "number"
+                          },
+                          "effectiveLimit": {
+                            "type": "number"
+                          },
+                          "truncated": {
+                            "type": "boolean"
+                          },
+                          "budgetExhausted": {
+                            "type": "boolean"
                           },
                           "taskIds": {
                             "type": "array",
@@ -37141,6 +37180,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "scannedGaps": {
                           "type": "number"
                         },
+                        "candidateGaps": {
+                          "type": "number"
+                        },
+                        "processedGaps": {
+                          "type": "number"
+                        },
                         "createdGaps": {
                           "type": "number"
                         },
@@ -37170,6 +37215,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         "queuedTasks": {
                           "type": "number"
+                        },
+                        "requestedLimit": {
+                          "type": "number"
+                        },
+                        "effectiveLimit": {
+                          "type": "number"
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "budgetExhausted": {
+                          "type": "boolean"
                         },
                         "taskIds": {
                           "type": "array",
@@ -39203,6 +39260,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "limit": {
               "type": "number"
             },
+            "maxRunMs": {
+              "type": "number"
+            },
             "force": {
               "type": "boolean"
             }
@@ -39213,6 +39273,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "type": "object",
           "properties": {
             "scannedGaps": {
+              "type": "number"
+            },
+            "candidateGaps": {
+              "type": "number"
+            },
+            "processedGaps": {
               "type": "number"
             },
             "createdGaps": {
@@ -39244,6 +39310,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "queuedTasks": {
               "type": "number"
+            },
+            "requestedLimit": {
+              "type": "number"
+            },
+            "effectiveLimit": {
+              "type": "number"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "budgetExhausted": {
+              "type": "boolean"
             },
             "taskIds": {
               "type": "array",

@@ -688,6 +688,49 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(calls).toHaveLength(1);
   });
 
+  test('answer-triggered refinement is queued without blocking the answer', async () => {
+    const { store } = createStores();
+    const calls: unknown[] = [];
+    const semantic = new KnowledgeSemanticService(store, {
+      llm: new GapRepairAnswerLlm(),
+      gapRepairer: async (request) => {
+        calls.push(request);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return {
+          searched: true,
+          query: 'lg 86nano90una full specifications',
+          ingestedSourceIds: [],
+          skippedUrls: [],
+          reason: 'no sources in test',
+        };
+      },
+    });
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'manual://lg-tv-answer-gap',
+      tags: ['manual', 'tv'],
+      status: 'indexed',
+    });
+    await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'test',
+      format: 'text',
+      structure: {
+        searchText: 'The LG TV supports Magic Remote MR20GA when the wireless module includes Bluetooth.',
+      },
+    });
+
+    const startedAt = Date.now();
+    const answer = await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
+
+    expect(Date.now() - startedAt).toBeLessThan(250);
+    expect(answer.answer.refinementTaskIds?.length).toBeGreaterThan(0);
+    await waitFor(() => calls.length === 1, 250);
+    await waitFor(() => store.listRefinementTasks(10, { state: 'blocked' }).length === 1, 1_000);
+  });
+
   test('scheduled self-improvement repairs intrinsic device gaps without waiting for Ask', async () => {
     const { store } = createStores();
     const spaceId = homeAssistantKnowledgeSpaceId('house');
@@ -900,6 +943,36 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(calls).toHaveLength(0);
     expect(updated?.status).toBe('stale');
     expect(updated?.metadata.repairStatus).toBe('not_applicable');
+  });
+
+  test('self-improvement caps broad refinement runs and reports truncation metadata', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const semantic = new KnowledgeSemanticService(store);
+    for (let i = 0; i < 60; i += 1) {
+      await store.upsertNode({
+        kind: 'knowledge_gap',
+        slug: `broad-gap-${i}`,
+        title: `What are the complete features and specifications for device ${i}?`,
+        aliases: [],
+        confidence: 75,
+        metadata: {
+          knowledgeSpaceId: spaceId,
+          semanticKind: 'gap',
+          gapKind: 'intrinsic_features',
+        },
+      });
+    }
+
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, limit: 500, reason: 'manual' });
+
+    expect(result.candidateGaps).toBe(60);
+    expect(result.requestedLimit).toBe(500);
+    expect(result.effectiveLimit).toBe(24);
+    expect(result.scannedGaps).toBe(24);
+    expect(result.processedGaps).toBe(24);
+    expect(result.truncated).toBe(true);
+    expect(result.blockedGaps).toBe(24);
   });
 
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {

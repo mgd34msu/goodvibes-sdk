@@ -28795,6 +28795,9 @@ Run source-backed Home Graph self-improvement for a space, source list, or speci
     "limit": {
       "type": "number"
     },
+    "maxRunMs": {
+      "type": "number"
+    },
     "force": {
       "type": "boolean"
     }
@@ -28819,6 +28822,12 @@ Run source-backed Home Graph self-improvement for a space, source list, or speci
       "type": "object",
       "properties": {
         "scannedGaps": {
+          "type": "number"
+        },
+        "candidateGaps": {
+          "type": "number"
+        },
+        "processedGaps": {
           "type": "number"
         },
         "createdGaps": {
@@ -28850,6 +28859,18 @@ Run source-backed Home Graph self-improvement for a space, source list, or speci
         },
         "queuedTasks": {
           "type": "number"
+        },
+        "requestedLimit": {
+          "type": "number"
+        },
+        "effectiveLimit": {
+          "type": "number"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "budgetExhausted": {
+          "type": "boolean"
         },
         "taskIds": {
           "type": "array",
@@ -36890,6 +36911,12 @@ Return recent knowledge job runs.
                   "scannedGaps": {
                     "type": "number"
                   },
+                  "candidateGaps": {
+                    "type": "number"
+                  },
+                  "processedGaps": {
+                    "type": "number"
+                  },
                   "createdGaps": {
                     "type": "number"
                   },
@@ -36919,6 +36946,18 @@ Return recent knowledge job runs.
                   },
                   "queuedTasks": {
                     "type": "number"
+                  },
+                  "requestedLimit": {
+                    "type": "number"
+                  },
+                  "effectiveLimit": {
+                    "type": "number"
+                  },
+                  "truncated": {
+                    "type": "boolean"
+                  },
+                  "budgetExhausted": {
+                    "type": "boolean"
                   },
                   "taskIds": {
                     "type": "array",
@@ -37429,6 +37468,12 @@ Queue or run a structured knowledge maintenance job.
                 "scannedGaps": {
                   "type": "number"
                 },
+                "candidateGaps": {
+                  "type": "number"
+                },
+                "processedGaps": {
+                  "type": "number"
+                },
                 "createdGaps": {
                   "type": "number"
                 },
@@ -37458,6 +37503,18 @@ Queue or run a structured knowledge maintenance job.
                 },
                 "queuedTasks": {
                   "type": "number"
+                },
+                "requestedLimit": {
+                  "type": "number"
+                },
+                "effectiveLimit": {
+                  "type": "number"
+                },
+                "truncated": {
+                  "type": "boolean"
+                },
+                "budgetExhausted": {
+                  "type": "boolean"
                 },
                 "taskIds": {
                   "type": "array",
@@ -39522,6 +39579,9 @@ Run source-backed semantic self-improvement for a space, source list, or specifi
     "limit": {
       "type": "number"
     },
+    "maxRunMs": {
+      "type": "number"
+    },
     "force": {
       "type": "boolean"
     }
@@ -39537,6 +39597,12 @@ Run source-backed semantic self-improvement for a space, source list, or specifi
   "type": "object",
   "properties": {
     "scannedGaps": {
+      "type": "number"
+    },
+    "candidateGaps": {
+      "type": "number"
+    },
+    "processedGaps": {
       "type": "number"
     },
     "createdGaps": {
@@ -39568,6 +39634,18 @@ Run source-backed semantic self-improvement for a space, source list, or specifi
     },
     "queuedTasks": {
       "type": "number"
+    },
+    "requestedLimit": {
+      "type": "number"
+    },
+    "effectiveLimit": {
+      "type": "number"
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "budgetExhausted": {
+      "type": "boolean"
     },
     "taskIds": {
       "type": "array",

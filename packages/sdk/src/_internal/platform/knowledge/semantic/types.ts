@@ -176,12 +176,16 @@ export interface KnowledgeSemanticSelfImproveInput {
   readonly sourceIds?: readonly string[];
   readonly gapIds?: readonly string[];
   readonly limit?: number;
+  readonly maxRunMs?: number;
+  readonly deferRepair?: boolean;
   readonly force?: boolean;
   readonly reason?: 'ingest' | 'homegraph-sync' | 'reindex' | 'scheduled' | 'answer' | 'manual';
 }
 
 export interface KnowledgeSemanticSelfImproveResult {
   readonly scannedGaps: number;
+  readonly candidateGaps?: number;
+  readonly processedGaps?: number;
   readonly createdGaps: number;
   readonly repairableGaps: number;
   readonly suppressedGaps: number;
@@ -192,6 +196,10 @@ export interface KnowledgeSemanticSelfImproveResult {
   readonly blockedGaps: number;
   readonly closedGaps: number;
   readonly queuedTasks: number;
+  readonly requestedLimit?: number;
+  readonly effectiveLimit?: number;
+  readonly truncated?: boolean;
+  readonly budgetExhausted?: boolean;
   readonly taskIds: readonly string[];
   readonly ingestedSourceIds: readonly string[];
   readonly errors: readonly { readonly gapId: string; readonly error: string }[];

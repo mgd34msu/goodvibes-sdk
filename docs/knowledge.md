@@ -166,7 +166,16 @@ were applied. Clients can inspect and run this pipeline through:
 The same endpoints are exposed as operator methods under
 `knowledge.refinement.*`. Refinement counters distinguish detected, repairable,
 blocked, suppressed, closed, queued, searched, ingested, and linked gaps so a UI
-does not have to infer progress from issue counts or logs.
+does not have to infer progress from issue counts or logs. Run results also
+include operational guardrails: `candidateGaps` is the number of matching gaps
+found, `requestedLimit` is the caller's requested batch size, `effectiveLimit`
+is the SDK cap applied to the run, `processedGaps` is the count actually
+attempted, `truncated` is true when more work remains after this foreground
+batch, and `budgetExhausted` is true when the configured run window expired.
+`POST /api/knowledge/refinement/run` accepts `maxRunMs` for shorter foreground
+runs, but the SDK still caps broad requests internally. Clients should repeat
+or schedule refinement runs instead of using one unbounded call for an entire
+large knowledge space. The foreground cap is currently 24 gaps per run.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
@@ -175,7 +184,14 @@ that evidence, and falls back to fact/snippet rendering when no LLM is
 available. Responses include answer text, confidence, sources, linked objects,
 facts, gaps, and ranked search results. This is the generic layer used by Home
 Graph and future knowledge spaces, so clients should not implement their own
-snippet-to-answer logic.
+snippet-to-answer logic. If Ask identifies answer gaps and semantic gap repair
+is configured, the SDK queues refinement tasks and starts repair in the
+background. Ask does not wait for web search, URL ingest, or re-answering; it
+returns the current best answer plus `refinementTaskIds` so clients can show
+repair progress and ask again after the graph improves.
+Semantic reindex follows the same pattern: it performs source enrichment,
+queues repairable gaps, returns the queued task metadata, and starts bounded
+repair work asynchronously.
 Clients that already performed object-scoped retrieval can pass
 `candidateSourceIds`, `candidateNodeIds`, and `strictCandidates: true` so answer
 synthesis stays inside that candidate set instead of re-scanning unrelated
@@ -209,7 +225,10 @@ facts from search snippets. It gives the normal ingest, extraction, semantic
 enrichment, review, and future ask paths more source evidence to work with.
 Existing `repairs_gap` edges and retry windows suppress repeated searches for
 the same gap; repair sources linked elsewhere on the same object do not block
-new gaps from being repaired.
+new gaps from being repaired. Foreground repair attempts use bounded web search
+and URL-ingest waits, accept two repair sources by default, yield between gap
+attempts, and mark interrupted active tasks as blocked-and-retriable on the
+next run for that space.
 
 ## Review Pathways
 
