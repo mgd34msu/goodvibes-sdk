@@ -283,7 +283,7 @@ export class HomeGraphService {
       artifactStore: this.artifactStore,
       semanticService: this.options.semanticService,
       extract: (source, artifact, spaceId, installationId) => this.extractArtifact(source, artifact, spaceId, installationId),
-      autoLinkExistingSources: (spaceId, installationId) => this.autoLinkExistingSources(spaceId, installationId),
+      autoLinkExistingSources: (spaceId, installationId, sourceIds) => this.autoLinkExistingSources(spaceId, installationId, sourceIds),
       refreshQualityIssues: (spaceId, installationId) => this.refreshQualityIssues(spaceId, installationId),
     }, input);
   }
@@ -586,14 +586,17 @@ export class HomeGraphService {
   private async autoLinkExistingSources(
     spaceId: string,
     installationId: string,
+    sourceIds?: readonly string[],
   ): Promise<readonly HomeGraphAutoLinkResult[]> {
     const state = readHomeGraphState(this.store, spaceId);
     const extractionBySourceId = new Map(state.extractions.map((extraction) => [extraction.sourceId, extraction]));
+    const wanted = sourceIds && sourceIds.length > 0 ? new Set(sourceIds) : null;
+    const sources = wanted ? state.sources.filter((source) => wanted.has(source.id)) : state.sources;
     return autoLinkHomeGraphSources({
       store: this.store,
       spaceId,
       installationId,
-      sources: state.sources,
+      sources,
       extractionBySourceId,
       state,
     });

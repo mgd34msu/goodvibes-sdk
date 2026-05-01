@@ -185,6 +185,38 @@ describe('Home Graph repair and generated pages', () => {
       structure: { searchText: text },
       metadata,
     });
+    const remoteGap = await store.upsertNode({
+      id: 'remote-gap',
+      kind: 'knowledge_gap',
+      slug: 'remote-gap',
+      title: 'Does the TV support Magic Remote voice recognition?',
+      summary: 'Accessory-specific semantic refinement gap.',
+      aliases: [],
+      confidence: 70,
+      metadata: {
+        ...metadata,
+        semanticKind: 'gap',
+        gapKind: 'answer',
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: remoteGap.id,
+      relation: 'has_gap',
+      metadata,
+    });
+    await store.upsertIssue({
+      id: 'remote-gap-issue',
+      severity: 'info',
+      code: 'knowledge.answer_gap',
+      message: 'Does the TV support Magic Remote voice recognition?',
+      status: 'open',
+      sourceId: source.id,
+      nodeId: remoteGap.id,
+      metadata,
+    });
     await service.linkKnowledge({
       installationId: 'house-1',
       sourceId: source.id,
@@ -202,6 +234,8 @@ describe('Home Graph repair and generated pages', () => {
     expect(passport.markdown).not.toContain('ULTRA HD broadcast standards');
     expect(passport.markdown).not.toContain('USB to Serial');
     expect(passport.markdown).not.toContain('Magic Remote');
+    expect(passport.markdown).not.toContain('voice recognition');
+    expect(passport.markdown).not.toContain('knowledge.answer_gap');
   });
 });
 

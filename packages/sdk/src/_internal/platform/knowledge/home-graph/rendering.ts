@@ -9,7 +9,10 @@ import { renderKnowledgeMap } from '../map.js';
 import { countFacet, normalizeStringArray, readString } from '../map-filters.js';
 import { edgeIsActive, isGeneratedPageSource, uniqueStrings } from './helpers.js';
 import type { HomeGraphMapHaFilterInput, HomeGraphMapInput, HomeGraphMapResult } from './types.js';
-import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
+import {
+  isLowValueFeatureOrSpecText,
+  isUsefulHomeGraphPageFact,
+} from '../semantic/fact-quality.js';
 
 export interface HomeGraphRenderState {
   readonly spaceId: string;
@@ -438,13 +441,21 @@ function semanticFactSortKey(node: KnowledgeNodeRecord): string {
 }
 
 function renderIssueList(title: string, issues: readonly KnowledgeIssueRecord[]): string {
-  if (issues.length === 0) return '';
+  const entries = issues.filter(isUsefulHomeGraphPageIssue);
+  if (entries.length === 0) return '';
   return [
     `## ${title}`,
     '',
-    ...issues.slice(0, 100).map((issue) => `- ${issue.severity}: ${issue.message}`),
+    ...entries.slice(0, 100).map((issue) => `- ${issue.severity}: ${issue.message}`),
     '',
   ].join('\n');
+}
+
+function isUsefulHomeGraphPageIssue(issue: KnowledgeIssueRecord): boolean {
+  if (issue.status !== 'open') return false;
+  if (issue.code.startsWith('knowledge.')) return false;
+  if (isLowValueFeatureOrSpecText(issue.message)) return false;
+  return true;
 }
 
 export function issuesForScope(

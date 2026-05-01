@@ -27,6 +27,10 @@ client domain from the default GoodVibes knowledge space. Records without this
 metadata are treated as the default space. Space helpers live in
 `knowledge/spaces.ts` and normalize the default space plus Home Assistant
 spaces such as `homeassistant:<installationId>`.
+For generic Knowledge Ask calls, `knowledgeSpaceId: "homeassistant"` is a
+virtual namespace alias that searches all `homeassistant:*` spaces. Use the
+fully scoped `homeassistant:<installationId>` id when a client should stay tied
+to one Home Assistant installation.
 Project Planning uses `project:<projectId>` spaces for project-specific
 planning state, project language, and decision records. Clients should pass a
 stable `projectId` for the current workspace so planning memory does not leak
@@ -207,6 +211,9 @@ Home Graph reindex adds one more guardrail for generated wiki material: it
 does not reprocess generated-page artifacts, only semantically re-enriches
 changed or explicitly forced sources, and regenerates device pages for devices
 touched by changed/newly linked evidence or by an older generated-page policy.
+Normal changed-only reindex only auto-links sources that were reparsed during
+that run. A forced reindex can still scan all stored sources when a host needs a
+full link audit.
 That keeps "reindex uploads" focused on repairing uploaded manuals/documents
 and refreshing stale pages without treating generated pages as source material.
 Clients that already performed object-scoped retrieval can pass
@@ -365,6 +372,10 @@ entity lists, linked sources, high-value extracted semantic facts, scoped open
 issues, and open questions. Room pages only render issues attached to the room,
 its devices/entities/automations/scenes/scripts, linked sources, or scoped gap
 nodes; graph-wide backlogs are not dumped into individual room pages. Page
+issues exclude semantic refinement gaps such as `knowledge.answer_gap`,
+`knowledge.semantic_gap`, and `knowledge.intrinsic_gap`; those stay in Ask,
+review, and refinement task surfaces where users can see repair progress
+without turning generated pages into backlog dashboards. Page
 rendering filters manual boilerplate,
 optional-accessory/setup fragments, generic safety/handling facts, truncated
 or heading-only spec fragments, certified-cable warnings, service-only port

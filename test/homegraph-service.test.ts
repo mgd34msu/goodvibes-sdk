@@ -153,6 +153,15 @@ describe('Home Graph knowledge spaces', () => {
       metadata: { knowledgeSpaceId: spaceId },
     });
     await store.upsertIssue({
+      id: 'issue-kitchen-sensor-review',
+      severity: 'info',
+      code: 'homegraph.device.review_note',
+      message: 'Kitchen Sensor has a scoped device review note.',
+      status: 'open',
+      nodeId: kitchenSensor!.id,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertIssue({
       id: 'issue-garage-opener',
       severity: 'info',
       code: 'knowledge.intrinsic_gap',
@@ -167,7 +176,8 @@ describe('Home Graph knowledge spaces', () => {
     expect(page.markdown).toContain('Kitchen Sensor');
     expect(page.markdown).toContain('Kitchen Lights');
     expect(page.markdown).toContain('Kitchen sensor manual');
-    expect(page.markdown).toContain('Kitchen Sensor needs source-backed feature details.');
+    expect(page.markdown).toContain('Kitchen Sensor has a scoped device review note.');
+    expect(page.markdown).not.toContain('Kitchen Sensor needs source-backed feature details.');
     expect(page.markdown).not.toContain('Garage Opener');
     expect(page.markdown).not.toContain('Garage Door');
     expect(page.markdown).not.toContain('Garage Opener needs source-backed feature details.');

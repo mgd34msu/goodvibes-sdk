@@ -222,6 +222,34 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(page.markdown).toContain('HDMI inputs');
   });
 
+  test('base knowledge ask treats homeassistant as a namespace alias', async () => {
+    const { store, artifactStore } = createStores();
+    const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.syncSnapshot({
+      installationId: 'house',
+      devices: [{ id: 'tv', name: 'Living Room TV', model: 'MODEL-1' }],
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'Living Room TV manual',
+      body: 'The Living Room TV supports Dolby Vision and includes four HDMI ports.',
+      tags: ['manual', 'tv'],
+      target: { kind: 'device', id: 'tv', relation: 'has_manual' },
+    });
+
+    const answer = await semantic.answer({
+      knowledgeSpaceId: 'homeassistant',
+      query: 'what features does the living room tv have?',
+      includeSources: true,
+    });
+
+    expect(answer.spaceId).toBe('homeassistant');
+    expect(answer.answer.sources.map((source) => source.title)).toContain('Living Room TV manual');
+    expect(answer.answer.text).toContain('Dolby Vision');
+    expect(answer.answer.text).toContain('four HDMI ports');
+  });
+
   test('Home Graph ask prioritizes answer synthesis before background semantic enrichment', async () => {
     const { store, artifactStore } = createStores();
     const llm = new OrderedHomeGraphAskLlm();
