@@ -367,22 +367,21 @@ background. It scores candidate URLs against the HA device/service identity,
 manufacturer/model hints, the gap wording, and the query, requires accepted
 sources to clear the confidence threshold, and still requires at least two
 distinct external source domains before ingesting anything into the Home
-Assistant knowledge space. Accepted sources are linked to the exact gap with
+Assistant knowledge space. Repair tries progressively more targeted queries for
+the exact subject and gap, then accepts no more than five high-confidence
+sources for that gap. Accepted sources are linked to the exact gap with
 `repairs_gap` edges and carry `metadata.sourceDiscovery.confidence`,
-`confidenceReasons`, `agreementSourceCount`, `selectedUrl`, gap IDs, original
-source IDs, and linked HA object IDs. This is source discovery for future
-answers, not unsupported inference in the current response. Clients can call
-reindex or ask again later to use the newly indexed sources once
+`confidenceReasons`, `agreementSourceCount`, `selectedUrl`, `searchQueries`,
+gap IDs, original source IDs, and linked HA object IDs. This is source discovery
+for future answers, not unsupported inference in the current response. Clients
+can call reindex or ask again later to use the newly indexed sources once
 extraction/enrichment has finished. Existing repair sources only suppress the
 specific gap they repair, not every gap attached to the same device or service.
-Ask-created gaps usually queue refinement tasks and start repair
-asynchronously. For concrete object feature/specification questions where Home
-Graph can already identify the subject, Ask performs one bounded repair pass,
-links accepted sources back to both the exact gap and the HA object, refreshes
-the candidate search state, and re-synthesizes once before returning. If that
-bounded pass cannot close the gap quickly, the Ask route still returns the
+Ask-created gaps queue refinement tasks and start repair asynchronously. Ask
+does not wait for web search, URL ingest, or re-answering; it returns the
 current best source-backed answer and any `refinementTaskIds` for continued
-repair.
+repair. The route also has an SDK-owned synthesis timeout so a slow provider
+cannot hold the Home Assistant panel or daemon request open indefinitely.
 Home Graph reindex also queues repairable gaps, caps foreground source
 enrichment with a run budget, and starts only a small delayed background repair
 pass after returning source-enrichment and queued-task metadata. Panels should

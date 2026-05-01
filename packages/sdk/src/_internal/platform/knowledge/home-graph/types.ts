@@ -264,6 +264,7 @@ export interface HomeGraphAskInput extends HomeGraphSpaceInput {
   readonly includeSources?: boolean;
   readonly includeConfidence?: boolean;
   readonly includeLinkedObjects?: boolean;
+  readonly timeoutMs?: number;
 }
 
 export interface HomeGraphAskResult {

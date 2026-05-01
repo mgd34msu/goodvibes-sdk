@@ -44,6 +44,7 @@ import {
 } from './homeassistant-scope.js';
 import { concreteAnswerGapSpaceId } from './answer-space.js';
 import { answerNeedsFeatureGap, cleanSynthesizedAnswer } from './answer-quality.js';
+import { clampTimeoutMs, withTimeoutOrNull } from './timeouts.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -118,7 +119,7 @@ export async function answerKnowledgeQuery(
     };
   }
 
-  const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence);
+  const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence, input.timeoutMs);
   const facts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
   const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : []))
     .slice(0, limit)
@@ -276,12 +277,16 @@ async function synthesizeAnswer(
   query: string,
   mode: string,
   evidence: readonly EvidenceItem[],
+  requestedTimeoutMs: number | undefined,
 ): Promise<KnowledgeSemanticLlmAnswer | null> {
   if (!llm) return null;
-  const response = await llm.completeJson({
+  const timeoutMs = clampTimeoutMs(requestedTimeoutMs, 15_000, 1_000, 15_000);
+  const controller = new AbortController();
+  const response = await withTimeoutOrNull(llm.completeJson({
     purpose: 'knowledge-answer-synthesis',
     maxTokens: mode === 'detailed' ? 2200 : mode === 'concise' ? 700 : 1400,
-    timeoutMs: 15_000,
+    signal: controller.signal,
+    timeoutMs,
     systemPrompt: [
       'You answer questions from a GoodVibes self-improving knowledge wiki.',
       'Use only the supplied evidence. Synthesize the answer for the user intent rather than dumping snippets.',
@@ -302,7 +307,8 @@ async function synthesizeAnswer(
         gaps: [{ question: 'unanswered follow-up gap', reason: 'missing evidence', severity: 'info' }],
       },
     }),
-  });
+  }), timeoutMs);
+  controller.abort();
   return normalizeLlmAnswer(response);
 }
 
@@ -436,6 +442,7 @@ async function persistAnswerGap(
   const subject = context.subject ?? linkedObjects[0]?.title;
   const fingerprint = answerGapFingerprint(spaceId, query, subject, linkedObjects[0]?.id);
   const id = `sem-answer-gap-${fingerprint}`;
+  const existing = store.getNode(id);
   const node = await store.upsertNode({
     id,
     kind: 'knowledge_gap',
@@ -453,6 +460,9 @@ async function persistAnswerGap(
       subjectFingerprint: fingerprint,
       sourceIds: sources.map((source) => source.id),
       linkedObjectIds: linkedObjects.map((node) => node.id),
+      repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
+      visibility: 'refinement',
+      displayRole: 'knowledge-gap',
     }),
   });
   for (const source of sources) {

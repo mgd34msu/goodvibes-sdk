@@ -10,6 +10,7 @@ import type {
   KnowledgeSemanticGapRepairRequest,
   KnowledgeSemanticGapRepairResult,
 } from './types.js';
+import { withTimeout } from './timeouts.js';
 import { readString, scoreSemanticText, tokenizeSemanticQuery, uniqueStrings } from './utils.js';
 
 interface GapRepairSearch {
@@ -32,6 +33,8 @@ export interface WebGapRepairOptions {
   readonly searchService: GapRepairSearch;
   readonly ingestService: GapRepairIngest;
   readonly maxResults?: number;
+  readonly maxSearches?: number;
+  readonly maxSources?: number;
   readonly minDistinctDomains?: number;
   readonly minConfidence?: number;
   readonly maxIngest?: number;
@@ -39,7 +42,12 @@ export interface WebGapRepairOptions {
   readonly ingestTimeoutMs?: number;
 }
 
-interface GapRepairCandidate extends WebSearchResult {
+interface GapRepairSearchResult extends WebSearchResult {
+  readonly searchQuery: string;
+  readonly searchProviderId?: string;
+}
+
+interface GapRepairCandidate extends GapRepairSearchResult {
   readonly confidence: number;
   readonly reasons: readonly string[];
 }
@@ -49,6 +57,7 @@ interface GapRepairSourceAssessment {
   readonly title?: string;
   readonly domain?: string;
   readonly rank?: number;
+  readonly query?: string;
   readonly accepted: boolean;
   readonly confidence: number;
   readonly reasons: readonly string[];
@@ -64,8 +73,8 @@ async function repairKnowledgeGapsWithWeb(
   request: KnowledgeSemanticGapRepairRequest,
   options: WebGapRepairOptions,
 ): Promise<KnowledgeSemanticGapRepairResult> {
-  const query = buildGapRepairQuery(request);
-  if (!query) {
+  const queries = buildGapRepairQueries(request);
+  if (queries.length === 0) {
     return {
       searched: false,
       ingestedSourceIds: [],
@@ -74,47 +83,53 @@ async function repairKnowledgeGapsWithWeb(
     };
   }
 
-  let response: WebSearchResponse;
-  try {
-    response = await withTimeout(options.searchService.search({
-      query,
-      maxResults: Math.max(2, Math.min(12, options.maxResults ?? 6)),
-      verbosity: 'snippets',
-      safeSearch: 'moderate',
-      metadata: {
-        purpose: 'knowledge-gap-repair',
-        knowledgeSpaceId: request.spaceId,
-      },
-    }), Math.max(1_000, options.searchTimeoutMs ?? 8_000), 'Semantic gap repair search timed out.');
-  } catch (error) {
-    return {
-      searched: true,
-      query,
-      ingestedSourceIds: [],
-      skippedUrls: [],
-      reason: error instanceof Error ? error.message : String(error),
-    };
+  const existing = existingSources(request);
+  const sourceLimit = Math.max(2, Math.min(5, request.maxSources ?? options.maxSources ?? options.maxIngest ?? 5));
+  const searchLimit = Math.max(1, Math.min(5, options.maxSearches ?? queries.length));
+  const searchResults = new Map<string, GapRepairSearchResult>();
+  const providerIds = new Set<string>();
+  let lastError: string | undefined;
+  for (const query of queries.slice(0, searchLimit)) {
+    try {
+      const response = await withTimeout(options.searchService.search({
+        query,
+        maxResults: Math.max(sourceLimit, Math.min(8, options.maxResults ?? sourceLimit)),
+        verbosity: 'snippets',
+        safeSearch: 'moderate',
+        metadata: {
+          purpose: 'knowledge-gap-repair',
+          knowledgeSpaceId: request.spaceId,
+        },
+      }), Math.max(1_000, options.searchTimeoutMs ?? 8_000), 'Semantic gap repair search timed out.');
+      if (response.providerId) providerIds.add(response.providerId);
+      for (const result of response.results) {
+        const canonical = canonicalizeUri(result.url);
+        if (!canonical || searchResults.has(canonical)) continue;
+        searchResults.set(canonical, { ...result, searchQuery: query, searchProviderId: response.providerId });
+      }
+      const partial = selectGapRepairCandidates([...searchResults.values()], existing, options, request, sourceLimit);
+      if (partial.length >= Math.max(2, options.minDistinctDomains ?? 2)) break;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
   }
 
-  const existing = new Set(request.sources.flatMap((source) => [
-    canonicalizeUri(source.canonicalUri ?? ''),
-    canonicalizeUri(source.sourceUri ?? ''),
-  ].filter((value): value is string => Boolean(value))));
-  const candidates = selectGapRepairCandidates(response.results, existing, options, query, request);
+  const allResults = [...searchResults.values()];
+  const candidates = selectGapRepairCandidates(allResults, existing, options, request, sourceLimit);
   if (candidates.length < Math.max(2, options.minDistinctDomains ?? 2)) {
     return {
       searched: true,
-      query,
+      query: queries[0],
       ingestedSourceIds: [],
-      skippedUrls: response.results.map((result) => result.url),
-      sourceAssessments: buildSourceAssessments(response.results, candidates, existing, options, query, request),
-      reason: 'Fewer than two distinct external sources were found for source-backed gap repair.',
+      skippedUrls: allResults.map((result) => result.url),
+      sourceAssessments: buildSourceAssessments(allResults, candidates, existing, options, request),
+      reason: lastError ?? 'Fewer than two distinct external sources were found for source-backed gap repair.',
     };
   }
 
   const ingestedSourceIds: string[] = [];
   const skippedUrls: string[] = [];
-  for (const result of candidates.slice(0, Math.max(2, Math.min(4, options.maxIngest ?? 2)))) {
+  for (const result of candidates.slice(0, Math.max(2, Math.min(sourceLimit, options.maxIngest ?? sourceLimit)))) {
     try {
       const ingested = await withTimeout(options.ingestService.ingestUrl({
         url: result.url,
@@ -126,8 +141,9 @@ async function repairKnowledgeGapsWithWeb(
           knowledgeSpaceId: request.spaceId,
           sourceDiscovery: {
             purpose: 'semantic-gap-repair',
-            query,
-            providerId: response.providerId,
+            query: result.searchQuery,
+            searchQueries: queries.slice(0, searchLimit),
+            providerId: result.searchProviderId ?? [...providerIds][0],
             gapIds: request.gaps.map((gap) => gap.id),
             gapQuestions: request.gaps.map((gap) => gap.title),
             originalSourceIds: request.sources.map((source) => source.id),
@@ -138,6 +154,7 @@ async function repairKnowledgeGapsWithWeb(
             sourceDomain: result.domain ?? safeDomain(result.url),
             trustReason: result.reasons.join(', '),
             agreementSourceCount: candidates.length,
+            checkedSourceLimit: sourceLimit,
             selectedUrl: result.url,
             searchedAt: Date.now(),
           },
@@ -154,27 +171,30 @@ async function repairKnowledgeGapsWithWeb(
 
   return {
     searched: true,
-    query,
+    query: queries[0],
     ingestedSourceIds,
     skippedUrls,
-    sourceAssessments: buildSourceAssessments(response.results, candidates, existing, options, query, request),
+    sourceAssessments: buildSourceAssessments(allResults, candidates, existing, options, request),
     ...(ingestedSourceIds.length < 2 ? { reason: 'Gap repair searched but fewer than two sources were ingested.' } : {}),
   };
 }
 
-function buildGapRepairQuery(request: KnowledgeSemanticGapRepairRequest): string | null {
+function buildGapRepairQueries(request: KnowledgeSemanticGapRepairRequest): readonly string[] {
   const subject = bestSubject(request);
-  if (!subject) return null;
-  const gapTerms = uniqueStrings(request.gaps.flatMap((gap) => [
+  if (!subject) return [];
+  const gapTerms = clampSearchTerms(uniqueStrings(request.gaps.flatMap((gap) => [
     gap.title,
     gap.summary,
     readString(gap.metadata.reason),
-  ])).join(' ');
+  ])).join(' '));
+  const profileTerms = inferGapProfileTerms(request);
   return uniqueStrings([
-    subject,
-    gapTerms,
-    'official specifications features',
-  ]).join(' ');
+    [subject, gapTerms, 'official specifications'].filter(Boolean).join(' '),
+    [subject, profileTerms, 'product specifications'].filter(Boolean).join(' '),
+    [subject, profileTerms, 'features ports connectivity audio display'].filter(Boolean).join(' '),
+    [subject, 'manufacturer product page specifications'].join(' '),
+    [subject, 'datasheet manual specifications'].join(' '),
+  ].map((query) => query.replace(/\s+/g, ' ').trim()).filter(Boolean));
 }
 
 function bestSubject(request: KnowledgeSemanticGapRepairRequest): string | null {
@@ -192,14 +212,44 @@ function bestSubject(request: KnowledgeSemanticGapRepairRequest): string | null 
   ]).join(' ') || null;
 }
 
+function inferGapProfileTerms(request: KnowledgeSemanticGapRepairRequest): string {
+  const text = request.gaps.map((gap) => `${gap.title} ${gap.summary ?? ''}`).join(' ').toLowerCase();
+  const terms: string[] = [];
+  if (/\b(port|ports|hdmi|usb|optical|rf|antenna|ethernet|rs-?232|composite|component|input|output|i\/o)\b/.test(text)) {
+    terms.push('ports inputs outputs connectivity');
+  }
+  if (/\b(bluetooth|wifi|wi-fi|wireless|network)\b/.test(text)) terms.push('wireless bluetooth wi-fi network');
+  if (/\b(refresh|hz|hdr|dolby|vision|gaming|vrr|allm|freesync)\b/.test(text)) terms.push('refresh rate hdr gaming vrr allm');
+  if (/\b(audio|speaker|sound|earc|arc)\b/.test(text)) terms.push('audio speakers earc arc');
+  if (/\b(display|screen|resolution|panel|lcd|oled|qled|nanocell)\b/.test(text)) terms.push('display resolution panel');
+  return uniqueStrings([
+    ...terms,
+    ...tokenizeSemanticQuery(text)
+      .filter((token) => token.length >= 3)
+      .filter((token) => !['what', 'does', 'have', 'which', 'with', 'from', 'that', 'this', 'current', 'source', 'text'].includes(token))
+      .slice(0, 12),
+  ]).join(' ');
+}
+
+function clampSearchTerms(value: string): string {
+  return tokenizeSemanticQuery(value).slice(0, 24).join(' ');
+}
+
+function existingSources(request: KnowledgeSemanticGapRepairRequest): ReadonlySet<string> {
+  return new Set(request.sources.flatMap((source) => [
+    canonicalizeUri(source.canonicalUri ?? ''),
+    canonicalizeUri(source.sourceUri ?? ''),
+  ].filter((value): value is string => Boolean(value))));
+}
+
 function selectGapRepairCandidates(
-  results: readonly WebSearchResult[],
+  results: readonly GapRepairSearchResult[],
   existingCanonicalUris: ReadonlySet<string>,
   options: WebGapRepairOptions,
-  query: string,
   request: KnowledgeSemanticGapRepairRequest,
+  sourceLimit: number,
 ): GapRepairCandidate[] {
-  const tokens = tokenizeSemanticQuery(query);
+  const tokens = tokenizeSemanticQuery([bestSubject(request), inferGapProfileTerms(request)].filter(Boolean).join(' '));
   const minimumConfidence = Math.max(1, Math.min(100, options.minConfidence ?? 70));
   const byDomain = new Map<string, GapRepairCandidate>();
   for (const result of results) {
@@ -209,17 +259,17 @@ function selectGapRepairCandidates(
     if (tokens.length > 0 && scoreSemanticText(searchable, tokens) === 0) continue;
     const domain = result.domain ?? safeDomain(result.url);
     if (!domain || byDomain.has(domain)) continue;
-    const assessment = assessGapRepairSource(result, query, request);
+    const assessment = assessGapRepairSource(result, result.searchQuery, request);
     if (assessment.confidence < minimumConfidence) continue;
     byDomain.set(domain, { ...result, confidence: assessment.confidence, reasons: assessment.reasons });
   }
   return [...byDomain.values()]
     .sort((left, right) => right.confidence - left.confidence || left.rank - right.rank)
-    .slice(0, Math.max(2, Math.min(8, options.maxResults ?? 6)));
+    .slice(0, sourceLimit);
 }
 
 function assessGapRepairSource(
-  result: WebSearchResult,
+  result: GapRepairSearchResult,
   query: string,
   request: KnowledgeSemanticGapRepairRequest,
 ): Omit<GapRepairSourceAssessment, 'accepted' | 'rejectionReason'> {
@@ -272,6 +322,7 @@ function assessGapRepairSource(
     ...(result.title ? { title: result.title } : {}),
     ...(domain ? { domain } : {}),
     rank: result.rank,
+    query: result.searchQuery,
     confidence: Math.max(0, Math.min(100, score)),
     reasons,
     ...(reasons.length > 0 ? { trustReason: reasons.join(', ') } : {}),
@@ -279,19 +330,18 @@ function assessGapRepairSource(
 }
 
 function buildSourceAssessments(
-  results: readonly WebSearchResult[],
+  results: readonly GapRepairSearchResult[],
   candidates: readonly GapRepairCandidate[],
   existingCanonicalUris: ReadonlySet<string>,
   options: WebGapRepairOptions,
-  query: string,
   request: KnowledgeSemanticGapRepairRequest,
 ): readonly GapRepairSourceAssessment[] {
   const accepted = new Set(candidates.map((candidate) => canonicalizeUri(candidate.url)));
   const acceptedDomains = new Set(candidates.map((candidate) => candidate.domain ?? safeDomain(candidate.url)).filter(Boolean));
   const minimumConfidence = Math.max(1, Math.min(100, options.minConfidence ?? 70));
-  const tokens = tokenizeSemanticQuery(query);
+  const tokens = tokenizeSemanticQuery([bestSubject(request), inferGapProfileTerms(request)].filter(Boolean).join(' '));
   return results.map((result) => {
-    const assessment = assessGapRepairSource(result, query, request);
+    const assessment = assessGapRepairSource(result, result.searchQuery, request);
     const canonical = canonicalizeUri(result.url);
     const domain = result.domain ?? safeDomain(result.url);
     const isAccepted = Boolean(canonical && accepted.has(canonical));
@@ -360,18 +410,6 @@ function safeDomain(url: string): string | undefined {
     return new URL(url).hostname;
   } catch {
     return undefined;
-  }
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
-  });
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    if (timer) clearTimeout(timer);
   }
 }
 

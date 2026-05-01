@@ -780,14 +780,19 @@ describe('Home Graph knowledge spaces', () => {
       metadata,
     });
 
+    const initial = await service.ask({
+      installationId: 'house-1',
+      query: 'what features does the LG TV have?',
+      includeLinkedObjects: true,
+    });
+    await waitFor(() => store.listExtractions().some((entry) => entry.sourceId === manual.id && entry.extractorId === 'pdfjs'), 500);
     const ask = await service.ask({
       installationId: 'house-1',
       query: 'what features does the LG TV have?',
       includeLinkedObjects: true,
     });
-    const repairedExtraction = store.listExtractions().find((entry) => entry.sourceId === manual.id);
 
-    expect(repairedExtraction?.extractorId).toBe('pdfjs');
+    expect(initial.answer.text).not.toContain('Kasa');
     expect(ask.results.map((result) => result.id)).toEqual([manual.id]);
     expect(ask.answer.text).toContain('HDR10');
     expect(ask.answer.text).toContain('HDMI eARC');
@@ -1118,6 +1123,15 @@ function readHomeAssistantEntityId(metadata: Record<string, unknown>): string | 
   return homeAssistant && typeof homeAssistant === 'object' && !Array.isArray(homeAssistant)
     ? (homeAssistant as { readonly entityId?: string }).entityId
     : undefined;
+}
+
+async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  if (!predicate()) throw new Error('Timed out waiting for condition');
 }
 
 function createCompressedPdfBuffer(text: string): Buffer {

@@ -17,15 +17,8 @@ import type {
   KnowledgeSemanticSelfImproveResult,
 } from './types.js';
 import { recoverNoRepairerTasks, recoverStaleActiveTasks } from './self-improvement-recovery.js';
-import {
-  readRecord,
-  readString,
-  semanticHash,
-  semanticMetadata,
-  semanticSlug,
-  sourceKnowledgeSpace,
-  uniqueStrings,
-} from './utils.js';
+import { readRecord, readString, semanticHash, semanticMetadata, semanticSlug, sourceKnowledgeSpace, uniqueStrings } from './utils.js';
+import { withTimeout } from './timeouts.js';
 
 const RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_REFINEMENT_LIMIT = 12;
@@ -160,14 +153,17 @@ export async function runKnowledgeSemanticSelfImprovement(
     context.activeGapRepairs.add(repairKey);
     try {
       task = await updateRefinementTask(context.store, task, 'searching', 'Searching for source-backed repair evidence.', { query: gap.title });
-      const result = await context.gapRepairer({
+      const remainingMs = Math.max(1_000, startedAt + maxRunMs - Date.now());
+      const result = await withTimeout(context.gapRepairer({
         spaceId,
         query: gap.title,
         gaps: [gap],
         sources: gapContext.sources,
         linkedObjects: gapContext.linkedObjects,
         facts: gapContext.facts,
-      });
+        maxSources: 5,
+        deadlineAt: Date.now() + remainingMs,
+      }), remainingMs, 'Semantic gap repair exceeded its run budget.');
       if (result?.searched) searched += 1;
       ingestedSources += result?.ingestedSourceIds.length ?? 0;
       ingestedSourceIds.push(...(result?.ingestedSourceIds ?? []));
@@ -465,8 +461,8 @@ async function upsertRefinementTaskForGap(
     trigger,
     priority: refinementPriority(context.gap),
     budget: {
-      maxSearches: 1,
-      maxSources: 3,
+      maxSearches: 5,
+      maxSources: 5,
       maxLlmCalls: 1,
     },
     attemptCount,

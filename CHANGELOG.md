@@ -20,6 +20,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.13] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Knowledge Ask and Home Graph Ask now accept `timeoutMs` in the operator
+  contract for bounded answer synthesis.
+
+### Fixed
+- Home Graph Ask no longer performs web gap repair, URL ingest, semantic
+  enrichment, and re-answering in the request path. It now returns the current
+  source-backed answer plus `refinementTaskIds` while repair continues through
+  durable refinement tasks, preventing multi-minute empty responses when a
+  device/spec gap needs external sources.
+- Knowledge answer synthesis now has an SDK-owned hard timeout and abort signal
+  so provider-backed LLM calls cannot pin daemon request handling when a
+  provider ignores its own timeout.
+- Semantic gap repair now tries progressively targeted source-search queries
+  for the concrete subject and gap, accepts at most five high-confidence
+  sources, and records the searched queries and source limit in
+  `metadata.sourceDiscovery`.
+- Semantic self-improvement now passes a 5-search/5-source repair budget and a
+  hard remaining-run timeout into gap repair, so one slow gap cannot consume the
+  whole refinement request.
+- Semantic gap nodes are explicitly marked as refinement records instead of
+  answer/fact content, preserving them as durable repair state without treating
+  "unknown" as knowledge.
+- Home Graph Ask-triggered repair of weak already-uploaded PDF/manual
+  extractions now runs asynchronously, so Ask does not block while reparsing
+  existing artifacts.
+
+### Migration
+- Clients should treat `answer.gaps` and `refinementTaskIds` as repair state.
+  If an Ask response identifies the object but lacks full facts, show the task
+  status and ask again after refinement ingests/enriches accepted sources.
+
+---
+
 ## [0.28.12] - 2026-05-01
 
 ### Breaking

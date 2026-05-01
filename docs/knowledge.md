@@ -158,10 +158,13 @@ External repair sources are accepted into the graph only after confidence
 scoring. The repairer compares search results against the concrete subject,
 model/manufacturer hints, the gap wording, and the current query; accepted
 sources must clear the confidence threshold and still come from at least two
-distinct domains. The SDK stores the accepted source confidence, confidence
-reasons, agreement count, selected URL, original source IDs, gap IDs, and linked
-object IDs in `metadata.sourceDiscovery`, so the graph can explain why an
-automatic web source was trusted.
+distinct domains. Repair does not stop after one broad search: it tries
+progressively more targeted queries for the subject and gap, then accepts at
+most five high-confidence sources for that gap. The SDK stores the accepted
+source confidence, confidence reasons, agreement count, selected URL, search
+queries, original source IDs, gap IDs, and linked object IDs in
+`metadata.sourceDiscovery`, so the graph can explain why an automatic web
+source was trusted.
 
 Self-improvement is a durable workflow, not just a side effect. Each detected
 repair opportunity is represented by a `KnowledgeRefinementTask` with a stable
@@ -207,11 +210,13 @@ that evidence, and falls back to fact/snippet rendering when no LLM is
 available. Responses include answer text, confidence, sources, linked objects,
 facts, gaps, and ranked search results. This is the generic layer used by Home
 Graph and future knowledge spaces, so clients should not implement their own
-snippet-to-answer logic. If Ask identifies answer gaps and semantic gap repair
-is configured, the SDK queues refinement tasks and starts repair in the
-background. Ask does not wait for web search, URL ingest, or re-answering; it
-returns the current best answer plus `refinementTaskIds` so clients can show
-repair progress and ask again after the graph improves. When callers use the
+snippet-to-answer logic. Answer synthesis has an SDK-owned hard timeout; if a
+provider ignores its own timeout or abort signal, Ask falls back instead of
+pinning the daemon. If Ask identifies answer gaps and semantic gap repair is
+configured, the SDK queues refinement tasks and starts repair in the background.
+Ask does not wait for web search, URL ingest, or re-answering; it returns the
+current best answer plus `refinementTaskIds` so clients can show repair
+progress and ask again after the graph improves. When callers use the
 generic `knowledgeSpaceId: "homeassistant"` alias, answer-gap tasks are written
 to the concrete `homeassistant:<installationId>` space inferred from linked
 objects or evidence, rather than to the alias itself.

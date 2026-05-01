@@ -1,12 +1,7 @@
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 import { EMPTY_OBJECT_SCHEMA, STRING_SCHEMA, BOOLEAN_SCHEMA, NUMBER_SCHEMA, arraySchema, objectSchema, bodyEnvelopeSchema, methodDescriptor, runtimeEventId } from './method-catalog-shared.js';
 import { builtinGatewayHomeGraphMethodDescriptors } from './method-catalog-homegraph.js';
-import {
-  GRAPHQL_VARIABLES_SCHEMA,
-  JSON_RECORD_SCHEMA,
-  METADATA_SCHEMA,
-  STRING_LIST_SCHEMA,
-} from './operator-contract-schemas-shared.js';
+import { GRAPHQL_VARIABLES_SCHEMA, JSON_RECORD_SCHEMA, METADATA_SCHEMA, STRING_LIST_SCHEMA } from './operator-contract-schemas-shared.js';
 import {
   KNOWLEDGE_BATCH_INGEST_RESULT_SCHEMA,
   KNOWLEDGE_BROWSER_SYNC_RESULT_SCHEMA,
@@ -305,6 +300,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       candidateSourceIds: STRING_LIST_SCHEMA,
       candidateNodeIds: STRING_LIST_SCHEMA,
       strictCandidates: BOOLEAN_SCHEMA,
+      timeoutMs: NUMBER_SCHEMA,
       metadata: METADATA_SCHEMA,
     }, ['query']),
     outputSchema: KNOWLEDGE_ASK_OUTPUT_SCHEMA,

@@ -296,8 +296,10 @@ async function persistSemanticExtraction(
   }
 
   for (const gap of semantic.gaps.slice(0, 32)) {
+    const id = `sem-gap-${semanticHash(spaceId, source.id, gap.question)}`;
+    const existing = store.getNode(id);
     const node = await store.upsertNode({
-      id: `sem-gap-${semanticHash(spaceId, source.id, gap.question)}`,
+      id,
       kind: 'knowledge_gap',
       slug: semanticSlug(`${spaceId}-gap-${gap.question}`),
       title: gap.question,
@@ -312,6 +314,9 @@ async function persistSemanticExtraction(
         extractionId: extraction?.id,
         extractor: semantic.extractor,
         textHash: options.textHash,
+        repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
+        visibility: 'refinement',
+        displayRole: 'knowledge-gap',
       }),
     });
     gaps.push(node);
