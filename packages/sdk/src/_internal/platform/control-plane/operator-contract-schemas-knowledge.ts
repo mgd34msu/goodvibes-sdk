@@ -263,7 +263,7 @@ export const KNOWLEDGE_SOURCE_SCHEMA = objectSchema({
   updatedAt: NUMBER_SCHEMA,
 }, ['id', 'connectorId', 'sourceType', 'tags', 'status', 'metadata', 'createdAt', 'updatedAt'], { additionalProperties: true });
 
-const KNOWLEDGE_NODE_SCHEMA = objectSchema({
+export const KNOWLEDGE_NODE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   kind: STRING_SCHEMA,
   slug: STRING_SCHEMA,
@@ -278,7 +278,7 @@ const KNOWLEDGE_NODE_SCHEMA = objectSchema({
   updatedAt: NUMBER_SCHEMA,
 }, ['id', 'kind', 'slug', 'title', 'aliases', 'status', 'confidence', 'metadata', 'createdAt', 'updatedAt'], { additionalProperties: true });
 
-const KNOWLEDGE_ISSUE_SCHEMA = objectSchema({
+export const KNOWLEDGE_ISSUE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   severity: STRING_SCHEMA,
   code: STRING_SCHEMA,
@@ -291,7 +291,7 @@ const KNOWLEDGE_ISSUE_SCHEMA = objectSchema({
   updatedAt: NUMBER_SCHEMA,
 }, ['id', 'severity', 'code', 'message', 'status', 'metadata', 'createdAt', 'updatedAt'], { additionalProperties: true });
 
-const KNOWLEDGE_EDGE_SCHEMA = objectSchema({
+export const KNOWLEDGE_EDGE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   fromKind: STRING_SCHEMA,
   fromId: STRING_SCHEMA,
@@ -304,7 +304,7 @@ const KNOWLEDGE_EDGE_SCHEMA = objectSchema({
   updatedAt: NUMBER_SCHEMA,
 }, ['id', 'fromKind', 'fromId', 'toKind', 'toId', 'relation', 'weight', 'metadata', 'createdAt', 'updatedAt'], { additionalProperties: true });
 
-const KNOWLEDGE_EXTRACTION_SCHEMA = objectSchema({
+export const KNOWLEDGE_EXTRACTION_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   sourceId: STRING_SCHEMA,
   artifactId: STRING_SCHEMA,
