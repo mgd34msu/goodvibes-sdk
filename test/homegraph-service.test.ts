@@ -392,6 +392,49 @@ describe('Home Graph knowledge spaces', () => {
     expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
   });
 
+  test('keeps Home Assistant linked objects from repaired source metadata', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'living-room-tv', name: 'Living Room TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const tvNode = store.listNodes(1_000).find((node) => node.title === 'Living Room TV');
+    expect(tvNode).toBeDefined();
+    const repairSource = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA specifications',
+      canonicalUri: 'https://example.test/lg-86nano90una-specs',
+      tags: ['semantic-gap-repair', 'LG 86NANO90UNA'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: {
+          purpose: 'semantic-gap-repair',
+          linkedObjectIds: [tvNode!.id],
+        },
+      },
+    });
+    await store.upsertExtraction({
+      sourceId: repairSource.id,
+      extractorId: 'test-html',
+      format: 'html',
+      structure: {
+        searchText: 'LG 86NANO90UNA features include 4K NanoCell display, HDR10, Dolby Vision, HLG, eARC, and AMD FreeSync.',
+      },
+    });
+
+    const ask = await service.ask({
+      installationId: 'house-1',
+      query: 'what HDR and gaming features does the LG TV have',
+      includeLinkedObjects: true,
+    });
+
+    expect(ask.results.map((result) => result.id)).toContain(repairSource.id);
+    expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
+  });
+
   test('repairs already-uploaded weak PDF manual extractions during ask', async () => {
     const { service, store, artifactStore } = createHomeGraphService();
     await service.syncSnapshot({

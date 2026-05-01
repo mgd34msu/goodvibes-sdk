@@ -24,6 +24,7 @@ export interface KnowledgeSemanticServiceOptions {
 
 export class KnowledgeSemanticService {
   private readonly activeGapRepairs = new Set<string>();
+  private activeSelfImprovementRun: Promise<KnowledgeSemanticSelfImproveResult> | null = null;
 
   constructor(
     private readonly store: KnowledgeStore,
@@ -169,6 +170,20 @@ export class KnowledgeSemanticService {
 
   async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {
     await this.store.init();
+    if (input.deferRepair !== true) {
+      if (this.activeSelfImprovementRun) return activeSelfImproveResult();
+      const run = this.runSelfImproveUnlocked(input);
+      this.activeSelfImprovementRun = run;
+      try {
+        return await run;
+      } finally {
+        if (this.activeSelfImprovementRun === run) this.activeSelfImprovementRun = null;
+      }
+    }
+    return this.runSelfImproveUnlocked(input);
+  }
+
+  private async runSelfImproveUnlocked(input: KnowledgeSemanticSelfImproveInput): Promise<KnowledgeSemanticSelfImproveResult> {
     if (!input.knowledgeSpaceId && !input.sourceIds?.length && !input.gapIds?.length) {
       const spaces = uniqueStrings([
         ...this.store.listSources(10_000).map((source) => getKnowledgeSpaceId(source)),
@@ -199,6 +214,15 @@ export class KnowledgeSemanticService {
       .filter((task) => task.gapId && wanted.has(task.gapId))
       .map((task) => task.id);
   }
+}
+
+function activeSelfImproveResult(): KnowledgeSemanticSelfImproveResult {
+  return {
+    ...emptySelfImproveResult(),
+    skippedGaps: 1,
+    truncated: true,
+    budgetExhausted: true,
+  };
 }
 
 function sourceCanUseLlmUpgrade(store: KnowledgeStore, source: KnowledgeSourceRecord): boolean {

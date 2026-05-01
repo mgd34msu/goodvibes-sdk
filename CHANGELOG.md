@@ -20,6 +20,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.3] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph Ask now preserves Home Assistant linked objects recorded on
+  semantic repair-source metadata. Source-backed answers that are repaired from
+  web-discovered evidence continue to return the real HA device/entity instead
+  of dropping `linkedObjects` when no direct source edge exists.
+- Semantic self-improvement now coalesces overlapping repair runs in a service
+  instance. If a manual run, reindex repair, or Ask-triggered background repair
+  is already active, additional non-deferred repair requests return a bounded
+  skipped/truncated result instead of stacking more LLM/search work and making
+  health/status routes unresponsive.
+
+### Migration
+- none
+
+---
+
 ## [0.28.2] - 2026-05-01
 
 ### Breaking
