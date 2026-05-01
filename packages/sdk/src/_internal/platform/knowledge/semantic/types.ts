@@ -152,6 +152,11 @@ export interface KnowledgeSemanticGapRepairResult {
   readonly query?: string;
   readonly ingestedSourceIds: readonly string[];
   readonly skippedUrls: readonly string[];
+  readonly sourceAssessments?: readonly {
+    readonly url: string;
+    readonly confidence: number;
+    readonly reasons: readonly string[];
+  }[];
   readonly reason?: string;
 }
 

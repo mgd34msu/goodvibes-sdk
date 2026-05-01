@@ -20,6 +20,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.12] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- Semantic gap repair now scores web-discovered repair sources before ingesting
+  them. Candidate sources must pass an identity/gap confidence threshold and
+  still require agreement across at least two distinct domains. Ingested repair
+  sources now store discovery confidence, confidence reasons, agreement count,
+  and the selected URL in `metadata.sourceDiscovery` so clients and future
+  maintenance can explain why a source was accepted.
+
+### Fixed
+- Home Graph reindex now refreshes quality issues after existing manuals are
+  auto-linked and regenerates automatic pages from the refreshed state. This
+  prevents generated device passports from continuing to show stale
+  `missing_manual` or `unknown_battery` issues after a manual has been linked.
+- Device passport open-question generation now uses the same practical battery
+  applicability rules as Home Graph quality checks, so obvious mains-powered
+  devices such as TVs do not ask for a battery type unless the graph has
+  explicit battery-powered evidence.
+- Generated-page and feature/spec evidence filters now drop additional remote
+  operation snippets, including More Actions/button-map/SAP/press-button setup
+  fragments and generic "device may not support it" text, while preserving
+  direct remote-support answers when the user asks about remote compatibility.
+- Semantic self-improvement no longer counts a gap as `repairable` when no gap
+  repairer is configured or when the exact gap repair is already active. The
+  counter now reflects gaps that actually reached the repairer.
+
+### Migration
+- none
+
+---
+
 ## [0.27.11] - 2026-04-30
 
 ### Breaking

@@ -458,9 +458,184 @@ describe('semantic knowledge/wiki enrichment', () => {
 
     expect(result?.searched).toBe(true);
     expect(result?.ingestedSourceIds).toEqual(['source-1', 'source-2']);
+    expect(result?.sourceAssessments?.[0]?.confidence).toBeGreaterThanOrEqual(70);
     expect(ingested).toHaveLength(2);
     expect(ingested[0]?.metadata?.sourceDiscovery).toBeDefined();
+    expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).confidence).toBeGreaterThanOrEqual(70);
+    expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).confidenceReasons).toContain('model:86NANO90UNA');
     expect(ingested[0]?.tags).toContain('semantic-gap-repair');
+  });
+
+  test('web gap repair rejects low-confidence search results', async () => {
+    const ingested: unknown[] = [];
+    const repairer = createWebKnowledgeGapRepairer({
+      searchService: {
+        async search(request) {
+          return {
+            providerId: 'test-search',
+            providerLabel: 'Test Search',
+            query: request.query,
+            verbosity: 'snippets',
+            results: [
+              {
+                rank: 1,
+                url: 'https://example.com/generic-tv-buying-guide',
+                title: 'Generic TV buying guide',
+                snippet: 'General television features and shopping advice.',
+                domain: 'example.com',
+                type: 'organic',
+                providerId: 'test-search',
+                metadata: {},
+              },
+              {
+                rank: 2,
+                url: 'https://example.org/hdmi-cables',
+                title: 'HDMI cable tips',
+                snippet: 'Cable fit and setup guidance.',
+                domain: 'example.org',
+                type: 'organic',
+                providerId: 'test-search',
+                metadata: {},
+              },
+            ],
+            metadata: {},
+          };
+        },
+      },
+      ingestService: {
+        async ingestUrl(input) {
+          ingested.push(input);
+          return { source: { id: `source-${ingested.length}`, status: 'indexed' } };
+        },
+      },
+    });
+
+    const result = await repairer({
+      spaceId: 'homeassistant:house',
+      query: 'LG 86NANO90UNA full specifications',
+      gaps: [{
+        id: 'gap-1',
+        kind: 'knowledge_gap',
+        slug: 'gap',
+        title: 'What are the full TV display, smart platform, audio, and port specifications?',
+        aliases: [],
+        status: 'active',
+        confidence: 70,
+        metadata: { knowledgeSpaceId: 'homeassistant:house' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      sources: [],
+      linkedObjects: [{
+        id: 'tv-node',
+        kind: 'ha_device',
+        slug: 'tv',
+        title: 'LG webOS Smart TV',
+        aliases: [],
+        status: 'active',
+        confidence: 90,
+        metadata: { knowledgeSpaceId: 'homeassistant:house', manufacturer: 'LG', model: '86NANO90UNA' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      facts: [],
+    });
+
+    expect(result?.searched).toBe(true);
+    expect(result?.ingestedSourceIds).toEqual([]);
+    expect(result?.sourceAssessments?.every((entry) => entry.confidence < 70)).toBe(true);
+    expect(ingested).toHaveLength(0);
+  });
+
+  test('web gap repair can accept high-confidence subject sources without model numbers', async () => {
+    const ingested: Array<{ url: string; metadata?: Record<string, unknown> }> = [];
+    const repairer = createWebKnowledgeGapRepairer({
+      searchService: {
+        async search(request) {
+          return {
+            providerId: 'test-search',
+            providerLabel: 'Test Search',
+            query: request.query,
+            verbosity: 'snippets',
+            results: [
+              {
+                rank: 1,
+                url: 'https://developers.cloudflare.com/queues/',
+                title: 'Cloudflare Queues documentation',
+                snippet: 'Cloudflare Queues features, producers, consumers, retries, and dead-letter queues.',
+                domain: 'developers.cloudflare.com',
+                type: 'organic',
+                providerId: 'test-search',
+                metadata: {},
+              },
+              {
+                rank: 2,
+                url: 'https://developers.cloudflare.com/queues/platform/limits/',
+                title: 'Cloudflare Queues limits',
+                snippet: 'Cloudflare Queues limits, throughput, retention, and configuration guidance.',
+                domain: 'developers.cloudflare.com',
+                type: 'organic',
+                providerId: 'test-search',
+                metadata: {},
+              },
+              {
+                rank: 3,
+                url: 'https://blog.cloudflare.com/queues-ga/',
+                title: 'Cloudflare Queues announcement',
+                snippet: 'Cloudflare Queues background and product capabilities.',
+                domain: 'blog.cloudflare.com',
+                type: 'organic',
+                providerId: 'test-search',
+                metadata: {},
+              },
+            ],
+            metadata: {},
+          };
+        },
+      },
+      ingestService: {
+        async ingestUrl(input) {
+          ingested.push(input);
+          return { source: { id: `cloudflare-source-${ingested.length}`, status: 'indexed' } };
+        },
+      },
+    });
+
+    const result = await repairer({
+      spaceId: 'project:cloudflare',
+      query: 'Cloudflare Queues capabilities and limits',
+      gaps: [{
+        id: 'gap-cloudflare-queues',
+        kind: 'knowledge_gap',
+        slug: 'cloudflare-queues-gap',
+        title: 'What are the Cloudflare Queues capabilities and limits?',
+        aliases: [],
+        status: 'active',
+        confidence: 75,
+        metadata: { knowledgeSpaceId: 'project:cloudflare' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      sources: [],
+      linkedObjects: [{
+        id: 'service-cloudflare',
+        kind: 'service',
+        slug: 'cloudflare',
+        title: 'Cloudflare',
+        aliases: [],
+        status: 'active',
+        confidence: 90,
+        metadata: { knowledgeSpaceId: 'project:cloudflare', entityKind: 'service' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      facts: [],
+    });
+
+    expect(result?.searched).toBe(true);
+    expect(result?.ingestedSourceIds.length).toBeGreaterThanOrEqual(2);
+    expect(result?.sourceAssessments?.[0]?.reasons).toContain('subject:Cloudflare');
+    expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).confidenceReasons).toContain('subject:Cloudflare');
   });
 
   test('semantic gap repair is idempotent once a repair source is linked', async () => {

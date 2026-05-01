@@ -75,7 +75,6 @@ export async function runKnowledgeSemanticSelfImprovement(
       }
       continue;
     }
-    repairableGaps += 1;
     if (!context.gapRepairer) {
       skippedGaps += 1;
       await markGapRepairAttempt(context.store, gap, spaceId, {
@@ -89,6 +88,7 @@ export async function runKnowledgeSemanticSelfImprovement(
       skippedGaps += 1;
       continue;
     }
+    repairableGaps += 1;
     context.activeGapRepairs.add(repairKey);
     try {
       const result = await context.gapRepairer({

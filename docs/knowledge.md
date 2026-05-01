@@ -139,6 +139,14 @@ through the jobs API.
 Repair idempotency is gap-specific: a previously discovered repair source for
 the same object does not suppress another gap unless it is linked to that exact
 gap through `repairs_gap`.
+External repair sources are accepted into the graph only after confidence
+scoring. The repairer compares search results against the concrete subject,
+model/manufacturer hints, the gap wording, and the current query; accepted
+sources must clear the confidence threshold and still come from at least two
+distinct domains. The SDK stores the accepted source confidence, confidence
+reasons, agreement count, selected URL, original source IDs, gap IDs, and linked
+object IDs in `metadata.sourceDiscovery`, so the graph can explain why an
+automatic web source was trusted.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable

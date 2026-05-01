@@ -33,7 +33,13 @@ export interface WebGapRepairOptions {
   readonly ingestService: GapRepairIngest;
   readonly maxResults?: number;
   readonly minDistinctDomains?: number;
+  readonly minConfidence?: number;
   readonly maxIngest?: number;
+}
+
+interface GapRepairCandidate extends WebSearchResult {
+  readonly confidence: number;
+  readonly reasons: readonly string[];
 }
 
 export function createWebKnowledgeGapRepairer(options: WebGapRepairOptions): KnowledgeSemanticGapRepairer {
@@ -80,13 +86,14 @@ async function repairKnowledgeGapsWithWeb(
     canonicalizeUri(source.canonicalUri ?? ''),
     canonicalizeUri(source.sourceUri ?? ''),
   ].filter((value): value is string => Boolean(value))));
-  const candidates = selectGapRepairCandidates(response.results, existing, options, query);
+  const candidates = selectGapRepairCandidates(response.results, existing, options, query, request);
   if (candidates.length < Math.max(2, options.minDistinctDomains ?? 2)) {
     return {
       searched: true,
       query,
       ingestedSourceIds: [],
       skippedUrls: response.results.map((result) => result.url),
+      sourceAssessments: response.results.map((result) => assessGapRepairSource(result, query, request)),
       reason: 'Fewer than two distinct external sources were found for source-backed gap repair.',
     };
   }
@@ -111,6 +118,10 @@ async function repairKnowledgeGapsWithWeb(
             gapQuestions: request.gaps.map((gap) => gap.title),
             originalSourceIds: request.sources.map((source) => source.id),
             linkedObjectIds: request.linkedObjects.map((node) => node.id),
+            confidence: result.confidence,
+            confidenceReasons: result.reasons,
+            agreementSourceCount: candidates.length,
+            selectedUrl: result.url,
             searchedAt: Date.now(),
           },
         },
@@ -128,6 +139,11 @@ async function repairKnowledgeGapsWithWeb(
     query,
     ingestedSourceIds,
     skippedUrls,
+    sourceAssessments: candidates.map((candidate) => ({
+      url: candidate.url,
+      confidence: candidate.confidence,
+      reasons: candidate.reasons,
+    })),
     ...(ingestedSourceIds.length < 2 ? { reason: 'Gap repair searched but fewer than two sources were ingested.' } : {}),
   };
 }
@@ -164,9 +180,11 @@ function selectGapRepairCandidates(
   existingCanonicalUris: ReadonlySet<string>,
   options: WebGapRepairOptions,
   query: string,
-): WebSearchResult[] {
+  request: KnowledgeSemanticGapRepairRequest,
+): GapRepairCandidate[] {
   const tokens = tokenizeSemanticQuery(query);
-  const byDomain = new Map<string, WebSearchResult>();
+  const minimumConfidence = Math.max(1, Math.min(100, options.minConfidence ?? 70));
+  const byDomain = new Map<string, GapRepairCandidate>();
   for (const result of results) {
     const canonical = canonicalizeUri(result.url);
     if (!canonical || existingCanonicalUris.has(canonical)) continue;
@@ -174,9 +192,113 @@ function selectGapRepairCandidates(
     if (tokens.length > 0 && scoreSemanticText(searchable, tokens) === 0) continue;
     const domain = result.domain ?? safeDomain(result.url);
     if (!domain || byDomain.has(domain)) continue;
-    byDomain.set(domain, result);
+    const assessment = assessGapRepairSource(result, query, request);
+    if (assessment.confidence < minimumConfidence) continue;
+    byDomain.set(domain, { ...result, confidence: assessment.confidence, reasons: assessment.reasons });
   }
-  return [...byDomain.values()].slice(0, Math.max(2, Math.min(8, options.maxResults ?? 6)));
+  return [...byDomain.values()]
+    .sort((left, right) => right.confidence - left.confidence || left.rank - right.rank)
+    .slice(0, Math.max(2, Math.min(8, options.maxResults ?? 6)));
+}
+
+function assessGapRepairSource(
+  result: WebSearchResult,
+  query: string,
+  request: KnowledgeSemanticGapRepairRequest,
+): { readonly url: string; readonly confidence: number; readonly reasons: readonly string[] } {
+  const searchable = [result.title, result.snippet, result.url, result.domain].filter(Boolean).join(' ').toLowerCase();
+  const reasons: string[] = [];
+  let score = Math.max(0, 12 - result.rank);
+  const identities = sourceIdentityHints(request);
+  for (const model of identities.models) {
+    if (hasIdentity(searchable, model)) {
+      score += model.length >= 8 ? 42 : 28;
+      reasons.push(`model:${model}`);
+      break;
+    }
+  }
+  for (const manufacturer of identities.manufacturers) {
+    if (hasIdentity(searchable, manufacturer)) {
+      score += 14;
+      reasons.push(`manufacturer:${manufacturer}`);
+      break;
+    }
+  }
+  for (const subject of identities.subjects) {
+    if (subject.length >= 4 && hasIdentity(searchable, subject)) {
+      score += 30;
+      reasons.push(`subject:${subject}`);
+      break;
+    }
+  }
+  const queryScore = scoreSemanticText(searchable, tokenizeSemanticQuery(query));
+  if (queryScore > 0) {
+    score += Math.min(18, queryScore);
+    reasons.push('query-match');
+  }
+  const gapScore = scoreSemanticText(searchable, tokenizeSemanticQuery(request.gaps.map((gap) => `${gap.title} ${gap.summary ?? ''}`).join(' ')));
+  if (gapScore > 0) {
+    score += Math.min(14, gapScore);
+    reasons.push('gap-match');
+  }
+  if (/\b(specifications?|features?|manual|support|product|documentation|datasheet)\b/.test(searchable)) {
+    score += 10;
+    reasons.push('source-purpose');
+  }
+  const domain = (result.domain ?? safeDomain(result.url) ?? '').toLowerCase();
+  if (domain && identities.manufacturers.some((manufacturer) => manufacturer.length >= 2 && domain.includes(manufacturer.toLowerCase()))) {
+    score += 10;
+    reasons.push('manufacturer-domain');
+  }
+  return {
+    url: result.url,
+    confidence: Math.max(0, Math.min(100, score)),
+    reasons,
+  };
+}
+
+function sourceIdentityHints(request: KnowledgeSemanticGapRepairRequest): {
+  readonly models: readonly string[];
+  readonly manufacturers: readonly string[];
+  readonly subjects: readonly string[];
+} {
+  const subjects = uniqueStrings([
+    ...request.linkedObjects.flatMap((node) => [node.title, ...node.aliases]),
+    ...request.sources.flatMap((source) => [source.title, source.summary]),
+  ]).filter((subject) => !isGenericSubject(subject));
+  const models = uniqueStrings(request.linkedObjects.flatMap((node) => [
+    readString(node.metadata.model),
+    readString(node.metadata.modelId),
+    readString(node.metadata.model_id),
+    ...modelLikeTokens(`${node.title} ${node.aliases.join(' ')}`),
+  ]).concat(request.sources.flatMap((source) => modelLikeTokens(`${source.title ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`))));
+  const manufacturers = uniqueStrings(request.linkedObjects.flatMap((node) => [
+    readString(node.metadata.manufacturer),
+    readString(node.metadata.vendor),
+  ]).concat(request.sources.flatMap((source) => manufacturerHints(`${source.title ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`))));
+  return { models, manufacturers, subjects };
+}
+
+function isGenericSubject(value: string): boolean {
+  return /^(tv|television|device|manual|user guide|owner manual|home assistant|service|provider|integration)$/i.test(value.trim());
+}
+
+function modelLikeTokens(value: string): readonly string[] {
+  return uniqueStrings(value.match(/\b[A-Z]{2,}[-_ ]?[0-9][A-Z0-9._-]{2,}\b/g) ?? []);
+}
+
+function manufacturerHints(value: string): readonly string[] {
+  const hints = value.match(/\b(lg|samsung|sony|vizio|tcl|hisense|philips|panasonic|kasa|tp-link|ecobee|honeywell|ring|arlo|nest|eufy|aqara|sonoff|shelly|lutron|leviton|ikea|bosch|ge|whirlpool|frigidaire)\b/gi) ?? [];
+  return uniqueStrings(hints.map((hint) => hint.toLowerCase()));
+}
+
+function hasIdentity(searchable: string, value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+  const compact = normalized.replace(/[\s_-]+/g, '');
+  const searchableCompact = searchable.replace(/[\s_-]+/g, '');
+  if (compact.length >= 4 && searchableCompact.includes(compact)) return true;
+  return searchable.includes(normalized);
 }
 
 function safeDomain(url: string): string | undefined {

@@ -325,6 +325,7 @@ export interface HomeGraphReindexResult {
     readonly reasons: readonly string[];
   }[];
   readonly generated?: HomeGraphGeneratedPagesSummary;
+  readonly qualityIssues?: readonly KnowledgeIssueRecord[];
   readonly semantic?: {
     readonly scanned: number;
     readonly enriched: number;

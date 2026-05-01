@@ -58,12 +58,24 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(infrared light|remote control sensor|point (the )?(magic )?remote|aim (the )?(magic )?remote)\b/.test(lower)) {
     return true;
   }
+  if (/\b(more actions?|more remote functions?|remote functions?|remote control buttons?|button map|button functions?)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(sap|secondary audio program)\b/.test(lower) && /\b(button|press|enabled|audio)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(press|pressing|pressed|hold|holding)\b/.test(lower) && /\b(button|remote|key)\b/.test(lower)) {
+    return true;
+  }
   if (/\bmagic remote\b/.test(lower)
     && /\b(compatib|mr20ga|wireless module|bluetooth|separate purchase|sold separately|accessor(y|ies))\b/.test(lower)
     && !/\b(voice|microphone|cursor|pointer|gesture|motion control|universal control)\b/.test(lower)) {
     return true;
   }
   if (/\bif (the )?device (doesn'?t|does not) support\b/.test(lower) && /\bmay not work properly\b/.test(lower)) {
+    return true;
+  }
+  if (/\bdevice (doesn'?t|does not|may not) support it\b/.test(lower) && /\b(work properly|support it)\b/.test(lower)) {
     return true;
   }
   if (/\bchange\b/.test(lower) && /\bsetting to off\b/.test(lower)) {

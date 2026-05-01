@@ -301,13 +301,18 @@ notes rather than generic handling/safety fragments from manuals.
 
 When Home Graph sync/reindex/ingest/ask can identify an object and missing
 knowledge gaps, the shared semantic gap-repair layer can search the web in the
-background. It requires at least two distinct external source domains, ingests
-accepted URLs into the same Home Assistant knowledge space, and links them to
-the gap with `repairs_gap` edges. This is source discovery for future answers,
-not unsupported inference in the current response. Clients can call reindex or
-ask again later to use the newly indexed sources once extraction/enrichment has
-finished. Existing repair sources only suppress the specific gap they repair,
-not every gap attached to the same device or service.
+background. It scores candidate URLs against the HA device/service identity,
+manufacturer/model hints, the gap wording, and the query, requires accepted
+sources to clear the confidence threshold, and still requires at least two
+distinct external source domains before ingesting anything into the Home
+Assistant knowledge space. Accepted sources are linked to the exact gap with
+`repairs_gap` edges and carry `metadata.sourceDiscovery.confidence`,
+`confidenceReasons`, `agreementSourceCount`, `selectedUrl`, gap IDs, original
+source IDs, and linked HA object IDs. This is source discovery for future
+answers, not unsupported inference in the current response. Clients can call
+reindex or ask again later to use the newly indexed sources once
+extraction/enrichment has finished. Existing repair sources only suppress the
+specific gap they repair, not every gap attached to the same device or service.
 
 `GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.
