@@ -31,6 +31,7 @@ export class KnowledgeScheduleService {
       { id: 'knowledge-sync-browser-history', kind: 'sync-browser-history', title: 'Sync Browser History', description: 'Index local browser history and bookmarks as metadata-first structured knowledge.', defaultMode: 'background', metadata: { category: 'ingest', localOnly: true } },
       { id: 'knowledge-rebuild-projections', kind: 'rebuild-projections', title: 'Rebuild Projections', description: 'Render and materialize the major derived markdown/wiki projections.', defaultMode: 'background', metadata: { category: 'projection' } },
       { id: 'knowledge-semantic-enrichment', kind: 'semantic-enrichment', title: 'Semantic Enrichment', description: 'Extract durable facts, entities, wiki pages, and gaps from indexed sources.', defaultMode: 'background', metadata: { category: 'semantic' } },
+      { id: 'knowledge-semantic-self-improvement', kind: 'semantic-self-improvement', title: 'Semantic Self-Improvement', description: 'Classify semantic gaps and repair eligible concrete subjects with corroborated source-backed ingest.', defaultMode: 'background', metadata: { category: 'semantic' } },
       { id: 'knowledge-light-consolidation', kind: 'light-consolidation', title: 'Light Consolidation', description: 'Score recent usage, refresh candidate promotions, and write a deterministic consolidation report.', defaultMode: 'background', metadata: { category: 'consolidation' } },
       { id: 'knowledge-deep-consolidation', kind: 'deep-consolidation', title: 'Deep Consolidation', description: 'Run the full consolidation loop, including high-confidence memory promotion and deterministic reporting.', defaultMode: 'background', metadata: { category: 'consolidation' } },
     ];
@@ -147,25 +148,27 @@ export class KnowledgeScheduleService {
     if (this.schedulesInitialized) return;
     this.schedulesInitialized = true;
     await this.context.store.init();
-    if (this.context.store.listSchedules(10_000).length === 0) {
-      await this.context.store.upsertSchedule({
-        jobId: 'knowledge-light-consolidation',
-        label: 'Daily Light Consolidation',
-        enabled: true,
-        schedule: normalizeEverySchedule('24h'),
-        nextRunAt: getNextAutomationOccurrence(normalizeEverySchedule('24h'), Date.now(), 'knowledge-light-consolidation'),
-        metadata: { bootstrap: true },
-      });
-      await this.context.store.upsertSchedule({
-        jobId: 'knowledge-deep-consolidation',
-        label: 'Weekly Deep Consolidation',
-        enabled: true,
-        schedule: normalizeCronSchedule('15 4 * * 0'),
-        nextRunAt: getNextAutomationOccurrence(normalizeCronSchedule('15 4 * * 0'), Date.now(), 'knowledge-deep-consolidation'),
-        metadata: { bootstrap: true },
-      });
-    }
+    await this.ensureBootstrapSchedule('knowledge-light-consolidation', 'Daily Light Consolidation', normalizeEverySchedule('24h'));
+    await this.ensureBootstrapSchedule('knowledge-deep-consolidation', 'Weekly Deep Consolidation', normalizeCronSchedule('15 4 * * 0'));
+    await this.ensureBootstrapSchedule('knowledge-semantic-self-improvement', 'Continuous Semantic Self-Improvement', normalizeEverySchedule('6h'));
     await this.reconcileSchedules();
+  }
+
+  private async ensureBootstrapSchedule(
+    jobId: string,
+    label: string,
+    schedule: AutomationScheduleDefinition,
+  ): Promise<void> {
+    const existing = this.context.store.listSchedules(10_000).find((entry) => entry.jobId === jobId && entry.metadata.bootstrap === true);
+    if (existing) return;
+    await this.context.store.upsertSchedule({
+      jobId,
+      label,
+      enabled: true,
+      schedule,
+      nextRunAt: getNextAutomationOccurrence(schedule, Date.now(), jobId),
+      metadata: { bootstrap: true },
+    });
   }
 
   private clearScheduleTimer(id: string): void {

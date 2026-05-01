@@ -207,6 +207,14 @@ Home Graph uses the same provider-backed answer synthesis path as
 `POST /api/knowledge/ask`; semantic source enrichment is allowed to continue as
 self-improving background work so a question is not forced to wait behind a
 full enrichment pass before answer synthesis starts.
+The same self-improvement loop also runs when Home Graph syncs a snapshot,
+ingests a manual/document/URL/note, or reindexes. For concrete objects such as
+devices, services, integrations, and providers, the SDK can create intrinsic
+feature/specification gaps as soon as the object or source exists, classify
+whether the gap is applicable, suppress non-applicable gaps before search, and
+repair eligible gaps through source-backed web ingest. This means a newly
+added device with a stable manufacturer/model can start filling missing
+feature/spec knowledge without waiting for a user to ask an Assist question.
 Provider-backed semantic calls are bounded by SDK timeouts and abort signals,
 and broad reindex uses a small LLM budget before continuing deterministically,
 so Home Assistant panels should not add host-side shims to avoid hung provider
@@ -287,7 +295,7 @@ filter so living pages focus on useful device capabilities, specifications,
 actionable maintenance, troubleshooting, and source-backed notes rather than
 generic handling/safety fragments from manuals.
 
-When Home Graph ask can identify the object and source but also finds missing
+When Home Graph sync/reindex/ingest/ask can identify an object and missing
 knowledge gaps, the shared semantic gap-repair layer can search the web in the
 background. It requires at least two distinct external source domains, ingests
 accepted URLs into the same Home Assistant knowledge space, and links them to

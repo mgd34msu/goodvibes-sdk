@@ -35974,6 +35974,147 @@ Return recent knowledge job runs.
               {
                 "type": "object",
                 "properties": {
+                  "scanned": {
+                    "type": "number"
+                  },
+                  "enriched": {
+                    "type": "number"
+                  },
+                  "skipped": {
+                    "type": "number"
+                  },
+                  "failed": {
+                    "type": "number"
+                  },
+                  "errors": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {}
+                      ]
+                    }
+                  },
+                  "selfImprovement": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "scanned",
+                  "enriched",
+                  "skipped",
+                  "failed",
+                  "errors"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "scannedGaps": {
+                    "type": "number"
+                  },
+                  "createdGaps": {
+                    "type": "number"
+                  },
+                  "repairableGaps": {
+                    "type": "number"
+                  },
+                  "suppressedGaps": {
+                    "type": "number"
+                  },
+                  "skippedGaps": {
+                    "type": "number"
+                  },
+                  "searched": {
+                    "type": "number"
+                  },
+                  "ingestedSources": {
+                    "type": "number"
+                  },
+                  "linkedRepairs": {
+                    "type": "number"
+                  },
+                  "errors": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {}
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "scannedGaps",
+                  "createdGaps",
+                  "repairableGaps",
+                  "suppressedGaps",
+                  "skippedGaps",
+                  "searched",
+                  "ingestedSources",
+                  "linkedRepairs",
+                  "errors"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
                   "reportId": {
                     "type": "string"
                   },
@@ -36100,6 +36241,8 @@ Return a single knowledge job definition.
             "refresh-bookmarks",
             "sync-browser-history",
             "rebuild-projections",
+            "semantic-enrichment",
+            "semantic-self-improvement",
             "light-consolidation",
             "deep-consolidation"
           ]
@@ -36349,6 +36492,147 @@ Queue or run a structured knowledge maintenance job.
             {
               "type": "object",
               "properties": {
+                "scanned": {
+                  "type": "number"
+                },
+                "enriched": {
+                  "type": "number"
+                },
+                "skipped": {
+                  "type": "number"
+                },
+                "failed": {
+                  "type": "number"
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
+                },
+                "selfImprovement": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "scanned",
+                "enriched",
+                "skipped",
+                "failed",
+                "errors"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "scannedGaps": {
+                  "type": "number"
+                },
+                "createdGaps": {
+                  "type": "number"
+                },
+                "repairableGaps": {
+                  "type": "number"
+                },
+                "suppressedGaps": {
+                  "type": "number"
+                },
+                "skippedGaps": {
+                  "type": "number"
+                },
+                "searched": {
+                  "type": "number"
+                },
+                "ingestedSources": {
+                  "type": "number"
+                },
+                "linkedRepairs": {
+                  "type": "number"
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "scannedGaps",
+                "createdGaps",
+                "repairableGaps",
+                "suppressedGaps",
+                "skippedGaps",
+                "searched",
+                "ingestedSources",
+                "linkedRepairs",
+                "errors"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
                 "reportId": {
                   "type": "string"
                 },
@@ -36469,6 +36753,8 @@ Return built-in structured knowledge maintenance jobs.
               "refresh-bookmarks",
               "sync-browser-history",
               "rebuild-projections",
+              "semantic-enrichment",
+              "semantic-self-improvement",
               "light-consolidation",
               "deep-consolidation"
             ]

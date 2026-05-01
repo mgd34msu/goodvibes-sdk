@@ -124,6 +124,11 @@ export class HomeGraphService {
     const groups = await this.upsertSnapshotObjects(spaceId, installationId, input, home.id, source.id);
     await this.autoLinkExistingSources(spaceId, installationId);
     const issues = await this.refreshQualityIssues(spaceId, installationId);
+    void this.options.semanticService?.selfImprove({
+      knowledgeSpaceId: spaceId,
+      reason: 'homegraph-sync',
+      limit: 16,
+    }).catch(() => {});
     const generated = await generateAutomaticHomeGraphPages({
       store: this.store,
       artifactStore: this.artifactStore,
@@ -554,7 +559,7 @@ export class HomeGraphService {
           ...(extraction ? { extraction } : {}),
           state: readHomeGraphState(this.store, input.spaceId),
         }))?.edge;
-    void this.options.semanticService?.enrichSource(source.id, { knowledgeSpaceId: input.spaceId }).catch(() => {});
+    void this.enrichAndImproveSource(source.id, input.spaceId).catch(() => {});
     return {
       ok: true,
       spaceId: input.spaceId,
@@ -727,6 +732,18 @@ export class HomeGraphService {
     if (!this.options.semanticService) return;
     const sources = readHomeGraphSearchState(this.store, spaceId).sources;
     await this.options.semanticService.enrichSources(sources, { knowledgeSpaceId: spaceId });
+    await this.options.semanticService.selfImprove({ knowledgeSpaceId: spaceId, reason: 'reindex' });
+  }
+
+  private async enrichAndImproveSource(sourceId: string, spaceId: string): Promise<void> {
+    if (!this.options.semanticService) return;
+    await this.options.semanticService.enrichSource(sourceId, { knowledgeSpaceId: spaceId });
+    await this.options.semanticService.selfImprove({
+      knowledgeSpaceId: spaceId,
+      sourceIds: [sourceId],
+      reason: 'ingest',
+      limit: 12,
+    });
   }
 
   private resolveLinkSource(spaceId: string, input: HomeGraphLinkInput): { readonly kind: 'source' | 'node'; readonly id: string } {
@@ -776,9 +793,7 @@ export class HomeGraphService {
     const node = await this.store.upsertNode(nodeInput);
     return { kind: 'node', id: node.id, record: node };
   }
-
 }
-
 function extractionHasSearchableText(extraction: KnowledgeExtractionRecord): boolean {
   const structure = readRecord(extraction.structure);
   return typeof structure.searchText === 'string' && !isUnusableHomeGraphExtractionText(structure.searchText);

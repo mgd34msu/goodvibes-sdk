@@ -143,7 +143,15 @@ export class KnowledgeService {
       connectorRegistry: this.connectorRegistry,
       emitIfReady: this.emitIfReady.bind(this),
       syncReviewedMemory: this.syncReviewedMemory.bind(this),
-      semanticEnrichSource: (sourceId: string, knowledgeSpaceId?: string) => this.semanticService.enrichSource(sourceId, { knowledgeSpaceId }).then(() => undefined),
+      semanticEnrichSource: async (sourceId: string, knowledgeSpaceId?: string) => {
+        await this.semanticService.enrichSource(sourceId, { knowledgeSpaceId });
+        await this.semanticService.selfImprove({
+          knowledgeSpaceId,
+          sourceIds: [sourceId],
+          reason: 'ingest',
+          limit: 8,
+        });
+      },
       lint: this.lint.bind(this),
       listConnectors: () => this.listConnectors(),
     };
@@ -712,6 +720,14 @@ export class KnowledgeService {
           sourceIds: input.sourceIds,
           limit: input.limit,
         });
+      }
+      case 'semantic-self-improvement': {
+        const result = await this.semanticService.selfImprove({
+          sourceIds: input.sourceIds,
+          limit: input.limit,
+          reason: 'scheduled',
+        });
+        return { ...result };
       }
       case 'light-consolidation': {
         const report = await runKnowledgeConsolidation(this.getConsolidationContext(), 'light-consolidation', {

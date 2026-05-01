@@ -78,6 +78,7 @@ export type KnowledgeJobKind =
   | 'sync-browser-history'
   | 'rebuild-projections'
   | 'semantic-enrichment'
+  | 'semantic-self-improvement'
   | 'light-consolidation'
   | 'deep-consolidation';
 export type KnowledgeUsageKind =

@@ -48,6 +48,8 @@ export const KNOWLEDGE_JOB_KIND_SCHEMA = enumSchema([
   'refresh-bookmarks',
   'sync-browser-history',
   'rebuild-projections',
+  'semantic-enrichment',
+  'semantic-self-improvement',
   'light-consolidation',
   'deep-consolidation',
 ]);
@@ -129,6 +131,25 @@ const KNOWLEDGE_JOB_RUN_CONSOLIDATION_RESULT_SCHEMA = objectSchema({
   reportId: STRING_SCHEMA,
   metrics: recordSchema(NUMBER_SCHEMA),
 }, ['reportId', 'metrics'], { additionalProperties: false });
+const KNOWLEDGE_JOB_RUN_SEMANTIC_RESULT_SCHEMA = objectSchema({
+  scanned: NUMBER_SCHEMA,
+  enriched: NUMBER_SCHEMA,
+  skipped: NUMBER_SCHEMA,
+  failed: NUMBER_SCHEMA,
+  errors: GENERIC_LIST_SCHEMA,
+  selfImprovement: JSON_RECORD_SCHEMA,
+}, ['scanned', 'enriched', 'skipped', 'failed', 'errors'], { additionalProperties: true });
+const KNOWLEDGE_JOB_RUN_SELF_IMPROVEMENT_RESULT_SCHEMA = objectSchema({
+  scannedGaps: NUMBER_SCHEMA,
+  createdGaps: NUMBER_SCHEMA,
+  repairableGaps: NUMBER_SCHEMA,
+  suppressedGaps: NUMBER_SCHEMA,
+  skippedGaps: NUMBER_SCHEMA,
+  searched: NUMBER_SCHEMA,
+  ingestedSources: NUMBER_SCHEMA,
+  linkedRepairs: NUMBER_SCHEMA,
+  errors: GENERIC_LIST_SCHEMA,
+}, ['scannedGaps', 'createdGaps', 'repairableGaps', 'suppressedGaps', 'skippedGaps', 'searched', 'ingestedSources', 'linkedRepairs', 'errors'], { additionalProperties: false });
 export const KNOWLEDGE_JOB_RUN_RESULT_SCHEMA = {
   anyOf: [
     KNOWLEDGE_EMPTY_OBJECT_SCHEMA,
@@ -137,6 +158,8 @@ export const KNOWLEDGE_JOB_RUN_RESULT_SCHEMA = {
     KNOWLEDGE_JOB_RUN_REFRESH_RESULT_SCHEMA,
     KNOWLEDGE_JOB_RUN_BROWSER_SYNC_RESULT_SCHEMA,
     KNOWLEDGE_JOB_RUN_PROJECTIONS_RESULT_SCHEMA,
+    KNOWLEDGE_JOB_RUN_SEMANTIC_RESULT_SCHEMA,
+    KNOWLEDGE_JOB_RUN_SELF_IMPROVEMENT_RESULT_SCHEMA,
     KNOWLEDGE_JOB_RUN_CONSOLIDATION_RESULT_SCHEMA,
   ],
 } as const;
