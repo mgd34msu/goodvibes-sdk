@@ -274,13 +274,18 @@ such as "the TV" or "front door sensor", the SDK matches that query to Home
 Graph nodes and strongly prefers indexed sources linked to those nodes or
 sources whose identity matches a physical/device anchor. For TV questions, the
 source scope favors physical TV devices, `media_player` entities, and matching
-TV integrations while ignoring noisy objects such as TV-show calendars, Plex
-library sensors, automations, and Wake-on-LAN switches. Pending integration
-documentation candidates are source suggestions, not answer material, until
-they are indexed. Device feature/spec/manual questions require useful source
-evidence, so low-information extraction placeholders, unrelated device manuals,
-and Home Assistant integration docs are excluded from the answer unless the
-query is explicitly about the integration. Binary-like raw PDF payloads and
+model/manufacturer evidence over generic Home Assistant integrations or other
+devices while ignoring noisy objects such as TV-show calendars, Plex library
+sensors, automations, and Wake-on-LAN switches. Singular object questions such
+as "the TV" are narrowed to the strongest matching object anchor before
+candidate sources are handed to the semantic answer layer, so answers are not
+blended across multiple televisions or manuals that only share broad TV/spec
+tokens. Pending integration documentation candidates are source suggestions,
+not answer material, until they are indexed. Device feature/spec/manual
+questions require useful source evidence, so low-information extraction
+placeholders, unrelated device manuals, and Home Assistant integration docs are
+excluded from the answer unless the query is explicitly about the integration.
+Binary-like raw PDF payloads and
 other garbled extraction text are treated as unusable and repair-needed, not as
 answer evidence. Answers include synthesized text, sources, linked objects,
 semantic facts, and knowledge gaps when available; clients should display the
