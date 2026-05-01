@@ -203,6 +203,12 @@ queues repairable gaps and starts only a small delayed background repair pass.
 Large spaces should use explicit `/api/knowledge/refinement/run` calls or a
 schedule for deeper repair instead of expecting reindex to perform every web
 search and LLM repair inline.
+Home Graph reindex adds one more guardrail for generated wiki material: it
+does not reprocess generated-page artifacts, only semantically re-enriches
+changed or explicitly forced sources, and regenerates device pages for devices
+touched by changed/newly linked evidence or by an older generated-page policy.
+That keeps "reindex uploads" focused on repairing uploaded manuals/documents
+and refreshing stale pages without treating generated pages as source material.
 Clients that already performed object-scoped retrieval can pass
 `candidateSourceIds`, `candidateNodeIds`, and `strictCandidates: true` so answer
 synthesis stays inside that candidate set instead of re-scanning unrelated
@@ -215,10 +221,11 @@ manual-boilerplate facts such as "items may vary", "specifications may change",
 button-map noise, remote battery-low notes, optional accessory/setup fragments,
 Magic Remote accessory-compatibility snippets such as MR20GA/Bluetooth
 compatibility, remote infrared/sensor instructions, generic "may not work
-properly" setup fragments, Crutchfield/SpeakerCompare shopping snippets, and
-safety/service/handling warnings unless those facts are the actual query
-intent. Truncated deterministic fragments are dropped instead of presented as
-specifications. Answer synthesis runs before background semantic enrichment so
+properly" setup fragments, Crutchfield/SpeakerCompare shopping snippets,
+equal-power/equal-volume speaker comparison copy, generic product-listing price
+snippets, and safety/service/handling warnings unless those facts are the
+actual query intent. Truncated deterministic fragments are dropped instead of
+presented as specifications. Answer synthesis runs before background semantic enrichment so
 a single-concurrency provider wrapper answers the user first and does not time
 out behind enrichment work. `linkedObjects` is reserved for real graph objects
 supplied by the caller or retrieved from the graph; semantic extraction
@@ -372,9 +379,13 @@ page content from source inventory locally.
 Home Graph reindex repairs existing uploads in place. It re-extracts
 placeholder or old weak PDF extraction rows, auto-links sources to matching Home
 Assistant devices/entities when identity evidence is strong enough, semantically
-enriches the repaired sources into facts/pages/gaps, and regenerates generated
-pages when repaired or newly linked evidence changes what the wiki should show.
-This lets users fix already-uploaded manuals without reuploading them.
+enriches changed or forced sources into facts/pages/gaps, and regenerates
+generated pages for devices affected by repaired/newly linked evidence or an
+older generated-page policy. It skips generated-page artifacts and reports
+`truncated`/`budgetExhausted` when caller limits or the SDK run budget stop
+foreground work. This lets users fix already-uploaded manuals and refresh stale
+generated pages without reuploading anything while keeping daemon health routes
+responsive.
 
 Room pages are area-scoped. Devices, entities, automations, scenes, scripts, and
 linked sources are included only when they are attached to the requested room or
@@ -479,6 +490,8 @@ of the base structured knowledge graph. The response includes:
 
 - `nodes`: source, node, and optional issue records with stable x/y positions
 - `edges`: filtered to the rendered node set
+- edge aliases: `source`, `target`, `sourceTitle`, and `targetTitle` mirror
+  `fromId`, `toId`, and endpoint titles for graph UI libraries
 - `svg`: an embeddable static SVG rendering
 - counts, dimensions, and generation metadata
 

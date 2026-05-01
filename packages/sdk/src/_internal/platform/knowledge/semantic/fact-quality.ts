@@ -61,6 +61,24 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(crutchfield|speakercompare|speaker compare|equal[- ]power|equal[- ]volume|speaker shopping|speaker recommendations?)\b/.test(lower)) {
     return true;
   }
+  if (/\b(compare sonic characteristics|listening modes?|listening room|auditioning speakers|speakers side-by-side|same amount of power|money-back guarantee|advisors have listened|best choice for your system|speakercompare listening kit|headphones? brand model)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(prices? & features?|smart tv prices?|latest price|view latest|check .* specifications.*price|current page|loading\.?)\b/.test(lower)) {
+    return true;
+  }
+  if (/^\s*\d{1,2}\s+(inch|inches)\b/.test(lower) || /^\s*00\s+inch\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(connectivity options include multiple hdmi 2|receive and respond to metadata transmitted through hdmi 2)\b/.test(lower)) {
+    return true;
+  }
+  if (/\bhdmi\s+2\.?\s*$/.test(lower) || /\bmultiple hdmi\s+2\.?\s*(ports?)?\s*$/.test(lower)) {
+    return true;
+  }
+  if (/\b(game mode in lg nano90|smart tv in lg nano90|specifications and in the end|present for both models|technical parameters are slightly different|pros and cons in this section|overall \d{2}\b)\b/.test(lower)) {
+    return true;
+  }
   if (/\b(more actions?|more remote functions?|remote functions?|remote control buttons?|button map|button functions?)\b/.test(lower)) {
     return true;
   }
@@ -97,6 +115,9 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(warning|caution|risk|hazard|do not|never)\b/.test(lower) && !/\b(feature|supports?|hdmi|usb|hdr|remote|bluetooth)\b/.test(lower)) {
     return true;
   }
+  if (/\b(do not place|keep .* away from direct sunlight|high humidity|heat source|ac power source|damage to screen|osd|on screen display|screen should face away|holding the tv|transparent part|speaker grille|avoid touching the screen|failure to do so|connect .* regardless about the order|refer to the manual provided|noise associated with the resolution)\b/.test(lower)) {
+    return true;
+  }
   return false;
 }
 
@@ -111,6 +132,21 @@ function isTruncatedManualFragment(value: string): boolean {
 
 export function hasConcreteFeatureSignal(text: string): boolean {
   return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|wireless lan|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation|atsc|ntsc|qam|tuner|broadcast|rs-?232c|external control)\b/.test(text.toLowerCase());
+}
+
+export function isUsefulHomeGraphSourceBackedNote(text: string): boolean {
+  if (isLowValueFeatureOrSpecText(text)) return false;
+  const lower = text.toLowerCase();
+  const signalCount = [
+    /\b(hdmi|usb|ethernet|wi-?fi|bluetooth|airplay|miracast|chromecast)\b/,
+    /\b(hdr|hdr10|dolby vision|dolby atmos|filmmaker|game optimizer|freesync|g-sync|allm|vrr)\b/,
+    /\b(4k|8k|uhd|resolution|refresh rate|120\s*hz|60\s*hz|nanocell|led|lcd|display|screen)\b/,
+    /\b(tuner|atsc|qam|ntsc|codec|mpeg|dolby digital|audio formats?|video formats?)\b/,
+    /\b(ports?|speaker system|speaker power|channels?|arc|earc)\b/,
+  ].filter((pattern) => pattern.test(lower)).length;
+  return signalCount >= 2
+    || /\b(supported external devices|supports? .* (hdr|hdmi|usb|wi-?fi|bluetooth|earc|arc|4k|120\s*hz))\b/.test(lower)
+    || /\b(dtv audio supported codec|supported codecs?|supported audio formats?|supported video formats?|supported picture formats?)\b/.test(lower);
 }
 
 export function isUsefulHomeGraphPageFact(fact: KnowledgeNodeRecord): boolean {

@@ -315,6 +315,16 @@ export type HomeGraphMapNode = KnowledgeMapNode;
 export type HomeGraphMapEdge = KnowledgeMapEdge;
 export type HomeGraphMapResult = KnowledgeMapResult & { readonly spaceId: string };
 
+export interface HomeGraphReindexInput extends HomeGraphSpaceInput {
+  readonly limit?: number;
+  readonly maxRunMs?: number;
+  readonly semanticLimit?: number;
+  readonly semanticMaxRunMs?: number;
+  readonly generatedPageLimit?: number;
+  readonly force?: boolean;
+  readonly refreshPages?: boolean;
+}
+
 export interface HomeGraphReindexResult {
   readonly ok: true;
   readonly spaceId: string;
@@ -322,6 +332,8 @@ export interface HomeGraphReindexResult {
   readonly reparsed: number;
   readonly skipped: number;
   readonly failed: number;
+  readonly truncated?: boolean;
+  readonly budgetExhausted?: boolean;
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly failures: readonly { readonly sourceId: string; readonly error: string }[];
   readonly linked?: readonly {

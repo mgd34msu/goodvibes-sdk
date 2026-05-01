@@ -49,7 +49,7 @@ import {
   refreshAutomaticHomeGraphPages,
   refreshHomeGraphDevicePassport,
 } from './generated-pages.js';
-import { reindexHomeGraphSources } from './reindex.js';
+import { runHomeGraphReindex } from './reindex.js';
 import { listHomeGraphPages } from './pages.js';
 import { browseHomeGraph, listHomeGraphSources } from './inventory.js';
 import { mapHomeGraph } from './map-view.js';
@@ -72,7 +72,7 @@ import type {
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
   HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphObjectInput,
   HomeGraphMapInput, HomeGraphMapResult, HomeGraphProjectionInput, HomeGraphProjectionResult,
-  HomeGraphPageListResult, HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
+  HomeGraphPageListResult, HomeGraphReindexInput, HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
 
@@ -277,32 +277,15 @@ export class HomeGraphService {
     return answerHomeGraphQuery({ store: this.store, semanticService: this.options.semanticService, spaceId, query: input, state, results });
   }
 
-  async reindex(input: HomeGraphSpaceInput = {}): Promise<HomeGraphReindexResult> {
-    await this.store.init();
-    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
-    const state = readHomeGraphSearchState(this.store, spaceId);
-    const reindex = await reindexHomeGraphSources({
-      spaceId,
-      sources: state.sources,
-      extractionBySourceId: state.extractionBySourceId,
+  async reindex(input: HomeGraphReindexInput = {}): Promise<HomeGraphReindexResult> {
+    return runHomeGraphReindex({
+      store: this.store,
       artifactStore: this.artifactStore,
-      extract: (source, artifact) => this.extractArtifact(source, artifact, spaceId, installationId),
-    });
-    const linked = await this.autoLinkExistingSources(spaceId, installationId);
-    const semantic = await this.options.semanticService?.reindex({
-      knowledgeSpaceId: spaceId,
-      sourceIds: state.sources.map((source) => source.id),
-      force: false,
-    });
-    const qualityIssues = await this.refreshQualityIssues(spaceId, installationId);
-    const generated = await refreshAutomaticHomeGraphPages({ store: this.store, artifactStore: this.artifactStore, spaceId, installationId });
-    return {
-      ...reindex,
-      ...(linked.length > 0 ? { linked } : {}),
-      ...(semantic ? { semantic } : {}),
-      qualityIssues,
-      generated,
-    };
+      semanticService: this.options.semanticService,
+      extract: (source, artifact, spaceId, installationId) => this.extractArtifact(source, artifact, spaceId, installationId),
+      autoLinkExistingSources: (spaceId, installationId) => this.autoLinkExistingSources(spaceId, installationId),
+      refreshQualityIssues: (spaceId, installationId) => this.refreshQualityIssues(spaceId, installationId),
+    }, input);
   }
 
   private async repairWeakExtractionsForAsk(

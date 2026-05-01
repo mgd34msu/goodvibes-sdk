@@ -37,6 +37,7 @@ import {
 import {
   hasConcreteFeatureSignal,
   isLowValueFeatureOrSpecText,
+  isUsefulHomeGraphSourceBackedNote,
   isUsefulHomeGraphPageFact,
 } from '../semantic/fact-quality.js';
 import { normalizeWhitespace, sourceSemanticText } from '../semantic/utils.js';
@@ -48,12 +49,14 @@ import type {
   HomeGraphSnapshotInput,
 } from './types.js';
 
-interface HomeGraphPageContext {
+export interface HomeGraphPageContext {
   readonly store: KnowledgeStore;
   readonly artifactStore: ArtifactStore;
   readonly spaceId: string;
   readonly installationId: string;
 }
+
+export const HOME_GRAPH_PAGE_POLICY_VERSION = 'homegraph-pages-v6';
 
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
@@ -317,6 +320,7 @@ async function materializeGeneratedMarkdown(input: HomeGraphPageContext & {
     homeGraphGeneratedPage: true,
     projectionKind: input.projectionKind,
     generatedAt,
+    pagePolicyVersion: HOME_GRAPH_PAGE_POLICY_VERSION,
     pageEditable: true,
     regeneration,
   };
@@ -421,6 +425,7 @@ function extractSourceBackedNotes(text: string): string[] {
     .map((part) => normalizeWhitespace(part.replace(/^[-*•]\s*/, '')))
     .filter((part) => part.length >= 24 && part.length <= 420)
     .filter((part) => hasConcreteFeatureSignal(part))
+    .filter((part) => isUsefulHomeGraphSourceBackedNote(part))
     .filter((part) => !isLowValueFeatureOrSpecText(part));
 }
 

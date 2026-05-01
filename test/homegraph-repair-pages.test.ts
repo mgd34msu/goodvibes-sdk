@@ -110,8 +110,84 @@ describe('Home Graph repair and generated pages', () => {
     expect(ask.answer.text).toContain('HDMI eARC');
     expect(passport.markdown).toContain('## Source-Backed Features And Notes');
     expect(passport.markdown).toContain('Dolby Vision');
+    expect(passport.markdown).not.toContain('SpeakerCompare');
+    expect(passport.markdown).not.toContain('equal power mode');
     expect(passport.markdown).not.toContain('has no linked manual or source');
     expect(pages.pages.some((page) => page.markdown?.includes('Dolby Vision'))).toBe(true);
+
+    const passportPage = pages.pages.find((page) => page.source.title === 'LG webOS Smart TV passport');
+    expect(passportPage).toBeDefined();
+    await store.upsertSource({
+      ...passportPage!.source,
+      metadata: {
+        ...passportPage!.source.metadata,
+        pagePolicyVersion: 'old-test-policy',
+      },
+    });
+    const policyReindex = await service.reindex({ installationId: 'house-1' });
+    expect(policyReindex.reparsed).toBe(0);
+    expect(policyReindex.generated?.devicePassports).toBeGreaterThanOrEqual(1);
+  });
+
+  test('keeps commercial and manual safety boilerplate out of generated device pages', async () => {
+    const { service, store, artifactStore } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = {
+      knowledgeSpaceId: spaceId,
+      namespace: spaceId,
+      homeGraph: true,
+      homeAssistant: { installationId: 'house-1' },
+    };
+    const text = [
+      'SpeakerCompare simulates the sound of speakers through headphones.',
+      'In equal power mode, you hear loudness differences between speakers.',
+      'Do not place the TV and/or remote control in direct sunlight.',
+      'The LG 86NANO90UNA supports Dolby Vision HDR, HDMI eARC, and Game Optimizer.',
+      'DTV Audio Supported Codec: MPEG and Dolby Digital.',
+    ].join('\n');
+    const artifact = await artifactStore.create({
+      kind: 'document',
+      mimeType: 'text/plain',
+      filename: 'lg-specs.txt',
+      text,
+      metadata,
+    });
+    const source = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'LG 86NANO90UNA specs',
+      canonicalUri: 'homegraph://house-1/lg-specs',
+      tags: ['homeassistant', 'home-graph', 'manual'],
+      status: 'indexed',
+      artifactId: artifact.id,
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: source.id,
+      artifactId: artifact.id,
+      extractorId: 'text',
+      format: 'text',
+      summary: 'LG specs',
+      structure: { searchText: text },
+      metadata,
+    });
+    await service.linkKnowledge({
+      installationId: 'house-1',
+      sourceId: source.id,
+      target: { kind: 'device', id: 'lg-tv', relation: 'has_manual' },
+    });
+
+    const passport = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
+
+    expect(passport.markdown).toContain('Dolby Vision HDR');
+    expect(passport.markdown).toContain('DTV Audio Supported Codec');
+    expect(passport.markdown).not.toContain('SpeakerCompare');
+    expect(passport.markdown).not.toContain('equal power mode');
+    expect(passport.markdown).not.toContain('Do not place the TV');
   });
 });
 
