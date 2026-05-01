@@ -402,6 +402,94 @@ describe('Home Graph knowledge spaces', () => {
     expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
   });
 
+  test('does not blend other television objects into singular TV feature asks', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [
+        { id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' },
+        { id: 'sony-tv', name: 'BRAVIA XBR-55X850B', manufacturer: 'Sony', model: 'XBR-55X850B' },
+      ],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = {
+      knowledgeSpaceId: spaceId,
+      namespace: spaceId,
+      homeGraph: true,
+      homeAssistant: { installationId: 'house-1' },
+    };
+    const lgSource = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA specifications',
+      canonicalUri: 'https://example.test/lg-86nano90una',
+      tags: ['homeassistant', 'home-graph', 'specifications'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: lgSource.id,
+      extractorId: 'test-html',
+      format: 'html',
+      title: 'LG 86NANO90UNA specifications',
+      summary: 'LG NanoCell TV specifications.',
+      sections: [],
+      links: [],
+      estimatedTokens: 200,
+      structure: {
+        searchText: 'LG 86NANO90UNA smart TV features include NanoCell 4K, HDR10, Dolby Vision, webOS, HDMI eARC, and gaming support.',
+      },
+      metadata,
+    });
+    await service.linkKnowledge({
+      installationId: 'house-1',
+      sourceId: lgSource.id,
+      target: { kind: 'device', id: 'lg-tv', relation: 'source_for' },
+    });
+    const sonySource = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'url',
+      title: 'Sony XBR-55X850B specifications',
+      canonicalUri: 'https://example.test/sony-xbr-55x850b',
+      tags: ['homeassistant', 'home-graph', 'specifications'],
+      status: 'indexed',
+      metadata,
+    });
+    await store.upsertExtraction({
+      sourceId: sonySource.id,
+      extractorId: 'test-html',
+      format: 'html',
+      title: 'Sony XBR-55X850B specifications',
+      summary: 'Sony BRAVIA TV specifications.',
+      sections: [],
+      links: [],
+      estimatedTokens: 200,
+      structure: {
+        searchText: 'Sony XBR-55X850B BRAVIA TV features include Triluminos display, Motionflow, HDR, HDMI, and smart TV apps.',
+      },
+      metadata,
+    });
+    await service.linkKnowledge({
+      installationId: 'house-1',
+      sourceId: sonySource.id,
+      target: { kind: 'device', id: 'sony-tv', relation: 'source_for' },
+    });
+
+    const ask = await service.ask({
+      installationId: 'house-1',
+      query: 'What refresh rate, HDR formats, HDMI 2.1 or gaming features, and smart TV features does the TV have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+    });
+
+    expect(ask.results.map((result) => result.id)).toEqual([lgSource.id]);
+    expect(ask.answer.sources.map((source) => source.title)).toEqual(['LG 86NANO90UNA specifications']);
+    expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('LG webOS Smart TV');
+    expect(ask.answer.linkedObjects.map((node) => node.title)).not.toContain('BRAVIA XBR-55X850B');
+    expect(ask.answer.text).not.toContain('Sony');
+    expect(ask.answer.text).not.toContain('BRAVIA');
+  });
+
   test('keeps Home Assistant linked objects from repaired source metadata', async () => {
     const { service, store } = createHomeGraphService();
     await service.syncSnapshot({

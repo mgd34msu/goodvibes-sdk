@@ -258,6 +258,7 @@ describe('semantic knowledge/wiki enrichment', () => {
       installationId: 'house',
       devices: [
         { id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' },
+        { id: 'bravia', name: 'BRAVIA XBR-55X850B TV', manufacturer: 'Sony', model: 'XBR-55X850B' },
         { id: 'router', name: 'Storage Router', manufacturer: 'GL.iNet', model: 'MT6000' },
       ],
     });
@@ -270,8 +271,14 @@ describe('semantic knowledge/wiki enrichment', () => {
     await service.ingestNote({
       installationId: 'house',
       title: 'Router network notes',
-      body: 'The GL.iNet MT6000 has Wi-Fi 6 routing, NAS storage shares, WireGuard VPN, firewall rules, and Ethernet services.',
+      body: 'Smart TV users can stream Plex from this NAS, but the GL.iNet MT6000 has Wi-Fi 6 routing, NAS storage shares, WireGuard VPN, firewall rules, and Ethernet services.',
       target: { kind: 'device', id: 'router', relation: 'has_manual' },
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'Sony BRAVIA XBR feature sheet',
+      body: 'The Sony XBR-55X850B TV has Triluminos display, Motionflow processing, and BRAVIA smart TV apps.',
+      target: { kind: 'device', id: 'bravia', relation: 'has_manual' },
     });
     await semantic.reindex({ knowledgeSpaceId: homeAssistantKnowledgeSpaceId('house'), force: true });
 
@@ -290,6 +297,8 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(text).not.toContain('WireGuard');
     expect(text).not.toContain('NAS storage');
     expect(text).not.toContain('firewall');
+    expect(text).not.toContain('Sony');
+    expect(text).not.toContain('BRAVIA');
   });
 
   test('Home Graph ask prioritizes answer synthesis before background semantic enrichment', async () => {

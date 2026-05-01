@@ -7,6 +7,7 @@ import type {
 } from '../types.js';
 import { belongsToSpace, edgeIsActive, isGeneratedPageSource, readRecord } from './helpers.js';
 import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
+import { intersects, isSingularObjectQuery } from './search-utils.js';
 import type { HomeGraphSearchResult } from './types.js';
 
 const MAX_FIELD_CHARS = 4_096;
@@ -78,6 +79,8 @@ const GENERIC_ANCHOR_TOKENS = new Set([
   'smart',
   'storage',
   'switch',
+  'television',
+  'tv',
 ]);
 
 const QUERY_EXPANSIONS: Record<string, readonly string[]> = {
@@ -185,7 +188,7 @@ export function scoreHomeGraphResults(
   const expandedTokens = expandTokens(tokens);
   const anchorTokens = selectAnchorQueryTokens(tokens);
   const anchors = selectAnchorNodes(anchorTokens, nodes);
-  const sourceAnchors = selectSourceAnchors(anchorTokens, anchors.map((anchor) => anchor.node));
+  const sourceAnchors = selectSourceAnchors(anchorTokens, anchors.map((anchor) => anchor.node), isSingularObjectQuery(query, tokens));
   const anchorIds = new Set(sourceAnchors.map((node) => node.id));
   const anchorIdentityTokens = collectAnchorIdentityTokens(sourceAnchors);
   const sourceLinks = buildSourceLinkIndex(edges);
@@ -276,7 +279,7 @@ export function selectHomeGraphExtractionRepairCandidates(
   const tokens = tokenizeQuery(query);
   if (tokens.length === 0) return [];
   const anchors = selectAnchorNodes(tokens, nodes);
-  const sourceAnchors = selectSourceAnchors(tokens, anchors.map((anchor) => anchor.node));
+  const sourceAnchors = selectSourceAnchors(tokens, anchors.map((anchor) => anchor.node), isSingularObjectQuery(query, tokens));
   const anchorIds = new Set(sourceAnchors.map((anchor) => anchor.id));
   const anchorIdentityTokens = collectAnchorIdentityTokens(sourceAnchors);
   const sourceLinks = buildSourceLinkIndex(edges);
@@ -404,7 +407,7 @@ function sourceAnchorIdentityScore(
 
 function selectAnchorNodes(tokens: readonly string[], nodes: readonly KnowledgeNodeRecord[]): Array<{ readonly node: KnowledgeNodeRecord; readonly score: number }> {
   if (tokens.length === 0) return [];
-  return nodes.map((node) => {
+  const scored = nodes.map((node) => {
     if (!isHomeGraphAnchorNode(node)) return { node, score: 0 };
     const baseScore = scoreFields(tokens, nodeIdentityFields(node));
     const intentBoost = sourceAnchorIntentBoost(tokens, node);
@@ -414,7 +417,10 @@ function selectAnchorNodes(tokens: readonly string[], nodes: readonly KnowledgeN
     };
   })
     .filter((entry) => entry.score >= 10)
-    .sort((a, b) => b.score - a.score || a.node.id.localeCompare(b.node.id))
+    .sort((a, b) => b.score - a.score || a.node.id.localeCompare(b.node.id));
+  const topScore = scored[0]?.score ?? 0;
+  return scored
+    .filter((entry) => entry.score >= Math.max(10, topScore - 12))
     .slice(0, 12);
 }
 
@@ -427,9 +433,13 @@ function isHomeGraphAnchorNode(node: KnowledgeNodeRecord): boolean {
   return HOME_GRAPH_ANCHOR_KINDS.has(node.kind);
 }
 
-function selectSourceAnchors(tokens: readonly string[], nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
+function selectSourceAnchors(
+  tokens: readonly string[],
+  nodes: readonly KnowledgeNodeRecord[],
+  singularObjectQuery = false,
+): KnowledgeNodeRecord[] {
   const preferred = nodes.filter((node) => sourceAnchorIntentBoost(tokens, node) >= 0);
-  if (preferred.length > 0) return preferred.slice(0, 8);
+  if (preferred.length > 0) return preferred.slice(0, singularObjectQuery ? 1 : ANCHOR_SCOPE_LIMIT);
   return nodes.slice(0, ANCHOR_SCOPE_LIMIT);
 }
 
@@ -501,13 +511,6 @@ function nodeKindBoost(kind: string): number {
     default:
       return 0;
   }
-}
-
-function intersects(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
-  for (const value of left) {
-    if (right.has(value)) return true;
-  }
-  return false;
 }
 
 function isPendingDocumentationCandidate(

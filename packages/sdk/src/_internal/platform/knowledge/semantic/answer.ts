@@ -37,6 +37,11 @@ import {
   isSemanticAnswerLinkedObject,
   semanticFactText,
 } from './fact-quality.js';
+import {
+  inferHomeAssistantAnswerScope,
+  nodeInHomeAssistantAnswerScope,
+  sourceInHomeAssistantAnswerScope,
+} from './homeassistant-scope.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -163,9 +168,13 @@ function collectAnswerEvidence(
   const sourceFacts = buildSourceFactIndex(store, spaceId);
   const linkedSourceIds = sourceIdsLinkedToNodes(store, new Set([...candidateNodeIds, ...linkedObjectIds]), spaceId);
   const broadHomeAssistantAlias = normalizeKnowledgeSpaceId(spaceId) === 'homeassistant' && !strictCandidates;
+  const homeAssistantScope = !strictCandidates
+    ? inferHomeAssistantAnswerScope(store, spaceId, input.query, subjectTokens)
+    : null;
 
   const sourceItems = store.listSources(10_000)
     .filter((source) => belongsToAnswerSpace(source, spaceId))
+    .filter((source) => sourceInHomeAssistantAnswerScope(store, source, homeAssistantScope))
     .filter((source) => !strictCandidates || candidateSourceIds.has(source.id) || (
       candidateSourceIds.size === 0 && linkedSourceIds.has(source.id)
     ))
@@ -209,6 +218,7 @@ function collectAnswerEvidence(
 
   const nodeItems = store.listNodes(10_000)
     .filter((node) => belongsToAnswerSpace(node, spaceId) && node.status !== 'stale')
+    .filter((node) => nodeInHomeAssistantAnswerScope(node, homeAssistantScope))
     .filter((node) => !strictCandidates
       || candidateNodeIds.has(node.id)
       || linkedObjectIds.has(node.id)

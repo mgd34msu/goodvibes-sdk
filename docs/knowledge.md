@@ -129,6 +129,14 @@ deterministically, so a large knowledge space can refresh without opening
 unbounded provider requests. Existing uploads can therefore be repaired and
 enriched by reindexing; users do not need to reupload documents.
 
+When callers use `knowledgeSpaceId: "homeassistant"` as a broad alias, the
+semantic answer layer first infers the concrete Home Assistant object that the
+question is about. Sources and facts must then be linked to that object, or
+match strong identity tokens such as model/manufacturer names, before they are
+eligible as answer evidence. This keeps a question about "the TV" from ranking
+unrelated NAS, Matter, service, or other-device facts merely because those
+records share generic words such as "smart", "feature", or "support".
+
 Self-improvement is not limited to Ask. After ingest, reindex, and Home Graph
 snapshot sync, the SDK runs a bounded semantic maintenance pass. The pass looks
 for concrete subjects such as devices, services, providers, products, and

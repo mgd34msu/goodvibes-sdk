@@ -20,6 +20,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.9] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Base Knowledge Ask with `knowledgeSpaceId: "homeassistant"` now infers a
+  concrete Home Assistant object scope before collecting evidence, so broad
+  aliases do not rank unrelated NAS, Matter, service, or other device sources
+  above the object being asked about.
+- Home Graph Ask now narrows singular object questions such as "the TV" to the
+  strongest matching Home Assistant object anchor before passing candidate
+  sources and linked objects into semantic answer synthesis. This prevents
+  another TV, manual, or repaired source from being blended into a single-device
+  answer just because it shares generic TV/spec tokens.
+
+### Migration
+- none
+
+---
+
 ## [0.28.8] - 2026-05-01
 
 ### Breaking
