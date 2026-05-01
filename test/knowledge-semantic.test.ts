@@ -975,6 +975,78 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(result.blockedGaps).toBe(24);
   });
 
+  test('self-improvement recovers stale no-repairer blocks when a repairer is configured', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const manual = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'manual://lg-tv-no-repairer',
+      tags: ['manual'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-tv',
+      title: 'LG webOS Smart TV',
+      aliases: [],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: manual.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const gaps = [];
+    for (let i = 0; i < 2; i += 1) {
+      const gap = await store.upsertNode({
+        kind: 'knowledge_gap',
+        slug: `no-repairer-gap-${i}`,
+        title: `What are the complete features and specifications for LG 86NANO90UNA ${i}?`,
+        aliases: [],
+        confidence: 75,
+        sourceId: manual.id,
+        metadata: {
+          knowledgeSpaceId: spaceId,
+          semanticKind: 'gap',
+          gapKind: 'intrinsic_features',
+          sourceIds: [manual.id],
+          linkedObjectIds: [device.id],
+        },
+      });
+      gaps.push(gap);
+      await store.upsertEdge({
+        fromKind: 'node',
+        fromId: device.id,
+        toKind: 'node',
+        toId: gap.id,
+        relation: 'has_gap',
+        metadata: { knowledgeSpaceId: spaceId },
+      });
+    }
+
+    await new KnowledgeSemanticService(store).selfImprove({ knowledgeSpaceId: spaceId, limit: 2 });
+    expect(store.listRefinementTasks(10, { spaceId })
+      .filter((task) => /No semantic gap repairer is configured/i.test(task.blockedReason ?? ''))).toHaveLength(2);
+
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async () => ({ searched: true, ingestedSourceIds: [], skippedUrls: [] }),
+    });
+    await semantic.selfImprove({ knowledgeSpaceId: spaceId, limit: 1 });
+
+    expect(store.listRefinementTasks(10, { spaceId })
+      .filter((task) => /No semantic gap repairer is configured/i.test(task.blockedReason ?? ''))).toHaveLength(0);
+    for (const gap of gaps) {
+      expect(store.getNode(gap.id)?.metadata.repairStatus).not.toBe('no_repairer');
+    }
+  });
+
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
     let aborted = false;
     const semanticLlm = createProviderBackedKnowledgeSemanticLlm({

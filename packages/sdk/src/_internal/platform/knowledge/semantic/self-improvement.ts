@@ -16,6 +16,10 @@ import type {
   KnowledgeSemanticSelfImproveResult,
 } from './types.js';
 import {
+  recoverNoRepairerTasks,
+  recoverStaleActiveTasks,
+} from './self-improvement-recovery.js';
+import {
   readRecord,
   readString,
   semanticHash,
@@ -30,14 +34,6 @@ const DEFAULT_REFINEMENT_LIMIT = 12;
 const MAX_REFINEMENT_LIMIT = 24;
 const DEFAULT_REFINEMENT_RUN_MS = 45_000;
 const MAX_REFINEMENT_RUN_MS = 60_000;
-const STALE_ACTIVE_TASK_MS = 10 * 60 * 1000;
-const ACTIVE_REFINEMENT_STATES = new Set<KnowledgeRefinementTaskState>([
-  'queued',
-  'searching',
-  'evaluating',
-  'extracting',
-  'applying',
-]);
 
 interface SelfImproveContext {
   readonly store: KnowledgeStore;
@@ -62,6 +58,9 @@ export async function runKnowledgeSemanticSelfImprovement(
   const gapIdFilter = input.gapIds?.length ? new Set(input.gapIds) : null;
   const spaceId = resolveSelfImproveSpace(context.store, input);
   await recoverStaleActiveTasks(context.store, spaceId);
+  if (context.gapRepairer) {
+    await recoverNoRepairerTasks(context.store, spaceId);
+  }
   const createdGaps = await discoverIntrinsicGaps(context.store, spaceId, sourceIdFilter);
   const candidates = collectCandidateGaps(context.store, spaceId, sourceIdFilter, gapIdFilter);
   const requestedLimit = Math.max(1, input.limit ?? DEFAULT_REFINEMENT_LIMIT);
@@ -232,21 +231,6 @@ export async function runKnowledgeSemanticSelfImprovement(
     ingestedSourceIds: uniqueStrings(ingestedSourceIds),
     errors,
   };
-}
-
-async function recoverStaleActiveTasks(store: KnowledgeStore, spaceId: string): Promise<void> {
-  const now = Date.now();
-  const staleTasks = store.listRefinementTasks(10_000, { spaceId })
-    .filter((task) => ACTIVE_REFINEMENT_STATES.has(task.state))
-    .filter((task) => now - task.updatedAt >= STALE_ACTIVE_TASK_MS);
-  for (const task of staleTasks) {
-    await updateRefinementTask(
-      store,
-      task,
-      'blocked',
-      'Refinement task was interrupted or exceeded the active window; it can be retried.',
-    );
-  }
 }
 
 async function yieldToEventLoop(): Promise<void> {
