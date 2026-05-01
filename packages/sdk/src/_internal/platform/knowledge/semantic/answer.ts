@@ -401,8 +401,9 @@ async function persistAnswerGap(
   const sources = context.sources ?? [];
   const subject = context.subject ?? linkedObjects[0]?.title;
   const fingerprint = answerGapFingerprint(spaceId, query, subject, linkedObjects[0]?.id);
+  const id = `sem-answer-gap-${fingerprint}`;
   const node = await store.upsertNode({
-    id: `sem-answer-gap-${fingerprint}`,
+    id,
     kind: 'knowledge_gap',
     slug: `answer-gap-${fingerprint}`,
     title: query,
@@ -440,24 +441,28 @@ async function persistAnswerGap(
       metadata: semanticMetadata(spaceId, { gapKind: 'answer' }),
     });
   }
-  await store.upsertIssue({
-    id: `sem-answer-gap-issue-${fingerprint}`,
-    severity: 'info',
-    code: 'knowledge.answer_gap',
-    message: `No knowledge answer available for: ${query}`,
-    status: 'open',
-    ...(sources[0] ? { sourceId: sources[0].id } : {}),
-    nodeId: node.id,
-    metadata: semanticMetadata(spaceId, {
-      namespace: `knowledge:${spaceId}:answers`,
-      query,
-      reason,
-      subject,
-      subjectFingerprint: fingerprint,
-      sourceIds: sources.map((source) => source.id),
-      linkedObjectIds: linkedObjects.map((entry) => entry.id),
-    }),
-  });
+  if (!isRepairedAnswerGap(node)) {
+    await store.upsertIssue({
+      id: `sem-answer-gap-issue-${fingerprint}`,
+      severity: 'info',
+      code: 'knowledge.answer_gap',
+      message: `No knowledge answer available for: ${query}`,
+      status: 'open',
+      ...(sources[0] ? { sourceId: sources[0].id } : {}),
+      nodeId: node.id,
+      metadata: semanticMetadata(spaceId, {
+        namespace: `knowledge:${spaceId}:answers`,
+        query,
+        reason,
+        subject,
+        subjectFingerprint: fingerprint,
+        sourceIds: sources.map((source) => source.id),
+        linkedObjectIds: linkedObjects.map((entry) => entry.id),
+      }),
+    });
+  } else {
+    await resolveAnswerGapIssues(store, spaceId, node.id);
+  }
   return node;
 }
 
@@ -473,12 +478,40 @@ async function persistAnswerGaps(
 ): Promise<readonly KnowledgeNodeRecord[]> {
   const nodes: KnowledgeNodeRecord[] = [];
   for (const gap of gaps.slice(0, 8)) {
-    nodes.push(await persistAnswerGap(store, spaceId, gap.question || query, gap.reason ?? 'Answer synthesis identified a missing knowledge gap.', {
+    const node = await persistAnswerGap(store, spaceId, gap.question || query, gap.reason ?? 'Answer synthesis identified a missing knowledge gap.', {
       ...context,
       ...(gap.subject ? { subject: gap.subject } : {}),
-    }));
+    });
+    if (!isRepairedAnswerGap(node)) nodes.push(node);
   }
   return nodes;
+}
+
+function isRepairedAnswerGap(node: KnowledgeNodeRecord): boolean {
+  const repairStatus = readString(node.metadata.repairStatus);
+  return node.status === 'stale' || repairStatus === 'repaired' || repairStatus === 'not_applicable';
+}
+
+async function resolveAnswerGapIssues(store: KnowledgeStore, spaceId: string, nodeId: string): Promise<void> {
+  for (const issue of store.listIssues(10_000).filter((entry) => entry.nodeId === nodeId && entry.status === 'open')) {
+    await store.upsertIssue({
+      id: issue.id,
+      severity: issue.severity,
+      code: issue.code,
+      message: issue.message,
+      status: 'resolved',
+      sourceId: issue.sourceId,
+      nodeId: issue.nodeId,
+      metadata: semanticMetadata(spaceId, {
+        ...issue.metadata,
+        resolution: {
+          reason: 'Answer gap already has accepted repair evidence.',
+          resolvedBy: 'knowledge-answer',
+          resolvedAt: Date.now(),
+        },
+      }),
+    });
+  }
 }
 
 function answerGapFingerprint(spaceId: string, query: string, subject?: string, subjectId?: string): string {

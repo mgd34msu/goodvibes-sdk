@@ -29984,6 +29984,21 @@ Re-extract already-stored Home Graph artifacts with missing or weak extraction r
     "failed": {
       "type": "number"
     },
+    "changedSourceCount": {
+      "type": "number"
+    },
+    "forcedSourceCount": {
+      "type": "number"
+    },
+    "skippedGeneratedPageArtifactCount": {
+      "type": "number"
+    },
+    "refreshedGeneratedPageCount": {
+      "type": "number"
+    },
+    "generatedPagePolicyVersion": {
+      "type": "string"
+    },
     "truncated": {
       "type": "boolean"
     },

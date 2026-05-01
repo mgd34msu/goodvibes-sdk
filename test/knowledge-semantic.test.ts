@@ -120,6 +120,12 @@ describe('semantic knowledge/wiki enrichment', () => {
         'Use a platform or cabinet that is strong and large enough to support the TV securely.',
         'The items supplied with your product may vary depending upon the model.',
         'Warning: do not use uncertified HDMI cables.',
+        'Use a certified cable with the HDMI logo attached or the screen may not display.',
+        'External Devices Supported USB to Serial SERVICE ONLY.',
+        '0 Yes Smart Phone Connectivity.',
+        '1HDMI Audio Return Channel.',
+        '1 ports.',
+        '1 features such as ALLM or 4K/120 over HDMI.',
         'The TV supports Magic Remote MR20GA when the wireless module includes Bluetooth.',
         ].join(' '),
       },
@@ -172,6 +178,12 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(factText).not.toContain('USB flash drive does not fit');
     expect(factText).not.toContain('platform or cabinet');
     expect(factText).not.toContain('MR20GA');
+    expect(factText).not.toContain('certified cable');
+    expect(factText).not.toContain('USB to Serial');
+    expect(factText).not.toContain('Smart Phone Connectivity');
+    expect(factText).not.toContain('1HDMI');
+    expect(factText).not.toContain('1 ports');
+    expect(factText).not.toContain('ALLM or 4K/120');
   });
 
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
@@ -687,10 +699,13 @@ describe('semantic knowledge/wiki enrichment', () => {
 
     await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
     await waitFor(() => store.listEdges().some((edge) => edge.relation === 'repairs_gap'), 250);
-    await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
+    await waitFor(() => store.listNodes(10).some((node) => node.kind === 'knowledge_gap' && node.metadata.repairStatus === 'repaired'), 250);
+    const secondAnswer = await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
     await waitFor(() => calls.length >= 1, 250);
 
     expect(calls).toHaveLength(1);
+    expect(secondAnswer.answer.gaps).toHaveLength(0);
+    expect(store.listIssues(10).filter((issue) => issue.code === 'knowledge.answer_gap' && issue.status === 'open')).toHaveLength(0);
   });
 
   test('answer-triggered refinement is queued without blocking the answer', async () => {

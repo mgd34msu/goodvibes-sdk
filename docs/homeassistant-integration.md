@@ -258,9 +258,11 @@ evidence or an older generated-page policy. It skips generated-page artifacts,
 so "reindex uploads" stays focused on user-provided/manual sources and stale
 page refresh rather than treating generated pages as source material. The
 response reports `scanned`, `reparsed`, `skipped`, `failed`, `truncated`,
-`budgetExhausted`, repaired `sources`, auto-link `linked` summaries, semantic
-enrichment counts, regenerated page `generated` counts, and per-source
-`failures`.
+`budgetExhausted`, `changedSourceCount`, `forcedSourceCount`,
+`skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
+`generatedPagePolicyVersion`, repaired `sources`, auto-link `linked`
+summaries, semantic enrichment counts, regenerated page `generated` counts, and
+per-source `failures`.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
@@ -305,7 +307,9 @@ so single-concurrency provider wrappers answer the user before refreshing
 source semantics. Generated device passports and room pages apply the same
 fact-quality filter so living pages focus on useful device capabilities,
 specifications, actionable maintenance, troubleshooting, and source-backed
-notes rather than generic handling/safety fragments from manuals.
+notes rather than generic handling/safety fragments, certified cable warnings,
+remote/accessory instructions, service-only port fragments, or heading-only
+manual/spec fragments.
 Room pages also scope open issues to the requested area and its related graph
 objects. A room page does not render every open Home Graph issue in the house;
 only issues attached to the room, its devices/entities/automations/scenes,

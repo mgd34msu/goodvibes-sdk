@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.5"
+    "version": "0.28.6"
   },
   "auth": {
     "modes": [
@@ -29791,6 +29791,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "failed": {
               "type": "number"
+            },
+            "changedSourceCount": {
+              "type": "number"
+            },
+            "forcedSourceCount": {
+              "type": "number"
+            },
+            "skippedGeneratedPageArtifactCount": {
+              "type": "number"
+            },
+            "refreshedGeneratedPageCount": {
+              "type": "number"
+            },
+            "generatedPagePolicyVersion": {
+              "type": "string"
             },
             "truncated": {
               "type": "boolean"

@@ -43,9 +43,11 @@ export async function runHomeGraphReindex(
   await context.store.init();
   const { spaceId, installationId } = resolveReadableHomeGraphSpace(context.store, input);
   const state = readHomeGraphSearchState(context.store, spaceId);
+  const allSourceCount = readHomeGraphState(context.store, spaceId).sources.length;
   const startedAt = Date.now();
   const maxRunMs = clampPositive(input.maxRunMs, 90_000, 15_000, 180_000);
   const sources = state.sources.filter((source) => !isGeneratedPageSource(source));
+  const skippedGeneratedPageArtifactCount = Math.max(0, allSourceCount - sources.length);
   const reindex = await reindexHomeGraphSources({
     spaceId,
     sources,
@@ -62,11 +64,10 @@ export async function runHomeGraphReindex(
     ...reindex.sources.map((source) => source.id),
     ...linked.map((item) => item.edge.fromKind === 'source' ? item.edge.fromId : undefined),
   ]);
-  const semanticSourceIds = changedSourceIds.length > 0
-    ? changedSourceIds
-    : input.force === true
-      ? sources.slice(0, clampPositive(input.semanticLimit, 8, 1, 24)).map((source) => source.id)
-      : [];
+  const forcedSourceIds = input.force === true && changedSourceIds.length === 0
+    ? sources.slice(0, clampPositive(input.semanticLimit, 8, 1, 24)).map((source) => source.id)
+    : [];
+  const semanticSourceIds = changedSourceIds.length > 0 ? changedSourceIds : forcedSourceIds;
   const remainingMs = Math.max(5_000, maxRunMs - (Date.now() - startedAt));
   const semantic = semanticSourceIds.length > 0
     ? await context.semanticService?.reindex({
@@ -89,8 +90,14 @@ export async function runHomeGraphReindex(
         spaceId,
         installationId,
       }, currentState.sources, changedSourceIds, clampPositive(input.generatedPageLimit, 256, 1, 512));
+  const refreshedGeneratedPageCount = generated.devicePassports + generated.roomPages;
   return {
     ...reindex,
+    changedSourceCount: changedSourceIds.length,
+    forcedSourceCount: forcedSourceIds.length,
+    skippedGeneratedPageArtifactCount,
+    refreshedGeneratedPageCount,
+    generatedPagePolicyVersion: HOME_GRAPH_PAGE_POLICY_VERSION,
     ...(linked.length > 0 ? { linked } : {}),
     ...(semantic ? { semantic } : {}),
     qualityIssues,
