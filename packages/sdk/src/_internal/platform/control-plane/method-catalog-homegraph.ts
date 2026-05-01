@@ -28,6 +28,7 @@ import {
   HOME_GRAPH_REFINEMENT_RUN_OUTPUT_SCHEMA,
   HOME_GRAPH_REFINEMENT_TASK_OUTPUT_SCHEMA,
   HOME_GRAPH_REFINEMENT_TASKS_OUTPUT_SCHEMA,
+  HOME_GRAPH_RESET_OUTPUT_SCHEMA,
   HOME_GRAPH_REVIEW_OUTPUT_SCHEMA,
   HOME_GRAPH_SOURCES_OUTPUT_SCHEMA,
   HOME_GRAPH_SPACE_INPUT_SCHEMA,
@@ -44,6 +45,7 @@ function homeGraphDescriptor(input: {
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
   readonly write?: boolean;
+  readonly dangerous?: boolean;
   readonly metadata?: Record<string, unknown>;
 }): GatewayMethodDescriptor {
   return methodDescriptor({
@@ -56,6 +58,7 @@ function homeGraphDescriptor(input: {
     http: { method: input.method, path: input.path },
     inputSchema: input.inputSchema,
     outputSchema: input.outputSchema,
+    ...(input.dangerous ? { dangerous: true } : {}),
     ...(input.metadata ? { metadata: input.metadata } : {}),
   });
 }
@@ -379,6 +382,17 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     write: true,
     inputSchema: bodyEnvelopeSchema({ installationId: STRING_SCHEMA, knowledgeSpaceId: STRING_SCHEMA, data: JSON_RECORD_SCHEMA }, ['data']),
     outputSchema: HOME_GRAPH_IMPORT_OUTPUT_SCHEMA,
+  }),
+  homeGraphDescriptor({
+    id: 'homeassistant.homeGraph.reset',
+    title: 'Reset Home Graph Space',
+    description: 'Clear one Home Assistant Home Graph knowledge space after callers export any diagnostic backup they need.',
+    method: 'POST',
+    path: '/api/homeassistant/home-graph/reset',
+    write: true,
+    dangerous: true,
+    inputSchema: HOME_GRAPH_SPACE_INPUT_SCHEMA,
+    outputSchema: HOME_GRAPH_RESET_OUTPUT_SCHEMA,
   }),
 ];
 

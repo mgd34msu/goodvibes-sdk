@@ -121,6 +121,9 @@ export class HomeGraphRoutes {
       if (pathname === '/api/homeassistant/home-graph/export' && req.method === 'POST') {
         return Response.json(await this.context.homeGraphService.exportSpace(await this.readOptionalBody(req)));
       }
+      if (pathname === '/api/homeassistant/home-graph/reset' && req.method === 'POST') {
+        return await this.admin(req, async () => Response.json(await this.context.homeGraphService.resetSpace(await this.readOptionalBody(req))));
+      }
       if (pathname === '/api/homeassistant/home-graph/ask' && req.method === 'POST') {
         return Response.json(await this.context.homeGraphService.ask(await this.readBody<HomeGraphAskInput>(req)));
       }

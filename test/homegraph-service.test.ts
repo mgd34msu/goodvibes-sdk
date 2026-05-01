@@ -9,6 +9,8 @@ import {
   HomeGraphService,
   homeAssistantKnowledgeSpaceId,
 } from '../packages/sdk/src/_internal/platform/knowledge/index.js';
+import { answerHomeGraphQuery } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/ask.js';
+import { readHomeGraphSearchState } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/search.js';
 import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
@@ -490,6 +492,113 @@ describe('Home Graph knowledge spaces', () => {
     expect(ask.answer.text).not.toContain('BRAVIA');
   });
 
+  test('filters contaminated Home Graph answer candidates to the singular object scope', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [
+        { id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' },
+        { id: 'sony-tv', name: 'BRAVIA XBR-55X850B', manufacturer: 'Sony', model: 'XBR-55X850B' },
+        { id: 'google-ai', name: 'Google AI Conversation', manufacturer: 'Google', model: 'gemini-2.5-flash' },
+        { id: 'mcp-server', name: 'MCP Server (HTTP Transport)', manufacturer: 'GoodVibes' },
+      ],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const metadata = {
+      knowledgeSpaceId: spaceId,
+      namespace: spaceId,
+      homeGraph: true,
+      homeAssistant: { installationId: 'house-1' },
+    };
+    const sources = [
+      {
+        target: 'google-ai',
+        title: 'Google Gemini 2.5 Flash - docs.oracle.com',
+        text: 'Context caching and API feature configuration for Gemini 2.5 Flash.',
+      },
+      {
+        target: 'lg-tv',
+        title: 'LG NanoCell 86NANO90UNA specifications',
+        text: 'LG 86NANO90UNA smart TV features include NanoCell 4K, HDR10, Dolby Vision, webOS, HDMI eARC, and gaming support.',
+      },
+      {
+        target: 'sony-tv',
+        title: 'PDF XBR-55X850B - fullcompass.com',
+        text: 'Sony BRAVIA XBR-55X850B TV features include Triluminos display, Motionflow, HDMI, and smart TV apps.',
+      },
+      {
+        target: 'mcp-server',
+        title: 'The Complete MCP Experience',
+        text: 'Remote MCP server features include streamable HTTP transport and enterprise security.',
+      },
+    ];
+    const sourceRecords = [];
+    for (const entry of sources) {
+      const source = await store.upsertSource({
+        connectorId: 'homeassistant',
+        sourceType: 'url',
+        title: entry.title,
+        canonicalUri: `https://example.test/${entry.target}`,
+        tags: ['homeassistant', 'home-graph', 'features'],
+        status: 'indexed',
+        metadata,
+      });
+      sourceRecords.push(source);
+      await store.upsertExtraction({
+        sourceId: source.id,
+        extractorId: 'test-html',
+        format: 'html',
+        title: entry.title,
+        summary: entry.text,
+        sections: [entry.text],
+        links: [],
+        estimatedTokens: 200,
+        structure: { searchText: entry.text },
+        metadata,
+      });
+      await service.linkKnowledge({
+        installationId: 'house-1',
+        sourceId: source.id,
+        target: { kind: 'device', id: entry.target, relation: 'source_for' },
+      });
+    }
+
+    const state = readHomeGraphSearchState(store, spaceId);
+    const answer = await answerHomeGraphQuery({
+      store,
+      spaceId,
+      query: {
+        query: 'What refresh rate, HDR formats, HDMI 2.1 or gaming features, and smart TV features does the TV have?',
+        includeSources: true,
+        includeLinkedObjects: true,
+      },
+      state,
+      results: sourceRecords.map((source, index) => ({
+        kind: 'source' as const,
+        id: source.id,
+        score: 1_000 - index,
+        title: source.title ?? source.id,
+        summary: source.summary,
+        excerpt: store.getExtractionBySourceId(source.id)?.summary,
+        source,
+      })),
+    });
+
+    const text = [
+      answer.answer.text,
+      ...answer.answer.sources.map((source) => source.title ?? ''),
+      ...answer.answer.linkedObjects.map((node) => node.title),
+      ...answer.results.map((result) => result.title),
+    ].join('\n');
+    expect(answer.results.map((result) => result.id)).toEqual([sourceRecords[1]!.id]);
+    expect(answer.answer.linkedObjects.map((node) => node.title)).toEqual(['LG webOS Smart TV']);
+    expect(text).toContain('LG');
+    expect(text).not.toContain('Sony');
+    expect(text).not.toContain('BRAVIA');
+    expect(text).not.toContain('Gemini');
+    expect(text).not.toContain('MCP');
+  });
+
   test('keeps Home Assistant linked objects from repaired source metadata', async () => {
     const { service, store } = createHomeGraphService();
     await service.syncSnapshot({
@@ -840,22 +949,44 @@ describe('Home Graph knowledge spaces', () => {
     const svgResponse = await routes.handle(new Request(
       'http://daemon.local/api/homeassistant/home-graph/map?installationId=house-1&format=svg',
     ));
+    const exportResponse = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/export', {
+      method: 'POST',
+      body: JSON.stringify({ installationId: 'house-1' }),
+    }));
+    const resetResponse = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/reset', {
+      method: 'POST',
+      body: JSON.stringify({ installationId: 'house-1' }),
+    }));
+    const resetStatusResponse = await routes.handle(new Request(
+      'http://daemon.local/api/homeassistant/home-graph/status?installationId=house-1',
+    ));
 
     expect(syncResponse?.status).toBe(200);
     expect(statusResponse?.status).toBe(200);
     expect(reindexResponse?.status).toBe(200);
     expect(mapResponse?.status).toBe(200);
     expect(svgResponse?.status).toBe(200);
+    expect(exportResponse?.status).toBe(200);
+    expect(resetResponse?.status).toBe(200);
+    expect(resetStatusResponse?.status).toBe(200);
     const status = await statusResponse!.json() as Record<string, unknown>;
     const reindex = await reindexResponse!.json() as Record<string, unknown>;
     const map = await mapResponse!.json() as Record<string, unknown>;
     const svg = await svgResponse!.text();
+    const exported = await exportResponse!.json() as { readonly sources?: readonly unknown[] };
+    const reset = await resetResponse!.json() as { readonly deleted?: { readonly sources?: number; readonly nodes?: number }; readonly artifactsDeleted?: boolean };
+    const resetStatus = await resetStatusResponse!.json() as Record<string, unknown>;
     expect(status.spaceId).toBe(homeAssistantKnowledgeSpaceId('house-1'));
     expect(status.nodeCount).toBeGreaterThanOrEqual(2);
     expect(reindex.scanned).toBe(0);
     expect(map.svg).toContain('<svg');
     expect(svgResponse!.headers.get('content-type') ?? '').toContain('image/svg+xml');
     expect(svg).toContain('Thermostat');
+    expect(exported.sources?.length).toBeGreaterThan(0);
+    expect(reset.deleted?.sources).toBeGreaterThan(0);
+    expect(reset.deleted?.nodes).toBeGreaterThan(0);
+    expect(reset.artifactsDeleted).toBe(false);
+    expect(resetStatus.nodeCount).toBe(0);
   });
 
   test('accepts native Home Assistant snake_case snapshot objects', async () => {

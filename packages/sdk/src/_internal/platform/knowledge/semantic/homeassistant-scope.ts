@@ -1,12 +1,22 @@
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import { getKnowledgeSpaceId, isHomeAssistantKnowledgeSpace, normalizeKnowledgeSpaceId } from '../spaces.js';
-import { readRecord, readString, scoreSemanticText, sourceSemanticText } from './utils.js';
+import { readRecord, readString, scoreSemanticText, sourceSemanticText, tokenizeSemanticQuery } from './utils.js';
 
 export interface HomeAssistantAnswerScope {
   readonly anchorNodeIds: ReadonlySet<string>;
   readonly linkedSourceIds: ReadonlySet<string>;
   readonly anchorText: readonly string[];
+}
+
+export function inferHomeAssistantAnswerScopeForQuery(
+  store: KnowledgeStore,
+  spaceId: string,
+  query: string,
+): HomeAssistantAnswerScope | null {
+  const subjectTokens = tokenizeSemanticQuery(query)
+    .filter((token) => !GENERIC_ANSWER_INTENT_TOKENS.has(token));
+  return inferHomeAssistantAnswerScope(store, spaceId, query, subjectTokens);
 }
 
 export function inferHomeAssistantAnswerScope(
@@ -21,7 +31,7 @@ export function inferHomeAssistantAnswerScope(
   const singularObjectQuery = isSingularObjectQuery(query, subjectTokens);
   const strongIdentityTokens = subjectTokens.filter(isStrongIdentityToken);
   if (!singularObjectQuery && strongIdentityTokens.length === 0) return null;
-  const linkedSourceCountByNode = linkedSourceCountsByAnchor(store);
+  const linkedSourceQualityByNode = linkedSourceQualityByAnchor(store);
 
   const anchors = store.listNodes(10_000)
     .filter((node) => node.status !== 'stale' && isHomeAssistantObjectNode(node))
@@ -29,7 +39,7 @@ export function inferHomeAssistantAnswerScope(
     .map((node) => ({
       node,
       score: scoreHomeAssistantObject(node, subjectTokens)
-        + Math.min(24, (linkedSourceCountByNode.get(node.id) ?? 0) * 8),
+        + Math.min(64, linkedSourceQualityByNode.get(node.id) ?? 0),
     }))
     .filter((entry) => entry.score > 0)
     .sort((left, right) => right.score - left.score || left.node.id.localeCompare(right.node.id));
@@ -77,16 +87,39 @@ function sourceIdsLinkedToAnchors(store: KnowledgeStore, anchorNodeIds: Readonly
   return sourceIds;
 }
 
-function linkedSourceCountsByAnchor(store: KnowledgeStore): Map<string, number> {
-  const counts = new Map<string, number>();
+function linkedSourceQualityByAnchor(store: KnowledgeStore): Map<string, number> {
+  const sourcesById = new Map(store.listSources(10_000).map((source) => [source.id, source]));
+  const scores = new Map<string, number>();
   for (const edge of store.listEdges()) {
+    const source = edge.fromKind === 'source'
+      ? sourcesById.get(edge.fromId)
+      : edge.toKind === 'source'
+        ? sourcesById.get(edge.toId)
+        : undefined;
+    if (!source) continue;
+    const score = linkedSourceQuality(source, edge.relation);
     if (edge.fromKind === 'source' && edge.toKind === 'node') {
-      counts.set(edge.toId, (counts.get(edge.toId) ?? 0) + 1);
+      scores.set(edge.toId, (scores.get(edge.toId) ?? 0) + score);
     } else if (edge.fromKind === 'node' && edge.toKind === 'source') {
-      counts.set(edge.fromId, (counts.get(edge.fromId) ?? 0) + 1);
+      scores.set(edge.fromId, (scores.get(edge.fromId) ?? 0) + score);
     }
   }
-  return counts;
+  return scores;
+}
+
+function linkedSourceQuality(source: KnowledgeSourceRecord, relation: string): number {
+  let score = source.status === 'indexed' ? 4 : 0;
+  if (source.sourceType === 'manual') score += 32;
+  else if (source.sourceType === 'document') score += 22;
+  else if (source.sourceType === 'url') score += 10;
+  if (source.artifactId) score += 16;
+  if (source.connectorId === 'homeassistant') score += 16;
+  else if (source.connectorId === 'semantic-gap-repair') score += 4;
+  if (relation === 'has_manual') score += 32;
+  else if (relation === 'source_for') score += 14;
+  const discovery = readRecord(source.metadata.sourceDiscovery);
+  if (readString(discovery.purpose) === 'semantic-gap-repair') score -= 8;
+  return Math.max(0, score);
 }
 
 function isHomeAssistantObjectNode(node: KnowledgeNodeRecord): boolean {
@@ -193,4 +226,29 @@ const GENERIC_ANCHOR_TOKENS = new Set([
   'supports',
   'television',
   'tv',
+]);
+
+const GENERIC_ANSWER_INTENT_TOKENS = new Set([
+  'capabilities',
+  'capability',
+  'configuration',
+  'configure',
+  'feature',
+  'features',
+  'function',
+  'functions',
+  'install',
+  'mode',
+  'modes',
+  'procedure',
+  'setting',
+  'settings',
+  'setup',
+  'spec',
+  'specification',
+  'specifications',
+  'specs',
+  'support',
+  'supported',
+  'supports',
 ]);

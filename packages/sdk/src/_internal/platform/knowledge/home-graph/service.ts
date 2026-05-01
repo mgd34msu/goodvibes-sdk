@@ -73,7 +73,7 @@ import type {
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
   HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphObjectInput,
   HomeGraphMapInput, HomeGraphMapResult, HomeGraphProjectionInput, HomeGraphProjectionResult,
-  HomeGraphPageListResult, HomeGraphReindexInput, HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
+  HomeGraphPageListResult, HomeGraphReindexInput, HomeGraphReindexResult, HomeGraphResetResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
 
@@ -511,6 +511,13 @@ export class HomeGraphService {
       extractions += 1;
     }
     return { ok: true, spaceId, imported: { sources, nodes, edges, issues, extractions } };
+  }
+
+  async resetSpace(input: HomeGraphSpaceInput): Promise<HomeGraphResetResult> {
+    await this.store.init();
+    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
+    const deleted = await this.store.deleteKnowledgeSpace(spaceId);
+    return { ok: true, spaceId, installationId, deleted, artifactsDeleted: false };
   }
 
   private async ingestCreatedArtifact(input: {

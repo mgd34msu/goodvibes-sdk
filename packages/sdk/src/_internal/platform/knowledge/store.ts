@@ -36,6 +36,14 @@ import {
 import { resolveKnowledgeDbPath, type KnowledgeStoreConfig } from './store-config.js';
 import { upsertKnowledgeRefinementTask } from './store-refinement.js';
 import {
+  deleteKnowledgeSpaceRows,
+  type KnowledgeSpaceDeleteResult,
+} from './store-space-delete.js';
+import {
+  deleteKnowledgeSchedule,
+  upsertKnowledgeSchedule,
+} from './store-schedules.js';
+import {
   edgesForKnowledgeStore,
   getKnowledgeConsolidationCandidate,
   getKnowledgeConsolidationCandidateBySubject,
@@ -67,6 +75,7 @@ import {
   type KnowledgeStoreReadView,
 } from './store-read.js';
 import { loadKnowledgeStoreSnapshot } from './store-load.js';
+
 export class KnowledgeStore {
   private readonly sqlite: SQLiteStore;
   private readonly dbPath: string;
@@ -722,52 +731,31 @@ export class KnowledgeStore {
 
   async upsertSchedule(input: KnowledgeScheduleUpsertInput): Promise<KnowledgeScheduleRecord> {
     await this.init();
-    const existing = input.id ? this.schedules.get(input.id) : null;
-    const now = nowMs();
-    const record: KnowledgeScheduleRecord = {
-      id: existing?.id ?? input.id ?? `ksched-${randomUUID().slice(0, 8)}`,
-      jobId: input.jobId,
-      label: input.label.trim(),
-      enabled: input.enabled ?? existing?.enabled ?? true,
-      schedule: input.schedule,
-      ...(typeof input.lastRunAt === 'number' ? { lastRunAt: input.lastRunAt } : existing?.lastRunAt ? { lastRunAt: existing.lastRunAt } : {}),
-      ...(typeof input.nextRunAt === 'number' ? { nextRunAt: input.nextRunAt } : existing?.nextRunAt ? { nextRunAt: existing.nextRunAt } : {}),
-      metadata: {
-        ...(existing?.metadata ?? {}),
-        ...(input.metadata ?? {}),
-      },
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    };
-    this.sqlite.run(`
-      INSERT OR REPLACE INTO knowledge_schedules (
-        id, job_id, label, enabled, schedule, last_run_at, next_run_at, metadata, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      record.id,
-      record.jobId,
-      record.label,
-      record.enabled ? 1 : 0,
-      JSON.stringify(record.schedule),
-      record.lastRunAt ?? null,
-      record.nextRunAt ?? null,
-      JSON.stringify(record.metadata),
-      record.createdAt,
-      record.updatedAt,
-    ]);
-    this.schedules.set(record.id, record);
-    await this.sqlite.save();
-    return record;
+    return upsertKnowledgeSchedule(this.sqlite, this.schedules, input, () => `ksched-${randomUUID().slice(0, 8)}`);
   }
 
   async deleteSchedule(id: string): Promise<boolean> {
     await this.init();
-    const existing = this.schedules.get(id);
-    if (!existing) return false;
-    this.sqlite.run('DELETE FROM knowledge_schedules WHERE id = ?', [id]);
-    this.schedules.delete(id);
+    return deleteKnowledgeSchedule(this.sqlite, this.schedules, id);
+  }
+
+  async deleteKnowledgeSpace(spaceId: string): Promise<KnowledgeSpaceDeleteResult> {
+    await this.init();
+    const deleted = deleteKnowledgeSpaceRows(this.sqlite, {
+      sources: this.sources,
+      nodes: this.nodes,
+      edges: this.edges,
+      issues: this.issues,
+      extractions: this.extractions,
+      jobRuns: this.jobRuns,
+      refinementTasks: this.refinementTasks,
+      usageRecords: this.usageRecords,
+      consolidationCandidates: this.consolidationCandidates,
+      consolidationReports: this.consolidationReports,
+      schedules: this.schedules,
+    }, spaceId);
     await this.sqlite.save();
-    return true;
+    return deleted;
   }
 
   private async initialize(): Promise<void> {

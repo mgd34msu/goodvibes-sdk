@@ -99,6 +99,7 @@ export const OPERATOR_METHOD_IDS = [
   "homeassistant.homeGraph.refinement.tasks.list",
   "homeassistant.homeGraph.refreshDevicePassport",
   "homeassistant.homeGraph.reindex",
+  "homeassistant.homeGraph.reset",
   "homeassistant.homeGraph.reviewHomeGraphFact",
   "homeassistant.homeGraph.sources.list",
   "homeassistant.homeGraph.status",

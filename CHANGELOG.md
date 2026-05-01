@@ -20,6 +20,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.10] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Home Graph now exposes an admin-only `POST /api/homeassistant/home-graph/reset`
+  route that clears only the selected `homeassistant:<installationId>` knowledge
+  space. Use `POST /api/homeassistant/home-graph/export` first when preserving a
+  diagnostic backup. Reset removes graph rows, issues, extractions, refinement
+  tasks, and related bookkeeping for that space, but does not delete artifact
+  blobs from disk.
+
+### Fixed
+- Home Graph Ask now applies the same concrete Home Assistant object scope at
+  the final answer boundary that base Knowledge Ask uses for the
+  `knowledgeSpaceId: "homeassistant"` alias. Even if broad retrieval hands Ask a
+  contaminated candidate set, singular object questions such as "the TV" are
+  filtered back to the best object-linked sources and linked objects before LLM
+  synthesis, fact selection, and returned results.
+- Home Assistant object selection now weights direct/manual Home Graph sources
+  above generic web-repair sources when choosing the object behind a singular
+  query. This keeps a locally linked uploaded manual from losing anchor priority
+  to unrelated repaired web sources that share generic feature/spec tokens.
+
+### Migration
+- none
+
+---
+
 ## [0.28.9] - 2026-05-01
 
 ### Breaking

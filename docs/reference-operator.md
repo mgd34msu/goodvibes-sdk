@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `264`
+- Methods: `265`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -30235,6 +30235,94 @@ Re-extract already-stored Home Graph artifacts with missing or weak extraction r
     "failed",
     "sources",
     "failures"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `homeassistant.homeGraph.reset`
+
+Clear one Home Assistant Home Graph knowledge space after callers export any diagnostic backup they need.
+
+- Title: `Reset Home Graph Space`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/homeassistant/home-graph/reset`
+- Scopes: `write:knowledge`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "installationId": {
+      "type": "string"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "spaceId": {
+      "type": "string"
+    },
+    "installationId": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "artifactsDeleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "ok",
+    "spaceId",
+    "installationId",
+    "deleted",
+    "artifactsDeleted"
   ],
   "additionalProperties": true
 }

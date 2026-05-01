@@ -185,3 +185,11 @@ export const HOME_GRAPH_IMPORT_OUTPUT_SCHEMA = objectSchema({
   spaceId: STRING_SCHEMA,
   imported: JSON_RECORD_SCHEMA,
 }, ['ok', 'spaceId', 'imported'], { additionalProperties: true });
+
+export const HOME_GRAPH_RESET_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  spaceId: STRING_SCHEMA,
+  installationId: STRING_SCHEMA,
+  deleted: JSON_RECORD_SCHEMA,
+  artifactsDeleted: BOOLEAN_SCHEMA,
+}, ['ok', 'spaceId', 'installationId', 'deleted', 'artifactsDeleted'], { additionalProperties: true });
