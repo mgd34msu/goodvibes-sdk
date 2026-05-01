@@ -26,12 +26,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
-- Knowledge ask now supports source-backed semantic gap repair. When an answer
-  identifies explicit gaps for a concrete subject, the daemon can search the
-  web, require at least two distinct external source domains, ingest those
-  sources into the same knowledge space, and link them to the gap with
-  `repairs_gap` edges. This improves future answers without inventing missing
-  facts in the current response.
+- Knowledge/wiki now has a shared semantic self-improvement loop. Ingest,
+  reindex, Home Graph sync, and the new `knowledge-semantic-self-improvement`
+  job can discover intrinsic gaps for concrete subjects such as devices,
+  services, providers, products, and capabilities, classify whether each gap is
+  applicable, suppress non-applicable gaps before web search, and repair
+  eligible gaps through source-backed ingest.
+- Semantic gap repair can search the web, require at least two distinct
+  external source domains, ingest those sources into the same knowledge space,
+  and link them to the gap with `repairs_gap` edges. This improves future
+  answers without inventing missing facts in the current response.
 
 ### Fixed
 - Feature/spec answer synthesis now post-filters provider-returned text so USB
@@ -42,7 +46,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   manual chunks, reducing mixed useful-and-boilerplate evidence sent to the LLM.
 - Semantic gap repair is idempotent for already-linked repair sources and
   suppresses duplicate concurrent repair searches for the same knowledge space
-  and gap set.
+  and gap set. Retry windows prevent scheduled maintenance from hammering
+  external search when no corroborating sources are found.
 
 ### Migration
 - none

@@ -125,6 +125,18 @@ deterministically, so a large knowledge space can refresh without opening
 unbounded provider requests. Existing uploads can therefore be repaired and
 enriched by reindexing; users do not need to reupload documents.
 
+Self-improvement is not limited to Ask. After ingest, reindex, and Home Graph
+snapshot sync, the SDK runs a bounded semantic maintenance pass. The pass looks
+for concrete subjects such as devices, services, providers, products, and
+capabilities, asks what intrinsic feature/specification knowledge should exist
+for that subject, creates durable `knowledge_gap` nodes when coverage is weak,
+classifies whether those gaps are applicable, and only then tries external
+repair. Non-applicable gaps, such as battery questions for nodes already known
+to be mains-powered or not battery-powered, are suppressed before any web
+search is attempted. The `knowledge-semantic-self-improvement` job runs the
+same maintenance loop on a default six-hour schedule and can be run manually
+through the jobs API.
+
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
 semantic facts when available, asks the current LLM to synthesize an answer from
@@ -154,16 +166,17 @@ extraction artifacts such as fact nodes, generated wiki pages, and knowledge
 gaps stay in the `facts`/`gaps` fields instead of being reported as linked
 objects.
 
-When an answer still has explicit gaps for a concrete subject, the daemon can
-run source-backed gap repair in the background. The repair path builds a narrow
-query from the linked object, source titles, and gap text; searches the web
-through the configured GoodVibes web-search service; requires at least two
-distinct external source domains; ingests accepted URLs into the same
-`knowledgeSpaceId`; and links those new sources to the gap with `repairs_gap`
-edges. Gap repair does not change the current answer or invent facts from
-search snippets. It gives the normal ingest, extraction, semantic enrichment,
-review, and future ask paths more source evidence to work with. Existing
-`repairs_gap` edges suppress repeated searches for the same gap.
+When self-improvement or Ask finds explicit gaps for a concrete subject, the
+daemon can run source-backed gap repair in the background. The repair path
+builds a narrow query from the linked object, source titles, and gap text;
+searches the web through the configured GoodVibes web-search service; requires
+at least two distinct external source domains; ingests accepted URLs into the
+same `knowledgeSpaceId`; and links those new sources to the gap with
+`repairs_gap` edges. Gap repair does not change the current answer or invent
+facts from search snippets. It gives the normal ingest, extraction, semantic
+enrichment, review, and future ask paths more source evidence to work with.
+Existing `repairs_gap` edges and retry windows suppress repeated searches for
+the same gap.
 
 ## Review Pathways
 
@@ -447,11 +460,15 @@ Built-in job kinds:
 - `refresh-bookmarks`
 - `sync-browser-history`
 - `rebuild-projections`
+- `semantic-enrichment`
+- `semantic-self-improvement`
 - `light-consolidation`
 - `deep-consolidation`
 
 Jobs can run inline or in the background. Schedules are persisted and can be
-created, enabled, disabled, listed, and deleted through the knowledge API.
+created, enabled, disabled, listed, and deleted through the knowledge API. New
+stores get bootstrap schedules for daily light consolidation, weekly deep
+consolidation, and six-hour semantic self-improvement.
 
 ## Consolidation And Reviewed Memory
 

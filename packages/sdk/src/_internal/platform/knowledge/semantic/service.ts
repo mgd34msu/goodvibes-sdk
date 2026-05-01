@@ -1,5 +1,6 @@
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeSourceRecord } from '../types.js';
+import { getKnowledgeSpaceId } from '../spaces.js';
 import { answerKnowledgeQuery } from './answer.js';
 import { enrichKnowledgeSource } from './enrichment.js';
 import type {
@@ -8,8 +9,12 @@ import type {
   KnowledgeSemanticEnrichmentResult,
   KnowledgeSemanticGapRepairer,
   KnowledgeSemanticLlm,
+  KnowledgeSemanticSelfImproveInput,
+  KnowledgeSemanticSelfImproveResult,
 } from './types.js';
 import { readRecord, readString, sourceSemanticHash, sourceSemanticText } from './utils.js';
+import { uniqueStrings } from './utils.js';
+import { runKnowledgeSemanticSelfImprovement } from './self-improvement.js';
 
 export interface KnowledgeSemanticServiceOptions {
   readonly llm?: KnowledgeSemanticLlm | null;
@@ -65,6 +70,7 @@ export class KnowledgeSemanticService {
     readonly skipped: number;
     readonly failed: number;
     readonly errors: readonly { readonly sourceId: string; readonly error: string }[];
+    readonly selfImprovement: KnowledgeSemanticSelfImproveResult;
   }> {
     await this.store.init();
     const allowed = input.sourceIds?.length ? new Set(input.sourceIds) : null;
@@ -91,7 +97,14 @@ export class KnowledgeSemanticService {
         errors.push({ sourceId: source.id, error: error instanceof Error ? error.message : String(error) });
       }
     }
-    return { scanned: sources.length, enriched, skipped, failed, errors };
+    const selfImprovement = await this.selfImprove({
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      sourceIds: input.sourceIds,
+      force: input.force,
+      reason: 'reindex',
+      limit: input.limit,
+    });
+    return { scanned: sources.length, enriched, skipped, failed, errors, selfImprovement };
   }
 
   async answer(input: KnowledgeSemanticAnswerInput): Promise<KnowledgeSemanticAnswerResult> {
@@ -99,6 +112,31 @@ export class KnowledgeSemanticService {
     const answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
     this.queueGapRepair(answer);
     return answer;
+  }
+
+  async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {
+    await this.store.init();
+    if (!input.knowledgeSpaceId && !input.sourceIds?.length && !input.gapIds?.length) {
+      const spaces = uniqueStrings([
+        ...this.store.listSources(10_000).map((source) => getKnowledgeSpaceId(source)),
+        ...this.store.listNodes(10_000).map((node) => getKnowledgeSpaceId(node)),
+      ]);
+      let combined = emptySelfImproveResult();
+      for (const spaceId of spaces) {
+        const result = await runKnowledgeSemanticSelfImprovement({
+          store: this.store,
+          gapRepairer: this.options.gapRepairer,
+          activeGapRepairs: this.activeGapRepairs,
+        }, { ...input, knowledgeSpaceId: spaceId });
+        combined = mergeSelfImproveResults(combined, result);
+      }
+      return combined;
+    }
+    return runKnowledgeSemanticSelfImprovement({
+      store: this.store,
+      gapRepairer: this.options.gapRepairer,
+      activeGapRepairs: this.activeGapRepairs,
+    }, input);
   }
 
   private queueGapRepair(answer: KnowledgeSemanticAnswerResult): void {
@@ -162,4 +200,35 @@ function sourceCanUseLlmUpgrade(store: KnowledgeStore, source: KnowledgeSourceRe
   const existingSemantic = readRecord(source.metadata.semanticEnrichment);
   return existingSemantic.textHash !== sourceSemanticHash(source, extraction)
     || readString(existingSemantic.extractor) !== 'llm';
+}
+
+function emptySelfImproveResult(): KnowledgeSemanticSelfImproveResult {
+  return {
+    scannedGaps: 0,
+    createdGaps: 0,
+    repairableGaps: 0,
+    suppressedGaps: 0,
+    skippedGaps: 0,
+    searched: 0,
+    ingestedSources: 0,
+    linkedRepairs: 0,
+    errors: [],
+  };
+}
+
+function mergeSelfImproveResults(
+  left: KnowledgeSemanticSelfImproveResult,
+  right: KnowledgeSemanticSelfImproveResult,
+): KnowledgeSemanticSelfImproveResult {
+  return {
+    scannedGaps: left.scannedGaps + right.scannedGaps,
+    createdGaps: left.createdGaps + right.createdGaps,
+    repairableGaps: left.repairableGaps + right.repairableGaps,
+    suppressedGaps: left.suppressedGaps + right.suppressedGaps,
+    skippedGaps: left.skippedGaps + right.skippedGaps,
+    searched: left.searched + right.searched,
+    ingestedSources: left.ingestedSources + right.ingestedSources,
+    linkedRepairs: left.linkedRepairs + right.linkedRepairs,
+    errors: [...left.errors, ...right.errors],
+  };
 }

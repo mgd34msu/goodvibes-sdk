@@ -42,6 +42,7 @@ export {
   KnowledgeSemanticService,
   createWebKnowledgeGapRepairer,
   createProviderBackedKnowledgeSemanticLlm,
+  runKnowledgeSemanticSelfImprovement,
 } from './semantic/index.js';
 export type {
   KnowledgeSemanticAnswer,
@@ -57,6 +58,8 @@ export type {
   KnowledgeSemanticGapInput,
   KnowledgeSemanticLlm,
   KnowledgeSemanticLlmAnswer,
+  KnowledgeSemanticSelfImproveInput,
+  KnowledgeSemanticSelfImproveResult,
   KnowledgeSemanticServiceOptions,
   WebGapRepairOptions,
 } from './semantic/index.js';

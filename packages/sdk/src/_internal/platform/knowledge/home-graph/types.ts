@@ -9,6 +9,7 @@ import type {
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
+import type { KnowledgeSemanticSelfImproveResult } from '../semantic/index.js';
 
 export const HOME_GRAPH_NODE_KINDS = [
   'ha_home',
@@ -53,6 +54,7 @@ export const HOME_GRAPH_CAPABILITIES = [
   'snapshot-sync',
   'source-backed-ingest',
   'semantic-enrichment',
+  'semantic-self-improvement',
   'llm-answer-synthesis',
   'knowledge-linking',
   'ask-home-graph',
@@ -329,6 +331,7 @@ export interface HomeGraphReindexResult {
     readonly skipped: number;
     readonly failed: number;
     readonly errors: readonly { readonly sourceId: string; readonly error: string }[];
+    readonly selfImprovement?: KnowledgeSemanticSelfImproveResult;
   };
 }
 

@@ -501,6 +501,118 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(calls).toHaveLength(1);
   });
 
+  test('scheduled self-improvement repairs intrinsic device gaps without waiting for Ask', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const calls: unknown[] = [];
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async (request) => {
+        calls.push(request);
+        const source = await store.upsertSource({
+          connectorId: 'semantic-gap-repair',
+          sourceType: 'url',
+          title: 'LG 86NANO90UNA product specifications',
+          canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+          tags: ['semantic-gap-repair'],
+          status: 'indexed',
+          metadata: {
+            knowledgeSpaceId: spaceId,
+            sourceDiscovery: { purpose: 'semantic-gap-repair' },
+          },
+        });
+        return {
+          searched: true,
+          query: 'LG 86NANO90UNA product specifications',
+          ingestedSourceIds: [source.id],
+          skippedUrls: [],
+        };
+      },
+    });
+    const manual = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA safety manual',
+      canonicalUri: 'manual://lg-tv-limited',
+      tags: ['manual', 'tv'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-tv',
+      title: 'LG webOS Smart TV',
+      aliases: ['LG TV'],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: manual.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'has_manual',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, reason: 'scheduled' });
+    const gap = store.listNodes(100).find((node) => node.kind === 'knowledge_gap' && node.metadata.gapKind === 'intrinsic_features');
+
+    expect(result.createdGaps).toBe(1);
+    expect(result.repairableGaps).toBe(1);
+    expect(result.searched).toBe(1);
+    expect(calls).toHaveLength(1);
+    expect(gap?.title).toContain('complete features and specifications');
+    expect(store.listEdges().some((edge) => edge.relation === 'repairs_gap' && edge.toId === gap?.id)).toBe(true);
+  });
+
+  test('self-improvement suppresses non-applicable gaps before external search', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const calls: unknown[] = [];
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async (request) => {
+        calls.push(request);
+        return { searched: true, ingestedSourceIds: [], skippedUrls: [] };
+      },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'living-room-tv',
+      title: 'Living Room TV',
+      aliases: [],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, batteryPowered: false, batteryType: 'none' },
+    });
+    const gap = await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'battery-gap',
+      title: 'What battery does the Living Room TV use?',
+      aliases: [],
+      confidence: 70,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'gap',
+        linkedObjectIds: [device.id],
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: device.id,
+      toKind: 'node',
+      toId: gap.id,
+      relation: 'has_gap',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, gapIds: [gap.id], force: true });
+    const updated = store.getNode(gap.id);
+
+    expect(result.suppressedGaps).toBe(1);
+    expect(calls).toHaveLength(0);
+    expect(updated?.status).toBe('stale');
+    expect(updated?.metadata.repairStatus).toBe('not_applicable');
+  });
+
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
     let aborted = false;
     const semanticLlm = createProviderBackedKnowledgeSemanticLlm({

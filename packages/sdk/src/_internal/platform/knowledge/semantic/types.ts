@@ -158,3 +158,24 @@ export interface KnowledgeSemanticGapRepairResult {
 export type KnowledgeSemanticGapRepairer = (
   request: KnowledgeSemanticGapRepairRequest,
 ) => Promise<KnowledgeSemanticGapRepairResult | void>;
+
+export interface KnowledgeSemanticSelfImproveInput {
+  readonly knowledgeSpaceId?: string;
+  readonly sourceIds?: readonly string[];
+  readonly gapIds?: readonly string[];
+  readonly limit?: number;
+  readonly force?: boolean;
+  readonly reason?: 'ingest' | 'homegraph-sync' | 'reindex' | 'scheduled' | 'answer' | 'manual';
+}
+
+export interface KnowledgeSemanticSelfImproveResult {
+  readonly scannedGaps: number;
+  readonly createdGaps: number;
+  readonly repairableGaps: number;
+  readonly suppressedGaps: number;
+  readonly skippedGaps: number;
+  readonly searched: number;
+  readonly ingestedSources: number;
+  readonly linkedRepairs: number;
+  readonly errors: readonly { readonly gapId: string; readonly error: string }[];
+}
