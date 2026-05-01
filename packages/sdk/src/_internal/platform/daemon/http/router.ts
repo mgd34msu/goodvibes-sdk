@@ -199,6 +199,11 @@ export class DaemonHttpRouter {
     this.context.batchManager?.dispose();
   }
 
+  private getConfigValue(key: string): unknown {
+    const getter = (this.context.configManager as { readonly get?: unknown }).get;
+    return typeof getter === 'function' ? getter.call(this.context.configManager, key) : undefined;
+  }
+
   async handleRequest(req: Request): Promise<Response> {
     return correlationCtx.run(
       { requestId: req.headers.get('x-request-id') ?? crypto.randomUUID() },
@@ -287,9 +292,9 @@ export class DaemonHttpRouter {
 
   async dispatchApiRoutes(req: Request): Promise<Response | null> {
     const url = new URL(req.url);
-    const openAICompatibleEnabled = this.context.configManager.get('controlPlane.openaiCompatible.enabled') !== false;
+    const openAICompatibleEnabled = this.getConfigValue('controlPlane.openaiCompatible.enabled') !== false;
     if (openAICompatibleEnabled) {
-      const pathPrefix = this.context.configManager.get('controlPlane.openaiCompatible.pathPrefix');
+      const pathPrefix = this.getConfigValue('controlPlane.openaiCompatible.pathPrefix');
       const response = await dispatchOpenAICompatibleRoutes(req, {
         providerRegistry: this.context.providerRegistry,
         parseJsonBody: (request: Request) => this.parseJsonBody(request),

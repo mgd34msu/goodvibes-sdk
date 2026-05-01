@@ -34,7 +34,12 @@ import {
   renderPacketPage,
   renderRoomPage,
 } from './rendering.js';
-import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
+import {
+  hasConcreteFeatureSignal,
+  isLowValueFeatureOrSpecText,
+  isUsefulHomeGraphPageFact,
+} from '../semantic/fact-quality.js';
+import { normalizeWhitespace, sourceSemanticText } from '../semantic/utils.js';
 import type {
   HomeGraphDevicePassportResult,
   HomeGraphGeneratedPagesSummary,
@@ -155,6 +160,7 @@ export async function refreshHomeGraphDevicePassport(
   ));
   const sources = sourcesLinkedToNode(device.id, state).filter((source) => !isGeneratedPageSource(source));
   const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges);
+  const sourceBackedNotes = sourceBackedNotesFromLinkedSources(store, sources);
   const scopedNodeIds = new Set([device.id, ...entities.map((node) => node.id)]);
   const issues = issuesForScope(state.issues, state.edges, scopedNodeIds, sources);
   const missingFields = missingDevicePassportFields(device, sources);
@@ -181,7 +187,7 @@ export async function refreshHomeGraphDevicePassport(
     relation: 'source_for',
     metadata: buildHomeGraphMetadata(spaceId, installationId),
   });
-  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts });
+  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts, sourceBackedNotes });
   const generated = await materializeGeneratedMarkdown({
     store,
     artifactStore,
@@ -395,6 +401,27 @@ function semanticFactsLinkedToSources(
     && edge.relation === 'supports_fact'
   )).map((edge) => edge.toId));
   return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
+}
+
+function sourceBackedNotesFromLinkedSources(
+  store: KnowledgeStore,
+  sources: readonly KnowledgeSourceRecord[],
+): string[] {
+  const notes: string[] = [];
+  for (const source of sources) {
+    const extraction = store.getExtractionBySourceId(source.id);
+    notes.push(...extractSourceBackedNotes(sourceSemanticText(source, extraction)));
+  }
+  return uniqueStrings(notes).slice(0, 24);
+}
+
+function extractSourceBackedNotes(text: string): string[] {
+  return normalizeWhitespace(text)
+    .split(/(?:[.!?]\s+|\n+)/)
+    .map((part) => normalizeWhitespace(part.replace(/^[-*•]\s*/, '')))
+    .filter((part) => part.length >= 24 && part.length <= 420)
+    .filter((part) => hasConcreteFeatureSignal(part))
+    .filter((part) => !isLowValueFeatureOrSpecText(part));
 }
 
 function limitRecords<T>(records: readonly T[], limit: number | undefined): readonly T[] {
