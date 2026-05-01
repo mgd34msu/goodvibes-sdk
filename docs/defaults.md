@@ -95,6 +95,15 @@ large content through multipart or raw binary upload routes.
 
 See [Home Assistant integration](./homeassistant-integration.md) for the Assist conversation route and event delivery contract.
 
+## OpenAI-Compatible Daemon Ingress
+
+| Config key | Default | Notes |
+|------|---------|-------|
+| `controlPlane.openaiCompatible.enabled` | `true` | Exposes authenticated `/v1/models` and `/v1/chat/completions` compatibility routes on the daemon. |
+| `controlPlane.openaiCompatible.pathPrefix` | `/v1` | Path prefix used by OpenAI-compatible clients as their base URL suffix. |
+
+See [Runtime orchestration](./runtime-orchestration.md#openai-compatible-ingress) for the compatibility contract and scope.
+
 ## Spoken Output / TTS
 
 | Config key | Default | Notes |

@@ -46,6 +46,7 @@ export async function answerHomeGraphQuery(input: {
         linkedObjects: answer.answer.linkedObjects,
         facts: answer.answer.facts,
         gaps: answer.answer.gaps,
+        refinementTaskIds: answer.answer.refinementTaskIds,
         synthesized: answer.answer.synthesized,
       },
       results: input.results,

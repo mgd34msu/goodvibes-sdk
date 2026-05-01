@@ -262,6 +262,15 @@ export function buildKnowledgeRouteContext(input: {
       listJobs: () => input.knowledgeService.listJobs(),
       getJob: (jobId) => input.knowledgeService.getJob(jobId),
       listJobRuns: (limit, jobId) => input.knowledgeService.listJobRuns(limit, jobId),
+      listRefinementTasks: (limit, filter) => input.knowledgeService.listRefinementTasks(
+        limit,
+        filter as Parameters<KnowledgeService['listRefinementTasks']>[1],
+      ),
+      getRefinementTask: (id) => input.knowledgeService.getRefinementTask(id),
+      runRefinement: (body) => input.knowledgeService.runRefinement(
+        body as Parameters<KnowledgeService['runRefinement']>[0],
+      ),
+      cancelRefinementTask: (id) => input.knowledgeService.cancelRefinementTask(id),
       listSchedules: (limit) => input.knowledgeService.listSchedules(limit),
       getSchedule: (id) => input.knowledgeService.getSchedule(id),
       ingestUrl: (body) => input.knowledgeService.ingestUrl(

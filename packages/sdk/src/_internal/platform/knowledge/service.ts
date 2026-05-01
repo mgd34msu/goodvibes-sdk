@@ -34,6 +34,8 @@ import type {
   KnowledgeProjectionBundle,
   KnowledgeProjectionTarget,
   KnowledgeProjectionTargetKind,
+  KnowledgeRefinementTaskRecord,
+  KnowledgeRefinementTaskState,
   KnowledgeScheduleRecord,
   KnowledgeSearchResult,
   KnowledgeSourceRecord,
@@ -70,6 +72,7 @@ import {
   type KnowledgeIssueReviewResult,
 } from './review.js';
 import { KnowledgeScheduleService } from './scheduling.js';
+import { runKnowledgeServiceJobByKind } from './service-jobs.js';
 import { lintKnowledgeStore } from './lint.js';
 import { syncKnowledgeMemoryNodes } from './memory-sync.js';
 import {
@@ -656,6 +659,63 @@ export class KnowledgeService {
     return this.scheduleService.listJobRuns(limit, jobId);
   }
 
+  listRefinementTasks(limit = 100, input: {
+    readonly spaceId?: string;
+    readonly state?: KnowledgeRefinementTaskState | string;
+    readonly subjectKind?: string;
+    readonly subjectId?: string;
+    readonly gapId?: string;
+  } = {}): readonly KnowledgeRefinementTaskRecord[] {
+    return this.store.listRefinementTasks(limit, input);
+  }
+
+  getRefinementTask(id: string): KnowledgeRefinementTaskRecord | null {
+    return this.store.getRefinementTask(id);
+  }
+
+  async cancelRefinementTask(id: string): Promise<KnowledgeRefinementTaskRecord | null> {
+    const task = this.store.getRefinementTask(id);
+    if (!task) return null;
+    return this.store.upsertRefinementTask({
+      id: task.id,
+      spaceId: task.spaceId,
+      subjectKind: task.subjectKind,
+      subjectId: task.subjectId,
+      subjectTitle: task.subjectTitle,
+      subjectType: task.subjectType,
+      gapId: task.gapId,
+      issueId: task.issueId,
+      state: 'cancelled',
+      priority: task.priority,
+      trigger: task.trigger,
+      budget: task.budget,
+      attemptCount: task.attemptCount,
+      appendTrace: [{
+        at: Date.now(),
+        state: 'cancelled',
+        message: 'Refinement task was cancelled by request.',
+      }],
+      metadata: task.metadata,
+    });
+  }
+
+  async runRefinement(input: {
+    readonly knowledgeSpaceId?: string;
+    readonly gapIds?: readonly string[];
+    readonly sourceIds?: readonly string[];
+    readonly limit?: number;
+    readonly force?: boolean;
+  } = {}) {
+    return this.semanticService.selfImprove({
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      gapIds: input.gapIds,
+      sourceIds: input.sourceIds,
+      limit: input.limit,
+      force: input.force,
+      reason: 'manual',
+    });
+  }
+
   async runJob(
     id: string,
     input: {
@@ -671,81 +731,20 @@ export class KnowledgeService {
     kind: KnowledgeJobRecord['kind'],
     input: { readonly sourceIds?: readonly string[]; readonly limit?: number },
   ): Promise<Record<string, unknown>> {
-    switch (kind) {
-      case 'lint': {
-        const issues = await lintKnowledgeStore({ store: this.store, emitIfReady: this.emitIfReady.bind(this) });
-        return { issueCount: issues.length };
-      }
-      case 'reindex': {
-        const result = await this.reindex();
-        return { sourceCount: result.status.sourceCount, issueCount: result.issues.length };
-      }
-      case 'refresh-stale': {
-        const refreshed = await refreshKnowledgeSources(
+    return runKnowledgeServiceJobByKind(kind, input, {
+      lint: () => lintKnowledgeStore({ store: this.store, emitIfReady: this.emitIfReady.bind(this) }),
+      reindex: () => this.reindex(),
+      refreshSources: async (refreshKind, sourceIds, limit) =>
+        refreshKnowledgeSources(
           this.getIngestContext(),
-          pickKnowledgeRefreshCandidates({ store: this.store }, 'stale', input.sourceIds, input.limit),
-        );
-        return { refreshed };
-      }
-      case 'refresh-bookmarks': {
-        const refreshed = await refreshKnowledgeSources(
-          this.getIngestContext(),
-          pickKnowledgeRefreshCandidates({ store: this.store }, 'bookmark', input.sourceIds, input.limit),
-        );
-        return { refreshed };
-      }
-      case 'sync-browser-history': {
-        const result = await this.syncBrowserHistory({
-          limit: input.limit,
-        });
-        return {
-          imported: result.imported,
-          failed: result.failed,
-          profileCount: result.profiles.length,
-          errorCount: result.errors.length,
-        };
-      }
-      case 'rebuild-projections': {
-        const overview = await this.materializeProjection({ kind: 'overview', limit: Math.max(8, input.limit ?? 12) });
-        const bundle = await this.materializeProjection({ kind: 'bundle', limit: Math.max(12, input.limit ?? 18) });
-        return {
-          projections: [
-            { targetId: overview.bundle.target.targetId, artifactId: overview.artifact.id },
-            { targetId: bundle.bundle.target.targetId, artifactId: bundle.artifact.id },
-          ],
-        };
-      }
-      case 'semantic-enrichment': {
-        return this.semanticService.reindex({
-          sourceIds: input.sourceIds,
-          limit: input.limit,
-        });
-      }
-      case 'semantic-self-improvement': {
-        const result = await this.semanticService.selfImprove({
-          sourceIds: input.sourceIds,
-          limit: input.limit,
-          reason: 'scheduled',
-        });
-        return { ...result };
-      }
-      case 'light-consolidation': {
-        const report = await runKnowledgeConsolidation(this.getConsolidationContext(), 'light-consolidation', {
-          limit: input.limit,
-          autoPromote: false,
-        });
-        return { reportId: report.id, metrics: report.metrics };
-      }
-      case 'deep-consolidation': {
-        const report = await runKnowledgeConsolidation(this.getConsolidationContext(), 'deep-consolidation', {
-          limit: input.limit,
-          autoPromote: true,
-        });
-        return { reportId: report.id, metrics: report.metrics };
-      }
-      default:
-        return {};
-    }
+          pickKnowledgeRefreshCandidates({ store: this.store }, refreshKind, sourceIds, limit),
+        ),
+      syncBrowserHistory: (options) => this.syncBrowserHistory(options),
+      materializeProjection: (options) => this.materializeProjection(options),
+      semanticService: this.semanticService,
+      runConsolidation: (jobKind, options) =>
+        runKnowledgeConsolidation(this.getConsolidationContext(), jobKind, options),
+    });
   }
 
   private deferUsage(input: {

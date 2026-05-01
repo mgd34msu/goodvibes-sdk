@@ -29,6 +29,7 @@ import {
   sourcesLinkedToNode,
 } from './state.js';
 import {
+  issuesForScope,
   renderDevicePassportPage,
   renderPacketPage,
   renderRoomPage,
@@ -154,7 +155,8 @@ export async function refreshHomeGraphDevicePassport(
   ));
   const sources = sourcesLinkedToNode(device.id, state).filter((source) => !isGeneratedPageSource(source));
   const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges);
-  const issues = state.issues.filter((issue) => issue.nodeId === device.id);
+  const scopedNodeIds = new Set([device.id, ...entities.map((node) => node.id)]);
+  const issues = issuesForScope(state.issues, state.edges, scopedNodeIds, sources);
   const missingFields = missingDevicePassportFields(device, sources);
   const passport = await store.upsertNode({
     id: homeGraphNodeId(spaceId, 'ha_device_passport', input.deviceId),
@@ -179,7 +181,7 @@ export async function refreshHomeGraphDevicePassport(
     relation: 'source_for',
     metadata: buildHomeGraphMetadata(spaceId, installationId),
   });
-  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, extractions: state.extractions, issues, missingFields, semanticFacts });
+  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts });
   const generated = await materializeGeneratedMarkdown({
     store,
     artifactStore,
@@ -220,7 +222,7 @@ export async function generateHomeGraphRoomPage(
   const state = readHomeGraphState(store, spaceId);
   const areaId = input.areaId ?? input.roomId;
   const title = input.title ?? resolveRoomTitle(state.nodes, areaId) ?? 'Home Graph Room';
-  const markdown = renderRoomPage({ ...state, title, extractions: state.extractions }, areaId);
+  const markdown = renderRoomPage({ ...state, title }, areaId);
   const filename = `${safeHomeGraphFilename(title)}.md`;
   const targetNode = areaId
     ? findHomeAssistantNode(state.nodes, 'ha_area', areaId) ?? findHomeAssistantNode(state.nodes, 'ha_room', areaId)

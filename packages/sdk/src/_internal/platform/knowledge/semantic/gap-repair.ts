@@ -42,6 +42,18 @@ interface GapRepairCandidate extends WebSearchResult {
   readonly reasons: readonly string[];
 }
 
+interface GapRepairSourceAssessment {
+  readonly url: string;
+  readonly title?: string;
+  readonly domain?: string;
+  readonly rank?: number;
+  readonly accepted: boolean;
+  readonly confidence: number;
+  readonly reasons: readonly string[];
+  readonly trustReason?: string;
+  readonly rejectionReason?: string;
+}
+
 export function createWebKnowledgeGapRepairer(options: WebGapRepairOptions): KnowledgeSemanticGapRepairer {
   return async (request) => repairKnowledgeGapsWithWeb(request, options);
 }
@@ -93,7 +105,7 @@ async function repairKnowledgeGapsWithWeb(
       query,
       ingestedSourceIds: [],
       skippedUrls: response.results.map((result) => result.url),
-      sourceAssessments: response.results.map((result) => assessGapRepairSource(result, query, request)),
+      sourceAssessments: buildSourceAssessments(response.results, candidates, existing, options, query, request),
       reason: 'Fewer than two distinct external sources were found for source-backed gap repair.',
     };
   }
@@ -120,6 +132,9 @@ async function repairKnowledgeGapsWithWeb(
             linkedObjectIds: request.linkedObjects.map((node) => node.id),
             confidence: result.confidence,
             confidenceReasons: result.reasons,
+            sourceRank: result.rank,
+            sourceDomain: result.domain ?? safeDomain(result.url),
+            trustReason: result.reasons.join(', '),
             agreementSourceCount: candidates.length,
             selectedUrl: result.url,
             searchedAt: Date.now(),
@@ -139,11 +154,7 @@ async function repairKnowledgeGapsWithWeb(
     query,
     ingestedSourceIds,
     skippedUrls,
-    sourceAssessments: candidates.map((candidate) => ({
-      url: candidate.url,
-      confidence: candidate.confidence,
-      reasons: candidate.reasons,
-    })),
+    sourceAssessments: buildSourceAssessments(response.results, candidates, existing, options, query, request),
     ...(ingestedSourceIds.length < 2 ? { reason: 'Gap repair searched but fewer than two sources were ingested.' } : {}),
   };
 }
@@ -167,9 +178,12 @@ function bestSubject(request: KnowledgeSemanticGapRepairRequest): string | null 
   const linked = request.linkedObjects[0];
   const source = request.sources[0];
   const metadata = linked?.metadata ?? {};
-  return uniqueStrings([
+  const identity = uniqueStrings([
     readString(metadata.manufacturer),
     readString(metadata.model),
+  ]).join(' ');
+  if (identity) return identity;
+  return uniqueStrings([
     linked?.title,
     source?.title,
   ]).join(' ') || null;
@@ -205,7 +219,7 @@ function assessGapRepairSource(
   result: WebSearchResult,
   query: string,
   request: KnowledgeSemanticGapRepairRequest,
-): { readonly url: string; readonly confidence: number; readonly reasons: readonly string[] } {
+): Omit<GapRepairSourceAssessment, 'accepted' | 'rejectionReason'> {
   const searchable = [result.title, result.snippet, result.url, result.domain].filter(Boolean).join(' ').toLowerCase();
   const reasons: string[] = [];
   let score = Math.max(0, 12 - result.rank);
@@ -241,20 +255,57 @@ function assessGapRepairSource(
     score += Math.min(14, gapScore);
     reasons.push('gap-match');
   }
+  const domain = (result.domain ?? safeDomain(result.url) ?? '').toLowerCase();
   if (/\b(specifications?|features?|manual|support|product|documentation|datasheet)\b/.test(searchable)) {
     score += 10;
     reasons.push('source-purpose');
   }
-  const domain = (result.domain ?? safeDomain(result.url) ?? '').toLowerCase();
   if (domain && identities.manufacturers.some((manufacturer) => manufacturer.length >= 2 && domain.includes(manufacturer.toLowerCase()))) {
     score += 10;
     reasons.push('manufacturer-domain');
   }
   return {
     url: result.url,
+    ...(result.title ? { title: result.title } : {}),
+    ...(domain ? { domain } : {}),
+    rank: result.rank,
     confidence: Math.max(0, Math.min(100, score)),
     reasons,
+    ...(reasons.length > 0 ? { trustReason: reasons.join(', ') } : {}),
   };
+}
+
+function buildSourceAssessments(
+  results: readonly WebSearchResult[],
+  candidates: readonly GapRepairCandidate[],
+  existingCanonicalUris: ReadonlySet<string>,
+  options: WebGapRepairOptions,
+  query: string,
+  request: KnowledgeSemanticGapRepairRequest,
+): readonly GapRepairSourceAssessment[] {
+  const accepted = new Set(candidates.map((candidate) => canonicalizeUri(candidate.url)));
+  const acceptedDomains = new Set(candidates.map((candidate) => candidate.domain ?? safeDomain(candidate.url)).filter(Boolean));
+  const minimumConfidence = Math.max(1, Math.min(100, options.minConfidence ?? 70));
+  const tokens = tokenizeSemanticQuery(query);
+  return results.map((result) => {
+    const assessment = assessGapRepairSource(result, query, request);
+    const canonical = canonicalizeUri(result.url);
+    const domain = result.domain ?? safeDomain(result.url);
+    const isAccepted = Boolean(canonical && accepted.has(canonical));
+    let rejectionReason: string | undefined;
+    if (!isAccepted) {
+      if (canonical && existingCanonicalUris.has(canonical)) rejectionReason = 'already-indexed';
+      else if (tokens.length > 0 && scoreSemanticText([result.title, result.snippet, result.url, domain].filter(Boolean).join(' '), tokens) === 0) rejectionReason = 'query-mismatch';
+      else if (assessment.confidence < minimumConfidence) rejectionReason = 'below-confidence-threshold';
+      else if (domain && acceptedDomains.has(domain)) rejectionReason = 'duplicate-domain';
+      else rejectionReason = 'not-selected';
+    }
+    return {
+      ...assessment,
+      accepted: isAccepted,
+      ...(rejectionReason ? { rejectionReason } : {}),
+    };
+  });
 }
 
 function sourceIdentityHints(request: KnowledgeSemanticGapRepairRequest): {
@@ -288,7 +339,7 @@ function modelLikeTokens(value: string): readonly string[] {
 }
 
 function manufacturerHints(value: string): readonly string[] {
-  const hints = value.match(/\b(lg|samsung|sony|vizio|tcl|hisense|philips|panasonic|kasa|tp-link|ecobee|honeywell|ring|arlo|nest|eufy|aqara|sonoff|shelly|lutron|leviton|ikea|bosch|ge|whirlpool|frigidaire)\b/gi) ?? [];
+  const hints = value.match(/\b(lg|samsung|sony|vizio|tcl|hisense|philips|panasonic|kasa|tp-link|ecobee|honeywell|ring|arlo|nest|eufy|aqara|sonoff|shelly|lutron|leviton|ikea|bosch|ge|whirlpool|frigidaire|apple|espressif|esp32|nabu casa|home assistant)\b/gi) ?? [];
   return uniqueStrings(hints.map((hint) => hint.toLowerCase()));
 }
 

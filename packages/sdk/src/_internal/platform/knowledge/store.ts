@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
 import { SQLiteStore } from '../state/sqlite-store.js';
 import type {
   KnowledgeConsolidationCandidateRecord,
@@ -15,6 +14,9 @@ import type {
   KnowledgeItemView,
   KnowledgeJobRunRecord,
   KnowledgeJobRunUpsertInput,
+  KnowledgeRefinementTaskFilter,
+  KnowledgeRefinementTaskRecord,
+  KnowledgeRefinementTaskUpsertInput,
   KnowledgeNodeRecord,
   KnowledgeNodeUpsertInput,
   KnowledgeScheduleRecord,
@@ -28,10 +30,11 @@ import type {
 import {
   createSchema, issueStatusForUpsert,
   nowMs,
-  resolveKnowledgeDbPathFromControlPlaneDir,
   stableText,
   uniq,
 } from './store-schema.js';
+import { resolveKnowledgeDbPath, type KnowledgeStoreConfig } from './store-config.js';
+import { upsertKnowledgeRefinementTask } from './store-refinement.js';
 import {
   edgesForKnowledgeStore,
   getKnowledgeConsolidationCandidate,
@@ -42,6 +45,7 @@ import {
   getKnowledgeIssue,
   getKnowledgeItem,
   getKnowledgeJobRun,
+  getKnowledgeRefinementTask,
   getKnowledgeNode,
   getKnowledgeNodeByKindAndSlug,
   getKnowledgeSchedule,
@@ -55,6 +59,7 @@ import {
   listKnowledgeExtractions,
   listKnowledgeIssues,
   listKnowledgeJobRuns,
+  listKnowledgeRefinementTasks,
   listKnowledgeNodes,
   listKnowledgeSchedules,
   listKnowledgeSources,
@@ -62,27 +67,6 @@ import {
   type KnowledgeStoreReadView,
 } from './store-read.js';
 import { loadKnowledgeStoreSnapshot } from './store-load.js';
-
-export interface KnowledgeStoreConfig {
-  readonly dbPath?: string;
-  readonly configManager?: {
-    getControlPlaneConfigDir?: () => string;
-  };
-}
-
-function resolveKnowledgeDbPath(config: KnowledgeStoreConfig): string {
-  const controlPlaneDir = typeof config.configManager?.getControlPlaneConfigDir === 'function'
-    ? config.configManager.getControlPlaneConfigDir()
-    : undefined;
-  const dbPath = config.dbPath ?? (
-    controlPlaneDir ? resolveKnowledgeDbPathFromControlPlaneDir(controlPlaneDir) : undefined
-  );
-  if (!dbPath) {
-    throw new Error('KnowledgeStore requires an explicit dbPath or configManager.getControlPlaneConfigDir().');
-  }
-  return dbPath;
-}
-
 export class KnowledgeStore {
   private readonly sqlite: SQLiteStore;
   private readonly dbPath: string;
@@ -94,6 +78,7 @@ export class KnowledgeStore {
   private readonly issues = new Map<string, KnowledgeIssueRecord>();
   private readonly extractions = new Map<string, KnowledgeExtractionRecord>();
   private readonly jobRuns = new Map<string, KnowledgeJobRunRecord>();
+  private readonly refinementTasks = new Map<string, KnowledgeRefinementTaskRecord>();
   private readonly usageRecords = new Map<string, KnowledgeUsageRecord>();
   private readonly consolidationCandidates = new Map<string, KnowledgeConsolidationCandidateRecord>();
   private readonly consolidationReports = new Map<string, KnowledgeConsolidationReportRecord>();
@@ -156,6 +141,10 @@ export class KnowledgeStore {
     return listKnowledgeJobRuns(this.asReadView(), limit, jobId);
   }
 
+  listRefinementTasks(limit = 100, input: KnowledgeRefinementTaskFilter = {}): KnowledgeRefinementTaskRecord[] {
+    return listKnowledgeRefinementTasks(this.asReadView(), limit, input);
+  }
+
   listUsageRecords(limit = 100, input: {
     readonly targetKind?: KnowledgeUsageRecord['targetKind'];
     readonly targetId?: string;
@@ -202,6 +191,10 @@ export class KnowledgeStore {
 
   getJobRun(id: string): KnowledgeJobRunRecord | null {
     return getKnowledgeJobRun(this.asReadView(), id);
+  }
+
+  getRefinementTask(id: string): KnowledgeRefinementTaskRecord | null {
+    return getKnowledgeRefinementTask(this.asReadView(), id);
   }
 
   getUsageRecord(id: string): KnowledgeUsageRecord | null {
@@ -583,6 +576,11 @@ export class KnowledgeStore {
     return record;
   }
 
+  async upsertRefinementTask(input: KnowledgeRefinementTaskUpsertInput): Promise<KnowledgeRefinementTaskRecord> {
+    await this.init();
+    return upsertKnowledgeRefinementTask(this.sqlite, this.refinementTasks, input, () => `kref-${randomUUID().slice(0, 8)}`);
+  }
+
   async upsertUsageRecord(input: KnowledgeUsageUpsertInput): Promise<KnowledgeUsageRecord> {
     await this.init();
     const _task = stableText(input.task);
@@ -787,6 +785,8 @@ export class KnowledgeStore {
     for (const record of snapshot.extractions) this.extractions.set(record.id, record);
     this.jobRuns.clear();
     for (const record of snapshot.jobRuns) this.jobRuns.set(record.id, record);
+    this.refinementTasks.clear();
+    for (const record of snapshot.refinementTasks) this.refinementTasks.set(record.id, record);
     this.usageRecords.clear();
     for (const record of snapshot.usageRecords) this.usageRecords.set(record.id, record);
     this.consolidationCandidates.clear();

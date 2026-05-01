@@ -25,12 +25,15 @@ import {
   HOME_GRAPH_PAGES_OUTPUT_SCHEMA,
   HOME_GRAPH_PROJECTION_OUTPUT_SCHEMA,
   HOME_GRAPH_REINDEX_OUTPUT_SCHEMA,
+  HOME_GRAPH_REFINEMENT_RUN_OUTPUT_SCHEMA,
+  HOME_GRAPH_REFINEMENT_TASK_OUTPUT_SCHEMA,
+  HOME_GRAPH_REFINEMENT_TASKS_OUTPUT_SCHEMA,
   HOME_GRAPH_REVIEW_OUTPUT_SCHEMA,
   HOME_GRAPH_SOURCES_OUTPUT_SCHEMA,
   HOME_GRAPH_SPACE_INPUT_SCHEMA,
   HOME_GRAPH_STATUS_SCHEMA,
   HOME_GRAPH_SYNC_OUTPUT_SCHEMA,
-} from './operator-contract-schemas-knowledge.js';
+} from './operator-contract-schemas-homegraph.js';
 
 function homeGraphDescriptor(input: {
   readonly id: string;
@@ -259,10 +262,60 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     outputSchema: HOME_GRAPH_BROWSE_OUTPUT_SCHEMA,
   }),
   homeGraphDescriptor({
+    id: 'homeassistant.homeGraph.refinement.tasks.list',
+    title: 'List Home Graph Refinement Tasks',
+    description: 'Return durable Home Graph refinement tasks with states, traces, source assessments, and blocked reasons.',
+    method: 'GET',
+    path: '/api/homeassistant/home-graph/refinement/tasks',
+    inputSchema: objectSchema({
+      ...SPACE_QUERY_PROPS,
+      state: STRING_SCHEMA,
+      subjectId: STRING_SCHEMA,
+      gapId: STRING_SCHEMA,
+    }),
+    outputSchema: HOME_GRAPH_REFINEMENT_TASKS_OUTPUT_SCHEMA,
+  }),
+  homeGraphDescriptor({
+    id: 'homeassistant.homeGraph.refinement.task.get',
+    title: 'Get Home Graph Refinement Task',
+    description: 'Return one Home Graph refinement task and its trace.',
+    method: 'GET',
+    path: '/api/homeassistant/home-graph/refinement/tasks/{id}',
+    inputSchema: objectSchema({ ...SPACE_QUERY_PROPS, id: STRING_SCHEMA }, ['id']),
+    outputSchema: HOME_GRAPH_REFINEMENT_TASK_OUTPUT_SCHEMA,
+  }),
+  homeGraphDescriptor({
+    id: 'homeassistant.homeGraph.refinement.run',
+    title: 'Run Home Graph Refinement',
+    description: 'Run source-backed Home Graph self-improvement for a space, source list, or specific gaps.',
+    method: 'POST',
+    path: '/api/homeassistant/home-graph/refinement/run',
+    write: true,
+    inputSchema: bodyEnvelopeSchema({
+      installationId: STRING_SCHEMA,
+      knowledgeSpaceId: STRING_SCHEMA,
+      gapIds: STRING_LIST_SCHEMA,
+      sourceIds: STRING_LIST_SCHEMA,
+      limit: NUMBER_SCHEMA,
+      force: BOOLEAN_SCHEMA,
+    }),
+    outputSchema: HOME_GRAPH_REFINEMENT_RUN_OUTPUT_SCHEMA,
+  }),
+  homeGraphDescriptor({
+    id: 'homeassistant.homeGraph.refinement.task.cancel',
+    title: 'Cancel Home Graph Refinement Task',
+    description: 'Mark a queued or active Home Graph refinement task as cancelled.',
+    method: 'POST',
+    path: '/api/homeassistant/home-graph/refinement/tasks/{id}/cancel',
+    write: true,
+    inputSchema: bodyEnvelopeSchema({ installationId: STRING_SCHEMA, knowledgeSpaceId: STRING_SCHEMA, id: STRING_SCHEMA }, ['id']),
+    outputSchema: HOME_GRAPH_REFINEMENT_TASK_OUTPUT_SCHEMA,
+  }),
+  homeGraphDescriptor({
     id: 'homeassistant.homeGraph.map',
     title: 'Map Home Graph',
     description: 'Return a visual Home Graph node/edge map with deterministic layout data and SVG.',
-    method: 'GET',
+    method: 'POST',
     path: '/api/homeassistant/home-graph/map',
     inputSchema: objectSchema({
       ...SPACE_QUERY_PROPS,

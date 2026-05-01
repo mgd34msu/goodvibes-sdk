@@ -32,12 +32,18 @@ export type TurnEvent =
   | { type: 'PREFLIGHT_OK'; turnId: string }
   /** Preflight checks failed; turn will not proceed. */
   | { type: 'PREFLIGHT_FAIL'; turnId: string; reason: string; stopReason: Extract<TurnStopReason, 'preflight_failed' | 'context_overflow'> }
-  /** Streaming response has begun. */
-  | { type: 'STREAM_START'; turnId: string }
+  /** A provider stream iteration has begun inside the logical turn. */
+  | { type: 'STREAM_START'; turnId: string; scope?: 'provider'; terminal?: false }
   /** An incremental content chunk arrived from the provider. */
   | { type: 'STREAM_DELTA'; turnId: string; content: string; accumulated: string; reasoning?: string; toolCalls?: PartialToolCall[] }
-  /** Streaming has ended. */
-  | { type: 'STREAM_END'; turnId: string }
+  /**
+   * A provider stream iteration has ended.
+   *
+   * This is not the logical end of the turn when tools or multi-step provider
+   * calls are involved. Clients that need turn completion should wait for
+   * TURN_COMPLETED, TURN_ERROR, TURN_CANCEL, or PREFLIGHT_FAIL.
+   */
+  | { type: 'STREAM_END'; turnId: string; scope?: 'provider'; terminal?: false }
   /** OBS-04: An LLM request is about to be dispatched to the provider. */
   | {
     type: 'LLM_REQUEST_STARTED';

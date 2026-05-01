@@ -7,6 +7,7 @@ import {
 import { GoodVibesSdkError, DaemonErrorCategory } from '../errors/index.js';
 import { jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
 import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
+import { createDaemonKnowledgeRefinementRouteHandlers } from './knowledge-refinement-routes.js';
 import type {
   AutomationScheduleDefinition,
   DaemonKnowledgeRouteContext,
@@ -45,6 +46,10 @@ export function createDaemonKnowledgeRouteHandlers(
   | 'getKnowledgeJobs'
   | 'getKnowledgeJob'
   | 'getKnowledgeJobRuns'
+  | 'getKnowledgeRefinementTasks'
+  | 'getKnowledgeRefinementTask'
+  | 'postKnowledgeRunRefinement'
+  | 'postKnowledgeCancelRefinementTask'
   | 'getKnowledgeSchedules'
   | 'getKnowledgeSchedule'
   | 'postKnowledgeIngestUrl'
@@ -169,6 +174,7 @@ export function createDaemonKnowledgeRouteHandlers(
       const jobId = url.searchParams.get('jobId') ?? undefined;
       return Response.json({ runs: context.knowledgeService.listJobRuns(readLimit(url, 25), jobId) });
     },
+    ...createDaemonKnowledgeRefinementRouteHandlers(context),
     getKnowledgeSchedules: (url) => Response.json({ schedules: context.knowledgeService.listSchedules(readLimit(url, 100)) }),
     getKnowledgeSchedule: (id) => {
       const schedule = context.knowledgeService.getSchedule(id);

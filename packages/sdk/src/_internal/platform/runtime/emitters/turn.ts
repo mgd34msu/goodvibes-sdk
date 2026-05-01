@@ -45,13 +45,13 @@ export function emitPreflightFail(
   bus.emit('turn', createEventEnvelope('PREFLIGHT_FAIL', { type: 'PREFLIGHT_FAIL', ...data }, ctx));
 }
 
-/** Emit STREAM_START when provider streaming begins. */
+/** Emit STREAM_START when a provider stream iteration begins. */
 export function emitStreamStart(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { turnId: string }
+  data: { turnId: string; scope?: 'provider'; terminal?: false }
 ): void {
-  bus.emit('turn', createEventEnvelope('STREAM_START', { type: 'STREAM_START', ...data }, ctx));
+  bus.emit('turn', createEventEnvelope('STREAM_START', { type: 'STREAM_START', scope: 'provider', terminal: false, ...data }, ctx));
 }
 
 /** Emit STREAM_DELTA for each incremental content chunk. */
@@ -63,13 +63,13 @@ export function emitStreamDelta(
   bus.emit('turn', createEventEnvelope('STREAM_DELTA', { type: 'STREAM_DELTA', ...data }, ctx));
 }
 
-/** Emit STREAM_END when provider streaming ends. */
+/** Emit STREAM_END when a provider stream iteration ends. */
 export function emitStreamEnd(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { turnId: string }
+  data: { turnId: string; scope?: 'provider'; terminal?: false }
 ): void {
-  bus.emit('turn', createEventEnvelope('STREAM_END', { type: 'STREAM_END', ...data }, ctx));
+  bus.emit('turn', createEventEnvelope('STREAM_END', { type: 'STREAM_END', scope: 'provider', terminal: false, ...data }, ctx));
 }
 
 /** OBS-04: Emit LLM_REQUEST_STARTED when a provider chat request is about to be dispatched. */

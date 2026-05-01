@@ -60,6 +60,38 @@ export class HomeGraphRoutes {
           includeMarkdown: readBoolean(url, 'includeMarkdown', true),
         }));
       }
+      if (pathname === '/api/homeassistant/home-graph/refinement/tasks' && req.method === 'GET') {
+        return Response.json(await this.context.homeGraphService.listRefinementTasks({
+          ...readSpaceFromUrl(url),
+          limit: readLimit(url, 100),
+          state: url.searchParams.get('state') ?? undefined,
+          subjectId: url.searchParams.get('subjectId') ?? undefined,
+          gapId: url.searchParams.get('gapId') ?? undefined,
+        }));
+      }
+      const refinementTaskCancelMatch = pathname.match(/^\/api\/homeassistant\/home-graph\/refinement\/tasks\/([^/]+)\/cancel$/);
+      if (refinementTaskCancelMatch && req.method === 'POST') {
+        return await this.admin(req, async () => Response.json(await this.context.homeGraphService.cancelRefinementTask({
+          ...readSpaceFromUrl(url),
+          taskId: decodeURIComponent(refinementTaskCancelMatch[1]!),
+        })));
+      }
+      const refinementTaskMatch = pathname.match(/^\/api\/homeassistant\/home-graph\/refinement\/tasks\/([^/]+)$/);
+      if (refinementTaskMatch && req.method === 'GET') {
+        return Response.json(await this.context.homeGraphService.getRefinementTask({
+          ...readSpaceFromUrl(url),
+          taskId: decodeURIComponent(refinementTaskMatch[1]!),
+        }));
+      }
+      if (pathname === '/api/homeassistant/home-graph/refinement/run' && req.method === 'POST') {
+        return await this.admin(req, async () => {
+          const body = await this.readOptionalBody(req);
+          return Response.json(await this.context.homeGraphService.runRefinement({
+            ...readSpaceFromUrl(url),
+            ...(body ?? {}),
+          }));
+        });
+      }
       if (pathname === '/api/homeassistant/home-graph/browse' && req.method === 'GET') {
         return Response.json(await this.context.homeGraphService.browse({
           ...readSpaceFromUrl(url),

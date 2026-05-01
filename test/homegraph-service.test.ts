@@ -115,7 +115,7 @@ describe('Home Graph knowledge spaces', () => {
   });
 
   test('scopes room pages to room objects and linked source evidence', async () => {
-    const { service } = createHomeGraphService();
+    const { service, store } = createHomeGraphService();
     await service.syncSnapshot({
       installationId: 'house-1',
       areas: [
@@ -137,14 +137,40 @@ describe('Home Graph knowledge spaces', () => {
       body: 'The kitchen sensor reports temperature and motion.',
       target: { kind: 'device', id: 'kitchen-sensor', relation: 'has_manual' },
     });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const nodes = (await service.browse({ installationId: 'house-1' })).nodes;
+    const kitchenSensor = nodes.find((node) => node.title === 'Kitchen Sensor');
+    const garageOpener = nodes.find((node) => node.title === 'Garage Opener');
+    expect(kitchenSensor).toBeDefined();
+    expect(garageOpener).toBeDefined();
+    await store.upsertIssue({
+      id: 'issue-kitchen-sensor',
+      severity: 'info',
+      code: 'knowledge.intrinsic_gap',
+      message: 'Kitchen Sensor needs source-backed feature details.',
+      status: 'open',
+      nodeId: kitchenSensor!.id,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertIssue({
+      id: 'issue-garage-opener',
+      severity: 'info',
+      code: 'knowledge.intrinsic_gap',
+      message: 'Garage Opener needs source-backed feature details.',
+      status: 'open',
+      nodeId: garageOpener!.id,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
 
     const page = await service.generateRoomPage({ installationId: 'house-1', areaId: 'kitchen' });
 
     expect(page.markdown).toContain('Kitchen Sensor');
     expect(page.markdown).toContain('Kitchen Lights');
     expect(page.markdown).toContain('Kitchen sensor manual');
+    expect(page.markdown).toContain('Kitchen Sensor needs source-backed feature details.');
     expect(page.markdown).not.toContain('Garage Opener');
     expect(page.markdown).not.toContain('Garage Door');
+    expect(page.markdown).not.toContain('Garage Opener needs source-backed feature details.');
   });
 
   test('ingests notes, links and unlinks targets, and renders device passports', async () => {

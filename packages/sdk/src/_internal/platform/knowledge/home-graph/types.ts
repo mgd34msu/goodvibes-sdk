@@ -156,6 +156,12 @@ export interface HomeGraphStatus {
   readonly issueCount: number;
   readonly extractionCount: number;
   readonly lastSnapshotAt?: number;
+  readonly readiness: {
+    readonly state: 'ready' | 'repairing' | 'needs_review' | 'needs_sources' | 'empty';
+    readonly openIssueCount: number;
+    readonly activeRefinementTaskCount: number;
+    readonly needsReviewTaskCount: number;
+  };
   readonly capabilities: readonly string[];
 }
 
@@ -264,6 +270,7 @@ export interface HomeGraphAskResult {
     readonly linkedObjects: readonly KnowledgeNodeRecord[];
     readonly facts?: readonly KnowledgeNodeRecord[];
     readonly gaps?: readonly KnowledgeNodeRecord[];
+    readonly refinementTaskIds?: readonly string[];
     readonly synthesized?: boolean;
   };
   readonly results: readonly HomeGraphSearchResult[];

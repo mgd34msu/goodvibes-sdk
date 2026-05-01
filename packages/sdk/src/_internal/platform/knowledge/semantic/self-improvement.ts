@@ -5,6 +5,9 @@ import type {
   KnowledgeEdgeRecord,
   KnowledgeIssueRecord,
   KnowledgeNodeRecord,
+  KnowledgeRefinementTaskRecord,
+  KnowledgeRefinementTaskState,
+  KnowledgeRefinementTaskTrigger,
   KnowledgeSourceRecord,
 } from '../types.js';
 import type {
@@ -52,45 +55,69 @@ export async function runKnowledgeSemanticSelfImprovement(
   let repairableGaps = 0;
   let suppressedGaps = 0;
   let skippedGaps = 0;
+  let blockedGaps = 0;
+  let closedGaps = 0;
+  let queuedTasks = 0;
   let searched = 0;
   let ingestedSources = 0;
   let linkedRepairs = 0;
+  const taskIds: string[] = [];
+  const ingestedSourceIds: string[] = [];
   const errors: { gapId: string; error: string }[] = [];
+  const trigger = input.reason ?? 'manual';
 
   for (const gap of gaps) {
     const gapContext = buildGapContext(context.store, spaceId, gap);
+    let task = await upsertRefinementTaskForGap(context.store, spaceId, gapContext, trigger, 'detected', 'Gap was detected for semantic refinement.');
+    taskIds.push(task.id);
     const classification = classifyGap(gapContext, input.force === true);
     if (classification.action === 'suppress') {
       await suppressGap(context.store, gap, classification.reason, spaceId);
+      await updateRefinementTask(context.store, task, 'suppressed', classification.reason ?? 'Gap was classified as not applicable.');
       suppressedGaps += 1;
       continue;
     }
     if (classification.action === 'skip') {
-      skippedGaps += 1;
+      if (classification.status === 'repaired' || classification.status === 'already_repaired') {
+        closedGaps += 1;
+        await updateRefinementTask(context.store, task, 'closed', classification.reason ?? 'Gap is already repaired.');
+        continue;
+      }
+      if (classification.status === 'active') {
+        skippedGaps += 1;
+        await updateRefinementTask(context.store, task, 'queued', classification.reason ?? 'Gap repair is already active.');
+        continue;
+      }
+      blockedGaps += 1;
       if (classification.markAttempt) {
         await markGapRepairAttempt(context.store, gap, spaceId, {
           status: classification.status ?? 'skipped',
           reason: classification.reason,
         });
       }
+      await updateRefinementTask(context.store, task, 'blocked', classification.reason ?? 'Gap is not currently repairable.');
       continue;
     }
     if (!context.gapRepairer) {
-      skippedGaps += 1;
+      blockedGaps += 1;
       await markGapRepairAttempt(context.store, gap, spaceId, {
         status: 'no_repairer',
         reason: 'No semantic gap repairer is configured.',
       });
+      await updateRefinementTask(context.store, task, 'blocked', 'No semantic gap repairer is configured.');
       continue;
     }
     const repairKey = `${spaceId}:${gap.id}`;
     if (context.activeGapRepairs.has(repairKey)) {
       skippedGaps += 1;
+      await updateRefinementTask(context.store, task, 'queued', 'Gap repair is already active.');
       continue;
     }
     repairableGaps += 1;
+    queuedTasks += 1;
     context.activeGapRepairs.add(repairKey);
     try {
+      task = await updateRefinementTask(context.store, task, 'searching', 'Searching for source-backed repair evidence.', { query: gap.title });
       const result = await context.gapRepairer({
         spaceId,
         query: gap.title,
@@ -101,18 +128,37 @@ export async function runKnowledgeSemanticSelfImprovement(
       });
       if (result?.searched) searched += 1;
       ingestedSources += result?.ingestedSourceIds.length ?? 0;
+      ingestedSourceIds.push(...(result?.ingestedSourceIds ?? []));
+      task = await updateRefinementTask(context.store, task, 'evaluating', result?.reason ?? 'Source discovery completed.', {
+        query: result?.query ?? gap.title,
+        sourceAssessments: result?.sourceAssessments ?? [],
+        ingestedSourceIds: result?.ingestedSourceIds ?? [],
+        skippedUrls: result?.skippedUrls ?? [],
+      });
+      if (result?.ingestedSourceIds.length) {
+        task = await updateRefinementTask(context.store, task, 'applying', 'Linking accepted repair sources into the graph.');
+      }
       linkedRepairs += await linkRepairSources(context.store, spaceId, gap, result?.ingestedSourceIds ?? [], result?.query ?? gap.title);
       await markGapRepairAttempt(context.store, gap, spaceId, {
         status: result?.ingestedSourceIds.length ? 'repaired' : 'searched_no_sources',
         reason: result?.reason,
         query: result?.query,
       });
+      if (result?.ingestedSourceIds.length) {
+        await updateRefinementTask(context.store, task, 'closed', 'Repair sources were accepted and linked to the gap.', {
+          ingestedSourceIds: result.ingestedSourceIds,
+        });
+      } else {
+        blockedGaps += 1;
+        await updateRefinementTask(context.store, task, 'blocked', result?.reason ?? 'No acceptable repair sources were found.');
+      }
     } catch (error) {
       errors.push({ gapId: gap.id, error: error instanceof Error ? error.message : String(error) });
       await markGapRepairAttempt(context.store, gap, spaceId, {
         status: 'failed',
         reason: error instanceof Error ? error.message : String(error),
       });
+      await updateRefinementTask(context.store, task, 'failed', error instanceof Error ? error.message : String(error));
     } finally {
       context.activeGapRepairs.delete(repairKey);
     }
@@ -127,6 +173,11 @@ export async function runKnowledgeSemanticSelfImprovement(
     searched,
     ingestedSources,
     linkedRepairs,
+    blockedGaps,
+    closedGaps,
+    queuedTasks,
+    taskIds: uniqueStrings(taskIds),
+    ingestedSourceIds: uniqueStrings(ingestedSourceIds),
     errors,
   };
 }
@@ -320,9 +371,9 @@ function classifyGap(
 ): { readonly action: 'repair' | 'skip' | 'suppress'; readonly reason?: string; readonly status?: string; readonly markAttempt?: boolean } {
   const status = readString(context.gap.metadata.repairStatus);
   const nextAttemptAt = readNumber(context.gap.metadata.nextRepairAttemptAt);
-  if (!force && status === 'repaired') return { action: 'skip', reason: 'Gap already has linked repair sources.' };
-  if (!force && nextAttemptAt && nextAttemptAt > Date.now()) return { action: 'skip', reason: 'Gap repair retry window has not elapsed.' };
-  if (hasRepairEdge(context)) return { action: 'skip', reason: 'Gap already has a repair source.' };
+  if (!force && status === 'repaired') return { action: 'skip', reason: 'Gap already has linked repair sources.', status: 'repaired' };
+  if (!force && nextAttemptAt && nextAttemptAt > Date.now()) return { action: 'skip', reason: 'Gap repair retry window has not elapsed.', status: 'retry_wait', markAttempt: true };
+  if (hasRepairEdge(context)) return { action: 'skip', reason: 'Gap already has a repair source.', status: 'already_repaired' };
   if (isNotApplicableGap(context)) return { action: 'suppress', reason: 'The gap is not applicable to the linked subject.' };
   if (!hasConcreteSubject(context)) {
     return { action: 'skip', reason: 'Gap has no concrete source or subject for automatic repair.', status: 'needs_context', markAttempt: true };
@@ -331,6 +382,97 @@ function classifyGap(
     return { action: 'skip', reason: 'Gap has no source context for automatic repair.', status: 'needs_context', markAttempt: true };
   }
   return { action: 'repair' };
+}
+
+async function upsertRefinementTaskForGap(
+  store: KnowledgeStore,
+  spaceId: string,
+  context: GapContext,
+  trigger: KnowledgeRefinementTaskTrigger,
+  state: KnowledgeRefinementTaskState,
+  message: string,
+  data: Record<string, unknown> = {},
+): Promise<KnowledgeRefinementTaskRecord> {
+  const subject = context.linkedObjects[0];
+  const id = `kref-${semanticHash(spaceId, context.gap.id, subject?.id ?? 'unscoped')}`;
+  const existing = store.getRefinementTask(id);
+  const attemptCount = existing?.attemptCount ?? 0;
+  return store.upsertRefinementTask({
+    id,
+    spaceId,
+    ...(subject ? {
+      subjectKind: 'node',
+      subjectId: subject.id,
+      subjectTitle: subjectTitle(subject),
+      subjectType: subject.kind,
+    } : {}),
+    gapId: context.gap.id,
+    state,
+    trigger,
+    priority: refinementPriority(context.gap),
+    budget: {
+      maxSearches: 1,
+      maxSources: 3,
+      maxLlmCalls: 1,
+    },
+    attemptCount,
+    appendTrace: [trace(state, message, data)],
+    metadata: semanticMetadata(spaceId, {
+      gapTitle: context.gap.title,
+      gapKind: readString(context.gap.metadata.gapKind) ?? 'unknown',
+      sourceIds: context.sources.map((source) => source.id),
+      linkedObjectIds: context.linkedObjects.map((node) => node.id),
+      policyVersion: 'knowledge-refinement-v1',
+    }),
+  });
+}
+
+async function updateRefinementTask(
+  store: KnowledgeStore,
+  task: KnowledgeRefinementTaskRecord,
+  state: KnowledgeRefinementTaskState,
+  message: string,
+  data: Record<string, unknown> = {},
+): Promise<KnowledgeRefinementTaskRecord> {
+  return store.upsertRefinementTask({
+    id: task.id,
+    spaceId: task.spaceId,
+    subjectKind: task.subjectKind,
+    subjectId: task.subjectId,
+    subjectTitle: task.subjectTitle,
+    subjectType: task.subjectType,
+    gapId: task.gapId,
+    issueId: task.issueId,
+    state,
+    priority: task.priority,
+    trigger: task.trigger,
+    budget: task.budget,
+    attemptCount: state === 'searching' ? task.attemptCount + 1 : task.attemptCount,
+    ...(state === 'blocked' || state === 'failed' ? { blockedReason: message } : {}),
+    appendTrace: [trace(state, message, data)],
+    metadata: task.metadata,
+  });
+}
+
+function trace(
+  state: KnowledgeRefinementTaskState,
+  message: string,
+  data: Record<string, unknown> = {},
+): KnowledgeRefinementTaskRecord['trace'][number] {
+  return {
+    at: Date.now(),
+    state,
+    message,
+    ...(Object.keys(data).length > 0 ? { data } : {}),
+  };
+}
+
+function refinementPriority(gap: KnowledgeNodeRecord): KnowledgeRefinementTaskRecord['priority'] {
+  const severity = readString(gap.metadata.severity);
+  const kind = readString(gap.metadata.gapKind);
+  if (severity === 'error') return 'urgent';
+  if (severity === 'warning' || kind === 'intrinsic_features') return 'high';
+  return 'normal';
 }
 
 function hasRepairEdge(context: GapContext): boolean {

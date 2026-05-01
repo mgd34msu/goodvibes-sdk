@@ -117,8 +117,41 @@ tools, communication, providers, routes, state, security, telemetry, and
 integration delivery. Clients consume these through the operator realtime
 transport, control-plane event streams, or surface-specific streams.
 
+Turn stream events are scoped to provider iterations. `STREAM_START` and
+`STREAM_END` carry `scope: "provider"` and `terminal: false`; a single logical
+turn can emit more than one stream pair when the model requests tools and then
+continues after tool results. Clients that need to flush partial rendering or
+audio can react to `STREAM_END`, but they must keep the turn alive until
+`TURN_COMPLETED`, `TURN_ERROR`, `TURN_CANCEL`, or `PREFLIGHT_FAIL`.
+
 Generated event schemas live in
 [Runtime events reference](./reference-runtime-events.md).
+
+## OpenAI-Compatible Ingress
+
+The authenticated daemon exposes an OpenAI-compatible ingress at `/v1` by
+default. This is an interoperability layer for tools that already know how to
+call OpenAI's Chat Completions API and need a simple way to send prompts
+through the GoodVibes daemon before they have a native GoodVibes integration.
+
+Supported routes:
+
+- `GET /v1/models`
+- `POST /v1/chat/completions`
+
+Set the client base URL to the daemon prefix, for example
+`http://127.0.0.1:3421/v1`, and use the daemon bearer token as the API key.
+The route accepts `goodvibes/current`, `goodvibes/default`, registry keys such
+as `openai:gpt-5.5`, and unambiguous plain model ids. Streaming responses use
+OpenAI-style `text/event-stream` chunks ending with `data: [DONE]`.
+
+This layer is intentionally narrow. It maps OpenAI-style requests to the active
+GoodVibes provider registry for direct provider calls; it is not a replacement
+for native GoodVibes sessions, tools, surfaces, agent routing, Home Graph, or
+control-plane APIs. Configure it with:
+
+- `controlPlane.openaiCompatible.enabled`, default `true`
+- `controlPlane.openaiCompatible.pathPrefix`, default `/v1`
 
 ## Hooks
 
