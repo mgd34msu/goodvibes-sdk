@@ -100,7 +100,7 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/facts/review` | Accept, reject, resolve, edit, or forget a graph issue/source/node. |
 | `GET /api/homeassistant/home-graph/refinement/tasks` | List durable Home Graph refinement tasks and traces. |
 | `GET /api/homeassistant/home-graph/refinement/tasks/{id}` | Inspect one refinement task. |
-| `POST /api/homeassistant/home-graph/refinement/run` | Run source-backed gap refinement for the HA knowledge space. |
+| `POST /api/homeassistant/home-graph/refinement/run` | Run source-backed gap refinement for the HA knowledge space. Accepts `limit`, `maxRunMs`, `gapIds`, `sourceIds`, and `force`; broad limits are capped by the SDK and reported in the result. |
 | `POST /api/homeassistant/home-graph/refinement/tasks/{id}/cancel` | Cancel a queued or active refinement task. |
 | `GET /api/homeassistant/home-graph/sources` | Browse source inventory and provenance for the HA space. |
 | `GET /api/homeassistant/home-graph/browse` | Browse namespace-filtered nodes, edges, sources, and issues. |
@@ -321,6 +321,11 @@ answers, not unsupported inference in the current response. Clients can call
 reindex or ask again later to use the newly indexed sources once
 extraction/enrichment has finished. Existing repair sources only suppress the
 specific gap they repair, not every gap attached to the same device or service.
+Ask-created gaps queue refinement tasks and start repair asynchronously; the
+Ask route returns the current best source-backed answer and any
+`refinementTaskIds` without waiting for web search or URL ingest to finish.
+Home Graph reindex also queues repairable gaps and starts bounded repair
+asynchronously after returning source-enrichment and queued-task metadata.
 
 Refinement is observable through a stable job-style API. The Home Assistant
 panel can show what gap was detected, whether it is repairable, what source
@@ -338,6 +343,14 @@ The base knowledge API exposes the same task model under
 `ready`, `repairing`, `needs_review`, `needs_sources`, and `empty`, plus open
 issue and active refinement task counts. Panels should display those fields
 instead of inferring refinement progress from reindex duration or issue totals.
+The refinement run response includes `candidateGaps`, `processedGaps`,
+`requestedLimit`, `effectiveLimit`, `truncated`, and `budgetExhausted`; Home
+Assistant panels should show those fields when a broad run is capped or when a
+short foreground budget leaves additional repair work for a later run. Stale
+active tasks left behind by an interrupted daemon process are recovered as
+blocked-and-retriable the next time refinement runs for that Home Graph space.
+The foreground cap is currently 24 gaps per run; panels should offer repeated
+or scheduled runs instead of sending one unbounded request for the whole house.
 
 `GET` or `POST /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

@@ -35,6 +35,8 @@ export interface WebGapRepairOptions {
   readonly minDistinctDomains?: number;
   readonly minConfidence?: number;
   readonly maxIngest?: number;
+  readonly searchTimeoutMs?: number;
+  readonly ingestTimeoutMs?: number;
 }
 
 interface GapRepairCandidate extends WebSearchResult {
@@ -74,7 +76,7 @@ async function repairKnowledgeGapsWithWeb(
 
   let response: WebSearchResponse;
   try {
-    response = await options.searchService.search({
+    response = await withTimeout(options.searchService.search({
       query,
       maxResults: Math.max(2, Math.min(12, options.maxResults ?? 6)),
       verbosity: 'snippets',
@@ -83,7 +85,7 @@ async function repairKnowledgeGapsWithWeb(
         purpose: 'knowledge-gap-repair',
         knowledgeSpaceId: request.spaceId,
       },
-    });
+    }), Math.max(1_000, options.searchTimeoutMs ?? 8_000), 'Semantic gap repair search timed out.');
   } catch (error) {
     return {
       searched: true,
@@ -112,9 +114,9 @@ async function repairKnowledgeGapsWithWeb(
 
   const ingestedSourceIds: string[] = [];
   const skippedUrls: string[] = [];
-  for (const result of candidates.slice(0, Math.max(2, Math.min(4, options.maxIngest ?? 3)))) {
+  for (const result of candidates.slice(0, Math.max(2, Math.min(4, options.maxIngest ?? 2)))) {
     try {
-      const ingested = await options.ingestService.ingestUrl({
+      const ingested = await withTimeout(options.ingestService.ingestUrl({
         url: result.url,
         ...(result.title ? { title: result.title } : {}),
         sourceType: 'url',
@@ -140,13 +142,14 @@ async function repairKnowledgeGapsWithWeb(
             searchedAt: Date.now(),
           },
         },
-      });
+      }), Math.max(1_000, options.ingestTimeoutMs ?? 10_000), 'Semantic gap repair source ingest timed out.');
       if (ingested.source.status === 'indexed' || ingested.source.status === 'pending') {
         ingestedSourceIds.push(ingested.source.id);
       }
     } catch {
       skippedUrls.push(result.url);
     }
+    await yieldToEventLoop();
   }
 
   return {
@@ -358,6 +361,22 @@ function safeDomain(url: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function yieldToEventLoop(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
 function gapRepairTags(request: KnowledgeSemanticGapRepairRequest): readonly string[] {

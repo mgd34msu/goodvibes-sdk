@@ -26,6 +26,18 @@ import {
 } from './utils.js';
 
 const RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_REFINEMENT_LIMIT = 12;
+const MAX_REFINEMENT_LIMIT = 24;
+const DEFAULT_REFINEMENT_RUN_MS = 45_000;
+const MAX_REFINEMENT_RUN_MS = 60_000;
+const STALE_ACTIVE_TASK_MS = 10 * 60 * 1000;
+const ACTIVE_REFINEMENT_STATES = new Set<KnowledgeRefinementTaskState>([
+  'queued',
+  'searching',
+  'evaluating',
+  'extracting',
+  'applying',
+]);
 
 interface SelfImproveContext {
   readonly store: KnowledgeStore;
@@ -49,9 +61,20 @@ export async function runKnowledgeSemanticSelfImprovement(
   const sourceIdFilter = input.sourceIds?.length ? new Set(input.sourceIds) : null;
   const gapIdFilter = input.gapIds?.length ? new Set(input.gapIds) : null;
   const spaceId = resolveSelfImproveSpace(context.store, input);
+  await recoverStaleActiveTasks(context.store, spaceId);
   const createdGaps = await discoverIntrinsicGaps(context.store, spaceId, sourceIdFilter);
-  const gaps = collectCandidateGaps(context.store, spaceId, sourceIdFilter, gapIdFilter)
-    .slice(0, Math.max(1, input.limit ?? 24));
+  const candidates = collectCandidateGaps(context.store, spaceId, sourceIdFilter, gapIdFilter);
+  const requestedLimit = Math.max(1, input.limit ?? DEFAULT_REFINEMENT_LIMIT);
+  const effectiveLimit = Math.min(requestedLimit, MAX_REFINEMENT_LIMIT);
+  const maxRunMs = Math.min(
+    MAX_REFINEMENT_RUN_MS,
+    Math.max(5_000, input.maxRunMs ?? DEFAULT_REFINEMENT_RUN_MS),
+  );
+  const startedAt = Date.now();
+  const gaps = candidates.slice(0, effectiveLimit);
+  let truncated = candidates.length > gaps.length || requestedLimit > effectiveLimit;
+  let budgetExhausted = false;
+  let processedGaps = 0;
   let repairableGaps = 0;
   let suppressedGaps = 0;
   let skippedGaps = 0;
@@ -67,6 +90,12 @@ export async function runKnowledgeSemanticSelfImprovement(
   const trigger = input.reason ?? 'manual';
 
   for (const gap of gaps) {
+    if (Date.now() - startedAt >= maxRunMs) {
+      truncated = true;
+      budgetExhausted = true;
+      break;
+    }
+    processedGaps += 1;
     const gapContext = buildGapContext(context.store, spaceId, gap);
     let task = await upsertRefinementTaskForGap(context.store, spaceId, gapContext, trigger, 'detected', 'Gap was detected for semantic refinement.');
     taskIds.push(task.id);
@@ -96,6 +125,22 @@ export async function runKnowledgeSemanticSelfImprovement(
         });
       }
       await updateRefinementTask(context.store, task, 'blocked', classification.reason ?? 'Gap is not currently repairable.');
+      continue;
+    }
+    if (input.deferRepair === true) {
+      if (!context.gapRepairer) {
+        blockedGaps += 1;
+        await markGapRepairAttempt(context.store, gap, spaceId, {
+          status: 'no_repairer',
+          reason: 'No semantic gap repairer is configured.',
+        });
+        await updateRefinementTask(context.store, task, 'blocked', 'No semantic gap repairer is configured.');
+        continue;
+      }
+      queuedTasks += 1;
+      await updateRefinementTask(context.store, task, 'queued', 'Gap repair was queued for background refinement.', {
+        deferred: true,
+      });
       continue;
     }
     if (!context.gapRepairer) {
@@ -162,10 +207,13 @@ export async function runKnowledgeSemanticSelfImprovement(
     } finally {
       context.activeGapRepairs.delete(repairKey);
     }
+    await yieldToEventLoop();
   }
 
   return {
     scannedGaps: gaps.length,
+    candidateGaps: candidates.length,
+    processedGaps,
     createdGaps,
     repairableGaps,
     suppressedGaps,
@@ -176,10 +224,33 @@ export async function runKnowledgeSemanticSelfImprovement(
     blockedGaps,
     closedGaps,
     queuedTasks,
+    requestedLimit,
+    effectiveLimit,
+    truncated,
+    budgetExhausted,
     taskIds: uniqueStrings(taskIds),
     ingestedSourceIds: uniqueStrings(ingestedSourceIds),
     errors,
   };
+}
+
+async function recoverStaleActiveTasks(store: KnowledgeStore, spaceId: string): Promise<void> {
+  const now = Date.now();
+  const staleTasks = store.listRefinementTasks(10_000, { spaceId })
+    .filter((task) => ACTIVE_REFINEMENT_STATES.has(task.state))
+    .filter((task) => now - task.updatedAt >= STALE_ACTIVE_TASK_MS);
+  for (const task of staleTasks) {
+    await updateRefinementTask(
+      store,
+      task,
+      'blocked',
+      'Refinement task was interrupted or exceeded the active window; it can be retried.',
+    );
+  }
+}
+
+async function yieldToEventLoop(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
 function resolveSelfImproveSpace(store: KnowledgeStore, input: KnowledgeSemanticSelfImproveInput): string {

@@ -704,6 +704,7 @@ export class KnowledgeService {
     readonly gapIds?: readonly string[];
     readonly sourceIds?: readonly string[];
     readonly limit?: number;
+    readonly maxRunMs?: number;
     readonly force?: boolean;
   } = {}) {
     return this.semanticService.selfImprove({
@@ -711,6 +712,7 @@ export class KnowledgeService {
       gapIds: input.gapIds,
       sourceIds: input.sourceIds,
       limit: input.limit,
+      maxRunMs: input.maxRunMs,
       force: input.force,
       reason: 'manual',
     });

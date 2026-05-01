@@ -62,6 +62,7 @@ export class KnowledgeSemanticService {
   async reindex(input: {
     readonly sourceIds?: readonly string[];
     readonly limit?: number;
+    readonly maxRunMs?: number;
     readonly force?: boolean;
     readonly knowledgeSpaceId?: string;
   } = {}): Promise<{
@@ -104,31 +105,32 @@ export class KnowledgeSemanticService {
       force: input.force,
       reason: 'reindex',
       limit: input.limit,
+      maxRunMs: input.maxRunMs,
+      deferRepair: Boolean(this.options.gapRepairer),
+    });
+    this.runSelfImprovementInBackground({
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      sourceIds: input.sourceIds,
+      force: true,
+      reason: 'reindex',
+      limit: input.limit,
+      maxRunMs: 30_000,
     });
     return { scanned: sources.length, enriched, skipped, failed, errors, selfImprovement };
   }
 
   async answer(input: KnowledgeSemanticAnswerInput): Promise<KnowledgeSemanticAnswerResult> {
     await this.store.init();
-    let answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
+    const answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
     if (this.options.gapRepairer && answer.answer.gaps.length > 0) {
       const refinement = await this.selfImprove({
         knowledgeSpaceId: answer.spaceId,
         gapIds: answer.answer.gaps.map((gap) => gap.id),
         reason: 'answer',
         limit: Math.max(1, answer.answer.gaps.length),
+        deferRepair: true,
       });
-      if (refinement.ingestedSourceIds.length > 0) {
-        const sources = refinement.ingestedSourceIds
-          .map((sourceId) => this.store.getSource(sourceId))
-          .filter((source): source is KnowledgeSourceRecord => Boolean(source));
-        await this.enrichSources(sources, {
-          knowledgeSpaceId: answer.spaceId,
-          force: true,
-          limit: sources.length,
-        });
-        answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
-      }
+      this.runAnswerRefinementInBackground(answer.spaceId, answer.answer.gaps.map((gap) => gap.id));
       const taskIds = uniqueStrings([
         ...refinement.taskIds,
         ...this.taskIdsForGaps(answer.spaceId, answer.answer.gaps.map((gap) => gap.id)),
@@ -144,6 +146,25 @@ export class KnowledgeSemanticService {
       }
     }
     return answer;
+  }
+
+  private runAnswerRefinementInBackground(spaceId: string, gapIds: readonly string[]): void {
+    if (!this.options.gapRepairer || gapIds.length === 0) return;
+    this.runSelfImprovementInBackground({
+      knowledgeSpaceId: spaceId,
+      gapIds,
+      reason: 'answer',
+      limit: Math.max(1, gapIds.length),
+      maxRunMs: 30_000,
+      force: true,
+    });
+  }
+
+  private runSelfImprovementInBackground(input: KnowledgeSemanticSelfImproveInput): void {
+    if (!this.options.gapRepairer) return;
+    setTimeout(() => {
+      void this.selfImprove(input).catch(() => {});
+    }, 0);
   }
 
   async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {
@@ -192,6 +213,8 @@ function sourceCanUseLlmUpgrade(store: KnowledgeStore, source: KnowledgeSourceRe
 function emptySelfImproveResult(): KnowledgeSemanticSelfImproveResult {
   return {
     scannedGaps: 0,
+    candidateGaps: 0,
+    processedGaps: 0,
     createdGaps: 0,
     repairableGaps: 0,
     suppressedGaps: 0,
@@ -202,6 +225,10 @@ function emptySelfImproveResult(): KnowledgeSemanticSelfImproveResult {
     blockedGaps: 0,
     closedGaps: 0,
     queuedTasks: 0,
+    requestedLimit: 0,
+    effectiveLimit: 0,
+    truncated: false,
+    budgetExhausted: false,
     taskIds: [],
     ingestedSourceIds: [],
     errors: [],
@@ -214,6 +241,8 @@ function mergeSelfImproveResults(
 ): KnowledgeSemanticSelfImproveResult {
   return {
     scannedGaps: left.scannedGaps + right.scannedGaps,
+    candidateGaps: (left.candidateGaps ?? 0) + (right.candidateGaps ?? 0),
+    processedGaps: (left.processedGaps ?? 0) + (right.processedGaps ?? 0),
     createdGaps: left.createdGaps + right.createdGaps,
     repairableGaps: left.repairableGaps + right.repairableGaps,
     suppressedGaps: left.suppressedGaps + right.suppressedGaps,
@@ -224,6 +253,10 @@ function mergeSelfImproveResults(
     blockedGaps: left.blockedGaps + right.blockedGaps,
     closedGaps: left.closedGaps + right.closedGaps,
     queuedTasks: left.queuedTasks + right.queuedTasks,
+    requestedLimit: (left.requestedLimit ?? 0) + (right.requestedLimit ?? 0),
+    effectiveLimit: (left.effectiveLimit ?? 0) + (right.effectiveLimit ?? 0),
+    truncated: Boolean(left.truncated || right.truncated),
+    budgetExhausted: Boolean(left.budgetExhausted || right.budgetExhausted),
     taskIds: uniqueStrings([...left.taskIds, ...right.taskIds]),
     ingestedSourceIds: uniqueStrings([...left.ingestedSourceIds, ...right.ingestedSourceIds]),
     errors: [...left.errors, ...right.errors],

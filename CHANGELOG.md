@@ -20,6 +20,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.1] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Semantic refinement run results now include operational guardrail metadata:
+  `candidateGaps`, `processedGaps`, `requestedLimit`, `effectiveLimit`,
+  `truncated`, and `budgetExhausted`. Base knowledge and Home Graph refinement
+  run routes also accept `maxRunMs` for callers that want a shorter foreground
+  refinement window.
+
+### Fixed
+- Broad refinement runs are now capped to bounded batches of at most 24 gaps,
+  yield between gap attempts, recover stale active tasks from interrupted
+  daemon runs, and report truncation instead of monopolizing the daemon when a
+  client asks for a very large run such as `limit: 500`.
+- Knowledge and Home Graph Ask now queue answer-triggered refinement tasks, and
+  semantic reindex queues repair work, then both start repair asynchronously
+  instead of waiting for web search, URL ingest, and re-answering inline. Ask
+  responses can return current evidence plus
+  `refinementTaskIds` without blocking or killing the daemon under slow repair
+  providers.
+- Web-backed semantic gap repair now uses bounded search and URL-ingest waits
+  and ingests only two accepted repair sources by default. This keeps the
+  source-discovery path useful while reducing the chance that a slow provider
+  or site pins a foreground Home Graph refinement request.
+
+### Migration
+- none
+
+---
+
 ## [0.28.0] - 2026-05-01
 
 ### Breaking

@@ -42,6 +42,7 @@ export async function runHomeGraphRefinement(input: HomeGraphSpaceInput & {
   readonly gapIds?: readonly string[];
   readonly sourceIds?: readonly string[];
   readonly limit?: number;
+  readonly maxRunMs?: number;
   readonly force?: boolean;
 }) {
   await input.store.init();
@@ -52,6 +53,7 @@ export async function runHomeGraphRefinement(input: HomeGraphSpaceInput & {
     gapIds: input.gapIds,
     sourceIds: input.sourceIds,
     limit: input.limit,
+    maxRunMs: input.maxRunMs,
     force: input.force,
     reason: 'manual',
   });

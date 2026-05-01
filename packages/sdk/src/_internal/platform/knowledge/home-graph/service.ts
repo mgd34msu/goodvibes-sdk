@@ -441,6 +441,7 @@ export class HomeGraphService {
     readonly gapIds?: readonly string[];
     readonly sourceIds?: readonly string[];
     readonly limit?: number;
+    readonly maxRunMs?: number;
     readonly force?: boolean;
   } = {}) {
     return runHomeGraphRefinement({ ...input, store: this.store, semanticService: this.options.semanticService });
