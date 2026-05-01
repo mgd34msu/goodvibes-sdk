@@ -268,6 +268,8 @@ describe('semantic knowledge/wiki enrichment', () => {
         'The Magic Remote batteries may be low.',
         'REFER TO QUALIFIED SERVICE PERSONNEL.',
         'This remote uses infrared light and must be pointed toward the remote control sensor on the TV.',
+        'Crutchfield SpeakerCompare gives you a sense of equal-power and equal-volume speaker differences.',
+        'Shake the Magic Remote to make the pointer appear on the screen.',
         'However, if the device does not support it, it may not work properly.',
         'In that case, change the TV HDMI Ultra HD Deep Color setting to off.',
         'Refer all servicing to qualified personnel and contact customer service for repair.',
@@ -320,6 +322,9 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answerText).not.toContain('QUALIFIED SERVICE PERSONNEL');
     expect(answerText).not.toContain('infrared light');
     expect(answerText).not.toContain('remote control sensor');
+    expect(answerText).not.toContain('SpeakerCompare');
+    expect(answerText).not.toContain('equal-power');
+    expect(answerText).not.toContain('pointer appear');
     expect(answerText).not.toContain('may not work properly');
     expect(answerText).not.toContain('setting to off');
     expect(answerText).not.toContain('platform or cabinet');
@@ -1123,6 +1128,37 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(second.budgetExhausted).toBe(true);
   });
 
+  test('semantic reindex honors a run budget instead of processing every LLM source inline', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store, {
+      llm: new SlowKnowledgeLlm(40),
+      maxLlmSourcesPerReindex: 10,
+      maxReindexRunMs: 20,
+    });
+    for (let i = 0; i < 5; i += 1) {
+      const source = await store.upsertSource({
+        connectorId: 'manual',
+        sourceType: 'manual',
+        title: `Manual ${i}`,
+        canonicalUri: `manual://slow-${i}`,
+        tags: ['manual'],
+        status: 'indexed',
+      });
+      await store.upsertExtraction({
+        sourceId: source.id,
+        extractorId: 'test',
+        format: 'text',
+        structure: { searchText: `Manual ${i} says the device supports HDMI and Bluetooth features.` },
+      });
+    }
+
+    const result = await semantic.reindex();
+
+    expect(result.scanned).toBe(5);
+    expect(result.enriched).toBeLessThan(5);
+    expect(result.skipped).toBeGreaterThan(0);
+  });
+
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
     let aborted = false;
     const semanticLlm = createProviderBackedKnowledgeSemanticLlm({
@@ -1299,6 +1335,32 @@ class BoilerplateAnswerLlm implements KnowledgeSemanticLlm {
         reason: 'The manual is a safety/reference manual and does not include a complete product feature sheet.',
         severity: 'info',
       }],
+    };
+  }
+
+  async completeText(): Promise<string | null> {
+    return null;
+  }
+}
+
+class SlowKnowledgeLlm implements KnowledgeSemanticLlm {
+  constructor(private readonly delayMs: number) {}
+
+  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+    await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+    if (input.purpose !== 'knowledge-semantic-enrichment') return null;
+    return {
+      summary: 'Slow semantic extraction.',
+      entities: [],
+      facts: [{
+        kind: 'feature',
+        title: 'HDMI support',
+        summary: 'The device supports HDMI.',
+        evidence: 'supports HDMI',
+        confidence: 80,
+      }],
+      relations: [],
+      gaps: [],
     };
   }
 

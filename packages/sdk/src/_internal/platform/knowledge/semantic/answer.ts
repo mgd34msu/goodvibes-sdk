@@ -107,7 +107,9 @@ export async function answerKnowledgeQuery(
 
   const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence);
   const facts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
-  const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : [])).slice(0, limit);
+  const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : []))
+    .slice(0, limit)
+    .map(withAnswerSourceAliases);
   const linkedObjects = input.includeLinkedObjects === false
     ? []
     : uniqueNodes([...(input.linkedObjects ?? []), ...evidence.flatMap((item) => item.node ? [item.node] : [])])
@@ -699,6 +701,14 @@ function uniqueSources(sources: readonly KnowledgeSourceRecord[]): KnowledgeSour
     out.push(source);
   }
   return out;
+}
+
+function withAnswerSourceAliases(source: KnowledgeSourceRecord): KnowledgeSourceRecord {
+  return {
+    ...source,
+    sourceId: source.id,
+    url: source.sourceUri ?? source.canonicalUri,
+  };
 }
 
 function readStringArray(value: unknown): readonly string[] {

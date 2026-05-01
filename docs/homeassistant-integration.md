@@ -324,8 +324,11 @@ specific gap they repair, not every gap attached to the same device or service.
 Ask-created gaps queue refinement tasks and start repair asynchronously; the
 Ask route returns the current best source-backed answer and any
 `refinementTaskIds` without waiting for web search or URL ingest to finish.
-Home Graph reindex also queues repairable gaps and starts bounded repair
-asynchronously after returning source-enrichment and queued-task metadata.
+Home Graph reindex also queues repairable gaps, caps foreground source
+enrichment with a run budget, and starts only a small delayed background repair
+pass after returning source-enrichment and queued-task metadata. Panels should
+use explicit refinement runs or schedules for deeper repair work instead of
+expecting reindex to search and repair the whole house inline.
 
 Refinement is observable through a stable job-style API. The Home Assistant
 panel can show what gap was detected, whether it is repairable, what source
@@ -357,9 +360,10 @@ should not keep treating those records as current wiring failures after the
 host is fixed.
 Home Graph Ask also keeps real Home Assistant linked objects when the strongest
 evidence comes from web-repaired semantic sources whose `sourceDiscovery`
-metadata references the HA object. Overlapping repair runs are coalesced by the
-SDK, so repeated broad Refine/Reindex/Ask-triggered repair calls should not
-stack unbounded LLM/search work in the daemon.
+metadata references the HA object. Ask source records also include `sourceId`
+and `url` aliases alongside the canonical SDK source fields. Overlapping repair
+runs are coalesced by the SDK, so repeated broad Refine/Reindex/Ask-triggered
+repair calls should not stack unbounded LLM/search work in the daemon.
 
 `GET` or `POST /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.
@@ -377,7 +381,10 @@ Home Assistant-specific filters. Generic filters include `recordKinds`,
 `ha` for JSON requests and include `objectKinds`, `entityIds`, `deviceIds`,
 `areaIds`, `integrationIds`, `integrationDomains`, `domains`, `deviceClasses`,
 and `labels`. Each field is multi-select: values inside one field are ORed
-together, and different fields are ANDed together.
+together, and different fields are ANDed together. When a Home Assistant filter
+matches a leaf object such as an entity domain, the SDK also keeps immediate
+device, area, source, fact, and gap context edges so the map remains a graph
+instead of a disconnected list of matching records.
 
 The JSON response includes `nodes`, `edges`, `width`, `height`, `nodeCount`,
 `edgeCount`, `svg`, and `facets`. `facets.homeAssistant` contains the actual

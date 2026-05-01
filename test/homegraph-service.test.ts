@@ -433,6 +433,34 @@ describe('Home Graph knowledge spaces', () => {
 
     expect(ask.results.map((result) => result.id)).toContain(repairSource.id);
     expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Living Room TV');
+    expect(ask.answer.sources[0]?.sourceId).toBe(repairSource.id);
+    expect(ask.answer.sources[0]?.url).toBe('https://example.test/lg-86nano90una-specs');
+  });
+
+  test('keeps graph context edges when Home Assistant map filters match leaf entities', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'living-room', name: 'Living Room' }],
+      devices: [{ id: 'living-room-tv', name: 'Living Room TV', areaId: 'living-room' }],
+      entities: [{
+        id: 'media_player.living_room_tv',
+        entityId: 'media_player.living_room_tv',
+        name: 'Living Room TV',
+        deviceId: 'living-room-tv',
+        areaId: 'living-room',
+      }],
+    });
+
+    const map = await service.map({
+      installationId: 'house-1',
+      ha: { domains: ['media_player'] },
+      includeSources: true,
+    });
+
+    expect(map.nodes.some((node) => node.title === 'Living Room TV')).toBe(true);
+    expect(map.edgeCount).toBeGreaterThan(0);
+    expect(map.edges.some((edge) => edge.relation === 'belongs_to_device' || edge.relation === 'located_in')).toBe(true);
   });
 
   test('repairs already-uploaded weak PDF manual extractions during ask', async () => {

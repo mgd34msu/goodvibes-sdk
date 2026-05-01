@@ -20,6 +20,9 @@ export interface KnowledgeSemanticServiceOptions {
   readonly llm?: KnowledgeSemanticLlm | null;
   readonly maxLlmSourcesPerReindex?: number;
   readonly gapRepairer?: KnowledgeSemanticGapRepairer | null;
+  readonly maxReindexRunMs?: number;
+  readonly backgroundRepairDelayMs?: number;
+  readonly backgroundRepairLimit?: number;
 }
 
 export class KnowledgeSemanticService {
@@ -81,12 +84,20 @@ export class KnowledgeSemanticService {
       .filter((source) => !input.knowledgeSpaceId || getKnowledgeSpaceId(source) === input.knowledgeSpaceId)
       .slice(0, Math.max(1, input.limit ?? 10_000));
     const maxLlmSources = Math.max(0, this.options.maxLlmSourcesPerReindex ?? 3);
+    const maxRunMs = Math.max(100, input.maxRunMs ?? this.options.maxReindexRunMs ?? 45_000);
+    const startedAt = Date.now();
     let llmAttempts = 0;
     let enriched = 0;
     let skipped = 0;
     let failed = 0;
+    let processed = 0;
     const errors: { sourceId: string; error: string }[] = [];
     for (const source of sources) {
+      if (Date.now() - startedAt >= maxRunMs) {
+        skipped += sources.length - processed;
+        break;
+      }
+      processed += 1;
       try {
         const llm = this.options.llm && llmAttempts < maxLlmSources && sourceCanUseLlmUpgrade(this.store, source)
           ? this.options.llm
@@ -114,9 +125,9 @@ export class KnowledgeSemanticService {
       sourceIds: input.sourceIds,
       force: true,
       reason: 'reindex',
-      limit: input.limit,
-      maxRunMs: 30_000,
-    });
+      limit: Math.min(Math.max(1, input.limit ?? this.options.backgroundRepairLimit ?? 3), this.options.backgroundRepairLimit ?? 3),
+      maxRunMs: 15_000,
+    }, this.options.backgroundRepairDelayMs ?? 2_000);
     return { scanned: sources.length, enriched, skipped, failed, errors, selfImprovement };
   }
 
@@ -161,11 +172,11 @@ export class KnowledgeSemanticService {
     });
   }
 
-  private runSelfImprovementInBackground(input: KnowledgeSemanticSelfImproveInput): void {
+  private runSelfImprovementInBackground(input: KnowledgeSemanticSelfImproveInput, delayMs = 0): void {
     if (!this.options.gapRepairer) return;
     setTimeout(() => {
       void this.selfImprove(input).catch(() => {});
-    }, 0);
+    }, Math.max(0, delayMs));
   }
 
   async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {

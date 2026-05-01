@@ -20,6 +20,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.4] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Semantic reindex now honors a foreground run budget and only schedules a
+  small delayed background repair pass. Home Graph reindex should return
+  without stacking a full web/LLM repair run that can make daemon health routes
+  unresponsive.
+- Home Graph map filters now preserve one-hop graph context for matching HA
+  entities/devices. Filtered maps include relevant device/area/source edges
+  instead of returning zero edges for useful filters such as `media_player`.
+- Knowledge Ask and Home Graph Ask source records now include `sourceId` and
+  `url` response aliases in addition to the canonical source record fields.
+- Home Graph generated pages filter additional low-value manual/source snippets
+  such as Crutchfield SpeakerCompare copy, equal-power/equal-volume speaker
+  text, and Magic Remote usage instructions.
+
+### Migration
+- none
+
+---
+
 ## [0.28.3] - 2026-05-01
 
 ### Breaking
