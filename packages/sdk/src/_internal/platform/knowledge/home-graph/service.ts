@@ -305,14 +305,14 @@ export class HomeGraphService {
       sourceIds: state.sources.map((source) => source.id),
       force: false,
     });
-    const generated = reindex.reparsed > 0 || linked.length > 0
-      ? await refreshAutomaticHomeGraphPages({ store: this.store, artifactStore: this.artifactStore, spaceId, installationId })
-      : undefined;
+    const qualityIssues = await this.refreshQualityIssues(spaceId, installationId);
+    const generated = await refreshAutomaticHomeGraphPages({ store: this.store, artifactStore: this.artifactStore, spaceId, installationId });
     return {
       ...reindex,
       ...(linked.length > 0 ? { linked } : {}),
       ...(semantic ? { semantic } : {}),
-      ...(generated ? { generated } : {}),
+      qualityIssues,
+      generated,
     };
   }
 

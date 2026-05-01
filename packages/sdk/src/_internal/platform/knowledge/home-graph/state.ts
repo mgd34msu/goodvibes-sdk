@@ -81,9 +81,26 @@ export function missingDevicePassportFields(
   return [
     typeof device.metadata.manufacturer === 'string' ? '' : 'manufacturer',
     typeof device.metadata.model === 'string' ? '' : 'model',
-    typeof device.metadata.batteryType === 'string' ? '' : 'battery type',
+    devicePassportNeedsBatteryField(device) ? 'battery type' : '',
     sources.length > 0 ? '' : 'manual/source',
   ].filter(Boolean);
+}
+
+function devicePassportNeedsBatteryField(device: KnowledgeNodeRecord): boolean {
+  if (typeof device.metadata.batteryType === 'string' && device.metadata.batteryType.trim().length > 0) return false;
+  if (device.metadata.batteryPowered === false) return false;
+  if (device.metadata.batteryPowered === true) return true;
+  const text = [
+    device.title,
+    device.summary,
+    ...device.aliases,
+    typeof device.metadata.manufacturer === 'string' ? device.metadata.manufacturer : '',
+    typeof device.metadata.model === 'string' ? device.metadata.model : '',
+  ].join(' ').toLowerCase();
+  if (/\b(tv|television|webos|display|monitor|receiver|soundbar|speaker|appliance|outlet|plug|switch|router|bridge|hub|coordinator|adapter|home assistant|integration|software|service|core|supervisor)\b/.test(text)) {
+    return false;
+  }
+  return /\b(battery|button|keypad|leak sensor|motion sensor|contact sensor|door sensor|window sensor|remote|lock|thermostat|cr2032|cr123)\b/.test(text);
 }
 
 export function findHomeAssistantNode(

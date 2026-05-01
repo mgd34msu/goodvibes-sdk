@@ -97,11 +97,15 @@ describe('Home Graph repair and generated pages', () => {
     const ask = await service.ask({ installationId: 'house-1', query: 'what features does the LG TV have?' });
     const passport = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
     const pages = await service.listPages({ installationId: 'house-1' });
+    const issues = await service.listIssues({ installationId: 'house-1', status: 'open', limit: 100 });
 
     expect(reindex.reparsed).toBe(1);
     expect(reindex.linked?.[0]?.node.title).toBe('LG webOS Smart TV');
     expect(reindex.linked?.[0]?.relation).toBe('has_manual');
     expect(reindex.generated?.devicePassports).toBeGreaterThanOrEqual(1);
+    expect(passport.missingFields).not.toContain('battery type');
+    expect(issues.issues.some((issue) => issue.code === 'homegraph.device.missing_manual' && issue.message.includes('LG webOS Smart TV'))).toBe(false);
+    expect(issues.issues.some((issue) => issue.code === 'homegraph.device.unknown_battery' && issue.message.includes('LG webOS Smart TV'))).toBe(false);
     expect(ask.answer.text).toContain('Dolby Vision');
     expect(ask.answer.text).toContain('HDMI eARC');
     expect(passport.markdown).toContain('## Source-Backed Features And Notes');
