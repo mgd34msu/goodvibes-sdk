@@ -176,6 +176,10 @@ batch, and `budgetExhausted` is true when the configured run window expired.
 runs, but the SDK still caps broad requests internally. Clients should repeat
 or schedule refinement runs instead of using one unbounded call for an entire
 large knowledge space. The foreground cap is currently 24 gaps per run.
+If a host previously ran refinement before wiring a semantic gap repairer,
+historical `No semantic gap repairer is configured` task records are reopened
+automatically once a repairer is present so clients do not keep showing stale
+configuration failures.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable

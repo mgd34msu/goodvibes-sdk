@@ -351,6 +351,10 @@ active tasks left behind by an interrupted daemon process are recovered as
 blocked-and-retriable the next time refinement runs for that Home Graph space.
 The foreground cap is currently 24 gaps per run; panels should offer repeated
 or scheduled runs instead of sending one unbounded request for the whole house.
+Historical `No semantic gap repairer is configured` tasks are also reopened
+when the daemon starts running with a configured repairer, so the Refine tab
+should not keep treating those records as current wiring failures after the
+host is fixed.
 
 `GET` or `POST /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.

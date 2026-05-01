@@ -20,6 +20,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.2] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Rebuilt the published SDK distribution so the runtime `dist` package uses
+  the same semantic refinement guardrails as source: broad refinement runs now
+  default to 12 gaps and cap foreground work at 24 gaps per invocation.
+- Semantic refinement now recovers historical `No semantic gap repairer is
+  configured` task records when a host later wires a repairer. Those tasks are
+  reset to a detected/retriable state and their gap metadata is reopened instead
+  of continuing to look like current configuration failures.
+
+### Migration
+- none
+
+---
+
 ## [0.28.1] - 2026-05-01
 
 ### Breaking
