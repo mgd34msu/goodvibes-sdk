@@ -58,7 +58,14 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(infrared light|remote control sensor|point (the )?(magic )?remote|aim (the )?(magic )?remote)\b/.test(lower)) {
     return true;
   }
+  if (/\b(crutchfield|speakercompare|speaker compare|equal[- ]power|equal[- ]volume|speaker shopping|speaker recommendations?)\b/.test(lower)) {
+    return true;
+  }
   if (/\b(more actions?|more remote functions?|remote functions?|remote control buttons?|button map|button functions?)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(magic remote|remote)\b/.test(lower)
+    && /\b(shake|pointer|cursor appears|environment|operating environment|voice recognition|recognition performance|point|sensor|press|button|sap|more actions?)\b/.test(lower)) {
     return true;
   }
   if (/\b(sap|secondary audio program)\b/.test(lower) && /\b(button|press|enabled|audio)\b/.test(lower)) {

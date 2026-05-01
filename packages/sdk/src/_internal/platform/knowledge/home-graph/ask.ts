@@ -13,7 +13,7 @@ export async function answerHomeGraphQuery(input: {
   readonly state: HomeGraphSearchState;
   readonly results: readonly HomeGraphSearchResult[];
 }): Promise<HomeGraphAskResult> {
-  const sources = input.results.flatMap((result) => result.source ? [result.source] : []);
+  const sources = input.results.flatMap((result) => result.source ? [result.source] : []).map(withAnswerSourceAliases);
   const linkedObjects = collectLinkedObjects(input.results, input.state);
   if (input.semanticService) {
     const answer = await input.semanticService.answer({
@@ -77,4 +77,12 @@ function uniqueSources(sources: readonly KnowledgeSourceRecord[]): KnowledgeSour
     out.push(source);
   }
   return out;
+}
+
+function withAnswerSourceAliases(source: KnowledgeSourceRecord): KnowledgeSourceRecord {
+  return {
+    ...source,
+    sourceId: source.id,
+    url: source.sourceUri ?? source.canonicalUri,
+  };
 }

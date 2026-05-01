@@ -197,9 +197,12 @@ is configured, the SDK queues refinement tasks and starts repair in the
 background. Ask does not wait for web search, URL ingest, or re-answering; it
 returns the current best answer plus `refinementTaskIds` so clients can show
 repair progress and ask again after the graph improves.
-Semantic reindex follows the same pattern: it performs source enrichment,
-queues repairable gaps, returns the queued task metadata, and starts bounded
-repair work asynchronously.
+Semantic reindex follows the same pattern with an additional daemon-safety
+guard: foreground source enrichment is capped by a run budget, then the SDK
+queues repairable gaps and starts only a small delayed background repair pass.
+Large spaces should use explicit `/api/knowledge/refinement/run` calls or a
+schedule for deeper repair instead of expecting reindex to perform every web
+search and LLM repair inline.
 Clients that already performed object-scoped retrieval can pass
 `candidateSourceIds`, `candidateNodeIds`, and `strictCandidates: true` so answer
 synthesis stays inside that candidate set instead of re-scanning unrelated
@@ -212,15 +215,17 @@ manual-boilerplate facts such as "items may vary", "specifications may change",
 button-map noise, remote battery-low notes, optional accessory/setup fragments,
 Magic Remote accessory-compatibility snippets such as MR20GA/Bluetooth
 compatibility, remote infrared/sensor instructions, generic "may not work
-properly" setup fragments, and safety/service/handling warnings unless those
-facts are the actual query intent. Truncated deterministic fragments are
-dropped instead of presented as specifications. Answer synthesis runs before
-background semantic enrichment so a single-concurrency provider wrapper answers
-the user first and does not time out behind enrichment work. `linkedObjects` is
-reserved for real graph objects supplied by the caller or retrieved from the
-graph; semantic extraction artifacts such as fact nodes, generated wiki pages,
-and knowledge gaps stay in the `facts`/`gaps` fields instead of being reported
-as linked objects.
+properly" setup fragments, Crutchfield/SpeakerCompare shopping snippets, and
+safety/service/handling warnings unless those facts are the actual query
+intent. Truncated deterministic fragments are dropped instead of presented as
+specifications. Answer synthesis runs before background semantic enrichment so
+a single-concurrency provider wrapper answers the user first and does not time
+out behind enrichment work. `linkedObjects` is reserved for real graph objects
+supplied by the caller or retrieved from the graph; semantic extraction
+artifacts such as fact nodes, generated wiki pages, and knowledge gaps stay in
+the `facts`/`gaps` fields instead of being reported as linked objects. Source
+records in Ask responses keep the canonical source shape and also expose
+`sourceId` and `url` aliases for thin UI clients.
 
 When self-improvement or Ask finds explicit gaps for a concrete subject, the
 daemon can run source-backed gap repair in the background. The repair path
@@ -498,10 +503,13 @@ of hardcoding known source, node, issue, or edge types.
 
 Home Graph uses the same renderer through
 `GET` or `POST /api/homeassistant/home-graph/map`, adding the Home Assistant knowledge
-space id and preserving the same JSON/SVG shape. The Home Graph route accepts
-query-string `GET`, trailing-slash `GET`, and JSON `POST` forms so authenticated
-Home Assistant panel bridges can call the same SDK map renderer without
-depending on one exact URL spelling.
+space id and preserving the same JSON/SVG shape. Home Assistant-specific
+filters also keep one-hop graph context for matched objects, so filtering to a
+leaf entity domain such as `media_player` still returns the relevant
+device/area/source edges instead of an isolated node list. The Home Graph route
+accepts query-string `GET`, trailing-slash `GET`, and JSON `POST` forms so
+authenticated Home Assistant panel bridges can call the same SDK map renderer
+without depending on one exact URL spelling.
 
 ## GraphQL
 

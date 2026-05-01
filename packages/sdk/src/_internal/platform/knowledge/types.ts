@@ -120,9 +120,11 @@ export type KnowledgeConsolidationStatus = 'open' | 'accepted' | 'rejected' | 's
 
 export interface KnowledgeSourceRecord {
   readonly id: string;
+  readonly sourceId?: string;
   readonly connectorId: string;
   readonly sourceType: KnowledgeSourceType;
   readonly title?: string;
+  readonly url?: string;
   readonly sourceUri?: string;
   readonly canonicalUri?: string;
   readonly summary?: string;

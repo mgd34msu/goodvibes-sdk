@@ -149,8 +149,11 @@ function applyHomeGraphMapFilters(
 ): HomeGraphRenderState {
   const filters = normalizeHomeGraphMapFilters(input);
   if (!hasHomeGraphFilters(filters)) return state;
-  const nodes = state.nodes.filter((node) => matchesHomeGraphNode(node, state.edges, filters, state.nodes));
-  const nodeIds = new Set(nodes.map((node) => node.id));
+  const matchedNodeIds = new Set(state.nodes
+    .filter((node) => matchesHomeGraphNode(node, state.edges, filters, state.nodes))
+    .map((node) => node.id));
+  const nodeIds = expandHomeGraphMapNodeIds(state.edges, matchedNodeIds);
+  const nodes = state.nodes.filter((node) => nodeIds.has(node.id));
   const sourceIds = sourceIdsLinkedToNodes(state.edges, nodeIds);
   const sources = state.sources.filter((source) => sourceIds.has(source.id) || matchesHomeGraphSource(source, filters));
   const sourceSet = new Set(sources.map((source) => source.id));
@@ -161,6 +164,31 @@ function applyHomeGraphMapFilters(
   const visibleIds = new Set([...nodeIds, ...sourceSet, ...issues.map((issue) => issue.id)]);
   const edges = state.edges.filter((edge) => visibleIds.has(edge.fromId) && visibleIds.has(edge.toId));
   return { ...state, nodes, sources, issues, edges };
+}
+
+function expandHomeGraphMapNodeIds(
+  edges: readonly KnowledgeEdgeRecord[],
+  matchedNodeIds: ReadonlySet<string>,
+): Set<string> {
+  const nodeIds = new Set(matchedNodeIds);
+  for (const edge of edges) {
+    if (!edgeIsActive(edge) || edge.fromKind !== 'node' || edge.toKind !== 'node') continue;
+    if (!isContextMapRelation(edge.relation)) continue;
+    if (matchedNodeIds.has(edge.fromId)) nodeIds.add(edge.toId);
+    if (matchedNodeIds.has(edge.toId)) nodeIds.add(edge.fromId);
+  }
+  return nodeIds;
+}
+
+function isContextMapRelation(relation: string): boolean {
+  return relation === 'belongs_to_device'
+    || relation === 'located_in'
+    || relation === 'connected_via'
+    || relation === 'source_for'
+    || relation === 'has_manual'
+    || relation === 'supports_fact'
+    || relation === 'has_gap'
+    || relation === 'repairs_gap';
 }
 
 function buildHomeAssistantMapFacets(state: HomeGraphRenderState): Record<string, readonly KnowledgeMapFacetValue[]> {
