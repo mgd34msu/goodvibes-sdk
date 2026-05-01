@@ -42,6 +42,11 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(recommended hdmi cable types?|hdmi cable types?|ultra high speed hdmi cables?|usb extension cable|extension cable|physically fit)\b/.test(lower)) {
     return true;
   }
+  if (/^\s*\d+\s*(yes|no)\b/.test(lower)
+    || /^\s*\d+(hdmi|usb|audio|ports?|features?|smart)\b/.test(lower)
+    || /\b\d+\s+features such as\b/.test(lower)) {
+    return true;
+  }
   if (/\b(button|buttons|remote control)\b/.test(lower) && /[\u25b2\u25bc\u25c4\u25ba]|[▲▼◄►]|\\u25/.test(text)) {
     return true;
   }
@@ -58,6 +63,10 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(infrared light|remote control sensor|point (the )?(magic )?remote|aim (the )?(magic )?remote)\b/.test(lower)) {
     return true;
   }
+  if (/\b(magic remote|remote control)\b/.test(lower)
+    && /\b(accessor(y|ies)|battery|batteries|button|environment|infrared|mr20ga|point|pointer|remote sensor|sap|sensor|shake|voice recognition)\b/.test(lower)) {
+    return true;
+  }
   if (/\b(crutchfield|speakercompare|speaker compare|equal[- ]power|equal[- ]volume|speaker shopping|speaker recommendations?)\b/.test(lower)) {
     return true;
   }
@@ -71,6 +80,22 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   if (/\b(connectivity options include multiple hdmi 2|receive and respond to metadata transmitted through hdmi 2)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(use a certified cable with the hdmi logo|certified hdmi cable|screen may not display|connection error may occur)\b/.test(lower)
+    && /\b(hdmi|cable|connection error|screen may not display)\b/.test(lower)) {
+    return true;
+  }
+  if (/\bultra hd broadcast standards?\b/.test(lower) && /\b(not confirmed|may not|vary|depending)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(usb to serial|rs-?232c|service only|external control setup)\b/.test(lower)) {
+    return true;
+  }
+  if (/\bexternal devices supported\b/.test(lower)) {
+    return true;
+  }
+  if (/\bsupported codec\b/.test(lower) && /\bexternal devices supported\b/.test(lower)) {
     return true;
   }
   if (/\bhdmi\s+2\.?\s*$/.test(lower) || /\bmultiple hdmi\s+2\.?\s*(ports?)?\s*$/.test(lower)) {
@@ -137,6 +162,7 @@ export function hasConcreteFeatureSignal(text: string): boolean {
 export function isUsefulHomeGraphSourceBackedNote(text: string): boolean {
   if (isLowValueFeatureOrSpecText(text)) return false;
   const lower = text.toLowerCase();
+  if (/\b(magic remote|remote control)\b/.test(lower)) return false;
   const signalCount = [
     /\b(hdmi|usb|ethernet|wi-?fi|bluetooth|airplay|miracast|chromecast)\b/,
     /\b(hdr|hdr10|dolby vision|dolby atmos|filmmaker|game optimizer|freesync|g-sync|allm|vrr)\b/,
@@ -156,6 +182,10 @@ export function isUsefulHomeGraphPageFact(fact: KnowledgeNodeRecord): boolean {
   if (!USEFUL_PAGE_FACT_KINDS.has(kind)) return false;
   const text = semanticFactText(fact);
   if (isLowValueFeatureOrSpecText(text)) return false;
+  if (/\b(magic remote|remote control)\b/.test(text)
+    && /\b(accessor(y|ies)|battery|batteries|button|environment|infrared|mr20ga|point|pointer|remote sensor|sap|sensor|shake|voice recognition)\b/.test(text)) {
+    return false;
+  }
   const extractor = readString(fact.metadata.extractor);
   const confidence = typeof fact.confidence === 'number' ? fact.confidence : 0;
   if (extractor === 'deterministic' && confidence <= 60 && ['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(kind)) {

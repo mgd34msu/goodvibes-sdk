@@ -367,10 +367,11 @@ its devices/entities/automations/scenes/scripts, linked sources, or scoped gap
 nodes; graph-wide backlogs are not dumped into individual room pages. Page
 rendering filters manual boilerplate,
 optional-accessory/setup fragments, generic safety/handling facts, truncated
-spec fragments, recommended cable-type notes, remote button-map noise, remote
-battery-low notes, remote infrared/sensor usage snippets, dry-cloth cleaning
-notes, and generic service/repair boilerplate so living pages do not become
-dumps of low-value manual text. Clients
+or heading-only spec fragments, certified-cable warnings, service-only port
+fragments, unsupported-broadcast notices, recommended cable-type notes, remote
+button-map noise, remote battery-low notes, remote infrared/sensor usage
+snippets, dry-cloth cleaning notes, and generic service/repair boilerplate so
+living pages do not become dumps of low-value manual text. Clients
 can read the current page index and markdown through
 `GET /api/homeassistant/home-graph/pages` or the
 `homeassistant.homeGraph.pages.list` operator method instead of reconstructing
@@ -382,10 +383,12 @@ Assistant devices/entities when identity evidence is strong enough, semantically
 enriches changed or forced sources into facts/pages/gaps, and regenerates
 generated pages for devices affected by repaired/newly linked evidence or an
 older generated-page policy. It skips generated-page artifacts and reports
-`truncated`/`budgetExhausted` when caller limits or the SDK run budget stop
-foreground work. This lets users fix already-uploaded manuals and refresh stale
-generated pages without reuploading anything while keeping daemon health routes
-responsive.
+`changedSourceCount`, `forcedSourceCount`,
+`skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
+`generatedPagePolicyVersion`, `truncated`, and `budgetExhausted` so clients can
+tell what was actually scanned, skipped, or regenerated. This lets users fix
+already-uploaded manuals and refresh stale generated pages without reuploading
+anything while keeping daemon health routes responsive.
 
 Room pages are area-scoped. Devices, entities, automations, scenes, scripts, and
 linked sources are included only when they are attached to the requested room or

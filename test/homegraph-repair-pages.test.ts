@@ -9,6 +9,7 @@ import {
   homeAssistantKnowledgeSpaceId,
 } from '../packages/sdk/src/_internal/platform/knowledge/index.js';
 import { extractKnowledgeArtifact } from '../packages/sdk/src/_internal/platform/knowledge/extractors.js';
+import { HOME_GRAPH_PAGE_POLICY_VERSION } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/generated-pages.js';
 import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
@@ -100,6 +101,11 @@ describe('Home Graph repair and generated pages', () => {
     const issues = await service.listIssues({ installationId: 'house-1', status: 'open', limit: 100 });
 
     expect(reindex.reparsed).toBe(1);
+    expect(reindex.changedSourceCount).toBeGreaterThanOrEqual(1);
+    expect(reindex.forcedSourceCount).toBe(0);
+    expect(reindex.skippedGeneratedPageArtifactCount).toBeGreaterThan(0);
+    expect(reindex.refreshedGeneratedPageCount).toBeGreaterThanOrEqual(1);
+    expect(reindex.generatedPagePolicyVersion).toBe(HOME_GRAPH_PAGE_POLICY_VERSION);
     expect(reindex.linked?.[0]?.node.title).toBe('LG webOS Smart TV');
     expect(reindex.linked?.[0]?.relation).toBe('has_manual');
     expect(reindex.generated?.devicePassports).toBeGreaterThanOrEqual(1);
@@ -146,6 +152,10 @@ describe('Home Graph repair and generated pages', () => {
       'SpeakerCompare simulates the sound of speakers through headphones.',
       'In equal power mode, you hear loudness differences between speakers.',
       'Do not place the TV and/or remote control in direct sunlight.',
+      'If you do not use a certified HDMI cable, the screen may not display or a connection error may occur.',
+      'ULTRA HD broadcast standards have not been confirmed and may vary by region.',
+      'External Devices Supported USB to Serial SERVICE ONLY.',
+      'Shake the Magic Remote to make the pointer appear on the screen.',
       'The LG 86NANO90UNA supports Dolby Vision HDR, HDMI eARC, and Game Optimizer.',
       'DTV Audio Supported Codec: MPEG and Dolby Digital.',
     ].join('\n');
@@ -188,6 +198,10 @@ describe('Home Graph repair and generated pages', () => {
     expect(passport.markdown).not.toContain('SpeakerCompare');
     expect(passport.markdown).not.toContain('equal power mode');
     expect(passport.markdown).not.toContain('Do not place the TV');
+    expect(passport.markdown).not.toContain('certified HDMI cable');
+    expect(passport.markdown).not.toContain('ULTRA HD broadcast standards');
+    expect(passport.markdown).not.toContain('USB to Serial');
+    expect(passport.markdown).not.toContain('Magic Remote');
   });
 });
 

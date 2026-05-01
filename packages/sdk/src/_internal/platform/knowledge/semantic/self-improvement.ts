@@ -600,6 +600,11 @@ async function markGapRepairAttempt(
       knowledgeSpaceId: spaceId,
     },
   });
+  if (details.status === 'repaired') {
+    for (const issue of store.listIssues(10_000).filter((entry) => entry.nodeId === gap.id && entry.status === 'open')) {
+      await resolveIssue(store, issue, spaceId, details.reason ?? 'Gap was repaired with accepted source-backed evidence.');
+    }
+  }
 }
 
 async function linkRepairSources(

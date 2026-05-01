@@ -20,6 +20,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.6] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Home Graph reindex responses now include explicit accounting fields:
+  `changedSourceCount`, `forcedSourceCount`,
+  `skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`, and
+  `generatedPagePolicyVersion`.
+
+### Fixed
+- Generated Home Graph pages now use a new page policy and filter more manual
+  boilerplate, including certified-HDMI warnings, service-only/USB-to-serial
+  fragments, unsupported broadcast notices, remote/accessory instructions, and
+  heading-only spec snippets.
+- Shared semantic answer filtering now drops malformed deterministic fragments
+  such as `0 Yes...`, `1HDMI...`, `1 ports...`, and truncated feature phrases
+  before they reach Ask answers or fact lists.
+- Repaired semantic answer gaps no longer reopen their issues or enqueue new
+  answer-triggered refinement tasks after acceptable repair evidence has already
+  been linked.
+
+### Migration
+- none
+
+---
+
 ## [0.28.5] - 2026-05-01
 
 ### Breaking

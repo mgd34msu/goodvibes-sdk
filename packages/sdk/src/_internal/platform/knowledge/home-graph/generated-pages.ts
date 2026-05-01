@@ -56,7 +56,7 @@ export interface HomeGraphPageContext {
   readonly installationId: string;
 }
 
-export const HOME_GRAPH_PAGE_POLICY_VERSION = 'homegraph-pages-v6';
+export const HOME_GRAPH_PAGE_POLICY_VERSION = 'homegraph-pages-v7';
 
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
