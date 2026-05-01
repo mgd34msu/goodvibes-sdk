@@ -142,17 +142,27 @@ wire format handling in the SDK route/service layer while preserving the
 canonical graph metadata fields (`entityId`, `deviceId`, `areaId`,
 `integrationId`) for stored Home Graph records.
 
-Snapshot sync also refreshes living Home Graph pages by default. For each active
-Home Assistant device, the SDK materializes a device passport markdown artifact
-and a stable generated-page source. For each active room/area, it materializes a
-room page. This is built on the same generated-projection primitive used by the
-base knowledge/wiki system, so generated Home Graph pages are stable sources
-with durable markdown artifacts instead of temporary one-off files. Generated
-page markdown includes Home Assistant identity, exposed entities, linked source
-evidence, extracted semantic facts, quality issues, and open questions. Linked
-manuals and other sources contribute bounded extracted snippets and durable fact
-nodes, so device passport pages act like real wiki pages rather than source
-inventory cards. Generated page sources are marked with
+Snapshot sync also refreshes living Home Graph pages by default, but the default
+sync path is intentionally bounded. The SDK prioritizes likely real-world
+devices such as TVs, locks, thermostats, cameras, routers, appliances, phones,
+and other physical devices, then defers lower-value software/plugin/add-on pages
+to explicit page generation, reindex, or refinement routes. This keeps Home
+Assistant service calls from timing out while still making the most useful pages
+available quickly after a snapshot. The sync response reports
+`generated.deferredDevicePassports`, `generated.deferredRoomPages`, and
+`generated.truncated` when more pages remain.
+
+For each selected active Home Assistant device, the SDK materializes a device
+passport markdown artifact and a stable generated-page source. For each selected
+active room/area, it materializes a room page. This is built on the same
+generated-projection primitive used by the base knowledge/wiki system, so
+generated Home Graph pages are stable sources with durable markdown artifacts
+instead of temporary one-off files. Generated page markdown includes Home
+Assistant identity, exposed entities, linked source evidence, extracted semantic
+facts, quality issues, and open questions. Linked manuals and other sources
+contribute bounded extracted snippets and durable fact nodes, so device passport
+pages act like real wiki pages rather than source inventory cards. Generated
+page sources are marked with
 `metadata.homeGraphGeneratedPage: true`, `metadata.projectionKind`, and
 `metadata.pageEditable: true`; the source id stays stable across regenerations
 while the artifact id points at the latest rendered markdown. If the rendered
@@ -213,13 +223,17 @@ Home Graph uses the same provider-backed answer synthesis path as
 self-improving background work so a question is not forced to wait behind a
 full enrichment pass before answer synthesis starts.
 The same self-improvement loop also runs when Home Graph syncs a snapshot,
-ingests a manual/document/URL/note, or reindexes. For concrete objects such as
-devices, services, integrations, and providers, the SDK can create intrinsic
+ingests a manual/document/URL/note, or reindexes. Snapshot sync schedules a
+tiny delayed repair pass and does not run external web/LLM repair inline with
+the Home Assistant service response. For concrete objects such as devices,
+services, integrations, and providers, the SDK can create intrinsic
 feature/specification gaps as soon as the object or source exists, classify
 whether the gap is applicable, suppress non-applicable gaps before search, and
-repair eligible gaps through source-backed web ingest. This means a newly
-added device with a stable manufacturer/model can start filling missing
-feature/spec knowledge without waiting for a user to ask an Assist question.
+repair eligible gaps through source-backed web ingest from the delayed sync
+pass, Ask, reindex, explicit refinement runs, or scheduled jobs. This means a
+newly added device with a stable manufacturer/model can start filling missing
+feature/spec knowledge without waiting for a user to ask an Assist question,
+while the sync call itself stays bounded.
 Repair skip checks are gap-specific: an older repair URL for the same Home
 Assistant object does not block another intrinsic gap unless it is linked to
 that exact gap with `repairs_gap`.

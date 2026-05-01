@@ -138,16 +138,19 @@ unrelated NAS, Matter, service, or other-device facts merely because those
 records share generic words such as "smart", "feature", or "support".
 
 Self-improvement is not limited to Ask. After ingest, reindex, and Home Graph
-snapshot sync, the SDK runs a bounded semantic maintenance pass. The pass looks
-for concrete subjects such as devices, services, providers, products, and
+snapshot sync, the SDK runs bounded semantic maintenance. The pass looks for
+concrete subjects such as devices, services, providers, products, and
 capabilities, asks what intrinsic feature/specification knowledge should exist
 for that subject, creates durable `knowledge_gap` nodes when coverage is weak,
 classifies whether those gaps are applicable, and only then tries external
-repair. Non-applicable gaps, such as battery questions for nodes already known
-to be mains-powered or not battery-powered, are suppressed before any web
-search is attempted. The `knowledge-semantic-self-improvement` job runs the
-same maintenance loop on a default one-hour schedule and can be run manually
-through the jobs API.
+repair. Home Graph snapshot sync uses a tiny delayed repair pass so Home
+Assistant service calls can return quickly while automatic source-backed repair
+still starts after new objects land. Deeper repair continues through Ask,
+explicit refinement runs, reindex, or scheduled jobs. Non-applicable gaps, such
+as battery questions for nodes already known to be mains-powered or not
+battery-powered, are suppressed before any web search is attempted. The
+`knowledge-semantic-self-improvement` job runs the same maintenance loop on a
+default one-hour schedule and can be run manually through the jobs API.
 Repair idempotency is gap-specific: a previously discovered repair source for
 the same object does not suppress another gap unless it is linked to that exact
 gap through `repairs_gap`.
@@ -212,6 +215,12 @@ repair progress and ask again after the graph improves. When callers use the
 generic `knowledgeSpaceId: "homeassistant"` alias, answer-gap tasks are written
 to the concrete `homeassistant:<installationId>` space inferred from linked
 objects or evidence, rather than to the alias itself.
+For concrete feature/specification questions, Ask also checks whether the
+matched evidence is strong enough to answer the user's intent. If the object is
+identified but the evidence is only a weak profile/generated-page match, the SDK
+adds an answer gap explaining that more source-backed feature or specification
+facts are needed. That gap becomes a normal refinement task instead of forcing
+clients to infer from a low-confidence answer with no repair trail.
 Semantic reindex follows the same pattern with an additional daemon-safety
 guard: foreground source enrichment is capped by a run budget, then the SDK
 queues repairable gaps and starts only a small delayed background repair pass.
@@ -222,6 +231,11 @@ Home Graph reindex adds one more guardrail for generated wiki material: it
 does not reprocess generated-page artifacts, only semantically re-enriches
 changed or explicitly forced sources, and regenerates device pages for devices
 touched by changed/newly linked evidence or by an older generated-page policy.
+Snapshot-time Home Graph page generation is also bounded by default. Sync
+prioritizes likely real-world devices and rooms, reports deferred page counts
+through `generated.deferredDevicePassports`, `generated.deferredRoomPages`, and
+`generated.truncated`, and leaves the rest for explicit page generation,
+reindex, or refinement runs.
 Normal changed-only reindex only auto-links sources that were reparsed during
 that run. A forced reindex can still scan all stored sources when a host needs a
 full link audit.

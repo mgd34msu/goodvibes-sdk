@@ -116,6 +116,27 @@ describe('Home Graph knowledge spaces', () => {
     expect(roomPage.markdown).not.toContain('Living Home Graph room page for Kitchen');
   });
 
+  test('bounds snapshot-time automatic page generation for large spaces', async () => {
+    const { service } = createHomeGraphService();
+    const devices = Array.from({ length: 48 }, (_, index) => ({
+      id: `device-${index}`,
+      name: index === 47 ? 'LG webOS Smart TV' : `Generic Device ${index}`,
+      manufacturer: index === 47 ? 'LG' : 'Vendor',
+      model: index === 47 ? '86NANO90UNA' : `M${index}`,
+    }));
+
+    const synced = await service.syncSnapshot({
+      installationId: 'house-1',
+      devices,
+    });
+    const pages = await service.listPages({ installationId: 'house-1', limit: 80 });
+
+    expect(synced.generated.devicePassports).toBe(32);
+    expect(synced.generated.deferredDevicePassports).toBe(16);
+    expect(synced.generated.truncated).toBe(true);
+    expect(pages.pages.some((page) => page.source.title === 'LG webOS Smart TV passport')).toBe(true);
+  });
+
   test('scopes room pages to room objects and linked source evidence', async () => {
     const { service, store } = createHomeGraphService();
     await service.syncSnapshot({
