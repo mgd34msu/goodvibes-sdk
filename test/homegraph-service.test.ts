@@ -619,6 +619,19 @@ describe('Home Graph knowledge spaces', () => {
     expect(JSON.stringify(extraction?.structure)).toContain('Dolby Vision');
   });
 
+  test('coalesces overlapping Home Graph reindex requests', async () => {
+    const { service } = createHomeGraphService();
+    (service as unknown as { activeReindex: Promise<unknown> | null }).activeReindex = new Promise(() => {});
+
+    const reindex = await service.reindex({ installationId: 'house-1' });
+
+    expect(reindex.coalesced).toBe(true);
+    expect(reindex.truncated).toBe(true);
+    expect(reindex.budgetExhausted).toBe(true);
+    expect(reindex.scanned).toBe(0);
+    (service as unknown as { activeReindex: Promise<unknown> | null }).activeReindex = null;
+  });
+
   test('keeps Home Graph review decisions durable across quality refreshes', async () => {
     const { service } = createHomeGraphService();
     await service.syncSnapshot({

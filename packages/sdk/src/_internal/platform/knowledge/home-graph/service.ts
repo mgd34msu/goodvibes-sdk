@@ -1,5 +1,6 @@
 import type { ArtifactStore } from '../../artifacts/index.js';
 import type { ArtifactDescriptor } from '../../artifacts/types.js';
+import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import { extractKnowledgeArtifact } from '../extractors.js';
 import type { KnowledgeStore } from '../store.js';
 import type {
@@ -49,7 +50,7 @@ import {
   refreshAutomaticHomeGraphPages,
   refreshHomeGraphDevicePassport,
 } from './generated-pages.js';
-import { runHomeGraphReindex } from './reindex.js';
+import { coalescedHomeGraphReindexResult, runHomeGraphReindex } from './reindex.js';
 import { listHomeGraphPages } from './pages.js';
 import { browseHomeGraph, listHomeGraphSources } from './inventory.js';
 import { mapHomeGraph } from './map-view.js';
@@ -77,6 +78,7 @@ import type {
 } from './types.js';
 
 export class HomeGraphService {
+  private activeReindex: Promise<HomeGraphReindexResult> | null = null;
   constructor(
     private readonly store: KnowledgeStore,
     private readonly artifactStore: ArtifactStore,
@@ -278,7 +280,9 @@ export class HomeGraphService {
   }
 
   async reindex(input: HomeGraphReindexInput = {}): Promise<HomeGraphReindexResult> {
-    return runHomeGraphReindex({
+    await this.store.init();
+    if (this.activeReindex) return coalescedHomeGraphReindexResult(this.store, input);
+    const run = runHomeGraphReindex({
       store: this.store,
       artifactStore: this.artifactStore,
       semanticService: this.options.semanticService,
@@ -286,6 +290,12 @@ export class HomeGraphService {
       autoLinkExistingSources: (spaceId, installationId, sourceIds) => this.autoLinkExistingSources(spaceId, installationId, sourceIds),
       refreshQualityIssues: (spaceId, installationId) => this.refreshQualityIssues(spaceId, installationId),
     }, input);
+    this.activeReindex = run;
+    try {
+      return await run;
+    } finally {
+      if (this.activeReindex === run) this.activeReindex = null;
+    }
   }
 
   private async repairWeakExtractionsForAsk(
@@ -303,7 +313,8 @@ export class HomeGraphService {
       8,
     );
     let repaired = 0;
-    for (const source of candidates) {
+    for (const [index, source] of candidates.entries()) {
+      await yieldEvery(index, 2);
       const artifactId = typeof source.artifactId === 'string' ? source.artifactId : undefined;
       if (!artifactId) continue;
       const artifact = this.artifactStore.get(artifactId);
@@ -320,6 +331,7 @@ export class HomeGraphService {
         });
       }
       if (extraction && extractionHasSearchableText(extraction)) repaired += 1;
+      await yieldToEventLoop();
     }
     return repaired;
   }
@@ -540,7 +552,9 @@ export class HomeGraphService {
           ...(extraction ? { extraction } : {}),
           state: readHomeGraphState(this.store, input.spaceId),
         }))?.edge;
-    void this.enrichAndImproveSource(source.id, input.spaceId).catch(() => {});
+    setTimeout(() => {
+      void this.enrichAndImproveSource(source.id, input.spaceId).catch(() => {});
+    }, 0);
     return {
       ok: true,
       spaceId: input.spaceId,
@@ -640,7 +654,8 @@ export class HomeGraphService {
     };
     const upsertGroup = async (kind: Parameters<typeof buildHomeGraphNodeInput>[2], objects: readonly HomeGraphObjectInput[] | undefined) => {
       let count = 0;
-      for (const rawObject of objects ?? []) {
+      for (const [index, rawObject] of (objects ?? []).entries()) {
+        await yieldEvery(index, 16);
         const object = normalizeHomeGraphObjectInput(kind, rawObject);
         const nodeInput = buildHomeGraphNodeInput(spaceId, installationId, kind, object);
         const node = await this.store.upsertNode({ ...nodeInput, sourceId, confidence: 90 });
@@ -657,6 +672,7 @@ export class HomeGraphService {
           await upsertIntegrationDocumentationCandidates(this.store, spaceId, installationId, node, object);
         }
         count += 1;
+        await yieldEvery(count, 16);
       }
       return count;
     };

@@ -29999,6 +29999,9 @@ Re-extract already-stored Home Graph artifacts with missing or weak extraction r
     "generatedPagePolicyVersion": {
       "type": "string"
     },
+    "coalesced": {
+      "type": "boolean"
+    },
     "truncated": {
       "type": "boolean"
     },

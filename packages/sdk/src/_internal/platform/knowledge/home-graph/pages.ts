@@ -1,4 +1,5 @@
 import type { ArtifactStore } from '../../artifacts/index.js';
+import { yieldEvery } from '../cooperative.js';
 import type { KnowledgeSourceRecord } from '../types.js';
 import { isGeneratedPageSource } from './helpers.js';
 import type { HomeGraphPageListResult } from './types.js';
@@ -15,7 +16,8 @@ export async function listHomeGraphPages(input: {
     .filter(isGeneratedPageSource)
     .sort(compareGeneratedPages)
     .slice(0, input.limit);
-  for (const source of sources) {
+  for (const [index, source] of sources.entries()) {
+    await yieldEvery(index, 4);
     const artifact = typeof source.artifactId === 'string' ? input.artifactStore.get(source.artifactId) : undefined;
     const markdown = input.includeMarkdown && artifact
       ? await readMarkdown(input.artifactStore, artifact.id)

@@ -1,5 +1,6 @@
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeSourceRecord } from '../types.js';
+import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import { getKnowledgeSpaceId } from '../spaces.js';
 import { answerKnowledgeQuery } from './answer.js';
 import { enrichKnowledgeSource } from './enrichment.js';
@@ -56,9 +57,12 @@ export class KnowledgeSemanticService {
     input: { readonly force?: boolean; readonly knowledgeSpaceId?: string; readonly limit?: number } = {},
   ): Promise<readonly KnowledgeSemanticEnrichmentResult[]> {
     const results: KnowledgeSemanticEnrichmentResult[] = [];
-    for (const source of sources.slice(0, Math.max(1, input.limit ?? sources.length))) {
+    const selected = sources.slice(0, Math.max(1, input.limit ?? sources.length));
+    for (const [index, source] of selected.entries()) {
+      await yieldEvery(index);
       const result = await this.enrichSource(source.id, input);
       if (result) results.push(result);
+      await yieldToEventLoop();
     }
     return results;
   }
@@ -92,7 +96,8 @@ export class KnowledgeSemanticService {
     let failed = 0;
     let processed = 0;
     const errors: { sourceId: string; error: string }[] = [];
-    for (const source of sources) {
+    for (const [index, source] of sources.entries()) {
+      await yieldEvery(index);
       if (Date.now() - startedAt >= maxRunMs) {
         skipped += sources.length - processed;
         break;
@@ -110,6 +115,7 @@ export class KnowledgeSemanticService {
         failed += 1;
         errors.push({ sourceId: source.id, error: error instanceof Error ? error.message : String(error) });
       }
+      await yieldToEventLoop();
     }
     const selfImprovement = await this.selfImprove({
       knowledgeSpaceId: input.knowledgeSpaceId,
@@ -201,7 +207,8 @@ export class KnowledgeSemanticService {
         ...this.store.listNodes(10_000).map((node) => getKnowledgeSpaceId(node)),
       ]);
       let combined = emptySelfImproveResult();
-      for (const spaceId of spaces) {
+      for (const [index, spaceId] of spaces.entries()) {
+        await yieldEvery(index, 1);
         const result = await runKnowledgeSemanticSelfImprovement({
           store: this.store,
           gapRepairer: this.options.gapRepairer,

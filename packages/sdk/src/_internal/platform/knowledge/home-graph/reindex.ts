@@ -3,6 +3,7 @@ import type { ArtifactDescriptor } from '../../artifacts/types.js';
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeExtractionRecord, KnowledgeIssueRecord, KnowledgeSourceRecord } from '../types.js';
 import type { KnowledgeSemanticService } from '../semantic/index.js';
+import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import { isGeneratedPageSource, uniqueStrings } from './helpers.js';
 import { resolveReadableHomeGraphSpace } from './space-selection.js';
 import { readHomeGraphSearchState } from './search.js';
@@ -38,6 +39,26 @@ export interface HomeGraphReindexContext {
     sourceIds?: readonly string[],
   ) => Promise<readonly HomeGraphAutoLinkResult[]>;
   readonly refreshQualityIssues: (spaceId: string, installationId: string) => Promise<readonly KnowledgeIssueRecord[]>;
+}
+
+export function coalescedHomeGraphReindexResult(
+  store: KnowledgeStore,
+  input: HomeGraphReindexInput,
+): HomeGraphReindexResult {
+  const { spaceId } = resolveReadableHomeGraphSpace(store, input);
+  return {
+    ok: true,
+    spaceId,
+    scanned: 0,
+    reparsed: 0,
+    skipped: 0,
+    failed: 0,
+    sources: [],
+    failures: [],
+    coalesced: true,
+    truncated: true,
+    budgetExhausted: true,
+  };
 }
 
 export async function runHomeGraphReindex(
@@ -132,7 +153,8 @@ export async function reindexHomeGraphSources(input: {
   let failed = 0;
   let truncated = input.sources.length > candidates.length;
   let budgetExhausted = false;
-  for (const source of candidates) {
+  for (const [index, source] of candidates.entries()) {
+    await yieldEvery(index);
     if (Date.now() - startedAt >= maxRunMs) {
       truncated = true;
       budgetExhausted = true;
@@ -178,7 +200,8 @@ async function refreshHomeGraphPagesForSources(
     ...devicesWithStaleGeneratedPages(state, sources),
   ]).slice(0, limit);
   if (devices.length === 0) return summary;
-  for (const deviceId of devices) {
+  for (const [index, deviceId] of devices.entries()) {
+    await yieldEvery(index, 2);
     try {
       const page = await refreshHomeGraphDevicePassport({
         ...context,
@@ -259,8 +282,4 @@ function clampPositive(value: unknown, fallback: number, min: number, max: numbe
   const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
   const effective = Number.isFinite(parsed) ? parsed : fallback;
   return Math.min(max, Math.max(min, Math.trunc(effective)));
-}
-
-async function yieldToEventLoop(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }

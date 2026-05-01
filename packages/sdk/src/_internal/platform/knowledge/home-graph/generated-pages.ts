@@ -3,6 +3,7 @@ import type { ArtifactDescriptor } from '../../artifacts/types.js';
 import {
   materializeGeneratedKnowledgeProjection,
 } from '../generated-projections.js';
+import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import type { KnowledgeStore } from '../store.js';
 import type {
   KnowledgeEdgeRecord,
@@ -84,7 +85,8 @@ async function generateHomeGraphPagesForCurrentState(
       state.nodes.filter((node) => node.kind === 'ha_device' && node.status !== 'stale').sort(compareByTitle),
       effectiveOptions.maxDevicePassports,
     );
-    for (const device of devices) {
+    for (const [index, device] of devices.entries()) {
+      await yieldEvery(index, 2);
       const deviceId = readHomeAssistantObjectId(device, 'objectId', 'deviceId') ?? device.id;
       try {
         const page = await refreshHomeGraphDevicePassport({
@@ -105,6 +107,7 @@ async function generateHomeGraphPagesForCurrentState(
           error: error instanceof Error ? error.message : String(error),
         });
       }
+      await yieldToEventLoop();
     }
   }
 
@@ -115,7 +118,8 @@ async function generateHomeGraphPagesForCurrentState(
         .sort(compareByTitle),
       effectiveOptions.maxRoomPages,
     );
-    for (const room of rooms) {
+    for (const [index, room] of rooms.entries()) {
+      await yieldEvery(index, 2);
       const areaId = readHomeAssistantObjectId(room, 'objectId', 'areaId') ?? room.id;
       try {
         const page = await generateHomeGraphRoomPage({
@@ -137,6 +141,7 @@ async function generateHomeGraphPagesForCurrentState(
           error: error instanceof Error ? error.message : String(error),
         });
       }
+      await yieldToEventLoop();
     }
   }
 

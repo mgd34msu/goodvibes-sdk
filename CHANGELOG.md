@@ -20,6 +20,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.8] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Home Graph reindex responses can now report `coalesced: true` when another
+  reindex is already running. The active run continues, and the later request
+  returns quickly instead of stacking duplicate source scans.
+
+### Fixed
+- Long-running Home Graph reindex, refinement, generated-page, auto-link,
+  snapshot-sync, and page-list loops now yield cooperatively during work so
+  daemon health/status routes remain responsive under heavier Home Graph loads.
+- Home Graph Ask now schedules post-answer semantic enrichment on the next event
+  turn, so answering a question is not extended by background enrichment work.
+- Base Knowledge Ask with `knowledgeSpaceId: "homeassistant"` now prunes broad
+  cross-installation evidence more aggressively, avoiding unrelated network,
+  NAS, service, or other device facts in object-specific Home Assistant
+  questions.
+
+### Migration
+- none
+
+---
+
 ## [0.28.7] - 2026-05-01
 
 ### Breaking

@@ -162,6 +162,7 @@ function collectAnswerEvidence(
   const strictCandidates = input.strictCandidates === true && (candidateSourceIds.size > 0 || candidateNodeIds.size > 0);
   const sourceFacts = buildSourceFactIndex(store, spaceId);
   const linkedSourceIds = sourceIdsLinkedToNodes(store, new Set([...candidateNodeIds, ...linkedObjectIds]), spaceId);
+  const broadHomeAssistantAlias = normalizeKnowledgeSpaceId(spaceId) === 'homeassistant' && !strictCandidates;
 
   const sourceItems = store.listSources(10_000)
     .filter((source) => belongsToAnswerSpace(source, spaceId))
@@ -182,6 +183,7 @@ function collectAnswerEvidence(
       ].join('\n');
       const baseScore = scoreSemanticText(scoringText, tokens);
       const subjectScore = subjectTokens.length > 0 ? scoreSemanticText(scoringText, subjectTokens) : 0;
+      const homeAssistantPenalty = broadHomeAssistantAlias && subjectScore === 0 ? 120 : 0;
       const candidateBoost = candidateSourceIds.has(source.id) ? 220 : 0;
       const linkedBoost = linkedSourceIds.has(source.id) ? 160 : 0;
       const genericOnly = subjectTokens.length > 0 && subjectScore === 0;
@@ -193,7 +195,7 @@ function collectAnswerEvidence(
       const weakBroadMatch = !strictCandidates && genericOnly;
       const score = weakStrictCandidate || weakBroadMatch
         ? 0
-        : baseScore + candidateBoost + linkedBoost + Math.min(60, facts.length * 6);
+        : baseScore + candidateBoost + linkedBoost + Math.min(60, facts.length * 6) - homeAssistantPenalty;
       return {
         kind: 'source' as const,
         id: source.id,
@@ -220,11 +222,12 @@ function collectAnswerEvidence(
       ].join('\n');
       const baseScore = scoreSemanticText(scoringText, tokens);
       const subjectScore = subjectTokens.length > 0 ? scoreSemanticText(scoringText, subjectTokens) : 0;
+      const homeAssistantPenalty = broadHomeAssistantAlias && subjectScore === 0 ? 100 : 0;
       const genericOnly = subjectTokens.length > 0 && subjectScore === 0;
       const candidateOrLinked = candidateNodeIds.has(node.id) || linkedObjectIds.has(node.id);
       const score = genericOnly && !candidateOrLinked
         ? 0
-        : baseScore + (candidateOrLinked ? 120 : 0) + semanticKindBoost(node);
+        : baseScore + (candidateOrLinked ? 120 : 0) + semanticKindBoost(node) - homeAssistantPenalty;
       return {
         kind: 'node' as const,
         id: node.id,
@@ -239,7 +242,7 @@ function collectAnswerEvidence(
   const items = [...sourceItems, ...nodeItems]
     .filter((item) => item.score > 0)
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
-  return pruneEvidence(items, limit);
+  return pruneEvidence(items, limit, broadHomeAssistantAlias);
 }
 
 async function synthesizeAnswer(
@@ -631,11 +634,14 @@ function expandQueryTokens(tokens: readonly string[]): string[] {
   return uniqueStrings(tokens.flatMap((token) => [token, ...(expansions[token] ?? [])]));
 }
 
-function pruneEvidence(items: readonly EvidenceItem[], limit: number): EvidenceItem[] {
+function pruneEvidence(items: readonly EvidenceItem[], limit: number, strictTopCluster = false): EvidenceItem[] {
   const sourceSeen = new Set<string>();
   const nodeSeen = new Set<string>();
   const out: EvidenceItem[] = [];
+  const topScore = items[0]?.score ?? 0;
+  const minScore = strictTopCluster ? Math.max(1, topScore - 90) : 1;
   for (const item of items) {
+    if (item.score < minScore) continue;
     if (item.kind === 'source') {
       if (sourceSeen.has(item.id)) continue;
       sourceSeen.add(item.id);

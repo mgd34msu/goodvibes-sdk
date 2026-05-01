@@ -1,4 +1,5 @@
 import { isGeneratedKnowledgeSource } from '../generated-projections.js';
+import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import { getKnowledgeSpaceId, normalizeKnowledgeSpaceId } from '../spaces.js';
 import type { KnowledgeStore } from '../store.js';
 import type {
@@ -233,10 +234,6 @@ export async function runKnowledgeSemanticSelfImprovement(
   };
 }
 
-async function yieldToEventLoop(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-}
-
 function resolveSelfImproveSpace(store: KnowledgeStore, input: KnowledgeSemanticSelfImproveInput): string {
   if (input.knowledgeSpaceId) return normalizeKnowledgeSpaceId(input.knowledgeSpaceId);
   const firstSource = input.sourceIds?.map((id) => store.getSource(id)).find((source): source is KnowledgeSourceRecord => Boolean(source));
@@ -260,16 +257,21 @@ async function discoverIntrinsicGaps(
   const nodesById = new Map(store.listNodes(10_000).filter((node) => getKnowledgeSpaceId(node) === spaceId).map((node) => [node.id, node]));
   const createdIds = new Set<string>();
   let created = 0;
+  let sourceIndex = 0;
   for (const source of sourcesById.values()) {
+    await yieldEvery(sourceIndex++);
     const linkedObjects = linkedObjectsForSource(source.id, edges, nodesById);
     const facts = factsForSource(source.id, edges, nodesById);
-    for (const subject of linkedObjects.filter(isConcreteRepairSubject)) {
+    for (const [subjectIndex, subject] of linkedObjects.filter(isConcreteRepairSubject).entries()) {
+      await yieldEvery(subjectIndex, 16);
       if (!shouldCreateIntrinsicFeatureGap(subject, facts, source)) continue;
       if (await upsertIntrinsicFeatureGap(store, spaceId, subject, [source], createdIds)) created += 1;
     }
   }
   if (!sourceIdFilter) {
+    let subjectIndex = 0;
     for (const subject of nodesById.values()) {
+      await yieldEvery(subjectIndex++);
       if (!isConcreteRepairSubject(subject)) continue;
       const sourceList = sourcesForObject(subject.id, edges, sourcesById);
       const facts = [

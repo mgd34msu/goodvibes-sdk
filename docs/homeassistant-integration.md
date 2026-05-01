@@ -263,9 +263,11 @@ audit. The
 response reports `scanned`, `reparsed`, `skipped`, `failed`, `truncated`,
 `budgetExhausted`, `changedSourceCount`, `forcedSourceCount`,
 `skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
-`generatedPagePolicyVersion`, repaired `sources`, auto-link `linked`
-summaries, semantic enrichment counts, regenerated page `generated` counts, and
-per-source `failures`.
+`generatedPagePolicyVersion`, `coalesced`, repaired `sources`, auto-link
+`linked` summaries, semantic enrichment counts, regenerated page `generated`
+counts, and per-source `failures`. If another Home Graph reindex is already
+running, the SDK returns `coalesced: true` quickly and leaves the active run in
+charge instead of stacking another foreground scan.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
@@ -378,8 +380,9 @@ Home Graph Ask also keeps real Home Assistant linked objects when the strongest
 evidence comes from web-repaired semantic sources whose `sourceDiscovery`
 metadata references the HA object. Ask source records also include `sourceId`
 and `url` aliases alongside the canonical SDK source fields. Overlapping repair
-runs are coalesced by the SDK, so repeated broad Refine/Reindex/Ask-triggered
-repair calls should not stack unbounded LLM/search work in the daemon.
+and reindex runs are coalesced by the SDK, so repeated broad
+Refine/Reindex/Ask-triggered calls should not stack unbounded LLM/search/source
+work in the daemon.
 Home Graph status reports `activeRefinementTaskCount` for running/queued work
 only; detected backlog records remain visible in the refinement task list but
 do not make readiness look like an active repair run.

@@ -396,10 +396,13 @@ generated pages for devices affected by repaired/newly linked evidence or an
 older generated-page policy. It skips generated-page artifacts and reports
 `changedSourceCount`, `forcedSourceCount`,
 `skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
-`generatedPagePolicyVersion`, `truncated`, and `budgetExhausted` so clients can
-tell what was actually scanned, skipped, or regenerated. This lets users fix
-already-uploaded manuals and refresh stale generated pages without reuploading
-anything while keeping daemon health routes responsive.
+`generatedPagePolicyVersion`, `coalesced`, `truncated`, and
+`budgetExhausted` so clients can tell what was actually scanned, skipped, or
+regenerated. Overlapping reindex requests are single-flight: the active run
+continues, and later callers receive a quick coalesced response instead of
+starting duplicate source scans. This lets users fix already-uploaded manuals
+and refresh stale generated pages without reuploading anything while keeping
+daemon health routes responsive.
 
 Room pages are area-scoped. Devices, entities, automations, scenes, scripts, and
 linked sources are included only when they are attached to the requested room or
