@@ -43,6 +43,7 @@ import {
   sourceInHomeAssistantAnswerScope,
 } from './homeassistant-scope.js';
 import { concreteAnswerGapSpaceId } from './answer-space.js';
+import { answerNeedsFeatureGap, cleanSynthesizedAnswer } from './answer-quality.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -133,6 +134,18 @@ export async function answerKnowledgeQuery(
     linkedObjects,
   });
   const featureIntent = hasFeatureIntentForQuery(input.query);
+  const evidenceGap = featureIntent && answerNeedsFeatureGap({
+    query: input.query,
+    text: llmAnswer?.answer,
+    facts,
+    sources,
+    linkedObjects,
+  })
+    ? await persistAnswerGap(context.store, gapSpaceId, input.query, 'Evidence matched the subject but did not include enough concrete source-backed feature or specification facts.', {
+        sources,
+        linkedObjects,
+      })
+    : null;
   const text = cleanSynthesizedAnswer(
     llmAnswer?.answer?.trim() || renderFallbackAnswer(input.query, mode, evidence),
     featureIntent,
@@ -148,7 +161,7 @@ export async function answerKnowledgeQuery(
       sources: input.includeSources === false ? [] : sources,
       linkedObjects,
       facts,
-      gaps,
+      gaps: evidenceGap ? uniqueNodes([...gaps, evidenceGap]) : gaps,
       synthesized: Boolean(llmAnswer?.answer),
     },
     results: evidence.map(toSearchResult),
@@ -614,25 +627,6 @@ function evidenceWindows(text: string, tokens: readonly string[]): string[] {
     windows.push(`${start > 0 ? '...' : ''}${normalized.slice(start, end).trim()}${end < normalized.length ? '...' : ''}`);
   }
   return uniqueStrings(windows);
-}
-
-function cleanSynthesizedAnswer(text: string, featureIntent: boolean): string {
-  if (!featureIntent) return text;
-  const blocks = text.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
-  const cleanedBlocks = blocks.map((block) => {
-    const lines = block.split(/\n/).map((line) => line.trim()).filter(Boolean);
-    const kept = lines.filter((line) => !isLowValueFeatureOrSpecText(line));
-    if (kept.length > 0 && kept.length < lines.length) return kept.join('\n');
-    if (lines.length > 1) return kept.join('\n');
-    const sentences = splitSentences(block, 600);
-    const keptSentences = sentences.filter((sentence) => !isLowValueFeatureOrSpecText(sentence));
-    return keptSentences.length > 0 && keptSentences.length < sentences.length
-      ? keptSentences.join(' ')
-      : block;
-  }).filter(Boolean);
-  return cleanedBlocks.length > 0
-    ? cleanedBlocks.join('\n\n')
-    : 'The available evidence did not contain source-backed feature or specification details after filtering manual boilerplate.';
 }
 
 function expandQueryTokens(tokens: readonly string[]): string[] {

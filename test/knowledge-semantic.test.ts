@@ -337,6 +337,27 @@ describe('semantic knowledge/wiki enrichment', () => {
       .filter((task) => task.gapId === answer.answer.gaps?.[0]?.id)).toHaveLength(0);
   });
 
+  test('broad feature asks create gaps when only weak generated profile evidence matches', async () => {
+    const { store, artifactStore } = createStores();
+    const semantic = new KnowledgeSemanticService(store, { llm: new WeakFeatureAnswerLlm() });
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.syncSnapshot({
+      installationId: 'house',
+      devices: [{ id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+
+    const answer = await service.ask({
+      installationId: 'house',
+      query: 'what features does the TV have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+    });
+
+    expect(answer.answer.gaps?.some((gap) => (
+      gap.summary?.includes('source-backed feature or specification facts')
+    ))).toBe(true);
+  });
+
   test('Home Graph ask prioritizes answer synthesis before background semantic enrichment', async () => {
     const { store, artifactStore } = createStores();
     const llm = new OrderedHomeGraphAskLlm();
@@ -1451,6 +1472,23 @@ class GapRepairAnswerLlm implements KnowledgeSemanticLlm {
         reason: 'The manual is not a complete product specification sheet.',
         severity: 'info',
       }],
+    };
+  }
+
+  async completeText(): Promise<string | null> {
+    return null;
+  }
+}
+
+class WeakFeatureAnswerLlm implements KnowledgeSemanticLlm {
+  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+    if (input.purpose !== 'knowledge-answer-synthesis') return null;
+    return {
+      answer: 'The supplied evidence identifies the TV as having an LCD screen.',
+      confidence: 10,
+      usedSourceIds: [],
+      usedNodeIds: [],
+      gaps: [],
     };
   }
 

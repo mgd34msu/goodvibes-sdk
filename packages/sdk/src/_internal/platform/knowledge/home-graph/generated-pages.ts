@@ -58,11 +58,17 @@ export interface HomeGraphPageContext {
 }
 
 export const HOME_GRAPH_PAGE_POLICY_VERSION = 'homegraph-pages-v7';
+const DEFAULT_SYNC_DEVICE_PASSPORT_LIMIT = 32;
+const DEFAULT_SYNC_ROOM_PAGE_LIMIT = 12;
 
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
 ): Promise<HomeGraphGeneratedPagesSummary> {
-  return generateHomeGraphPagesForCurrentState(context, context.input.pageAutomation ?? {});
+  return generateHomeGraphPagesForCurrentState(context, {
+    maxDevicePassports: DEFAULT_SYNC_DEVICE_PASSPORT_LIMIT,
+    maxRoomPages: DEFAULT_SYNC_ROOM_PAGE_LIMIT,
+    ...(context.input.pageAutomation ?? {}),
+  });
 }
 
 export async function refreshAutomaticHomeGraphPages(
@@ -81,10 +87,11 @@ async function generateHomeGraphPagesForCurrentState(
 
   const state = readHomeGraphState(context.store, context.spaceId);
   if (effectiveOptions.devicePassports !== false) {
-    const devices = limitRecords(
-      state.nodes.filter((node) => node.kind === 'ha_device' && node.status !== 'stale').sort(compareByTitle),
-      effectiveOptions.maxDevicePassports,
+    const allDevices = prioritizeNodesForGeneratedPages(
+      state.nodes.filter((node) => node.kind === 'ha_device' && node.status !== 'stale'),
     );
+    const devices = limitRecords(allDevices, effectiveOptions.maxDevicePassports);
+    summary.deferredDevicePassports += Math.max(0, allDevices.length - devices.length);
     for (const [index, device] of devices.entries()) {
       await yieldEvery(index, 2);
       const deviceId = readHomeAssistantObjectId(device, 'objectId', 'deviceId') ?? device.id;
@@ -112,12 +119,11 @@ async function generateHomeGraphPagesForCurrentState(
   }
 
   if (effectiveOptions.roomPages !== false) {
-    const rooms = limitRecords(
-      state.nodes
-        .filter((node) => (node.kind === 'ha_area' || node.kind === 'ha_room') && node.status !== 'stale')
-        .sort(compareByTitle),
-      effectiveOptions.maxRoomPages,
+    const allRooms = prioritizeNodesForGeneratedPages(
+      state.nodes.filter((node) => (node.kind === 'ha_area' || node.kind === 'ha_room') && node.status !== 'stale'),
     );
+    const rooms = limitRecords(allRooms, effectiveOptions.maxRoomPages);
+    summary.deferredRoomPages += Math.max(0, allRooms.length - rooms.length);
     for (const [index, room] of rooms.entries()) {
       await yieldEvery(index, 2);
       const areaId = readHomeAssistantObjectId(room, 'objectId', 'areaId') ?? room.id;
@@ -145,6 +151,7 @@ async function generateHomeGraphPagesForCurrentState(
     }
   }
 
+  summary.truncated = summary.deferredDevicePassports > 0 || summary.deferredRoomPages > 0;
   return summary;
 }
 
@@ -377,6 +384,9 @@ function createGeneratedPagesSummary(): {
   roomPages: number;
   artifacts: number;
   sources: number;
+  deferredDevicePassports: number;
+  deferredRoomPages: number;
+  truncated: boolean;
   errors: {
     kind: 'device-passport' | 'room-page';
     targetId: string;
@@ -388,12 +398,36 @@ function createGeneratedPagesSummary(): {
     roomPages: 0,
     artifacts: 0,
     sources: 0,
+    deferredDevicePassports: 0,
+    deferredRoomPages: 0,
+    truncated: false,
     errors: [],
   };
 }
 
 function compareByTitle(left: KnowledgeNodeRecord, right: KnowledgeNodeRecord): number {
   return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+}
+
+function prioritizeNodesForGeneratedPages(nodes: readonly KnowledgeNodeRecord[]): readonly KnowledgeNodeRecord[] {
+  return [...nodes].sort((left, right) => (
+    generatedPagePriority(right) - generatedPagePriority(left)
+    || compareByTitle(left, right)
+  ));
+}
+
+function generatedPagePriority(node: KnowledgeNodeRecord): number {
+  const metadata = readRecord(node.metadata.homeAssistant);
+  const objectKind = String(metadata.objectKind ?? '').toLowerCase();
+  const domain = String(metadata.domain ?? node.metadata.domain ?? '').toLowerCase();
+  const title = `${node.title} ${node.summary ?? ''}`.toLowerCase();
+  let score = 0;
+  if (objectKind === 'device') score += 8;
+  if (domain === 'media_player' || domain === 'climate' || domain === 'lock' || domain === 'cover') score += 8;
+  if (domain === 'sensor' || domain === 'binary_sensor') score += 2;
+  if (/(tv|receiver|speaker|thermostat|lock|garage|camera|printer|router|iphone|espresso|appliance)/.test(title)) score += 6;
+  if (/(home assistant|plugin|add-on|addon|conversation|tts|stt|task|backup|hacs|theme|card)/.test(title)) score -= 8;
+  return score;
 }
 
 function semanticFactsLinkedToSources(

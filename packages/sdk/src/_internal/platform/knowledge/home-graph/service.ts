@@ -81,6 +81,7 @@ import type {
 
 export class HomeGraphService {
   private activeReindex: Promise<HomeGraphReindexResult> | null = null;
+  private pendingSyncSelfImprove = new Set<string>();
   constructor(
     private readonly store: KnowledgeStore,
     private readonly artifactStore: ArtifactStore,
@@ -117,11 +118,7 @@ export class HomeGraphService {
     const groups = await this.upsertSnapshotObjects(spaceId, installationId, input, home.id, source.id);
     await this.autoLinkExistingSources(spaceId, installationId);
     const issues = await this.refreshQualityIssues(spaceId, installationId);
-    void this.options.semanticService?.selfImprove({
-      knowledgeSpaceId: spaceId,
-      reason: 'homegraph-sync',
-      limit: 16,
-    }).catch(() => {});
+    this.scheduleSyncSelfImprovement(spaceId);
     const generated = await generateAutomaticHomeGraphPages({
       store: this.store,
       artifactStore: this.artifactStore,
@@ -704,6 +701,21 @@ export class HomeGraphService {
 
   private async refreshQualityIssues(spaceId: string, installationId: string): Promise<readonly KnowledgeIssueRecord[]> {
     return refreshHomeGraphQualityIssues(this.store, spaceId, installationId);
+  }
+
+  private scheduleSyncSelfImprovement(spaceId: string): void {
+    if (!this.options.semanticService || this.pendingSyncSelfImprove.has(spaceId)) return;
+    this.pendingSyncSelfImprove.add(spaceId);
+    setTimeout(() => {
+      void this.options.semanticService?.selfImprove({
+        knowledgeSpaceId: spaceId,
+        reason: 'homegraph-sync',
+        limit: 2,
+        maxRunMs: 10_000,
+      }).catch(() => {}).finally(() => {
+        this.pendingSyncSelfImprove.delete(spaceId);
+      });
+    }, 5_000);
   }
 
   private async enrichSpaceSources(spaceId: string): Promise<void> {

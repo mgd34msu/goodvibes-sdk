@@ -31539,6 +31539,15 @@ Ingest a Home Assistant registry snapshot into an isolated Home Graph knowledge 
         "sources": {
           "type": "number"
         },
+        "deferredDevicePassports": {
+          "type": "number"
+        },
+        "deferredRoomPages": {
+          "type": "number"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
         "errors": {
           "type": "array",
           "items": {

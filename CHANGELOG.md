@@ -20,6 +20,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.12] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Home Graph snapshot sync generated-page summaries now include
+  `deferredDevicePassports`, `deferredRoomPages`, and `truncated` so panels can
+  show when the SDK intentionally bounded automatic page materialization during
+  a large sync.
+
+### Fixed
+- Home Graph snapshot sync now caps automatic device-passport and room-page
+  generation by default, prioritizing likely real-world devices while deferring
+  lower-value software/plugin/add-on pages to explicit page generation or
+  reindex. This keeps Home Assistant service calls from blocking for minutes
+  just to render every possible generated wiki page.
+- Home Graph sync no longer starts external semantic repair immediately in the
+  request path. It schedules a tiny delayed repair pass after the response, so
+  snapshot ingestion can land quickly while automatic self-improvement still
+  begins without waiting for a user Ask. Deeper repair remains with Ask,
+  reindex, explicit refinement runs, or scheduled jobs.
+- Knowledge Ask and Home Graph Ask now add a feature/spec answer gap when a
+  concrete object is identified but the matched evidence only contains weak
+  generated/profile snippets instead of enough source-backed feature or
+  specification facts. This gives clients a refinement task to observe instead
+  of returning a low-confidence dead end with no repair trail.
+
+### Migration
+- Home Assistant clients that need all generated pages immediately after a
+  large snapshot can either pass higher `pageAutomation.maxDevicePassports` /
+  `maxRoomPages` values or run explicit page/reindex/refinement routes after
+  sync. The default sync path is now intentionally bounded.
+
+---
+
 ## [0.28.11] - 2026-05-01
 
 ### Breaking

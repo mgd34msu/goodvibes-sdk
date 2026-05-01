@@ -144,6 +144,9 @@ export interface HomeGraphGeneratedPagesSummary {
   readonly roomPages: number;
   readonly artifacts: number;
   readonly sources: number;
+  readonly deferredDevicePassports?: number;
+  readonly deferredRoomPages?: number;
+  readonly truncated?: boolean;
   readonly errors: readonly {
     readonly kind: 'device-passport' | 'room-page';
     readonly targetId: string;
