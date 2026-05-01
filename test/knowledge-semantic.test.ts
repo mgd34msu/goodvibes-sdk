@@ -120,6 +120,7 @@ describe('semantic knowledge/wiki enrichment', () => {
         'Use a platform or cabinet that is strong and large enough to support the TV securely.',
         'The items supplied with your product may vary depending upon the model.',
         'Warning: do not use uncertified HDMI cables.',
+        'The TV supports Magic Remote MR20GA when the wireless module includes Bluetooth.',
         ].join(' '),
       },
     });
@@ -170,6 +171,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(factText).not.toContain('remote control sensor');
     expect(factText).not.toContain('USB flash drive does not fit');
     expect(factText).not.toContain('platform or cabinet');
+    expect(factText).not.toContain('MR20GA');
   });
 
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
@@ -563,6 +565,92 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(calls).toHaveLength(1);
     expect(gap?.title).toContain('complete features and specifications');
     expect(store.listEdges().some((edge) => edge.relation === 'repairs_gap' && edge.toId === gap?.id)).toBe(true);
+  });
+
+  test('self-improvement does not treat unrelated repair sources as repairing every subject gap', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const calls: unknown[] = [];
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async (request) => {
+        calls.push(request);
+        return { searched: true, ingestedSourceIds: [], skippedUrls: [], reason: 'no sources in test' };
+      },
+    });
+    const manual = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'manual://lg-tv-limited',
+      tags: ['manual', 'tv'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const priorRepairSource = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG support article for a different question',
+      canonicalUri: 'https://www.lg.com/support/example',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { purpose: 'semantic-gap-repair' },
+      },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-tv',
+      title: 'LG webOS Smart TV',
+      aliases: ['LG TV'],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: manual.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'has_manual',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: priorRepairSource.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const gap = await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'feature-gap',
+      title: 'What are the complete features and specifications for LG 86NANO90UNA LG webOS Smart TV?',
+      aliases: [],
+      confidence: 75,
+      sourceId: manual.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'gap',
+        gapKind: 'intrinsic_features',
+        sourceIds: [manual.id],
+        linkedObjectIds: [device.id],
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: device.id,
+      toKind: 'node',
+      toId: gap.id,
+      relation: 'has_gap',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, gapIds: [gap.id], force: true });
+
+    expect(result.repairableGaps).toBe(1);
+    expect(result.searched).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 
   test('self-improvement suppresses non-applicable gaps before external search', async () => {

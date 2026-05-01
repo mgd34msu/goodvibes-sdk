@@ -20,6 +20,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.27.11] - 2026-04-30
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Semantic self-improvement now treats repair idempotency as gap-specific. A
+  prior semantic-gap-repair source linked to the same device, service, or
+  provider no longer suppresses unrelated intrinsic gaps unless that source has
+  an actual `repairs_gap` edge to the specific gap being processed. Scheduled
+  and reindex-driven maintenance can therefore keep repairing newly discovered
+  feature/spec gaps instead of reporting every gap as skipped.
+- Feature/spec answer and generated-page filters now drop Magic Remote
+  accessory-compatibility snippets, such as MR20GA/Bluetooth compatibility,
+  when the user is asking for product features. Real feature evidence such as
+  voice control remains eligible.
+
+### Migration
+- none
+
+---
+
 ## [0.27.10] - 2026-04-30
 
 ### Breaking

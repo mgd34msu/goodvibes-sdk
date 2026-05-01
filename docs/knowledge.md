@@ -136,6 +136,9 @@ to be mains-powered or not battery-powered, are suppressed before any web
 search is attempted. The `knowledge-semantic-self-improvement` job runs the
 same maintenance loop on a default six-hour schedule and can be run manually
 through the jobs API.
+Repair idempotency is gap-specific: a previously discovered repair source for
+the same object does not suppress another gap unless it is linked to that exact
+gap through `repairs_gap`.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
@@ -155,16 +158,17 @@ object-specific questions. Feature/spec answers filter deterministic
 manual-boilerplate facts such as "items may vary", "specifications may change",
 "new features may be added", recommended cable-type fragments, remote
 button-map noise, remote battery-low notes, optional accessory/setup fragments,
-remote infrared/sensor instructions, generic "may not work properly" setup
-fragments, and safety/service/handling warnings unless those facts are the
-actual query intent. Truncated deterministic fragments are dropped instead of
-presented as specifications. Answer synthesis runs before background semantic
-enrichment so a single-concurrency provider wrapper answers the user first and
-does not time out behind enrichment work. `linkedObjects` is reserved for real
-graph objects supplied by the caller or retrieved from the graph; semantic
-extraction artifacts such as fact nodes, generated wiki pages, and knowledge
-gaps stay in the `facts`/`gaps` fields instead of being reported as linked
-objects.
+Magic Remote accessory-compatibility snippets such as MR20GA/Bluetooth
+compatibility, remote infrared/sensor instructions, generic "may not work
+properly" setup fragments, and safety/service/handling warnings unless those
+facts are the actual query intent. Truncated deterministic fragments are
+dropped instead of presented as specifications. Answer synthesis runs before
+background semantic enrichment so a single-concurrency provider wrapper answers
+the user first and does not time out behind enrichment work. `linkedObjects` is
+reserved for real graph objects supplied by the caller or retrieved from the
+graph; semantic extraction artifacts such as fact nodes, generated wiki pages,
+and knowledge gaps stay in the `facts`/`gaps` fields instead of being reported
+as linked objects.
 
 When self-improvement or Ask finds explicit gaps for a concrete subject, the
 daemon can run source-backed gap repair in the background. The repair path
@@ -176,7 +180,8 @@ same `knowledgeSpaceId`; and links those new sources to the gap with
 facts from search snippets. It gives the normal ingest, extraction, semantic
 enrichment, review, and future ask paths more source evidence to work with.
 Existing `repairs_gap` edges and retry windows suppress repeated searches for
-the same gap.
+the same gap; repair sources linked elsewhere on the same object do not block
+new gaps from being repaired.
 
 ## Review Pathways
 

@@ -58,6 +58,11 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(infrared light|remote control sensor|point (the )?(magic )?remote|aim (the )?(magic )?remote)\b/.test(lower)) {
     return true;
   }
+  if (/\bmagic remote\b/.test(lower)
+    && /\b(compatib|mr20ga|wireless module|bluetooth|separate purchase|sold separately|accessor(y|ies))\b/.test(lower)
+    && !/\b(voice|microphone|cursor|pointer|gesture|motion control|universal control)\b/.test(lower)) {
+    return true;
+  }
   if (/\bif (the )?device (doesn'?t|does not) support\b/.test(lower) && /\bmay not work properly\b/.test(lower)) {
     return true;
   }

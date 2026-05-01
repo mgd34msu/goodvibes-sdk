@@ -35,6 +35,7 @@ interface GapContext {
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly linkedObjects: readonly KnowledgeNodeRecord[];
   readonly facts: readonly KnowledgeNodeRecord[];
+  readonly repairSourceIds: readonly string[];
 }
 
 export async function runKnowledgeSemanticSelfImprovement(
@@ -304,7 +305,13 @@ function buildGapContext(store: KnowledgeStore, spaceId: string, gap: KnowledgeN
     ...sources.flatMap((source) => factsForSource(source.id, edges, nodesById)),
     ...linkedObjects.flatMap((object) => factsForObject(object.id, edges, nodesById)),
   ]);
-  return { gap, sources, linkedObjects, facts };
+  const repairSourceIds = uniqueStrings(edges
+    .filter((edge) => edge.fromKind === 'source'
+      && edge.toKind === 'node'
+      && edge.toId === gap.id
+      && edge.relation === 'repairs_gap')
+    .map((edge) => edge.fromId));
+  return { gap, sources, linkedObjects, facts, repairSourceIds };
 }
 
 function classifyGap(
@@ -327,8 +334,7 @@ function classifyGap(
 }
 
 function hasRepairEdge(context: GapContext): boolean {
-  return context.sources.some((source) => source.metadata.sourceDiscovery && readRecord(source.metadata.sourceDiscovery).purpose === 'semantic-gap-repair')
-    || context.facts.some((fact) => readString(fact.metadata.repairStatus) === 'repaired');
+  return context.repairSourceIds.length > 0;
 }
 
 function isNotApplicableGap(context: GapContext): boolean {
