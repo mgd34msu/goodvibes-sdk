@@ -710,6 +710,12 @@ export interface KnowledgeMapEdge {
   readonly id: string;
   readonly fromId: string;
   readonly toId: string;
+  readonly source?: string;
+  readonly target?: string;
+  readonly fromTitle?: string;
+  readonly toTitle?: string;
+  readonly sourceTitle?: string;
+  readonly targetTitle?: string;
   readonly relation: string;
   readonly weight: number;
   readonly metadata: Record<string, unknown>;

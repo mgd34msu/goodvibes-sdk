@@ -3,7 +3,7 @@ import { resolveReadableHomeGraphSpace } from './space-selection.js';
 import { readHomeGraphState } from './state.js';
 import { HOME_GRAPH_CAPABILITIES, type HomeGraphSpaceInput, type HomeGraphStatus } from './types.js';
 
-const ACTIVE_REFINEMENT_STATES = new Set(['detected', 'queued', 'searching', 'evaluating', 'extracting', 'applying']);
+const ACTIVE_REFINEMENT_STATES = new Set(['queued', 'searching', 'evaluating', 'extracting', 'applying']);
 
 export async function getHomeGraphStatus(
   store: KnowledgeStore,

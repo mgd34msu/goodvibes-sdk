@@ -108,16 +108,25 @@ export function renderKnowledgeMap(
     })),
   ]);
   const nodeIds = new Set(mapNodes.map((node) => node.id));
+  const mapNodeById = new Map(mapNodes.map((node) => [node.id, node]));
   const visibleEdges = filtered.edges
     .filter((edge) => nodeIds.has(edge.fromId) && nodeIds.has(edge.toId))
-    .map((edge) => ({
-      id: edge.id,
-      fromId: edge.fromId,
-      toId: edge.toId,
-      relation: edge.relation,
-      weight: edge.weight,
-      metadata: edge.metadata,
-    }));
+    .map((edge) => {
+      const from = mapNodeById.get(edge.fromId);
+      const to = mapNodeById.get(edge.toId);
+      return {
+        id: edge.id,
+        fromId: edge.fromId,
+        toId: edge.toId,
+        source: edge.fromId,
+        target: edge.toId,
+        ...(from ? { fromTitle: from.title, sourceTitle: from.title } : {}),
+        ...(to ? { toTitle: to.title, targetTitle: to.title } : {}),
+        relation: edge.relation,
+        weight: edge.weight,
+        metadata: edge.metadata,
+      };
+    });
   const width = 1280;
   const height = 920;
   const title = options.title ?? state.title ?? 'Knowledge Map';

@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.4"
+    "version": "0.28.5"
   },
   "auth": {
     "modes": [
@@ -28443,6 +28443,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "toId": {
                     "type": "string"
                   },
+                  "source": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "fromTitle": {
+                    "type": "string"
+                  },
+                  "toTitle": {
+                    "type": "string"
+                  },
+                  "sourceTitle": {
+                    "type": "string"
+                  },
+                  "targetTitle": {
+                    "type": "string"
+                  },
                   "relation": {
                     "type": "string"
                   },
@@ -29729,6 +29747,27 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "knowledgeSpaceId": {
               "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "maxRunMs": {
+              "type": "number"
+            },
+            "semanticLimit": {
+              "type": "number"
+            },
+            "semanticMaxRunMs": {
+              "type": "number"
+            },
+            "generatedPageLimit": {
+              "type": "number"
+            },
+            "force": {
+              "type": "boolean"
+            },
+            "refreshPages": {
+              "type": "boolean"
             }
           },
           "additionalProperties": true
@@ -29753,6 +29792,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "failed": {
               "type": "number"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "budgetExhausted": {
+              "type": "boolean"
             },
             "sources": {
               "type": "array",
@@ -29914,6 +29959,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "additionalProperties": {}
                   },
                   {}
+                ]
+              }
+            },
+            "semantic": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
                 ]
               }
             },
@@ -38050,6 +38122,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "type": "string"
                   },
                   "toId": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "fromTitle": {
+                    "type": "string"
+                  },
+                  "toTitle": {
+                    "type": "string"
+                  },
+                  "sourceTitle": {
+                    "type": "string"
+                  },
+                  "targetTitle": {
                     "type": "string"
                   },
                   "relation": {

@@ -20,6 +20,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.5] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Knowledge map edge records now include `source`, `target`, `sourceTitle`,
+  and `targetTitle` aliases alongside `fromId` and `toId`, making the same
+  payload easier to consume in graph UIs and D3-style renderers.
+
+### Fixed
+- Home Graph reindex now skips generated-page artifacts, semantically
+  re-enriches only changed or explicitly forced sources, and regenerates only
+  device pages affected by changed/linked sources. This keeps reindex useful
+  for uploaded manuals and repair sources without rebuilding every generated
+  page or re-enriching hundreds of unchanged sources in the foreground.
+- Home Graph status now counts only queued/searching/evaluating/extracting/
+  applying refinement tasks as active. Detected backlog items no longer make
+  the graph look like it is actively repairing when no work is running.
+- Generated Home Graph device pages apply stricter source-backed note filters
+  for commercial comparison copy, price/listing snippets, manual safety
+  boilerplate, remote-control instructions, and truncated HDMI fragments.
+
+### Migration
+- none
+
+---
+
 ## [0.28.4] - 2026-05-01
 
 ### Breaking

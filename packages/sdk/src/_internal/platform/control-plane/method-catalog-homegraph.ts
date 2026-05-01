@@ -176,7 +176,17 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     method: 'POST',
     path: '/api/homeassistant/home-graph/reindex',
     write: true,
-    inputSchema: HOME_GRAPH_SPACE_INPUT_SCHEMA,
+    inputSchema: bodyEnvelopeSchema({
+      installationId: STRING_SCHEMA,
+      knowledgeSpaceId: STRING_SCHEMA,
+      limit: NUMBER_SCHEMA,
+      maxRunMs: NUMBER_SCHEMA,
+      semanticLimit: NUMBER_SCHEMA,
+      semanticMaxRunMs: NUMBER_SCHEMA,
+      generatedPageLimit: NUMBER_SCHEMA,
+      force: BOOLEAN_SCHEMA,
+      refreshPages: BOOLEAN_SCHEMA,
+    }),
     outputSchema: HOME_GRAPH_REINDEX_OUTPUT_SCHEMA,
   }),
   homeGraphDescriptor({

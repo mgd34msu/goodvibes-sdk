@@ -90,9 +90,12 @@ export const HOME_GRAPH_REINDEX_OUTPUT_SCHEMA = objectSchema({
   reparsed: NUMBER_SCHEMA,
   skipped: NUMBER_SCHEMA,
   failed: NUMBER_SCHEMA,
+  truncated: BOOLEAN_SCHEMA,
+  budgetExhausted: BOOLEAN_SCHEMA,
   sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),
   failures: GENERIC_LIST_SCHEMA,
   linked: GENERIC_LIST_SCHEMA,
+  semantic: JSON_RECORD_SCHEMA,
   generated: JSON_RECORD_SCHEMA,
 }, ['ok', 'spaceId', 'scanned', 'reparsed', 'skipped', 'failed', 'sources', 'failures'], { additionalProperties: true });
 

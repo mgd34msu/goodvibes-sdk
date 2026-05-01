@@ -252,9 +252,13 @@ want to repair the whole Home Assistant knowledge space immediately can call
 `POST /api/homeassistant/home-graph/reindex`. Reindex reparses weak stored
 artifacts, auto-links matching manuals and documents to Home Assistant devices
 or entities when model/entity/source identity is strong enough, refreshes
-semantic facts/pages/gaps, and regenerates living pages when repaired or newly
-linked evidence changes the wiki. The response reports `scanned`, `reparsed`,
-`skipped`, `failed`, repaired `sources`, auto-link `linked` summaries, semantic
+semantic facts/pages/gaps for changed or explicitly forced sources, and
+regenerates living pages only for devices affected by repaired or newly linked
+evidence or an older generated-page policy. It skips generated-page artifacts,
+so "reindex uploads" stays focused on user-provided/manual sources and stale
+page refresh rather than treating generated pages as source material. The
+response reports `scanned`, `reparsed`, `skipped`, `failed`, `truncated`,
+`budgetExhausted`, repaired `sources`, auto-link `linked` summaries, semantic
 enrichment counts, regenerated page `generated` counts, and per-source
 `failures`.
 
@@ -364,6 +368,9 @@ metadata references the HA object. Ask source records also include `sourceId`
 and `url` aliases alongside the canonical SDK source fields. Overlapping repair
 runs are coalesced by the SDK, so repeated broad Refine/Reindex/Ask-triggered
 repair calls should not stack unbounded LLM/search work in the daemon.
+Home Graph status reports `activeRefinementTaskCount` for running/queued work
+only; detected backlog records remain visible in the refinement task list but
+do not make readiness look like an active repair run.
 
 `GET` or `POST /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.
@@ -387,7 +394,10 @@ device, area, source, fact, and gap context edges so the map remains a graph
 instead of a disconnected list of matching records.
 
 The JSON response includes `nodes`, `edges`, `width`, `height`, `nodeCount`,
-`edgeCount`, `svg`, and `facets`. `facets.homeAssistant` contains the actual
+`edgeCount`, `svg`, and `facets`. Edge records include canonical `fromId` and
+`toId` plus `source`, `target`, `sourceTitle`, and `targetTitle` aliases so
+browser graph renderers can consume the map without remapping the SDK fields.
+`facets.homeAssistant` contains the actual
 areas, devices, entity domains, integrations, labels, and other Home Assistant
 values present in the graph, with counts. Panels should build filter controls
 from those facets and send selected filters back to the SDK; they should not
