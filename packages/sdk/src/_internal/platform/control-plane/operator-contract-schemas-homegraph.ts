@@ -95,6 +95,7 @@ export const HOME_GRAPH_REINDEX_OUTPUT_SCHEMA = objectSchema({
   skippedGeneratedPageArtifactCount: NUMBER_SCHEMA,
   refreshedGeneratedPageCount: NUMBER_SCHEMA,
   generatedPagePolicyVersion: STRING_SCHEMA,
+  coalesced: BOOLEAN_SCHEMA,
   truncated: BOOLEAN_SCHEMA,
   budgetExhausted: BOOLEAN_SCHEMA,
   sources: arraySchema(KNOWLEDGE_SOURCE_SCHEMA),

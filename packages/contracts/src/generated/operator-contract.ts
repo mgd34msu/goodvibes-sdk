@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.7"
+    "version": "0.28.8"
   },
   "auth": {
     "modes": [
@@ -29806,6 +29806,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "generatedPagePolicyVersion": {
               "type": "string"
+            },
+            "coalesced": {
+              "type": "boolean"
             },
             "truncated": {
               "type": "boolean"

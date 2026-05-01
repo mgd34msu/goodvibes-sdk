@@ -250,6 +250,48 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.text).toContain('four HDMI ports');
   });
 
+  test('base Home Assistant alias ask suppresses unrelated broad facts', async () => {
+    const { store, artifactStore } = createStores();
+    const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.syncSnapshot({
+      installationId: 'house',
+      devices: [
+        { id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' },
+        { id: 'router', name: 'Storage Router', manufacturer: 'GL.iNet', model: 'MT6000' },
+      ],
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'LG TV feature sheet',
+      body: 'The LG 86NANO90UNA TV has 4K NanoCell display, HDR10, Dolby Vision, HDMI eARC, and webOS smart TV features.',
+      target: { kind: 'device', id: 'tv', relation: 'has_manual' },
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'Router network notes',
+      body: 'The GL.iNet MT6000 has Wi-Fi 6 routing, NAS storage shares, WireGuard VPN, firewall rules, and Ethernet services.',
+      target: { kind: 'device', id: 'router', relation: 'has_manual' },
+    });
+    await semantic.reindex({ knowledgeSpaceId: homeAssistantKnowledgeSpaceId('house'), force: true });
+
+    const answer = await semantic.answer({
+      knowledgeSpaceId: 'homeassistant',
+      query: 'What refresh rate, HDR formats, HDMI 2.1 or gaming features, and smart TV features does the TV have?',
+      includeSources: true,
+    });
+    const text = [
+      answer.answer.text,
+      ...answer.answer.sources.map((source) => source.title ?? ''),
+      ...answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`),
+    ].join('\n');
+
+    expect(text).toContain('Dolby Vision');
+    expect(text).not.toContain('WireGuard');
+    expect(text).not.toContain('NAS storage');
+    expect(text).not.toContain('firewall');
+  });
+
   test('Home Graph ask prioritizes answer synthesis before background semantic enrichment', async () => {
     const { store, artifactStore } = createStores();
     const llm = new OrderedHomeGraphAskLlm();

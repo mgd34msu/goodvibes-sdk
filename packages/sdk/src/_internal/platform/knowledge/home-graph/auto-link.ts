@@ -5,6 +5,7 @@ import type {
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
+import { yieldEvery } from '../cooperative.js';
 import {
   buildHomeGraphMetadata,
   edgeIsActive,
@@ -72,7 +73,8 @@ export async function autoLinkHomeGraphSources(input: {
   readonly state: HomeGraphState;
 }): Promise<readonly HomeGraphAutoLinkResult[]> {
   const linked: HomeGraphAutoLinkResult[] = [];
-  for (const source of input.sources) {
+  for (const [index, source] of input.sources.entries()) {
+    await yieldEvery(index);
     const result = await autoLinkHomeGraphSource({
       store: input.store,
       spaceId: input.spaceId,

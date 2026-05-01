@@ -337,6 +337,7 @@ export interface HomeGraphReindexResult {
   readonly skippedGeneratedPageArtifactCount?: number;
   readonly refreshedGeneratedPageCount?: number;
   readonly generatedPagePolicyVersion?: string;
+  readonly coalesced?: boolean;
   readonly truncated?: boolean;
   readonly budgetExhausted?: boolean;
   readonly sources: readonly KnowledgeSourceRecord[];

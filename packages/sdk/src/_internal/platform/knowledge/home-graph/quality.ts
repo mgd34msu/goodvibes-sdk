@@ -1,5 +1,6 @@
 import type { KnowledgeIssueRecord, KnowledgeIssueUpsertInput, KnowledgeNodeRecord } from '../types.js';
 import type { KnowledgeStore } from '../store.js';
+import { yieldEvery } from '../cooperative.js';
 import { buildIssue, readRecord, stableHash, uniqueStrings } from './helpers.js';
 import { readHomeGraphState, sourcesLinkedToNode } from './state.js';
 
@@ -110,7 +111,8 @@ export async function refreshHomeGraphQualityIssues(
 ): Promise<readonly KnowledgeIssueRecord[]> {
   const state = readHomeGraphState(store, spaceId);
   const issues: KnowledgeIssueUpsertInput[] = [];
-  for (const node of state.nodes) {
+  for (const [index, node] of state.nodes.entries()) {
+    await yieldEvery(index, 32);
     if (node.kind !== 'ha_device') continue;
     if (sourcesLinkedToNode(node.id, state).length === 0 && shouldRequireManual(node, state)) {
       issues.push(qualityIssue(spaceId, installationId, 'homegraph.device.missing_manual', `${node.title} has no linked manual or source.`, node));

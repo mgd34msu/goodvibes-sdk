@@ -30,10 +30,12 @@ export async function answerHomeGraphQuery(input: {
       linkedObjects,
       noMatchMessage: `No Home Graph knowledge matched "${input.query.query}".`,
     });
-    void input.semanticService.enrichSources(uniqueSources(sources), {
-      knowledgeSpaceId: input.spaceId,
-      limit: Math.min(3, Math.max(1, sources.length)),
-    }).catch(() => {});
+    setTimeout(() => {
+      void input.semanticService?.enrichSources(uniqueSources(sources), {
+        knowledgeSpaceId: input.spaceId,
+        limit: Math.min(3, Math.max(1, sources.length)),
+      }).catch(() => {});
+    }, 0);
     return {
       ok: true,
       spaceId: input.spaceId,
