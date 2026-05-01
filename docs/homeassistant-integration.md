@@ -256,7 +256,10 @@ semantic facts/pages/gaps for changed or explicitly forced sources, and
 regenerates living pages only for devices affected by repaired or newly linked
 evidence or an older generated-page policy. It skips generated-page artifacts,
 so "reindex uploads" stays focused on user-provided/manual sources and stale
-page refresh rather than treating generated pages as source material. The
+page refresh rather than treating generated pages as source material. In a
+normal changed-only run, source auto-linking is limited to sources reparsed in
+that run; a forced reindex can still perform a broader stored-source link
+audit. The
 response reports `scanned`, `reparsed`, `skipped`, `failed`, `truncated`,
 `budgetExhausted`, `changedSourceCount`, `forcedSourceCount`,
 `skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
@@ -310,6 +313,11 @@ specifications, actionable maintenance, troubleshooting, and source-backed
 notes rather than generic handling/safety fragments, certified cable warnings,
 remote/accessory instructions, service-only port fragments, or heading-only
 manual/spec fragments.
+Semantic refinement gaps such as `knowledge.answer_gap`,
+`knowledge.semantic_gap`, and `knowledge.intrinsic_gap` are not rendered as
+device/room page issues. They remain available through Ask gaps, review, and
+refinement-task routes where clients can show repair state without mixing
+backlog questions into wiki page content.
 Room pages also scope open issues to the requested area and its related graph
 objects. A room page does not render every open Home Graph issue in the house;
 only issues attached to the room, its devices/entities/automations/scenes,

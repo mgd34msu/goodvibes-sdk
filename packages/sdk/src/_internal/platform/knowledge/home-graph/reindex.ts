@@ -32,7 +32,11 @@ export interface HomeGraphReindexContext {
     spaceId: string,
     installationId: string,
   ) => Promise<KnowledgeExtractionRecord | undefined>;
-  readonly autoLinkExistingSources: (spaceId: string, installationId: string) => Promise<readonly HomeGraphAutoLinkResult[]>;
+  readonly autoLinkExistingSources: (
+    spaceId: string,
+    installationId: string,
+    sourceIds?: readonly string[],
+  ) => Promise<readonly HomeGraphAutoLinkResult[]>;
   readonly refreshQualityIssues: (spaceId: string, installationId: string) => Promise<readonly KnowledgeIssueRecord[]>;
 }
 
@@ -58,7 +62,10 @@ export async function runHomeGraphReindex(
     extract: (source, artifact) => context.extract(source, artifact, spaceId, installationId),
   });
   await yieldToEventLoop();
-  const linked = await context.autoLinkExistingSources(spaceId, installationId);
+  const relinkedSourceIds = reindex.sources.map((source) => source.id);
+  const linked = relinkedSourceIds.length > 0 || input.force === true
+    ? await context.autoLinkExistingSources(spaceId, installationId, input.force === true ? undefined : relinkedSourceIds)
+    : [];
   await yieldToEventLoop();
   const changedSourceIds = uniqueStrings([
     ...reindex.sources.map((source) => source.id),

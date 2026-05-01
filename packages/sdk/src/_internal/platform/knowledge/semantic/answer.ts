@@ -4,7 +4,12 @@ import type {
   KnowledgeSearchResult,
   KnowledgeSourceRecord,
 } from '../types.js';
-import { getKnowledgeSpaceId, isInKnowledgeSpace, normalizeKnowledgeSpaceId } from '../spaces.js';
+import {
+  getKnowledgeSpaceId,
+  isHomeAssistantKnowledgeSpace,
+  isInKnowledgeSpace,
+  normalizeKnowledgeSpaceId,
+} from '../spaces.js';
 import type {
   KnowledgeSemanticAnswerInput,
   KnowledgeSemanticAnswerResult,
@@ -709,9 +714,11 @@ function belongsToAnswerSpace(
   record: { readonly metadata?: Record<string, unknown> } | undefined | null,
   spaceId: string,
 ): boolean {
-  return normalizeKnowledgeSpaceId(spaceId) === 'default'
-    ? normalizeKnowledgeSpaceId(getKnowledgeSpaceId(record)) === 'default'
-    : isInKnowledgeSpace(record, spaceId);
+  const normalized = normalizeKnowledgeSpaceId(spaceId);
+  const recordSpaceId = normalizeKnowledgeSpaceId(getKnowledgeSpaceId(record));
+  if (normalized === 'default') return recordSpaceId === 'default';
+  if (normalized === 'homeassistant') return isHomeAssistantKnowledgeSpace(recordSpaceId);
+  return isInKnowledgeSpace(record, normalized);
 }
 
 function uniqueNodes(nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {

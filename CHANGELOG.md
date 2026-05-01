@@ -20,6 +20,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.7] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- `knowledgeSpaceId: "homeassistant"` now acts as a generic Home Assistant
+  namespace alias for base Knowledge Ask, so clients that are not tied to one
+  installation id can still retrieve evidence from `homeassistant:*` spaces.
+
+### Fixed
+- Home Graph generated pages no longer render semantic refinement gaps such as
+  `knowledge.answer_gap` as page issues. Those gaps remain visible through Ask,
+  refinement tasks, and review surfaces instead of polluting device and room
+  wiki pages.
+- Home Graph changed-only reindex now auto-links only the sources that were
+  actually reparsed during that run. Forced reindex can still scan all stored
+  sources, but normal "reindex uploads" no longer turns a mostly skipped run
+  into a broad source-linking pass.
+
+### Migration
+- none
+
+---
+
 ## [0.28.6] - 2026-05-01
 
 ### Breaking
