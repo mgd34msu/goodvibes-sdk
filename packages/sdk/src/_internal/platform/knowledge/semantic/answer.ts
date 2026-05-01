@@ -83,7 +83,10 @@ export async function answerKnowledgeQuery(
   const limit = Math.max(1, input.limit ?? 8);
   const evidence = collectAnswerEvidence(context.store, input, spaceId, limit);
   if (evidence.length === 0) {
-    const gap = await persistAnswerGap(context.store, spaceId, input.query, 'No indexed evidence matched the question.');
+    const linkedObjects = input.includeLinkedObjects === false ? [] : [...input.linkedObjects ?? []];
+    const gap = await persistAnswerGap(context.store, spaceId, input.query, 'No indexed evidence matched the question.', {
+      linkedObjects,
+    });
     return {
       ok: true,
       spaceId,
@@ -93,7 +96,7 @@ export async function answerKnowledgeQuery(
         mode,
         confidence: 0,
         sources: [],
-        linkedObjects: input.includeLinkedObjects === false ? [] : [...input.linkedObjects ?? []],
+        linkedObjects,
         facts: [],
         gaps: [gap],
         synthesized: false,
@@ -110,7 +113,10 @@ export async function answerKnowledgeQuery(
     : uniqueNodes([...(input.linkedObjects ?? []), ...evidence.flatMap((item) => item.node ? [item.node] : [])])
       .filter(isSemanticAnswerLinkedObject)
       .slice(0, 24);
-  const gaps = await persistAnswerGaps(context.store, spaceId, input.query, llmAnswer?.gaps ?? []);
+  const gaps = await persistAnswerGaps(context.store, spaceId, input.query, llmAnswer?.gaps ?? [], {
+    sources,
+    linkedObjects,
+  });
   const featureIntent = hasFeatureIntentForQuery(input.query);
   const text = cleanSynthesizedAnswer(
     llmAnswer?.answer?.trim() || renderFallbackAnswer(input.query, mode, evidence),
@@ -383,32 +389,71 @@ async function persistAnswerGap(
   spaceId: string,
   query: string,
   reason: string,
+  context: {
+    readonly subject?: string;
+    readonly sources?: readonly KnowledgeSourceRecord[];
+    readonly linkedObjects?: readonly KnowledgeNodeRecord[];
+  } = {},
 ): Promise<KnowledgeNodeRecord> {
+  const linkedObjects = context.linkedObjects ?? [];
+  const sources = context.sources ?? [];
+  const subject = context.subject ?? linkedObjects[0]?.title;
+  const fingerprint = answerGapFingerprint(spaceId, query, subject, linkedObjects[0]?.id);
   const node = await store.upsertNode({
-    id: `sem-answer-gap-${semanticHash(spaceId, query)}`,
+    id: `sem-answer-gap-${fingerprint}`,
     kind: 'knowledge_gap',
-    slug: `answer-gap-${semanticHash(spaceId, query)}`,
+    slug: `answer-gap-${fingerprint}`,
     title: query,
     summary: reason,
     confidence: 70,
+    ...(sources[0] ? { sourceId: sources[0].id } : {}),
     metadata: semanticMetadata(spaceId, {
       semanticKind: 'gap',
       gapKind: 'answer',
       query,
       reason,
+      subject,
+      subjectFingerprint: fingerprint,
+      sourceIds: sources.map((source) => source.id),
+      linkedObjectIds: linkedObjects.map((node) => node.id),
     }),
   });
+  for (const source of sources) {
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: node.id,
+      relation: 'has_gap',
+      metadata: semanticMetadata(spaceId, { gapKind: 'answer' }),
+    });
+  }
+  for (const object of linkedObjects) {
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: object.id,
+      toKind: 'node',
+      toId: node.id,
+      relation: 'has_gap',
+      metadata: semanticMetadata(spaceId, { gapKind: 'answer' }),
+    });
+  }
   await store.upsertIssue({
-    id: `sem-answer-gap-issue-${semanticHash(spaceId, query)}`,
+    id: `sem-answer-gap-issue-${fingerprint}`,
     severity: 'info',
     code: 'knowledge.answer_gap',
     message: `No knowledge answer available for: ${query}`,
     status: 'open',
+    ...(sources[0] ? { sourceId: sources[0].id } : {}),
     nodeId: node.id,
     metadata: semanticMetadata(spaceId, {
       namespace: `knowledge:${spaceId}:answers`,
       query,
       reason,
+      subject,
+      subjectFingerprint: fingerprint,
+      sourceIds: sources.map((source) => source.id),
+      linkedObjectIds: linkedObjects.map((entry) => entry.id),
     }),
   });
   return node;
@@ -419,12 +464,37 @@ async function persistAnswerGaps(
   spaceId: string,
   query: string,
   gaps: readonly KnowledgeSemanticGapInput[],
+  context: {
+    readonly sources?: readonly KnowledgeSourceRecord[];
+    readonly linkedObjects?: readonly KnowledgeNodeRecord[];
+  } = {},
 ): Promise<readonly KnowledgeNodeRecord[]> {
   const nodes: KnowledgeNodeRecord[] = [];
   for (const gap of gaps.slice(0, 8)) {
-    nodes.push(await persistAnswerGap(store, spaceId, gap.question || query, gap.reason ?? 'Answer synthesis identified a missing knowledge gap.'));
+    nodes.push(await persistAnswerGap(store, spaceId, gap.question || query, gap.reason ?? 'Answer synthesis identified a missing knowledge gap.', {
+      ...context,
+      ...(gap.subject ? { subject: gap.subject } : {}),
+    }));
   }
   return nodes;
+}
+
+function answerGapFingerprint(spaceId: string, query: string, subject?: string, subjectId?: string): string {
+  return semanticHash(spaceId, subjectId ?? normalizeGapSubject(subject), answerGapIntent(query));
+}
+
+function normalizeGapSubject(subject: string | undefined): string {
+  return normalizeWhitespace(subject ?? 'unscoped').toLowerCase().replace(/[^a-z0-9._:-]+/g, '-').replace(/^-+|-+$/g, '') || 'unscoped';
+}
+
+function answerGapIntent(query: string): string {
+  const tokens = new Set(tokenizeSemanticQuery(query));
+  if (hasAny(tokens, ['feature', 'features', 'capability', 'capabilities', 'function', 'functions', 'spec', 'specs', 'specification', 'specifications'])) {
+    return 'features-specifications';
+  }
+  if (hasAny(tokens, ['battery', 'batteries'])) return 'battery';
+  if (hasAny(tokens, ['manual', 'documentation', 'source', 'sources'])) return 'source-documentation';
+  return uniqueStrings([...tokens].filter((token) => !GENERIC_ANSWER_INTENT_TOKENS.has(token)).sort()).slice(0, 8).join('-') || 'general';
 }
 
 function buildSourceFactIndex(store: KnowledgeStore, spaceId: string): Map<string, KnowledgeNodeRecord[]> {

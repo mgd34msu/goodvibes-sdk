@@ -132,6 +132,10 @@ export async function dispatchOperatorRoutes(
     | 'getKnowledgeJobs'
     | 'getKnowledgeJob'
     | 'getKnowledgeJobRuns'
+    | 'getKnowledgeRefinementTasks'
+    | 'getKnowledgeRefinementTask'
+    | 'postKnowledgeRunRefinement'
+    | 'postKnowledgeCancelRefinementTask'
     | 'getKnowledgeSchedules'
     | 'getKnowledgeSchedule'
     | 'postKnowledgeIngestUrl'
@@ -382,6 +386,8 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/knowledge/reports' && method === 'GET') return handlers.getKnowledgeReports(url);
   if (pathname === '/api/knowledge/jobs' && method === 'GET') return handlers.getKnowledgeJobs();
   if (pathname === '/api/knowledge/job-runs' && method === 'GET') return handlers.getKnowledgeJobRuns(url);
+  if (pathname === '/api/knowledge/refinement/tasks' && method === 'GET') return handlers.getKnowledgeRefinementTasks(url);
+  if (pathname === '/api/knowledge/refinement/run' && method === 'POST') return handlers.postKnowledgeRunRefinement(req);
   if (pathname === '/api/knowledge/schedules' && method === 'GET') return handlers.getKnowledgeSchedules(url);
   if (pathname === '/api/knowledge/projections' && method === 'GET') return handlers.getKnowledgeProjectionTargets(url);
   if (pathname === '/api/knowledge/map' && method === 'GET') return handlers.getKnowledgeMap(url);
@@ -421,6 +427,10 @@ export async function dispatchOperatorRoutes(
   if (knowledgeJobRunMatch && method === 'POST') return handlers.postKnowledgeRunJob(decodeURIComponent(knowledgeJobRunMatch[1]), req);
   const knowledgeJobMatch = pathname.match(/^\/api\/knowledge\/jobs\/([^/]+)$/);
   if (knowledgeJobMatch && method === 'GET') return handlers.getKnowledgeJob(decodeURIComponent(knowledgeJobMatch[1]));
+  const knowledgeRefinementTaskCancelMatch = pathname.match(/^\/api\/knowledge\/refinement\/tasks\/([^/]+)\/cancel$/);
+  if (knowledgeRefinementTaskCancelMatch && method === 'POST') return handlers.postKnowledgeCancelRefinementTask(decodeURIComponent(knowledgeRefinementTaskCancelMatch[1]), req);
+  const knowledgeRefinementTaskMatch = pathname.match(/^\/api\/knowledge\/refinement\/tasks\/([^/]+)$/);
+  if (knowledgeRefinementTaskMatch && method === 'GET') return handlers.getKnowledgeRefinementTask(decodeURIComponent(knowledgeRefinementTaskMatch[1]));
   const knowledgeScheduleEnabledMatch = pathname.match(/^\/api\/knowledge\/schedules\/([^/]+)\/enabled$/);
   if (knowledgeScheduleEnabledMatch && method === 'POST') return handlers.postKnowledgeSetScheduleEnabled(decodeURIComponent(knowledgeScheduleEnabledMatch[1]), req);
   const knowledgeScheduleMatch = pathname.match(/^\/api\/knowledge\/schedules\/([^/]+)$/);

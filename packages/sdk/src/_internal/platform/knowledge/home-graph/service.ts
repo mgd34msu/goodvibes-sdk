@@ -33,12 +33,10 @@ import { reviewHomeGraphFact, type HomeGraphReviewResult } from './review.js';
 import {
   inferHomeGraphSourceType,
   readHomeGraphState,
-  renderHomeGraphState,
   safeHomeGraphFilename,
 } from './state.js';
 import { answerHomeGraphQuery } from './ask.js';
 import type { KnowledgeSemanticService } from '../semantic/index.js';
-import { renderHomeGraphMap } from './rendering.js';
 import {
   autoLinkHomeGraphSource,
   autoLinkHomeGraphSources,
@@ -53,6 +51,15 @@ import {
 } from './generated-pages.js';
 import { reindexHomeGraphSources } from './reindex.js';
 import { listHomeGraphPages } from './pages.js';
+import { browseHomeGraph, listHomeGraphSources } from './inventory.js';
+import { mapHomeGraph } from './map-view.js';
+import { getHomeGraphStatus } from './status.js';
+import {
+  cancelHomeGraphRefinementTask,
+  getHomeGraphRefinementTask,
+  listHomeGraphRefinementTasks,
+  runHomeGraphRefinement,
+} from './refinement.js';
 import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
 import {
   readHomeGraphSearchState,
@@ -68,7 +75,6 @@ import type {
   HomeGraphPageListResult, HomeGraphReindexResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
-import { HOME_GRAPH_CAPABILITIES } from './types.js';
 
 export class HomeGraphService {
   constructor(
@@ -78,24 +84,7 @@ export class HomeGraphService {
   ) {}
 
   async status(input: { readonly installationId?: string; readonly knowledgeSpaceId?: string } = {}): Promise<HomeGraphStatus> {
-    await this.store.init();
-    const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
-    const state = readHomeGraphState(this.store, spaceId);
-    const snapshotSources = state.sources
-      .filter((source) => source.metadata.homeGraphSourceKind === 'snapshot')
-      .sort((a, b) => b.updatedAt - a.updatedAt);
-    return {
-      ok: true,
-      spaceId,
-      installationId,
-      sourceCount: state.sources.length,
-      nodeCount: state.nodes.length,
-      edgeCount: state.edges.length,
-      issueCount: state.issues.length,
-      extractionCount: state.extractions.length,
-      ...(snapshotSources[0]?.updatedAt ? { lastSnapshotAt: snapshotSources[0].updatedAt } : {}),
-      capabilities: HOME_GRAPH_CAPABILITIES,
-    };
+    return getHomeGraphStatus(this.store, input);
   }
 
   async syncSnapshot(input: HomeGraphSnapshotInput): Promise<HomeGraphSyncResult> {
@@ -419,9 +408,7 @@ export class HomeGraphService {
     readonly spaceId: string;
     readonly sources: readonly KnowledgeSourceRecord[];
   }> {
-    await this.store.init();
-    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
-    return { ok: true, spaceId, sources: readHomeGraphState(this.store, spaceId).sources.slice(0, Math.max(1, input.limit ?? 100)) };
+    return listHomeGraphSources({ ...input, store: this.store });
   }
 
   async listPages(input: HomeGraphSpaceInput & { readonly limit?: number; readonly includeMarkdown?: boolean } = {}): Promise<HomeGraphPageListResult> {
@@ -437,6 +424,32 @@ export class HomeGraphService {
     });
   }
 
+  async listRefinementTasks(input: HomeGraphSpaceInput & {
+    readonly limit?: number;
+    readonly state?: string;
+    readonly subjectId?: string;
+    readonly gapId?: string;
+  } = {}) {
+    return listHomeGraphRefinementTasks({ ...input, store: this.store });
+  }
+
+  async getRefinementTask(input: HomeGraphSpaceInput & { readonly taskId: string }) {
+    return getHomeGraphRefinementTask({ ...input, store: this.store });
+  }
+
+  async runRefinement(input: HomeGraphSpaceInput & {
+    readonly gapIds?: readonly string[];
+    readonly sourceIds?: readonly string[];
+    readonly limit?: number;
+    readonly force?: boolean;
+  } = {}) {
+    return runHomeGraphRefinement({ ...input, store: this.store, semanticService: this.options.semanticService });
+  }
+
+  async cancelRefinementTask(input: HomeGraphSpaceInput & { readonly taskId: string }) {
+    return cancelHomeGraphRefinementTask({ ...input, store: this.store });
+  }
+
   async browse(input: HomeGraphSpaceInput & { readonly limit?: number } = {}): Promise<{
     readonly ok: true;
     readonly spaceId: string;
@@ -445,27 +458,11 @@ export class HomeGraphService {
     readonly sources: readonly KnowledgeSourceRecord[];
     readonly issues: readonly KnowledgeIssueRecord[];
   }> {
-    await this.store.init();
-    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
-    const limit = Math.max(1, input.limit ?? 250);
-    const state = readHomeGraphState(this.store, spaceId);
-    return {
-      ok: true,
-      spaceId,
-      nodes: state.nodes.slice(0, limit),
-      edges: state.edges.slice(0, limit),
-      sources: state.sources.slice(0, limit),
-      issues: state.issues.slice(0, limit),
-    };
+    return browseHomeGraph({ ...input, store: this.store });
   }
 
   async map(input: HomeGraphMapInput = {}): Promise<HomeGraphMapResult> {
-    await this.store.init();
-    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
-    return renderHomeGraphMap(renderHomeGraphState(this.store, spaceId, 'Home Graph Map'), {
-      ...input,
-      knowledgeSpaceId: spaceId,
-    });
+    return mapHomeGraph({ ...input, store: this.store });
   }
 
   async exportSpace(input: HomeGraphSpaceInput = {}): Promise<HomeGraphExport> {

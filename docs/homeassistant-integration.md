@@ -98,9 +98,13 @@ config flow setup. The most useful endpoints are:
 | `GET /api/homeassistant/home-graph/pages` | List generated Home Graph wiki pages with markdown content for previews/editors. |
 | `GET /api/homeassistant/home-graph/issues` | List Home Graph data-quality/review issues. |
 | `POST /api/homeassistant/home-graph/facts/review` | Accept, reject, resolve, edit, or forget a graph issue/source/node. |
+| `GET /api/homeassistant/home-graph/refinement/tasks` | List durable Home Graph refinement tasks and traces. |
+| `GET /api/homeassistant/home-graph/refinement/tasks/{id}` | Inspect one refinement task. |
+| `POST /api/homeassistant/home-graph/refinement/run` | Run source-backed gap refinement for the HA knowledge space. |
+| `POST /api/homeassistant/home-graph/refinement/tasks/{id}/cancel` | Cancel a queued or active refinement task. |
 | `GET /api/homeassistant/home-graph/sources` | Browse source inventory and provenance for the HA space. |
 | `GET /api/homeassistant/home-graph/browse` | Browse namespace-filtered nodes, edges, sources, and issues. |
-| `GET /api/homeassistant/home-graph/map` | Return a visual node/edge map as JSON layout data plus SVG, or SVG directly with `format=svg`. |
+| `GET`/`POST /api/homeassistant/home-graph/map` | Return a visual node/edge map as JSON layout data plus SVG, or SVG directly with `format=svg`. |
 | `POST /api/homeassistant/home-graph/export` | Export the HA knowledge space. |
 | `POST /api/homeassistant/home-graph/import` | Import a HA knowledge space export. |
 
@@ -298,6 +302,10 @@ source semantics. Generated device passports and room pages apply the same
 fact-quality filter so living pages focus on useful device capabilities,
 specifications, actionable maintenance, troubleshooting, and source-backed
 notes rather than generic handling/safety fragments from manuals.
+Room pages also scope open issues to the requested area and its related graph
+objects. A room page does not render every open Home Graph issue in the house;
+only issues attached to the room, its devices/entities/automations/scenes,
+linked sources, or scoped gap nodes are eligible.
 
 When Home Graph sync/reindex/ingest/ask can identify an object and missing
 knowledge gaps, the shared semantic gap-repair layer can search the web in the
@@ -314,7 +322,24 @@ reindex or ask again later to use the newly indexed sources once
 extraction/enrichment has finished. Existing repair sources only suppress the
 specific gap they repair, not every gap attached to the same device or service.
 
-`GET /api/homeassistant/home-graph/map` returns the current Home Graph as visual
+Refinement is observable through a stable job-style API. The Home Assistant
+panel can show what gap was detected, whether it is repairable, what source
+candidates were accepted or rejected, what graph changes were applied, and
+whether the task is closed, blocked, suppressed, cancelled, failed, or waiting
+for review. The Home Graph wrappers are:
+
+- `GET /api/homeassistant/home-graph/refinement/tasks`
+- `GET /api/homeassistant/home-graph/refinement/tasks/{id}`
+- `POST /api/homeassistant/home-graph/refinement/run`
+- `POST /api/homeassistant/home-graph/refinement/tasks/{id}/cancel`
+
+The base knowledge API exposes the same task model under
+`/api/knowledge/refinement/*`. Home Graph status includes readiness signals for
+`ready`, `repairing`, `needs_review`, `needs_sources`, and `empty`, plus open
+issue and active refinement task counts. Panels should display those fields
+instead of inferring refinement progress from reindex duration or issue totals.
+
+`GET` or `POST /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.
 It uses the shared knowledge map renderer also exposed by `GET /api/knowledge/map`,
 so Home Assistant panels can rely on the same node/edge/SVG response shape as

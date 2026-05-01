@@ -73,6 +73,10 @@ export const runtimeConfigDefaults = {
     streamMode: 'sse',
     allowRemote: false,
     trustProxy: false,
+    openaiCompatible: {
+      enabled: true,
+      pathPrefix: '/v1',
+    },
     tls: {
       mode: 'off',
       certFile: '',
@@ -223,6 +227,19 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description: 'Trust proxy forwarding headers such as x-forwarded-for for the control plane',
+  },
+  {
+    key: 'controlPlane.openaiCompatible.enabled',
+    type: 'boolean',
+    default: true,
+    description: 'Expose OpenAI-compatible /v1/models and /v1/chat/completions routes on the authenticated daemon',
+  },
+  {
+    key: 'controlPlane.openaiCompatible.pathPrefix',
+    type: 'string',
+    default: '/v1',
+    description: 'Path prefix for the daemon OpenAI-compatible routes',
+    validate: (v) => typeof v === 'string' && v.startsWith('/') && !v.includes('..'),
   },
   {
     key: 'controlPlane.tls.mode',

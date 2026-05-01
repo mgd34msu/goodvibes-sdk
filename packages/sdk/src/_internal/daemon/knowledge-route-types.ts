@@ -65,6 +65,10 @@ export interface KnowledgeServiceLike {
   listJobs(): readonly unknown[];
   getJob(jobId: string): unknown | null;
   listJobRuns(limit: number, jobId?: string): readonly unknown[];
+  listRefinementTasks(limit: number, filter: Record<string, unknown>): readonly unknown[];
+  getRefinementTask(id: string): unknown | null;
+  runRefinement(input: Record<string, unknown>): Promise<unknown>;
+  cancelRefinementTask(id: string): Promise<unknown | null>;
   listSchedules(limit: number): readonly unknown[];
   getSchedule(id: string): unknown | null;
   ingestUrl(input: Record<string, unknown>): Promise<unknown>;

@@ -102,6 +102,7 @@ export { createDaemonChannelRouteHandlers } from './channel-routes.js';
 export { createDaemonIntegrationRouteHandlers } from './integration-routes.js';
 export { createDaemonSystemRouteHandlers } from './system-routes.js';
 export { createDaemonKnowledgeRouteHandlers } from './knowledge-routes.js';
+export { createDaemonKnowledgeRefinementRouteHandlers } from './knowledge-refinement-routes.js';
 export { createDaemonMediaRouteHandlers } from './media-routes.js';
 export type { DaemonRuntimeRouteContext, JsonBody } from './runtime-route-types.js';
 export { createDaemonRuntimeAutomationRouteHandlers } from './runtime-automation-routes.js';

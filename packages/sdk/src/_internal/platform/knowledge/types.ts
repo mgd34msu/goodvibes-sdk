@@ -70,6 +70,28 @@ export type KnowledgeExtractionFormat =
 export type KnowledgePacketDetail = 'compact' | 'standard' | 'detailed';
 export type KnowledgeJobMode = 'inline' | 'background';
 export type KnowledgeJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+export type KnowledgeRefinementTaskState =
+  | 'detected'
+  | 'queued'
+  | 'searching'
+  | 'evaluating'
+  | 'extracting'
+  | 'applying'
+  | 'verified'
+  | 'closed'
+  | 'blocked'
+  | 'suppressed'
+  | 'needs_review'
+  | 'cancelled'
+  | 'failed';
+export type KnowledgeRefinementTaskPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type KnowledgeRefinementTaskTrigger =
+  | 'ingest'
+  | 'homegraph-sync'
+  | 'reindex'
+  | 'scheduled'
+  | 'answer'
+  | 'manual';
 export type KnowledgeJobKind =
   | 'lint'
   | 'reindex'
@@ -199,6 +221,42 @@ export interface KnowledgeJobRunRecord {
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
   readonly updatedAt: number;
+}
+
+export interface KnowledgeRefinementTraceEntry {
+  readonly at: number;
+  readonly state: KnowledgeRefinementTaskState;
+  readonly message: string;
+  readonly data?: Record<string, unknown>;
+}
+
+export interface KnowledgeRefinementTaskRecord {
+  readonly id: string;
+  readonly spaceId: string;
+  readonly subjectKind?: KnowledgeUsageTargetKind;
+  readonly subjectId?: string;
+  readonly subjectTitle?: string;
+  readonly subjectType?: string;
+  readonly gapId?: string;
+  readonly issueId?: string;
+  readonly state: KnowledgeRefinementTaskState;
+  readonly priority: KnowledgeRefinementTaskPriority;
+  readonly trigger: KnowledgeRefinementTaskTrigger;
+  readonly budget: Record<string, number>;
+  readonly attemptCount: number;
+  readonly blockedReason?: string;
+  readonly trace: readonly KnowledgeRefinementTraceEntry[];
+  readonly metadata: Record<string, unknown>;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+}
+
+export interface KnowledgeRefinementTaskFilter {
+  readonly spaceId?: string;
+  readonly state?: string;
+  readonly subjectKind?: string;
+  readonly subjectId?: string;
+  readonly gapId?: string;
 }
 
 export interface KnowledgeUsageRecord {
@@ -340,6 +398,26 @@ export interface KnowledgeJobRunUpsertInput {
   readonly metadata?: Record<string, unknown>;
 }
 
+export interface KnowledgeRefinementTaskUpsertInput {
+  readonly id?: string;
+  readonly spaceId: string;
+  readonly subjectKind?: KnowledgeUsageTargetKind;
+  readonly subjectId?: string;
+  readonly subjectTitle?: string;
+  readonly subjectType?: string;
+  readonly gapId?: string;
+  readonly issueId?: string;
+  readonly state: KnowledgeRefinementTaskState;
+  readonly priority?: KnowledgeRefinementTaskPriority;
+  readonly trigger: KnowledgeRefinementTaskTrigger;
+  readonly budget?: Record<string, number>;
+  readonly attemptCount?: number;
+  readonly blockedReason?: string;
+  readonly trace?: readonly KnowledgeRefinementTraceEntry[];
+  readonly appendTrace?: readonly KnowledgeRefinementTraceEntry[];
+  readonly metadata?: Record<string, unknown>;
+}
+
 export interface KnowledgeUsageUpsertInput {
   readonly id?: string;
   readonly targetKind: KnowledgeUsageTargetKind;
@@ -398,6 +476,7 @@ export interface KnowledgeStatus {
   readonly issueCount: number;
   readonly extractionCount: number;
   readonly jobRunCount: number;
+  readonly refinementTaskCount: number;
   readonly usageCount: number;
   readonly candidateCount: number;
   readonly reportCount: number;

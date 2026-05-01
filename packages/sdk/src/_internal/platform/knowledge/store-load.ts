@@ -6,6 +6,7 @@ import {
   mapIssueRow,
   mapJobRunRow,
   mapNodeRow,
+  mapRefinementTaskRow,
   mapReportRow,
   mapScheduleRow,
   mapSourceRow,
@@ -19,6 +20,7 @@ import type {
   KnowledgeIssueRecord,
   KnowledgeJobRunRecord,
   KnowledgeNodeRecord,
+  KnowledgeRefinementTaskRecord,
   KnowledgeScheduleRecord,
   KnowledgeSourceRecord,
   KnowledgeUsageRecord,
@@ -31,6 +33,7 @@ export interface KnowledgeStoreSnapshot {
   readonly issues: KnowledgeIssueRecord[];
   readonly extractions: KnowledgeExtractionRecord[];
   readonly jobRuns: KnowledgeJobRunRecord[];
+  readonly refinementTasks: KnowledgeRefinementTaskRecord[];
   readonly usageRecords: KnowledgeUsageRecord[];
   readonly consolidationCandidates: KnowledgeConsolidationCandidateRecord[];
   readonly consolidationReports: KnowledgeConsolidationReportRecord[];
@@ -51,6 +54,7 @@ export function loadKnowledgeStoreSnapshot(sqlite: SQLiteStore): KnowledgeStoreS
     issues: loadRows(sqlite, 'SELECT * FROM knowledge_issues', mapIssueRow),
     extractions: loadRows(sqlite, 'SELECT * FROM knowledge_extractions', mapExtractionRow),
     jobRuns: loadRows(sqlite, 'SELECT * FROM knowledge_job_runs', mapJobRunRow),
+    refinementTasks: loadRows(sqlite, 'SELECT * FROM knowledge_refinement_tasks', mapRefinementTaskRow),
     usageRecords: loadRows(sqlite, 'SELECT * FROM knowledge_usage_records', mapUsageRow),
     consolidationCandidates: loadRows(sqlite, 'SELECT * FROM knowledge_consolidation_candidates', mapCandidateRow),
     consolidationReports: loadRows(sqlite, 'SELECT * FROM knowledge_consolidation_reports', mapReportRow),

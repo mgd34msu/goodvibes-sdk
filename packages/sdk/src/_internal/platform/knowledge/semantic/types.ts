@@ -119,6 +119,7 @@ export interface KnowledgeSemanticAnswer {
   readonly linkedObjects: readonly KnowledgeNodeRecord[];
   readonly facts: readonly KnowledgeNodeRecord[];
   readonly gaps: readonly KnowledgeNodeRecord[];
+  readonly refinementTaskIds?: readonly string[];
   readonly synthesized: boolean;
 }
 
@@ -154,8 +155,14 @@ export interface KnowledgeSemanticGapRepairResult {
   readonly skippedUrls: readonly string[];
   readonly sourceAssessments?: readonly {
     readonly url: string;
+    readonly title?: string;
+    readonly domain?: string;
+    readonly rank?: number;
+    readonly accepted?: boolean;
     readonly confidence: number;
     readonly reasons: readonly string[];
+    readonly trustReason?: string;
+    readonly rejectionReason?: string;
   }[];
   readonly reason?: string;
 }
@@ -182,5 +189,10 @@ export interface KnowledgeSemanticSelfImproveResult {
   readonly searched: number;
   readonly ingestedSources: number;
   readonly linkedRepairs: number;
+  readonly blockedGaps: number;
+  readonly closedGaps: number;
+  readonly queuedTasks: number;
+  readonly taskIds: readonly string[];
+  readonly ingestedSourceIds: readonly string[];
   readonly errors: readonly { readonly gapId: string; readonly error: string }[];
 }

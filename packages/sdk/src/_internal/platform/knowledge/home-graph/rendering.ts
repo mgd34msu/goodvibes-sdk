@@ -1,6 +1,5 @@
 import type {
   KnowledgeEdgeRecord,
-  KnowledgeExtractionRecord,
   KnowledgeIssueRecord,
   KnowledgeMapFacetValue,
   KnowledgeNodeRecord,
@@ -8,10 +7,9 @@ import type {
 } from '../types.js';
 import { renderKnowledgeMap } from '../map.js';
 import { countFacet, normalizeStringArray, readString } from '../map-filters.js';
-import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
-import { edgeIsActive, isGeneratedPageSource, readRecord, uniqueStrings } from './helpers.js';
+import { edgeIsActive, isGeneratedPageSource, uniqueStrings } from './helpers.js';
 import type { HomeGraphMapHaFilterInput, HomeGraphMapInput, HomeGraphMapResult } from './types.js';
-import { isLowValueFeatureOrSpecText, isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
+import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
 
 export interface HomeGraphRenderState {
   readonly spaceId: string;
@@ -20,7 +18,6 @@ export interface HomeGraphRenderState {
   readonly nodes: readonly KnowledgeNodeRecord[];
   readonly edges: readonly KnowledgeEdgeRecord[];
   readonly issues: readonly KnowledgeIssueRecord[];
-  readonly extractions?: readonly KnowledgeExtractionRecord[];
 }
 
 export function renderRoomPage(state: HomeGraphRenderState, areaId?: string): string {
@@ -50,6 +47,7 @@ export function renderRoomPage(state: HomeGraphRenderState, areaId?: string): st
   ]);
   const sources = relatedSources(state.sources, state.edges, relatedNodeIds);
   const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges);
+  const issues = issuesForScope(state.issues, state.edges, relatedNodeIds, sources);
   return [
     `# ${title}`,
     '',
@@ -61,18 +59,9 @@ export function renderRoomPage(state: HomeGraphRenderState, areaId?: string): st
     renderNodeList('Automations', automations),
     renderNodeList('Scenes', scenes),
     renderNodeList('Scripts', scripts),
-    renderSourceEvidence('Source-Backed Knowledge', sources, state.extractions ?? [], {
-      tokens: uniqueStrings([
-        title,
-        ...devices.map((node) => node.title),
-        ...entities.map((node) => node.title),
-      ].flatMap(tokenizeEvidence)),
-      maxSources: 12,
-      maxSnippetsPerSource: 2,
-    }),
     renderSemanticFacts('Extracted Facts', semanticFacts),
     renderSourceList('Linked Sources', sources),
-    renderIssueList('Open Issues', state.issues.filter((issue) => issue.status === 'open')),
+    renderIssueList('Open Issues', issues),
   ].filter(Boolean).join('\n');
 }
 
@@ -81,12 +70,10 @@ export function renderDevicePassportPage(input: {
   readonly device: KnowledgeNodeRecord;
   readonly entities: readonly KnowledgeNodeRecord[];
   readonly sources: readonly KnowledgeSourceRecord[];
-  readonly extractions?: readonly KnowledgeExtractionRecord[];
   readonly issues: readonly KnowledgeIssueRecord[];
   readonly missingFields: readonly string[];
   readonly semanticFacts?: readonly KnowledgeNodeRecord[];
 }): string {
-  const deviceTokens = deviceEvidenceTokens(input.device, input.entities);
   return [
     `# ${input.device.title}`,
     '',
@@ -104,14 +91,9 @@ export function renderDevicePassportPage(input: {
     renderMetadataField('Device id', readHa(input.device, 'deviceId')),
     '',
     renderNodeList('Entities Exposed To Home Assistant', input.entities),
-    renderSemanticFacts('Extracted Device Facts', input.semanticFacts ?? []),
-    renderSourceEvidence('Source-Backed Features And Notes', input.sources, input.extractions ?? [], {
-      tokens: deviceTokens,
-      maxSources: 8,
-      maxSnippetsPerSource: 4,
-    }),
+    renderSemanticFacts('Verified Device Facts', input.semanticFacts ?? []),
     renderSourceList('Sources', input.sources),
-    renderIssueList('Issues', input.issues),
+    renderIssueList('Open Issues', input.issues.filter((issue) => issue.status === 'open')),
     input.missingFields.length > 0
       ? ['## Open Questions', '', ...input.missingFields.map((field) => `- ${field}`), ''].join('\n')
       : '',
@@ -337,132 +319,6 @@ function renderDeviceOverview(
   return `${device.title}${details} The Home Graph links this device to ${entities.length} Home Assistant entity record(s) and ${sources.length} source(s).`;
 }
 
-function renderSourceEvidence(title: string, sources: readonly KnowledgeSourceRecord[], extractions: readonly KnowledgeExtractionRecord[], options: {
-  readonly tokens: readonly string[];
-  readonly maxSources: number;
-  readonly maxSnippetsPerSource: number;
-}): string {
-  const extractionBySourceId = new Map(extractions.map((extraction) => [extraction.sourceId, extraction]));
-  const entries = sources
-    .map((source) => ({
-      source,
-      snippets: sourceEvidenceSnippets(source, extractionBySourceId.get(source.id), options.tokens, options.maxSnippetsPerSource),
-    }))
-    .filter((entry) => entry.snippets.length > 0)
-    .slice(0, options.maxSources);
-  if (entries.length === 0) {
-    return [
-      `## ${title}`,
-      '',
-      'No linked source-backed details have been extracted yet.',
-      '',
-    ].join('\n');
-  }
-  return [
-    `## ${title}`,
-    '',
-    ...entries.flatMap((entry) => [
-      `### ${entry.source.title ?? entry.source.sourceUri ?? entry.source.id}`,
-      '',
-      ...entry.snippets.map((snippet) => `- ${snippet}`),
-      '',
-    ]),
-  ].join('\n');
-}
-
-function sourceEvidenceSnippets(
-  source: KnowledgeSourceRecord,
-  extraction: KnowledgeExtractionRecord | undefined,
-  tokens: readonly string[],
-  limit: number,
-): string[] {
-  const structure = readRecord(extraction?.structure);
-  const searchText = typeof structure.searchText === 'string' ? structure.searchText : undefined;
-  const candidates = uniqueStrings([
-    extraction?.summary,
-    extraction?.excerpt,
-    ...(extraction?.sections ?? []),
-    ...evidenceWindows(searchText, tokens),
-    ...featureSentences(searchText),
-    source.summary,
-    source.description,
-  ]).filter((entry) => !isUnusableHomeGraphExtractionText(entry) && !isLowValueFeatureOrSpecText(entry)).slice(0, 80);
-  const scored = candidates
-    .map((text) => ({ text: clampEvidence(text), score: evidenceScore(text, tokens) }))
-    .filter((entry) => entry.text.length > 0)
-    .sort((left, right) => right.score - left.score || left.text.length - right.text.length);
-  return uniqueStrings(scored.map((entry) => entry.text)).slice(0, limit);
-}
-
-function evidenceWindows(value: string | undefined, tokens: readonly string[]): string[] {
-  const text = normalizeWhitespace(value ?? '');
-  if (!text) return [];
-  const lower = text.toLowerCase();
-  const windows: string[] = [];
-  for (const token of tokens) {
-    if (token.length < 3) continue;
-    const index = lower.indexOf(token.toLowerCase());
-    if (index < 0) continue;
-    const start = Math.max(0, index - 180);
-    const end = Math.min(text.length, index + 420);
-    windows.push(`${start > 0 ? '...' : ''}${text.slice(start, end).trim()}${end < text.length ? '...' : ''}`);
-  }
-  return windows;
-}
-
-function featureSentences(value: string | undefined): string[] {
-  const text = normalizeWhitespace(value ?? '');
-  if (!text) return [];
-  const keywords = /\b(feature|features|support|supports|capability|capabilities|specification|specifications|mode|modes|hdmi|hdr|dolby|battery|reset|warranty|firmware|voice|remote)\b/i;
-  return (text.match(/[^.!?\n]+[.!?]?/g) ?? [])
-    .map((entry) => entry.trim())
-    .filter((entry) => keywords.test(entry) && !isLowValueFeatureOrSpecText(entry))
-    .slice(0, 24);
-}
-
-function evidenceScore(value: string, tokens: readonly string[]): number {
-  const lower = value.toLowerCase();
-  let score = 0;
-  for (const token of tokens) {
-    if (token.length >= 3 && lower.includes(token.toLowerCase())) score += 10;
-  }
-  if (/\b(feature|features|support|supports|mode|hdmi|hdr|dolby|voice|remote)\b/i.test(value)) score += 25;
-  return score;
-}
-
-function deviceEvidenceTokens(device: KnowledgeNodeRecord, entities: readonly KnowledgeNodeRecord[]): string[] {
-  return uniqueStrings([
-    device.title,
-    ...device.aliases,
-    readMetadataString(device, 'manufacturer'),
-    readMetadataString(device, 'model'),
-    readHa(device, 'deviceId'),
-    ...entities.flatMap((entity) => [
-      entity.title,
-      readHa(entity, 'entityId'),
-      readMetadataString(entity, 'domain'),
-      readMetadataString(entity, 'platform'),
-    ]),
-  ].flatMap(tokenizeEvidence));
-}
-
-function tokenizeEvidence(value: string | undefined): string[] {
-  if (!value) return [];
-  return value.toLowerCase()
-    .split(/[^a-z0-9_.:-]+/)
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length >= 2 && !['the', 'and', 'home', 'assistant', 'device'].includes(entry));
-}
-
-function clampEvidence(value: string): string {
-  const normalized = normalizeWhitespace(value);
-  return normalized.length <= 420 ? normalized : `${normalized.slice(0, 419).trim()}...`;
-}
-
-function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
-}
-
 function readMetadataString(node: KnowledgeNodeRecord, key: string): string | undefined {
   const value = node.metadata[key];
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -548,6 +404,54 @@ function renderIssueList(title: string, issues: readonly KnowledgeIssueRecord[])
     ...issues.slice(0, 100).map((issue) => `- ${issue.severity}: ${issue.message}`),
     '',
   ].join('\n');
+}
+
+export function issuesForScope(
+  issues: readonly KnowledgeIssueRecord[],
+  edges: readonly KnowledgeEdgeRecord[],
+  nodeIds: ReadonlySet<string>,
+  sources: readonly KnowledgeSourceRecord[],
+): KnowledgeIssueRecord[] {
+  const sourceIds = new Set(sources.map((source) => source.id));
+  const scopedNodeIds = expandScopedIssueNodeIds(edges, nodeIds, sourceIds);
+  return issues.filter((issue) => (
+    issue.status === 'open'
+    && (
+      (issue.nodeId !== undefined && scopedNodeIds.has(issue.nodeId))
+      || (issue.sourceId !== undefined && sourceIds.has(issue.sourceId))
+    )
+  ));
+}
+
+function expandScopedIssueNodeIds(
+  edges: readonly KnowledgeEdgeRecord[],
+  nodeIds: ReadonlySet<string>,
+  sourceIds: ReadonlySet<string>,
+): Set<string> {
+  const scoped = new Set(nodeIds);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const edge of edges) {
+      if (!edgeIsActive(edge)) continue;
+      if (edge.toKind !== 'node') continue;
+      const fromScopedNode = edge.fromKind === 'node' && scoped.has(edge.fromId);
+      const fromScopedSource = edge.fromKind === 'source' && sourceIds.has(edge.fromId);
+      if ((fromScopedNode || fromScopedSource) && isIssueRelation(edge.relation) && !scoped.has(edge.toId)) {
+        scoped.add(edge.toId);
+        changed = true;
+      }
+    }
+  }
+  return scoped;
+}
+
+function isIssueRelation(relation: string): boolean {
+  return relation === 'has_gap'
+    || relation === 'has_issue'
+    || relation === 'source_for'
+    || relation === 'supports_fact'
+    || relation === 'mentions';
 }
 
 function renderMetadataField(label: string, value: unknown): string {

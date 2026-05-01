@@ -20,6 +20,53 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.0] - 2026-05-01
+
+### Breaking
+- none
+
+### Added
+- Added durable knowledge refinement tasks for source-backed semantic
+  self-improvement. The base knowledge API now exposes
+  `/api/knowledge/refinement/tasks`, `/api/knowledge/refinement/tasks/{id}`,
+  `/api/knowledge/refinement/run`, and
+  `/api/knowledge/refinement/tasks/{id}/cancel`; Home Graph exposes matching
+  `/api/homeassistant/home-graph/refinement/*` wrappers. Tasks preserve state,
+  subject, gap id, trigger, retry budget, attempt count, blocked reason, and a
+  trace containing source assessments and graph changes.
+- Home Graph status now reports readiness signals for `ready`, `repairing`,
+  `needs_review`, `needs_sources`, and `empty`, plus active refinement task
+  counts so panels can show refinement progress without reading logs.
+- `STREAM_START` and `STREAM_END` turn events now explicitly carry
+  `scope: "provider"` and `terminal: false`, documenting that they are
+  provider-iteration boundaries inside a logical turn. Clients should wait for
+  `TURN_COMPLETED`, `TURN_ERROR`, `TURN_CANCEL`, or `PREFLIGHT_FAIL` before
+  closing turn-scoped behavior such as live TTS.
+- Added authenticated OpenAI-compatible daemon ingress, enabled by default at
+  `/v1`. Clients that expect OpenAI's Chat Completions shape can point their
+  OpenAI base URL at the GoodVibes daemon and use `GET /v1/models` or
+  `POST /v1/chat/completions` for direct provider-backed prompt/response
+  calls while native GoodVibes integrations are being built.
+
+### Fixed
+- Home Graph room pages now scope open issues to the room, its related
+  devices/entities/automations/scenes/scripts, linked sources, and scoped gap
+  nodes. They no longer dump every open Home Graph issue into each generated
+  room page.
+- Device passport pages now use the same scoped issue calculation as room
+  pages, so gap issues linked through source/object edges can appear while
+  unrelated or resolved issues stay out.
+- Semantic reindex now filters source enrichment by `knowledgeSpaceId` when a
+  space is supplied, preventing one space's maintenance pass from enriching
+  unrelated knowledge spaces.
+- Home Graph map operator metadata now documents the JSON `POST` form used by
+  authenticated panel bridges in addition to the query-string `GET` route.
+
+### Migration
+- none
+
+---
+
 ## [0.27.12] - 2026-04-30
 
 ### Breaking

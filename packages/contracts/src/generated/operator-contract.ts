@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.27.12"
+    "version": "0.28.0"
   },
   "auth": {
     "modes": [
@@ -27909,7 +27909,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "read:knowledge"
         ],
         "http": {
-          "method": "GET",
+          "method": "POST",
           "path": "/api/homeassistant/home-graph/map"
         },
         "inputSchema": {
@@ -28581,6 +28581,800 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "ok",
             "spaceId",
             "pages"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "homeassistant.homeGraph.refinement.run",
+        "title": "Run Home Graph Refinement",
+        "description": "Run source-backed Home Graph self-improvement for a space, source list, or specific gaps.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/homeassistant/home-graph/refinement/run"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "gapIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sourceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limit": {
+              "type": "number"
+            },
+            "force": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "result": {
+              "type": "object",
+              "properties": {
+                "scannedGaps": {
+                  "type": "number"
+                },
+                "createdGaps": {
+                  "type": "number"
+                },
+                "repairableGaps": {
+                  "type": "number"
+                },
+                "suppressedGaps": {
+                  "type": "number"
+                },
+                "skippedGaps": {
+                  "type": "number"
+                },
+                "searched": {
+                  "type": "number"
+                },
+                "ingestedSources": {
+                  "type": "number"
+                },
+                "linkedRepairs": {
+                  "type": "number"
+                },
+                "blockedGaps": {
+                  "type": "number"
+                },
+                "closedGaps": {
+                  "type": "number"
+                },
+                "queuedTasks": {
+                  "type": "number"
+                },
+                "taskIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "ingestedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "scannedGaps",
+                "createdGaps",
+                "repairableGaps",
+                "suppressedGaps",
+                "skippedGaps",
+                "searched",
+                "ingestedSources",
+                "linkedRepairs",
+                "errors"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "ok",
+            "spaceId",
+            "result"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "homeassistant.homeGraph.refinement.task.cancel",
+        "title": "Cancel Home Graph Refinement Task",
+        "description": "Mark a queued or active Home Graph refinement task as cancelled.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/homeassistant/home-graph/refinement/tasks/{id}/cancel"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "task": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "spaceId": {
+                      "type": "string"
+                    },
+                    "subjectKind": {
+                      "type": "string"
+                    },
+                    "subjectId": {
+                      "type": "string"
+                    },
+                    "subjectTitle": {
+                      "type": "string"
+                    },
+                    "subjectType": {
+                      "type": "string"
+                    },
+                    "gapId": {
+                      "type": "string"
+                    },
+                    "issueId": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "detected",
+                        "queued",
+                        "searching",
+                        "evaluating",
+                        "extracting",
+                        "applying",
+                        "verified",
+                        "closed",
+                        "blocked",
+                        "suppressed",
+                        "needs_review",
+                        "cancelled",
+                        "failed"
+                      ]
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "normal",
+                        "high",
+                        "urgent"
+                      ]
+                    },
+                    "trigger": {
+                      "type": "string",
+                      "enum": [
+                        "ingest",
+                        "homegraph-sync",
+                        "reindex",
+                        "scheduled",
+                        "answer",
+                        "manual"
+                      ]
+                    },
+                    "budget": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "number"
+                      }
+                    },
+                    "attemptCount": {
+                      "type": "number"
+                    },
+                    "blockedReason": {
+                      "type": "string"
+                    },
+                    "trace": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {}
+                        ]
+                      }
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    },
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "updatedAt": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "spaceId",
+                    "state",
+                    "priority",
+                    "trigger",
+                    "budget",
+                    "attemptCount",
+                    "trace",
+                    "metadata",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "ok",
+            "spaceId",
+            "task"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "homeassistant.homeGraph.refinement.task.get",
+        "title": "Get Home Graph Refinement Task",
+        "description": "Return one Home Graph refinement task and its trace.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/homeassistant/home-graph/refinement/tasks/{id}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "task": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "spaceId": {
+                      "type": "string"
+                    },
+                    "subjectKind": {
+                      "type": "string"
+                    },
+                    "subjectId": {
+                      "type": "string"
+                    },
+                    "subjectTitle": {
+                      "type": "string"
+                    },
+                    "subjectType": {
+                      "type": "string"
+                    },
+                    "gapId": {
+                      "type": "string"
+                    },
+                    "issueId": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "detected",
+                        "queued",
+                        "searching",
+                        "evaluating",
+                        "extracting",
+                        "applying",
+                        "verified",
+                        "closed",
+                        "blocked",
+                        "suppressed",
+                        "needs_review",
+                        "cancelled",
+                        "failed"
+                      ]
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "normal",
+                        "high",
+                        "urgent"
+                      ]
+                    },
+                    "trigger": {
+                      "type": "string",
+                      "enum": [
+                        "ingest",
+                        "homegraph-sync",
+                        "reindex",
+                        "scheduled",
+                        "answer",
+                        "manual"
+                      ]
+                    },
+                    "budget": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "number"
+                      }
+                    },
+                    "attemptCount": {
+                      "type": "number"
+                    },
+                    "blockedReason": {
+                      "type": "string"
+                    },
+                    "trace": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {}
+                        ]
+                      }
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    },
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "updatedAt": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "spaceId",
+                    "state",
+                    "priority",
+                    "trigger",
+                    "budget",
+                    "attemptCount",
+                    "trace",
+                    "metadata",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "ok",
+            "spaceId",
+            "task"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "homeassistant.homeGraph.refinement.tasks.list",
+        "title": "List Home Graph Refinement Tasks",
+        "description": "Return durable Home Graph refinement tasks with states, traces, source assessments, and blocked reasons.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/homeassistant/home-graph/refinement/tasks"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "installationId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "state": {
+              "type": "string"
+            },
+            "subjectId": {
+              "type": "string"
+            },
+            "gapId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "spaceId": {
+                    "type": "string"
+                  },
+                  "subjectKind": {
+                    "type": "string"
+                  },
+                  "subjectId": {
+                    "type": "string"
+                  },
+                  "subjectTitle": {
+                    "type": "string"
+                  },
+                  "subjectType": {
+                    "type": "string"
+                  },
+                  "gapId": {
+                    "type": "string"
+                  },
+                  "issueId": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "detected",
+                      "queued",
+                      "searching",
+                      "evaluating",
+                      "extracting",
+                      "applying",
+                      "verified",
+                      "closed",
+                      "blocked",
+                      "suppressed",
+                      "needs_review",
+                      "cancelled",
+                      "failed"
+                    ]
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "normal",
+                      "high",
+                      "urgent"
+                    ]
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "ingest",
+                      "homegraph-sync",
+                      "reindex",
+                      "scheduled",
+                      "answer",
+                      "manual"
+                    ]
+                  },
+                  "budget": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "number"
+                    }
+                  },
+                  "attemptCount": {
+                    "type": "number"
+                  },
+                  "blockedReason": {
+                    "type": "string"
+                  },
+                  "trace": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {}
+                      ]
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "spaceId",
+                  "state",
+                  "priority",
+                  "trigger",
+                  "budget",
+                  "attemptCount",
+                  "trace",
+                  "metadata",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "ok",
+            "spaceId",
+            "tasks"
           ],
           "additionalProperties": true
         },
@@ -29725,6 +30519,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "lastSnapshotAt": {
               "type": "number"
+            },
+            "readiness": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
             },
             "capabilities": {
               "type": "array",
@@ -35806,6 +36627,27 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "linkedRepairs": {
                             "type": "number"
                           },
+                          "blockedGaps": {
+                            "type": "number"
+                          },
+                          "closedGaps": {
+                            "type": "number"
+                          },
+                          "queuedTasks": {
+                            "type": "number"
+                          },
+                          "taskIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "ingestedSourceIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "errors": {
                             "type": "array",
                             "items": {
@@ -35842,7 +36684,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "linkedRepairs",
                           "errors"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -36319,6 +37161,27 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "linkedRepairs": {
                           "type": "number"
                         },
+                        "blockedGaps": {
+                          "type": "number"
+                        },
+                        "closedGaps": {
+                          "type": "number"
+                        },
+                        "queuedTasks": {
+                          "type": "number"
+                        },
+                        "taskIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "ingestedSourceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
                         "errors": {
                           "type": "array",
                           "items": {
@@ -36355,7 +37218,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "linkedRepairs",
                         "errors"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -38298,6 +39161,733 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "knowledge.refinement.run",
+        "title": "Run Knowledge Refinement",
+        "description": "Run source-backed semantic self-improvement for a space, source list, or specific gaps.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/knowledge/refinement/run"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "gapIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sourceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limit": {
+              "type": "number"
+            },
+            "force": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "scannedGaps": {
+              "type": "number"
+            },
+            "createdGaps": {
+              "type": "number"
+            },
+            "repairableGaps": {
+              "type": "number"
+            },
+            "suppressedGaps": {
+              "type": "number"
+            },
+            "skippedGaps": {
+              "type": "number"
+            },
+            "searched": {
+              "type": "number"
+            },
+            "ingestedSources": {
+              "type": "number"
+            },
+            "linkedRepairs": {
+              "type": "number"
+            },
+            "blockedGaps": {
+              "type": "number"
+            },
+            "closedGaps": {
+              "type": "number"
+            },
+            "queuedTasks": {
+              "type": "number"
+            },
+            "taskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ingestedSourceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {}
+                ]
+              }
+            }
+          },
+          "required": [
+            "scannedGaps",
+            "createdGaps",
+            "repairableGaps",
+            "suppressedGaps",
+            "skippedGaps",
+            "searched",
+            "ingestedSources",
+            "linkedRepairs",
+            "errors"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "knowledge.refinement.task.cancel",
+        "title": "Cancel Knowledge Refinement Task",
+        "description": "Mark a queued or active semantic refinement task as cancelled.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/knowledge/refinement/tasks/{id}/cancel"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "task": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "spaceId": {
+                  "type": "string"
+                },
+                "subjectKind": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "subjectTitle": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string"
+                },
+                "gapId": {
+                  "type": "string"
+                },
+                "issueId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "detected",
+                    "queued",
+                    "searching",
+                    "evaluating",
+                    "extracting",
+                    "applying",
+                    "verified",
+                    "closed",
+                    "blocked",
+                    "suppressed",
+                    "needs_review",
+                    "cancelled",
+                    "failed"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "normal",
+                    "high",
+                    "urgent"
+                  ]
+                },
+                "trigger": {
+                  "type": "string",
+                  "enum": [
+                    "ingest",
+                    "homegraph-sync",
+                    "reindex",
+                    "scheduled",
+                    "answer",
+                    "manual"
+                  ]
+                },
+                "budget": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                },
+                "attemptCount": {
+                  "type": "number"
+                },
+                "blockedReason": {
+                  "type": "string"
+                },
+                "trace": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "spaceId",
+                "state",
+                "priority",
+                "trigger",
+                "budget",
+                "attemptCount",
+                "trace",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "knowledge.refinement.task.get",
+        "title": "Get Knowledge Refinement Task",
+        "description": "Return one semantic refinement task and its trace.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/knowledge/refinement/tasks/{id}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "task": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "spaceId": {
+                  "type": "string"
+                },
+                "subjectKind": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "subjectTitle": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string"
+                },
+                "gapId": {
+                  "type": "string"
+                },
+                "issueId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "detected",
+                    "queued",
+                    "searching",
+                    "evaluating",
+                    "extracting",
+                    "applying",
+                    "verified",
+                    "closed",
+                    "blocked",
+                    "suppressed",
+                    "needs_review",
+                    "cancelled",
+                    "failed"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "normal",
+                    "high",
+                    "urgent"
+                  ]
+                },
+                "trigger": {
+                  "type": "string",
+                  "enum": [
+                    "ingest",
+                    "homegraph-sync",
+                    "reindex",
+                    "scheduled",
+                    "answer",
+                    "manual"
+                  ]
+                },
+                "budget": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                },
+                "attemptCount": {
+                  "type": "number"
+                },
+                "blockedReason": {
+                  "type": "string"
+                },
+                "trace": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "spaceId",
+                "state",
+                "priority",
+                "trigger",
+                "budget",
+                "attemptCount",
+                "trace",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "knowledge.refinement.tasks.list",
+        "title": "List Knowledge Refinement Tasks",
+        "description": "Return durable semantic refinement tasks with state, traces, accepted/rejected source assessments, and blocked reasons.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/knowledge/refinement/tasks"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "spaceId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "subjectKind": {
+              "type": "string"
+            },
+            "subjectId": {
+              "type": "string"
+            },
+            "gapId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "spaceId": {
+                    "type": "string"
+                  },
+                  "subjectKind": {
+                    "type": "string"
+                  },
+                  "subjectId": {
+                    "type": "string"
+                  },
+                  "subjectTitle": {
+                    "type": "string"
+                  },
+                  "subjectType": {
+                    "type": "string"
+                  },
+                  "gapId": {
+                    "type": "string"
+                  },
+                  "issueId": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "detected",
+                      "queued",
+                      "searching",
+                      "evaluating",
+                      "extracting",
+                      "applying",
+                      "verified",
+                      "closed",
+                      "blocked",
+                      "suppressed",
+                      "needs_review",
+                      "cancelled",
+                      "failed"
+                    ]
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "normal",
+                      "high",
+                      "urgent"
+                    ]
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "ingest",
+                      "homegraph-sync",
+                      "reindex",
+                      "scheduled",
+                      "answer",
+                      "manual"
+                    ]
+                  },
+                  "budget": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "number"
+                    }
+                  },
+                  "attemptCount": {
+                    "type": "number"
+                  },
+                  "blockedReason": {
+                    "type": "string"
+                  },
+                  "trace": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {}
+                      ]
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "spaceId",
+                  "state",
+                  "priority",
+                  "trigger",
+                  "budget",
+                  "attemptCount",
+                  "trace",
+                  "metadata",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "tasks"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "knowledge.reindex",
         "title": "Reindex Structured Knowledge",
         "description": "Rebuild derived knowledge relations and mirror reviewed memory into the structured knowledge store.",
@@ -38350,6 +39940,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "jobRunCount": {
                   "type": "number"
                 },
+                "refinementTaskCount": {
+                  "type": "number"
+                },
                 "usageCount": {
                   "type": "number"
                 },
@@ -38377,7 +39970,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reportCount",
                 "scheduleCount"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             },
             "issues": {
               "type": "array",
@@ -40235,6 +41828,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "jobRunCount": {
               "type": "number"
             },
+            "refinementTaskCount": {
+              "type": "number"
+            },
             "usageCount": {
               "type": "number"
             },
@@ -40262,7 +41858,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "reportCount",
             "scheduleCount"
           ],
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "invokable": true
       },
@@ -66882,10 +68478,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 256,
-      "typedInputs": 256,
+      "methods": 264,
+      "typedInputs": 264,
       "genericInputs": 0,
-      "typedOutputs": 256,
+      "typedOutputs": 264,
       "genericOutputs": 0
     },
     "eventCoverage": {

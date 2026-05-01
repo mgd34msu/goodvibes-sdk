@@ -134,7 +134,7 @@ classifies whether those gaps are applicable, and only then tries external
 repair. Non-applicable gaps, such as battery questions for nodes already known
 to be mains-powered or not battery-powered, are suppressed before any web
 search is attempted. The `knowledge-semantic-self-improvement` job runs the
-same maintenance loop on a default six-hour schedule and can be run manually
+same maintenance loop on a default one-hour schedule and can be run manually
 through the jobs API.
 Repair idempotency is gap-specific: a previously discovered repair source for
 the same object does not suppress another gap unless it is linked to that exact
@@ -147,6 +147,26 @@ distinct domains. The SDK stores the accepted source confidence, confidence
 reasons, agreement count, selected URL, original source IDs, gap IDs, and linked
 object IDs in `metadata.sourceDiscovery`, so the graph can explain why an
 automatic web source was trusted.
+
+Self-improvement is a durable workflow, not just a side effect. Each detected
+repair opportunity is represented by a `KnowledgeRefinementTask` with a stable
+id, knowledge space, subject, gap id, state, trigger, retry budget, attempt
+count, blocked reason, metadata, and trace. Task states include `detected`,
+`queued`, `searching`, `evaluating`, `extracting`, `applying`, `closed`,
+`blocked`, `suppressed`, `needs_review`, `cancelled`, and `failed`. Trace
+entries record why a gap was considered repairable or not, which source
+candidates were accepted or rejected, what was ingested, and what graph changes
+were applied. Clients can inspect and run this pipeline through:
+
+- `GET /api/knowledge/refinement/tasks`
+- `GET /api/knowledge/refinement/tasks/{id}`
+- `POST /api/knowledge/refinement/run`
+- `POST /api/knowledge/refinement/tasks/{id}/cancel`
+
+The same endpoints are exposed as operator methods under
+`knowledge.refinement.*`. Refinement counters distinguish detected, repairable,
+blocked, suppressed, closed, queued, searched, ingested, and linked gaps so a UI
+does not have to infer progress from issue counts or logs.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
@@ -302,8 +322,11 @@ unchanged-artifact reuse. Clients can disable or bound this with the sync
 generated pages are excluded from answer/reindex ranking and from linked-source
 page lists so they do not compete with manuals, receipts, notes, and other
 source evidence. Generated Home Graph pages include Home Assistant identity,
-entity lists, linked source-backed snippets, high-value extracted semantic
-facts, issues, and open questions. Page rendering filters manual boilerplate,
+entity lists, linked sources, high-value extracted semantic facts, scoped open
+issues, and open questions. Room pages only render issues attached to the room,
+its devices/entities/automations/scenes/scripts, linked sources, or scoped gap
+nodes; graph-wide backlogs are not dumped into individual room pages. Page
+rendering filters manual boilerplate,
 optional-accessory/setup fragments, generic safety/handling facts, truncated
 spec fragments, recommended cable-type notes, remote button-map noise, remote
 battery-low notes, remote infrared/sensor usage snippets, dry-cloth cleaning
@@ -447,7 +470,7 @@ knowledge space. Clients should build filter controls from those facets instead
 of hardcoding known source, node, issue, or edge types.
 
 Home Graph uses the same renderer through
-`GET /api/homeassistant/home-graph/map`, adding the Home Assistant knowledge
+`GET` or `POST /api/homeassistant/home-graph/map`, adding the Home Assistant knowledge
 space id and preserving the same JSON/SVG shape. The Home Graph route accepts
 query-string `GET`, trailing-slash `GET`, and JSON `POST` forms so authenticated
 Home Assistant panel bridges can call the same SDK map renderer without
@@ -481,7 +504,7 @@ Built-in job kinds:
 Jobs can run inline or in the background. Schedules are persisted and can be
 created, enabled, disabled, listed, and deleted through the knowledge API. New
 stores get bootstrap schedules for daily light consolidation, weekly deep
-consolidation, and six-hour semantic self-improvement.
+consolidation, and hourly semantic self-improvement.
 
 ## Consolidation And Reviewed Memory
 

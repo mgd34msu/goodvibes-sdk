@@ -71,6 +71,7 @@ import { dispatchBatchRoutes } from './batch-routes.js';
 import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
 import { HomeAssistantConversationRoutes } from './homeassistant-routes.js';
 import { HomeGraphRoutes } from './home-graph-routes.js';
+import { dispatchOpenAICompatibleRoutes } from './openai-compatible-routes.js';
 import { ProjectPlanningRoutes } from './project-planning-routes.js';
 import { readTextBodyWithinLimit } from '../../utils/request-body.js';
 
@@ -202,90 +203,101 @@ export class DaemonHttpRouter {
     return correlationCtx.run(
       { requestId: req.headers.get('x-request-id') ?? crypto.randomUUID() },
       async () => {
-    const url = new URL(req.url);
+        const url = new URL(req.url);
 
-    if (url.pathname === '/login' && req.method === 'POST') {
-      return this.handleLogin(req);
-    }
+        if (url.pathname === '/login' && req.method === 'POST') {
+          return this.handleLogin(req);
+        }
 
-    if (url.pathname === '/api/remote/pair/request' && req.method === 'POST') {
-      return handleRemotePairRequest({
-        parseJsonBody: (request) => this.parseJsonBody(request),
-        distributedRuntime: this.context.distributedRuntime,
-      }, req);
-    }
-    if (url.pathname === '/api/remote/pair/verify' && req.method === 'POST') {
-      return handleRemotePairVerify({
-        parseJsonBody: (request) => this.parseJsonBody(request),
-        distributedRuntime: this.context.distributedRuntime,
-      }, req);
-    }
-    if (url.pathname === '/api/remote/heartbeat' && req.method === 'POST') {
-      return handleRemotePeerHeartbeat({
-        parseJsonBody: (request) => this.parseJsonBody(request),
-        requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
-        distributedRuntime: this.context.distributedRuntime,
-      }, req);
-    }
-    if (url.pathname === '/api/remote/work/pull' && req.method === 'POST') {
-      return handleRemotePeerWorkPull({
-        parseJsonBody: (request) => this.parseJsonBody(request),
-        requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
-        distributedRuntime: this.context.distributedRuntime,
-      }, req);
-    }
-    const remoteWorkCompleteMatch = url.pathname.match(/^\/api\/remote\/work\/([^/]+)\/complete$/);
-    if (remoteWorkCompleteMatch && req.method === 'POST') {
-      return handleRemotePeerWorkComplete({
-        parseJsonBody: (request) => this.parseJsonBody(request),
-        requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
-        distributedRuntime: this.context.distributedRuntime,
-      }, remoteWorkCompleteMatch[1], req);
-    }
+        if (url.pathname === '/api/remote/pair/request' && req.method === 'POST') {
+          return handleRemotePairRequest({
+            parseJsonBody: (request) => this.parseJsonBody(request),
+            distributedRuntime: this.context.distributedRuntime,
+          }, req);
+        }
+        if (url.pathname === '/api/remote/pair/verify' && req.method === 'POST') {
+          return handleRemotePairVerify({
+            parseJsonBody: (request) => this.parseJsonBody(request),
+            distributedRuntime: this.context.distributedRuntime,
+          }, req);
+        }
+        if (url.pathname === '/api/remote/heartbeat' && req.method === 'POST') {
+          return handleRemotePeerHeartbeat({
+            parseJsonBody: (request) => this.parseJsonBody(request),
+            requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
+            distributedRuntime: this.context.distributedRuntime,
+          }, req);
+        }
+        if (url.pathname === '/api/remote/work/pull' && req.method === 'POST') {
+          return handleRemotePeerWorkPull({
+            parseJsonBody: (request) => this.parseJsonBody(request),
+            requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
+            distributedRuntime: this.context.distributedRuntime,
+          }, req);
+        }
+        const remoteWorkCompleteMatch = url.pathname.match(/^\/api\/remote\/work\/([^/]+)\/complete$/);
+        if (remoteWorkCompleteMatch && req.method === 'POST') {
+          return handleRemotePeerWorkComplete({
+            parseJsonBody: (request) => this.parseJsonBody(request),
+            requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
+            distributedRuntime: this.context.distributedRuntime,
+          }, remoteWorkCompleteMatch[1], req);
+        }
 
-    if (url.pathname === '/webhook/github' && req.method === 'POST') {
-      return this.handleGitHubWebhook(req);
-    }
-    if (url.pathname.startsWith('/webhook/')) {
-      const pluginResponse = await this.context.channelPlugins.handleInbound(url.pathname, req);
-      if (pluginResponse) return pluginResponse;
-    }
+        if (url.pathname === '/webhook/github' && req.method === 'POST') {
+          return this.handleGitHubWebhook(req);
+        }
+        if (url.pathname.startsWith('/webhook/')) {
+          const pluginResponse = await this.context.channelPlugins.handleInbound(url.pathname, req);
+          if (pluginResponse) return pluginResponse;
+        }
 
-    if (url.pathname === '/api/control-plane/web' && req.method === 'GET') {
-      return this.context.controlPlaneGateway.renderWebUi();
-    }
-    if ((url.pathname === '/api/control-plane/auth' || url.pathname === '/api/control-plane/whoami') && req.method === 'GET') {
-      const apiResponse = await this.dispatchApiRoutes(req);
-      if (apiResponse) return apiResponse;
-    }
+        if (url.pathname === '/api/control-plane/web' && req.method === 'GET') {
+          return this.context.controlPlaneGateway.renderWebUi();
+        }
+        if ((url.pathname === '/api/control-plane/auth' || url.pathname === '/api/control-plane/whoami') && req.method === 'GET') {
+          const apiResponse = await this.dispatchApiRoutes(req);
+          if (apiResponse) return apiResponse;
+        }
 
-    if (!this.context.checkAuth(req)) {
-      return jsonErrorResponse(
-        new AppError('Authentication required', 'AUTH_REQUIRED', false, {
-          category: 'authentication',
-          source: 'runtime',
-          guidance: 'Authenticate with the operator shared token or an authenticated user session before calling daemon APIs.',
-        }),
-        { status: 401 },
-      );
-    }
+        if (!this.context.checkAuth(req)) {
+          return jsonErrorResponse(
+            new AppError('Authentication required', 'AUTH_REQUIRED', false, {
+              category: 'authentication',
+              source: 'runtime',
+              guidance: 'Authenticate with the operator shared token or an authenticated user session before calling daemon APIs.',
+            }),
+            { status: 401 },
+          );
+        }
 
-    const apiResponse = await this.dispatchApiRoutes(req);
-    if (apiResponse) return apiResponse;
-    return jsonErrorResponse(
-      new AppError(`Route not found: ${url.pathname}`, 'NOT_FOUND', false, {
-        category: 'not_found',
-        source: 'runtime',
-        guidance: 'Check the daemon API path and version. New SDK-facing routes are published under /api/v1.',
-      }),
-      { status: 404 },
-    );
+        const apiResponse = await this.dispatchApiRoutes(req);
+        if (apiResponse) return apiResponse;
+        return jsonErrorResponse(
+          new AppError(`Route not found: ${url.pathname}`, 'NOT_FOUND', false, {
+            category: 'not_found',
+            source: 'runtime',
+            guidance: 'Check the daemon API path and version. New SDK-facing routes are published under /api/v1.',
+          }),
+          { status: 404 },
+        );
       },
     );
   }
 
   async dispatchApiRoutes(req: Request): Promise<Response | null> {
     const url = new URL(req.url);
+    const openAICompatibleEnabled = this.context.configManager.get('controlPlane.openaiCompatible.enabled') !== false;
+    if (openAICompatibleEnabled) {
+      const pathPrefix = this.context.configManager.get('controlPlane.openaiCompatible.pathPrefix');
+      const response = await dispatchOpenAICompatibleRoutes(req, {
+        providerRegistry: this.context.providerRegistry,
+        parseJsonBody: (request: Request) => this.parseJsonBody(request),
+        recordApiResponse: (request, path, routeResponse) => this.recordApiResponse(request, path, routeResponse),
+      }, typeof pathPrefix === 'string' && pathPrefix.trim() ? pathPrefix : '/v1');
+      if (response) return response;
+    }
+
     if (url.pathname.startsWith('/api/batch')) {
       if (!this.context.batchManager) {
         return Response.json({ error: 'Batch manager is not available', code: 'BATCH_MANAGER_UNAVAILABLE' }, { status: 503 });

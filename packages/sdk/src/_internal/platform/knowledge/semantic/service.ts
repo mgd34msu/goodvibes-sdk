@@ -76,6 +76,7 @@ export class KnowledgeSemanticService {
     const allowed = input.sourceIds?.length ? new Set(input.sourceIds) : null;
     const sources = this.store.listSources(10_000)
       .filter((source) => !allowed || allowed.has(source.id))
+      .filter((source) => !input.knowledgeSpaceId || getKnowledgeSpaceId(source) === input.knowledgeSpaceId)
       .slice(0, Math.max(1, input.limit ?? 10_000));
     const maxLlmSources = Math.max(0, this.options.maxLlmSourcesPerReindex ?? 3);
     let llmAttempts = 0;
@@ -109,8 +110,39 @@ export class KnowledgeSemanticService {
 
   async answer(input: KnowledgeSemanticAnswerInput): Promise<KnowledgeSemanticAnswerResult> {
     await this.store.init();
-    const answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
-    this.queueGapRepair(answer);
+    let answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
+    if (this.options.gapRepairer && answer.answer.gaps.length > 0) {
+      const refinement = await this.selfImprove({
+        knowledgeSpaceId: answer.spaceId,
+        gapIds: answer.answer.gaps.map((gap) => gap.id),
+        reason: 'answer',
+        limit: Math.max(1, answer.answer.gaps.length),
+      });
+      if (refinement.ingestedSourceIds.length > 0) {
+        const sources = refinement.ingestedSourceIds
+          .map((sourceId) => this.store.getSource(sourceId))
+          .filter((source): source is KnowledgeSourceRecord => Boolean(source));
+        await this.enrichSources(sources, {
+          knowledgeSpaceId: answer.spaceId,
+          force: true,
+          limit: sources.length,
+        });
+        answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
+      }
+      const taskIds = uniqueStrings([
+        ...refinement.taskIds,
+        ...this.taskIdsForGaps(answer.spaceId, answer.answer.gaps.map((gap) => gap.id)),
+      ]);
+      if (taskIds.length > 0) {
+        return {
+          ...answer,
+          answer: {
+            ...answer.answer,
+            refinementTaskIds: taskIds,
+          },
+        };
+      }
+    }
     return answer;
   }
 
@@ -139,57 +171,12 @@ export class KnowledgeSemanticService {
     }, input);
   }
 
-  private queueGapRepair(answer: KnowledgeSemanticAnswerResult): void {
-    if (!this.options.gapRepairer || answer.answer.gaps.length === 0 || answer.answer.sources.length === 0) return;
-    const gaps = answer.answer.gaps.filter((gap) => !this.hasGapRepairSource(answer.spaceId, gap.id));
-    if (gaps.length === 0) return;
-    const repairKey = `${answer.spaceId}:${gaps.map((gap) => gap.id).sort().join(',')}`;
-    if (this.activeGapRepairs.has(repairKey)) return;
-    this.activeGapRepairs.add(repairKey);
-    const repairer = this.options.gapRepairer;
-    void repairer({
-      spaceId: answer.spaceId,
-      query: answer.query,
-      gaps,
-      sources: answer.answer.sources,
-      linkedObjects: answer.answer.linkedObjects,
-      facts: answer.answer.facts,
-    })
-      .then(async (result) => {
-        if (!result?.ingestedSourceIds.length) return;
-        for (const sourceId of result.ingestedSourceIds) {
-          for (const gap of gaps) {
-            await this.store.upsertEdge({
-              fromKind: 'source',
-              fromId: sourceId,
-              toKind: 'node',
-              toId: gap.id,
-              relation: 'repairs_gap',
-              weight: 0.8,
-              metadata: {
-                semantic: true,
-                knowledgeSpaceId: answer.spaceId,
-                query: result.query ?? answer.query,
-                repairedAt: Date.now(),
-              },
-            });
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        this.activeGapRepairs.delete(repairKey);
-      });
-  }
-
-  private hasGapRepairSource(spaceId: string, gapId: string): boolean {
-    return this.store.listEdges().some((edge) => (
-      edge.relation === 'repairs_gap'
-      && edge.toKind === 'node'
-      && edge.toId === gapId
-      && edge.fromKind === 'source'
-      && readString(edge.metadata.knowledgeSpaceId) === spaceId
-    ));
+  private taskIdsForGaps(spaceId: string, gapIds: readonly string[]): readonly string[] {
+    const wanted = new Set(gapIds);
+    if (wanted.size === 0) return [];
+    return this.store.listRefinementTasks(100, { spaceId })
+      .filter((task) => task.gapId && wanted.has(task.gapId))
+      .map((task) => task.id);
   }
 }
 
@@ -212,6 +199,11 @@ function emptySelfImproveResult(): KnowledgeSemanticSelfImproveResult {
     searched: 0,
     ingestedSources: 0,
     linkedRepairs: 0,
+    blockedGaps: 0,
+    closedGaps: 0,
+    queuedTasks: 0,
+    taskIds: [],
+    ingestedSourceIds: [],
     errors: [],
   };
 }
@@ -229,6 +221,11 @@ function mergeSelfImproveResults(
     searched: left.searched + right.searched,
     ingestedSources: left.ingestedSources + right.ingestedSources,
     linkedRepairs: left.linkedRepairs + right.linkedRepairs,
+    blockedGaps: left.blockedGaps + right.blockedGaps,
+    closedGaps: left.closedGaps + right.closedGaps,
+    queuedTasks: left.queuedTasks + right.queuedTasks,
+    taskIds: uniqueStrings([...left.taskIds, ...right.taskIds]),
+    ingestedSourceIds: uniqueStrings([...left.ingestedSourceIds, ...right.ingestedSourceIds]),
     errors: [...left.errors, ...right.errors],
   };
 }

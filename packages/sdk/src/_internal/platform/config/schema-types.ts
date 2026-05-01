@@ -56,6 +56,10 @@ export interface ControlPlaneConfig {
   streamMode: 'sse' | 'websocket' | 'both';
   allowRemote: boolean;
   trustProxy: boolean;
+  openaiCompatible: {
+    enabled: boolean;
+    pathPrefix: string;
+  };
   tls: {
     mode: 'off' | 'proxy' | 'direct';
     certFile: string;
@@ -565,6 +569,8 @@ export type ConfigKey =
   | 'controlPlane.streamMode'
   | 'controlPlane.allowRemote'
   | 'controlPlane.trustProxy'
+  | 'controlPlane.openaiCompatible.enabled'
+  | 'controlPlane.openaiCompatible.pathPrefix'
   | 'controlPlane.tls.mode'
   | 'controlPlane.tls.certFile'
   | 'controlPlane.tls.keyFile'
@@ -822,6 +828,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'controlPlane.streamMode' ? 'sse' | 'websocket' | 'both' :
   K extends 'controlPlane.allowRemote' ? boolean :
   K extends 'controlPlane.trustProxy' ? boolean :
+  K extends 'controlPlane.openaiCompatible.enabled' ? boolean :
+  K extends 'controlPlane.openaiCompatible.pathPrefix' ? string :
   K extends 'controlPlane.tls.mode' ? 'off' | 'proxy' | 'direct' :
   K extends 'controlPlane.tls.certFile' ? string :
   K extends 'controlPlane.tls.keyFile' ? string :

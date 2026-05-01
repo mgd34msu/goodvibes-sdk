@@ -3,6 +3,7 @@ import type {
   KnowledgeItemView,
   KnowledgeIssueRecord,
   KnowledgeJobRunRecord,
+  KnowledgeRefinementTaskRecord,
   KnowledgeNodeRecord,
   KnowledgeScheduleRecord,
   KnowledgeSourceRecord,
@@ -22,6 +23,7 @@ export interface KnowledgeStoreReadView {
   readonly issues: Map<string, KnowledgeIssueRecord>;
   readonly extractions: Map<string, KnowledgeExtractionRecord>;
   readonly jobRuns: Map<string, KnowledgeJobRunRecord>;
+  readonly refinementTasks: Map<string, KnowledgeRefinementTaskRecord>;
   readonly usageRecords: Map<string, KnowledgeUsageRecord>;
   readonly consolidationCandidates: Map<string, KnowledgeConsolidationCandidateRecord>;
   readonly consolidationReports: Map<string, KnowledgeConsolidationReportRecord>;
@@ -58,6 +60,7 @@ export function getKnowledgeStoreStatus(view: KnowledgeStoreReadView): Knowledge
     issueCount: view.issues.size,
     extractionCount: view.extractions.size,
     jobRunCount: view.jobRuns.size,
+    refinementTaskCount: view.refinementTasks.size,
     usageCount: view.usageRecords.size,
     candidateCount: view.consolidationCandidates.size,
     reportCount: view.consolidationReports.size,
@@ -97,6 +100,29 @@ export function listKnowledgeJobRuns(view: KnowledgeStoreReadView, limit = 100, 
   return [...view.jobRuns.values()]
     .filter((run) => !jobId || run.jobId === jobId)
     .sort(byRequestedAtDesc)
+    .slice(0, sliceLimit(limit));
+}
+
+export function listKnowledgeRefinementTasks(
+  view: KnowledgeStoreReadView,
+  limit = 100,
+  input: {
+    readonly spaceId?: string;
+    readonly state?: string;
+    readonly subjectKind?: string;
+    readonly subjectId?: string;
+    readonly gapId?: string;
+  } = {},
+): KnowledgeRefinementTaskRecord[] {
+  return [...view.refinementTasks.values()]
+    .filter((task) => (
+      (!input.spaceId || task.spaceId === input.spaceId)
+      && (!input.state || task.state === input.state)
+      && (!input.subjectKind || task.subjectKind === input.subjectKind)
+      && (!input.subjectId || task.subjectId === input.subjectId)
+      && (!input.gapId || task.gapId === input.gapId)
+    ))
+    .sort(byUpdatedAtDesc)
     .slice(0, sliceLimit(limit));
 }
 
@@ -175,6 +201,10 @@ export function getKnowledgeExtractionBySourceId(view: KnowledgeStoreReadView, s
 
 export function getKnowledgeJobRun(view: KnowledgeStoreReadView, id: string): KnowledgeJobRunRecord | null {
   return view.jobRuns.get(id) ?? null;
+}
+
+export function getKnowledgeRefinementTask(view: KnowledgeStoreReadView, id: string): KnowledgeRefinementTaskRecord | null {
+  return view.refinementTasks.get(id) ?? null;
 }
 
 export function getKnowledgeUsageRecord(view: KnowledgeStoreReadView, id: string): KnowledgeUsageRecord | null {

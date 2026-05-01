@@ -206,7 +206,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.sources.some((source) => source.title === 'Living Room TV manual')).toBe(true);
     expect(answer.answer.linkedObjects.map((node) => node.title)).toEqual(['Living Room TV']);
     expect(answer.answer.linkedObjects.every((node) => typeof node.metadata.semanticKind !== 'string')).toBe(true);
-    expect(page.markdown).toContain('Extracted Device Facts');
+    expect(page.markdown).toContain('Verified Device Facts');
     expect(page.markdown).toContain('HDMI inputs');
   });
 
@@ -645,6 +645,16 @@ describe('semantic knowledge/wiki enrichment', () => {
       llm: new GapRepairAnswerLlm(),
       gapRepairer: async (request) => {
         calls.push(request);
+        await store.upsertSource({
+          id: 'repair-source',
+          connectorId: 'semantic-gap-repair',
+          sourceType: 'url',
+          title: 'LG 86NANO90UNA repair source',
+          canonicalUri: 'https://example.test/lg-tv-specs',
+          tags: ['semantic-gap-repair'],
+          status: 'indexed',
+          metadata: { knowledgeSpaceId: 'default', sourceDiscovery: { purpose: 'semantic-gap-repair' } },
+        });
         return {
           searched: true,
           query: 'lg 86nano90una full specifications',
@@ -702,6 +712,16 @@ describe('semantic knowledge/wiki enrichment', () => {
           query: 'LG 86NANO90UNA product specifications',
           ingestedSourceIds: [source.id],
           skippedUrls: [],
+          sourceAssessments: [{
+            url: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+            title: 'LG 86NANO90UNA product specifications',
+            domain: 'www.lg.com',
+            rank: 1,
+            confidence: 95,
+            reasons: ['subject:LG 86NANO90UNA'],
+            trustReason: 'official vendor result',
+            accepted: true,
+          }],
         };
       },
     });
@@ -733,13 +753,19 @@ describe('semantic knowledge/wiki enrichment', () => {
 
     const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, reason: 'scheduled' });
     const gap = store.listNodes(100).find((node) => node.kind === 'knowledge_gap' && node.metadata.gapKind === 'intrinsic_features');
+    const task = store.listRefinementTasks(10, { spaceId })[0];
 
     expect(result.createdGaps).toBe(1);
     expect(result.repairableGaps).toBe(1);
     expect(result.searched).toBe(1);
+    expect(task).toBeDefined();
+    expect(result.taskIds).toContain(task?.id);
     expect(calls).toHaveLength(1);
     expect(gap?.title).toContain('complete features and specifications');
     expect(store.listEdges().some((edge) => edge.relation === 'repairs_gap' && edge.toId === gap?.id)).toBe(true);
+    expect(task?.state).toBe('closed');
+    expect(task?.subjectTitle).toContain('LG');
+    expect(task?.trace.some((entry) => entry.state === 'evaluating' && JSON.stringify(entry.data).includes('sourceAssessments'))).toBe(true);
   });
 
   test('self-improvement does not treat unrelated repair sources as repairing every subject gap', async () => {

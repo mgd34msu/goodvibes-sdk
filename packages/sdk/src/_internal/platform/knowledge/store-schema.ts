@@ -16,6 +16,10 @@ import type {
   KnowledgeExtractionFormat,
   KnowledgeIssueSeverity,
   KnowledgeJobStatus,
+  KnowledgeRefinementTaskPriority,
+  KnowledgeRefinementTaskRecord,
+  KnowledgeRefinementTaskState,
+  KnowledgeRefinementTaskTrigger,
   KnowledgeUsageTargetKind,
   KnowledgeUsageKind,
   KnowledgeConsolidationCandidateType,
@@ -185,6 +189,31 @@ export function createSchema(db: { run(sql: string): void }): void {
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_knowledge_job_runs_job_id ON knowledge_job_runs(job_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_knowledge_job_runs_requested_at ON knowledge_job_runs(requested_at)`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS knowledge_refinement_tasks (
+      id TEXT PRIMARY KEY,
+      space_id TEXT NOT NULL,
+      subject_kind TEXT,
+      subject_id TEXT,
+      subject_title TEXT,
+      subject_type TEXT,
+      gap_id TEXT,
+      issue_id TEXT,
+      state TEXT NOT NULL,
+      priority TEXT NOT NULL,
+      trigger TEXT NOT NULL,
+      budget TEXT NOT NULL DEFAULT '{}',
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      blocked_reason TEXT,
+      trace TEXT NOT NULL DEFAULT '[]',
+      metadata TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_knowledge_refinement_space_state ON knowledge_refinement_tasks(space_id, state)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_knowledge_refinement_gap ON knowledge_refinement_tasks(gap_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_knowledge_refinement_subject ON knowledge_refinement_tasks(subject_kind, subject_id)`);
   db.run(`
     CREATE TABLE IF NOT EXISTS knowledge_usage_records (
       id TEXT PRIMARY KEY,
@@ -382,6 +411,30 @@ export function mapJobRunRow(columns: string[], values: unknown[]): KnowledgeJob
     ...(typeof row.completed_at === 'number' ? { completedAt: Number(row.completed_at) } : {}),
     ...(stableText(row.error as string | undefined) ? { error: String(row.error) } : {}),
     result: parseJsonValue<Record<string, unknown>>(row.result, {}),
+    metadata: parseJsonValue<Record<string, unknown>>(row.metadata, {}),
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export function mapRefinementTaskRow(columns: string[], values: unknown[]): KnowledgeRefinementTaskRecord {
+  const row = rowObject(columns, values);
+  return {
+    id: String(row.id),
+    spaceId: String(row.space_id),
+    ...(stableText(row.subject_kind as string | undefined) ? { subjectKind: String(row.subject_kind) as KnowledgeUsageTargetKind } : {}),
+    ...(stableText(row.subject_id as string | undefined) ? { subjectId: String(row.subject_id) } : {}),
+    ...(stableText(row.subject_title as string | undefined) ? { subjectTitle: String(row.subject_title) } : {}),
+    ...(stableText(row.subject_type as string | undefined) ? { subjectType: String(row.subject_type) } : {}),
+    ...(stableText(row.gap_id as string | undefined) ? { gapId: String(row.gap_id) } : {}),
+    ...(stableText(row.issue_id as string | undefined) ? { issueId: String(row.issue_id) } : {}),
+    state: String(row.state) as KnowledgeRefinementTaskState,
+    priority: String(row.priority) as KnowledgeRefinementTaskPriority,
+    trigger: String(row.trigger) as KnowledgeRefinementTaskTrigger,
+    budget: parseJsonValue<Record<string, number>>(row.budget, {}),
+    attemptCount: Number(row.attempt_count),
+    ...(stableText(row.blocked_reason as string | undefined) ? { blockedReason: String(row.blocked_reason) } : {}),
+    trace: parseJsonValue<KnowledgeRefinementTaskRecord['trace']>(row.trace, []),
     metadata: parseJsonValue<Record<string, unknown>>(row.metadata, {}),
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),

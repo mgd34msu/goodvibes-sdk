@@ -142,6 +142,10 @@ export interface DaemonApiRouteHandlers {
   getKnowledgeJobs(): MaybeResponse;
   getKnowledgeJob(jobId: string): MaybeResponse;
   getKnowledgeJobRuns(url: URL): MaybeResponse;
+  getKnowledgeRefinementTasks(url: URL): MaybeResponse;
+  getKnowledgeRefinementTask(taskId: string): MaybeResponse;
+  postKnowledgeRunRefinement(req: Request): MaybeResponse;
+  postKnowledgeCancelRefinementTask(taskId: string, req: Request): MaybeResponse;
   getKnowledgeSchedules(url: URL): MaybeResponse;
   getKnowledgeSchedule(id: string): MaybeResponse;
   postKnowledgeIngestUrl(req: Request): MaybeResponse;
