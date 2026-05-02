@@ -1,1 +1,1 @@
-export * from './_internal/contracts/index.js';
+export * from '@pellux/goodvibes-contracts';

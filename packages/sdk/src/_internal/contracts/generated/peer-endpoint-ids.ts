@@ -1,10 +1,2 @@
-// Synced from packages/contracts/src/generated/peer-endpoint-ids.ts
-export const PEER_ENDPOINT_IDS = [
-  "operator.snapshot",
-  "pair.request",
-  "pair.verify",
-  "peer.heartbeat",
-  "work.complete",
-  "work.pull",
-] as const;
-export type PeerEndpointId = typeof PEER_ENDPOINT_IDS[number];
+// Compatibility shim. Canonical implementation lives in @pellux/goodvibes-contracts.
+export * from '@pellux/goodvibes-contracts/generated/peer-endpoint-ids';

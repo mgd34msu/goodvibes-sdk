@@ -1,12 +1,12 @@
-import { ConfigurationError } from './_internal/errors/index.js';
+import { ConfigurationError } from '@pellux/goodvibes-errors';
 import type { SDKObserver } from './observer/index.js';
 import { invokeObserver } from './observer/index.js';
 import type {
   OperatorMethodInput,
   OperatorMethodOutput,
-} from './_internal/contracts/index.js';
-import type { AuthTokenResolver } from './_internal/transport-http/index.js';
-import type { OperatorSdk } from './_internal/operator/index.js';
+} from '@pellux/goodvibes-contracts';
+import type { AuthTokenResolver } from '@pellux/goodvibes-transport-http';
+import type { OperatorSdk } from '@pellux/goodvibes-operator-sdk';
 import {
   AutoRefreshCoordinator,
   PermissionResolver,

@@ -118,7 +118,7 @@ The `Orchestrator` class is the central engine of every agent session. It owns t
 
 ## Daemon Architecture
 
-**Source:** `packages/sdk/src/_internal/daemon/` and `packages/daemon-sdk/src/`
+**Source:** `packages/daemon-sdk/src/`, re-exported by `packages/sdk/src/daemon.ts`
 
 The daemon is an HTTP server (built on Bun) that exposes the agent runtime to external clients over HTTP and SSE. It is the single point of access for operator and peer clients.
 

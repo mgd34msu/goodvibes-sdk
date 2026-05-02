@@ -14,6 +14,126 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./api-router": {
+      "types": "./dist/api-router.d.ts",
+      "import": "./dist/api-router.js"
+    },
+    "./artifact-upload": {
+      "types": "./dist/artifact-upload.d.ts",
+      "import": "./dist/artifact-upload.js"
+    },
+    "./automation": {
+      "types": "./dist/automation.d.ts",
+      "import": "./dist/automation.js"
+    },
+    "./channel-route-types": {
+      "types": "./dist/channel-route-types.d.ts",
+      "import": "./dist/channel-route-types.js"
+    },
+    "./channel-routes": {
+      "types": "./dist/channel-routes.d.ts",
+      "import": "./dist/channel-routes.js"
+    },
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "import": "./dist/context.js"
+    },
+    "./control-routes": {
+      "types": "./dist/control-routes.d.ts",
+      "import": "./dist/control-routes.js"
+    },
+    "./error-response": {
+      "types": "./dist/error-response.d.ts",
+      "import": "./dist/error-response.js"
+    },
+    "./http-policy": {
+      "types": "./dist/http-policy.d.ts",
+      "import": "./dist/http-policy.js"
+    },
+    "./integration-route-types": {
+      "types": "./dist/integration-route-types.d.ts",
+      "import": "./dist/integration-route-types.js"
+    },
+    "./integration-routes": {
+      "types": "./dist/integration-routes.d.ts",
+      "import": "./dist/integration-routes.js"
+    },
+    "./knowledge-refinement-routes": {
+      "types": "./dist/knowledge-refinement-routes.d.ts",
+      "import": "./dist/knowledge-refinement-routes.js"
+    },
+    "./knowledge-route-types": {
+      "types": "./dist/knowledge-route-types.d.ts",
+      "import": "./dist/knowledge-route-types.js"
+    },
+    "./knowledge-routes": {
+      "types": "./dist/knowledge-routes.d.ts",
+      "import": "./dist/knowledge-routes.js"
+    },
+    "./media-route-types": {
+      "types": "./dist/media-route-types.d.ts",
+      "import": "./dist/media-route-types.js"
+    },
+    "./media-routes": {
+      "types": "./dist/media-routes.d.ts",
+      "import": "./dist/media-routes.js"
+    },
+    "./operator": {
+      "types": "./dist/operator.d.ts",
+      "import": "./dist/operator.js"
+    },
+    "./otlp-protobuf": {
+      "types": "./dist/otlp-protobuf.d.ts",
+      "import": "./dist/otlp-protobuf.js"
+    },
+    "./remote-routes": {
+      "types": "./dist/remote-routes.d.ts",
+      "import": "./dist/remote-routes.js"
+    },
+    "./remote": {
+      "types": "./dist/remote.d.ts",
+      "import": "./dist/remote.js"
+    },
+    "./route-helpers": {
+      "types": "./dist/route-helpers.d.ts",
+      "import": "./dist/route-helpers.js"
+    },
+    "./runtime-automation-routes": {
+      "types": "./dist/runtime-automation-routes.d.ts",
+      "import": "./dist/runtime-automation-routes.js"
+    },
+    "./runtime-route-types": {
+      "types": "./dist/runtime-route-types.d.ts",
+      "import": "./dist/runtime-route-types.js"
+    },
+    "./runtime-routes": {
+      "types": "./dist/runtime-routes.d.ts",
+      "import": "./dist/runtime-routes.js"
+    },
+    "./runtime-session-routes": {
+      "types": "./dist/runtime-session-routes.d.ts",
+      "import": "./dist/runtime-session-routes.js"
+    },
+    "./sessions": {
+      "types": "./dist/sessions.d.ts",
+      "import": "./dist/sessions.js"
+    },
+    "./system-route-types": {
+      "types": "./dist/system-route-types.d.ts",
+      "import": "./dist/system-route-types.js"
+    },
+    "./system-routes": {
+      "types": "./dist/system-routes.d.ts",
+      "import": "./dist/system-routes.js"
+    },
+    "./tasks": {
+      "types": "./dist/tasks.d.ts",
+      "import": "./dist/tasks.js"
+    },
+    "./telemetry-routes": {
+      "types": "./dist/telemetry-routes.d.ts",
+      "import": "./dist/telemetry-routes.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

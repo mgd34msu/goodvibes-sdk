@@ -250,26 +250,26 @@ describe('error-kind: packages/errors', () => {
   });
 });
 
-describe('error-kind: sdk mirror (packages/sdk/src/_internal/errors)', () => {
-  test('GoodVibesSdkError from SDK mirror has kind field', async () => {
+describe('error-kind: sdk compatibility shim (packages/sdk/src/_internal/errors)', () => {
+  test('GoodVibesSdkError from SDK compatibility shim has kind field', async () => {
     const { GoodVibesSdkError: SdkMirrorBase } = await import('../packages/sdk/src/_internal/errors/index.js');
     const err = new SdkMirrorBase('test', { category: 'rate_limit' });
     expect(err.kind).toBe('rate-limit');
   });
 
-  test('ConfigurationError from SDK mirror has kind config', async () => {
+  test('ConfigurationError from SDK compatibility shim has kind config', async () => {
     const { ConfigurationError: SdkConfigError } = await import('../packages/sdk/src/_internal/errors/index.js');
     const err = new SdkConfigError('bad config');
     expect(err.kind).toBe('config');
   });
 
-  test('ContractError from SDK mirror has kind contract', async () => {
+  test('ContractError from SDK compatibility shim has kind contract', async () => {
     const { ContractError: SdkContractError } = await import('../packages/sdk/src/_internal/errors/index.js');
     const err = new SdkContractError('bad contract');
     expect(err.kind).toBe('contract');
   });
 
-  test('HttpStatusError from SDK mirror instanceof works', async () => {
+  test('HttpStatusError from SDK compatibility shim instanceof works', async () => {
     const { HttpStatusError: SdkHttpError, GoodVibesSdkError: SdkBase } = await import('../packages/sdk/src/_internal/errors/index.js');
     const err = new SdkHttpError('test', { category: 'service' });
     expect(err).toBeInstanceOf(SdkBase);

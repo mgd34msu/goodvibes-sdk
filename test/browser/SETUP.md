@@ -255,7 +255,7 @@ Note: `'server-error'` is NOT a valid kind — use `'server'` for HTTP 5xx error
 
 ### forSession() API
 
-Verified against `packages/sdk/src/_internal/transport-realtime/domain-events.ts`:
+Verified against the SDK transport-realtime compatibility shim:
 
 ```ts
 forSession<TDomain, TEvent>(

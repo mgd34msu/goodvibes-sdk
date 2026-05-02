@@ -14,17 +14,77 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./generated/foundation-client-types": {
+      "types": "./dist/generated/foundation-client-types.d.ts",
+      "import": "./dist/generated/foundation-client-types.js"
+    },
+    "./generated/foundation-metadata": {
+      "types": "./dist/generated/foundation-metadata.d.ts",
+      "import": "./dist/generated/foundation-metadata.js"
+    },
+    "./generated/operator-contract": {
+      "types": "./dist/generated/operator-contract.d.ts",
+      "import": "./dist/generated/operator-contract.js"
+    },
+    "./generated/operator-method-ids": {
+      "types": "./dist/generated/operator-method-ids.d.ts",
+      "import": "./dist/generated/operator-method-ids.js"
+    },
+    "./generated/peer-contract": {
+      "types": "./dist/generated/peer-contract.d.ts",
+      "import": "./dist/generated/peer-contract.js"
+    },
+    "./generated/peer-endpoint-ids": {
+      "types": "./dist/generated/peer-endpoint-ids.d.ts",
+      "import": "./dist/generated/peer-endpoint-ids.js"
+    },
+    "./generated/runtime-event-domains": {
+      "types": "./dist/generated/runtime-event-domains.d.ts",
+      "import": "./dist/generated/runtime-event-domains.js"
+    },
     "./node": {
       "types": "./dist/node.d.ts",
       "import": "./dist/node.js"
     },
-    "./operator-contract.json": "./artifacts/operator-contract.json",
-    "./peer-contract.json": "./artifacts/peer-contract.json",
-    "./package.json": "./package.json",
-    "./zod-schemas": {
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./zod-schemas/accounts": {
+      "types": "./dist/zod-schemas/accounts.d.ts",
+      "import": "./dist/zod-schemas/accounts.js"
+    },
+    "./zod-schemas/auth": {
+      "types": "./dist/zod-schemas/auth.d.ts",
+      "import": "./dist/zod-schemas/auth.js"
+    },
+    "./zod-schemas/events": {
+      "types": "./dist/zod-schemas/events.d.ts",
+      "import": "./dist/zod-schemas/events.js"
+    },
+    "./zod-schemas/index": {
       "types": "./dist/zod-schemas/index.d.ts",
       "import": "./dist/zod-schemas/index.js"
-    }
+    },
+    "./zod-schemas/providers": {
+      "types": "./dist/zod-schemas/providers.d.ts",
+      "import": "./dist/zod-schemas/providers.js"
+    },
+    "./zod-schemas/session": {
+      "types": "./dist/zod-schemas/session.d.ts",
+      "import": "./dist/zod-schemas/session.js"
+    },
+    "./generated/*": {
+      "types": "./dist/generated/*.d.ts",
+      "import": "./dist/generated/*.js"
+    },
+    "./zod-schemas/*": {
+      "types": "./dist/zod-schemas/*.d.ts",
+      "import": "./dist/zod-schemas/*.js"
+    },
+    "./operator-contract.json": "./artifacts/operator-contract.json",
+    "./peer-contract.json": "./artifacts/peer-contract.json",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

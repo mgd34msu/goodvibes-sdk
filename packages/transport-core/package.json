@@ -14,6 +14,30 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./client-transport": {
+      "types": "./dist/client-transport.d.ts",
+      "import": "./dist/client-transport.js"
+    },
+    "./event-envelope": {
+      "types": "./dist/event-envelope.d.ts",
+      "import": "./dist/event-envelope.js"
+    },
+    "./event-feeds": {
+      "types": "./dist/event-feeds.d.ts",
+      "import": "./dist/event-feeds.js"
+    },
+    "./middleware": {
+      "types": "./dist/middleware.d.ts",
+      "import": "./dist/middleware.js"
+    },
+    "./observer": {
+      "types": "./dist/observer.d.ts",
+      "import": "./dist/observer.js"
+    },
+    "./otel": {
+      "types": "./dist/otel.d.ts",
+      "import": "./dist/otel.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
