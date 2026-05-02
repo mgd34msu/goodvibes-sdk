@@ -152,7 +152,13 @@ available quickly after a snapshot. The sync response reports
 `generated.deferredDevicePassports`, `generated.deferredRoomPages`, and
 `generated.truncated` when more pages remain. Page automation also accepts
 `maxRunMs`, so integrations can keep snapshot service calls responsive even
-when a large installation has many pages eligible for refresh.
+when a large installation has many pages eligible for refresh. Foreground
+snapshot page generation is still capped by the SDK; callers can request lower
+limits, but very large values are treated as background/deferred intent rather
+than permission to block the sync route indefinitely. The knowledge store also
+batches the thousands of row updates created by a real Home Assistant snapshot
+and persists them once at the end of the sync instead of exporting the SQLite
+database after every node and edge write.
 
 For each selected active Home Assistant device, the SDK materializes a device
 passport markdown artifact and a stable generated-page source. For each selected
@@ -224,7 +230,10 @@ current LLM provider/model, with deterministic fact rendering as the fallback.
 Home Graph uses the same provider-backed answer synthesis path as
 `POST /api/knowledge/ask`; semantic source enrichment is allowed to continue as
 self-improving background work so a question is not forced to wait behind a
-full enrichment pass before answer synthesis starts.
+full enrichment pass before answer synthesis starts. If a source matches before
+typed facts have been extracted, the SDK still returns synthesized prose that
+describes the currently indexed evidence and the remaining gap instead of
+dumping raw snippet bullets.
 The same self-improvement loop also runs when Home Graph syncs a snapshot,
 ingests a manual/document/URL/note, or reindexes. Snapshot sync schedules a
 tiny delayed repair pass and does not run external web/LLM repair inline with
@@ -240,6 +249,12 @@ while the sync call itself stays bounded.
 Repair skip checks are gap-specific: an older repair URL for the same Home
 Assistant object does not block another intrinsic gap unless it is linked to
 that exact gap with `repairs_gap`.
+Accepted repair sources are not just remembered as URLs. The SDK re-enriches
+them under the refinement budget, promotes useful extracted evidence into typed
+feature/capability/specification facts, and links those fact nodes back to the
+concrete Home Assistant subject with `describes` edges. Official/vendor repair
+facts are preferred over weaker secondary deterministic fragments during Ask
+and page generation.
 Provider-backed semantic calls are bounded by SDK timeouts and abort signals,
 and broad reindex uses a small LLM budget before continuing deterministically,
 so Home Assistant panels should not add host-side shims to avoid hung provider
@@ -247,6 +262,9 @@ requests. If a source was previously enriched deterministically because no LLM
 was available or the LLM budget was exhausted, the SDK can upgrade that source
 during a later ask/reindex and supersede the old deterministic semantic
 facts/pages instead of returning both old and new interpretations.
+Repair tasks that are blocked until a retry window include top-level
+`nextRepairAttemptAt` in addition to trace/metadata details, so Home Assistant
+panels can show retry timing without understanding SDK trace internals.
 Current text, HTML, JSON, CSV/TSV, XML, YAML, DOCX, XLSX, PPTX, and PDF
 extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream

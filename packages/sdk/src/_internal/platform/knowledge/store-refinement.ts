@@ -20,6 +20,9 @@ export async function upsertKnowledgeRefinementTask(
   const _gapId = stableText(input.gapId);
   const _issueId = stableText(input.issueId);
   const _blockedReason = stableText(input.blockedReason);
+  const nextRepairAttemptAt = readNumber(input.nextRepairAttemptAt)
+    ?? readNumber(input.metadata?.nextRepairAttemptAt)
+    ?? existing?.nextRepairAttemptAt;
   const replacementTrace = input.trace ? [...input.trace] : existing?.trace ?? [];
   const trace = [...replacementTrace, ...(input.appendTrace ?? [])].slice(-80);
   const record: KnowledgeRefinementTaskRecord = {
@@ -40,10 +43,12 @@ export async function upsertKnowledgeRefinementTask(
     },
     attemptCount: Math.max(0, Math.trunc(input.attemptCount ?? existing?.attemptCount ?? 0)),
     ...(_blockedReason !== null ? { blockedReason: _blockedReason } : existing?.blockedReason && input.state === existing.state ? { blockedReason: existing.blockedReason } : {}),
+    ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
     trace,
     metadata: {
       ...(existing?.metadata ?? {}),
       ...(input.metadata ?? {}),
+      ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
     },
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
@@ -77,4 +82,8 @@ export async function upsertKnowledgeRefinementTask(
   refinementTasks.set(record.id, record);
   await sqlite.save();
   return record;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }

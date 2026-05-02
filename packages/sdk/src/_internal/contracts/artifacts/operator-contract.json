@@ -3,7 +3,7 @@
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.14"
+    "version": "0.28.15"
   },
   "auth": {
     "modes": [
@@ -28903,6 +28903,9 @@
                     "blockedReason": {
                       "type": "string"
                     },
+                    "nextRepairAttemptAt": {
+                      "type": "number"
+                    },
                     "trace": {
                       "type": "array",
                       "items": {
@@ -29117,6 +29120,9 @@
                     },
                     "blockedReason": {
                       "type": "string"
+                    },
+                    "nextRepairAttemptAt": {
+                      "type": "number"
                     },
                     "trace": {
                       "type": "array",
@@ -29335,6 +29341,9 @@
                   },
                   "blockedReason": {
                     "type": "string"
+                  },
+                  "nextRepairAttemptAt": {
+                    "type": "number"
                   },
                   "trace": {
                     "type": "array",
@@ -39697,6 +39706,9 @@
                 "blockedReason": {
                   "type": "string"
                 },
+                "nextRepairAttemptAt": {
+                  "type": "number"
+                },
                 "trace": {
                   "type": "array",
                   "items": {
@@ -39887,6 +39899,9 @@
                 },
                 "blockedReason": {
                   "type": "string"
+                },
+                "nextRepairAttemptAt": {
+                  "type": "number"
                 },
                 "trace": {
                   "type": "array",
@@ -40095,6 +40110,9 @@
                   },
                   "blockedReason": {
                     "type": "string"
+                  },
+                  "nextRepairAttemptAt": {
+                    "type": "number"
                   },
                   "trace": {
                     "type": "array",

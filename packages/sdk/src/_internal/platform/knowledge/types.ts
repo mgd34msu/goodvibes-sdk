@@ -247,6 +247,7 @@ export interface KnowledgeRefinementTaskRecord {
   readonly budget: Record<string, number>;
   readonly attemptCount: number;
   readonly blockedReason?: string;
+  readonly nextRepairAttemptAt?: number;
   readonly trace: readonly KnowledgeRefinementTraceEntry[];
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
@@ -415,6 +416,7 @@ export interface KnowledgeRefinementTaskUpsertInput {
   readonly budget?: Record<string, number>;
   readonly attemptCount?: number;
   readonly blockedReason?: string;
+  readonly nextRepairAttemptAt?: number;
   readonly trace?: readonly KnowledgeRefinementTraceEntry[];
   readonly appendTrace?: readonly KnowledgeRefinementTraceEntry[];
   readonly metadata?: Record<string, unknown>;

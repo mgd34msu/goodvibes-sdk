@@ -210,6 +210,9 @@ failures. The SDK marks them blocked with retry metadata, updates the gap with
 scheduled/manual run continue. If a repair pass accepts source evidence but
 does not have enough corroboration to close the gap, those accepted sources are
 still linked/promoted and the task is deferred rather than discarded.
+Refinement task responses expose `nextRepairAttemptAt` as a top-level field as
+well as in metadata, so UI clients do not need to parse task traces for retry
+timing.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
@@ -217,10 +220,13 @@ semantic facts when available, asks the current LLM to synthesize an answer from
 that evidence, and falls back to fact/snippet rendering when no LLM is
 available. When no provider answer is available but usable semantic facts are
 present, the fallback is still synthesized into prose rather than returned as
-raw snippet bullets. Responses include answer text, confidence, sources, linked
-objects, facts, gaps, and ranked search results. This is the generic layer used
-by Home Graph and future knowledge spaces, so clients should not implement
-their own snippet-to-answer logic. Answer synthesis has an SDK-owned hard
+raw snippet bullets. When matched evidence exists but fact extraction has not
+finished yet, the fallback still returns a synthesized evidence summary plus
+the missing gap instead of raw bullet snippets. Responses include answer text,
+confidence, sources, linked objects, facts, gaps, and ranked search results.
+This is the generic layer used by Home Graph and future knowledge spaces, so
+clients should not implement their own snippet-to-answer logic. Answer
+synthesis has an SDK-owned hard
 timeout; if a provider ignores its own timeout or abort signal, Ask falls back
 instead of pinning the daemon. If Ask identifies answer gaps and semantic gap
 repair is configured, the SDK queues refinement tasks and starts repair in the
@@ -293,7 +299,10 @@ semantically re-enriched under the same run budget, and promoted fact nodes are
 linked back to the concrete subject with `describes` edges. Gap repair does not
 invent facts from search snippets. It gives the normal ingest, extraction,
 semantic enrichment, review, and future ask paths more source evidence to work
-with.
+with. When useful extracted evidence is available from an accepted official or
+vendor source, the SDK promotes typed feature/capability/specification facts so
+the official evidence can drive follow-up answers and generated pages instead
+of remaining a passive URL.
 Existing `repairs_gap` edges and retry windows suppress repeated searches for
 the same gap; repair sources linked elsewhere on the same object do not block
 new gaps from being repaired. Foreground repair attempts use bounded web search

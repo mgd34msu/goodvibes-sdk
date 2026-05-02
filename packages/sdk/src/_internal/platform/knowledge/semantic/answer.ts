@@ -399,7 +399,10 @@ function factQuality(fact: KnowledgeNodeRecord): number {
   const extractor = readString(fact.metadata.extractor);
   const kind = readString(fact.metadata.factKind);
   const value = readString(fact.metadata.value);
+  const authority = readString(fact.metadata.sourceAuthority);
   return (extractor === 'llm' ? 40 : 0)
+    + (extractor === 'repair-promotion' ? 34 : 0)
+    + (authority === 'official-vendor' ? 24 : authority === 'vendor' ? 14 : 0)
     + (value ? 12 : 0)
     + (kind === 'capability' || kind === 'feature' ? 8 : kind === 'specification' ? 6 : 0)
     + Math.round(fact.confidence / 10);

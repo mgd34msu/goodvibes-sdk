@@ -29081,6 +29081,9 @@ Mark a queued or active Home Graph refinement task as cancelled.
             "blockedReason": {
               "type": "string"
             },
+            "nextRepairAttemptAt": {
+              "type": "number"
+            },
             "trace": {
               "type": "array",
               "items": {
@@ -29299,6 +29302,9 @@ Return one Home Graph refinement task and its trace.
             },
             "blockedReason": {
               "type": "string"
+            },
+            "nextRepairAttemptAt": {
+              "type": "number"
             },
             "trace": {
               "type": "array",
@@ -29521,6 +29527,9 @@ Return durable Home Graph refinement tasks with states, traces, source assessmen
           },
           "blockedReason": {
             "type": "string"
+          },
+          "nextRepairAttemptAt": {
+            "type": "number"
           },
           "trace": {
             "type": "array",
@@ -40031,6 +40040,9 @@ Mark a queued or active semantic refinement task as cancelled.
         "blockedReason": {
           "type": "string"
         },
+        "nextRepairAttemptAt": {
+          "type": "number"
+        },
         "trace": {
           "type": "array",
           "items": {
@@ -40225,6 +40237,9 @@ Return one semantic refinement task and its trace.
         },
         "blockedReason": {
           "type": "string"
+        },
+        "nextRepairAttemptAt": {
+          "type": "number"
         },
         "trace": {
           "type": "array",
@@ -40437,6 +40452,9 @@ Return durable semantic refinement tasks with state, traces, accepted/rejected s
           },
           "blockedReason": {
             "type": "string"
+          },
+          "nextRepairAttemptAt": {
+            "type": "number"
           },
           "trace": {
             "type": "array",

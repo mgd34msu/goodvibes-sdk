@@ -6,7 +6,6 @@ import type {
   KnowledgeEdgeRecord,
   KnowledgeIssueRecord,
   KnowledgeNodeRecord,
-  KnowledgeRefinementTaskRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
 import type {
@@ -18,6 +17,7 @@ import { recoverNoRepairerTasks, recoverStaleActiveTasks } from './self-improvem
 import { readRecord, readString, semanticHash, semanticMetadata, semanticSlug, sourceKnowledgeSpace, uniqueStrings } from './utils.js';
 import { withTimeout } from './timeouts.js';
 import { updateRefinementTask, upsertRefinementTaskForGap } from './self-improvement-tasks.js';
+import { promoteRepairSources } from './self-improvement-promotion.js';
 
 const RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_REFINEMENT_LIMIT = 12;
@@ -200,6 +200,7 @@ export async function runKnowledgeSemanticSelfImprovement(
         query: result?.query,
       });
       if (evidenceSufficient) {
+        closedGaps += 1;
         await updateRefinementTask(context.store, task, 'closed', 'Repair sources were accepted and linked to the gap.', {
           acceptedSourceIds,
           ingestedSourceIds: result?.ingestedSourceIds ?? [],
@@ -589,63 +590,6 @@ async function linkRepairSources(
     }
   }
   return linked;
-}
-
-async function promoteRepairSources(
-  context: SelfImproveContext,
-  spaceId: string,
-  gap: KnowledgeNodeRecord,
-  sourceIds: readonly string[],
-  task: KnowledgeRefinementTaskRecord,
-  deadlineAt: number,
-): Promise<void> {
-  if (!context.enrichSource) return;
-  for (const [index, sourceId] of sourceIds.entries()) {
-    await yieldEvery(index, 2);
-    const remainingMs = Math.max(0, deadlineAt - Date.now());
-    if (remainingMs < 1_000) break;
-    await withTimeout(
-      context.enrichSource(sourceId, { knowledgeSpaceId: spaceId, force: true }),
-      Math.min(remainingMs, 20_000),
-      'Semantic repair source enrichment exceeded its run budget.',
-    );
-    await yieldToEventLoop();
-  }
-  await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, sourceIds);
-  await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'verified', 'Accepted repair sources were semantically enriched.', {
-    promotedSourceIds: sourceIds,
-  });
-}
-
-async function linkPromotedFactsToRepairSubjects(
-  store: KnowledgeStore,
-  spaceId: string,
-  gap: KnowledgeNodeRecord,
-  sourceIds: readonly string[],
-): Promise<void> {
-  const linkedObjectIds = readStringArray(gap.metadata.linkedObjectIds).filter((nodeId) => Boolean(store.getNode(nodeId)));
-  if (linkedObjectIds.length === 0) return;
-  const edges = store.listEdges();
-  const nodesById = new Map(store.listNodes(10_000).filter((node) => getKnowledgeSpaceId(node) === spaceId).map((node) => [node.id, node]));
-  for (const sourceId of sourceIds) {
-    for (const fact of factsForSource(sourceId, edges, nodesById)) {
-      for (const objectId of linkedObjectIds) {
-        await store.upsertEdge({
-          fromKind: 'node',
-          fromId: fact.id,
-          toKind: 'node',
-          toId: objectId,
-          relation: 'describes',
-          weight: 0.82,
-          metadata: semanticMetadata(spaceId, {
-            linkedBy: 'semantic-gap-repair',
-            repairedAt: Date.now(),
-            sourceId,
-          }),
-        });
-      }
-    }
-  }
 }
 
 function isBudgetError(message: string): boolean {

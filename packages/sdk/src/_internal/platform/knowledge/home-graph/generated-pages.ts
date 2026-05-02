@@ -61,15 +61,31 @@ export const HOME_GRAPH_PAGE_POLICY_VERSION = 'homegraph-pages-v7';
 const DEFAULT_SYNC_DEVICE_PASSPORT_LIMIT = 32;
 const DEFAULT_SYNC_ROOM_PAGE_LIMIT = 12;
 const DEFAULT_SYNC_PAGE_RUN_MS = 15_000;
+const MAX_FOREGROUND_SYNC_DEVICE_PASSPORTS = 32;
+const MAX_FOREGROUND_SYNC_ROOM_PAGES = 12;
+const MAX_FOREGROUND_SYNC_PAGE_RUN_MS = 30_000;
 
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
 ): Promise<HomeGraphGeneratedPagesSummary> {
+  const requested = context.input.pageAutomation ?? {};
   return generateHomeGraphPagesForCurrentState(context, {
-    maxDevicePassports: DEFAULT_SYNC_DEVICE_PASSPORT_LIMIT,
-    maxRoomPages: DEFAULT_SYNC_ROOM_PAGE_LIMIT,
-    maxRunMs: DEFAULT_SYNC_PAGE_RUN_MS,
-    ...(context.input.pageAutomation ?? {}),
+    ...requested,
+    maxDevicePassports: clampForegroundLimit(
+      requested.maxDevicePassports,
+      DEFAULT_SYNC_DEVICE_PASSPORT_LIMIT,
+      MAX_FOREGROUND_SYNC_DEVICE_PASSPORTS,
+    ),
+    maxRoomPages: clampForegroundLimit(
+      requested.maxRoomPages,
+      DEFAULT_SYNC_ROOM_PAGE_LIMIT,
+      MAX_FOREGROUND_SYNC_ROOM_PAGES,
+    ),
+    maxRunMs: clampForegroundLimit(
+      requested.maxRunMs,
+      DEFAULT_SYNC_PAGE_RUN_MS,
+      MAX_FOREGROUND_SYNC_PAGE_RUN_MS,
+    ),
   });
 }
 
@@ -489,6 +505,11 @@ function limitRecords<T>(records: readonly T[], limit: number | undefined): read
   if (typeof limit !== 'number') return records;
   if (!Number.isFinite(limit)) return records;
   return records.slice(0, Math.max(0, Math.trunc(limit)));
+}
+
+function clampForegroundLimit(value: number | undefined, fallback: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(max, Math.trunc(value)));
 }
 
 function readHomeAssistantObjectId(node: KnowledgeNodeRecord, ...keys: readonly string[]): string | undefined {

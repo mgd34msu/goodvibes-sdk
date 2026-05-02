@@ -207,7 +207,7 @@ export class KnowledgeSemanticService {
   async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {
     await this.store.init();
     if (input.deferRepair !== true) {
-      if (this.activeSelfImprovementRun && !input.gapIds?.length) return activeSelfImproveResult();
+      if (this.activeSelfImprovementRun && !input.gapIds?.length) return activeSelfImproveResult(input);
       const run = this.runSelfImproveUnlocked(input);
       if (!input.gapIds?.length) this.activeSelfImprovementRun = run;
       try {
@@ -277,10 +277,12 @@ function answerRepairSpaceId(answer: KnowledgeSemanticAnswerResult): string {
   return answer.spaceId;
 }
 
-function activeSelfImproveResult(): KnowledgeSemanticSelfImproveResult {
+function activeSelfImproveResult(input: KnowledgeSemanticSelfImproveInput): KnowledgeSemanticSelfImproveResult {
+  const requestedLimit = Math.max(1, input.limit ?? 1);
   return {
     ...emptySelfImproveResult(),
     skippedGaps: 1,
+    requestedLimit,
     truncated: true,
     budgetExhausted: true,
   };
