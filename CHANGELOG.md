@@ -35,6 +35,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   aliases such as `domains`, `areaIds`, and `objectKinds`.
 
 ### Fixed
+- SDK tarball installs now pin the Smithy retry helper used by the Bedrock
+  dependency path to a known-good npm-published version, avoiding the broken
+  `@smithy/util-retry@4.3.7` registry package that currently resolves
+  `workspace:^` dependencies during npm install.
 - PDF ingestion now fails when no readable text can be extracted instead of
   indexing a weak placeholder extraction. Legacy `extractorId: "pdf"` records
   are still treated as stale and reparsed during Ask/reindex.
