@@ -88,6 +88,7 @@ async function repairKnowledgeGapsWithWeb(
   const sourceLimit = Math.max(2, Math.min(5, request.maxSources ?? options.maxSources ?? options.maxIngest ?? 5));
   const searchLimit = Math.max(1, Math.min(5, options.maxSearches ?? queries.length));
   const existingCandidates = selectExistingRepairSources(request, options, sourceLimit);
+  const acceptedExisting = candidateCanonicalUris(existingCandidates);
   const searchResults = new Map<string, GapRepairSearchResult>();
   const providerIds = new Set<string>();
   let lastError: string | undefined;
@@ -113,7 +114,7 @@ async function repairKnowledgeGapsWithWeb(
         if (!canonical || searchResults.has(canonical)) continue;
         searchResults.set(canonical, { ...result, searchQuery: query, searchProviderId: response.providerId });
       }
-      const partial = mergeRepairCandidates(existingCandidates, selectGapRepairCandidates([...searchResults.values()], existing, options, request, sourceLimit), sourceLimit);
+      const partial = mergeRepairCandidates(existingCandidates, selectGapRepairCandidates([...searchResults.values()], acceptedExisting, options, request, sourceLimit), sourceLimit);
       if (hasEnoughRepairEvidence(partial, options)) break;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
@@ -122,7 +123,7 @@ async function repairKnowledgeGapsWithWeb(
   }
 
   const allResults = [...searchResults.values()];
-  const candidates = mergeRepairCandidates(existingCandidates, selectGapRepairCandidates(allResults, existing, options, request, sourceLimit), sourceLimit);
+  const candidates = mergeRepairCandidates(existingCandidates, selectGapRepairCandidates(allResults, acceptedExisting, options, request, sourceLimit), sourceLimit);
   if (!hasEnoughRepairEvidence(candidates, options)) {
     return {
       searched: true,
@@ -298,7 +299,7 @@ function selectExistingRepairSources(
   const minimumConfidence = Math.max(1, Math.min(100, options.minConfidence ?? 70));
   const byDomain = new Map<string, GapRepairCandidate>();
   for (const source of request.sources) {
-    if (source.status !== 'indexed' || isGeneratedOrSyntheticSource(source)) continue;
+    if ((source.status !== 'indexed' && source.status !== 'pending') || isGeneratedOrSyntheticSource(source)) continue;
     const url = source.sourceUri ?? source.canonicalUri;
     if (!url) continue;
     const domain = safeDomain(url);
@@ -318,7 +319,9 @@ function selectExistingRepairSources(
       ...(snippet ? { snippet } : {}),
     };
     const assessment = assessGapRepairSource(result, request.query, request);
-    if (assessment.confidence < minimumConfidence && !isOfficialOrVendorSource(assessment.reasons)) continue;
+    const officialOrVendor = isOfficialOrVendorSource(assessment.reasons);
+    if (source.status !== 'indexed' && !officialOrVendor) continue;
+    if (assessment.confidence < minimumConfidence && !officialOrVendor) continue;
     byDomain.set(domain, {
       ...result,
       existingSourceId: source.id,
@@ -327,6 +330,10 @@ function selectExistingRepairSources(
     });
   }
   return [...byDomain.values()].sort(compareRepairCandidates).slice(0, sourceLimit);
+}
+
+function candidateCanonicalUris(candidates: readonly GapRepairCandidate[]): ReadonlySet<string> {
+  return new Set(candidates.map((candidate) => canonicalizeUri(candidate.url)).filter((value): value is string => Boolean(value)));
 }
 
 function assessGapRepairSource(

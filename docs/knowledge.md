@@ -229,14 +229,18 @@ clients should not implement their own snippet-to-answer logic. Answer
 synthesis has an SDK-owned hard
 timeout; if a provider ignores its own timeout or abort signal, Ask falls back
 instead of pinning the daemon. If Ask identifies answer gaps and semantic gap
-repair is configured, the SDK queues refinement tasks and starts repair in the
-background.
-Ask does not wait for web search, URL ingest, or re-answering; it returns the
-current best answer plus `refinementTaskIds` so clients can show repair
-progress and ask again after the graph improves. When callers use the
-generic `knowledgeSpaceId: "homeassistant"` alias, answer-gap tasks are written
-to the concrete `homeassistant:<installationId>` space inferred from linked
-objects or evidence, rather than to the alias itself.
+repair is configured, the SDK queues refinement tasks and starts repair. For
+concrete Home Assistant object questions with weak or missing evidence, Ask
+also performs one bounded foreground repair/re-answer pass. That pass is still
+capped by the caller timeout and the SDK's source limits, but it lets direct
+feature/specification questions use newly repaired official/vendor evidence
+immediately when extraction and promotion finish in time. If the bounded pass
+cannot produce usable facts, Ask returns the current best answer plus
+`refinementTaskIds` so clients can show repair progress and ask again after the
+graph improves. When callers use the generic `knowledgeSpaceId: "homeassistant"`
+alias, answer-gap tasks are written to the concrete
+`homeassistant:<installationId>` space inferred from linked objects or
+evidence, rather than to the alias itself.
 For concrete feature/specification questions, Ask also checks whether the
 matched evidence is strong enough to answer the user's intent. If the object is
 identified but the evidence is only a weak profile/generated-page match, the SDK
@@ -303,12 +307,14 @@ with. When useful extracted evidence is available from an accepted official or
 vendor source, the SDK promotes typed feature/capability/specification facts so
 the official evidence can drive follow-up answers and generated pages instead
 of remaining a passive URL.
-Existing `repairs_gap` edges and retry windows suppress repeated searches for
-the same gap; repair sources linked elsewhere on the same object do not block
-new gaps from being repaired. Foreground repair attempts use bounded web search
-and URL-ingest waits, accept two repair sources by default, yield between gap
-attempts, and mark interrupted active tasks as blocked-and-retriable on the
-next run for that space.
+Existing `repairs_gap` edges suppress repeated searches only when they are
+paired with promoted source-backed repair facts. A weak historical repair edge
+without usable facts is retriable, so the graph can recover from earlier bad
+repair runs. Retry windows still prevent tight loops, and repair sources linked
+elsewhere on the same object do not block new gaps from being repaired.
+Foreground repair attempts use bounded web search and URL-ingest waits, accept
+two repair sources by default, yield between gap attempts, and mark interrupted
+active tasks as blocked-and-retriable on the next run for that space.
 
 ## Review Pathways
 

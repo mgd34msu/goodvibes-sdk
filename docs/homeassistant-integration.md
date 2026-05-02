@@ -234,6 +234,13 @@ full enrichment pass before answer synthesis starts. If a source matches before
 typed facts have been extracted, the SDK still returns synthesized prose that
 describes the currently indexed evidence and the remaining gap instead of
 dumping raw snippet bullets.
+When a concrete Home Assistant object is identified but the current evidence is
+weak, Home Graph Ask also gets one bounded foreground repair pass. The daemon
+checks already-indexed official/vendor sources, searches for up to five
+high-confidence sources when needed, promotes extracted source evidence into
+typed facts, and re-runs answer selection once if useful facts were created.
+If the bounded pass cannot produce usable facts in time, the response still
+includes `refinementTaskIds` so the panel can show ongoing repair state.
 The same self-improvement loop also runs when Home Graph syncs a snapshot,
 ingests a manual/document/URL/note, or reindexes. Snapshot sync schedules a
 tiny delayed repair pass and does not run external web/LLM repair inline with

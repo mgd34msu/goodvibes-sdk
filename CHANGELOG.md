@@ -20,6 +20,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.16] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Semantic gap repair now reuses pending or already-indexed official/vendor
+  sources as first-class repair candidates instead of excluding them as
+  `already-indexed` search results.
+- Accepted repair evidence only closes a gap after semantic enrichment or
+  promotion yields usable source-backed facts, preventing empty/weak repairs
+  from suppressing future refinement.
+- Stale `repairs_gap` edges without promoted repair facts no longer make a gap
+  look complete; forced and later refinement passes can repair those gaps
+  properly.
+- Home Graph Ask and base Knowledge Ask for Home Assistant spaces now perform a
+  bounded foreground repair/re-answer pass for weak concrete-object answers, so
+  direct feature/specification questions can use newly repaired evidence in the
+  same response instead of always waiting for a later Ask.
+- Coalesced broad refinement results now preserve the requested effective limit
+  in returned accounting metadata.
+
+### Migration
+- none
+
+---
+
 ## [0.28.15] - 2026-05-02
 
 ### Breaking

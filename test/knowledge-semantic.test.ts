@@ -392,7 +392,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.gaps?.map((gap) => gap.title)).toContain('What are the complete TV feature specifications?');
   });
 
-  test('Home Graph ask queues concrete feature gap repair and later answers from repaired sources', async () => {
+  test('Home Graph ask repairs concrete feature gaps from repaired sources', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store, {
       llm: new ForegroundRepairLlm(),
@@ -443,8 +443,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     });
     const tvNode = store.listNodes(100).find((node) => node.title === 'LG webOS Smart TV');
 
-    expect(answer.answer.text).toContain('LG webOS Smart TV');
-    expect(answer.answer.gaps?.length).toBeGreaterThan(0);
+    expect(answer.answer.text).toContain('NanoCell 4K');
     expect(answer.answer.refinementTaskIds?.length).toBeGreaterThan(0);
     await waitFor(() => store.listEdges().some((edge) => edge.relation === 'repairs_gap'), 500);
     const repaired = await service.ask({
@@ -854,7 +853,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(Array.isArray((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).searchQueries)).toBe(true);
   });
 
-  test('web gap repair reuses indexed official sources as accepted evidence', async () => {
+  test('web gap repair reuses pending official sources as accepted evidence', async () => {
     const ingested: unknown[] = [];
     const repairer = createWebKnowledgeGapRepairer({
       searchService: {
@@ -901,7 +900,7 @@ describe('semantic knowledge/wiki enrichment', () => {
         canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
         summary: 'Official LG 86NANO90UNA product specifications.',
         tags: ['semantic-gap-repair'],
-        status: 'indexed',
+        status: 'pending',
         metadata: { knowledgeSpaceId: 'homeassistant:house' },
         createdAt: 1,
         updatedAt: 1,
@@ -1196,6 +1195,15 @@ describe('semantic knowledge/wiki enrichment', () => {
           tags: ['semantic-gap-repair'],
           status: 'indexed',
           metadata: { knowledgeSpaceId: 'default', sourceDiscovery: { purpose: 'semantic-gap-repair' } },
+        });
+        await store.upsertExtraction({
+          sourceId: 'repair-source',
+          extractorId: 'test-web',
+          format: 'html',
+          structure: {
+            searchText: 'LG 86NANO90UNA specifications include a NanoCell 4K display, Dolby Vision, HDR10, HDMI eARC, webOS smart TV features, Wi-Fi, Bluetooth, and Game Optimizer.',
+          },
+          metadata: { knowledgeSpaceId: 'default' },
         });
         return {
           searched: true,
@@ -1623,7 +1631,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     await first;
 
     expect(second.requestedLimit).toBe(500);
-    expect(second.effectiveLimit).toBe(0);
+    expect(second.effectiveLimit).toBe(500);
     expect(second.skippedGaps).toBe(1);
     expect(second.truncated).toBe(true);
     expect(second.budgetExhausted).toBe(true);
