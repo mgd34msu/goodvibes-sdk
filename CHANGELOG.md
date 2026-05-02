@@ -20,6 +20,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.19] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph and base Knowledge Ask now rehydrate official/vendor sources
+  linked by graph edges before synthesis, so accepted LG/vendor evidence can
+  drive answers even when the source was already indexed.
+- Feature/spec answers now strip URL, `homegraph://`, generated-page, and
+  semantic routing fragments before excerpting source text, preventing raw
+  source plumbing from replacing real specs.
+- Specific support questions such as HDR/display support now synthesize from a
+  single strong category instead of falling back to "matching sources" text.
+- Base `knowledgeSpaceId: "homeassistant"` Ask avoids generic no-subject device
+  facts/gaps and shares the same scoped answer behavior as Home Graph Ask.
+- Returned semantic facts now expose top-level `subject`, `subjectIds`,
+  `linkedObjectIds`, and `targetHints` fields in addition to metadata for
+  companion UI rendering.
+- Semantic enrichment now inherits subject links from `source_for` graph edges,
+  not only source discovery metadata.
+- Repair promotion no longer writes raw source sentences as facts; promoted
+  repair facts must classify into canonical typed feature/spec sections.
+- Home Graph reindex now skips stale generated-page sources with missing
+  artifacts instead of failing the reindex.
+- Refinement coalescing is now represented in the public result contract with a
+  `coalesced` flag.
+
+### Migration
+- none
+
+---
+
 ## [0.28.18] - 2026-05-02
 
 ### Breaking

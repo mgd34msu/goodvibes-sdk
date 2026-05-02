@@ -24812,6 +24812,51 @@ Return namespace-filtered Home Graph sources, nodes, edges, and issues.
           "sourceId": {
             "type": "string"
           },
+          "subject": {
+            "type": "string"
+          },
+          "subjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targetHints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "linkedObjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "metadata": {
             "type": "object",
             "additionalProperties": {
@@ -25335,6 +25380,51 @@ Export a complete Home Graph knowledge space.
           },
           "sourceId": {
             "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targetHints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "linkedObjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "metadata": {
             "type": "object",
@@ -28941,6 +29031,9 @@ Run source-backed Home Graph self-improvement for a space, source list, or speci
         "effectiveLimit": {
           "type": "number"
         },
+        "coalesced": {
+          "type": "boolean"
+        },
         "truncated": {
           "type": "boolean"
         },
@@ -30607,6 +30700,51 @@ Accept, reject, resolve, edit, or forget a Home Graph issue, source, or node.
         "sourceId": {
           "type": "string"
         },
+        "subject": {
+          "type": "string"
+        },
+        "subjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "targetHints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "linkedObjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -31530,6 +31668,51 @@ Ingest a Home Assistant registry snapshot into an isolated Home Graph knowledge 
         "sourceId": {
           "type": "string"
         },
+        "subject": {
+          "type": "string"
+        },
+        "subjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "targetHints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "linkedObjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -32194,6 +32377,51 @@ Search, semantically synthesize, and return a source-backed answer from the stru
               "sourceId": {
                 "type": "string"
               },
+              "subject": {
+                "type": "string"
+              },
+              "subjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "targetHints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "linkedObjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
               "metadata": {
                 "type": "object",
                 "additionalProperties": {
@@ -32278,6 +32506,51 @@ Search, semantically synthesize, and return a source-backed answer from the stru
               "sourceId": {
                 "type": "string"
               },
+              "subject": {
+                "type": "string"
+              },
+              "subjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "targetHints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "linkedObjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
               "metadata": {
                 "type": "object",
                 "additionalProperties": {
@@ -32361,6 +32634,51 @@ Search, semantically synthesize, and return a source-backed answer from the stru
               },
               "sourceId": {
                 "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "subjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "targetHints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "linkedObjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               "metadata": {
                 "type": "object",
@@ -32585,6 +32903,51 @@ Search, semantically synthesize, and return a source-backed answer from the stru
               },
               "sourceId": {
                 "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "subjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "targetHints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "linkedObjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               "metadata": {
                 "type": "object",
@@ -36015,6 +36378,51 @@ Record an LLM or user review decision for a knowledge issue and optionally apply
         "sourceId": {
           "type": "string"
         },
+        "subject": {
+          "type": "string"
+        },
+        "subjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "targetHints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "linkedObjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -36535,6 +36943,51 @@ Return a single structured knowledge source, node, or issue with linked relation
         "sourceId": {
           "type": "string"
         },
+        "subject": {
+          "type": "string"
+        },
+        "subjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "targetHints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "linkedObjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -36877,6 +37330,51 @@ Return a single structured knowledge source, node, or issue with linked relation
           },
           "sourceId": {
             "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targetHints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "linkedObjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "metadata": {
             "type": "object",
@@ -37230,6 +37728,9 @@ Return recent knowledge job runs.
                   },
                   "effectiveLimit": {
                     "type": "number"
+                  },
+                  "coalesced": {
+                    "type": "boolean"
                   },
                   "truncated": {
                     "type": "boolean"
@@ -37787,6 +38288,9 @@ Queue or run a structured knowledge maintenance job.
                 },
                 "effectiveLimit": {
                   "type": "number"
+                },
+                "coalesced": {
+                  "type": "boolean"
                 },
                 "truncated": {
                   "type": "boolean"
@@ -38781,6 +39285,51 @@ Return compiled knowledge nodes.
           },
           "sourceId": {
             "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targetHints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "linkedObjectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "metadata": {
             "type": "object",
@@ -39936,6 +40485,9 @@ Run source-backed semantic self-improvement for a space, source list, or specifi
     },
     "effectiveLimit": {
       "type": "number"
+    },
+    "coalesced": {
+      "type": "boolean"
     },
     "truncated": {
       "type": "boolean"
@@ -42155,6 +42707,51 @@ Search structured knowledge sources and nodes with compact ranked results.
               },
               "sourceId": {
                 "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "subjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "targetHints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "linkedObjectIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               "metadata": {
                 "type": "object",

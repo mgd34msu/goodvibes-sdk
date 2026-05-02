@@ -35,7 +35,7 @@ const PROFILE_RULES: readonly ProfileRule[] = [
       ['4K UHD resolution', /\b4k\b|\buhd\b|\b3840\s*(?:x|×)\s*2160\b/i],
       ['NanoCell display technology', /\bnanocell\b/i],
       ['LCD/LED display', /\blcd\b|\bled\b/i],
-      ['100/120 Hz refresh-rate evidence', /\b(?:100|120)\s*hz\b|\btrumotion\s*240\b/i],
+      ['100/120 Hz refresh rate', /\b(?:100|120)\s*hz\b|\btrumotion\s*240\b/i],
       ['HDR10', /\bhdr10\b/i],
       ['Dolby Vision', /\bdolby vision\b/i],
       ['HLG', /\bhlg\b/i],
@@ -96,10 +96,10 @@ const PROFILE_RULES: readonly ProfileRule[] = [
     intent: /\b(game|gaming|vrr|allm|freesync|g-?sync|low latency|hdmi\s*2\.1|4k\s*120)\b/,
     minimumMatches: 1,
     terms: [
-      ['FreeSync/VRR evidence', /\bfreesync\b|\bvrr\b/i],
-      ['ALLM/low latency evidence', /\ballm\b|\blow latency\b/i],
+      ['FreeSync/VRR support', /\bfreesync\b|\bvrr\b/i],
+      ['ALLM/low-latency support', /\ballm\b|\blow latency\b/i],
       ['Game Optimizer/game mode', /\bgame optimizer\b|\bgame mode\b|\bgaming\b/i],
-      ['HDMI 2.1/high-bandwidth HDMI evidence', /\bhdmi\s*2\.1\b|\b4k\s*(?:at|@)?\s*120\b|\b120\s*hz\b/i],
+      ['HDMI 2.1/high-bandwidth HDMI', /\bhdmi\s*2\.1\b|\b4k\s*(?:at|@)?\s*120\b|\b120\s*hz\b/i],
     ],
   },
   {
@@ -110,10 +110,10 @@ const PROFILE_RULES: readonly ProfileRule[] = [
     intent: /\b(audio|speaker|sound|dolby atmos|dolby digital|earc|arc|watts?|channels?)\b/,
     minimumMatches: 1,
     terms: [
-      ['speaker/audio output evidence', /\bspeakers?\b|\b(?:10|20|40)\s*w\b|\b2(?:\.0)?\s*ch\b/i],
+      ['speaker/audio output', /\bspeakers?\b|\b(?:10|20|40)\s*w\b|\b2(?:\.0)?\s*ch\b/i],
       ['Dolby audio formats', /\bdolby atmos\b|\bdolby digital\b|\bdolby audio\b/i],
       ['HDMI ARC/eARC audio', /\bearc\b|\barc\b/i],
-      ['supported audio formats', /\bsupported audio formats?\b|\bpcm\b|\btruehd\b/i],
+      ['audio format support', /\bsupported audio formats?\b|\bpcm\b|\btruehd\b/i],
     ],
   },
   {
@@ -137,14 +137,12 @@ export function deriveRepairProfileFacts(input: {
   readonly source: KnowledgeSourceRecord;
   readonly text: string;
 }): readonly RepairProfileFact[] {
-  const text = normalizeWhitespace([
+  const text = profileEvidenceText([
     input.source.title,
     input.source.summary,
     input.source.description,
-    input.source.sourceUri,
-    input.source.canonicalUri,
     input.text,
-  ].filter(Boolean).join(' '));
+  ]);
   if (!hasConcreteFeatureSignal(text)) return [];
   const query = input.query.toLowerCase();
   const broadProfileIntent = /\b(features?|specifications?|profile|capabilities)\b/.test(query);
@@ -153,8 +151,9 @@ export function deriveRepairProfileFacts(input: {
       .filter(([, pattern]) => pattern.test(text))
       .map(([label]) => label));
     const wanted = broadProfileIntent || rule.intent.test(query);
-    if (values.length < (wanted ? 1 : rule.minimumMatches)) return [];
-    const summary = `${rule.title} evidence includes ${joinValues(values)}.`;
+    const minimumMatches = rule.intent.test(query) ? 1 : rule.minimumMatches;
+    if (values.length < minimumMatches || !wanted) return [];
+    const summary = `${rule.title}: ${joinValues(values)}.`;
     if (isLowValueFeatureOrSpecText(summary)) return [];
     return [{
       kind: rule.kind,
@@ -166,6 +165,16 @@ export function deriveRepairProfileFacts(input: {
       aliases: rule.aliases,
     }];
   }).slice(0, 10);
+}
+
+function profileEvidenceText(values: readonly (string | undefined)[]): string {
+  return normalizeWhitespace(values
+    .filter(Boolean)
+    .join(' ')
+    .replace(/homegraph:\/\/\S+/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\b[a-z0-9.-]+\.(?:com|net|org|io|dev|tv|ca|co\.uk)\/[a-z0-9/_?=&.#-]+/gi, ' ')
+    .replace(/\b(?:series_url|current page|loading)\b/gi, ' '));
 }
 
 function joinValues(values: readonly string[]): string {

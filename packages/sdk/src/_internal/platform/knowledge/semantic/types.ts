@@ -205,6 +205,7 @@ export interface KnowledgeSemanticSelfImproveResult {
   readonly queuedTasks: number;
   readonly requestedLimit?: number;
   readonly effectiveLimit?: number;
+  readonly coalesced?: boolean;
   readonly truncated?: boolean;
   readonly budgetExhausted?: boolean;
   readonly taskIds: readonly string[];

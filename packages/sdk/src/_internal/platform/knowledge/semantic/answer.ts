@@ -46,7 +46,7 @@ import { concreteAnswerGapSpaceId } from './answer-space.js';
 import { answerNeedsFeatureGap, cleanSynthesizedAnswer } from './answer-quality.js';
 import { clampTimeoutMs, withTimeoutOrNull } from './timeouts.js';
 import { renderFallbackAnswer } from './answer-fallback.js';
-import { rankAnswerSources } from './answer-source-ranking.js';
+import { rankAnswerSources, sourceAuthorityBoostForAnswer } from './answer-source-ranking.js';
 import { canonicalRepairSubjectNodes } from './repair-subjects.js';
 
 interface KnowledgeAnswerContext {
@@ -100,36 +100,38 @@ export async function answerKnowledgeQuery(
   const spaceId = normalizeKnowledgeSpaceId(input.knowledgeSpaceId);
   const mode = input.mode ?? 'standard';
   const limit = Math.max(1, input.limit ?? 8);
-  const evidence = collectAnswerEvidence(context.store, input, spaceId, limit);
+  let evidence = collectAnswerEvidence(context.store, input, spaceId, limit);
   if (evidence.length === 0) {
-    const linkedObjects = input.includeLinkedObjects === false ? [] : [...input.linkedObjects ?? []];
-    const gapSpaceId = concreteAnswerGapSpaceId(spaceId, [], [], linkedObjects);
-    const gap = await persistAnswerGap(context.store, gapSpaceId, input.query, 'No indexed evidence matched the question.', {
-      linkedObjects,
-    });
-    return {
-      ok: true,
-      spaceId,
-      query: input.query,
-      answer: {
-        text: input.noMatchMessage ?? `No knowledge matched "${input.query}".`,
-        mode,
-        confidence: 0,
-        sources: [],
-        linkedObjects,
-        facts: [],
-        gaps: [gap],
-        synthesized: false,
-      },
-      results: [],
-    };
+    const linkedObjects = input.includeLinkedObjects === false ? [] : filterAnswerLinkedObjects(spaceId, input.query, [...(input.linkedObjects ?? [])]);
+    const linkedEvidence = includeOfficialLinkedEvidence(context.store, spaceId, input.query, evidence, linkedObjects, limit);
+    if (linkedEvidence.length > 0) {
+      evidence = linkedEvidence;
+    } else {
+      const gap = shouldPersistNoMatchGap(spaceId, input.query, linkedObjects)
+        ? await persistAnswerGap(context.store, concreteAnswerGapSpaceId(spaceId, [], [], linkedObjects), input.query, 'No indexed evidence matched the question.', {
+            linkedObjects,
+          })
+        : null;
+      return {
+        ok: true,
+        spaceId,
+        query: input.query,
+        answer: {
+          text: input.noMatchMessage ?? `No knowledge matched "${input.query}".`,
+          mode,
+          confidence: 0,
+          sources: [],
+          linkedObjects,
+          facts: [],
+          gaps: gap ? [gap] : [],
+          synthesized: false,
+        },
+        results: [],
+      };
+    }
   }
 
-  const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence, input.timeoutMs);
-  const facts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
-  const sources = rankAnswerSources(evidence, facts)
-    .slice(0, limit)
-    .map(withAnswerSourceAliases);
+  let rawFacts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
   const inferredHomeAssistantLinkedObjects = input.includeLinkedObjects === false
     ? []
     : inferHomeAssistantLinkedObjects(context.store, spaceId, input.query);
@@ -146,6 +148,14 @@ export async function answerKnowledgeQuery(
       .filter(isSemanticAnswerLinkedObject)
       .slice(0, 24);
   const linkedObjects = filterAnswerLinkedObjects(spaceId, input.query, rawLinkedObjects);
+  evidence = includeOfficialLinkedEvidence(context.store, spaceId, input.query, evidence, linkedObjects, limit);
+  rawFacts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
+  const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence, input.timeoutMs);
+  const rankedSources = rankAnswerSources(evidence, rawFacts);
+  const facts = withAnswerFactContract(context.store, rawFacts, linkedObjects);
+  const sources = includeOfficialLinkedSources(context.store, spaceId, rankedSources, linkedObjects)
+    .slice(0, limit)
+    .map(withAnswerSourceAliases);
   const gapSpaceId = concreteAnswerGapSpaceId(spaceId, evidence, sources, linkedObjects);
   const gaps = await persistAnswerGaps(context.store, gapSpaceId, input.query, llmAnswer?.gaps ?? [], {
     sources,
@@ -167,14 +177,14 @@ export async function answerKnowledgeQuery(
   const llmText = llmAnswer?.answer?.trim();
   const cleanedLlmText = llmText ? cleanSynthesizedAnswer(llmText, featureIntent) : undefined;
   const dropLowValueLlmAnswer = featureIntent && Boolean(cleanedLlmText) && isLowValueFeatureOrSpecText(cleanedLlmText ?? '');
-  const fallback = !llmText || dropLowValueLlmAnswer
-    ? renderFallbackAnswer(input.query, mode, evidence, facts)
-    : null;
-  const synthesizedAnswer = dropLowValueLlmAnswer ? undefined : cleanedLlmText;
-  const text = synthesizedAnswer || cleanSynthesizedAnswer(fallback?.text || '', featureIntent);
+  const fallback = renderFallbackAnswer(input.query, mode, evidence, facts);
+  const preferFallback = shouldPreferFallbackAnswer(featureIntent, cleanedLlmText, fallback.text);
+  const useFallback = dropLowValueLlmAnswer || preferFallback || !cleanedLlmText;
+  const text = cleanSynthesizedAnswer((useFallback ? fallback.text : cleanedLlmText) || '', featureIntent);
+  const synthesized = useFallback ? fallback.synthesized : Boolean(cleanedLlmText);
   const confidence = input.includeConfidence === false
     ? 0
-    : dropLowValueLlmAnswer ? 0 : answerConfidence(llmAnswer, evidence);
+    : dropLowValueLlmAnswer || (useFallback && !fallback.synthesized) ? 0 : answerConfidence(preferFallback ? null : llmAnswer, evidence);
   return {
     ok: true,
     spaceId,
@@ -187,10 +197,21 @@ export async function answerKnowledgeQuery(
       linkedObjects,
       facts,
       gaps: evidenceGap ? uniqueNodes([...gaps, evidenceGap]) : gaps,
-      synthesized: Boolean(synthesizedAnswer) || Boolean(fallback?.synthesized),
+      synthesized,
     },
     results: evidence.map(toSearchResult),
   };
+}
+
+function shouldPersistNoMatchGap(
+  spaceId: string,
+  query: string,
+  linkedObjects: readonly KnowledgeNodeRecord[],
+): boolean {
+  if (linkedObjects.length > 0) return true;
+  if (normalizeKnowledgeSpaceId(spaceId) !== 'homeassistant') return true;
+  const subjectTokens = tokenizeSemanticQuery(query).filter((token) => !GENERIC_ANSWER_INTENT_TOKENS.has(token));
+  return subjectTokens.length > 0;
 }
 
 function collectAnswerEvidence(
@@ -209,6 +230,7 @@ function collectAnswerEvidence(
   const sourceFacts = buildSourceFactIndex(store, spaceId);
   const linkedSourceIds = sourceIdsLinkedToNodes(store, new Set([...candidateNodeIds, ...linkedObjectIds]), spaceId);
   const broadHomeAssistantAlias = normalizeKnowledgeSpaceId(spaceId) === 'homeassistant' && !strictCandidates;
+  if (broadHomeAssistantAlias && subjectTokens.length === 0 && linkedObjectIds.size === 0) return [];
   const homeAssistantScope = !strictCandidates
     ? inferHomeAssistantAnswerScope(store, spaceId, input.query, subjectTokens)
     : null;
@@ -333,6 +355,159 @@ function shouldUseEvidenceLinkedObjects(
     return inferredHomeAssistantLinkedObjects.length > 0;
   }
   return true;
+}
+
+type AnswerFactRecord = KnowledgeNodeRecord & {
+  readonly subject?: string;
+  readonly subjectIds?: readonly string[];
+  readonly targetHints?: readonly Record<string, unknown>[];
+  readonly linkedObjectIds?: readonly string[];
+};
+
+function withAnswerFactContract(
+  store: KnowledgeStore,
+  facts: readonly KnowledgeNodeRecord[],
+  linkedObjects: readonly KnowledgeNodeRecord[],
+): readonly AnswerFactRecord[] {
+  if (facts.length === 0) return [];
+  const linkedObjectIds = new Set(linkedObjects.map((node) => node.id));
+  return facts.map((fact) => {
+    const source = fact.sourceId ? store.getSource(fact.sourceId) : null;
+    const discovery = readRecord(source?.metadata.sourceDiscovery);
+    const metadataLinkedIds = uniqueStrings([
+      ...readStringArray(fact.metadata.linkedObjectIds),
+      ...readStringArray(fact.metadata.subjectIds),
+      ...readStringArray(discovery.linkedObjectIds),
+    ]);
+    const subjectIds = metadataLinkedIds.filter((id) => linkedObjectIds.has(id));
+    const fallbackSubjectIds = subjectIds.length > 0
+      ? subjectIds
+      : linkedObjects.length === 1 ? [linkedObjects[0]!.id] : [];
+    const subjects = fallbackSubjectIds
+      .map((id) => linkedObjects.find((node) => node.id === id) ?? store.getNode(id))
+      .filter((node): node is KnowledgeNodeRecord => Boolean(node && node.status !== 'stale'));
+    if (subjects.length === 0) return fact as AnswerFactRecord;
+    const targetHints = answerTargetHints(subjects);
+    const metadata = {
+      ...fact.metadata,
+      subject: readString(fact.metadata.subject) ?? subjects[0]?.title,
+      subjectIds: subjects.map((node) => node.id),
+      linkedObjectIds: subjects.map((node) => node.id),
+      targetHints,
+    };
+    return {
+      ...fact,
+      metadata,
+      subject: metadata.subject as string | undefined,
+      subjectIds: metadata.subjectIds as readonly string[],
+      linkedObjectIds: metadata.linkedObjectIds as readonly string[],
+      targetHints,
+    };
+  });
+}
+
+function answerTargetHints(nodes: readonly KnowledgeNodeRecord[]): readonly Record<string, unknown>[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    kind: node.kind,
+    title: node.title,
+    ...(node.summary ? { summary: node.summary } : {}),
+  }));
+}
+
+function includeOfficialLinkedSources(
+  store: KnowledgeStore,
+  spaceId: string,
+  rankedSources: readonly KnowledgeSourceRecord[],
+  linkedObjects: readonly KnowledgeNodeRecord[],
+): readonly KnowledgeSourceRecord[] {
+  if (linkedObjects.length === 0) return rankedSources;
+  const linkedIds = new Set(linkedObjects.map((node) => node.id));
+  const linkedSourceIds = sourceIdsLinkedToNodes(store, linkedIds, spaceId);
+  const official = store.listSources(10_000)
+    .filter((source) => belongsToAnswerSpace(source, spaceId))
+    .filter((source) => sourceAuthorityBoostForAnswer(source) > 0)
+    .filter((source) => {
+      const discovery = readRecord(source.metadata.sourceDiscovery);
+      return linkedSourceIds.has(source.id)
+        || readStringArray(discovery.linkedObjectIds).some((id) => linkedIds.has(id));
+    })
+    .sort((left, right) => sourceAuthorityBoostForAnswer(right) - sourceAuthorityBoostForAnswer(left));
+  return uniqueSources([...official, ...rankedSources]);
+}
+
+function includeOfficialLinkedEvidence(
+  store: KnowledgeStore,
+  spaceId: string,
+  query: string,
+  evidence: readonly EvidenceItem[],
+  linkedObjects: readonly KnowledgeNodeRecord[],
+  limit: number,
+): EvidenceItem[] {
+  if (linkedObjects.length === 0) return [...evidence];
+  const linkedIds = new Set(linkedObjects.map((node) => node.id));
+  const linkedSourceIds = sourceIdsLinkedToNodes(store, linkedIds, spaceId);
+  const tokens = expandQueryTokens(tokenizeSemanticQuery(query));
+  const sourceFacts = buildSourceFactIndex(store, spaceId);
+  const officialItems = store.listSources(10_000)
+    .filter((source) => belongsToAnswerSpace(source, spaceId))
+    .filter((source) => sourceAuthorityBoostForAnswer(source) > 0)
+    .filter((source) => linkedSourceIds.has(source.id) || readStringArray(readRecord(source.metadata.sourceDiscovery).linkedObjectIds).some((id) => linkedIds.has(id)))
+    .map((source) => {
+      const extraction = store.getExtractionBySourceId(source.id);
+      const facts = filterFactsForQuery(query, sourceFacts.get(source.id) ?? []);
+      const text = sourceSemanticText(source, extraction);
+      const scoringText = [
+        source.title,
+        source.summary,
+        source.description,
+        source.tags.join(' '),
+        text,
+        facts.map(renderFactForScoring).join(' '),
+      ].join('\n');
+      const semanticScore = scoreSemanticText(scoringText, tokens);
+      return {
+        kind: 'source' as const,
+        id: source.id,
+        title: source.title ?? source.canonicalUri ?? source.sourceUri ?? source.id,
+        score: semanticScore + sourceAuthorityBoostForAnswer(source) + Math.min(80, facts.length * 10),
+        source,
+        excerpt: selectEvidenceExcerpt(query, text, facts),
+        facts,
+      };
+    })
+    .filter((item) => item.score > 0);
+  if (officialItems.length === 0) return [...evidence];
+  return uniqueEvidenceItems([...officialItems, ...evidence]
+    .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id)))
+    .slice(0, Math.max(limit, evidence.length, 1));
+}
+
+function shouldPreferFallbackAnswer(featureIntent: boolean, llmText: string | undefined, fallbackText: string): boolean {
+  if (!featureIntent || !fallbackText) return false;
+  if (!llmText) return true;
+  const lower = llmText.toLowerCase();
+  if (isLowValueFeatureOrSpecText(llmText)) return true;
+  if (/\b(source-backed facts identify|available source-backed details include|matching sources exist|not enough source-backed facts|not enough concrete source-backed)\b/.test(lower)) {
+    return hasConcreteFeatureSignal(fallbackText);
+  }
+  if (/\bevidence\b/.test(lower) && featureFamilyCount(fallbackText) >= 2) return true;
+  if (featureFamilyCount(llmText) < 2 && featureFamilyCount(fallbackText) >= 2) return true;
+  return false;
+}
+
+function featureFamilyCount(text: string): number {
+  const lower = text.toLowerCase();
+  return [
+    /\b(hdmi|earc|arc|ports?|usb|ethernet|optical|rf|antenna|rs-?232c?)\b/,
+    /\b(hdr|hdr10|dolby vision|hlg|filmmaker)\b/,
+    /\b(4k|8k|uhd|resolution|refresh|120\s*hz|100\s*hz|nanocell|display|screen)\b/,
+    /\b(webos|apps?|streaming|airplay|homekit|chromecast|smart tv|thinq)\b/,
+    /\b(wi-?fi|bluetooth|wireless lan)\b/,
+    /\b(audio|speakers?|dolby atmos|sound)\b/,
+    /\b(game|gaming|vrr|allm|freesync|g-sync)\b/,
+    /\b(tuner|atsc|qam|ntsc|broadcast)\b/,
+  ].filter((pattern) => pattern.test(lower)).length;
 }
 
 async function synthesizeAnswer(
@@ -665,16 +840,26 @@ function selectEvidenceExcerpt(
   const tokens = expandQueryTokens(tokenizeSemanticQuery(query));
   const intent = factIntent(tokenizeSemanticQuery(query));
   const featureIntent = Boolean(intent && hasFeatureIntent(intent));
+  const evidenceText = stripEvidenceRoutingFragments(text);
   const factLines = facts
     .map(renderFactForPrompt)
     .filter((line) => scoreSemanticText(line, tokens) > 0)
     .filter((line) => !featureIntent || !isLowValueFeatureOrSpecText(line))
     .slice(0, 12);
-  const windows = evidenceWindows(text, tokens)
+  const windows = evidenceWindows(evidenceText, tokens)
     .filter((line) => !featureIntent || !isLowValueFeatureOrSpecText(line))
     .slice(0, 4);
-  const fallback = featureIntent && (factLines.length > 0 || windows.length > 0) ? [] : [clampText(text, 720)];
+  const fallback = featureIntent && (factLines.length > 0 || windows.length > 0) ? [] : [clampText(evidenceText, 720)];
   return uniqueStrings([...factLines, ...windows, ...fallback]).join('\n');
+}
+
+function stripEvidenceRoutingFragments(text: string): string {
+  return normalizeWhitespace(text
+    .replace(/homegraph:\/\/\S+/gi, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\bsemantic-gap-repair\b/gi, ' ')
+    .replace(/\bgenerated-page\b/gi, ' ')
+    .replace(/\b[a-z0-9-]+\.(?:com|net|org|io|dev|tv|ca|co\.uk)(?:\/\S*)?/gi, ' '));
 }
 
 function evidenceWindows(text: string, tokens: readonly string[]): string[] {
@@ -819,6 +1004,18 @@ function uniqueSources(sources: readonly KnowledgeSourceRecord[]): KnowledgeSour
     if (seen.has(source.id)) continue;
     seen.add(source.id);
     out.push(source);
+  }
+  return out;
+}
+
+function uniqueEvidenceItems(items: readonly EvidenceItem[]): EvidenceItem[] {
+  const seen = new Set<string>();
+  const out: EvidenceItem[] = [];
+  for (const item of items) {
+    const key = `${item.kind}:${item.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
   }
   return out;
 }

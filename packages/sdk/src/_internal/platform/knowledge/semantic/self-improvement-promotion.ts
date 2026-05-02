@@ -13,7 +13,6 @@ import { updateRefinementTask } from './self-improvement-tasks.js';
 import { withTimeout } from './timeouts.js';
 import { canonicalRepairSubjectNodes, repairSubjectHints } from './repair-subjects.js';
 import {
-  clampText,
   normalizeWhitespace,
   readRecord,
   readString,
@@ -104,6 +103,7 @@ async function promoteRepairEvidenceFacts(
     });
     for (const sentence of sentences) {
       const classification = classifyRepairFact(sentence);
+      if (!classification) continue;
       promoted += await upsertPromotedRepairFact({
         store,
         spaceId,
@@ -112,7 +112,7 @@ async function promoteRepairEvidenceFacts(
         subjects,
         authority,
         title: classification.title,
-        summary: sentence,
+        summary: classification.summary,
         classification,
         evidence: sentence,
       });
@@ -234,6 +234,7 @@ function selectRepairFactSentences(input: {
     .map((sentence) => normalizeWhitespace(sentence))
     .filter((sentence) => sentence.length >= 24 && sentence.length <= 360)
     .filter((sentence) => !sentence.trim().endsWith('?'))
+    .filter((sentence) => !isSourceAddressFragment(sentence))
     .filter((sentence) => hasConcreteFeatureSignal(sentence))
     .filter((sentence) => !isLowValueFeatureOrSpecText(sentence));
   const scored = candidates.map((sentence) => ({
@@ -259,43 +260,117 @@ function repairSentenceScore(sentence: string, wanted: readonly RegExp[], source
   return score;
 }
 
+function isSourceAddressFragment(sentence: string): boolean {
+  const lower = sentence.toLowerCase();
+  return /homegraph:\/\//.test(lower)
+    || /https?:\/\//.test(lower)
+    || /\b[a-z0-9-]+\.(?:com|net|org|io|dev|tv|ca|co\.uk)\/[a-z0-9/_?=&.#-]+/.test(lower)
+    || /\b(?:series_url|canonicaluri|sourceuri|current page|loading)\b/.test(lower);
+}
+
 interface RepairFactClassification {
   readonly kind: 'feature' | 'capability' | 'specification' | 'compatibility' | 'configuration';
   readonly title: string;
   readonly value?: string;
+  readonly summary: string;
   readonly labels: readonly string[];
   readonly aliases: readonly string[];
 }
 
-function classifyRepairFact(sentence: string): RepairFactClassification {
+function classifyRepairFact(sentence: string): RepairFactClassification | null {
   const lower = sentence.toLowerCase();
   if (/\b(resolution|4k|8k|uhd|display|screen|nanocell|lcd|oled|qled|refresh|hz|hdr|dolby vision|hlg)\b/.test(lower)) {
-    return { kind: 'specification', title: 'Display and picture specifications', labels: ['display', 'picture'], aliases: ['display', 'picture'] };
+    return buildRepairFactClassification('specification', 'Display and picture specifications', ['display', 'picture'], ['display', 'picture'], sentence, [
+      ['4K UHD resolution', /\b4k\b|\buhd\b|\b3840\s*(?:x|×)\s*2160\b/i],
+      ['NanoCell display technology', /\bnanocell\b/i],
+      ['LCD/LED display', /\blcd\b|\bled\b/i],
+      ['100/120 Hz refresh rate', /\b(?:100|120)\s*hz\b|\btrumotion\s*240\b/i],
+      ['HDR10', /\bhdr10\b/i],
+      ['Dolby Vision', /\bdolby vision\b/i],
+      ['HLG', /\bhlg\b/i],
+    ]);
   }
   if (/\b(hdmi|usb|ethernet|optical|rf|antenna|rs-?232|composite|component|earc|arc|ports?|input|output)\b/.test(lower)) {
-    return { kind: 'specification', title: 'Input and output ports', labels: ['ports', 'connectivity'], aliases: ['ports', 'inputs', 'outputs'] };
+    return buildRepairFactClassification('specification', 'Input and output ports', ['ports', 'connectivity'], ['ports', 'inputs', 'outputs'], sentence, [
+      ['HDMI inputs', /\bhdmi\b/i],
+      ['HDMI ARC/eARC', /\bearc\b|\barc\b/i],
+      ['USB ports', /\busb\b/i],
+      ['Ethernet/LAN', /\bethernet\b|\blan\b|\brj-?45\b/i],
+      ['Optical audio output', /\boptical\b|\btoslink\b/i],
+      ['RF/antenna input', /\brf\b|\bantenna\b/i],
+      ['Composite/component video', /\bcomposite\b|\bcomponent\b/i],
+      ['RS-232C/external control', /\brs-?232c?\b|\bexternal control\b/i],
+    ]);
   }
   if (/\b(wi-?fi|bluetooth|wireless|airplay|homekit|miracast|chromecast|ethernet)\b/.test(lower)) {
-    return { kind: 'capability', title: 'Network and wireless capabilities', labels: ['network', 'wireless'], aliases: ['network', 'wireless'] };
+    return buildRepairFactClassification('capability', 'Network and wireless capabilities', ['network', 'wireless'], ['network', 'wireless'], sentence, [
+      ['Wi-Fi/wireless LAN', /\bwi-?fi\b|\bwireless lan\b/i],
+      ['Bluetooth', /\bbluetooth\b/i],
+      ['Ethernet/LAN', /\bethernet\b|\blan\b/i],
+      ['Apple AirPlay', /\bairplay\b/i],
+      ['Apple HomeKit', /\bhomekit\b/i],
+      ['Chromecast/Miracast support', /\bchromecast\b|\bmiracast\b/i],
+    ]);
   }
   if (/\b(speaker|audio|dolby atmos|dolby audio|sound|watts?|channels?)\b/.test(lower)) {
-    return { kind: 'specification', title: 'Audio capabilities', labels: ['audio'], aliases: ['audio', 'speakers'] };
+    return buildRepairFactClassification('specification', 'Audio capabilities', ['audio'], ['audio', 'speakers'], sentence, [
+      ['speaker/audio output', /\bspeakers?\b|\b(?:10|20|40)\s*w\b|\b2(?:\.0)?\s*ch\b/i],
+      ['Dolby audio formats', /\bdolby atmos\b|\bdolby digital\b|\bdolby audio\b|\btruehd\b|\bpcm\b/i],
+      ['HDMI ARC/eARC audio', /\bearc\b|\barc\b/i],
+    ]);
   }
   if (/\b(game|gaming|vrr|allm|freesync|g-?sync|low latency)\b/.test(lower)) {
-    return { kind: 'feature', title: 'Gaming features', labels: ['gaming'], aliases: ['gaming'] };
+    return buildRepairFactClassification('feature', 'Gaming features', ['gaming'], ['gaming'], sentence, [
+      ['FreeSync/VRR support', /\bfreesync\b|\bvrr\b/i],
+      ['ALLM/low-latency support', /\ballm\b|\blow latency\b/i],
+      ['Game Optimizer/game mode', /\bgame optimizer\b|\bgame mode\b|\bgaming\b/i],
+      ['4K/120 Hz or high-bandwidth HDMI', /\bhdmi\s*2\.1\b|\b4k\s*(?:at|@)?\s*120\b|\b120\s*hz\b/i],
+    ]);
   }
   if (/\b(webos|smart tv|apps?|voice assistant|alexa|google assistant|streaming)\b/.test(lower)) {
-    return { kind: 'feature', title: 'Smart TV features', labels: ['smart-tv'], aliases: ['smart tv', 'apps'] };
+    return buildRepairFactClassification('feature', 'Smart TV features', ['smart-tv'], ['smart tv', 'apps'], sentence, [
+      ['webOS smart TV platform', /\bwebos\b/i],
+      ['voice assistant support', /\bvoice\b|\balexa\b|\bgoogle assistant\b/i],
+      ['streaming app support', /\bapps?\b|\bstreaming\b/i],
+    ]);
   }
   if (/\b(tuner|atsc|ntsc|qam|broadcast|clear qam)\b/.test(lower)) {
-    return { kind: 'specification', title: 'Tuner support', labels: ['tuner'], aliases: ['tuner', 'broadcast'] };
+    return buildRepairFactClassification('specification', 'Tuner support', ['tuner'], ['tuner', 'broadcast'], sentence, [
+      ['ATSC tuner support', /\batsc\b/i],
+      ['NTSC analog tuner support', /\bntsc\b/i],
+      ['Clear QAM support', /\bqam\b|\bclear qam\b/i],
+      ['broadcast tuner support', /\btuner\b|\bbroadcast\b/i],
+    ]);
   }
+  return null;
+}
+
+function buildRepairFactClassification(
+  kind: RepairFactClassification['kind'],
+  title: string,
+  labels: readonly string[],
+  aliases: readonly string[],
+  sentence: string,
+  terms: readonly [string, RegExp][],
+): RepairFactClassification | null {
+  const values = uniqueStrings(terms
+    .filter(([, pattern]) => pattern.test(sentence))
+    .map(([label]) => label));
+  if (values.length === 0) return null;
   return {
-    kind: 'feature',
-    title: clampText(sentence, 80),
-    labels: ['source-backed'],
-    aliases: [],
+    kind,
+    title,
+    value: values.join(', '),
+    summary: `${title}: ${joinValues(values)}.`,
+    labels,
+    aliases,
   };
+}
+
+function joinValues(values: readonly string[]): string {
+  if (values.length <= 1) return values[0] ?? '';
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
 }
 
 function repairIntentPatterns(query: string): readonly RegExp[] {

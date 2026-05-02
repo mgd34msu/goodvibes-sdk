@@ -10,6 +10,7 @@ import {
   homeAssistantKnowledgeSpaceId,
 } from '../packages/sdk/src/_internal/platform/knowledge/index.js';
 import { answerHomeGraphQuery } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/ask.js';
+import { reindexHomeGraphSources } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/reindex.js';
 import { readHomeGraphSearchState } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/search.js';
 import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
 
@@ -886,6 +887,39 @@ describe('Home Graph knowledge spaces', () => {
     expect(reindex.reparsed).toBe(1);
     expect(extraction?.extractorId).toBe('pdfjs');
     expect(JSON.stringify(extraction?.structure)).toContain('Dolby Vision');
+  });
+
+  test('source reindex skips stale generated page sources whose artifacts were removed', async () => {
+    const { store, artifactStore } = createHomeGraphService();
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const generated = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'LG TV generated passport',
+      canonicalUri: 'homegraph://house-1/generated-page/lg-tv',
+      tags: ['homeassistant', 'home-graph', 'generated-page'],
+      status: 'indexed',
+      artifactId: 'artifact-missing-generated-page',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        homeGraphGeneratedPage: true,
+        projectionKind: 'device-passport',
+      },
+    });
+
+    const reindex = await reindexHomeGraphSources({
+      spaceId,
+      sources: [generated],
+      extractionBySourceId: new Map(),
+      artifactStore,
+      extract: async () => undefined,
+    });
+
+    expect(reindex.scanned).toBe(1);
+    expect(reindex.skipped).toBe(1);
+    expect(reindex.failed).toBe(0);
+    expect(reindex.failures).toHaveLength(0);
+    expect(reindex.spaceId).toBe(spaceId);
   });
 
   test('coalesces overlapping Home Graph reindex requests', async () => {

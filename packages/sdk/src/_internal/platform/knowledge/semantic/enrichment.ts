@@ -28,6 +28,7 @@ import {
   splitSentences,
   uniqueStrings,
 } from './utils.js';
+import { canonicalRepairSubjectNodes } from './repair-subjects.js';
 
 export interface KnowledgeSemanticEnrichmentContext {
   readonly store: KnowledgeStore;
@@ -263,7 +264,11 @@ async function persistSemanticExtraction(
     await linkSourceToNode(store, source.id, node.id, 'mentions_entity', spaceId, semantic.extractor);
   }
 
+  const sourceLinkedObjects = linkedObjectsForSource(store, source);
+  const sourceLinkedObjectIds = sourceLinkedObjects.map((node) => node.id);
+  const sourceTargetHints = sourceLinkedObjects.map((node) => ({ id: node.id, kind: node.kind, title: node.title }));
   for (const fact of semantic.facts.slice(0, 160)) {
+    const targetHints = fact.targetHints?.length ? fact.targetHints : sourceTargetHints;
     const node = await store.upsertNode({
       id: `sem-fact-${semanticHash(spaceId, source.id, fact.kind, fact.title, fact.value ?? fact.summary)}`,
       kind: 'fact',
@@ -279,7 +284,12 @@ async function persistSemanticExtraction(
         value: fact.value,
         evidence: fact.evidence,
         labels: fact.labels ?? [],
-        targetHints: fact.targetHints ?? [],
+        targetHints,
+        ...(sourceLinkedObjectIds.length > 0 ? {
+          subject: sourceLinkedObjects[0]?.title,
+          subjectIds: sourceLinkedObjectIds,
+          linkedObjectIds: sourceLinkedObjectIds,
+        } : {}),
         sourceId: source.id,
         extractionId: extraction?.id,
         extractor: semantic.extractor,
@@ -603,6 +613,31 @@ function readStringArray(value: unknown): readonly string[] {
   return Array.isArray(value)
     ? uniqueStrings(value.map((entry) => typeof entry === 'string' ? entry : undefined))
     : [];
+}
+
+function linkedObjectsForSource(store: KnowledgeStore, source: KnowledgeSourceRecord): KnowledgeNodeRecord[] {
+  const discovery = readRecord(source.metadata.sourceDiscovery);
+  const sourceSpaceId = sourceKnowledgeSpace(source);
+  const ids = uniqueStrings([
+    ...readStringArray(discovery.linkedObjectIds),
+    ...store.listEdges()
+      .filter((edge) => edge.fromKind === 'source' && edge.fromId === source.id)
+      .filter((edge) => edge.toKind === 'node' && edge.relation === 'source_for')
+      .filter((edge) => {
+        const edgeSpaceId = readString(edge.metadata.knowledgeSpaceId);
+        return !edgeSpaceId || edgeSpaceId === sourceSpaceId;
+      })
+      .map((edge) => edge.toId),
+  ]);
+  const nodes: KnowledgeNodeRecord[] = [];
+  for (const id of ids) {
+    const node = store.getNode(id);
+    if (node && node.status !== 'stale') nodes.push(node);
+  }
+  return canonicalRepairSubjectNodes({
+    nodes,
+    text: `${source.title ?? ''} ${source.summary ?? ''} ${source.description ?? ''}`,
+  });
 }
 
 function isFact(value: KnowledgeSemanticFactInput | null): value is KnowledgeSemanticFactInput {

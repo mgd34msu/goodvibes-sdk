@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.17"
+    "version": "0.28.19"
   },
   "auth": {
     "modes": [
@@ -24679,6 +24679,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "sourceId": {
                     "type": "string"
                   },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {
@@ -25198,6 +25243,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "sourceId": {
                     "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "metadata": {
                     "type": "object",
@@ -28769,6 +28859,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "effectiveLimit": {
                   "type": "number"
                 },
+                "coalesced": {
+                  "type": "boolean"
+                },
                 "truncated": {
                   "type": "boolean"
                 },
@@ -30408,6 +30501,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -31319,6 +31457,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -31975,6 +32158,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "sourceId": {
                         "type": "string"
                       },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -32059,6 +32287,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "sourceId": {
                         "type": "string"
                       },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -32142,6 +32415,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       "sourceId": {
                         "type": "string"
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "metadata": {
                         "type": "object",
@@ -32366,6 +32684,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       "sourceId": {
                         "type": "string"
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "metadata": {
                         "type": "object",
@@ -35740,6 +36103,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -36252,6 +36660,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -36594,6 +37047,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "sourceId": {
                     "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "metadata": {
                     "type": "object",
@@ -36943,6 +37441,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           },
                           "effectiveLimit": {
                             "type": "number"
+                          },
+                          "coalesced": {
+                            "type": "boolean"
                           },
                           "truncated": {
                             "type": "boolean"
@@ -37495,6 +37996,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         "effectiveLimit": {
                           "type": "number"
+                        },
+                        "coalesced": {
+                          "type": "boolean"
                         },
                         "truncated": {
                           "type": "boolean"
@@ -38473,6 +38977,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "sourceId": {
                     "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "metadata": {
                     "type": "object",
@@ -39608,6 +40157,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "effectiveLimit": {
               "type": "number"
+            },
+            "coalesced": {
+              "type": "boolean"
             },
             "truncated": {
               "type": "boolean"
@@ -41779,6 +42331,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       "sourceId": {
                         "type": "string"
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "metadata": {
                         "type": "object",
