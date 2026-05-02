@@ -156,6 +156,8 @@ export interface KnowledgeSemanticGapRepairRequest {
 export interface KnowledgeSemanticGapRepairResult {
   readonly searched: boolean;
   readonly query?: string;
+  readonly evidenceSufficient?: boolean;
+  readonly acceptedSourceIds?: readonly string[];
   readonly ingestedSourceIds: readonly string[];
   readonly skippedUrls: readonly string[];
   readonly sourceAssessments?: readonly {

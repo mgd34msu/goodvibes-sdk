@@ -232,6 +232,10 @@ export class KnowledgeSemanticService {
           store: this.store,
           gapRepairer: this.options.gapRepairer,
           activeGapRepairs: this.activeGapRepairs,
+          enrichSource: (sourceId, options) => {
+            const source = this.store.getSource(sourceId);
+            return source ? enrichKnowledgeSource({ store: this.store, llm: this.options.llm }, source, options) : Promise.resolve(null);
+          },
         }, { ...input, knowledgeSpaceId: spaceId });
         combined = mergeSelfImproveResults(combined, result);
       }
@@ -241,6 +245,10 @@ export class KnowledgeSemanticService {
       store: this.store,
       gapRepairer: this.options.gapRepairer,
       activeGapRepairs: this.activeGapRepairs,
+      enrichSource: (sourceId, options) => {
+        const source = this.store.getSource(sourceId);
+        return source ? enrichKnowledgeSource({ store: this.store, llm: this.options.llm }, source, options) : Promise.resolve(null);
+      },
     }, input);
   }
 

@@ -7,8 +7,6 @@ import type {
   KnowledgeIssueRecord,
   KnowledgeNodeRecord,
   KnowledgeRefinementTaskRecord,
-  KnowledgeRefinementTaskState,
-  KnowledgeRefinementTaskTrigger,
   KnowledgeSourceRecord,
 } from '../types.js';
 import type {
@@ -19,6 +17,7 @@ import type {
 import { recoverNoRepairerTasks, recoverStaleActiveTasks } from './self-improvement-recovery.js';
 import { readRecord, readString, semanticHash, semanticMetadata, semanticSlug, sourceKnowledgeSpace, uniqueStrings } from './utils.js';
 import { withTimeout } from './timeouts.js';
+import { updateRefinementTask, upsertRefinementTaskForGap } from './self-improvement-tasks.js';
 
 const RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_REFINEMENT_LIMIT = 12;
@@ -30,6 +29,7 @@ interface SelfImproveContext {
   readonly store: KnowledgeStore;
   readonly gapRepairer?: KnowledgeSemanticGapRepairer | null;
   readonly activeGapRepairs: Set<string>;
+  readonly enrichSource?: (sourceId: string, options: { readonly force?: boolean; readonly knowledgeSpaceId?: string }) => Promise<unknown>;
 }
 
 interface GapContext {
@@ -142,6 +142,7 @@ export async function runKnowledgeSemanticSelfImprovement(
       await updateRefinementTask(context.store, task, 'blocked', 'No semantic gap repairer is configured.');
       continue;
     }
+    const gapRepairer = context.gapRepairer;
     const repairKey = `${spaceId}:${gap.id}`;
     if (context.activeGapRepairs.has(repairKey)) {
       skippedGaps += 1;
@@ -154,37 +155,61 @@ export async function runKnowledgeSemanticSelfImprovement(
     try {
       task = await updateRefinementTask(context.store, task, 'searching', 'Searching for source-backed repair evidence.', { query: gap.title });
       const remainingMs = Math.max(1_000, startedAt + maxRunMs - Date.now());
-      const result = await withTimeout(context.gapRepairer({
-        spaceId,
-        query: gap.title,
-        gaps: [gap],
-        sources: gapContext.sources,
-        linkedObjects: gapContext.linkedObjects,
-        facts: gapContext.facts,
-        maxSources: 5,
-        deadlineAt: Date.now() + remainingMs,
-      }), remainingMs, 'Semantic gap repair exceeded its run budget.');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), remainingMs);
+      const result = await (async () => {
+        try {
+          return await withTimeout(gapRepairer({
+            spaceId,
+            query: gap.title,
+            gaps: [gap],
+            sources: gapContext.sources,
+            linkedObjects: gapContext.linkedObjects,
+            facts: gapContext.facts,
+            maxSources: 5,
+            deadlineAt: Date.now() + remainingMs,
+            signal: controller.signal,
+          }), remainingMs, 'Semantic gap repair exceeded its run budget.');
+        } finally {
+          clearTimeout(timer);
+          controller.abort();
+        }
+      })();
       if (result?.searched) searched += 1;
       ingestedSources += result?.ingestedSourceIds.length ?? 0;
       ingestedSourceIds.push(...(result?.ingestedSourceIds ?? []));
+      const acceptedSourceIds = uniqueStrings([...(result?.acceptedSourceIds ?? []), ...(result?.ingestedSourceIds ?? [])]);
+      const evidenceSufficient = result?.evidenceSufficient !== false && acceptedSourceIds.length > 0;
       task = await updateRefinementTask(context.store, task, 'evaluating', result?.reason ?? 'Source discovery completed.', {
         query: result?.query ?? gap.title,
         sourceAssessments: result?.sourceAssessments ?? [],
         ingestedSourceIds: result?.ingestedSourceIds ?? [],
+        acceptedSourceIds,
         skippedUrls: result?.skippedUrls ?? [],
       });
-      if (result?.ingestedSourceIds.length) {
+      if (acceptedSourceIds.length) {
         task = await updateRefinementTask(context.store, task, 'applying', 'Linking accepted repair sources into the graph.');
       }
-      linkedRepairs += await linkRepairSources(context.store, spaceId, gap, result?.ingestedSourceIds ?? [], result?.query ?? gap.title);
+      linkedRepairs += await linkRepairSources(context.store, spaceId, gap, acceptedSourceIds, result?.query ?? gap.title);
+      if (acceptedSourceIds.length > 0) {
+        await promoteRepairSources(context, spaceId, gap, acceptedSourceIds, task, startedAt + maxRunMs);
+      }
       await markGapRepairAttempt(context.store, gap, spaceId, {
-        status: result?.ingestedSourceIds.length ? 'repaired' : 'searched_no_sources',
+        status: evidenceSufficient ? 'repaired' : acceptedSourceIds.length ? 'deferred' : 'searched_no_sources',
         reason: result?.reason,
         query: result?.query,
       });
-      if (result?.ingestedSourceIds.length) {
+      if (evidenceSufficient) {
         await updateRefinementTask(context.store, task, 'closed', 'Repair sources were accepted and linked to the gap.', {
-          ingestedSourceIds: result.ingestedSourceIds,
+          acceptedSourceIds,
+          ingestedSourceIds: result?.ingestedSourceIds ?? [],
+        });
+      } else if (acceptedSourceIds.length) {
+        blockedGaps += 1;
+        await updateRefinementTask(context.store, task, 'blocked', result?.reason ?? 'Accepted source evidence was linked, but the gap still needs corroboration.', {
+          acceptedSourceIds,
+          retryable: true,
+          nextRepairAttemptAt: Date.now() + RETRY_DELAY_MS,
         });
       } else {
         blockedGaps += 1;
@@ -192,11 +217,22 @@ export async function runKnowledgeSemanticSelfImprovement(
       }
     } catch (error) {
       errors.push({ gapId: gap.id, error: error instanceof Error ? error.message : String(error) });
+      const reason = error instanceof Error ? error.message : String(error);
+      const budgetError = isBudgetError(reason);
       await markGapRepairAttempt(context.store, gap, spaceId, {
-        status: 'failed',
-        reason: error instanceof Error ? error.message : String(error),
+        status: budgetError ? 'deferred' : 'failed',
+        reason,
       });
-      await updateRefinementTask(context.store, task, 'failed', error instanceof Error ? error.message : String(error));
+      if (budgetError) {
+        blockedGaps += 1;
+        await updateRefinementTask(context.store, task, 'blocked', 'Repair was deferred after exhausting the current run budget.', {
+          retryable: true,
+          nextRepairAttemptAt: Date.now() + RETRY_DELAY_MS,
+          error: reason,
+        });
+      } else {
+        await updateRefinementTask(context.store, task, 'failed', reason);
+      }
     } finally {
       context.activeGapRepairs.delete(repairKey);
     }
@@ -434,97 +470,6 @@ function classifyGap(
   return { action: 'repair' };
 }
 
-async function upsertRefinementTaskForGap(
-  store: KnowledgeStore,
-  spaceId: string,
-  context: GapContext,
-  trigger: KnowledgeRefinementTaskTrigger,
-  state: KnowledgeRefinementTaskState,
-  message: string,
-  data: Record<string, unknown> = {},
-): Promise<KnowledgeRefinementTaskRecord> {
-  const subject = context.linkedObjects[0];
-  const id = `kref-${semanticHash(spaceId, context.gap.id, subject?.id ?? 'unscoped')}`;
-  const existing = store.getRefinementTask(id);
-  const attemptCount = existing?.attemptCount ?? 0;
-  return store.upsertRefinementTask({
-    id,
-    spaceId,
-    ...(subject ? {
-      subjectKind: 'node',
-      subjectId: subject.id,
-      subjectTitle: subjectTitle(subject),
-      subjectType: subject.kind,
-    } : {}),
-    gapId: context.gap.id,
-    state,
-    trigger,
-    priority: refinementPriority(context.gap),
-    budget: {
-      maxSearches: 5,
-      maxSources: 5,
-      maxLlmCalls: 1,
-    },
-    attemptCount,
-    appendTrace: [trace(state, message, data)],
-    metadata: semanticMetadata(spaceId, {
-      gapTitle: context.gap.title,
-      gapKind: readString(context.gap.metadata.gapKind) ?? 'unknown',
-      sourceIds: context.sources.map((source) => source.id),
-      linkedObjectIds: context.linkedObjects.map((node) => node.id),
-      policyVersion: 'knowledge-refinement-v1',
-    }),
-  });
-}
-
-async function updateRefinementTask(
-  store: KnowledgeStore,
-  task: KnowledgeRefinementTaskRecord,
-  state: KnowledgeRefinementTaskState,
-  message: string,
-  data: Record<string, unknown> = {},
-): Promise<KnowledgeRefinementTaskRecord> {
-  return store.upsertRefinementTask({
-    id: task.id,
-    spaceId: task.spaceId,
-    subjectKind: task.subjectKind,
-    subjectId: task.subjectId,
-    subjectTitle: task.subjectTitle,
-    subjectType: task.subjectType,
-    gapId: task.gapId,
-    issueId: task.issueId,
-    state,
-    priority: task.priority,
-    trigger: task.trigger,
-    budget: task.budget,
-    attemptCount: state === 'searching' ? task.attemptCount + 1 : task.attemptCount,
-    ...(state === 'blocked' || state === 'failed' ? { blockedReason: message } : {}),
-    appendTrace: [trace(state, message, data)],
-    metadata: task.metadata,
-  });
-}
-
-function trace(
-  state: KnowledgeRefinementTaskState,
-  message: string,
-  data: Record<string, unknown> = {},
-): KnowledgeRefinementTaskRecord['trace'][number] {
-  return {
-    at: Date.now(),
-    state,
-    message,
-    ...(Object.keys(data).length > 0 ? { data } : {}),
-  };
-}
-
-function refinementPriority(gap: KnowledgeNodeRecord): KnowledgeRefinementTaskRecord['priority'] {
-  const severity = readString(gap.metadata.severity);
-  const kind = readString(gap.metadata.gapKind);
-  if (severity === 'error') return 'urgent';
-  if (severity === 'warning' || kind === 'intrinsic_features') return 'high';
-  return 'normal';
-}
-
 function hasRepairEdge(context: GapContext): boolean {
   return context.repairSourceIds.length > 0;
 }
@@ -589,7 +534,7 @@ async function markGapRepairAttempt(
       ...(details.reason ? { repairReason: details.reason } : {}),
       ...(details.query ? { repairQuery: details.query } : {}),
       lastRepairAttemptAt: Date.now(),
-      nextRepairAttemptAt: details.status === 'searched_no_sources' || details.status === 'failed'
+      nextRepairAttemptAt: details.status === 'searched_no_sources' || details.status === 'failed' || details.status === 'deferred'
         ? Date.now() + RETRY_DELAY_MS
         : undefined,
       knowledgeSpaceId: spaceId,
@@ -644,6 +589,67 @@ async function linkRepairSources(
     }
   }
   return linked;
+}
+
+async function promoteRepairSources(
+  context: SelfImproveContext,
+  spaceId: string,
+  gap: KnowledgeNodeRecord,
+  sourceIds: readonly string[],
+  task: KnowledgeRefinementTaskRecord,
+  deadlineAt: number,
+): Promise<void> {
+  if (!context.enrichSource) return;
+  for (const [index, sourceId] of sourceIds.entries()) {
+    await yieldEvery(index, 2);
+    const remainingMs = Math.max(0, deadlineAt - Date.now());
+    if (remainingMs < 1_000) break;
+    await withTimeout(
+      context.enrichSource(sourceId, { knowledgeSpaceId: spaceId, force: true }),
+      Math.min(remainingMs, 20_000),
+      'Semantic repair source enrichment exceeded its run budget.',
+    );
+    await yieldToEventLoop();
+  }
+  await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, sourceIds);
+  await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'verified', 'Accepted repair sources were semantically enriched.', {
+    promotedSourceIds: sourceIds,
+  });
+}
+
+async function linkPromotedFactsToRepairSubjects(
+  store: KnowledgeStore,
+  spaceId: string,
+  gap: KnowledgeNodeRecord,
+  sourceIds: readonly string[],
+): Promise<void> {
+  const linkedObjectIds = readStringArray(gap.metadata.linkedObjectIds).filter((nodeId) => Boolean(store.getNode(nodeId)));
+  if (linkedObjectIds.length === 0) return;
+  const edges = store.listEdges();
+  const nodesById = new Map(store.listNodes(10_000).filter((node) => getKnowledgeSpaceId(node) === spaceId).map((node) => [node.id, node]));
+  for (const sourceId of sourceIds) {
+    for (const fact of factsForSource(sourceId, edges, nodesById)) {
+      for (const objectId of linkedObjectIds) {
+        await store.upsertEdge({
+          fromKind: 'node',
+          fromId: fact.id,
+          toKind: 'node',
+          toId: objectId,
+          relation: 'describes',
+          weight: 0.82,
+          metadata: semanticMetadata(spaceId, {
+            linkedBy: 'semantic-gap-repair',
+            repairedAt: Date.now(),
+            sourceId,
+          }),
+        });
+      }
+    }
+  }
+}
+
+function isBudgetError(message: string): boolean {
+  return /\b(timeout|timed out|budget|deadline|exceeded)\b/i.test(message);
 }
 
 async function resolveIssue(store: KnowledgeStore, issue: KnowledgeIssueRecord, spaceId: string, reason: string): Promise<void> {

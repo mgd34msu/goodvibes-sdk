@@ -137,6 +137,7 @@ export interface HomeGraphPageAutomationOptions {
   readonly roomPages?: boolean;
   readonly maxDevicePassports?: number;
   readonly maxRoomPages?: number;
+  readonly maxRunMs?: number;
 }
 
 export interface HomeGraphGeneratedPagesSummary {

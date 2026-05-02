@@ -82,7 +82,8 @@ describe('semantic knowledge/wiki enrichment', () => {
 
     expect(enriched?.facts.length).toBeGreaterThan(0);
     expect(enriched?.wikiPage?.kind).toBe('wiki_page');
-    expect(answer.answer.synthesized).toBe(false);
+    expect(answer.answer.synthesized).toBe(true);
+    expect(answer.answer.text.trim().startsWith('-')).toBe(false);
     expect(answer.answer.text).toContain('local control mode');
   });
 
@@ -597,6 +598,49 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.text).not.toContain('platform or cabinet');
   });
 
+  test('renders synthesized prose from usable facts without falling back to raw snippets', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store);
+    const source = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'lg-tv-refresh-rate',
+      title: 'Native refresh rate',
+      summary: 'The TV supports a native 120 Hz refresh rate.',
+      aliases: ['120 Hz'],
+      confidence: 92,
+      sourceId: source.id,
+      metadata: {
+        semanticKind: 'fact',
+        factKind: 'specification',
+        sourceId: source.id,
+        value: '120 Hz',
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: fact.id,
+      relation: 'supports_fact',
+      metadata: {},
+    });
+
+    const answer = await semantic.answer({ query: 'what refresh rate does the LG 86NANO90UNA have?', includeSources: true });
+
+    expect(answer.answer.synthesized).toBe(true);
+    expect(answer.answer.text).toContain('source-backed facts');
+    expect(answer.answer.text).toContain('120 Hz');
+    expect(answer.answer.text.trim().startsWith('-')).toBe(false);
+  });
+
   test('web gap repair ingests at least two distinct sources for answer gaps', async () => {
     const ingested: Array<{ url: string; title?: string; tags?: readonly string[]; metadata?: Record<string, unknown> }> = [];
     const repairer = createWebKnowledgeGapRepairer({
@@ -779,6 +823,80 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(ingested).toHaveLength(5);
     expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).checkedSourceLimit).toBe(5);
     expect(Array.isArray((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).searchQueries)).toBe(true);
+  });
+
+  test('web gap repair reuses indexed official sources as accepted evidence', async () => {
+    const ingested: unknown[] = [];
+    const repairer = createWebKnowledgeGapRepairer({
+      searchService: {
+        async search(request) {
+          return {
+            providerId: 'test-search',
+            providerLabel: 'Test Search',
+            query: request.query,
+            verbosity: 'snippets',
+            results: [],
+            metadata: {},
+          };
+        },
+      },
+      ingestService: {
+        async ingestUrl(input) {
+          ingested.push(input);
+          return { source: { id: `source-${ingested.length}`, status: 'indexed' } };
+        },
+      },
+    });
+
+    const result = await repairer({
+      spaceId: 'homeassistant:house',
+      query: 'What Bluetooth and ports does the TV have?',
+      gaps: [{
+        id: 'gap-existing-source',
+        kind: 'knowledge_gap',
+        slug: 'existing-source-gap',
+        title: 'What Bluetooth and port specifications does the LG 86NANO90UNA have?',
+        summary: 'The local manual did not include a complete product spec list.',
+        aliases: [],
+        status: 'active',
+        confidence: 70,
+        metadata: { knowledgeSpaceId: 'homeassistant:house' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      sources: [{
+        id: 'lg-official-source',
+        connectorId: 'semantic-gap-repair',
+        sourceType: 'url',
+        title: 'LG 86NANO90UNA official product specifications',
+        canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+        summary: 'Official LG 86NANO90UNA product specifications.',
+        tags: ['semantic-gap-repair'],
+        status: 'indexed',
+        metadata: { knowledgeSpaceId: 'homeassistant:house' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      linkedObjects: [{
+        id: 'tv-node',
+        kind: 'ha_device',
+        slug: 'tv',
+        title: 'LG webOS Smart TV',
+        aliases: [],
+        status: 'active',
+        confidence: 90,
+        metadata: { knowledgeSpaceId: 'homeassistant:house', manufacturer: 'LG', model: '86NANO90UNA' },
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      facts: [],
+    });
+
+    expect(result?.evidenceSufficient).toBe(true);
+    expect(result?.acceptedSourceIds).toEqual(['lg-official-source']);
+    expect(result?.ingestedSourceIds).toEqual([]);
+    expect(ingested).toHaveLength(0);
+    expect(result?.sourceAssessments?.some((entry) => entry.accepted && entry.reasons.includes('already-indexed'))).toBe(true);
   });
 
   test('web gap repair rejects low-confidence search results', async () => {
@@ -1127,6 +1245,47 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(task?.state).toBe('closed');
     expect(task?.subjectTitle).toContain('LG');
     expect(task?.trace.some((entry) => entry.state === 'evaluating' && JSON.stringify(entry.data).includes('sourceAssessments'))).toBe(true);
+  });
+
+  test('self-improvement defers run-budget failures instead of leaving dead failed tasks', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async () => {
+        throw new Error('Semantic gap repair exceeded its run budget.');
+      },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-tv-budget',
+      title: 'LG webOS Smart TV',
+      aliases: [],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    const gap = await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'budget-gap',
+      title: 'What are the complete features and specifications for LG 86NANO90UNA?',
+      aliases: [],
+      confidence: 75,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'gap',
+        gapKind: 'intrinsic_features',
+        linkedObjectIds: [device.id],
+      },
+    });
+
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, gapIds: [gap.id], force: true, maxRunMs: 5 });
+    const task = store.listRefinementTasks(10, { spaceId })[0];
+    const updatedGap = store.getNode(gap.id);
+
+    expect(result.blockedGaps).toBe(1);
+    expect(task?.state).toBe('blocked');
+    expect(task?.blockedReason).toContain('deferred');
+    expect(updatedGap?.metadata.repairStatus).toBe('deferred');
+    expect(typeof updatedGap?.metadata.nextRepairAttemptAt).toBe('number');
   });
 
   test('self-improvement does not treat unrelated repair sources as repairing every subject gap', async () => {

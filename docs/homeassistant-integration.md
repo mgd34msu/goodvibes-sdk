@@ -150,7 +150,9 @@ to explicit page generation, reindex, or refinement routes. This keeps Home
 Assistant service calls from timing out while still making the most useful pages
 available quickly after a snapshot. The sync response reports
 `generated.deferredDevicePassports`, `generated.deferredRoomPages`, and
-`generated.truncated` when more pages remain.
+`generated.truncated` when more pages remain. Page automation also accepts
+`maxRunMs`, so integrations can keep snapshot service calls responsive even
+when a large installation has many pages eligible for refresh.
 
 For each selected active Home Assistant device, the SDK materializes a device
 passport markdown artifact and a stable generated-page source. For each selected
@@ -184,7 +186,8 @@ limit automatic work:
     "devicePassports": true,
     "roomPages": true,
     "maxDevicePassports": 100,
-    "maxRoomPages": 50
+    "maxRoomPages": 50,
+    "maxRunMs": 15000
   }
 }
 ```
@@ -363,18 +366,21 @@ linked sources, or scoped gap nodes are eligible.
 
 When Home Graph sync/reindex/ingest/ask can identify an object and missing
 knowledge gaps, the shared semantic gap-repair layer can search the web in the
-background. It scores candidate URLs against the HA device/service identity,
-manufacturer/model hints, the gap wording, and the query, requires accepted
-sources to clear the confidence threshold, and still requires at least two
-distinct external source domains before ingesting anything into the Home
-Assistant knowledge space. Repair tries progressively more targeted queries for
-the exact subject and gap, then accepts no more than five high-confidence
-sources for that gap. Accepted sources are linked to the exact gap with
-`repairs_gap` edges and carry `metadata.sourceDiscovery.confidence`,
-`confidenceReasons`, `agreementSourceCount`, `selectedUrl`, `searchQueries`,
-gap IDs, original source IDs, and linked HA object IDs. This is source discovery
-for future answers, not unsupported inference in the current response. Clients
-can call reindex or ask again later to use the newly indexed sources once
+background. It scores already-indexed sources and web candidates against the HA
+device/service identity, manufacturer/model hints, the gap wording, and the
+query. Existing official/vendor sources count as usable repair evidence; the
+SDK links and promotes them instead of blocking solely because they were already
+indexed. One strong official/vendor source can close a gap, while non-official
+evidence still needs corroboration across distinct domains. Repair tries
+progressively more targeted queries for the exact subject and gap, then accepts
+no more than five high-confidence sources for that gap. Accepted sources are
+linked to the exact gap with `repairs_gap` edges and carry source-assessment
+metadata with confidence, accepted/rejected reasons, search queries, gap IDs,
+original source IDs, and linked HA object IDs. Accepted sources are also
+semantically re-enriched under the run budget, and promoted fact nodes are
+linked back to the HA object with `describes` edges. This is source-backed
+graph refinement, not unsupported inference in the current response. Clients
+can call reindex or ask again later to use newly indexed/promoted facts once
 extraction/enrichment has finished. Existing repair sources only suppress the
 specific gap they repair, not every gap attached to the same device or service.
 Ask-created gaps queue refinement tasks and start repair asynchronously. Ask
@@ -416,6 +422,13 @@ Historical `No semantic gap repairer is configured` tasks are also reopened
 when the daemon starts running with a configured repairer, so the Refine tab
 should not keep treating those records as current wiring failures after the
 host is fixed.
+Run-budget exhaustion is retryable state, not a terminal dead end. When a
+repair attempt times out or runs out of foreground budget, the SDK marks the
+gap `deferred`, records `nextRepairAttemptAt`, and leaves the task blocked with
+retry metadata for the next scheduled/manual refinement pass. If accepted
+source evidence exists but is not sufficient to close the gap, the SDK still
+links/promotes that evidence and defers the task rather than throwing away the
+progress.
 Home Graph Ask also keeps real Home Assistant linked objects when the strongest
 evidence comes from web-repaired semantic sources whose `sourceDiscovery`
 metadata references the HA object. Ask source records also include `sourceId`
