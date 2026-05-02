@@ -35,7 +35,7 @@ export async function promoteRepairSources(
   sourceIds: readonly string[],
   task: KnowledgeRefinementTaskRecord,
   deadlineAt: number,
-): Promise<void> {
+): Promise<number> {
   if (context.enrichSource) {
     for (const [index, sourceId] of sourceIds.entries()) {
       await yieldEvery(index, 2);
@@ -51,10 +51,14 @@ export async function promoteRepairSources(
   }
   const promotedFactCount = await promoteRepairEvidenceFacts(context.store, spaceId, gap, sourceIds);
   await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, sourceIds);
+  const usableFactCount = promotedFactCount > 0
+    ? promotedFactCount
+    : countUsableRepairFacts(context.store, spaceId, sourceIds);
   await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'verified', 'Accepted repair sources were semantically enriched.', {
     promotedSourceIds: sourceIds,
-    promotedFactCount,
+    promotedFactCount: usableFactCount,
   });
+  return usableFactCount;
 }
 
 async function promoteRepairEvidenceFacts(
@@ -278,6 +282,16 @@ function sourceAuthority(source: KnowledgeSourceRecord): 'official-vendor' | 've
   }
   if (/\bmanufacturer-domain\b/.test(trust)) return 'vendor';
   return 'secondary';
+}
+
+function countUsableRepairFacts(store: KnowledgeStore, spaceId: string, sourceIds: readonly string[]): number {
+  const sources = new Set(sourceIds);
+  return store.listNodes(10_000)
+    .filter((node) => node.kind === 'fact' && node.status !== 'stale')
+    .filter((node) => getKnowledgeSpaceId(node) === spaceId)
+    .filter((node) => node.sourceId && sources.has(node.sourceId))
+    .filter((node) => ['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(readString(node.metadata.factKind) ?? ''))
+    .length;
 }
 
 function uniqueById<T extends { readonly id: string }>(items: readonly (T | undefined)[]): T[] {

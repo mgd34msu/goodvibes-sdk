@@ -179,7 +179,7 @@ export async function runKnowledgeSemanticSelfImprovement(
       ingestedSources += result?.ingestedSourceIds.length ?? 0;
       ingestedSourceIds.push(...(result?.ingestedSourceIds ?? []));
       const acceptedSourceIds = uniqueStrings([...(result?.acceptedSourceIds ?? []), ...(result?.ingestedSourceIds ?? [])]);
-      const evidenceSufficient = result?.evidenceSufficient !== false && acceptedSourceIds.length > 0;
+      let promotedFactCount = 0;
       task = await updateRefinementTask(context.store, task, 'evaluating', result?.reason ?? 'Source discovery completed.', {
         query: result?.query ?? gap.title,
         sourceAssessments: result?.sourceAssessments ?? [],
@@ -192,8 +192,9 @@ export async function runKnowledgeSemanticSelfImprovement(
       }
       linkedRepairs += await linkRepairSources(context.store, spaceId, gap, acceptedSourceIds, result?.query ?? gap.title);
       if (acceptedSourceIds.length > 0) {
-        await promoteRepairSources(context, spaceId, gap, acceptedSourceIds, task, startedAt + maxRunMs);
+        promotedFactCount = await promoteRepairSources(context, spaceId, gap, acceptedSourceIds, task, startedAt + maxRunMs);
       }
+      const evidenceSufficient = result?.evidenceSufficient !== false && acceptedSourceIds.length > 0 && promotedFactCount > 0;
       await markGapRepairAttempt(context.store, gap, spaceId, {
         status: evidenceSufficient ? 'repaired' : acceptedSourceIds.length ? 'deferred' : 'searched_no_sources',
         reason: result?.reason,
@@ -204,11 +205,13 @@ export async function runKnowledgeSemanticSelfImprovement(
         await updateRefinementTask(context.store, task, 'closed', 'Repair sources were accepted and linked to the gap.', {
           acceptedSourceIds,
           ingestedSourceIds: result?.ingestedSourceIds ?? [],
+          promotedFactCount,
         });
       } else if (acceptedSourceIds.length) {
         blockedGaps += 1;
         await updateRefinementTask(context.store, task, 'blocked', result?.reason ?? 'Accepted source evidence was linked, but the gap still needs corroboration.', {
           acceptedSourceIds,
+          promotedFactCount,
           retryable: true,
           nextRepairAttemptAt: Date.now() + RETRY_DELAY_MS,
         });
@@ -460,7 +463,7 @@ function classifyGap(
   const nextAttemptAt = readNumber(context.gap.metadata.nextRepairAttemptAt);
   if (!force && status === 'repaired') return { action: 'skip', reason: 'Gap already has linked repair sources.', status: 'repaired' };
   if (!force && nextAttemptAt && nextAttemptAt > Date.now()) return { action: 'skip', reason: 'Gap repair retry window has not elapsed.', status: 'retry_wait', markAttempt: true };
-  if (hasRepairEdge(context)) return { action: 'skip', reason: 'Gap already has a repair source.', status: 'already_repaired' };
+  if (!force && hasRepairEdge(context) && hasRepairFactEvidence(context)) return { action: 'skip', reason: 'Gap already has promoted repair facts.', status: 'already_repaired' };
   if (isNotApplicableGap(context)) return { action: 'suppress', reason: 'The gap is not applicable to the linked subject.' };
   if (!hasConcreteSubject(context)) {
     return { action: 'skip', reason: 'Gap has no concrete source or subject for automatic repair.', status: 'needs_context', markAttempt: true };
@@ -473,6 +476,11 @@ function classifyGap(
 
 function hasRepairEdge(context: GapContext): boolean {
   return context.repairSourceIds.length > 0;
+}
+
+function hasRepairFactEvidence(context: GapContext): boolean {
+  const repairSourceIds = new Set(context.repairSourceIds);
+  return context.facts.some((fact) => fact.sourceId && repairSourceIds.has(fact.sourceId) && readString(fact.metadata.extractor) === 'repair-promotion');
 }
 
 function isNotApplicableGap(context: GapContext): boolean {

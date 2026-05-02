@@ -139,10 +139,27 @@ export class KnowledgeSemanticService {
 
   async answer(input: KnowledgeSemanticAnswerInput): Promise<KnowledgeSemanticAnswerResult> {
     await this.store.init();
-    const answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
+    let answer = await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input);
     if (input.autoRepairGaps === false) return answer;
     if (this.options.gapRepairer && answer.answer.gaps.length > 0) {
       const repairSpaceId = answerRepairSpaceId(answer);
+      const foregroundBudgetMs = foregroundAnswerRepairBudget(input, answer);
+      const foregroundTaskIds: string[] = [];
+      if (foregroundBudgetMs > 0) {
+        const repaired = await this.repairAnswerGaps({
+          answer,
+          maxRunMs: foregroundBudgetMs,
+          limit: Math.min(5, answer.answer.gaps.length),
+        });
+        foregroundTaskIds.push(...repaired.taskIds);
+        if (repaired.closedGaps > 0 || repaired.linkedRepairs > 0) {
+          answer = withRefinementTaskIds(
+            await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input),
+            foregroundTaskIds,
+          );
+          if (answer.answer.gaps.length === 0 || answerHasUsableEvidence(answer)) return answer;
+        }
+      }
       const refinement = await this.selfImprove({
         knowledgeSpaceId: repairSpaceId,
         gapIds: answer.answer.gaps.map((gap) => gap.id),
@@ -152,17 +169,12 @@ export class KnowledgeSemanticService {
       });
       this.runAnswerRefinementInBackground(repairSpaceId, answer.answer.gaps.map((gap) => gap.id));
       const taskIds = uniqueStrings([
+        ...foregroundTaskIds,
         ...refinement.taskIds,
         ...this.taskIdsForGaps(repairSpaceId, answer.answer.gaps.map((gap) => gap.id)),
       ]);
       if (taskIds.length > 0) {
-        return {
-          ...answer,
-          answer: {
-            ...answer.answer,
-            refinementTaskIds: taskIds,
-          },
-        };
+        return withRefinementTaskIds(answer, taskIds);
       }
     }
     return answer;
@@ -277,12 +289,54 @@ function answerRepairSpaceId(answer: KnowledgeSemanticAnswerResult): string {
   return answer.spaceId;
 }
 
+function foregroundAnswerRepairBudget(
+  input: KnowledgeSemanticAnswerInput,
+  answer: KnowledgeSemanticAnswerResult,
+): number {
+  if (!answerNeedsForegroundRepair(input, answer)) return 0;
+  const requested = typeof input.timeoutMs === 'number' && Number.isFinite(input.timeoutMs)
+    ? input.timeoutMs
+    : 45_000;
+  if (requested < 15_000) return 0;
+  return Math.max(5_000, Math.min(35_000, requested - 5_000));
+}
+
+function answerNeedsForegroundRepair(
+  input: KnowledgeSemanticAnswerInput,
+  answer: KnowledgeSemanticAnswerResult,
+): boolean {
+  const repairSpaceId = answerRepairSpaceId(answer);
+  const homeAssistantScoped = repairSpaceId === 'homeassistant' || repairSpaceId.startsWith('homeassistant:');
+  if (!input.strictCandidates && !homeAssistantScoped) return false;
+  return answer.answer.facts.length === 0 || answer.answer.sources.length === 0 || answer.answer.confidence < 50;
+}
+
+function answerHasUsableEvidence(answer: KnowledgeSemanticAnswerResult): boolean {
+  return answer.answer.facts.length > 0 && answer.answer.sources.length > 0 && answer.answer.confidence >= 50;
+}
+
+function withRefinementTaskIds(
+  answer: KnowledgeSemanticAnswerResult,
+  taskIds: readonly string[],
+): KnowledgeSemanticAnswerResult {
+  const ids = uniqueStrings([...(answer.answer.refinementTaskIds ?? []), ...taskIds]);
+  if (ids.length === 0) return answer;
+  return {
+    ...answer,
+    answer: {
+      ...answer.answer,
+      refinementTaskIds: ids,
+    },
+  };
+}
+
 function activeSelfImproveResult(input: KnowledgeSemanticSelfImproveInput): KnowledgeSemanticSelfImproveResult {
   const requestedLimit = Math.max(1, input.limit ?? 1);
   return {
     ...emptySelfImproveResult(),
     skippedGaps: 1,
     requestedLimit,
+    effectiveLimit: requestedLimit,
     truncated: true,
     budgetExhausted: true,
   };
