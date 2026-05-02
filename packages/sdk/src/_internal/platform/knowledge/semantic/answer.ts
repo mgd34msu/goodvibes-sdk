@@ -47,6 +47,7 @@ import { answerNeedsFeatureGap, cleanSynthesizedAnswer } from './answer-quality.
 import { clampTimeoutMs, withTimeoutOrNull } from './timeouts.js';
 import { renderFallbackAnswer } from './answer-fallback.js';
 import { rankAnswerSources } from './answer-source-ranking.js';
+import { canonicalRepairSubjectNodes } from './repair-subjects.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -135,7 +136,7 @@ export async function answerKnowledgeQuery(
   const evidenceLinkedObjects = shouldUseEvidenceLinkedObjects(spaceId, input, inferredHomeAssistantLinkedObjects)
     ? evidence.flatMap((item) => item.node ? [item.node] : [])
     : [];
-  const linkedObjects = input.includeLinkedObjects === false
+  const rawLinkedObjects = input.includeLinkedObjects === false
     ? []
     : uniqueNodes([
       ...(input.linkedObjects ?? []),
@@ -144,6 +145,7 @@ export async function answerKnowledgeQuery(
     ])
       .filter(isSemanticAnswerLinkedObject)
       .slice(0, 24);
+  const linkedObjects = filterAnswerLinkedObjects(spaceId, input.query, rawLinkedObjects);
   const gapSpaceId = concreteAnswerGapSpaceId(spaceId, evidence, sources, linkedObjects);
   const gaps = await persistAnswerGaps(context.store, gapSpaceId, input.query, llmAnswer?.gaps ?? [], {
     sources,
@@ -214,9 +216,7 @@ function collectAnswerEvidence(
   const sourceItems = store.listSources(10_000)
     .filter((source) => belongsToAnswerSpace(source, spaceId))
     .filter((source) => sourceInHomeAssistantAnswerScope(store, source, homeAssistantScope))
-    .filter((source) => !strictCandidates || candidateSourceIds.has(source.id) || (
-      candidateSourceIds.size === 0 && linkedSourceIds.has(source.id)
-    ))
+    .filter((source) => !strictCandidates || candidateSourceIds.has(source.id) || linkedSourceIds.has(source.id))
     .map((source) => {
       const extraction = store.getExtractionBySourceId(source.id);
       const facts = filterFactsForQuery(input.query, sourceFacts.get(source.id) ?? []);
@@ -307,6 +307,19 @@ function inferHomeAssistantLinkedObjects(
     .filter((node) => scope.anchorNodeIds.has(node.id))
     .filter((node) => belongsToAnswerSpace(node, spaceId))
     .filter(isSemanticAnswerLinkedObject);
+}
+
+function filterAnswerLinkedObjects(
+  spaceId: string,
+  query: string,
+  nodes: readonly KnowledgeNodeRecord[],
+): readonly KnowledgeNodeRecord[] {
+  const normalized = normalizeKnowledgeSpaceId(spaceId);
+  if (normalized !== 'homeassistant' && !isHomeAssistantKnowledgeSpace(normalized)) return nodes;
+  const canonical = canonicalRepairSubjectNodes({ nodes, text: query });
+  if (canonical.length > 0) return canonical.slice(0, 24);
+  const integrationIntent = /\b(integration|platform|add-?on|addon|plugin|service|api|setup|configure|configuration|auth|credential|rate limit)\b/i.test(query);
+  return nodes.filter((node) => integrationIntent || node.kind !== 'ha_integration').slice(0, 24);
 }
 
 function shouldUseEvidenceLinkedObjects(

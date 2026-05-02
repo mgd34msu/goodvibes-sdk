@@ -33,6 +33,9 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   const lower = text.toLowerCase();
   const magicRemoteDetail = /\bmagic remote\b/.test(lower) || /\bbluetooth\b/.test(lower);
   if (/\?\s*$/.test(text.trim())) return true;
+  if (/\bsemantic-gap-repair\b/.test(lower)) return true;
+  if (isUrlOrPathFragment(lower) && !hasConcreteFeatureSignal(lower)) return true;
+  if (isUrlOrPathFragment(lower) && /\b(source-backed facts identify|current page|database|manual\.nz|loading|semantic-gap-repair)\b/.test(lower)) return true;
   if (isTruncatedManualFragment(lower)) return true;
   if (/\b(items? supplied|supplied items?|included accessories|optional extras?|sold separately|separate purchase|accessories may vary|contents? of (this )?manual|may be changed|may change|subject to change|without prior notice|available menus? and options?|certified cable|unapproved items?)\b/.test(lower)) {
     return true;
@@ -148,6 +151,13 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   return false;
+}
+
+function isUrlOrPathFragment(value: string): boolean {
+  return /https?:\/\//.test(value)
+    || /\b[a-z0-9-]+\.(com|net|org|io|dev|tv|ca|co\.uk)\/[a-z0-9/_?=&.#-]+/.test(value)
+    || /\b[a-z]{2}\/[a-z0-9/_-]+\/[a-z0-9._-]+/.test(value)
+    || /\b[a-z0-9._-]+\/(specifications?|manuals?|products?|support|features?)\/[a-z0-9._-]+/.test(value);
 }
 
 function isTruncatedManualFragment(value: string): boolean {

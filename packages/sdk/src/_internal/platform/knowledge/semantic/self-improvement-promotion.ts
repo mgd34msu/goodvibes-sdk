@@ -11,6 +11,7 @@ import { hasConcreteFeatureSignal, isLowValueFeatureOrSpecText } from './fact-qu
 import { deriveRepairProfileFacts, type RepairProfileFact } from './repair-profile.js';
 import { updateRefinementTask } from './self-improvement-tasks.js';
 import { withTimeout } from './timeouts.js';
+import { canonicalRepairSubjectNodes, repairSubjectHints } from './repair-subjects.js';
 import {
   clampText,
   normalizeWhitespace,
@@ -150,6 +151,9 @@ async function upsertPromotedRepairFact(input: {
       labels: input.classification.labels,
       sourceId: input.source.id,
       gapId: input.gap.id,
+      subject: input.subjects[0]?.title,
+      subjectIds: input.subjects.map((subject) => subject.id),
+      targetHints: repairSubjectHints(input.subjects),
       linkedObjectIds: input.subjects.map((subject) => subject.id),
       extractor: 'repair-promotion',
       sourceAuthority: input.authority,
@@ -193,8 +197,9 @@ async function linkPromotedFactsToRepairSubjects(
   gap: KnowledgeNodeRecord,
   sourceIds: readonly string[],
 ): Promise<void> {
-  const linkedObjectIds = readStringArray(gap.metadata.linkedObjectIds).filter((nodeId) => Boolean(store.getNode(nodeId)));
-  if (linkedObjectIds.length === 0) return;
+  const subjects = linkedRepairSubjects(store, spaceId, gap);
+  if (subjects.length === 0) return;
+  const linkedObjectIds = subjects.map((subject) => subject.id);
   const edges = store.listEdges();
   const nodesById = new Map(store.listNodes(10_000).filter((node) => getKnowledgeSpaceId(node) === spaceId).map((node) => [node.id, node]));
   for (const sourceId of sourceIds) {
@@ -305,10 +310,40 @@ function repairIntentPatterns(query: string): readonly RegExp[] {
 }
 
 function linkedRepairSubjects(store: KnowledgeStore, spaceId: string, gap: KnowledgeNodeRecord): KnowledgeNodeRecord[] {
-  return uniqueById(readStringArray(gap.metadata.linkedObjectIds)
-    .map((id) => store.getNode(id))
+  const edges = store.listEdges();
+  const nodesById = new Map(store.listNodes(10_000)
+    .filter((node) => getKnowledgeSpaceId(node) === spaceId)
+    .map((node) => [node.id, node]));
+  const sourceIds = uniqueStrings([
+    gap.sourceId,
+    ...readStringArray(gap.metadata.sourceIds),
+    ...edges
+      .filter((edge) => edge.toKind === 'node' && edge.toId === gap.id && edge.fromKind === 'source')
+      .map((edge) => edge.fromId),
+  ]);
+  return canonicalRepairSubjectNodes({
+    text: `${gap.title} ${gap.summary ?? ''}`,
+    nodes: [
+      ...readStringArray(gap.metadata.linkedObjectIds).map((id) => nodesById.get(id)),
+      ...edges
+        .filter((edge) => edge.fromKind === 'node' && edge.toKind === 'node' && edge.toId === gap.id)
+        .map((edge) => nodesById.get(edge.fromId)),
+      ...sourceIds.flatMap((sourceId) => linkedObjectsForSource(sourceId, edges, nodesById)),
+    ],
+  });
+}
+
+function linkedObjectsForSource(
+  sourceId: string,
+  edges: readonly KnowledgeEdgeRecord[],
+  nodesById: ReadonlyMap<string, KnowledgeNodeRecord>,
+): KnowledgeNodeRecord[] {
+  return uniqueById(edges
+    .filter((edge) => edge.fromKind === 'source' && edge.fromId === sourceId && edge.toKind === 'node')
+    .map((edge) => nodesById.get(edge.toId))
     .filter((node): node is KnowledgeNodeRecord => Boolean(node))
-    .filter((node) => getKnowledgeSpaceId(node) === spaceId && node.status !== 'stale'));
+    .filter((node) => node.status !== 'stale')
+    .filter((node) => node.metadata.semanticKind !== 'fact' && node.metadata.semanticKind !== 'gap' && node.kind !== 'wiki_page'));
 }
 
 function factsForSource(

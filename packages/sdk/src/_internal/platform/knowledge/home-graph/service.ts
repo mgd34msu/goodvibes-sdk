@@ -423,6 +423,8 @@ export class HomeGraphService {
       artifactStore: this.artifactStore,
       spaceId,
       sources: state.sources,
+      nodes: state.nodes,
+      edges: state.edges,
       limit: Math.max(1, input.limit ?? 100),
       includeMarkdown: input.includeMarkdown !== false,
     });

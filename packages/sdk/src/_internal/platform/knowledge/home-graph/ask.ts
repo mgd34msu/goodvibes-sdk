@@ -1,6 +1,6 @@
 import type { KnowledgeSemanticService } from '../semantic/index.js';
 import type { KnowledgeStore } from '../store.js';
-import type { KnowledgeSourceRecord } from '../types.js';
+import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import { collectLinkedObjects, renderAskAnswer } from './state.js';
 import type { HomeGraphAskInput, HomeGraphAskResult, HomeGraphSearchResult } from './types.js';
 import type { HomeGraphSearchState } from './search.js';
@@ -10,6 +10,7 @@ import {
   sourceInHomeAssistantAnswerScope,
 } from '../semantic/homeassistant-scope.js';
 import { uniqueStrings } from '../semantic/utils.js';
+import { canonicalRepairSubjectNodes } from '../semantic/repair-subjects.js';
 
 export async function answerHomeGraphQuery(input: {
   readonly store: KnowledgeStore;
@@ -32,7 +33,7 @@ async function answerHomeGraphQueryOnce(input: {
 }): Promise<HomeGraphAskResult> {
   const results = scopeHomeGraphAnswerResults(input.store, input.spaceId, input.query.query, input.results);
   const sources = results.flatMap((result) => result.source ? [result.source] : []).map(withAnswerSourceAliases);
-  const linkedObjects = collectLinkedObjects(results, input.state);
+  const linkedObjects = filterHomeGraphAnswerLinkedObjects(input.query.query, collectLinkedObjects(results, input.state));
   if (input.semanticService) {
     const answer = await input.semanticService.answer({
       query: input.query.query,
@@ -125,4 +126,29 @@ function withAnswerSourceAliases(source: KnowledgeSourceRecord): KnowledgeSource
     sourceId: source.id,
     url: source.sourceUri ?? source.canonicalUri,
   };
+}
+
+function filterHomeGraphAnswerLinkedObjects(
+  query: string,
+  nodes: readonly KnowledgeNodeRecord[],
+): KnowledgeNodeRecord[] {
+  const canonical = canonicalRepairSubjectNodes({ nodes, text: query });
+  if (canonical.length > 0) return canonical;
+  const integrationIntent = /\b(integration|platform|add-?on|addon|plugin|service|api|setup|configure|configuration|auth|credential|rate limit)\b/i.test(query);
+  return uniqueNodes(nodes)
+    .filter((node) => node.status !== 'stale')
+    .filter((node) => !node.metadata.semanticKind)
+    .filter((node) => !['fact', 'wiki_page', 'knowledge_gap', 'ha_device_passport'].includes(node.kind))
+    .filter((node) => integrationIntent || node.kind !== 'ha_integration');
+}
+
+function uniqueNodes(nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
+  const seen = new Set<string>();
+  const result: KnowledgeNodeRecord[] = [];
+  for (const node of nodes) {
+    if (seen.has(node.id)) continue;
+    seen.add(node.id);
+    result.push(node);
+  }
+  return result;
 }

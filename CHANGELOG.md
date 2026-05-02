@@ -20,6 +20,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.18] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph and base Knowledge Ask now canonicalize Home Assistant linked
+  objects before answering, so concrete device questions return the real HA
+  device instead of generated passports or integration records.
+- Strict Home Graph answers now admit repaired sources that are linked to the
+  scoped subject, even when those sources were not part of the original search
+  candidate list.
+- Semantic repair promotion now derives subject links from gap metadata, graph
+  edges, and source links, then writes explicit `subject`, `subjectIds`,
+  `targetHints`, and `linkedObjectIds` metadata onto promoted facts.
+- Accepted repair sources are linked to canonical subjects instead of broad
+  generated or integration nodes, allowing generated device pages to see the
+  repaired source/fact evidence.
+- Answer source ranking now suppresses generated page sources whenever real
+  backing sources are available, keeping generated passports from replacing
+  vendor/manual evidence in answers.
+- Feature/spec answer fallback filters raw URL/path and `semantic-gap-repair`
+  fragments and no longer emits the awkward "source-backed facts identify"
+  wording.
+- Home Graph map top-level HA filter aliases now work even when the route layer
+  also supplies an empty nested `ha` filter object.
+- Home Graph pages now expose graph navigation metadata, including the generated
+  page target, canonical subject object, neighbor edges/titles, and related
+  generated pages, so companion UIs can render wiki-style page links.
+
+### Migration
+- none
+
+---
+
 ## [0.28.17] - 2026-05-02
 
 ### Breaking
