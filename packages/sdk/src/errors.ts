@@ -1,1 +1,1 @@
-export * from './_internal/errors/index.js';
+export * from '@pellux/goodvibes-errors';

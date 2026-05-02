@@ -19,7 +19,8 @@ Date: 2026-04-17
 **Severity**: Blocker (prevents full VM execution of the SDK bundle)
 
 **Affected feature**: All of `packages/sdk/src/_internal/platform/auth/` and
-`packages/sdk/src/_internal/transport-http/` — these modules use `async/await`
+`packages/sdk/src/_internal/transport-http/` compatibility shims resolve to
+`@pellux/goodvibes-transport-http`, whose modules use `async/await`
 pervasively for token resolution and HTTP fetch wrapping.
 
 **Root cause**:
@@ -47,7 +48,7 @@ test/hermes/dist/hermes-test-bundle.js:57954:14: error: async functions are unsu
              ^~~~~~~~~~~~~~~~~~
 ```
 
-The offending code is in `packages/sdk/dist/_internal/transport-http/index.js`:
+The offending code resolves through `packages/sdk/dist/_internal/transport-http/index.js`:
 ```js
 // normalizeAuthToken - transport-http internal
 function normalizeAuthToken(input) {

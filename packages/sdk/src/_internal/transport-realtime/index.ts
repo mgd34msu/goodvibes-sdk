@@ -1,18 +1,2 @@
-// Synced from packages/transport-realtime/src/index.ts
-export type {
-  DomainEventConnector,
-  DomainEvents,
-  SerializedEventEnvelope,
-} from './domain-events.js';
-export { createRemoteDomainEvents, forSession } from './domain-events.js';
-export type { RemoteRuntimeEvents, SerializedRuntimeEnvelope } from './runtime-events.js';
-export {
-  buildEventSourceUrl,
-  buildWebSocketUrl,
-  createEventSourceConnector,
-  createRemoteRuntimeEvents,
-  createWebSocketConnector,
-  DEFAULT_WS_MAX_ATTEMPTS,
-  forSessionRuntime,
-} from './runtime-events.js';
-export type { RuntimeEventConnectorOptions } from './runtime-events.js';
+// Compatibility shim. Canonical implementation lives in @pellux/goodvibes-transport-realtime.
+export * from '@pellux/goodvibes-transport-realtime';

@@ -1,16 +1,2 @@
-// Synced from packages/operator-sdk/src/index.ts
-export type {
-  OperatorInvokeOptions,
-  OperatorSdk,
-  OperatorSdkOptions,
-  OperatorStreamOptions,
-} from './client.js';
-export { createOperatorSdk } from './client.js';
-export {
-  createOperatorRemoteClient,
-} from './client-core.js';
-export type {
-  OperatorRemoteClient,
-  OperatorRemoteClientInvokeOptions,
-  OperatorRemoteClientStreamOptions,
-} from './client-core.js';
+// Compatibility shim. Canonical implementation lives in @pellux/goodvibes-operator-sdk.
+export * from '@pellux/goodvibes-operator-sdk';

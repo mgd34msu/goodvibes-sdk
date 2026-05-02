@@ -115,21 +115,19 @@ mcp ─────────────────────────�
 
 ---
 
-## Sync-from-Packages Pattern
+## Package Facade Pattern
 
-Some files in `_internal/` are **synced copies** of upstream sources in `packages/transport-*` or `packages/contracts`. The sync is managed by `scripts/sync-sdk-internals.ts` (`bun run sync:internal`).
+The main SDK package is a facade over the monorepo packages. Implementation source for `contracts`, `errors`, `transport-*`, `daemon-sdk`, `operator-sdk`, and `peer-sdk` lives in those packages. SDK compatibility files under `_internal/` re-export the canonical packages instead of copying implementation source.
 
-### How the sync works
+### How artifact sync works
 
-- `PACKAGE_SPECS` in the script defines which source packages and source directories are synced, and where their contents land under `packages/sdk/src/_internal/`.
-- Each synced file receives a header comment identifying its upstream source and warning that manual edits will be overwritten on the next sync.
-- Package import specifiers (`@pellux/goodvibes-contracts`, `@pellux/transport-*`, etc.) are rewritten to relative paths so the copied files resolve correctly from inside the `_internal/` tree.
-- `SPECIFIER_TARGETS` maps package names to their corresponding `_internal/` entry-point files for import rewriting.
-- A `--check` mode is available (`bun run sync:internal --check`) for CI drift detection — it reports files that differ without writing them.
+- `scripts/sync-sdk-internals.ts` no longer copies implementation source.
+- It only keeps SDK-embedded contract JSON artifacts in sync with `packages/contracts/artifacts`.
+- `bun run sync:check` checks the artifact copy without writing.
 
 ### When sync drift matters
 
-Drift between an upstream package and its synced copy is not expected in normal development. If you edit a synced file directly, re-running `sync:internal` will revert your change; update the upstream package source first whenever possible.
+Implementation drift is no longer possible because there is one implementation source. If behavior needs to change, edit the canonical package source. If generated contract JSON changes, run `bun run sync --scope=contracts`.
 
 ---
 

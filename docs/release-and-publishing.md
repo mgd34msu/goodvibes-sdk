@@ -99,13 +99,13 @@ Check them without writing:
 bun run docs:check
 ```
 
-## Sync Guard
+## Contract Artifact Sync
 
-The SDK package mirrors selected files from workspace packages under
-`packages/sdk/src/_internal/`. Update the package source first, then run:
+The SDK package embeds generated contract JSON artifacts for compatibility
+subpaths. Update the contracts package artifacts first, then run:
 
 ```bash
-bun run sync:internal
+bun run sync:internal --scope=contracts
 bun run sync:check
 ```
 

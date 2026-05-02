@@ -1,1 +1,2 @@
-export * from './errors/index.js';
+// Compatibility shim. Canonical implementation lives in @pellux/goodvibes-errors.
+export * from '@pellux/goodvibes-errors';

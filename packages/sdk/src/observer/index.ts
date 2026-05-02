@@ -19,9 +19,9 @@
 
 const SPAN_STATUS_ERROR = 2 as const; // OpenTelemetry SpanStatusCode.ERROR
 
-import type { GoodVibesSdkError } from '../_internal/errors/index.js';
+import type { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { AnyRuntimeEvent } from '../_internal/platform/runtime/events/domain-map.js';
-import type { TransportObserver, TransportActivityInfo } from '../_internal/transport-core/index.js';
+import type { TransportObserver, TransportActivityInfo } from '@pellux/goodvibes-transport-core';
 
 export type { AnyRuntimeEvent };
 
@@ -42,7 +42,7 @@ export type AuthTransitionReason = 'login' | 'logout' | 'refresh' | 'expire' | '
  * Re-export TransportActivityInfo from transport-core so SDK consumers
  * don't need to import from an internal package.
  */
-export type { TransportActivityInfo } from '../_internal/transport-core/index.js';
+export type { TransportActivityInfo } from '@pellux/goodvibes-transport-core';
 
 /**
  * Auth transition metadata surfaced to the observer.

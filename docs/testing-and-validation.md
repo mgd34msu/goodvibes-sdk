@@ -10,7 +10,7 @@ Every push and PR to `main` must pass these gates:
 |------|---------|---------|
 | `validate` | `bun run validate` | Kitchen-sink validation: API docs sync, docs/examples completeness, TypeScript build, type-level checks, browser compatibility, package metadata, no-any, pack, install smoke |
 | `build` | `bun run build` | Builds `packages/sdk/dist` once and uploads it for downstream CI jobs |
-| `mirror-drift` | `bun run sync:check` | Ensures `_internal` transport-http mirror is byte-for-byte in sync with its canonical source |
+| `contract-artifact-sync` | `bun run sync:check` | Ensures SDK-embedded contract JSON artifacts match `packages/contracts/artifacts` |
 | `platform-matrix (bun)` | `bun run build && bun run test` | Runs the full Bun test suite |
 | `platform-matrix (rn-bundle)` | `bun run build && bun run test:rn` | Verifies companion dist bundles, including `workers.js`, contain no `Bun.*` identifiers and no `node:*` imports |
 | `lint-gates` | inline raw-throw scan + `bun run changelog:check` + `bun run version:check` | Prevents raw public throws, missing changelog sections, and workspace version drift |
@@ -20,7 +20,7 @@ Every push and PR to `main` must pass these gates:
 | `platform-matrix (workers-wrangler)` | `bun run test:workers:wrangler` | Runs the `./web` entry under `wrangler dev --local` — exercises wrangler's esbuild bundling pipeline and wrangler.toml config. NOTE: wrangler dev --local shares the Miniflare 4 runtime, so this is **not** a production-workerd verification (see `test/workers/FINDINGS.md`) |
 | `types-resolution-check` | `bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm` | Validates the `exports` map resolves cleanly for every published subpath |
 | `publint-check` | `bun run publint:check` | Detects common `package.json` packaging hygiene issues before release |
-| `sync-safety-check` | `bun run sync:check` + inline stale-delete guard | PR-only guard against mirror drift and accidental mass deletion |
+| `sync-safety-check` | `bun run sync:check` | PR-only guard that SDK-embedded contract artifacts match the contracts package |
 
 ## Portable Validation
 
@@ -42,14 +42,14 @@ when package `dist` imports are involved.
 
 ## Internal Refresh
 
-When you changed internal workspace source, refresh the umbrella package before validating:
+When generated contract artifacts change, refresh the umbrella package artifact copy before validating:
 
 ```bash
-bun run sync
+bun run sync --scope=contracts
 bun run validate
 ```
 
-`bun run sync` rebuilds the umbrella package's internal source tree from the internal workspace packages. It also rewrites import paths. **Do not run `bun run sync` from agent or subagent contexts** — it mass-deletes `_internal/platform/` source.
+`bun run sync --scope=contracts` copies only the generated contract JSON artifacts from `packages/contracts/artifacts` into the SDK compatibility artifact path. Source mirrors were removed; sibling packages are the source of truth.
 
 ## Zod Opt-In Validation
 
@@ -94,7 +94,7 @@ The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-compatibl
 
 ## Why Each Gate Exists
 
-- **mirror-drift** — `packages/transport-http/src/` is mirrored into `packages/sdk/src/_internal/transport-http/`. Without this gate, a source edit in the canonical package silently diverges from the inlined copy.
+- **contract-artifact-sync** — the SDK compatibility artifact exports must match `packages/contracts/artifacts`. Source mirrors were removed; implementation code is no longer copied into `packages/sdk/src/_internal`.
 - **throw-guard** — All consumer-reachable errors must be `GoodVibesSdkError` instances with a typed `kind` discriminant. Raw `throw new Error` bypasses the error contract.
 - **rn-bundle** — Static bundle scan. Companion surface (React Native, Expo, browser, web, workers) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers. (Runtime verification of `./web` under workerd lives in the separate `workers` and `workers-wrangler` lanes above.)
 - **bundle:check** — Prevents accidental bundle size growth when run locally or

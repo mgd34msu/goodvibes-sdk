@@ -1,8 +1,2 @@
-// Synced from packages/contracts/src/generated/foundation-metadata.ts
-export const FOUNDATION_METADATA = {
-  "productId": "goodvibes",
-  "productVersion": "0.28.22",
-  "operatorMethodCount": 265,
-  "operatorEventCount": 30,
-  "peerEndpointCount": 6
-} as const;
+// Compatibility shim. Canonical implementation lives in @pellux/goodvibes-contracts.
+export * from '@pellux/goodvibes-contracts/generated/foundation-metadata';

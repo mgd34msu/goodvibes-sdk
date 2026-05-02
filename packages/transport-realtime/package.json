@@ -14,6 +14,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./domain-events": {
+      "types": "./dist/domain-events.d.ts",
+      "import": "./dist/domain-events.js"
+    },
+    "./runtime-events": {
+      "types": "./dist/runtime-events.d.ts",
+      "import": "./dist/runtime-events.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

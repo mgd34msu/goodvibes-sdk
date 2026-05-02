@@ -14,6 +14,46 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "import": "./dist/auth.js"
+    },
+    "./backoff": {
+      "types": "./dist/backoff.d.ts",
+      "import": "./dist/backoff.js"
+    },
+    "./contract-client": {
+      "types": "./dist/contract-client.d.ts",
+      "import": "./dist/contract-client.js"
+    },
+    "./http-core": {
+      "types": "./dist/http-core.d.ts",
+      "import": "./dist/http-core.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "import": "./dist/http.js"
+    },
+    "./paths": {
+      "types": "./dist/paths.d.ts",
+      "import": "./dist/paths.js"
+    },
+    "./reconnect": {
+      "types": "./dist/reconnect.d.ts",
+      "import": "./dist/reconnect.js"
+    },
+    "./retry": {
+      "types": "./dist/retry.d.ts",
+      "import": "./dist/retry.js"
+    },
+    "./sse-stream": {
+      "types": "./dist/sse-stream.d.ts",
+      "import": "./dist/sse-stream.js"
+    },
+    "./sse": {
+      "types": "./dist/sse.d.ts",
+      "import": "./dist/sse.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

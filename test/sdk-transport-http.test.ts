@@ -1,8 +1,8 @@
 /**
- * SDK mirror regression test for packages/sdk/src/_internal/transport-http/http.ts
+ * SDK compatibility-shim regression test for packages/sdk/src/_internal/transport-http/http.ts
  *
- * Ensures the SDK mirror stays in sync with the canonical transport-http package.
- * If these tests pass in transport-http.test.ts but fail here, the mirror has drifted.
+ * Ensures legacy SDK internal import paths still resolve to the canonical
+ * transport-http package after source mirrors were removed.
  */
 import { describe, expect, test } from 'bun:test';
 import { GoodVibesSdkError, HttpStatusError } from '../packages/sdk/src/_internal/errors/index.js';
@@ -14,7 +14,7 @@ function createFetchStub(factory: (input: RequestInfo | URL, init?: RequestInit)
   return factory as unknown as typeof fetch;
 }
 
-describe('sdk-mirror: transport-http structured throws', () => {
+describe('sdk-compat: transport-http structured throws', () => {
   test('createTransportError(404) returns HttpStatusError with kind not-found', () => {
     const err = createTransportError(404, 'http://example.com/api', 'GET', { error: 'not found' });
     expect(err).toBeInstanceOf(HttpStatusError);
@@ -53,7 +53,7 @@ describe('sdk-mirror: transport-http structured throws', () => {
   });
 });
 
-describe('sdk-mirror: transport-http', () => {
+describe('sdk-compat: transport-http', () => {
   test('network error has category network with cause preserved', async () => {
     const originalError = new TypeError('fetch failed');
     const transport = createHttpTransport({

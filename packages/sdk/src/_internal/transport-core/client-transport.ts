@@ -1,26 +1,2 @@
-// Synced from packages/transport-core/src/client-transport.ts
-export interface ClientTransport<TKind extends string, TOperator, TPeer> {
-  readonly kind: TKind;
-  readonly operator: TOperator;
-  readonly peer: TPeer;
-  getOperatorClient(): TOperator;
-  getPeerClient(): TPeer;
-}
-
-export function createClientTransport<TKind extends string, TOperator, TPeer>(
-  kind: TKind,
-  operator: TOperator,
-  peer: TPeer,
-): ClientTransport<TKind, TOperator, TPeer> {
-  return Object.freeze({
-    kind,
-    operator,
-    peer,
-    getOperatorClient(): TOperator {
-      return operator;
-    },
-    getPeerClient(): TPeer {
-      return peer;
-    },
-  });
-}
+// Compatibility shim. Canonical implementation lives in @pellux/goodvibes-transport-core.
+export * from '@pellux/goodvibes-transport-core/client-transport';
