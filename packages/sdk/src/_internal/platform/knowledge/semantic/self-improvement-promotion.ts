@@ -40,6 +40,7 @@ export async function promoteRepairSources(
   if (context.enrichSource) {
     for (const [index, sourceId] of sourceIds.entries()) {
       await yieldEvery(index, 2);
+      await waitForRepairSourceText(context.store, sourceId, deadlineAt);
       const remainingMs = Math.max(0, deadlineAt - Date.now());
       if (remainingMs < 1_000) break;
       await withTimeout(
@@ -55,11 +56,54 @@ export async function promoteRepairSources(
   const usableFactCount = promotedFactCount > 0
     ? promotedFactCount
     : countUsableRepairFacts(context.store, spaceId, sourceIds);
-  await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'verified', 'Accepted repair sources were semantically enriched.', {
-    promotedSourceIds: sourceIds,
-    promotedFactCount: usableFactCount,
-  });
+  if (usableFactCount > 0) {
+    await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'verified', 'Accepted repair sources were semantically enriched.', {
+      promotedSourceIds: sourceIds,
+      promotedFactCount: usableFactCount,
+    });
+  } else {
+    await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'applying', 'Accepted repair sources did not yield usable subject-linked facts.', {
+      promotedSourceIds: sourceIds,
+      promotedFactCount: usableFactCount,
+    });
+  }
   return usableFactCount;
+}
+
+async function waitForRepairSourceText(
+  store: KnowledgeStore,
+  sourceId: string,
+  deadlineAt: number,
+): Promise<void> {
+  while (deadlineAt - Date.now() >= 1_000) {
+    const source = store.getSource(sourceId);
+    if (!source) return;
+    const extraction = store.getExtractionBySourceId(source.id);
+    if (extractedSemanticText(extraction).length >= 40) return;
+    if (!source.sourceUri && !source.canonicalUri && sourceSemanticText(source, extraction).length >= 80) return;
+    await yieldToEventLoop();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+function extractedSemanticText(extraction: ReturnType<KnowledgeStore['getExtractionBySourceId']>): string {
+  const structure = readRecord(extraction?.structure);
+  const metadata = readRecord(extraction?.metadata);
+  return normalizeWhitespace([
+    extraction?.title,
+    extraction?.summary,
+    extraction?.excerpt,
+    ...(extraction?.sections ?? []),
+    readString(structure.searchText),
+    readString(structure.text),
+    readString(structure.content),
+    readString(metadata.searchText),
+    readString(metadata.text),
+  ].filter(Boolean).join(' '));
+}
+
+function sourceRequiresExtractedEvidence(source: KnowledgeSourceRecord): boolean {
+  return Boolean(source.sourceUri || source.canonicalUri);
 }
 
 async function promoteRepairEvidenceFacts(
@@ -75,6 +119,7 @@ async function promoteRepairEvidenceFacts(
     const source = store.getSource(sourceId);
     if (!source) continue;
     const extraction = store.getExtractionBySourceId(source.id);
+    if (sourceRequiresExtractedEvidence(source) && extractedSemanticText(extraction).length < 40) continue;
     const authority = sourceAuthority(source);
     const text = sourceSemanticText(source, extraction);
     const profileFacts = deriveRepairProfileFacts({
@@ -314,6 +359,7 @@ function classifyRepairFact(sentence: string): RepairFactClassification | null {
   }
   if (/\b(speaker|audio|dolby atmos|dolby audio|sound|watts?|channels?)\b/.test(lower)) {
     return buildRepairFactClassification('specification', 'Audio capabilities', ['audio'], ['audio', 'speakers'], sentence, [
+      ['2 x 10W speakers', /\b2\s*x\s*10\s*w\b/i],
       ['speaker/audio output', /\bspeakers?\b|\b(?:10|20|40)\s*w\b|\b2(?:\.0)?\s*ch\b/i],
       ['Dolby audio formats', /\bdolby atmos\b|\bdolby digital\b|\bdolby audio\b|\btruehd\b|\bpcm\b/i],
       ['HDMI ARC/eARC audio', /\bearc\b|\barc\b/i],
@@ -450,6 +496,9 @@ function countUsableRepairFacts(store: KnowledgeStore, spaceId: string, sourceId
     .filter((node) => getKnowledgeSpaceId(node) === spaceId)
     .filter((node) => node.sourceId && sources.has(node.sourceId))
     .filter((node) => ['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(readString(node.metadata.factKind) ?? ''))
+    .filter((node) => readStringArray(node.metadata.linkedObjectIds).length > 0 || readStringArray(node.metadata.subjectIds).length > 0)
+    .filter((node) => !isLowValueFeatureOrSpecText(`${node.title} ${node.summary ?? ''} ${readString(node.metadata.value) ?? ''} ${readString(node.metadata.evidence) ?? ''}`))
+    .filter((node) => hasConcreteFeatureSignal(`${node.title} ${node.summary ?? ''} ${readString(node.metadata.value) ?? ''} ${readString(node.metadata.evidence) ?? ''}`))
     .length;
 }
 

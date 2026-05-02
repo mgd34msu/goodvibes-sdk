@@ -337,6 +337,141 @@ describe('Home Graph repair and generated pages', () => {
     expect(page.markdown).not.toContain('01 x Ethernet RJ45');
     expect(page.markdown).not.toContain('This gives you a more direct comparison');
   });
+
+  test('generated device pages include sources attached through promoted subject facts', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const browse = await service.browse({ installationId: 'house-1' });
+    const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
+    expect(device).toBeDefined();
+    const source = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      sourceUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'lg-speaker-spec',
+      title: 'Audio capabilities',
+      summary: 'Audio capabilities: 2 x 10W speakers.',
+      aliases: ['audio'],
+      status: 'active',
+      confidence: 90,
+      sourceId: source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'specification',
+        value: '2 x 10W speakers',
+        sourceId: source.id,
+        subject: device!.title,
+        subjectIds: [device!.id],
+        linkedObjectIds: [device!.id],
+        targetHints: [{ id: device!.id, kind: device!.kind, title: device!.title }],
+        extractor: 'repair-promotion',
+        sourceAuthority: 'official-vendor',
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: fact.id,
+      relation: 'supports_fact',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: fact.id,
+      toKind: 'node',
+      toId: device!.id,
+      relation: 'describes',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
+
+    expect(page.markdown).toContain('The Home Graph links this device to 0 Home Assistant entity record(s) and 1 source(s).');
+    expect(page.markdown).toContain('LG 86NANO90UNA official specifications');
+    expect(page.markdown).toContain('Audio capabilities: 2 x 10W speakers');
+    expect(page.markdown).not.toContain('0 source(s)');
+    expect(page.markdown).not.toContain('manual/source');
+  });
+
+  test('generated device pages ignore sources attached only through stale promoted facts', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const browse = await service.browse({ installationId: 'house-1' });
+    const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
+    expect(device).toBeDefined();
+    const source = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'Stale LG specification source',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'stale-lg-speaker-spec',
+      title: 'Audio capabilities',
+      summary: 'Audio capabilities: 2 x 10W speakers.',
+      aliases: [],
+      status: 'stale',
+      confidence: 90,
+      sourceId: source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'specification',
+        sourceId: source.id,
+        linkedObjectIds: [device!.id],
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: fact.id,
+      relation: 'supports_fact',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: fact.id,
+      toKind: 'node',
+      toId: device!.id,
+      relation: 'describes',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
+
+    expect(page.markdown).toContain('0 source(s)');
+    expect(page.markdown).not.toContain('Stale LG specification source');
+    expect(page.markdown).not.toContain('Audio capabilities: 2 x 10W speakers');
+  });
 });
 
 function createHomeGraphService(): {

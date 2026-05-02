@@ -10,9 +10,10 @@ export async function refreshDevicePagesForHomeGraphAsk(input: {
   readonly spaceId: string;
   readonly installationId: string;
   readonly answer: HomeGraphAskResult;
-}): Promise<void> {
-  if ((input.answer.answer.facts?.length ?? 0) === 0 && input.answer.answer.sources.length === 0) return;
+}): Promise<{ readonly requested: boolean; readonly refreshed: number }> {
+  if ((input.answer.answer.facts?.length ?? 0) === 0 && input.answer.answer.sources.length === 0) return { requested: false, refreshed: 0 };
   const devices = input.answer.answer.linkedObjects.filter((node) => node.kind === 'ha_device').slice(0, 2);
+  let refreshed = 0;
   for (const device of devices) {
     const deviceId = readHomeAssistantObjectId(device) ?? device.id;
     try {
@@ -27,10 +28,12 @@ export async function refreshDevicePagesForHomeGraphAsk(input: {
           metadata: { automation: 'ask-refresh' },
         },
       });
+      refreshed += 1;
     } catch {
       // Ask should never fail solely because a generated page refresh failed.
     }
   }
+  return { requested: devices.length > 0, refreshed };
 }
 
 function readHomeAssistantObjectId(node: { readonly id: string; readonly metadata: Record<string, unknown> }): string | undefined {

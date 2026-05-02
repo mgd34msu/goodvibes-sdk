@@ -110,6 +110,7 @@ const PROFILE_RULES: readonly ProfileRule[] = [
     intent: /\b(audio|speaker|sound|dolby atmos|dolby digital|earc|arc|watts?|channels?)\b/,
     minimumMatches: 1,
     terms: [
+      ['2 x 10W speakers', /\b2\s*x\s*10\s*w\b/i],
       ['speaker/audio output', /\bspeakers?\b|\b(?:10|20|40)\s*w\b|\b2(?:\.0)?\s*ch\b/i],
       ['Dolby audio formats', /\bdolby atmos\b|\bdolby digital\b|\bdolby audio\b/i],
       ['HDMI ARC/eARC audio', /\bearc\b|\barc\b/i],

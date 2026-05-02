@@ -122,7 +122,22 @@ export interface KnowledgeSemanticAnswer {
   readonly facts: readonly KnowledgeNodeRecord[];
   readonly gaps: readonly KnowledgeNodeRecord[];
   readonly refinementTaskIds?: readonly string[];
+  readonly refinement?: KnowledgeSemanticAnswerRefinement;
   readonly synthesized: boolean;
+}
+
+export interface KnowledgeSemanticAnswerRefinement {
+  readonly status: 'not_needed' | 'repaired' | 'deferred' | 'active' | 'incomplete';
+  readonly reason?: string;
+  readonly repairStatus?: string;
+  readonly refinementTaskIds: readonly string[];
+  readonly acceptedSourceIds: readonly string[];
+  readonly promotedFactCount: number;
+  readonly nextRepairAttemptAt?: number;
+  readonly waitedMs?: number;
+  readonly answerCacheInvalidated?: boolean;
+  readonly pageRefreshRequested?: boolean;
+  readonly pageRefreshed?: boolean;
 }
 
 export interface KnowledgeSemanticAnswerResult {
@@ -210,5 +225,8 @@ export interface KnowledgeSemanticSelfImproveResult {
   readonly budgetExhausted?: boolean;
   readonly taskIds: readonly string[];
   readonly ingestedSourceIds: readonly string[];
+  readonly acceptedSourceIds?: readonly string[];
+  readonly promotedFactCount?: number;
+  readonly nextRepairAttemptAt?: number;
   readonly errors: readonly { readonly gapId: string; readonly error: string }[];
 }

@@ -20,6 +20,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.21] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- Home Graph and base Knowledge Ask responses now include structured answer
+  refinement metadata with repair status, accepted source ids, promoted fact
+  counts, retry timing, and page-refresh indicators when Ask triggers semantic
+  repair.
+
+### Fixed
+- Cold Home Graph and `knowledgeSpaceId: "homeassistant"` Ask now preserve the
+  original answer-gap ids through foreground repair and only report a repaired
+  answer after usable source-backed facts and sources are available.
+- Semantic repair promotion now waits for real extracted source text and
+  refuses title/url-only promotion, preventing weak web-search fragments from
+  becoming graph facts.
+- Accepted repair sources are marked verified only when they produce usable
+  subject-linked facts; otherwise refinement tasks remain explicitly blocked or
+  active with retry metadata.
+- Generated Home Graph device passports now include sources attached through
+  promoted subject facts, ignore stale fact links, and suppress missing-source
+  issues when the page has accepted source-backed evidence.
+- Feature Ask now suppresses LLM-reported gaps only when concrete source-backed
+  facts are present, so repaired answers stop repeating stale gaps while weak
+  evidence still queues refinement.
+
+### Migration
+- none
+
+---
+
 ## [0.28.20] - 2026-05-02
 
 ### Breaking

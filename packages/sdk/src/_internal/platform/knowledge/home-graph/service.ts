@@ -278,14 +278,14 @@ export class HomeGraphService {
       input.limit ?? 8,
     );
     const answer = await answerHomeGraphQuery({ store: this.store, semanticService: this.options.semanticService, spaceId, query: input, state, results });
-    await refreshDevicePagesForHomeGraphAsk({
+    const pageRefresh = await refreshDevicePagesForHomeGraphAsk({
       store: this.store,
       artifactStore: this.artifactStore,
       spaceId,
       installationId,
       answer,
     });
-    return answer;
+    return withHomeGraphAskPageRefresh(answer, pageRefresh);
   }
 
   async reindex(input: HomeGraphReindexInput = {}): Promise<HomeGraphReindexResult> {
@@ -796,6 +796,34 @@ export class HomeGraphService {
     return { kind: 'node', id: node.id, record: node };
   }
 }
+
+function withHomeGraphAskPageRefresh(
+  answer: HomeGraphAskResult,
+  pageRefresh: { readonly requested: boolean; readonly refreshed: number },
+): HomeGraphAskResult {
+  if (!answer.answer.refinement && !pageRefresh.requested) return answer;
+  const refinement = answer.answer.refinement;
+  return {
+    ...answer,
+    answer: {
+      ...answer.answer,
+      refinement: {
+        status: refinement?.status ?? 'not_needed',
+        ...(refinement?.repairStatus ? { repairStatus: refinement.repairStatus } : {}),
+        ...(refinement?.reason ? { reason: refinement.reason } : {}),
+        refinementTaskIds: refinement?.refinementTaskIds ?? answer.answer.refinementTaskIds ?? [],
+        acceptedSourceIds: refinement?.acceptedSourceIds ?? [],
+        promotedFactCount: refinement?.promotedFactCount ?? (answer.answer.facts?.length ?? 0),
+        ...(refinement?.nextRepairAttemptAt ? { nextRepairAttemptAt: refinement.nextRepairAttemptAt } : {}),
+        ...(typeof refinement?.waitedMs === 'number' ? { waitedMs: refinement.waitedMs } : {}),
+        ...(refinement?.answerCacheInvalidated ? { answerCacheInvalidated: true } : {}),
+        pageRefreshRequested: pageRefresh.requested,
+        pageRefreshed: pageRefresh.refreshed > 0,
+      },
+    },
+  };
+}
+
 function extractionHasSearchableText(extraction: KnowledgeExtractionRecord): boolean {
   const structure = readRecord(extraction.structure);
   return typeof structure.searchText === 'string' && !isUnusableHomeGraphExtractionText(structure.searchText);
