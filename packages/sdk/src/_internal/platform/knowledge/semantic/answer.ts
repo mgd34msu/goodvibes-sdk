@@ -69,6 +69,7 @@ const GENERIC_ANSWER_INTENT_TOKENS = new Set([
   'capability',
   'configuration',
   'configure',
+  'device',
   'feature',
   'features',
   'function',
@@ -84,9 +85,11 @@ const GENERIC_ANSWER_INTENT_TOKENS = new Set([
   'specification',
   'specifications',
   'specs',
+  'object',
   'support',
   'supported',
   'supports',
+  'thing',
 ]);
 
 export async function answerKnowledgeQuery(
@@ -126,9 +129,19 @@ export async function answerKnowledgeQuery(
   const sources = rankAnswerSources(evidence, facts)
     .slice(0, limit)
     .map(withAnswerSourceAliases);
+  const inferredHomeAssistantLinkedObjects = input.includeLinkedObjects === false
+    ? []
+    : inferHomeAssistantLinkedObjects(context.store, spaceId, input.query);
+  const evidenceLinkedObjects = shouldUseEvidenceLinkedObjects(spaceId, input, inferredHomeAssistantLinkedObjects)
+    ? evidence.flatMap((item) => item.node ? [item.node] : [])
+    : [];
   const linkedObjects = input.includeLinkedObjects === false
     ? []
-    : uniqueNodes([...(input.linkedObjects ?? []), ...evidence.flatMap((item) => item.node ? [item.node] : [])])
+    : uniqueNodes([
+      ...(input.linkedObjects ?? []),
+      ...evidenceLinkedObjects,
+      ...inferredHomeAssistantLinkedObjects,
+    ])
       .filter(isSemanticAnswerLinkedObject)
       .slice(0, 24);
   const gapSpaceId = concreteAnswerGapSpaceId(spaceId, evidence, sources, linkedObjects);
@@ -279,6 +292,34 @@ function collectAnswerEvidence(
     .filter((item) => item.score > 0)
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
   return pruneEvidence(items, limit, broadHomeAssistantAlias);
+}
+
+function inferHomeAssistantLinkedObjects(
+  store: KnowledgeStore,
+  spaceId: string,
+  query: string,
+): KnowledgeNodeRecord[] {
+  const tokens = expandQueryTokens(tokenizeSemanticQuery(query));
+  const subjectTokens = tokens.filter((token) => !GENERIC_ANSWER_INTENT_TOKENS.has(token));
+  const scope = inferHomeAssistantAnswerScope(store, spaceId, query, subjectTokens);
+  if (!scope || scope.anchorNodeIds.size === 0) return [];
+  return store.listNodes(10_000)
+    .filter((node) => scope.anchorNodeIds.has(node.id))
+    .filter((node) => belongsToAnswerSpace(node, spaceId))
+    .filter(isSemanticAnswerLinkedObject);
+}
+
+function shouldUseEvidenceLinkedObjects(
+  spaceId: string,
+  input: KnowledgeSemanticAnswerInput,
+  inferredHomeAssistantLinkedObjects: readonly KnowledgeNodeRecord[],
+): boolean {
+  if (input.linkedObjects?.length) return true;
+  const normalized = normalizeKnowledgeSpaceId(spaceId);
+  if (normalized === 'homeassistant' || isHomeAssistantKnowledgeSpace(normalized)) {
+    return inferredHomeAssistantLinkedObjects.length > 0;
+  }
+  return true;
 }
 
 async function synthesizeAnswer(
