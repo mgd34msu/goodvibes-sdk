@@ -359,6 +359,7 @@ export const KNOWLEDGE_REFINEMENT_TASK_SCHEMA = objectSchema({
   budget: recordSchema(NUMBER_SCHEMA),
   attemptCount: NUMBER_SCHEMA,
   blockedReason: STRING_SCHEMA,
+  nextRepairAttemptAt: NUMBER_SCHEMA,
   trace: GENERIC_LIST_SCHEMA,
   metadata: METADATA_SCHEMA,
   createdAt: NUMBER_SCHEMA,

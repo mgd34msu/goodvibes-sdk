@@ -63,6 +63,7 @@ export async function updateRefinementTask(
   message: string,
   data: Record<string, unknown> = {},
 ): Promise<KnowledgeRefinementTaskRecord> {
+  const nextRepairAttemptAt = readNumber(data.nextRepairAttemptAt) ?? task.nextRepairAttemptAt;
   return store.upsertRefinementTask({
     id: task.id,
     spaceId: task.spaceId,
@@ -78,8 +79,12 @@ export async function updateRefinementTask(
     budget: task.budget,
     attemptCount: state === 'searching' ? task.attemptCount + 1 : task.attemptCount,
     ...(state === 'blocked' || state === 'failed' ? { blockedReason: message } : {}),
+    ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
     appendTrace: [trace(state, message, data)],
-    metadata: task.metadata,
+    metadata: {
+      ...task.metadata,
+      ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
+    },
   });
 }
 
@@ -110,4 +115,8 @@ function subjectTitle(subject: KnowledgeNodeRecord): string {
     readString(subject.metadata.model),
     subject.title,
   ].filter(Boolean).join(' ');
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }

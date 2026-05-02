@@ -24,6 +24,8 @@ export class SQLiteStore {
   private db: SqlDatabase | null = null;
   private readonly dbPath: string | null;
   private initPromise: Promise<void> | null = null;
+  private saveBatchDepth = 0;
+  private saveDirty = false;
 
   constructor(dbPath?: string) {
     this.dbPath = dbPath ?? null;
@@ -53,9 +55,26 @@ export class SQLiteStore {
     return this.getDb().exec(sql, params);
   }
 
+  async batch<T>(operation: () => Promise<T>): Promise<T> {
+    this.saveBatchDepth += 1;
+    try {
+      return await operation();
+    } finally {
+      this.saveBatchDepth -= 1;
+      if (this.saveBatchDepth === 0 && this.saveDirty) {
+        this.saveDirty = false;
+        await this.save();
+      }
+    }
+  }
+
   async save(): Promise<boolean> {
     const dbPath = this.dbPath;
     if (isEphemeralDbPath(dbPath) || !this.db || !dbPath) return false;
+    if (this.saveBatchDepth > 0) {
+      this.saveDirty = true;
+      return false;
+    }
 
     try {
       mkdirSync(dirname(dbPath), { recursive: true });

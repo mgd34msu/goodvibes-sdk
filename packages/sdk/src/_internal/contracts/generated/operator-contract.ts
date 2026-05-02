@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.14"
+    "version": "0.28.15"
   },
   "auth": {
     "modes": [
@@ -28906,6 +28906,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "blockedReason": {
                       "type": "string"
                     },
+                    "nextRepairAttemptAt": {
+                      "type": "number"
+                    },
                     "trace": {
                       "type": "array",
                       "items": {
@@ -29120,6 +29123,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "blockedReason": {
                       "type": "string"
+                    },
+                    "nextRepairAttemptAt": {
+                      "type": "number"
                     },
                     "trace": {
                       "type": "array",
@@ -29338,6 +29344,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "blockedReason": {
                     "type": "string"
+                  },
+                  "nextRepairAttemptAt": {
+                    "type": "number"
                   },
                   "trace": {
                     "type": "array",
@@ -39700,6 +39709,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "blockedReason": {
                   "type": "string"
                 },
+                "nextRepairAttemptAt": {
+                  "type": "number"
+                },
                 "trace": {
                   "type": "array",
                   "items": {
@@ -39890,6 +39902,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "blockedReason": {
                   "type": "string"
+                },
+                "nextRepairAttemptAt": {
+                  "type": "number"
                 },
                 "trace": {
                   "type": "array",
@@ -40098,6 +40113,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "blockedReason": {
                     "type": "string"
+                  },
+                  "nextRepairAttemptAt": {
+                    "type": "number"
                   },
                   "trace": {
                     "type": "array",

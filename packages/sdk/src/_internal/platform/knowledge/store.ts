@@ -127,6 +127,7 @@ export class KnowledgeStore {
     return getKnowledgeStoreStatus(this.asReadView());
   }
 
+  async batch<T>(operation: () => Promise<T>): Promise<T> { await this.init(); return this.sqlite.batch(operation); }
   listSources(limit = 100): KnowledgeSourceRecord[] {
     return listKnowledgeSources(this.asReadView(), limit);
   }

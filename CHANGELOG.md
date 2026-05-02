@@ -20,6 +20,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.15] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- Refinement task records now expose `nextRepairAttemptAt` at the top level in
+  addition to trace/metadata payloads so thin clients can render retry timing
+  without inspecting trace internals.
+
+### Fixed
+- Home Graph snapshot sync now batches knowledge-store writes during the
+  request, avoiding thousands of full SQLite exports for large Home Assistant
+  snapshots.
+- Snapshot-time generated page automation clamps foreground work to SDK-owned
+  bounds even when callers request a larger `pageAutomation.maxRunMs`, keeping
+  sync service calls from spending minutes rendering pages inline.
+- Knowledge Ask and Home Graph Ask now synthesize matched evidence into prose
+  even before semantic fact extraction has completed, avoiding raw snippet
+  bullets on first ask.
+- Accepted repair sources now promote typed source-backed facts from extracted
+  evidence and link those facts to the concrete subject, so official/vendor
+  sources can drive follow-up answers and generated pages instead of merely
+  closing a gap.
+- Semantic answer ranking now boosts repair-promoted and official/vendor facts
+  over weak secondary deterministic fragments.
+- Semantic self-improvement now increments `closedGaps` when a repair run
+  closes a gap with accepted evidence, and coalesced broad refinement results
+  report the caller's requested limit instead of `0`.
+
+### Migration
+- Clients that show retry state can read `task.nextRepairAttemptAt` directly.
+  Existing task metadata remains compatible.
+
+---
+
 ## [0.28.14] - 2026-05-02
 
 ### Breaking

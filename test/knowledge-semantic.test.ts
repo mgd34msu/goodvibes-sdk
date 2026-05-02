@@ -641,6 +641,35 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.text.trim().startsWith('-')).toBe(false);
   });
 
+  test('renders synthesized prose from matched evidence even before facts are extracted', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store);
+    const source = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA product page',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      summary: 'LG 86NANO90UNA has NanoCell 4K display, webOS, HDR10, Dolby Vision, and 120 Hz support.',
+      tags: ['semantic-gap-repair', 'tv'],
+      status: 'indexed',
+    });
+    await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'web',
+      format: 'html',
+      structure: {
+        searchText: 'LG 86NANO90UNA has NanoCell 4K display, webOS, HDR10, Dolby Vision, and 120 Hz support.',
+      },
+    });
+
+    const answer = await semantic.answer({ query: 'what features does the LG 86NANO90UNA have?', includeSources: true });
+
+    expect(answer.answer.synthesized).toBe(true);
+    expect(answer.answer.text.trim().startsWith('-')).toBe(false);
+    expect(answer.answer.text).toContain('indexed evidence');
+    expect(answer.answer.text).toContain('NanoCell');
+  });
+
   test('web gap repair ingests at least two distinct sources for answer gaps', async () => {
     const ingested: Array<{ url: string; title?: string; tags?: readonly string[]; metadata?: Record<string, unknown> }> = [];
     const repairer = createWebKnowledgeGapRepairer({
@@ -897,6 +926,86 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(result?.ingestedSourceIds).toEqual([]);
     expect(ingested).toHaveLength(0);
     expect(result?.sourceAssessments?.some((entry) => entry.accepted && entry.reasons.includes('already-indexed'))).toBe(true);
+  });
+
+  test('self-improvement promotes accepted repair evidence into typed subject facts', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const official = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      summary: 'Official LG 86NANO90UNA product specifications.',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: {
+          trustReason: 'official-vendor-domain, model:86NANO90UNA',
+          sourceRank: 1,
+        },
+      },
+    });
+    await store.upsertExtraction({
+      sourceId: official.id,
+      extractorId: 'web',
+      format: 'html',
+      structure: {
+        searchText: 'LG 86NANO90UNA specifications include a 4K UHD NanoCell display, 120 Hz refresh rate, HDR10 and Dolby Vision support, HDMI eARC, webOS smart TV features, Wi-Fi, Bluetooth, and USB connectivity.',
+      },
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-tv-promote',
+      title: 'LG webOS Smart TV',
+      aliases: ['LG TV'],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    const gap = await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'official-source-gap',
+      title: 'What refresh rate, HDR formats, HDMI 2.1 or gaming features, and smart TV features does the LG 86NANO90UNA have?',
+      aliases: [],
+      confidence: 75,
+      sourceId: official.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'gap',
+        gapKind: 'answer',
+        sourceIds: [official.id],
+        linkedObjectIds: [device.id],
+      },
+    });
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async () => ({
+        searched: true,
+        evidenceSufficient: true,
+        acceptedSourceIds: [official.id],
+        ingestedSourceIds: [],
+        skippedUrls: [],
+      }),
+    });
+
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, gapIds: [gap.id], force: true });
+    const facts = store.listNodes(100).filter((node) => node.kind === 'fact' && node.metadata.extractor === 'repair-promotion');
+    const answer = await semantic.answer({
+      knowledgeSpaceId: spaceId,
+      query: 'what features does the LG 86NANO90UNA have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+    });
+
+    expect(result.closedGaps).toBe(1);
+    expect(facts.length).toBeGreaterThan(0);
+    expect(facts.some((fact) => fact.metadata.sourceAuthority === 'official-vendor')).toBe(true);
+    expect(store.listEdges().some((edge) => edge.fromKind === 'node' && edge.toKind === 'node' && edge.toId === device.id && edge.relation === 'describes')).toBe(true);
+    expect(answer.answer.synthesized).toBe(true);
+    expect(answer.answer.text).toContain('120 Hz');
+    expect(answer.answer.text).toContain('Dolby Vision');
+    expect(answer.answer.facts.some((fact) => fact.metadata.extractor === 'repair-promotion')).toBe(true);
   });
 
   test('web gap repair rejects low-confidence search results', async () => {
@@ -1284,6 +1393,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(result.blockedGaps).toBe(1);
     expect(task?.state).toBe('blocked');
     expect(task?.blockedReason).toContain('deferred');
+    expect(typeof task?.nextRepairAttemptAt).toBe('number');
     expect(updatedGap?.metadata.repairStatus).toBe('deferred');
     expect(typeof updatedGap?.metadata.nextRepairAttemptAt).toBe('number');
   });
@@ -1450,6 +1560,73 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(result.processedGaps).toBe(24);
     expect(result.truncated).toBe(true);
     expect(result.blockedGaps).toBe(24);
+  });
+
+  test('overlapping broad self-improvement reports the requested limit in coalesced metadata', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    let releaseRepair!: () => void;
+    const blockedRepair = new Promise<void>((resolve) => {
+      releaseRepair = resolve;
+    });
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async () => {
+        await blockedRepair;
+        return { searched: true, ingestedSourceIds: [], skippedUrls: [] };
+      },
+    });
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA manual',
+      canonicalUri: 'manual://lg-overlap-limit',
+      tags: ['manual'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-overlap-limit',
+      title: 'LG webOS Smart TV',
+      aliases: [],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'coalesced-limit-gap',
+      title: 'What are the complete features and specifications for LG 86NANO90UNA?',
+      aliases: [],
+      confidence: 75,
+      sourceId: source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'gap',
+        gapKind: 'intrinsic_features',
+        sourceIds: [source.id],
+        linkedObjectIds: [device.id],
+      },
+    });
+
+    const first = semantic.selfImprove({ knowledgeSpaceId: spaceId, limit: 5, reason: 'manual' });
+    await waitFor(() => store.listRefinementTasks(10, { spaceId }).some((task) => task.state === 'searching'), 250);
+    const second = await semantic.selfImprove({ knowledgeSpaceId: spaceId, limit: 500, reason: 'manual' });
+    releaseRepair();
+    await first;
+
+    expect(second.requestedLimit).toBe(500);
+    expect(second.effectiveLimit).toBe(0);
+    expect(second.skippedGaps).toBe(1);
+    expect(second.truncated).toBe(true);
+    expect(second.budgetExhausted).toBe(true);
   });
 
   test('self-improvement recovers stale no-repairer blocks when a repairer is configured', async () => {

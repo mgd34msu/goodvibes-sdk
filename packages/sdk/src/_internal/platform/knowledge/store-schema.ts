@@ -419,6 +419,10 @@ export function mapJobRunRow(columns: string[], values: unknown[]): KnowledgeJob
 
 export function mapRefinementTaskRow(columns: string[], values: unknown[]): KnowledgeRefinementTaskRecord {
   const row = rowObject(columns, values);
+  const metadata = parseJsonValue<Record<string, unknown>>(row.metadata, {});
+  const nextRepairAttemptAt = typeof metadata.nextRepairAttemptAt === 'number' && Number.isFinite(metadata.nextRepairAttemptAt)
+    ? metadata.nextRepairAttemptAt
+    : undefined;
   return {
     id: String(row.id),
     spaceId: String(row.space_id),
@@ -434,8 +438,9 @@ export function mapRefinementTaskRow(columns: string[], values: unknown[]): Know
     budget: parseJsonValue<Record<string, number>>(row.budget, {}),
     attemptCount: Number(row.attempt_count),
     ...(stableText(row.blocked_reason as string | undefined) ? { blockedReason: String(row.blocked_reason) } : {}),
+    ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
     trace: parseJsonValue<KnowledgeRefinementTaskRecord['trace']>(row.trace, []),
-    metadata: parseJsonValue<Record<string, unknown>>(row.metadata, {}),
+    metadata,
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),
   };

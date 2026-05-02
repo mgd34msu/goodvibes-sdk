@@ -94,53 +94,55 @@ export class HomeGraphService {
 
   async syncSnapshot(input: HomeGraphSnapshotInput): Promise<HomeGraphSyncResult> {
     await this.store.init();
-    const { spaceId, installationId } = resolveHomeGraphSpace(input);
-    const capturedAt = input.capturedAt ?? Date.now();
-    const source = await this.store.upsertSource({
-      id: homeGraphSourceId(spaceId, 'snapshot', String(capturedAt)),
-      connectorId: HOME_GRAPH_CONNECTOR_ID,
-      sourceType: 'dataset',
-      title: input.title ?? 'Home Assistant snapshot',
-      canonicalUri: namespacedCanonicalUri(spaceId, 'snapshot', String(capturedAt)),
-      summary: 'Home Assistant entity, device, area, automation, script, scene, label, and integration snapshot.',
-      tags: ['homeassistant', 'home-graph', 'snapshot'],
-      status: 'indexed',
-      lastCrawledAt: capturedAt,
-      metadata: buildHomeGraphMetadata(spaceId, installationId, {
-        ...(input.metadata ?? {}),
-        homeGraphSourceKind: 'snapshot',
-        capturedAt,
-      }),
+    return this.store.batch(async () => {
+      const { spaceId, installationId } = resolveHomeGraphSpace(input);
+      const capturedAt = input.capturedAt ?? Date.now();
+      const source = await this.store.upsertSource({
+        id: homeGraphSourceId(spaceId, 'snapshot', String(capturedAt)),
+        connectorId: HOME_GRAPH_CONNECTOR_ID,
+        sourceType: 'dataset',
+        title: input.title ?? 'Home Assistant snapshot',
+        canonicalUri: namespacedCanonicalUri(spaceId, 'snapshot', String(capturedAt)),
+        summary: 'Home Assistant entity, device, area, automation, script, scene, label, and integration snapshot.',
+        tags: ['homeassistant', 'home-graph', 'snapshot'],
+        status: 'indexed',
+        lastCrawledAt: capturedAt,
+        metadata: buildHomeGraphMetadata(spaceId, installationId, {
+          ...(input.metadata ?? {}),
+          homeGraphSourceKind: 'snapshot',
+          capturedAt,
+        }),
+      });
+      const home = await this.upsertHomeNode(spaceId, installationId, input);
+      const beforeNodeIds = new Set(readHomeGraphState(this.store, spaceId).nodes.map((node) => node.id));
+      const beforeEdgeIds = new Set(readHomeGraphState(this.store, spaceId).edges.map((edge) => edge.id));
+      const groups = await this.upsertSnapshotObjects(spaceId, installationId, input, home.id, source.id);
+      await this.autoLinkExistingSources(spaceId, installationId);
+      const issues = await this.refreshQualityIssues(spaceId, installationId);
+      this.scheduleSyncSelfImprovement(spaceId);
+      const generated = await generateAutomaticHomeGraphPages({
+        store: this.store,
+        artifactStore: this.artifactStore,
+        spaceId,
+        installationId,
+        input,
+      });
+      const after = readHomeGraphState(this.store, spaceId);
+      return {
+        ok: true,
+        spaceId,
+        installationId,
+        source,
+        home,
+        created: {
+          nodes: after.nodes.filter((node) => !beforeNodeIds.has(node.id)).length,
+          edges: after.edges.filter((edge) => !beforeEdgeIds.has(edge.id)).length,
+          issues: issues.length,
+        },
+        generated,
+        counts: groups,
+      };
     });
-    const home = await this.upsertHomeNode(spaceId, installationId, input);
-    const beforeNodeIds = new Set(readHomeGraphState(this.store, spaceId).nodes.map((node) => node.id));
-    const beforeEdgeIds = new Set(readHomeGraphState(this.store, spaceId).edges.map((edge) => edge.id));
-    const groups = await this.upsertSnapshotObjects(spaceId, installationId, input, home.id, source.id);
-    await this.autoLinkExistingSources(spaceId, installationId);
-    const issues = await this.refreshQualityIssues(spaceId, installationId);
-    this.scheduleSyncSelfImprovement(spaceId);
-    const generated = await generateAutomaticHomeGraphPages({
-      store: this.store,
-      artifactStore: this.artifactStore,
-      spaceId,
-      installationId,
-      input,
-    });
-    const after = readHomeGraphState(this.store, spaceId);
-    return {
-      ok: true,
-      spaceId,
-      installationId,
-      source,
-      home,
-      created: {
-        nodes: after.nodes.filter((node) => !beforeNodeIds.has(node.id)).length,
-        edges: after.edges.filter((edge) => !beforeEdgeIds.has(edge.id)).length,
-        issues: issues.length,
-      },
-      generated,
-      counts: groups,
-    };
   }
 
   async ingestUrl(input: HomeGraphIngestUrlInput): Promise<HomeGraphIngestResult> {

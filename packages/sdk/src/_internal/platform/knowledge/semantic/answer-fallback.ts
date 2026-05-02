@@ -1,5 +1,5 @@
 import type { KnowledgeNodeRecord } from '../types.js';
-import { clampText, readString } from './utils.js';
+import { clampText, normalizeWhitespace, readString } from './utils.js';
 
 export interface AnswerFallbackEvidence {
   readonly title: string;
@@ -25,11 +25,19 @@ export function renderFallbackAnswer(
       text: `The source-backed facts I found indicate ${joinFactPhrases(factPhrases)}.`,
     };
   }
-  const lines = evidence.slice(0, mode === 'detailed' ? 8 : mode === 'concise' ? 1 : 4)
-    .map((item) => `- ${item.title}${item.excerpt ? `: ${clampText(item.excerpt, 360)}` : ''}`);
+  const evidencePhrases = evidence
+    .slice(0, mode === 'detailed' ? 8 : mode === 'concise' ? 2 : 5)
+    .map(renderEvidencePhrase)
+    .filter(Boolean);
+  if (evidencePhrases.length > 0) {
+    return {
+      synthesized: true,
+      text: `The indexed evidence currently indicates ${joinFactPhrases(evidencePhrases)}. It does not yet contain enough extracted source-backed facts to answer every part of "${query}".`,
+    };
+  }
   return {
     synthesized: false,
-    text: lines.length > 0 ? lines.join('\n') : `No knowledge matched "${query}".`,
+    text: `No knowledge matched "${query}".`,
   };
 }
 
@@ -44,4 +52,10 @@ function joinFactPhrases(phrases: readonly string[]): string {
   if (phrases.length <= 1) return phrases[0] ?? '';
   if (phrases.length === 2) return `${phrases[0]} and ${phrases[1]}`;
   return `${phrases.slice(0, -1).join('; ')}; and ${phrases[phrases.length - 1]}`;
+}
+
+function renderEvidencePhrase(item: AnswerFallbackEvidence): string {
+  const excerpt = normalizeWhitespace(item.excerpt ?? '');
+  if (!excerpt) return item.title;
+  return `${item.title}: ${clampText(excerpt, 260)}`;
 }
