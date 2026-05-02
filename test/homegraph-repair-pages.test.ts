@@ -9,7 +9,9 @@ import {
   homeAssistantKnowledgeSpaceId,
 } from '../packages/sdk/src/_internal/platform/knowledge/index.js';
 import { extractKnowledgeArtifact } from '../packages/sdk/src/_internal/platform/knowledge/extractors.js';
+import { refreshDevicePagesForHomeGraphAsk } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/ask-page-refresh.js';
 import { HOME_GRAPH_PAGE_POLICY_VERSION } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/generated-pages.js';
+import type { HomeGraphAskResult } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/types.js';
 import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
@@ -408,6 +410,92 @@ describe('Home Graph repair and generated pages', () => {
     expect(page.markdown).toContain('Audio capabilities: 2 x 10W speakers');
     expect(page.markdown).not.toContain('0 source(s)');
     expect(page.markdown).not.toContain('manual/source');
+  });
+
+  test('ask page refresh persists response-only subject fact links before rendering pages', async () => {
+    const { service, store, artifactStore } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const browse = await service.browse({ installationId: 'house-1' });
+    const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
+    expect(device).toBeDefined();
+    const source = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      sourceUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    const storedFact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'lg-display-audio-specs',
+      title: 'Display and audio specifications',
+      summary: 'Display and audio specifications: 4K UHD NanoCell display, HDR10, Dolby Vision, 120 Hz refresh rate, and 2 x 10W speakers.',
+      aliases: [],
+      status: 'active',
+      confidence: 92,
+      sourceId: source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'specification',
+        value: '4K UHD NanoCell display, HDR10, Dolby Vision, 120 Hz, 2 x 10W speakers',
+        sourceId: source.id,
+        extractor: 'repair-promotion',
+      },
+    });
+    const stalePage = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
+    expect(stalePage.markdown).toContain('0 source(s)');
+    expect(stalePage.markdown).not.toContain('2 x 10W speakers');
+
+    const answer: HomeGraphAskResult = {
+      ok: true,
+      spaceId,
+      query: 'What features does the LG TV have?',
+      answer: {
+        text: 'The LG TV supports 4K UHD NanoCell video, HDR10, Dolby Vision, 120 Hz refresh, and 2 x 10W speakers.',
+        mode: 'standard',
+        confidence: 92,
+        sources: [source],
+        linkedObjects: [device!],
+        facts: [{
+          ...storedFact,
+          subject: device!.title,
+          subjectIds: [device!.id],
+          linkedObjectIds: [device!.id],
+          targetHints: [{ id: device!.id, kind: device!.kind, title: device!.title }],
+        }],
+        gaps: [],
+        synthesized: true,
+      },
+      results: [],
+    };
+
+    const refresh = await refreshDevicePagesForHomeGraphAsk({
+      store,
+      artifactStore,
+      spaceId,
+      installationId: 'house-1',
+      answer,
+    });
+    const pages = await service.listPages({ installationId: 'house-1', limit: 20, includeMarkdown: true });
+    const listedPage = pages.pages.find((entry) => entry.source.title === 'LG webOS Smart TV passport');
+
+    expect(refresh).toEqual({ requested: true, refreshed: 1 });
+    expect(listedPage?.markdown).toContain('The Home Graph links this device to 0 Home Assistant entity record(s) and 1 source(s).');
+    expect(listedPage?.markdown).toContain('LG 86NANO90UNA official specifications');
+    expect(listedPage?.markdown).toContain('2 x 10W speakers');
+    expect(listedPage?.markdown).not.toContain('0 source(s)');
+    expect(listedPage?.markdown).not.toContain('manual/source');
   });
 
   test('generated device pages ignore sources attached only through stale promoted facts', async () => {

@@ -1,6 +1,6 @@
 export const FOUNDATION_METADATA = {
   "productId": "goodvibes",
-  "productVersion": "0.28.21",
+  "productVersion": "0.28.22",
   "operatorMethodCount": 265,
   "operatorEventCount": 30,
   "peerEndpointCount": 6
