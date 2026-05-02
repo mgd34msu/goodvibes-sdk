@@ -60,6 +60,7 @@ export interface HomeGraphPageContext {
 export const HOME_GRAPH_PAGE_POLICY_VERSION = 'homegraph-pages-v7';
 const DEFAULT_SYNC_DEVICE_PASSPORT_LIMIT = 32;
 const DEFAULT_SYNC_ROOM_PAGE_LIMIT = 12;
+const DEFAULT_SYNC_PAGE_RUN_MS = 15_000;
 
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
@@ -67,6 +68,7 @@ export async function generateAutomaticHomeGraphPages(
   return generateHomeGraphPagesForCurrentState(context, {
     maxDevicePassports: DEFAULT_SYNC_DEVICE_PASSPORT_LIMIT,
     maxRoomPages: DEFAULT_SYNC_ROOM_PAGE_LIMIT,
+    maxRunMs: DEFAULT_SYNC_PAGE_RUN_MS,
     ...(context.input.pageAutomation ?? {}),
   });
 }
@@ -84,6 +86,9 @@ async function generateHomeGraphPagesForCurrentState(
   const effectiveOptions = options ?? {};
   const summary = createGeneratedPagesSummary();
   if (effectiveOptions.enabled === false) return summary;
+  const deadlineAt = typeof effectiveOptions.maxRunMs === 'number' && Number.isFinite(effectiveOptions.maxRunMs)
+    ? Date.now() + Math.max(1_000, Math.trunc(effectiveOptions.maxRunMs))
+    : undefined;
 
   const state = readHomeGraphState(context.store, context.spaceId);
   if (effectiveOptions.devicePassports !== false) {
@@ -93,6 +98,10 @@ async function generateHomeGraphPagesForCurrentState(
     const devices = limitRecords(allDevices, effectiveOptions.maxDevicePassports);
     summary.deferredDevicePassports += Math.max(0, allDevices.length - devices.length);
     for (const [index, device] of devices.entries()) {
+      if (deadlineReached(deadlineAt)) {
+        summary.deferredDevicePassports += devices.length - index;
+        break;
+      }
       await yieldEvery(index, 2);
       const deviceId = readHomeAssistantObjectId(device, 'objectId', 'deviceId') ?? device.id;
       try {
@@ -125,6 +134,10 @@ async function generateHomeGraphPagesForCurrentState(
     const rooms = limitRecords(allRooms, effectiveOptions.maxRoomPages);
     summary.deferredRoomPages += Math.max(0, allRooms.length - rooms.length);
     for (const [index, room] of rooms.entries()) {
+      if (deadlineReached(deadlineAt)) {
+        summary.deferredRoomPages += rooms.length - index;
+        break;
+      }
       await yieldEvery(index, 2);
       const areaId = readHomeAssistantObjectId(room, 'objectId', 'areaId') ?? room.id;
       try {
@@ -153,6 +166,10 @@ async function generateHomeGraphPagesForCurrentState(
 
   summary.truncated = summary.deferredDevicePassports > 0 || summary.deferredRoomPages > 0;
   return summary;
+}
+
+function deadlineReached(deadlineAt: number | undefined): boolean {
+  return typeof deadlineAt === 'number' && Date.now() >= deadlineAt;
 }
 
 export async function refreshHomeGraphDevicePassport(

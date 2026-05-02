@@ -155,16 +155,18 @@ Repair idempotency is gap-specific: a previously discovered repair source for
 the same object does not suppress another gap unless it is linked to that exact
 gap through `repairs_gap`.
 External repair sources are accepted into the graph only after confidence
-scoring. The repairer compares search results against the concrete subject,
-model/manufacturer hints, the gap wording, and the current query; accepted
-sources must clear the confidence threshold and still come from at least two
-distinct domains. Repair does not stop after one broad search: it tries
+scoring. The repairer compares already-indexed sources and web-search results
+against the concrete subject, model/manufacturer hints, the gap wording, and
+the current query. Already-indexed official/vendor sources are usable repair
+evidence; the SDK links and promotes them instead of blocking only because the
+source was not newly fetched. One official/vendor source can close a gap when
+it is strong enough, while non-official evidence still needs corroboration
+across distinct domains. Repair does not stop after one broad search: it tries
 progressively more targeted queries for the subject and gap, then accepts at
-most five high-confidence sources for that gap. The SDK stores the accepted
-source confidence, confidence reasons, agreement count, selected URL, search
-queries, original source IDs, gap IDs, and linked object IDs in
-`metadata.sourceDiscovery`, so the graph can explain why an automatic web
-source was trusted.
+most five high-confidence sources for that gap. The SDK stores accepted and
+rejected source assessments, confidence reasons, selected URLs, search queries,
+original source IDs, gap IDs, and linked object IDs in `metadata.sourceDiscovery`,
+so the graph can explain why automatic source evidence was trusted.
 
 Self-improvement is a durable workflow, not just a side effect. Each detected
 repair opportunity is represented by a `KnowledgeRefinementTask` with a stable
@@ -202,18 +204,27 @@ The semantic service also coalesces overlapping non-deferred repair runs per
 service instance. A second manual run, reindex repair, or Ask-triggered repair
 request made while another repair run is active returns a bounded skipped
 result instead of launching another batch of search/LLM work.
+Repair tasks that exhaust their current run budget are not left as dead
+failures. The SDK marks them blocked with retry metadata, updates the gap with
+`repairStatus: "deferred"` and `nextRepairAttemptAt`, and lets a later
+scheduled/manual run continue. If a repair pass accepts source evidence but
+does not have enough corroboration to close the gap, those accepted sources are
+still linked/promoted and the task is deferred rather than discarded.
 
 The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
 semantic facts when available, asks the current LLM to synthesize an answer from
 that evidence, and falls back to fact/snippet rendering when no LLM is
-available. Responses include answer text, confidence, sources, linked objects,
-facts, gaps, and ranked search results. This is the generic layer used by Home
-Graph and future knowledge spaces, so clients should not implement their own
-snippet-to-answer logic. Answer synthesis has an SDK-owned hard timeout; if a
-provider ignores its own timeout or abort signal, Ask falls back instead of
-pinning the daemon. If Ask identifies answer gaps and semantic gap repair is
-configured, the SDK queues refinement tasks and starts repair in the background.
+available. When no provider answer is available but usable semantic facts are
+present, the fallback is still synthesized into prose rather than returned as
+raw snippet bullets. Responses include answer text, confidence, sources, linked
+objects, facts, gaps, and ranked search results. This is the generic layer used
+by Home Graph and future knowledge spaces, so clients should not implement
+their own snippet-to-answer logic. Answer synthesis has an SDK-owned hard
+timeout; if a provider ignores its own timeout or abort signal, Ask falls back
+instead of pinning the daemon. If Ask identifies answer gaps and semantic gap
+repair is configured, the SDK queues refinement tasks and starts repair in the
+background.
 Ask does not wait for web search, URL ingest, or re-answering; it returns the
 current best answer plus `refinementTaskIds` so clients can show repair
 progress and ask again after the graph improves. When callers use the
@@ -274,12 +285,15 @@ records in Ask responses keep the canonical source shape and also expose
 When self-improvement or Ask finds explicit gaps for a concrete subject, the
 daemon can run source-backed gap repair in the background. The repair path
 builds a narrow query from the linked object, source titles, and gap text;
-searches the web through the configured GoodVibes web-search service; requires
-at least two distinct external source domains; ingests accepted URLs into the
-same `knowledgeSpaceId`; and links those new sources to the gap with
-`repairs_gap` edges. Gap repair does not change the current answer or invent
-facts from search snippets. It gives the normal ingest, extraction, semantic
-enrichment, review, and future ask paths more source evidence to work with.
+checks already-indexed official/vendor sources first; searches the web through
+the configured GoodVibes web-search service when more evidence is needed;
+ingests accepted URLs into the same `knowledgeSpaceId`; and links accepted
+sources to the gap with `repairs_gap` edges. Accepted repair sources are then
+semantically re-enriched under the same run budget, and promoted fact nodes are
+linked back to the concrete subject with `describes` edges. Gap repair does not
+invent facts from search snippets. It gives the normal ingest, extraction,
+semantic enrichment, review, and future ask paths more source evidence to work
+with.
 Existing `repairs_gap` edges and retry windows suppress repeated searches for
 the same gap; repair sources linked elsewhere on the same object do not block
 new gaps from being repaired. Foreground repair attempts use bounded web search
@@ -393,7 +407,8 @@ passports and room pages by default. This uses the shared knowledge generated
 projection helper, so Home Graph pages and base wiki projections both get
 stable source ids, durable markdown artifacts, generated-page metadata, and
 unchanged-artifact reuse. Clients can disable or bound this with the sync
-`pageAutomation` object, and Home Graph generated sources carry stable ids plus
+`pageAutomation` object, including `maxRunMs` for foreground sync page work,
+and Home Graph generated sources carry stable ids plus
 `homeGraphGeneratedPage`, `projectionKind`, and `pageEditable` metadata. The
 generated pages are excluded from answer/reindex ranking and from linked-source
 page lists so they do not compete with manuals, receipts, notes, and other

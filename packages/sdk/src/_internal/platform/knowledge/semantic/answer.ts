@@ -45,6 +45,7 @@ import {
 import { concreteAnswerGapSpaceId } from './answer-space.js';
 import { answerNeedsFeatureGap, cleanSynthesizedAnswer } from './answer-quality.js';
 import { clampTimeoutMs, withTimeoutOrNull } from './timeouts.js';
+import { renderFallbackAnswer } from './answer-fallback.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -147,10 +148,8 @@ export async function answerKnowledgeQuery(
         linkedObjects,
       })
     : null;
-  const text = cleanSynthesizedAnswer(
-    llmAnswer?.answer?.trim() || renderFallbackAnswer(input.query, mode, evidence),
-    featureIntent,
-  );
+  const fallback = llmAnswer?.answer ? null : renderFallbackAnswer(input.query, mode, evidence, facts);
+  const text = cleanSynthesizedAnswer(llmAnswer?.answer?.trim() || fallback?.text || '', featureIntent);
   return {
     ok: true,
     spaceId,
@@ -163,7 +162,7 @@ export async function answerKnowledgeQuery(
       linkedObjects,
       facts,
       gaps: evidenceGap ? uniqueNodes([...gaps, evidenceGap]) : gaps,
-      synthesized: Boolean(llmAnswer?.answer),
+      synthesized: Boolean(llmAnswer?.answer) || Boolean(fallback?.synthesized),
     },
     results: evidence.map(toSearchResult),
   };
@@ -334,26 +333,6 @@ function renderEvidenceForPrompt(evidence: readonly EvidenceItem[]): readonly Re
     rendered.push(record);
   }
   return rendered;
-}
-
-function renderFallbackAnswer(
-  query: string,
-  mode: string,
-  evidence: readonly EvidenceItem[],
-): string {
-  const facts = filterFactsForQuery(query, uniqueNodes(evidence.flatMap((item) => item.facts)));
-  const factLines = facts
-    .filter((fact) => fact.metadata.semanticKind === 'fact')
-    .slice(0, mode === 'detailed' ? 12 : mode === 'concise' ? 3 : 6)
-    .map((fact) => {
-      const value = readString(fact.metadata.value);
-      const summary = fact.summary ?? readString(fact.metadata.evidence);
-      return `- ${fact.title}${value ? `: ${value}` : ''}${summary ? ` - ${summary}` : ''}`;
-    });
-  if (factLines.length > 0) return factLines.join('\n');
-  const lines = evidence.slice(0, mode === 'detailed' ? 8 : mode === 'concise' ? 1 : 4)
-    .map((item) => `- ${item.title}${item.excerpt ? `: ${clampText(item.excerpt, 360)}` : ''}`);
-  return lines.length > 0 ? lines.join('\n') : `No knowledge matched "${query}".`;
 }
 
 function filterFactsForQuery(query: string, facts: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {

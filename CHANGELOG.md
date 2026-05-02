@@ -20,6 +20,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.14] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- Home Graph snapshot `pageAutomation` now accepts `maxRunMs` so large Home
+  Assistant syncs can bound foreground generated-page work while reporting
+  deferred page counts.
+
+### Fixed
+- Semantic gap repair now treats already-indexed official/vendor sources as
+  usable repair evidence instead of blocking solely because fewer than two new
+  external URLs were ingested. Accepted sources are linked to the exact gap,
+  semantically re-enriched under the run budget, and promoted fact nodes are
+  linked back to the concrete subject.
+- Source-backed repair now prefers official/vendor domains, can close a gap
+  from one strong official/vendor source, and still requires corroboration
+  across distinct domains for non-official evidence.
+- Base Knowledge Ask now uses the same synthesized fallback behavior as Home
+  Graph Ask when usable semantic facts are present, avoiding raw snippet-bullet
+  answers when the provider synthesis path is unavailable.
+- Run-budget and deadline failures in semantic refinement are now deferred with
+  retry metadata and `nextRepairAttemptAt` instead of leaving dead failed
+  tasks.
+- Accepted but insufficient repair evidence is no longer discarded; the SDK
+  links/promotes the evidence and leaves the gap blocked with retryable
+  deferred state for the next refinement pass.
+- Semantic repair normalizes manufacturer names from linked objects before
+  official-domain checks, so sources such as `lg.com` are correctly recognized
+  for objects whose metadata says `LG`.
+
+### Migration
+- Clients should continue to observe `refinementTaskIds`, task traces, and
+  `nextRepairAttemptAt`. A `blocked` task can now mean retryable deferred
+  progress rather than terminal failure.
+
+---
+
 ## [0.28.13] - 2026-05-01
 
 ### Breaking
