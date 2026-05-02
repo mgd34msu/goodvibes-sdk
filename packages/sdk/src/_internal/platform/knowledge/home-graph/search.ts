@@ -7,6 +7,7 @@ import type {
 } from '../types.js';
 import { belongsToSpace, edgeIsActive, isGeneratedPageSource, readRecord } from './helpers.js';
 import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
+import { buildSourceLinkIndex } from './source-links.js';
 import { intersects, isSingularObjectQuery } from './search-utils.js';
 import type { HomeGraphSearchResult } from './types.js';
 
@@ -464,24 +465,6 @@ function sourceAnchorIntentBoost(tokens: readonly string[], node: KnowledgeNodeR
   return node.kind === 'ha_integration' ? -10 : 0;
 }
 
-function buildSourceLinkIndex(edges: readonly KnowledgeEdgeRecord[]): Map<string, Set<string>> {
-  const links = new Map<string, Set<string>>();
-  for (const edge of edges) {
-    if (edge.fromKind === 'source' && edge.toKind === 'node') {
-      addSourceLink(links, edge.fromId, edge.toId);
-    } else if (edge.fromKind === 'node' && edge.toKind === 'source') {
-      addSourceLink(links, edge.toId, edge.fromId);
-    }
-  }
-  return links;
-}
-
-function addSourceLink(links: Map<string, Set<string>>, sourceId: string, nodeId: string): void {
-  const current = links.get(sourceId) ?? new Set<string>();
-  current.add(nodeId);
-  links.set(sourceId, current);
-}
-
 function relationBoost(sourceId: string, anchorIds: ReadonlySet<string>, edges: readonly KnowledgeEdgeRecord[]): number {
   let boost = 0;
   for (const edge of edges) {
@@ -524,7 +507,7 @@ function isPendingDocumentationCandidate(
 
 export function homeGraphExtractionNeedsRepair(extraction: KnowledgeExtractionRecord | null | undefined): boolean {
   if (!extraction) return true;
-  if (extraction.format === 'pdf' && extraction.extractorId !== 'pdfjs') return true;
+  if (extraction.format === 'pdf' && extraction.extractorId === 'pdf') return true;
   const searchText = readSearchText(extraction);
   if (searchText && searchText.trim().length > 0) return false;
   if ((extraction.excerpt?.trim() && !isLowInformationExtractionText(extraction.excerpt))

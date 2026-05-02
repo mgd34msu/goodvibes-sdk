@@ -66,7 +66,9 @@ function uniqueStrings(values: Iterable<string>, limit = 24): string[] {
 export async function extractPdf(buffer: Buffer): Promise<KnowledgeExtractionResult> {
   const parsed = await extractPdfWithPdfJs(buffer);
   if (parsed) return parsed;
-  return extractPdfRawStreams(buffer);
+  const raw = extractPdfRawStreams(buffer);
+  if (raw) return raw;
+  throw new Error('PDF extraction failed: no readable text was extracted. OCR or a dedicated PDF provider may be required.');
 }
 
 async function extractPdfWithPdfJs(buffer: Buffer): Promise<KnowledgeExtractionResult | undefined> {
@@ -133,7 +135,7 @@ function unknownRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? value as Record<string, unknown> : {};
 }
 
-function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult {
+function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult | undefined {
   const body = buffer.toString('latin1');
   const texts: string[] = [];
   const streamRe = /(<<[\s\S]{0,4096}?>>)\s*stream\r?\n([\s\S]*?)\r?\nendstream/g;
@@ -149,11 +151,12 @@ function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult {
   const combined = uniqueStrings(texts, 64).join('\n');
   const searchable = uniqueStrings(texts, 512).join('\n');
   const searchText = searchTextPayload(searchable);
+  if (!searchText) return undefined;
   return {
-    extractorId: 'pdf',
+    extractorId: 'pdf-raw',
     format: 'pdf',
     title: firstNonEmptyLine(combined) ?? 'PDF document',
-    summary: summarizeText(combined) ?? 'PDF extraction produced limited text; OCR is not used in-core.',
+    summary: summarizeText(combined) ?? 'PDF document text extracted from raw streams.',
     excerpt: excerptText(combined),
     sections: uniqueStrings(combined.split(/\n+/), 8),
     links: uniqueStrings(Array.from(combined.matchAll(/\bhttps?:\/\/[^\s)]+/g), (linkMatch) => linkMatch[0]), 50),

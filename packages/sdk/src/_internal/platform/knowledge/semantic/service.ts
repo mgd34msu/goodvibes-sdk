@@ -336,7 +336,7 @@ function activeSelfImproveResult(input: KnowledgeSemanticSelfImproveInput): Know
     ...emptySelfImproveResult(),
     skippedGaps: 1,
     requestedLimit,
-    effectiveLimit: requestedLimit,
+    effectiveLimit: 0,
     truncated: true,
     budgetExhausted: true,
   };

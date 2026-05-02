@@ -32,6 +32,7 @@ export function semanticFactText(fact: KnowledgeNodeRecord): string {
 export function isLowValueFeatureOrSpecText(text: string): boolean {
   const lower = text.toLowerCase();
   const magicRemoteDetail = /\bmagic remote\b/.test(lower) || /\bbluetooth\b/.test(lower);
+  if (/\?\s*$/.test(text.trim())) return true;
   if (isTruncatedManualFragment(lower)) return true;
   if (/\b(items? supplied|supplied items?|included accessories|optional extras?|sold separately|separate purchase|accessories may vary|contents? of (this )?manual|may be changed|may change|subject to change|without prior notice|available menus? and options?|certified cable|unapproved items?)\b/.test(lower)) {
     return true;
@@ -44,7 +45,10 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   }
   if (/^\s*\d+\s*(yes|no)\b/.test(lower)
     || /^\s*\d+(hdmi|usb|audio|ports?|features?|smart)\b/.test(lower)
-    || /\b\d+\s+features such as\b/.test(lower)) {
+    || /^\s*0\s+ports\b/.test(lower)
+    || /\b\d+\s+features such as\b/.test(lower)
+    || /\b(case color|hardware cpu cores|hardware gpu cores)\b/.test(lower)
+    || /^\s*\d+\s*kg\d*/.test(lower)) {
     return true;
   }
   if (/\b(button|buttons|remote control)\b/.test(lower) && /[\u25b2\u25bc\u25c4\u25ba]|[▲▼◄►]|\\u25/.test(text)) {
@@ -157,22 +161,6 @@ function isTruncatedManualFragment(value: string): boolean {
 
 export function hasConcreteFeatureSignal(text: string): boolean {
   return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|wireless lan|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation|atsc|ntsc|qam|tuner|broadcast|rs-?232c|external control)\b/.test(text.toLowerCase());
-}
-
-export function isUsefulHomeGraphSourceBackedNote(text: string): boolean {
-  if (isLowValueFeatureOrSpecText(text)) return false;
-  const lower = text.toLowerCase();
-  if (/\b(magic remote|remote control)\b/.test(lower)) return false;
-  const signalCount = [
-    /\b(hdmi|usb|ethernet|wi-?fi|bluetooth|airplay|miracast|chromecast)\b/,
-    /\b(hdr|hdr10|dolby vision|dolby atmos|filmmaker|game optimizer|freesync|g-sync|allm|vrr)\b/,
-    /\b(4k|8k|uhd|resolution|refresh rate|120\s*hz|60\s*hz|nanocell|led|lcd|display|screen)\b/,
-    /\b(tuner|atsc|qam|ntsc|codec|mpeg|dolby digital|audio formats?|video formats?)\b/,
-    /\b(ports?|speaker system|speaker power|channels?|arc|earc)\b/,
-  ].filter((pattern) => pattern.test(lower)).length;
-  return signalCount >= 2
-    || /\b(supported external devices|supports? .* (hdr|hdmi|usb|wi-?fi|bluetooth|earc|arc|4k|120\s*hz))\b/.test(lower)
-    || /\b(dtv audio supported codec|supported codecs?|supported audio formats?|supported video formats?|supported picture formats?)\b/.test(lower);
 }
 
 export function isUsefulHomeGraphPageFact(fact: KnowledgeNodeRecord): boolean {

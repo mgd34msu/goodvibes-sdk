@@ -20,6 +20,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.17] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- Home Graph reset now performs a true scoped development reset by default:
+  graph rows, review/refinement state, extractions, generated page artifacts,
+  uploaded source artifacts, and orphan artifacts tagged to the Home Assistant
+  knowledge space are deleted together. Pass `preserveArtifacts: true` for the
+  previous records-only behavior.
+- Home Graph map accepts HA facet filters either under `ha` or as top-level
+  aliases such as `domains`, `areaIds`, and `objectKinds`.
+
+### Fixed
+- PDF ingestion now fails when no readable text can be extracted instead of
+  indexing a weak placeholder extraction. Legacy `extractorId: "pdf"` records
+  are still treated as stale and reparsed during Ask/reindex.
+- Accepted official/vendor repair sources now promote typed subject-linked
+  profile facts for display, ports, smart platform, network, gaming, audio, and
+  tuner capabilities, allowing repaired evidence to drive Ask, base Knowledge
+  Ask, and generated pages.
+- Base Knowledge Ask for `knowledgeSpaceId: "homeassistant"` and Home Graph Ask
+  now follow source -> fact -> device links, so repaired source evidence remains
+  scoped to the real HA object instead of drifting to unrelated facts.
+- Generated Home Graph device pages now resolve sources and facts through
+  repair-promoted fact links and are refreshed after source-backed Ask results,
+  preventing repaired devices from continuing to show zero linked sources.
+- Generated Home Graph device pages no longer render raw source snippet sections;
+  linked source text is converted into typed page/profile facts first, then only
+  those structured facts are shown.
+- Semantic answer fallback no longer formats source snippets as answers when no
+  usable facts exist, and low-value/question-like facts are filtered before they
+  can appear as feature/specification evidence.
+- Broad refinement accounting now reports the actual number of candidate gaps
+  selected for the run as `effectiveLimit` instead of echoing the requested cap.
+
+### Migration
+- Home Graph reset callers that intentionally want to keep uploaded artifacts
+  must now pass `preserveArtifacts: true`.
+
+---
+
 ## [0.28.16] - 2026-05-02
 
 ### Breaking

@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe('Home Graph repair and generated pages', () => {
-  test('does not index compressed PDF stream bytes as searchable text', async () => {
+  test('rejects PDFs when no readable text can be extracted', async () => {
     const compressed = deflateSync(Buffer.from([0, 1, 2, 3, 255, 254, 253, 128, 127, 16, 24, 31]));
     const buffer = Buffer.concat([
       Buffer.from('%PDF-1.4\n1 0 obj\n', 'binary'),
@@ -30,16 +30,11 @@ describe('Home Graph repair and generated pages', () => {
       Buffer.from('\nendstream\nendobj\n%%EOF\n', 'binary'),
     ]);
 
-    const extracted = await extractKnowledgeArtifact({
+    await expect(extractKnowledgeArtifact({
       id: 'bad-pdf',
       mimeType: 'application/pdf',
       filename: 'bad.pdf',
-    }, buffer);
-
-    expect(extracted.extractorId).toBe('pdf');
-    expect(extracted.summary).toContain('limited text');
-    expect(extracted.structure.searchText).toBeUndefined();
-    expect(JSON.stringify(extracted)).not.toContain('/FlateDecode');
+    }, buffer)).rejects.toThrow('PDF extraction failed');
   });
 
   test('reindexes existing manuals, auto-links them to matching devices, and regenerates source-backed pages', async () => {
@@ -114,7 +109,7 @@ describe('Home Graph repair and generated pages', () => {
     expect(issues.issues.some((issue) => issue.code === 'homegraph.device.unknown_battery' && issue.message.includes('LG webOS Smart TV'))).toBe(false);
     expect(ask.answer.text).toContain('Dolby Vision');
     expect(ask.answer.text).toContain('HDMI eARC');
-    expect(passport.markdown).toContain('## Source-Backed Features And Notes');
+    expect(passport.markdown).toContain('## Verified Device Facts');
     expect(passport.markdown).toContain('Dolby Vision');
     expect(passport.markdown).not.toContain('SpeakerCompare');
     expect(passport.markdown).not.toContain('equal power mode');
@@ -225,8 +220,10 @@ describe('Home Graph repair and generated pages', () => {
 
     const passport = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
 
-    expect(passport.markdown).toContain('Dolby Vision HDR');
-    expect(passport.markdown).toContain('DTV Audio Supported Codec');
+    expect(passport.markdown).toContain('Display and picture specifications');
+    expect(passport.markdown).toContain('Dolby Vision');
+    expect(passport.markdown).toContain('Audio capabilities');
+    expect(passport.markdown).toContain('Dolby audio formats');
     expect(passport.markdown).not.toContain('SpeakerCompare');
     expect(passport.markdown).not.toContain('equal power mode');
     expect(passport.markdown).not.toContain('Do not place the TV');

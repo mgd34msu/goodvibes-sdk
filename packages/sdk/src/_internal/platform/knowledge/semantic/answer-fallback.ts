@@ -1,4 +1,5 @@
 import type { KnowledgeNodeRecord } from '../types.js';
+import { isLowValueFeatureOrSpecText } from './fact-quality.js';
 import { clampText, normalizeWhitespace, readString } from './utils.js';
 
 export interface AnswerFallbackEvidence {
@@ -22,17 +23,17 @@ export function renderFallbackAnswer(
   if (factPhrases.length > 0) {
     return {
       synthesized: true,
-      text: `The source-backed facts I found indicate ${joinFactPhrases(factPhrases)}.`,
+      text: `The source-backed facts identify ${joinFactPhrases(factPhrases)}.`,
     };
   }
-  const evidencePhrases = evidence
-    .slice(0, mode === 'detailed' ? 8 : mode === 'concise' ? 2 : 5)
-    .map(renderEvidencePhrase)
+  const sourceTitles = evidence
+    .slice(0, mode === 'detailed' ? 6 : mode === 'concise' ? 2 : 4)
+    .map((item) => normalizeWhitespace(item.title))
     .filter(Boolean);
-  if (evidencePhrases.length > 0) {
+  if (sourceTitles.length > 0) {
     return {
-      synthesized: true,
-      text: `The indexed evidence currently indicates ${joinFactPhrases(evidencePhrases)}. It does not yet contain enough extracted source-backed facts to answer every part of "${query}".`,
+      synthesized: false,
+      text: `I found matching sources (${joinFactPhrases(sourceTitles)}), but they have not produced enough source-backed facts to answer "${query}" yet.`,
     };
   }
   return {
@@ -44,18 +45,13 @@ export function renderFallbackAnswer(
 function renderFactPhrase(fact: KnowledgeNodeRecord): string {
   const value = readString(fact.metadata.value);
   const summary = fact.summary ?? readString(fact.metadata.evidence);
-  if (value) return `${fact.title}: ${value}`;
-  return summary ? `${fact.title}: ${summary}` : fact.title;
+  const phrase = value ? `${fact.title}: ${value}` : summary ? `${fact.title}: ${summary}` : fact.title;
+  const cleaned = normalizeWhitespace(clampText(phrase, 220));
+  return isLowValueFeatureOrSpecText(cleaned) ? '' : cleaned;
 }
 
 function joinFactPhrases(phrases: readonly string[]): string {
   if (phrases.length <= 1) return phrases[0] ?? '';
   if (phrases.length === 2) return `${phrases[0]} and ${phrases[1]}`;
   return `${phrases.slice(0, -1).join('; ')}; and ${phrases[phrases.length - 1]}`;
-}
-
-function renderEvidencePhrase(item: AnswerFallbackEvidence): string {
-  const excerpt = normalizeWhitespace(item.excerpt ?? '');
-  if (!excerpt) return item.title;
-  return `${item.title}: ${clampText(excerpt, 260)}`;
 }

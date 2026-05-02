@@ -47,9 +47,7 @@ export function renderHomeGraphState(store: KnowledgeStore, spaceId: string, tit
 }
 
 export function sourcesLinkedToNode(nodeId: string, state: HomeGraphState): KnowledgeSourceRecord[] {
-  const sourceIds = new Set(state.edges.filter((edge) => (
-    edge.fromKind === 'source' && edge.toKind === 'node' && edge.toId === nodeId
-  )).map((edge) => edge.fromId));
+  const sourceIds = sourceIdsLinkedToNodeThroughFacts(nodeId, state.edges);
   return state.sources.filter((source) => sourceIds.has(source.id));
 }
 
@@ -61,12 +59,15 @@ export function collectLinkedObjects(
   },
 ): KnowledgeNodeRecord[] {
   const nodeIds = new Set<string>();
+  const factDescribes = factDescribesIndex(state.edges);
   for (const result of results) {
     if (result.node) nodeIds.add(result.node.id);
     if (result.source) {
       for (const edge of state.edges) {
+        if (!edgeIsActive(edge)) continue;
         if (edge.fromKind === 'source' && edge.fromId === result.source.id && edge.toKind === 'node') {
           nodeIds.add(edge.toId);
+          for (const describedNodeId of factDescribes.get(edge.toId) ?? []) nodeIds.add(describedNodeId);
         }
       }
       for (const id of sourceLinkedObjectIds(result.source)) {
@@ -75,6 +76,40 @@ export function collectLinkedObjects(
     }
   }
   return state.nodes.filter((node) => nodeIds.has(node.id));
+}
+
+function factDescribesIndex(edges: readonly KnowledgeEdgeRecord[]): Map<string, Set<string>> {
+  const index = new Map<string, Set<string>>();
+  for (const edge of edges) {
+    if (!edgeIsActive(edge)
+      || edge.fromKind !== 'node'
+      || edge.toKind !== 'node'
+      || edge.relation !== 'describes') continue;
+    const current = index.get(edge.fromId) ?? new Set<string>();
+    current.add(edge.toId);
+    index.set(edge.fromId, current);
+  }
+  return index;
+}
+
+function sourceIdsLinkedToNodeThroughFacts(nodeId: string, edges: readonly KnowledgeEdgeRecord[]): Set<string> {
+  const sourceIds = new Set<string>();
+  const factIds = new Set<string>();
+  for (const edge of edges) {
+    if (!edgeIsActive(edge)) continue;
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && edge.toId === nodeId) sourceIds.add(edge.fromId);
+    if (edge.fromKind === 'node' && edge.toKind === 'source' && edge.fromId === nodeId) sourceIds.add(edge.toId);
+    if (edge.fromKind === 'node' && edge.toKind === 'node' && edge.toId === nodeId && edge.relation === 'describes') {
+      factIds.add(edge.fromId);
+    }
+  }
+  for (const edge of edges) {
+    if (!edgeIsActive(edge)) continue;
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && factIds.has(edge.toId) && edge.relation === 'supports_fact') {
+      sourceIds.add(edge.fromId);
+    }
+  }
+  return sourceIds;
 }
 
 function sourceLinkedObjectIds(source: KnowledgeSourceRecord): string[] {

@@ -46,6 +46,7 @@ import { concreteAnswerGapSpaceId } from './answer-space.js';
 import { answerNeedsFeatureGap, cleanSynthesizedAnswer } from './answer-quality.js';
 import { clampTimeoutMs, withTimeoutOrNull } from './timeouts.js';
 import { renderFallbackAnswer } from './answer-fallback.js';
+import { rankAnswerSources } from './answer-source-ranking.js';
 
 interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
@@ -122,7 +123,7 @@ export async function answerKnowledgeQuery(
 
   const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence, input.timeoutMs);
   const facts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
-  const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : []))
+  const sources = rankAnswerSources(evidence, facts)
     .slice(0, limit)
     .map(withAnswerSourceAliases);
   const linkedObjects = input.includeLinkedObjects === false
@@ -148,8 +149,17 @@ export async function answerKnowledgeQuery(
         linkedObjects,
       })
     : null;
-  const fallback = llmAnswer?.answer ? null : renderFallbackAnswer(input.query, mode, evidence, facts);
-  const text = cleanSynthesizedAnswer(llmAnswer?.answer?.trim() || fallback?.text || '', featureIntent);
+  const llmText = llmAnswer?.answer?.trim();
+  const cleanedLlmText = llmText ? cleanSynthesizedAnswer(llmText, featureIntent) : undefined;
+  const dropLowValueLlmAnswer = featureIntent && Boolean(cleanedLlmText) && isLowValueFeatureOrSpecText(cleanedLlmText ?? '');
+  const fallback = !llmText || dropLowValueLlmAnswer
+    ? renderFallbackAnswer(input.query, mode, evidence, facts)
+    : null;
+  const synthesizedAnswer = dropLowValueLlmAnswer ? undefined : cleanedLlmText;
+  const text = synthesizedAnswer || cleanSynthesizedAnswer(fallback?.text || '', featureIntent);
+  const confidence = input.includeConfidence === false
+    ? 0
+    : dropLowValueLlmAnswer ? 0 : answerConfidence(llmAnswer, evidence);
   return {
     ok: true,
     spaceId,
@@ -157,12 +167,12 @@ export async function answerKnowledgeQuery(
     answer: {
       text,
       mode,
-      confidence: input.includeConfidence === false ? 0 : answerConfidence(llmAnswer, evidence),
+      confidence,
       sources: input.includeSources === false ? [] : sources,
       linkedObjects,
       facts,
       gaps: evidenceGap ? uniqueNodes([...gaps, evidenceGap]) : gaps,
-      synthesized: Boolean(llmAnswer?.answer) || Boolean(fallback?.synthesized),
+      synthesized: Boolean(synthesizedAnswer) || Boolean(fallback?.synthesized),
     },
     results: evidence.map(toSearchResult),
   };
@@ -574,10 +584,21 @@ function buildSourceFactIndex(store: KnowledgeStore, spaceId: string): Map<strin
 function sourceIdsLinkedToNodes(store: KnowledgeStore, nodeIds: ReadonlySet<string>, spaceId: string): Set<string> {
   const sourceIds = new Set<string>();
   if (nodeIds.size === 0) return sourceIds;
-  for (const edge of store.listEdges()) {
+  const edges = store.listEdges();
+  const factIds = new Set<string>();
+  for (const edge of edges) {
     if (!belongsToAnswerSpace(edge, spaceId)) continue;
     if (edge.fromKind === 'source' && edge.toKind === 'node' && nodeIds.has(edge.toId)) sourceIds.add(edge.fromId);
     if (edge.fromKind === 'node' && nodeIds.has(edge.fromId) && edge.toKind === 'source') sourceIds.add(edge.toId);
+    if (edge.fromKind === 'node' && edge.toKind === 'node' && nodeIds.has(edge.toId) && edge.relation === 'describes') {
+      factIds.add(edge.fromId);
+    }
+  }
+  for (const edge of edges) {
+    if (!belongsToAnswerSpace(edge, spaceId)) continue;
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && factIds.has(edge.toId) && edge.relation === 'supports_fact') {
+      sourceIds.add(edge.fromId);
+    }
   }
   return sourceIds;
 }

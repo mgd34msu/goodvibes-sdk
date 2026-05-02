@@ -35,13 +35,9 @@ import {
   renderPacketPage,
   renderRoomPage,
 } from './rendering.js';
-import {
-  hasConcreteFeatureSignal,
-  isLowValueFeatureOrSpecText,
-  isUsefulHomeGraphSourceBackedNote,
-  isUsefulHomeGraphPageFact,
-} from '../semantic/fact-quality.js';
-import { normalizeWhitespace, sourceSemanticText } from '../semantic/utils.js';
+import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
+import { deriveRepairProfileFacts } from '../semantic/repair-profile.js';
+import { semanticHash, semanticSlug, sourceSemanticText } from '../semantic/utils.js';
 import type {
   HomeGraphDevicePassportResult,
   HomeGraphGeneratedPagesSummary,
@@ -206,9 +202,13 @@ export async function refreshHomeGraphDevicePassport(
       && edge.relation === 'belongs_to_device'
     ))
   ));
-  const sources = sourcesLinkedToNode(device.id, state).filter((source) => !isGeneratedPageSource(source));
-  const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges);
-  const sourceBackedNotes = sourceBackedNotesFromLinkedSources(store, sources);
+  const sources = sourcesLinkedToNode(device.id, state)
+    .filter((source) => !isGeneratedPageSource(source));
+  const pageProfileFacts = await upsertDevicePageProfileFacts({ store, spaceId, installationId, device, sources });
+  const semanticFacts = uniqueNodesById([
+    ...semanticFactsForNode(device.id, sources, state.nodes, state.edges),
+    ...pageProfileFacts,
+  ]);
   const scopedNodeIds = new Set([device.id, ...entities.map((node) => node.id)]);
   const issues = issuesForScope(state.issues, state.edges, scopedNodeIds, sources);
   const missingFields = missingDevicePassportFields(device, sources);
@@ -235,7 +235,7 @@ export async function refreshHomeGraphDevicePassport(
     relation: 'source_for',
     metadata: buildHomeGraphMetadata(spaceId, installationId),
   });
-  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts, sourceBackedNotes });
+  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts });
   const generated = await materializeGeneratedMarkdown({
     store,
     artifactStore,
@@ -479,26 +479,98 @@ function semanticFactsLinkedToSources(
   return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
 }
 
-function sourceBackedNotesFromLinkedSources(
-  store: KnowledgeStore,
+function semanticFactsForNode(
+  nodeId: string,
   sources: readonly KnowledgeSourceRecord[],
-): string[] {
-  const notes: string[] = [];
-  for (const source of sources) {
-    const extraction = store.getExtractionBySourceId(source.id);
-    notes.push(...extractSourceBackedNotes(sourceSemanticText(source, extraction)));
+  nodes: readonly KnowledgeNodeRecord[],
+  edges: readonly KnowledgeEdgeRecord[],
+): KnowledgeNodeRecord[] {
+  const factIds = new Set<string>();
+  for (const edge of edges) {
+    if (edgeIsActive(edge)
+      && edge.fromKind === 'node'
+      && edge.toKind === 'node'
+      && edge.toId === nodeId
+      && edge.relation === 'describes') {
+      factIds.add(edge.fromId);
+    }
   }
-  return uniqueStrings(notes).slice(0, 24);
+  for (const fact of semanticFactsLinkedToSources(sources, nodes, edges)) {
+    factIds.add(fact.id);
+  }
+  return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
 }
 
-function extractSourceBackedNotes(text: string): string[] {
-  return normalizeWhitespace(text)
-    .split(/(?:[.!?]\s+|\n+)/)
-    .map((part) => normalizeWhitespace(part.replace(/^[-*•]\s*/, '')))
-    .filter((part) => part.length >= 24 && part.length <= 420)
-    .filter((part) => hasConcreteFeatureSignal(part))
-    .filter((part) => isUsefulHomeGraphSourceBackedNote(part))
-    .filter((part) => !isLowValueFeatureOrSpecText(part));
+async function upsertDevicePageProfileFacts(input: {
+  readonly store: KnowledgeStore;
+  readonly spaceId: string;
+  readonly installationId: string;
+  readonly device: KnowledgeNodeRecord;
+  readonly sources: readonly KnowledgeSourceRecord[];
+}): Promise<KnowledgeNodeRecord[]> {
+  const facts: KnowledgeNodeRecord[] = [];
+  for (const source of input.sources.slice(0, 8)) {
+    const extraction = input.store.getExtractionBySourceId(source.id);
+    const profileFacts = deriveRepairProfileFacts({
+      query: `complete features specifications ${input.device.title}`,
+      source,
+      text: sourceSemanticText(source, extraction),
+    });
+    for (const profileFact of profileFacts) {
+      const fact = await input.store.upsertNode({
+        id: `sem-fact-${semanticHash(input.spaceId, source.id, input.device.id, profileFact.title, profileFact.value ?? profileFact.summary)}`,
+        kind: 'fact',
+        slug: semanticSlug(`${input.spaceId}-${input.device.title}-${profileFact.title}-${source.id}`),
+        title: profileFact.title,
+        summary: profileFact.summary,
+        aliases: profileFact.aliases,
+        status: 'active',
+        confidence: 72,
+        sourceId: source.id,
+        metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
+          semanticKind: 'fact',
+          factKind: profileFact.kind,
+          value: profileFact.value,
+          evidence: profileFact.evidence,
+          labels: profileFact.labels,
+          sourceId: source.id,
+          linkedObjectIds: [input.device.id],
+          extractor: 'page-profile',
+        }),
+      });
+      await input.store.upsertEdge({
+        fromKind: 'source',
+        fromId: source.id,
+        toKind: 'node',
+        toId: fact.id,
+        relation: 'supports_fact',
+        weight: 0.78,
+        metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
+          linkedBy: 'generated-page-profile',
+        }),
+      });
+      await input.store.upsertEdge({
+        fromKind: 'node',
+        fromId: fact.id,
+        toKind: 'node',
+        toId: input.device.id,
+        relation: 'describes',
+        weight: 0.76,
+        metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
+          linkedBy: 'generated-page-profile',
+          sourceId: source.id,
+        }),
+      });
+      facts.push(fact);
+    }
+  }
+  return facts;
+}
+
+function uniqueNodesById(nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
+  const byId = new Map<string, KnowledgeNodeRecord>();
+  for (const node of nodes) byId.set(node.id, node);
+  return [...byId.values()];
 }
 
 function limitRecords<T>(records: readonly T[], limit: number | undefined): readonly T[] {

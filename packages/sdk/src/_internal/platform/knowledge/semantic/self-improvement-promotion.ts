@@ -8,6 +8,7 @@ import type {
   KnowledgeSourceRecord,
 } from '../types.js';
 import { hasConcreteFeatureSignal, isLowValueFeatureOrSpecText } from './fact-quality.js';
+import { deriveRepairProfileFacts, type RepairProfileFact } from './repair-profile.js';
 import { updateRefinementTask } from './self-improvement-tasks.js';
 import { withTimeout } from './timeouts.js';
 import {
@@ -75,69 +76,115 @@ async function promoteRepairEvidenceFacts(
     if (!source) continue;
     const extraction = store.getExtractionBySourceId(source.id);
     const authority = sourceAuthority(source);
+    const text = sourceSemanticText(source, extraction);
+    const profileFacts = deriveRepairProfileFacts({
+      query: gap.title,
+      source,
+      text,
+    });
+    for (const profileFact of profileFacts) {
+      promoted += await upsertPromotedRepairFact({
+        store,
+        spaceId,
+        gap,
+        source,
+        subjects,
+        authority,
+        title: profileFact.title,
+        summary: profileFact.summary,
+        classification: profileFact,
+        evidence: profileFact.evidence,
+      });
+    }
     const sentences = selectRepairFactSentences({
       query: gap.title,
       source,
-      text: sourceSemanticText(source, extraction),
+      text,
     });
-    for (const [index, sentence] of sentences.entries()) {
+    for (const sentence of sentences) {
       const classification = classifyRepairFact(sentence);
-      const fact = await store.upsertNode({
-        id: `sem-fact-${semanticHash(spaceId, source.id, gap.id, classification.title, sentence)}`,
-        kind: 'fact',
-        slug: semanticSlug(`${spaceId}-${classification.title}-${source.id}-${index}`),
+      promoted += await upsertPromotedRepairFact({
+        store,
+        spaceId,
+        gap,
+        source,
+        subjects,
+        authority,
         title: classification.title,
         summary: sentence,
-        aliases: classification.aliases,
-        status: 'active',
-        confidence: authority === 'official-vendor' ? 88 : 76,
-        sourceId: source.id,
-        metadata: semanticMetadata(spaceId, {
-          semanticKind: 'fact',
-          factKind: classification.kind,
-          value: classification.value,
-          evidence: sentence,
-          labels: classification.labels,
-          sourceId: source.id,
-          gapId: gap.id,
-          linkedObjectIds: subjects.map((subject) => subject.id),
-          extractor: 'repair-promotion',
-          sourceAuthority: authority,
-          sourceDiscovery: readRecord(source.metadata.sourceDiscovery),
-        }),
+        classification,
+        evidence: sentence,
       });
-      await store.upsertEdge({
-        fromKind: 'source',
-        fromId: source.id,
-        toKind: 'node',
-        toId: fact.id,
-        relation: 'supports_fact',
-        weight: authority === 'official-vendor' ? 0.95 : 0.84,
-        metadata: semanticMetadata(spaceId, {
-          linkedBy: 'semantic-gap-repair',
-          gapId: gap.id,
-        }),
-      });
-      for (const subject of subjects) {
-        await store.upsertEdge({
-          fromKind: 'node',
-          fromId: fact.id,
-          toKind: 'node',
-          toId: subject.id,
-          relation: 'describes',
-          weight: authority === 'official-vendor' ? 0.94 : 0.82,
-          metadata: semanticMetadata(spaceId, {
-            linkedBy: 'semantic-gap-repair',
-            repairedAt: Date.now(),
-            sourceId: source.id,
-            gapId: gap.id,
-          }),
-        });
-      }
-      promoted += 1;
     }
   }
   return promoted;
+}
+
+async function upsertPromotedRepairFact(input: {
+  readonly store: KnowledgeStore;
+  readonly spaceId: string;
+  readonly gap: KnowledgeNodeRecord;
+  readonly source: KnowledgeSourceRecord;
+  readonly subjects: readonly KnowledgeNodeRecord[];
+  readonly authority: 'official-vendor' | 'vendor' | 'secondary';
+  readonly title: string;
+  readonly summary: string;
+  readonly evidence: string;
+  readonly classification: RepairFactClassification | RepairProfileFact;
+}): Promise<number> {
+  const fact = await input.store.upsertNode({
+    id: `sem-fact-${semanticHash(input.spaceId, input.source.id, input.gap.id, input.title, input.summary)}`,
+    kind: 'fact',
+    slug: semanticSlug(`${input.spaceId}-${input.title}-${input.source.id}`),
+    title: input.title,
+    summary: input.summary,
+    aliases: input.classification.aliases,
+    status: 'active',
+    confidence: input.authority === 'official-vendor' ? 90 : input.authority === 'vendor' ? 82 : 76,
+    sourceId: input.source.id,
+    metadata: semanticMetadata(input.spaceId, {
+      semanticKind: 'fact',
+      factKind: input.classification.kind,
+      value: input.classification.value,
+      evidence: input.evidence,
+      labels: input.classification.labels,
+      sourceId: input.source.id,
+      gapId: input.gap.id,
+      linkedObjectIds: input.subjects.map((subject) => subject.id),
+      extractor: 'repair-promotion',
+      sourceAuthority: input.authority,
+      sourceDiscovery: readRecord(input.source.metadata.sourceDiscovery),
+    }),
+  });
+  await input.store.upsertEdge({
+    fromKind: 'source',
+    fromId: input.source.id,
+    toKind: 'node',
+    toId: fact.id,
+    relation: 'supports_fact',
+    weight: input.authority === 'official-vendor' ? 0.96 : 0.84,
+    metadata: semanticMetadata(input.spaceId, {
+      linkedBy: 'semantic-gap-repair',
+      gapId: input.gap.id,
+    }),
+  });
+  for (const subject of input.subjects) {
+    await input.store.upsertEdge({
+      fromKind: 'node',
+      fromId: fact.id,
+      toKind: 'node',
+      toId: subject.id,
+      relation: 'describes',
+      weight: input.authority === 'official-vendor' ? 0.95 : 0.82,
+      metadata: semanticMetadata(input.spaceId, {
+        linkedBy: 'semantic-gap-repair',
+        repairedAt: Date.now(),
+        sourceId: input.source.id,
+        gapId: input.gap.id,
+      }),
+    });
+  }
+  return 1;
 }
 
 async function linkPromotedFactsToRepairSubjects(
@@ -207,13 +254,15 @@ function repairSentenceScore(sentence: string, wanted: readonly RegExp[], source
   return score;
 }
 
-function classifyRepairFact(sentence: string): {
+interface RepairFactClassification {
   readonly kind: 'feature' | 'capability' | 'specification' | 'compatibility' | 'configuration';
   readonly title: string;
   readonly value?: string;
   readonly labels: readonly string[];
   readonly aliases: readonly string[];
-} {
+}
+
+function classifyRepairFact(sentence: string): RepairFactClassification {
   const lower = sentence.toLowerCase();
   if (/\b(resolution|4k|8k|uhd|display|screen|nanocell|lcd|oled|qled|refresh|hz|hdr|dolby vision|hlg)\b/.test(lower)) {
     return { kind: 'specification', title: 'Display and picture specifications', labels: ['display', 'picture'], aliases: ['display', 'picture'] };
