@@ -369,9 +369,9 @@ function renderSourceList(title: string, sources: readonly KnowledgeSourceRecord
 }
 
 function renderSemanticFacts(title: string, facts: readonly KnowledgeNodeRecord[]): string {
-  const entries = facts
+  const entries = dedupePageFacts(facts
     .filter(isUsefulHomeGraphPageFact)
-    .sort((left, right) => semanticFactSortKey(left).localeCompare(semanticFactSortKey(right)) || left.title.localeCompare(right.title))
+    .sort((left, right) => semanticFactSortKey(left).localeCompare(semanticFactSortKey(right)) || left.title.localeCompare(right.title)))
     .slice(0, 80);
   if (entries.length === 0) return '';
   const groups = new Map<string, KnowledgeNodeRecord[]>();
@@ -385,15 +385,61 @@ function renderSemanticFacts(title: string, facts: readonly KnowledgeNodeRecord[
     ...[...groups.entries()].flatMap(([kind, group]) => [
       `### ${titleCase(kind)}`,
       '',
-      ...group.slice(0, 24).map((fact) => {
-        const value = readString(fact.metadata.value);
-        const evidence = readString(fact.metadata.evidence);
-        const detail = fact.summary ?? evidence;
-        return `- ${fact.title}${value ? `: ${value}` : ''}${detail ? ` - ${detail}` : ''}`;
-      }),
+      ...group.slice(0, 24).map(renderPageFactLine).filter(Boolean),
       '',
     ]),
   ].join('\n');
+}
+
+function dedupePageFacts(facts: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
+  const seen = new Set<string>();
+  const result: KnowledgeNodeRecord[] = [];
+  for (const fact of facts) {
+    const key = normalizePageFactText(renderPageFactLine(fact));
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(fact);
+  }
+  return result;
+}
+
+function renderPageFactLine(fact: KnowledgeNodeRecord): string {
+  const value = cleanPageFactDetail(readString(fact.metadata.value));
+  const summary = cleanPageFactDetail(fact.summary);
+  const evidence = cleanPageFactDetail(readString(fact.metadata.evidence));
+  const detail = selectPageFactDetail(fact.title, value, summary, evidence);
+  const line = `- ${fact.title}${value ? `: ${value}` : ''}${detail ? ` - ${detail}` : ''}`;
+  return isLowValueFeatureOrSpecText(line) ? '' : line;
+}
+
+function selectPageFactDetail(
+  title: string,
+  value: string | undefined,
+  summary: string | undefined,
+  evidence: string | undefined,
+): string | undefined {
+  for (const detail of [summary, evidence]) {
+    if (!detail) continue;
+    const normalized = normalizePageFactText(detail);
+    if (!normalized) continue;
+    if (value && normalized === normalizePageFactText(value)) continue;
+    if (normalized === normalizePageFactText(title)) continue;
+    if (value && normalized === normalizePageFactText(`${title}: ${value}.`)) continue;
+    if (value && detail.toLowerCase().trim().startsWith(`${title.toLowerCase()}:`)) continue;
+    return detail;
+  }
+  return undefined;
+}
+
+function cleanPageFactDetail(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || isLowValueFeatureOrSpecText(trimmed)) return undefined;
+  return trimmed;
+}
+
+function normalizePageFactText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 function semanticFactsLinkedToSources(

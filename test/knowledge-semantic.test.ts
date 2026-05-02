@@ -744,8 +744,10 @@ describe('semantic knowledge/wiki enrichment', () => {
 
     expect(isLowValueFeatureOrSpecText('4 HDMI ports')).toBe(false);
     expect(isLowValueFeatureOrSpecText('3 USB ports and Ethernet/LAN')).toBe(false);
+    expect(isLowValueFeatureOrSpecText('2 x 10W speakers')).toBe(false);
     expect(isLowValueFeatureOrSpecText('18 m (86")')).toBe(true);
     expect(isLowValueFeatureOrSpecText('series_url nano90 product data')).toBe(true);
+    expect(isLowValueFeatureOrSpecText('01 x Ethernet RJ45 Audio Audio Speakers 2 x 10W Built-in Subwoofer')).toBe(true);
     expect(isLowValueFeatureOrSpecText('0 Supported Audio Formats TrueHD')).toBe(true);
   });
 
@@ -1359,6 +1361,107 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.sources.map((source) => source.id)).toContain(secondary.id);
     expect(answer.answer.linkedObjects.map((node) => node.id)).toEqual([device.id]);
     expect(answer.answer.facts.map((entry) => entry.id)).toContain(fact.id);
+    expect(answer.answer.text).toContain('Dolby Vision');
+    expect(answer.answer.text).not.toContain('matching sources');
+  });
+
+  test('foreground answers wait for overlapping repair work before returning stale gaps', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-overlap-tv',
+      title: 'LG webOS Smart TV',
+      aliases: ['LG TV'],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    const generated = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'LG webOS Smart TV passport',
+      canonicalUri: 'homegraph://passport/lg-overlap-tv',
+      summary: 'Generated passport for LG 86NANO90UNA.',
+      tags: ['generated-page'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId, homeGraphGeneratedPage: true },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: generated.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const official = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    await store.upsertExtraction({
+      sourceId: official.id,
+      extractorId: 'web',
+      format: 'html',
+      structure: {
+        searchText: 'LG 86NANO90UNA specifications include NanoCell 4K display, 120 Hz refresh rate, HDR10, Dolby Vision, HDMI eARC, webOS, Wi-Fi, and Bluetooth.',
+      },
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return {
+          searched: true,
+          evidenceSufficient: true,
+          acceptedSourceIds: [official.id],
+          ingestedSourceIds: [],
+          skippedUrls: [],
+        };
+      },
+    });
+    const seed = await semantic.answer({
+      knowledgeSpaceId: spaceId,
+      query: 'What features does the LG 86NANO90UNA have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+      linkedObjects: [device],
+      strictCandidates: true,
+      candidateSourceIds: [generated.id],
+      autoRepairGaps: false,
+    });
+    expect(seed.answer.gaps.length).toBeGreaterThan(0);
+
+    const background = semantic.selfImprove({
+      knowledgeSpaceId: spaceId,
+      gapIds: seed.answer.gaps.map((gap) => gap.id),
+      force: true,
+      maxRunMs: 5_000,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const answer = await semantic.answer({
+      knowledgeSpaceId: spaceId,
+      query: 'What features does the LG 86NANO90UNA have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+      linkedObjects: [device],
+      strictCandidates: true,
+      candidateSourceIds: [generated.id],
+      timeoutMs: 30_000,
+    });
+    await background;
+
+    expect(answer.answer.gaps).toHaveLength(0);
+    expect(answer.answer.sources[0]?.id).toBe(official.id);
+    expect(answer.answer.facts.length).toBeGreaterThan(0);
+    expect(answer.answer.facts.every((fact) => fact.linkedObjectIds?.includes(device.id))).toBe(true);
     expect(answer.answer.text).toContain('Dolby Vision');
     expect(answer.answer.text).not.toContain('matching sources');
   });

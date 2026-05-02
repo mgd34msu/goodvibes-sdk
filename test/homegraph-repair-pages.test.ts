@@ -234,6 +234,109 @@ describe('Home Graph repair and generated pages', () => {
     expect(passport.markdown).not.toContain('voice recognition');
     expect(passport.markdown).not.toContain('knowledge.answer_gap');
   });
+
+  test('generated device pages render canonical facts without raw duplicated evidence lines', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const browse = await service.browse({ installationId: 'house-1' });
+    const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
+    expect(device).toBeDefined();
+    const source = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: device!.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    for (const entry of [
+      {
+        slug: 'display-picture-specs',
+        title: 'Display and picture specifications',
+        summary: 'Display and picture specifications: 4K UHD resolution, HDR10, and Dolby Vision.',
+        value: '4K UHD resolution, HDR10, Dolby Vision',
+      },
+      {
+        slug: 'duplicate-display-picture-specs',
+        title: 'Display and picture specifications',
+        summary: 'Display and picture specifications: 4K UHD resolution, HDR10, and Dolby Vision.',
+        value: '4K UHD resolution, HDR10, Dolby Vision',
+      },
+      {
+        slug: 'raw-port-fragment',
+        title: '01 x Ethernet RJ45 Audio Audio Speakers 2 x 10W Built-in Subwoofer 2 x 10 Features OS webOS 5',
+        summary: '01 x Ethernet RJ45 Audio Audio Speakers 2 x 10W Built-in Subwoofer 2 x 10 Features OS webOS 5',
+      },
+      {
+        slug: 'commercial-comparison',
+        title: 'This gives you a more direct comparison',
+        summary: 'This gives you a more direct comparison of speaker output.',
+      },
+    ] as const) {
+      const fact = await store.upsertNode({
+        kind: 'fact',
+        slug: entry.slug,
+        title: entry.title,
+        summary: entry.summary,
+        aliases: [],
+        status: 'active',
+        confidence: 90,
+        sourceId: source.id,
+        metadata: {
+          knowledgeSpaceId: spaceId,
+          semanticKind: 'fact',
+          factKind: 'specification',
+          ...(entry.value ? { value: entry.value } : {}),
+          sourceId: source.id,
+          subject: device!.title,
+          subjectIds: [device!.id],
+          linkedObjectIds: [device!.id],
+          targetHints: [{ id: device!.id, kind: device!.kind, title: device!.title }],
+          extractor: 'repair-promotion',
+          sourceAuthority: 'official-vendor',
+        },
+      });
+      await store.upsertEdge({
+        fromKind: 'source',
+        fromId: source.id,
+        toKind: 'node',
+        toId: fact.id,
+        relation: 'supports_fact',
+        metadata: { knowledgeSpaceId: spaceId },
+      });
+      await store.upsertEdge({
+        fromKind: 'node',
+        fromId: fact.id,
+        toKind: 'node',
+        toId: device!.id,
+        relation: 'describes',
+        metadata: { knowledgeSpaceId: spaceId },
+      });
+    }
+
+    const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
+
+    expect(page.markdown).toContain('Display and picture specifications: 4K UHD resolution, HDR10, Dolby Vision');
+    expect(page.markdown.match(/Display and picture specifications/g)?.length).toBe(1);
+    expect(page.markdown).not.toContain('01 x Ethernet RJ45');
+    expect(page.markdown).not.toContain('This gives you a more direct comparison');
+  });
 });
 
 function createHomeGraphService(): {

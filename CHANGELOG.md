@@ -20,6 +20,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.20] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph Ask now waits briefly for overlapping active gap repair on the
+  same answer gaps, then re-answers from repaired evidence instead of returning
+  the stale first-pass no-fact/no-source answer during clean-space startup.
+- Generated Home Graph device passports now render deduplicated canonical fact
+  lines and avoid appending raw source evidence when the value/summary already
+  captures the fact.
+- Home Graph page fact filtering now rejects remaining raw commercial and
+  malformed port fragments such as direct-comparison copy and `01 x Ethernet`
+  spec-table debris without suppressing legitimate speaker specs like
+  `2 x 10W speakers`.
+
+### Migration
+- none
+
+---
+
 ## [0.28.19] - 2026-05-02
 
 ### Breaking
