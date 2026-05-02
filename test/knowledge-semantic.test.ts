@@ -676,7 +676,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     const answer = await semantic.answer({ query: 'what refresh rate does the LG 86NANO90UNA have?', includeSources: true });
 
     expect(answer.answer.synthesized).toBe(true);
-    expect(answer.answer.text).toContain('source-backed facts');
+    expect(answer.answer.text).toContain('Available source-backed details');
     expect(answer.answer.text).toContain('120 Hz');
     expect(answer.answer.text.trim().startsWith('-')).toBe(false);
   });
@@ -1004,6 +1004,22 @@ describe('semantic knowledge/wiki enrichment', () => {
       confidence: 90,
       metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
     });
+    const passport = await store.upsertNode({
+      kind: 'ha_device_passport',
+      slug: 'lg-tv-passport',
+      title: 'LG webOS Smart TV passport',
+      aliases: [],
+      confidence: 80,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const integration = await store.upsertNode({
+      kind: 'ha_integration',
+      slug: 'webostv',
+      title: 'LG webOS TV integration',
+      aliases: ['webostv'],
+      confidence: 80,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
     const gap = await store.upsertNode({
       kind: 'knowledge_gap',
       slug: 'official-source-gap',
@@ -1016,7 +1032,7 @@ describe('semantic knowledge/wiki enrichment', () => {
         semanticKind: 'gap',
         gapKind: 'answer',
         sourceIds: [official.id],
-        linkedObjectIds: [device.id],
+        linkedObjectIds: [passport.id, integration.id, device.id],
       },
     });
     const semantic = new KnowledgeSemanticService(store, {
@@ -1041,15 +1057,190 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(result.closedGaps).toBe(1);
     expect(facts.length).toBeGreaterThan(0);
     expect(facts.some((fact) => fact.metadata.sourceAuthority === 'official-vendor')).toBe(true);
+    expect(facts.every((fact) => JSON.stringify(fact.metadata.linkedObjectIds) === JSON.stringify([device.id]))).toBe(true);
+    expect(facts.every((fact) => JSON.stringify(fact.metadata.subjectIds) === JSON.stringify([device.id]))).toBe(true);
+    expect(facts.every((fact) => fact.metadata.subject === 'LG webOS Smart TV')).toBe(true);
+    expect(facts.every((fact) => Array.isArray(fact.metadata.targetHints) && fact.metadata.targetHints.length === 1)).toBe(true);
     expect(store.listEdges().some((edge) => edge.fromKind === 'node' && edge.toKind === 'node' && edge.toId === device.id && edge.relation === 'describes')).toBe(true);
     expect(answer.answer.synthesized).toBe(true);
     expect(answer.answer.text).toContain('120 Hz');
     expect(answer.answer.text).toContain('Dolby Vision');
     expect(answer.answer.text.trim().startsWith('-')).toBe(false);
     expect(answer.answer.sources[0]?.id).toBe(official.id);
+    expect(answer.answer.linkedObjects.map((node) => node.id)).toEqual([device.id]);
     expect(answer.answer.facts.some((fact) => fact.metadata.extractor === 'repair-promotion')).toBe(true);
     expect(answer.answer.facts.some((fact) => fact.title === 'Display and picture specifications')).toBe(true);
     expect(answer.answer.facts.some((fact) => fact.title === 'Smart TV platform and integrations')).toBe(true);
+  });
+
+  test('strict Home Graph answers admit repaired sources linked to the subject', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const semantic = new KnowledgeSemanticService(store);
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-tv-strict',
+      title: 'LG webOS Smart TV',
+      aliases: ['LG TV'],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    const generated = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'LG webOS Smart TV passport',
+      canonicalUri: 'homegraph://passport/lg-tv',
+      tags: ['generated-page'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId, homeGraphGeneratedPage: true },
+    });
+    const official = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: {
+          trustReason: 'official-vendor-domain, model:86NANO90UNA',
+          sourceRank: 1,
+        },
+      },
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'lg-display-fact',
+      title: 'Display and picture specifications',
+      summary: 'Display and picture specifications evidence includes 4K UHD resolution, 120 Hz refresh-rate evidence, HDR10, and Dolby Vision.',
+      aliases: ['display', 'picture'],
+      status: 'active',
+      confidence: 90,
+      sourceId: official.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'specification',
+        value: '4K UHD resolution, 120 Hz refresh-rate evidence, HDR10, Dolby Vision',
+        sourceId: official.id,
+        linkedObjectIds: [device.id],
+        extractor: 'repair-promotion',
+        sourceAuthority: 'official-vendor',
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: official.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId, linkedBy: 'semantic-gap-repair' },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: official.id,
+      toKind: 'node',
+      toId: fact.id,
+      relation: 'supports_fact',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: fact.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'describes',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const answer = await semantic.answer({
+      knowledgeSpaceId: spaceId,
+      query: 'What refresh rate and HDR features does the TV have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+      strictCandidates: true,
+      candidateSourceIds: [generated.id],
+      linkedObjects: [device],
+    });
+
+    expect(answer.answer.sources[0]?.id).toBe(official.id);
+    expect(answer.answer.sources.map((source) => source.id)).not.toContain(generated.id);
+    expect(answer.answer.linkedObjects.map((node) => node.id)).toEqual([device.id]);
+    expect(answer.answer.facts.map((entry) => entry.id)).toContain(fact.id);
+  });
+
+  test('self-improvement preserves subject links from gap edges when metadata is incomplete', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const official = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    await store.upsertExtraction({
+      sourceId: official.id,
+      extractorId: 'web',
+      format: 'html',
+      structure: {
+        searchText: 'LG 86NANO90UNA specifications include a 4K UHD NanoCell display, 120 Hz refresh rate, HDR10, Dolby Vision, HDMI eARC, webOS, Wi-Fi, and Bluetooth.',
+      },
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-edge-subject',
+      title: 'LG webOS Smart TV',
+      aliases: ['LG TV'],
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    const gap = await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'edge-only-gap',
+      title: 'What features does the LG 86NANO90UNA have?',
+      aliases: [],
+      confidence: 75,
+      sourceId: official.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'gap',
+        gapKind: 'answer',
+        sourceIds: [official.id],
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: device.id,
+      toKind: 'node',
+      toId: gap.id,
+      relation: 'has_gap',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const semantic = new KnowledgeSemanticService(store, {
+      gapRepairer: async () => ({
+        searched: true,
+        evidenceSufficient: true,
+        acceptedSourceIds: [official.id],
+        ingestedSourceIds: [],
+        skippedUrls: [],
+      }),
+    });
+
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, gapIds: [gap.id], force: true });
+    const facts = store.listNodes(100).filter((node) => node.kind === 'fact' && node.metadata.extractor === 'repair-promotion');
+
+    expect(result.closedGaps).toBe(1);
+    expect(facts.length).toBeGreaterThan(0);
+    expect(facts.every((fact) => JSON.stringify(fact.metadata.linkedObjectIds) === JSON.stringify([device.id]))).toBe(true);
+    expect(store.listEdges().some((edge) => edge.fromKind === 'source' && edge.fromId === official.id && edge.toKind === 'node' && edge.toId === device.id && edge.relation === 'source_for')).toBe(true);
   });
 
   test('web gap repair rejects low-confidence search results', async () => {

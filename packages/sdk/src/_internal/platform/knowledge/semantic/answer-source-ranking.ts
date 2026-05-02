@@ -25,7 +25,9 @@ export function rankAnswerSources(
       promotedFactCountBySource.set(sourceId, (promotedFactCountBySource.get(sourceId) ?? 0) + 1);
     }
   }
-  return uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : []))
+  const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : []));
+  const realSources = sources.filter((source) => source.metadata.homeGraphGeneratedPage !== true);
+  return (realSources.length > 0 ? realSources : sources)
     .sort((left, right) => (
       sourceAnswerQuality(right, evidenceScoreBySource, factCountBySource, promotedFactCountBySource)
       - sourceAnswerQuality(left, evidenceScoreBySource, factCountBySource, promotedFactCountBySource)

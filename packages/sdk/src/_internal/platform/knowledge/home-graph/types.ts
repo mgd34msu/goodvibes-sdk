@@ -433,7 +433,35 @@ export interface HomeGraphPageListResult {
     readonly source: KnowledgeSourceRecord;
     readonly artifact?: HomeGraphProjectionResult['artifact'];
     readonly markdown?: string;
+    readonly target?: HomeGraphPageGraphNode;
+    readonly subject?: HomeGraphPageGraphNode;
+    readonly neighbors?: readonly HomeGraphPageGraphNeighbor[];
+    readonly relatedPages?: readonly HomeGraphRelatedPage[];
   }[];
+}
+
+export interface HomeGraphPageGraphNode {
+  readonly id: string;
+  readonly kind: string;
+  readonly title: string;
+  readonly objectKind?: string;
+  readonly objectId?: string;
+  readonly entityId?: string;
+  readonly deviceId?: string;
+  readonly areaId?: string;
+  readonly integrationId?: string;
+}
+
+export interface HomeGraphPageGraphNeighbor extends HomeGraphPageGraphNode {
+  readonly relation: string;
+  readonly direction: 'incoming' | 'outgoing';
+}
+
+export interface HomeGraphRelatedPage {
+  readonly sourceId: string;
+  readonly title: string;
+  readonly projectionKind?: string;
+  readonly subject?: HomeGraphPageGraphNode;
 }
 
 export interface HomeGraphReviewInput extends HomeGraphSpaceInput {

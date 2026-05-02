@@ -18,6 +18,7 @@ import { readRecord, readString, semanticHash, semanticMetadata, semanticSlug, s
 import { withTimeout } from './timeouts.js';
 import { updateRefinementTask, upsertRefinementTaskForGap } from './self-improvement-tasks.js';
 import { promoteRepairSources } from './self-improvement-promotion.js';
+import { canonicalRepairSubjectNodes, repairSubjectIds } from './repair-subjects.js';
 
 const RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_REFINEMENT_LIMIT = 12;
@@ -431,14 +432,17 @@ function buildGapContext(store: KnowledgeStore, spaceId: string, gap: KnowledgeN
       .map((edge) => edge.fromId),
   ]);
   const directSources = sourceIds.map((id) => sourcesById.get(id)).filter((source): source is KnowledgeSourceRecord => Boolean(source));
-  const linkedObjects = uniqueById([
-    ...readStringArray(gap.metadata.linkedObjectIds).map((id) => nodesById.get(id)).filter((node): node is KnowledgeNodeRecord => Boolean(node)),
-    ...sourceIds.flatMap((sourceId) => linkedObjectsForSource(sourceId, edges, nodesById)),
-    ...edges
-      .filter((edge) => edge.fromKind === 'node' && edge.toKind === 'node' && edge.toId === gap.id)
-      .map((edge) => nodesById.get(edge.fromId))
-      .filter((node): node is KnowledgeNodeRecord => Boolean(node)),
-  ]);
+  const linkedObjects = canonicalRepairSubjectNodes({
+    text: `${gap.title} ${gap.summary ?? ''}`,
+    nodes: [
+      ...readStringArray(gap.metadata.linkedObjectIds).map((id) => nodesById.get(id)).filter((node): node is KnowledgeNodeRecord => Boolean(node)),
+      ...sourceIds.flatMap((sourceId) => linkedObjectsForSource(sourceId, edges, nodesById)),
+      ...edges
+        .filter((edge) => edge.fromKind === 'node' && edge.toKind === 'node' && edge.toId === gap.id)
+        .map((edge) => nodesById.get(edge.fromId))
+        .filter((node): node is KnowledgeNodeRecord => Boolean(node)),
+    ],
+  });
   const sources = uniqueById([
     ...directSources,
     ...linkedObjects.flatMap((object) => sourcesForObject(object.id, edges, sourcesById)),
@@ -565,8 +569,7 @@ async function linkRepairSources(
   query: string,
 ): Promise<number> {
   let linked = 0;
-  const linkedObjectIds = readStringArray(gap.metadata.linkedObjectIds)
-    .filter((nodeId) => Boolean(store.getNode(nodeId)));
+  const linkedObjectIds = repairSubjectIdsForGap(store, spaceId, gap);
   for (const sourceId of sourceIds) {
     if (!store.getSource(sourceId)) continue;
     await store.upsertEdge({
@@ -599,6 +602,30 @@ async function linkRepairSources(
     }
   }
   return linked;
+}
+
+function repairSubjectIdsForGap(store: KnowledgeStore, spaceId: string, gap: KnowledgeNodeRecord): string[] {
+  const edges = store.listEdges();
+  const nodesById = new Map(store.listNodes(10_000)
+    .filter((node) => getKnowledgeSpaceId(node) === spaceId)
+    .map((node) => [node.id, node]));
+  const sourceIds = uniqueStrings([
+    gap.sourceId,
+    ...readStringArray(gap.metadata.sourceIds),
+    ...edges
+      .filter((edge) => edge.toKind === 'node' && edge.toId === gap.id && edge.fromKind === 'source')
+      .map((edge) => edge.fromId),
+  ]);
+  return repairSubjectIds({
+    text: `${gap.title} ${gap.summary ?? ''}`,
+    nodes: [
+      ...readStringArray(gap.metadata.linkedObjectIds).map((nodeId) => nodesById.get(nodeId)),
+      ...edges
+        .filter((edge) => edge.fromKind === 'node' && edge.toKind === 'node' && edge.toId === gap.id)
+        .map((edge) => nodesById.get(edge.fromId)),
+      ...sourceIds.flatMap((sourceId) => linkedObjectsForSource(sourceId, edges, nodesById)),
+    ],
+  });
 }
 
 function isBudgetError(message: string): boolean {

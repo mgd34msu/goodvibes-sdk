@@ -137,6 +137,34 @@ describe('Home Graph knowledge spaces', () => {
     expect(pages.pages.some((page) => page.source.title === 'LG webOS Smart TV passport')).toBe(true);
   });
 
+  test('lists generated pages with graph subjects and navigation neighbors', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'kitchen', name: 'Kitchen' }],
+      devices: [{ id: 'kitchen-proxy', name: 'Kitchen Proxy', manufacturer: 'Espressif', model: 'XIAO ESP32C6', areaId: 'kitchen' }],
+      entities: [{
+        id: 'sensor.kitchen_proxy_temperature',
+        entityId: 'sensor.kitchen_proxy_temperature',
+        name: 'Kitchen Proxy Temperature',
+        deviceId: 'kitchen-proxy',
+        areaId: 'kitchen',
+      }],
+    });
+
+    const pages = await service.listPages({ installationId: 'house-1', limit: 20, includeMarkdown: false });
+    const kitchen = pages.pages.find((page) => page.subject?.title === 'Kitchen');
+    const proxy = pages.pages.find((page) => page.subject?.title === 'Kitchen Proxy');
+
+    expect(kitchen?.subject?.objectId).toBe('kitchen');
+    expect(proxy?.subject?.objectId).toBe('kitchen-proxy');
+    expect(proxy?.target?.kind).toBe('ha_device_passport');
+    expect(proxy?.neighbors?.some((neighbor) => neighbor.kind === 'ha_device_passport')).toBe(false);
+    expect(kitchen?.neighbors?.some((neighbor) => neighbor.title === 'Kitchen Proxy' && neighbor.relation === 'located_in')).toBe(true);
+    expect(proxy?.neighbors?.some((neighbor) => neighbor.title === 'Kitchen' && neighbor.relation === 'located_in')).toBe(true);
+    expect(kitchen?.relatedPages?.some((page) => page.subject?.title === 'Kitchen Proxy')).toBe(true);
+  });
+
   test('scopes room pages to room objects and linked source evidence', async () => {
     const { service, store } = createHomeGraphService();
     await service.syncSnapshot({

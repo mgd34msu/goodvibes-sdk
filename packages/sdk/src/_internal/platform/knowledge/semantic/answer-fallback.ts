@@ -23,7 +23,7 @@ export function renderFallbackAnswer(
   if (factPhrases.length > 0) {
     return {
       synthesized: true,
-      text: `The source-backed facts identify ${joinFactPhrases(factPhrases)}.`,
+      text: `Available source-backed details include ${joinFactPhrases(factPhrases)}.`,
     };
   }
   const sourceTitles = evidence
@@ -47,7 +47,17 @@ function renderFactPhrase(fact: KnowledgeNodeRecord): string {
   const summary = fact.summary ?? readString(fact.metadata.evidence);
   const phrase = value ? `${fact.title}: ${value}` : summary ? `${fact.title}: ${summary}` : fact.title;
   const cleaned = normalizeWhitespace(clampText(phrase, 220));
+  if (isRawSourceFragment(cleaned)) return '';
   return isLowValueFeatureOrSpecText(cleaned) ? '' : cleaned;
+}
+
+function isRawSourceFragment(value: string): boolean {
+  const lower = value.toLowerCase();
+  return /\bsemantic-gap-repair\b/.test(lower)
+    || /\bsource-backed facts identify\b/.test(lower)
+    || /\b(manual\.nz|current page|loading)\b/.test(lower)
+    || /\b[a-z0-9-]+\.(com|net|org|io|dev|tv|ca)\/[a-z0-9/_?=&.#-]+/.test(lower)
+    || /\b[a-z]{2}\/[a-z0-9/_-]+\/[a-z0-9._-]+/.test(lower);
 }
 
 function joinFactPhrases(phrases: readonly string[]): string {
