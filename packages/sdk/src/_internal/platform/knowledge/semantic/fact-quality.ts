@@ -48,6 +48,7 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   if (/^\s*\d+\s*(yes|no)\b/.test(lower)
+    || /^\s*0?\d+\s*x\s+(?:ethernet|audio|features?|os|webos|ports?)\b/.test(lower)
     || /^\s*\d+\s*m\s*\(/.test(lower)
     || /^\s*\d+(hdmi|usb|audio|ports?|features?|smart)\b/.test(lower)
     || /^\s*0\s+ports\b/.test(lower)
@@ -84,6 +85,9 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   if (/\b(compare sonic characteristics|listening modes?|listening room|auditioning speakers|speakers side-by-side|same amount of power|money-back guarantee|advisors have listened|best choice for your system|speakercompare listening kit|headphones? brand model)\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(more direct comparison|direct comparison|compare products?|product comparison)\b/.test(lower)) {
     return true;
   }
   if (/\b(prices? & features?|smart tv prices?|latest price|view latest|check .* specifications.*price|current page|loading\.?)\b/.test(lower)) {

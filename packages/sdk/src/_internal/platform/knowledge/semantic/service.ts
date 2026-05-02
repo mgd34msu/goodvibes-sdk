@@ -159,6 +159,16 @@ export class KnowledgeSemanticService {
           );
           if (answer.answer.gaps.length === 0 || answerHasUsableEvidence(answer)) return answer;
         }
+        if (repaired.skippedGaps > 0 || repaired.queuedTasks > 0) {
+          const waited = await this.waitForActiveAnswerGapRepairs(repairSpaceId, answer.answer.gaps.map((gap) => gap.id), Math.min(15_000, foregroundBudgetMs));
+          if (waited) {
+            answer = withRefinementTaskIds(
+              await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input),
+              foregroundTaskIds,
+            );
+            if (answer.answer.gaps.length === 0 || answerHasUsableEvidence(answer)) return answer;
+          }
+        }
       }
       const refinement = await this.selfImprove({
         knowledgeSpaceId: repairSpaceId,
@@ -270,6 +280,23 @@ export class KnowledgeSemanticService {
     return this.store.listRefinementTasks(100, { spaceId })
       .filter((task) => task.gapId && wanted.has(task.gapId))
       .map((task) => task.id);
+  }
+
+  private async waitForActiveAnswerGapRepairs(
+    spaceId: string,
+    gapIds: readonly string[],
+    maxWaitMs: number,
+  ): Promise<boolean> {
+    if (gapIds.length === 0 || maxWaitMs <= 0) return false;
+    const keys = gapIds.map((gapId) => `${spaceId}:${gapId}`);
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < maxWaitMs) {
+      const active = keys.some((key) => this.activeGapRepairs.has(key));
+      if (!active) return true;
+      await yieldToEventLoop();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return false;
   }
 }
 
