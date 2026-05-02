@@ -170,6 +170,10 @@ export async function reindexHomeGraphSources(input: {
     }
     const artifact = input.artifactStore.get(artifactId);
     if (!artifact) {
+      if (isGeneratedPageSource(source)) {
+        skipped += 1;
+        continue;
+      }
       failed += 1;
       failures.push({ sourceId: source.id, error: `Unknown artifact: ${artifactId}` });
       continue;

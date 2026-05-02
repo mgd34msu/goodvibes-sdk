@@ -152,6 +152,12 @@ export interface KnowledgeNodeRecord {
   readonly status: KnowledgeNodeStatus;
   readonly confidence: number;
   readonly sourceId?: string;
+  // Optional answer-projection fields used when semantic facts are returned with
+  // their graph subjects. Stored node records keep these values in metadata.
+  readonly subject?: string;
+  readonly subjectIds?: readonly string[];
+  readonly targetHints?: readonly Record<string, unknown>[];
+  readonly linkedObjectIds?: readonly string[];
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
   readonly updatedAt: number;

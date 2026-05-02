@@ -44,7 +44,7 @@ function sourceAnswerQuality(
   const discovery = readRecord(source.metadata.sourceDiscovery);
   const rank = typeof discovery.sourceRank === 'number' ? Math.max(0, 12 - discovery.sourceRank) : 0;
   return Math.round((evidenceScoreBySource.get(source.id) ?? 0) / 4)
-    + sourceAuthorityBoost(source)
+    + sourceAuthorityBoostForAnswer(source)
     + Math.min(80, (factCountBySource.get(source.id) ?? 0) * 10)
     + Math.min(90, (promotedFactCountBySource.get(source.id) ?? 0) * 18)
     + rank * 4
@@ -52,7 +52,7 @@ function sourceAnswerQuality(
     - (source.metadata.homeGraphGeneratedPage === true ? 90 : 0);
 }
 
-function sourceAuthorityBoost(source: KnowledgeSourceRecord): number {
+export function sourceAuthorityBoostForAnswer(source: KnowledgeSourceRecord): number {
   const discovery = readRecord(source.metadata.sourceDiscovery);
   const text = `${readString(discovery.trustReason) ?? ''} ${readString(discovery.sourceDomain) ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`.toLowerCase();
   if (/\bofficial-vendor-domain\b/.test(text) || /(^|[/.])(?:lg|sony|samsung|apple)\.com\b/.test(text)) return 140;

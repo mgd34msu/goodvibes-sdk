@@ -297,8 +297,8 @@ function foregroundAnswerRepairBudget(
   const requested = typeof input.timeoutMs === 'number' && Number.isFinite(input.timeoutMs)
     ? input.timeoutMs
     : 45_000;
-  if (requested < 15_000) return 0;
-  return Math.max(5_000, Math.min(35_000, requested - 5_000));
+  if (requested < 12_000) return 0;
+  return Math.max(3_000, Math.min(20_000, requested - 5_000));
 }
 
 function answerNeedsForegroundRepair(
@@ -337,6 +337,7 @@ function activeSelfImproveResult(input: KnowledgeSemanticSelfImproveInput): Know
     skippedGaps: 1,
     requestedLimit,
     effectiveLimit: 0,
+    coalesced: true,
     truncated: true,
     budgetExhausted: true,
   };
@@ -396,6 +397,7 @@ function mergeSelfImproveResults(
     queuedTasks: left.queuedTasks + right.queuedTasks,
     requestedLimit: (left.requestedLimit ?? 0) + (right.requestedLimit ?? 0),
     effectiveLimit: (left.effectiveLimit ?? 0) + (right.effectiveLimit ?? 0),
+    coalesced: Boolean(left.coalesced || right.coalesced),
     truncated: Boolean(left.truncated || right.truncated),
     budgetExhausted: Boolean(left.budgetExhausted || right.budgetExhausted),
     taskIds: uniqueStrings([...left.taskIds, ...right.taskIds]),

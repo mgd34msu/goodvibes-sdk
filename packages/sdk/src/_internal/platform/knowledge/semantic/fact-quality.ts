@@ -32,6 +32,7 @@ export function semanticFactText(fact: KnowledgeNodeRecord): string {
 export function isLowValueFeatureOrSpecText(text: string): boolean {
   const lower = text.toLowerCase();
   const magicRemoteDetail = /\bmagic remote\b/.test(lower) || /\bbluetooth\b/.test(lower);
+  const nonRemoteFeatureSignal = hasNonRemoteFeatureSignal(lower);
   if (/\?\s*$/.test(text.trim())) return true;
   if (/\bsemantic-gap-repair\b/.test(lower)) return true;
   if (isUrlOrPathFragment(lower) && !hasConcreteFeatureSignal(lower)) return true;
@@ -47,11 +48,15 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   if (/^\s*\d+\s*(yes|no)\b/.test(lower)
+    || /^\s*\d+\s*m\s*\(/.test(lower)
     || /^\s*\d+(hdmi|usb|audio|ports?|features?|smart)\b/.test(lower)
     || /^\s*0\s+ports\b/.test(lower)
     || /\b\d+\s+features such as\b/.test(lower)
     || /\b(case color|hardware cpu cores|hardware gpu cores)\b/.test(lower)
     || /^\s*\d+\s*kg\d*/.test(lower)) {
+    return true;
+  }
+  if (/\b(series_url|exhibition display|supported audio formats|supported video formats|supported picture formats)\b/.test(lower)) {
     return true;
   }
   if (/\b(button|buttons|remote control)\b/.test(lower) && /[\u25b2\u25bc\u25c4\u25ba]|[▲▼◄►]|\\u25/.test(text)) {
@@ -71,7 +76,8 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   if (/\b(magic remote|remote control)\b/.test(lower)
-    && /\b(accessor(y|ies)|battery|batteries|button|environment|infrared|mr20ga|point|pointer|remote sensor|sap|sensor|shake|voice recognition)\b/.test(lower)) {
+    && /\b(accessor(y|ies)|battery|batteries|button|environment|infrared|mr20ga|point|pointer|remote sensor|sap|sensor|shake|voice recognition)\b/.test(lower)
+    && !nonRemoteFeatureSignal) {
     return true;
   }
   if (/\b(crutchfield|speakercompare|speaker compare|equal[- ]power|equal[- ]volume|speaker shopping|speaker recommendations?)\b/.test(lower)) {
@@ -115,7 +121,8 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   if (/\b(magic remote|remote)\b/.test(lower)
-    && /\b(shake|pointer|cursor appears|environment|operating environment|voice recognition|recognition performance|point|sensor|press|button|sap|more actions?)\b/.test(lower)) {
+    && /\b(shake|pointer|cursor appears|environment|operating environment|voice recognition|recognition performance|point|sensor|press|button|sap|more actions?)\b/.test(lower)
+    && !nonRemoteFeatureSignal) {
     return true;
   }
   if (/\b(sap|secondary audio program)\b/.test(lower) && /\b(button|press|enabled|audio)\b/.test(lower)) {
@@ -151,6 +158,10 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     return true;
   }
   return false;
+}
+
+function hasNonRemoteFeatureSignal(text: string): boolean {
+  return /\b(hdmi|earc|arc|hdr|hdr10|dolby vision|hlg|filmmaker|game optimizer|game mode|gaming|freesync|vrr|allm|4k|uhd|resolution|refresh|webos|airplay|homekit|wi-?fi|ethernet|usb|optical|tuner|atsc|qam|speaker|audio)\b/.test(text);
 }
 
 function isUrlOrPathFragment(value: string): boolean {

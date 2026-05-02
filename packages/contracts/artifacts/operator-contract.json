@@ -3,7 +3,7 @@
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.17"
+    "version": "0.28.19"
   },
   "auth": {
     "modes": [
@@ -24677,6 +24677,51 @@
                   "sourceId": {
                     "type": "string"
                   },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {
@@ -25196,6 +25241,51 @@
                   },
                   "sourceId": {
                     "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "metadata": {
                     "type": "object",
@@ -28767,6 +28857,9 @@
                 "effectiveLimit": {
                   "type": "number"
                 },
+                "coalesced": {
+                  "type": "boolean"
+                },
                 "truncated": {
                   "type": "boolean"
                 },
@@ -30406,6 +30499,51 @@
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -31317,6 +31455,51 @@
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -31973,6 +32156,51 @@
                       "sourceId": {
                         "type": "string"
                       },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -32057,6 +32285,51 @@
                       "sourceId": {
                         "type": "string"
                       },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -32140,6 +32413,51 @@
                       },
                       "sourceId": {
                         "type": "string"
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "metadata": {
                         "type": "object",
@@ -32364,6 +32682,51 @@
                       },
                       "sourceId": {
                         "type": "string"
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "metadata": {
                         "type": "object",
@@ -35738,6 +36101,51 @@
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -36250,6 +36658,51 @@
                 "sourceId": {
                   "type": "string"
                 },
+                "subject": {
+                  "type": "string"
+                },
+                "subjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "linkedObjectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -36592,6 +37045,51 @@
                   },
                   "sourceId": {
                     "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "metadata": {
                     "type": "object",
@@ -36941,6 +37439,9 @@
                           },
                           "effectiveLimit": {
                             "type": "number"
+                          },
+                          "coalesced": {
+                            "type": "boolean"
                           },
                           "truncated": {
                             "type": "boolean"
@@ -37493,6 +37994,9 @@
                         },
                         "effectiveLimit": {
                           "type": "number"
+                        },
+                        "coalesced": {
+                          "type": "boolean"
                         },
                         "truncated": {
                           "type": "boolean"
@@ -38471,6 +38975,51 @@
                   },
                   "sourceId": {
                     "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "subjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "targetHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "linkedObjectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "metadata": {
                     "type": "object",
@@ -39606,6 +40155,9 @@
             },
             "effectiveLimit": {
               "type": "number"
+            },
+            "coalesced": {
+              "type": "boolean"
             },
             "truncated": {
               "type": "boolean"
@@ -41777,6 +42329,51 @@
                       },
                       "sourceId": {
                         "type": "string"
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "subjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "targetHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "linkedObjectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "metadata": {
                         "type": "object",
