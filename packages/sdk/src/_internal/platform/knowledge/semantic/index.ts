@@ -7,6 +7,7 @@ export type { KnowledgeSemanticServiceOptions } from './service.js';
 export type {
   KnowledgeSemanticAnswer,
   KnowledgeSemanticAnswerInput,
+  KnowledgeSemanticAnswerRefinement,
   KnowledgeSemanticAnswerResult,
   KnowledgeSemanticEnrichmentResult,
   KnowledgeSemanticExtraction,

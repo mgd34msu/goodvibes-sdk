@@ -157,11 +157,22 @@ export async function answerKnowledgeQuery(
     .slice(0, limit)
     .map(withAnswerSourceAliases);
   const gapSpaceId = concreteAnswerGapSpaceId(spaceId, evidence, sources, linkedObjects);
-  const gaps = await persistAnswerGaps(context.store, gapSpaceId, input.query, llmAnswer?.gaps ?? [], {
+  const featureIntent = hasFeatureIntentForQuery(input.query);
+  const hasConcreteAnswerFacts = facts.length > 0 && sources.length > 0;
+  const shouldSuppressLlmGaps = featureIntent && hasConcreteAnswerFacts && !answerNeedsFeatureGap({
+    query: input.query,
+    text: llmAnswer?.answer,
+    facts,
     sources,
     linkedObjects,
   });
-  const featureIntent = hasFeatureIntentForQuery(input.query);
+  const shouldPersistLlmGaps = (llmAnswer?.gaps?.length ?? 0) > 0 && !shouldSuppressLlmGaps;
+  const gaps = shouldPersistLlmGaps
+    ? await persistAnswerGaps(context.store, gapSpaceId, input.query, llmAnswer?.gaps ?? [], {
+      sources,
+      linkedObjects,
+    })
+    : [];
   const evidenceGap = featureIntent && answerNeedsFeatureGap({
     query: input.query,
     text: llmAnswer?.answer,
@@ -196,7 +207,7 @@ export async function answerKnowledgeQuery(
       sources: input.includeSources === false ? [] : sources,
       linkedObjects,
       facts,
-      gaps: evidenceGap ? uniqueNodes([...gaps, evidenceGap]) : gaps,
+      gaps: evidenceGap && !isRepairedAnswerGap(evidenceGap) ? uniqueNodes([...gaps, evidenceGap]) : gaps,
       synthesized,
     },
     results: evidence.map(toSearchResult),

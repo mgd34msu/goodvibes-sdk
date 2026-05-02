@@ -76,8 +76,11 @@ export async function runKnowledgeSemanticSelfImprovement(
   let searched = 0;
   let ingestedSources = 0;
   let linkedRepairs = 0;
+  let promotedFactCount = 0;
+  let nextRepairAttemptAt: number | undefined;
   const taskIds: string[] = [];
   const ingestedSourceIds: string[] = [];
+  const acceptedSourceIds: string[] = [];
   const errors: { gapId: string; error: string }[] = [];
   const trigger = input.reason ?? 'manual';
 
@@ -180,42 +183,45 @@ export async function runKnowledgeSemanticSelfImprovement(
       if (result?.searched) searched += 1;
       ingestedSources += result?.ingestedSourceIds.length ?? 0;
       ingestedSourceIds.push(...(result?.ingestedSourceIds ?? []));
-      const acceptedSourceIds = uniqueStrings([...(result?.acceptedSourceIds ?? []), ...(result?.ingestedSourceIds ?? [])]);
-      let promotedFactCount = 0;
+      const gapAcceptedSourceIds = uniqueStrings([...(result?.acceptedSourceIds ?? []), ...(result?.ingestedSourceIds ?? [])]);
+      acceptedSourceIds.push(...gapAcceptedSourceIds);
+      let gapPromotedFactCount = 0;
       task = await updateRefinementTask(context.store, task, 'evaluating', result?.reason ?? 'Source discovery completed.', {
         query: result?.query ?? gap.title,
         sourceAssessments: result?.sourceAssessments ?? [],
         ingestedSourceIds: result?.ingestedSourceIds ?? [],
-        acceptedSourceIds,
+        acceptedSourceIds: gapAcceptedSourceIds,
         skippedUrls: result?.skippedUrls ?? [],
       });
-      if (acceptedSourceIds.length) {
+      if (gapAcceptedSourceIds.length) {
         task = await updateRefinementTask(context.store, task, 'applying', 'Linking accepted repair sources into the graph.');
       }
-      linkedRepairs += await linkRepairSources(context.store, spaceId, gap, acceptedSourceIds, result?.query ?? gap.title);
-      if (acceptedSourceIds.length > 0) {
-        promotedFactCount = await promoteRepairSources(context, spaceId, gap, acceptedSourceIds, task, startedAt + maxRunMs);
+      linkedRepairs += await linkRepairSources(context.store, spaceId, gap, gapAcceptedSourceIds, result?.query ?? gap.title);
+      if (gapAcceptedSourceIds.length > 0) {
+        gapPromotedFactCount = await promoteRepairSources(context, spaceId, gap, gapAcceptedSourceIds, task, startedAt + maxRunMs);
+        promotedFactCount += gapPromotedFactCount;
       }
-      const evidenceSufficient = result?.evidenceSufficient !== false && acceptedSourceIds.length > 0 && promotedFactCount > 0;
+      const evidenceSufficient = result?.evidenceSufficient !== false && gapAcceptedSourceIds.length > 0 && gapPromotedFactCount > 0;
       await markGapRepairAttempt(context.store, gap, spaceId, {
-        status: evidenceSufficient ? 'repaired' : acceptedSourceIds.length ? 'deferred' : 'searched_no_sources',
+        status: evidenceSufficient ? 'repaired' : gapAcceptedSourceIds.length ? 'deferred' : 'searched_no_sources',
         reason: result?.reason,
         query: result?.query,
       });
       if (evidenceSufficient) {
         closedGaps += 1;
         await updateRefinementTask(context.store, task, 'closed', 'Repair sources were accepted and linked to the gap.', {
-          acceptedSourceIds,
+          acceptedSourceIds: gapAcceptedSourceIds,
           ingestedSourceIds: result?.ingestedSourceIds ?? [],
-          promotedFactCount,
+          promotedFactCount: gapPromotedFactCount,
         });
-      } else if (acceptedSourceIds.length) {
+      } else if (gapAcceptedSourceIds.length) {
         blockedGaps += 1;
+        nextRepairAttemptAt = Date.now() + RETRY_DELAY_MS;
         await updateRefinementTask(context.store, task, 'blocked', result?.reason ?? 'Accepted source evidence was linked, but the gap still needs corroboration.', {
-          acceptedSourceIds,
-          promotedFactCount,
+          acceptedSourceIds: gapAcceptedSourceIds,
+          promotedFactCount: gapPromotedFactCount,
           retryable: true,
-          nextRepairAttemptAt: Date.now() + RETRY_DELAY_MS,
+          nextRepairAttemptAt,
         });
       } else {
         blockedGaps += 1;
@@ -231,9 +237,10 @@ export async function runKnowledgeSemanticSelfImprovement(
       });
       if (budgetError) {
         blockedGaps += 1;
+        nextRepairAttemptAt = Date.now() + RETRY_DELAY_MS;
         await updateRefinementTask(context.store, task, 'blocked', 'Repair was deferred after exhausting the current run budget.', {
           retryable: true,
-          nextRepairAttemptAt: Date.now() + RETRY_DELAY_MS,
+          nextRepairAttemptAt,
           error: reason,
         });
       } else {
@@ -265,6 +272,9 @@ export async function runKnowledgeSemanticSelfImprovement(
     budgetExhausted,
     taskIds: uniqueStrings(taskIds),
     ingestedSourceIds: uniqueStrings(ingestedSourceIds),
+    acceptedSourceIds: uniqueStrings(acceptedSourceIds),
+    promotedFactCount,
+    ...(nextRepairAttemptAt ? { nextRepairAttemptAt } : {}),
     errors,
   };
 }

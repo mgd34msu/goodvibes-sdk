@@ -6,6 +6,7 @@ import { answerKnowledgeQuery } from './answer.js';
 import { enrichKnowledgeSource } from './enrichment.js';
 import type {
   KnowledgeSemanticAnswerInput,
+  KnowledgeSemanticAnswerRefinement,
   KnowledgeSemanticAnswerResult,
   KnowledgeSemanticEnrichmentResult,
   KnowledgeSemanticGapRepairer,
@@ -143,48 +144,73 @@ export class KnowledgeSemanticService {
     if (input.autoRepairGaps === false) return answer;
     if (this.options.gapRepairer && answer.answer.gaps.length > 0) {
       const repairSpaceId = answerRepairSpaceId(answer);
+      const originalGapIds = answer.answer.gaps.map((gap) => gap.id);
       const foregroundBudgetMs = foregroundAnswerRepairBudget(input, answer);
       const foregroundTaskIds: string[] = [];
+      const foregroundStartedAt = Date.now();
+      let foregroundRepair = emptySelfImproveResult();
       if (foregroundBudgetMs > 0) {
-        const repaired = await this.repairAnswerGaps({
+        foregroundRepair = await this.repairAnswerGaps({
           answer,
           maxRunMs: foregroundBudgetMs,
           limit: Math.min(5, answer.answer.gaps.length),
         });
-        foregroundTaskIds.push(...repaired.taskIds);
-        if (repaired.closedGaps > 0 || repaired.linkedRepairs > 0) {
+        foregroundTaskIds.push(...foregroundRepair.taskIds);
+        if (foregroundRepair.closedGaps > 0 || foregroundRepair.linkedRepairs > 0 || (foregroundRepair.promotedFactCount ?? 0) > 0) {
           answer = withRefinementTaskIds(
             await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input),
             foregroundTaskIds,
           );
-          if (answer.answer.gaps.length === 0 || answerHasUsableEvidence(answer)) return answer;
+          if (answerHasUsableEvidence(answer)) {
+            return withAnswerRefinement(answer, answerRefinementFromRepair(foregroundRepair, 'repaired', {
+              waitedMs: Date.now() - foregroundStartedAt,
+              answerCacheInvalidated: true,
+            }));
+          }
         }
-        if (repaired.skippedGaps > 0 || repaired.queuedTasks > 0) {
-          const waited = await this.waitForActiveAnswerGapRepairs(repairSpaceId, answer.answer.gaps.map((gap) => gap.id), Math.min(15_000, foregroundBudgetMs));
+        if (foregroundRepair.skippedGaps > 0 || foregroundRepair.queuedTasks > 0 || (foregroundRepair.acceptedSourceIds?.length ?? 0) > 0) {
+          const waited = await this.waitForActiveAnswerGapRepairs(
+            repairSpaceId,
+            answerGapIdsForRefinement(answer, originalGapIds),
+            Math.min(15_000, foregroundBudgetMs),
+          );
           if (waited) {
             answer = withRefinementTaskIds(
               await answerKnowledgeQuery({ store: this.store, llm: this.options.llm }, input),
               foregroundTaskIds,
             );
-            if (answer.answer.gaps.length === 0 || answerHasUsableEvidence(answer)) return answer;
+            if (answerHasUsableEvidence(answer)) {
+              return withAnswerRefinement(answer, answerRefinementFromRepair(foregroundRepair, 'repaired', {
+                waitedMs: Date.now() - foregroundStartedAt,
+                answerCacheInvalidated: true,
+              }));
+            }
           }
         }
       }
+      const refinementGapIds = answerGapIdsForRefinement(answer, originalGapIds);
       const refinement = await this.selfImprove({
         knowledgeSpaceId: repairSpaceId,
-        gapIds: answer.answer.gaps.map((gap) => gap.id),
+        gapIds: refinementGapIds,
         reason: 'answer',
-        limit: Math.max(1, answer.answer.gaps.length),
+        limit: Math.max(1, refinementGapIds.length),
         deferRepair: true,
       });
-      this.runAnswerRefinementInBackground(repairSpaceId, answer.answer.gaps.map((gap) => gap.id));
+      this.runAnswerRefinementInBackground(repairSpaceId, refinementGapIds);
       const taskIds = uniqueStrings([
         ...foregroundTaskIds,
         ...refinement.taskIds,
-        ...this.taskIdsForGaps(repairSpaceId, answer.answer.gaps.map((gap) => gap.id)),
+        ...this.taskIdsForGaps(repairSpaceId, refinementGapIds),
       ]);
       if (taskIds.length > 0) {
-        return withRefinementTaskIds(answer, taskIds);
+        return withAnswerRefinement(withRefinementTaskIds(answer, taskIds), answerRefinementFromRepair(
+          mergeSelfImproveResults(foregroundRepair, refinement),
+          repairAnswerStatus(answer, foregroundRepair, refinement),
+          {
+            waitedMs: Date.now() - foregroundStartedAt,
+            answerCacheInvalidated: (foregroundRepair.linkedRepairs > 0 || (foregroundRepair.promotedFactCount ?? 0) > 0),
+          },
+        ));
       }
     }
     return answer;
@@ -357,6 +383,63 @@ function withRefinementTaskIds(
   };
 }
 
+function answerGapIdsForRefinement(
+  answer: KnowledgeSemanticAnswerResult,
+  originalGapIds: readonly string[],
+): readonly string[] {
+  const currentGapIds = answer.answer.gaps.map((gap) => gap.id);
+  return currentGapIds.length > 0 ? currentGapIds : originalGapIds;
+}
+
+function withAnswerRefinement(
+  answer: KnowledgeSemanticAnswerResult,
+  refinement: KnowledgeSemanticAnswerRefinement,
+): KnowledgeSemanticAnswerResult {
+  return {
+    ...answer,
+    answer: {
+      ...answer.answer,
+      refinement,
+    },
+  };
+}
+
+function repairAnswerStatus(
+  answer: KnowledgeSemanticAnswerResult,
+  foreground: KnowledgeSemanticSelfImproveResult,
+  queued: KnowledgeSemanticSelfImproveResult,
+): KnowledgeSemanticAnswerRefinement['status'] {
+  if (answerHasUsableEvidence(answer)) return 'repaired';
+  if ((foreground.acceptedSourceIds?.length ?? 0) > 0 || (foreground.promotedFactCount ?? 0) > 0) return 'incomplete';
+  if (queued.queuedTasks > 0 || foreground.queuedTasks > 0 || foreground.skippedGaps > 0) return 'active';
+  return 'deferred';
+}
+
+function answerRefinementFromRepair(
+  repair: KnowledgeSemanticSelfImproveResult,
+  status: KnowledgeSemanticAnswerRefinement['status'],
+  options: {
+    readonly waitedMs?: number;
+    readonly answerCacheInvalidated?: boolean;
+  } = {},
+): KnowledgeSemanticAnswerRefinement {
+  const acceptedSourceIds = repair.acceptedSourceIds ?? [];
+  const promotedFactCount = repair.promotedFactCount ?? 0;
+  const reason = repair.errors[0]?.error
+    ?? (repair.budgetExhausted ? 'Repair did not finish within the current run budget.' : undefined);
+  return {
+    status,
+    ...(reason ? { reason } : {}),
+    repairStatus: status === 'repaired' ? 'repaired' : status === 'active' ? 'active' : 'deferred',
+    refinementTaskIds: repair.taskIds,
+    acceptedSourceIds,
+    promotedFactCount,
+    ...(repair.nextRepairAttemptAt ? { nextRepairAttemptAt: repair.nextRepairAttemptAt } : {}),
+    ...(typeof options.waitedMs === 'number' ? { waitedMs: options.waitedMs } : {}),
+    ...(options.answerCacheInvalidated ? { answerCacheInvalidated: true } : {}),
+  };
+}
+
 function activeSelfImproveResult(input: KnowledgeSemanticSelfImproveInput): KnowledgeSemanticSelfImproveResult {
   const requestedLimit = Math.max(1, input.limit ?? 1);
   return {
@@ -400,6 +483,8 @@ function emptySelfImproveResult(): KnowledgeSemanticSelfImproveResult {
     budgetExhausted: false,
     taskIds: [],
     ingestedSourceIds: [],
+    acceptedSourceIds: [],
+    promotedFactCount: 0,
     errors: [],
   };
 }
@@ -429,6 +514,15 @@ function mergeSelfImproveResults(
     budgetExhausted: Boolean(left.budgetExhausted || right.budgetExhausted),
     taskIds: uniqueStrings([...left.taskIds, ...right.taskIds]),
     ingestedSourceIds: uniqueStrings([...left.ingestedSourceIds, ...right.ingestedSourceIds]),
+    acceptedSourceIds: uniqueStrings([...(left.acceptedSourceIds ?? []), ...(right.acceptedSourceIds ?? [])]),
+    promotedFactCount: (left.promotedFactCount ?? 0) + (right.promotedFactCount ?? 0),
+    nextRepairAttemptAt: maxDefined(left.nextRepairAttemptAt, right.nextRepairAttemptAt),
     errors: [...left.errors, ...right.errors],
   };
+}
+
+function maxDefined(left: number | undefined, right: number | undefined): number | undefined {
+  if (typeof left !== 'number') return right;
+  if (typeof right !== 'number') return left;
+  return Math.max(left, right);
 }

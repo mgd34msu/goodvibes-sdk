@@ -10,6 +10,7 @@ import type {
   KnowledgeSourceRecord,
 } from '../types.js';
 import type { KnowledgeSemanticSelfImproveResult } from '../semantic/index.js';
+import type { KnowledgeSemanticAnswerRefinement } from '../semantic/index.js';
 
 export const HOME_GRAPH_NODE_KINDS = [
   'ha_home',
@@ -282,6 +283,7 @@ export interface HomeGraphAskResult {
     readonly facts?: readonly KnowledgeNodeRecord[];
     readonly gaps?: readonly KnowledgeNodeRecord[];
     readonly refinementTaskIds?: readonly string[];
+    readonly refinement?: KnowledgeSemanticAnswerRefinement;
     readonly synthesized?: boolean;
   };
   readonly results: readonly HomeGraphSearchResult[];

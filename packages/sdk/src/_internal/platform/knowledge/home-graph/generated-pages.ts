@@ -7,6 +7,7 @@ import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import type { KnowledgeStore } from '../store.js';
 import type {
   KnowledgeEdgeRecord,
+  KnowledgeIssueRecord,
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
@@ -27,7 +28,6 @@ import {
   readHomeGraphState,
   renderHomeGraphState,
   safeHomeGraphFilename,
-  sourcesLinkedToNode,
 } from './state.js';
 import {
   issuesForScope,
@@ -202,7 +202,7 @@ export async function refreshHomeGraphDevicePassport(
       && edge.relation === 'belongs_to_device'
     ))
   ));
-  const sources = sourcesLinkedToNode(device.id, state)
+  const sources = sourcesForDevicePassport(device.id, state.sources, state.nodes, state.edges)
     .filter((source) => !isGeneratedPageSource(source));
   const pageProfileFacts = await upsertDevicePageProfileFacts({ store, spaceId, installationId, device, sources });
   const semanticFacts = uniqueNodesById([
@@ -210,7 +210,7 @@ export async function refreshHomeGraphDevicePassport(
     ...pageProfileFacts,
   ]);
   const scopedNodeIds = new Set([device.id, ...entities.map((node) => node.id)]);
-  const issues = issuesForScope(state.issues, state.edges, scopedNodeIds, sources);
+  const issues = filterDevicePassportIssues(issuesForScope(state.issues, state.edges, scopedNodeIds, sources), sources);
   const missingFields = missingDevicePassportFields(device, sources);
   const passport = await store.upsertNode({
     id: homeGraphNodeId(spaceId, 'ha_device_passport', input.deviceId),
@@ -499,6 +499,46 @@ function semanticFactsForNode(
     factIds.add(fact.id);
   }
   return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
+}
+
+function sourcesForDevicePassport(
+  nodeId: string,
+  sources: readonly KnowledgeSourceRecord[],
+  nodes: readonly KnowledgeNodeRecord[],
+  edges: readonly KnowledgeEdgeRecord[],
+): KnowledgeSourceRecord[] {
+  const byId = new Map(sources.map((source) => [source.id, source]));
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const sourceIds = new Set<string>();
+  const describingFactIds = new Set(edges.filter((edge) => (
+    edgeIsActive(edge)
+    && edge.fromKind === 'node'
+    && edge.toKind === 'node'
+    && edge.toId === nodeId
+    && edge.relation === 'describes'
+  )).map((edge) => edge.fromId));
+  const activeDescribingFactIds = new Set([...describingFactIds]
+    .filter((factId) => nodesById.get(factId)?.status !== 'stale'));
+  for (const edge of edges) {
+    if (!edgeIsActive(edge)) continue;
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && edge.toId === nodeId) sourceIds.add(edge.fromId);
+    if (edge.fromKind === 'node' && edge.toKind === 'source' && edge.fromId === nodeId) sourceIds.add(edge.toId);
+    if (edge.fromKind !== 'source' || edge.toKind !== 'node' || edge.relation !== 'supports_fact') continue;
+    if (activeDescribingFactIds.has(edge.toId)) sourceIds.add(edge.fromId);
+  }
+  for (const factId of activeDescribingFactIds) {
+    const fact = nodesById.get(factId);
+    if (fact?.sourceId) sourceIds.add(fact.sourceId);
+  }
+  return [...sourceIds].map((sourceId) => byId.get(sourceId)).filter((source): source is KnowledgeSourceRecord => Boolean(source));
+}
+
+function filterDevicePassportIssues(
+  issues: readonly KnowledgeIssueRecord[],
+  sources: readonly KnowledgeSourceRecord[],
+): readonly KnowledgeIssueRecord[] {
+  if (sources.length === 0) return issues;
+  return issues.filter((issue) => issue.code !== 'homegraph.device.missing_manual');
 }
 
 async function upsertDevicePageProfileFacts(input: {

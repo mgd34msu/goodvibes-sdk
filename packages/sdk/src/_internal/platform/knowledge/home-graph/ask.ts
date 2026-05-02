@@ -70,6 +70,7 @@ async function answerHomeGraphQueryOnce(input: {
         facts: answer.answer.facts,
         gaps: answer.answer.gaps,
         refinementTaskIds: answer.answer.refinementTaskIds,
+        refinement: answer.answer.refinement,
         synthesized: answer.answer.synthesized,
       },
       results,
