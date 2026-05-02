@@ -287,19 +287,55 @@ describe('semantic knowledge/wiki enrichment', () => {
       knowledgeSpaceId: 'homeassistant',
       query: 'What refresh rate, HDR formats, HDMI 2.1 or gaming features, and smart TV features does the TV have?',
       includeSources: true,
+      includeLinkedObjects: true,
     });
     const text = [
       answer.answer.text,
       ...answer.answer.sources.map((source) => source.title ?? ''),
+      ...answer.answer.linkedObjects.map((node) => node.title),
       ...answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`),
     ].join('\n');
 
+    expect(answer.answer.linkedObjects.map((node) => node.title)).toContain('LG webOS Smart TV');
     expect(text).toContain('Dolby Vision');
     expect(text).not.toContain('WireGuard');
     expect(text).not.toContain('NAS storage');
     expect(text).not.toContain('firewall');
     expect(text).not.toContain('Sony');
     expect(text).not.toContain('BRAVIA');
+  });
+
+  test('base Home Assistant alias does not invent a linked object for a generic device ask', async () => {
+    const { store, artifactStore } = createStores();
+    const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
+    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    await service.syncSnapshot({
+      installationId: 'house',
+      devices: [
+        { id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' },
+        { id: 'router', name: 'Storage Router', manufacturer: 'GL.iNet', model: 'MT6000' },
+      ],
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'LG TV feature sheet',
+      body: 'The LG 86NANO90UNA TV has 4K NanoCell display and Dolby Vision.',
+      target: { kind: 'device', id: 'tv', relation: 'has_manual' },
+    });
+    await service.ingestNote({
+      installationId: 'house',
+      title: 'Router feature sheet',
+      body: 'The GL.iNet MT6000 router has Wi-Fi 6 and WireGuard VPN.',
+      target: { kind: 'device', id: 'router', relation: 'has_manual' },
+    });
+
+    const answer = await semantic.answer({
+      knowledgeSpaceId: 'homeassistant',
+      query: 'what features does the device have?',
+      includeLinkedObjects: true,
+    });
+
+    expect(answer.answer.linkedObjects).toHaveLength(0);
   });
 
   test('base Home Assistant alias stores answer-gap refinement in the concrete installation space', async () => {

@@ -49,6 +49,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - Base Knowledge Ask for `knowledgeSpaceId: "homeassistant"` and Home Graph Ask
   now follow source -> fact -> device links, so repaired source evidence remains
   scoped to the real HA object instead of drifting to unrelated facts.
+- Base Knowledge Ask for Home Assistant spaces now returns scoped HA linked
+  objects for concrete object questions such as "the TV" while avoiding
+  invented object context for generic "the device" questions.
 - Generated Home Graph device pages now resolve sources and facts through
   repair-promoted fact links and are refreshed after source-backed Ask results,
   preventing repaired devices from continuing to show zero linked sources.

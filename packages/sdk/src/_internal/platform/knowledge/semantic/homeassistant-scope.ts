@@ -1,7 +1,7 @@
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import { getKnowledgeSpaceId, isHomeAssistantKnowledgeSpace, normalizeKnowledgeSpaceId } from '../spaces.js';
-import { readRecord, readString, scoreSemanticText, sourceSemanticText, tokenizeSemanticQuery } from './utils.js';
+import { readRecord, readString, scoreSemanticText, sourceSemanticText, tokenizeSemanticQuery, uniqueStrings } from './utils.js';
 
 export interface HomeAssistantAnswerScope {
   readonly anchorNodeIds: ReadonlySet<string>;
@@ -27,18 +27,21 @@ export function inferHomeAssistantAnswerScope(
 ): HomeAssistantAnswerScope | null {
   const normalized = normalizeKnowledgeSpaceId(spaceId);
   if (normalized !== 'homeassistant' && !isHomeAssistantKnowledgeSpace(normalized)) return null;
-  if (subjectTokens.length === 0) return null;
-  const singularObjectQuery = isSingularObjectQuery(query, subjectTokens);
+  const queryTokens = tokenizeSemanticQuery(query);
+  if (subjectTokens.length === 0 && queryTokens.length === 0) return null;
+  const singularObjectQuery = isSingularObjectQuery(query, queryTokens);
   const strongIdentityTokens = subjectTokens.filter(isStrongIdentityToken);
   if (!singularObjectQuery && strongIdentityTokens.length === 0) return null;
+  if (singularObjectQuery && strongIdentityTokens.length === 0 && !hasSpecificObjectTypeToken(queryTokens)) return null;
   const linkedSourceQualityByNode = linkedSourceQualityByAnchor(store);
+  const anchorTokens = uniqueStrings([...subjectTokens, ...queryTokens]);
 
   const anchors = store.listNodes(10_000)
     .filter((node) => node.status !== 'stale' && isHomeAssistantObjectNode(node))
     .filter((node) => normalized === 'homeassistant' || normalizeKnowledgeSpaceId(getKnowledgeSpaceId(node)) === normalized)
     .map((node) => ({
       node,
-      score: scoreHomeAssistantObject(node, subjectTokens)
+      score: scoreHomeAssistantObject(node, anchorTokens)
         + Math.min(64, linkedSourceQualityByNode.get(node.id) ?? 0),
     }))
     .filter((entry) => entry.score > 0)
@@ -208,6 +211,33 @@ function isSingularObjectQuery(query: string, tokens: readonly string[]): boolea
 function isStrongIdentityToken(token: string): boolean {
   return token.length >= 4 && !GENERIC_ANCHOR_TOKENS.has(token);
 }
+
+function hasSpecificObjectTypeToken(tokens: readonly string[]): boolean {
+  return tokens.some((token) => SPECIFIC_OBJECT_TYPE_TOKENS.has(token));
+}
+
+const SPECIFIC_OBJECT_TYPE_TOKENS = new Set([
+  'appliance',
+  'bridge',
+  'camera',
+  'console',
+  'doorbell',
+  'garage',
+  'hub',
+  'lock',
+  'phone',
+  'printer',
+  'projector',
+  'remote',
+  'router',
+  'sensor',
+  'speaker',
+  'switch',
+  'television',
+  'thermostat',
+  'tv',
+  'xbox',
+]);
 
 function sourceMatchesAnchor(sourceText: string, anchorText: string): boolean {
   const tokens = anchorText
