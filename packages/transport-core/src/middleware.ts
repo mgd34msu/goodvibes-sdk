@@ -66,6 +66,8 @@ export type TransportMiddleware = (
   next: () => Promise<void>,
 ) => Promise<void>;
 
+const MAX_MIDDLEWARE_DEPTH = 128;
+
 /**
  * Build a composed middleware executor from an ordered array of middleware.
  * The last item in the chain calls the real fetch via `innerFetch`.
@@ -82,10 +84,16 @@ export function composeMiddleware(
   middleware: readonly TransportMiddleware[],
   innerFetch: (ctx: TransportContext) => Promise<Response>,
 ): (ctx: TransportContext) => Promise<void> {
+  if (middleware.length > MAX_MIDDLEWARE_DEPTH) {
+    throw new Error(`Transport middleware chain exceeds the maximum depth of ${MAX_MIDDLEWARE_DEPTH}.`);
+  }
   return async (ctx: TransportContext): Promise<void> => {
     let index = -1;
 
     const dispatch = async (i: number): Promise<void> => {
+      if (i > MAX_MIDDLEWARE_DEPTH) {
+        throw new Error(`Transport middleware recursion exceeded the maximum depth of ${MAX_MIDDLEWARE_DEPTH}.`);
+      }
       if (i <= index) {
         throw new Error('next() called multiple times in transport middleware');
       }

@@ -192,6 +192,7 @@ async function startWithTimeout(
       startPromise,
       new Promise<'timed_out'>((resolve) => {
         timer = setTimeout(() => resolve('timed_out'), timeoutMs);
+        timer.unref?.();
       }),
     ]);
     if (result === 'timed_out') {
@@ -200,7 +201,18 @@ async function startWithTimeout(
         void cleanup().catch((error) => {
           logger.warn(`${label} cleanup after startup timeout failed`, { error: summarizeError(error) });
         });
-        void startPromise.then(() => cleanup()).catch(() => {});
+        void startPromise.then(
+          async () => {
+            try {
+              await cleanup();
+            } catch (error) {
+              logger.warn(`${label} delayed cleanup after startup timeout failed`, { error: summarizeError(error) });
+            }
+          },
+          (error) => {
+            logger.warn(`${label} startup rejected after timeout`, { error: summarizeError(error) });
+          },
+        );
       }
     }
     return result;

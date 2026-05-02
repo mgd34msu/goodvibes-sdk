@@ -2,6 +2,9 @@
   "name": "@pellux/goodvibes-transport-direct",
   "private": true,
   "version": "0.28.22",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "In-process direct client transport shell for embedding GoodVibes operator and peer clients.",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,9 +36,6 @@
     "transport",
     "embedding"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "dependencies": {
     "@pellux/goodvibes-transport-core": "workspace:*"
   }

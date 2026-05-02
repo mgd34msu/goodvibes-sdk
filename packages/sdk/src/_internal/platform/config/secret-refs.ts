@@ -613,6 +613,7 @@ async function defaultRunCommand(
         proc.kill();
       }, options.timeoutMs)
     : undefined;
+  timeout?.unref?.();
   try {
     const [exitCode, stdout, stderr] = await Promise.all([
       proc.exited,

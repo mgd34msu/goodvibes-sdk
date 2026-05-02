@@ -64,10 +64,8 @@ describe('SEC-08: HTTP hook SSRF filter', () => {
       timeout: 1, // 1 second — connection refused is instant
     };
     const result = await runHttpHook(hook, MOCK_EVENT);
-    // Should NOT be an SSRF block — error should be a connection error, not "blocked"
-    if (!result.ok) {
-      expect(result.error).not.toMatch(/^http hook blocked/);
-    }
+    expect(result.ok).toBe(false);
+    expect(result.error ?? '').not.toMatch(/^http hook blocked/);
   });
 
   test('public external URL is not blocked (does not contain SSRF error)', async () => {
@@ -80,10 +78,8 @@ describe('SEC-08: HTTP hook SSRF filter', () => {
       timeout: 1, // 1 second
     };
     const result = await runHttpHook(hook, MOCK_EVENT);
-    // Not blocked by SSRF filter
-    if (!result.ok) {
-      expect(result.error).not.toMatch(/^http hook blocked/);
-    }
+    expect(result.ok).toBe(false);
+    expect(result.error ?? '').not.toMatch(/^http hook blocked/);
   });
 });
 
@@ -109,14 +105,12 @@ describe('SEC-08: WebhookNotifier SSRF filter', () => {
   });
 
   test('public URL is not blocked by SSRF filter', async () => {
-    const notifier = new WebhookNotifier();
+    const notifier = new WebhookNotifier([], { timeoutMs: 1_000 });
     notifier.addUrl('https://example.com/no-such-webhook');
 
     const results = await notifier.test();
     expect(results.length).toBe(1);
-    // May fail with HTTP error, but NOT with SSRF block
-    if (!results[0]!.ok) {
-      expect(results[0]!.error).not.toMatch(/blocked URL/);
-    }
+    expect(results[0]!.ok).toBe(false);
+    expect(results[0]!.error ?? '').not.toMatch(/blocked URL/);
   });
 });

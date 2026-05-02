@@ -114,7 +114,8 @@ export function createGoodVibesCloudflareWorker(
           } else {
             message.retry?.();
           }
-        } catch {
+        } catch (error) {
+          console.warn('GoodVibes worker queue message failed', { error });
           message.retry?.();
         }
       }
@@ -258,7 +259,11 @@ async function readTextBodyWithinLimit(
       if (done) break;
       total += value.byteLength;
       if (total > maxBytes) {
-        await reader.cancel('Payload too large').catch(() => {});
+        try {
+          await reader.cancel('Payload too large');
+        } catch (error) {
+          console.warn('GoodVibes Worker request body cancel failed after size limit', error);
+        }
         return json({ error: 'Payload too large', code: 'PAYLOAD_TOO_LARGE' }, 413);
       }
       body += decoder.decode(value, { stream: true });

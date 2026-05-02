@@ -444,6 +444,7 @@ export class SyntheticProvider implements LLMProvider {
           if (params.signal) params.signal.removeEventListener('abort', onAbort);
           resolve();
         }, waitMs + COOLDOWN_BUFFER_MS);
+        timer.unref?.();
         if (params.signal) {
           if (params.signal.aborted) {
             clearTimeout(timer);

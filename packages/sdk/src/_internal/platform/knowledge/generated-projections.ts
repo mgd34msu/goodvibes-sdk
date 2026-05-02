@@ -133,7 +133,8 @@ async function findReusableGeneratedArtifact(
   try {
     const { buffer } = await artifactStore.readContent(artifact.id);
     return buffer.toString('utf-8') === markdown ? artifact : undefined;
-  } catch {
+  } catch (error) {
+    void error;
     return undefined;
   }
 }

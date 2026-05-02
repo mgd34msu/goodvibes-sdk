@@ -86,6 +86,7 @@ function isCacheStale(cache: ModelLimitsCache): boolean {
 async function fetchOpenRouterModels(): Promise<Map<string, OpenRouterModelData>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  timer.unref?.();
 
   try {
     const response = await instrumentedFetch(OPENROUTER_MODELS_URL, {

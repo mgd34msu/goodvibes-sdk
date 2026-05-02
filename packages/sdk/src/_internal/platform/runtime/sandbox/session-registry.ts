@@ -51,7 +51,8 @@ function waitForTcp(host: string, port: number, timeoutMs: number): Promise<bool
           resolve(false);
           return;
         }
-        setTimeout(attempt, 250);
+        const timer = setTimeout(attempt, 250);
+        timer.unref?.();
       });
       socket.setTimeout(1000, () => {
         socket.destroy();
@@ -59,7 +60,8 @@ function waitForTcp(host: string, port: number, timeoutMs: number): Promise<bool
           resolve(false);
           return;
         }
-        setTimeout(attempt, 250);
+        const timer = setTimeout(attempt, 250);
+        timer.unref?.();
       });
     };
     attempt();

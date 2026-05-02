@@ -285,7 +285,11 @@ export async function loadPlugin(
     logger.error(`[plugins] ${manifest.name}: load failed — ${summarizeError(err)}`);
     // Run cleanup for anything that was registered before the error
     for (const fn of loaded.cleanup) {
-      try { fn(); } catch { /* best-effort */ }
+      try {
+        fn();
+      } catch (cleanupError) {
+        logger.warn(`[plugins] ${manifest.name}: cleanup after failed load threw — ${summarizeError(cleanupError)}`);
+      }
     }
     return null;
   }
@@ -306,7 +310,11 @@ export async function unloadPlugin(plugin: LoadedPlugin): Promise<void> {
   }
 
   for (const fn of plugin.cleanup) {
-    try { fn(); } catch { /* best-effort */ }
+    try {
+      fn();
+    } catch (err) {
+      logger.warn(`[plugins] ${plugin.manifest.name}: cleanup threw — ${summarizeError(err)}`);
+    }
   }
   plugin.cleanup.length = 0;
   plugin.active = false;

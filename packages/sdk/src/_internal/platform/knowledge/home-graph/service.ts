@@ -1,6 +1,7 @@
 import type { ArtifactStore } from '../../artifacts/index.js';
 import type { ArtifactDescriptor } from '../../artifacts/types.js';
-import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
+import { logger } from '../../utils/logger.js';
+import { scheduleBackground, sleep, yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import { extractKnowledgeArtifact } from '../extractors.js';
 import type { KnowledgeStore } from '../store.js';
 import type {
@@ -23,6 +24,7 @@ import {
   namespacedCanonicalUri,
   nodeKindForHomeGraphObject,
   normalizeHomeGraphObjectInput,
+  readHomeAssistantMetadataString,
   readRecord,
   resolveHomeGraphSpace,
   targetToReference,
@@ -38,6 +40,7 @@ import {
 } from './state.js';
 import { answerHomeGraphQuery } from './ask.js';
 import type { KnowledgeSemanticService } from '../semantic/index.js';
+import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
 import {
   autoLinkHomeGraphSource,
   autoLinkHomeGraphSources,
@@ -80,6 +83,8 @@ import type {
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
 } from './types.js';
 
+const MAX_DEVICE_PAGE_REPAIRS_PER_REFRESH = 16;
+
 export class HomeGraphService {
   private activeReindex: Promise<HomeGraphReindexResult> | null = null;
   private pendingSyncSelfImprove = new Set<string>();
@@ -95,7 +100,7 @@ export class HomeGraphService {
 
   async syncSnapshot(input: HomeGraphSnapshotInput): Promise<HomeGraphSyncResult> {
     await this.store.init();
-    return this.store.batch(async () => {
+    const result = await this.store.batch(async () => {
       const { spaceId, installationId } = resolveHomeGraphSpace(input);
       const capturedAt = input.capturedAt ?? Date.now();
       const source = await this.store.upsertSource({
@@ -120,7 +125,6 @@ export class HomeGraphService {
       const groups = await this.upsertSnapshotObjects(spaceId, installationId, input, home.id, source.id);
       await this.autoLinkExistingSources(spaceId, installationId);
       const issues = await this.refreshQualityIssues(spaceId, installationId);
-      this.scheduleSyncSelfImprovement(spaceId);
       const generated = await generateAutomaticHomeGraphPages({
         store: this.store,
         artifactStore: this.artifactStore,
@@ -144,6 +148,8 @@ export class HomeGraphService {
         counts: groups,
       };
     });
+    this.scheduleSyncSelfImprovement(result.spaceId, result.installationId);
+    return result;
   }
 
   async ingestUrl(input: HomeGraphIngestUrlInput): Promise<HomeGraphIngestResult> {
@@ -567,9 +573,14 @@ export class HomeGraphService {
           ...(extraction ? { extraction } : {}),
           state: readHomeGraphState(this.store, input.spaceId),
         }))?.edge;
-    setTimeout(() => {
-      void this.enrichAndImproveSource(source.id, input.spaceId).catch(() => {});
-    }, 0);
+    scheduleBackground(() => {
+      void this.enrichAndImproveSource(source.id, input.spaceId).catch((error: unknown) => {
+        this.reportBackgroundError('homegraph-ingest-enrich', error, {
+          spaceId: input.spaceId,
+          sourceId: source.id,
+        });
+      });
+    });
     return {
       ok: true,
       spaceId: input.spaceId,
@@ -607,7 +618,12 @@ export class HomeGraphService {
         structure: extracted.structure,
         metadata: buildHomeGraphMetadata(spaceId, installationId, extracted.metadata),
       });
-    } catch {
+    } catch (error) {
+      this.reportBackgroundError('homegraph-extract-artifact', error, {
+        spaceId,
+        sourceId: source.id,
+        artifactId: artifact.id,
+      });
       return undefined;
     }
   }
@@ -715,36 +731,128 @@ export class HomeGraphService {
     return refreshHomeGraphQualityIssues(this.store, spaceId, installationId);
   }
 
-  private scheduleSyncSelfImprovement(spaceId: string): void {
+  private scheduleSyncSelfImprovement(spaceId: string, installationId: string): void {
     if (!this.options.semanticService || this.pendingSyncSelfImprove.has(spaceId)) return;
     this.pendingSyncSelfImprove.add(spaceId);
-    setTimeout(() => {
-      void this.options.semanticService?.selfImprove({
-        knowledgeSpaceId: spaceId,
-        reason: 'homegraph-sync',
-        limit: 2,
-        maxRunMs: 10_000,
-      }).catch(() => {}).finally(() => {
+    scheduleBackground(() => {
+      void this.runSyncSelfImprovementPump(spaceId, installationId).catch((error: unknown) => {
+        this.reportBackgroundError('homegraph-sync-self-improvement', error, { spaceId, installationId });
+      }).finally(() => {
         this.pendingSyncSelfImprove.delete(spaceId);
       });
     }, 5_000);
+  }
+
+  private async runSyncSelfImprovementPump(spaceId: string, installationId: string): Promise<void> {
+    for (let round = 0; round < 8; round += 1) {
+      const result = await this.options.semanticService?.selfImprove({
+        knowledgeSpaceId: spaceId,
+        reason: 'homegraph-sync',
+        limit: round === 0 ? 12 : 8,
+        maxRunMs: round === 0 ? 25_000 : 18_000,
+        force: round > 0,
+      });
+      if (!result) return;
+      if ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0) {
+        await this.refreshDevicePagesForSourceIds(spaceId, installationId, result.acceptedSourceIds ?? []);
+      }
+      if (!shouldContinueSyncSelfImprovement(result)) return;
+      await sleep(10_000);
+    }
   }
 
   private async enrichSpaceSources(spaceId: string): Promise<void> {
     if (!this.options.semanticService) return;
     const sources = readHomeGraphSearchState(this.store, spaceId).sources;
     await this.options.semanticService.enrichSources(sources, { knowledgeSpaceId: spaceId });
-    await this.options.semanticService.selfImprove({ knowledgeSpaceId: spaceId, reason: 'reindex' });
+    const result = await this.options.semanticService.selfImprove({ knowledgeSpaceId: spaceId, reason: 'reindex' });
+    const installationId = readInstallationIdFromSpace(spaceId);
+    if (installationId && ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0)) {
+      await this.refreshDevicePagesForSourceIds(spaceId, installationId, result.acceptedSourceIds ?? []);
+    }
   }
 
   private async enrichAndImproveSource(sourceId: string, spaceId: string): Promise<void> {
     if (!this.options.semanticService) return;
     await this.options.semanticService.enrichSource(sourceId, { knowledgeSpaceId: spaceId });
-    await this.options.semanticService.selfImprove({
+    const result = await this.options.semanticService.selfImprove({
       knowledgeSpaceId: spaceId,
       sourceIds: [sourceId],
       reason: 'ingest',
       limit: 12,
+    });
+    const installationId = readInstallationIdFromSpace(spaceId);
+    if (installationId && ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0)) {
+      await this.refreshDevicePagesForSourceIds(spaceId, installationId, uniqueStrings([sourceId, ...(result.acceptedSourceIds ?? [])]));
+    }
+  }
+
+  private async refreshDevicePagesForSourceIds(spaceId: string, installationId: string, sourceIds: readonly string[]): Promise<void> {
+    const wanted = new Set(sourceIds.filter(Boolean));
+    const state = readHomeGraphState(this.store, spaceId);
+    const nodesById = new Map(state.nodes.map((node) => [node.id, node]));
+    const factIds = new Set<string>();
+    const deviceNodeIds = new Set<string>();
+    for (const edge of state.edges) {
+      if (!edgeIsActive(edge)) continue;
+      if (wanted.size > 0 && edge.fromKind === 'source' && edge.toKind === 'node' && wanted.has(edge.fromId)) {
+        const node = nodesById.get(edge.toId);
+        if (node?.kind === 'ha_device') deviceNodeIds.add(node.id);
+        if (node?.kind === 'fact') factIds.add(node.id);
+      }
+      if (wanted.size > 0 && edge.fromKind === 'node' && edge.toKind === 'source' && wanted.has(edge.toId)) {
+        const node = nodesById.get(edge.fromId);
+        if (node?.kind === 'ha_device') deviceNodeIds.add(node.id);
+        if (node?.kind === 'fact') factIds.add(node.id);
+      }
+      if (wanted.size === 0 && edge.fromKind === 'node' && edge.toKind === 'node' && edge.relation === 'describes') {
+        const fact = nodesById.get(edge.fromId);
+        const device = nodesById.get(edge.toId);
+        if (fact && device?.kind === 'ha_device' && isUsefulHomeGraphPageFact(fact)) deviceNodeIds.add(device.id);
+      }
+    }
+    for (const edge of state.edges) {
+      if (!edgeIsActive(edge)) continue;
+      if (edge.fromKind === 'node' && edge.toKind === 'node' && factIds.has(edge.fromId) && edge.relation === 'describes') {
+        const device = nodesById.get(edge.toId);
+        if (device?.kind === 'ha_device') deviceNodeIds.add(device.id);
+      }
+    }
+    let refreshed = 0;
+    for (const [index, deviceNodeId] of [...deviceNodeIds].slice(0, MAX_DEVICE_PAGE_REPAIRS_PER_REFRESH).entries()) {
+      const device = nodesById.get(deviceNodeId);
+      if (!device) continue;
+      const deviceId = readHomeAssistantMetadataString(device, 'objectId', 'deviceId') ?? device.id;
+      try {
+        await refreshHomeGraphDevicePassport({
+          store: this.store,
+          artifactStore: this.artifactStore,
+          spaceId,
+          installationId,
+          input: {
+            knowledgeSpaceId: spaceId,
+            deviceId,
+            metadata: { automation: 'semantic-repair-refresh' },
+          },
+        });
+        refreshed += 1;
+      } catch (error) {
+        this.reportBackgroundError('homegraph-refresh-device-page', error, {
+          spaceId,
+          installationId,
+          deviceId,
+        });
+      }
+      await yieldEvery(index, 2);
+    }
+  }
+
+  private reportBackgroundError(event: string, error: unknown, metadata: Record<string, unknown>): void {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn('Home Graph background work failed', {
+      event,
+      error: message,
+      ...metadata,
     });
   }
 
@@ -822,6 +930,34 @@ function withHomeGraphAskPageRefresh(
       },
     },
   };
+}
+
+function shouldContinueSyncSelfImprovement(result: {
+  readonly createdGaps?: number;
+  readonly truncated?: boolean;
+  readonly budgetExhausted?: boolean;
+  readonly processedGaps?: number;
+  readonly repairableGaps: number;
+  readonly queuedTasks: number;
+  readonly closedGaps: number;
+  readonly acceptedSourceIds?: readonly string[];
+  readonly promotedFactCount?: number;
+  readonly taskIds: readonly string[];
+}): boolean {
+  const madeProgress = result.closedGaps > 0
+    || (result.createdGaps ?? 0) > 0
+    || result.queuedTasks > 0
+    || result.taskIds.length > 0
+    || (result.acceptedSourceIds?.length ?? 0) > 0
+    || (result.promotedFactCount ?? 0) > 0
+    || (result.processedGaps ?? 0) > 0;
+  if (!madeProgress) return false;
+  return result.truncated === true || result.budgetExhausted === true || result.repairableGaps > 0 || result.queuedTasks > 0;
+}
+
+function readInstallationIdFromSpace(spaceId: string): string | undefined {
+  const match = /^homeassistant:(.+)$/i.exec(spaceId);
+  return match?.[1] && match[1].trim() ? match[1].trim() : undefined;
 }
 
 function extractionHasSearchableText(extraction: KnowledgeExtractionRecord): boolean {

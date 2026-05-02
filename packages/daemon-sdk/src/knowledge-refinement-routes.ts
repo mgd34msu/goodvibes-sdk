@@ -26,7 +26,14 @@ export function createDaemonKnowledgeRefinementRouteHandlers(
 }
 
 function readLimit(url: URL, fallback: number): number {
-  return Math.max(1, Number(url.searchParams.get('limit') ?? fallback) || fallback);
+  return readBoundedPositiveInteger(url.searchParams.get('limit'), fallback, 1_000);
+}
+
+function readBoundedPositiveInteger(raw: string | null, fallback: number, max: number): number {
+  if (raw === null || raw.trim() === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(value)));
 }
 
 function readRefinementTaskFilter(url: URL): Record<string, unknown> {

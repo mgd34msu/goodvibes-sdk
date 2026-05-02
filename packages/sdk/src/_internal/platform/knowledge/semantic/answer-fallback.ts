@@ -93,6 +93,7 @@ function collectProfilePhrases(
     const phrase = renderFactPhrase(fact);
     if (phrase) phrases.push(phrase);
   }
+  if (phrases.length < 2) return uniqueCaseInsensitive(phrases);
   for (const item of evidence) {
     const excerpt = readEvidenceExcerpt(item);
     if (excerpt) phrases.push(excerpt);
@@ -113,9 +114,9 @@ type FeatureProfileCategory = 'display' | 'smart' | 'connectivity' | 'audio' | '
 function featureProfileTerms(value: string, category: FeatureProfileCategory): string[] {
   const termMap: Record<FeatureProfileCategory, readonly [string, RegExp][]> = {
     display: [
-      ['86-inch class screen', /\b86(?:\.0)?\s*(?:inch|inches|in\.|")\b|\b86nano/i],
+      ['screen size/class', /\b\d{2,3}(?:\.0)?\s*(?:inch|inches|in\.|")\b/i],
       ['4K UHD resolution', /\b4k\b|\buhd\b|\b3840\s*(?:x|×)\s*2160\b/i],
-      ['NanoCell display technology', /\bnanocell\b/i],
+      ['display panel technology', /\boled\b|\bqled\b|\bmini[- ]?led\b|\bled\b|\blcd\b/i],
       ['LCD/LED display', /\blcd\b|\bled\b/i],
       ['100/120 Hz refresh rate', /\b(?:100|120)\s*hz\b|\btrumotion\s*240\b/i],
       ['HDR10', /\bhdr10\b/i],
@@ -125,7 +126,7 @@ function featureProfileTerms(value: string, category: FeatureProfileCategory): s
     ],
     smart: [
       ['webOS smart TV platform', /\bwebos\b/i],
-      ['LG ThinQ AI', /\bthinq\b/i],
+      ['vendor smart-home integration', /\bsmartthings\b|\bhomekit\b|\bgoogle home\b|\balexa\b/i],
       ['Apple AirPlay 2', /\bairplay\s*2?\b/i],
       ['Apple HomeKit', /\bhomekit\b/i],
       ['voice assistant support', /\bvoice\b|\balexa\b|\bgoogle assistant\b/i],

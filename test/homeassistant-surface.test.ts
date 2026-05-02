@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
 import { handleHomeAssistantSurfaceWebhook } from '../packages/sdk/src/_internal/platform/adapters/homeassistant/index.js';
 import type { SurfaceAdapterContext } from '../packages/sdk/src/_internal/platform/adapters/types.js';
@@ -15,7 +15,11 @@ import type { ServiceRegistry } from '../packages/sdk/src/_internal/platform/con
 import { HomeAssistantConversationRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/homeassistant-routes.js';
 import { HomeAssistantIntegration } from '../packages/sdk/src/_internal/platform/integrations/homeassistant.js';
 
-const originalFetch = globalThis.fetch;
+let originalFetch: typeof globalThis.fetch;
+
+beforeEach(() => {
+  originalFetch = globalThis.fetch;
+});
 
 afterEach(() => {
   globalThis.fetch = originalFetch;

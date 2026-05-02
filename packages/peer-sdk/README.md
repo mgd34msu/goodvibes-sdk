@@ -9,7 +9,7 @@ import { createPeerSdk } from '@pellux/goodvibes-sdk/peer';
 
 const peer = createPeerSdk({
   baseUrl: 'http://127.0.0.1:3210',
-  authToken: process.env.GOODVIBES_PEER_TOKEN,
+  authToken: process.env.GOODVIBES_TOKEN,
 });
 
 const work = await peer.work.pull();
@@ -26,7 +26,7 @@ import { createHttpTransport } from '@pellux/goodvibes-sdk/transport-http';
 
 const transport = createHttpTransport({
   baseUrl: 'http://127.0.0.1:3210',
-  authToken: process.env.GOODVIBES_PEER_TOKEN,
+  authToken: process.env.GOODVIBES_TOKEN,
 });
 
 const peer = createPeerRemoteClient(transport, getPeerContract());

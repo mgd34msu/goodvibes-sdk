@@ -18,6 +18,8 @@ import {
   trimToUndefined,
 } from './shared.js';
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 
 const DEFAULT_ELEVENLABS_STT_MODEL = 'scribe_v2';
 const DEFAULT_ELEVENLABS_REALTIME_MODEL = 'scribe_v2_realtime';
@@ -135,7 +137,13 @@ async function* streamResponseAudioChunks(
       };
     }
   } finally {
-    if (!completed) await reader.cancel().catch(() => undefined);
+    if (!completed) {
+      try {
+        await reader.cancel('ElevenLabs stream was not fully consumed');
+      } catch (error) {
+        logger.warn('ElevenLabs stream reader cancel failed', { error: summarizeError(error) });
+      }
+    }
     reader.releaseLock();
   }
 }

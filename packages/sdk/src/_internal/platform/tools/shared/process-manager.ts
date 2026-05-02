@@ -1,5 +1,8 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
+import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
+
 /**
  * ProcessManager — tracks background processes for a single GoodVibes runtime.
  *
@@ -144,11 +147,11 @@ export class ProcessManager {
     // Timeout watchdog: SIGTERM → wait grace → SIGKILL
     const timeoutHandle = setTimeout(async () => {
       if (entry.done) return;
-      try { proc.kill('SIGTERM'); } catch { /* already exited */ }
+      killTrackedProcess(proc, 'SIGTERM', id);
       entry.killDeadline = Date.now() + sigtermGraceMs;
       await sleep(sigtermGraceMs);
       if (!entry.done) {
-        try { proc.kill('SIGKILL'); } catch { /* already exited */ }
+        killTrackedProcess(proc, 'SIGKILL', id);
       }
     }, timeoutMs);
     timeoutHandle.unref?.();
@@ -156,7 +159,8 @@ export class ProcessManager {
     // Reject the spawn promise if the process errors immediately (ENOENT/EACCES
     // on the child process level) — the outer try/catch handles Bun.spawn throws;
     // this handles async failures surfaced via proc.exited rejecting.
-    void collectionPromise.catch(() => {
+    void collectionPromise.catch((error) => {
+      logger.warn('Background process output collection failed', { processId: id, error: summarizeError(error) });
       clearTimeout(timeoutHandle);
       entry.done = true;
       entry.completedAt = Date.now();
@@ -207,7 +211,7 @@ export class ProcessManager {
 
     const liveProc = this._procs.get(id);
     if (liveProc && !entry.done) {
-      try { liveProc.kill('SIGTERM'); } catch { /* already exited */ }
+      killTrackedProcess(liveProc, 'SIGTERM', id);
     }
     entry.done = true;
     this._procs.delete(id);
@@ -293,6 +297,18 @@ export class ProcessManager {
       if (now - completedAt <= COMPLETED_PROCESS_TTL_MS && i < MAX_COMPLETED_PROCESSES) continue;
       this._processes.delete(entry.id);
     }
+  }
+}
+
+function killTrackedProcess(proc: ReturnType<typeof Bun.spawn>, signal: Parameters<ReturnType<typeof Bun.spawn>['kill']>[0], id: string): void {
+  try {
+    proc.kill(signal);
+  } catch (error) {
+    logger.debug('Background process kill failed; process may already be exited', {
+      processId: id,
+      signal,
+      error: summarizeError(error),
+    });
   }
 }
 

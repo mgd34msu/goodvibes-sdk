@@ -363,7 +363,10 @@ export function createAgentTool(config: {
             const current = manager.getStatus(input.agentId);
             if (!current || terminalStatuses.has(current.status)) break;
             if (Date.now() - start >= timeoutMs) break;
-            await new Promise<void>(resolve => setTimeout(resolve, pollIntervalMs));
+            await new Promise<void>((resolve) => {
+              const timer = setTimeout(resolve, pollIntervalMs);
+              timer.unref?.();
+            });
           }
         }
 

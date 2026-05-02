@@ -4,6 +4,10 @@
   "version": "0.28.22",
   "type": "module",
   "packageManager": "bun@1.3.10",
+  "engines": {
+    "bun": ">=1.3.10",
+    "node": ">=22.0.0"
+  },
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "license": "MIT",
   "repository": {
@@ -60,6 +64,7 @@
     "release:verify:verdaccio": "bun scripts/verdaccio-dry-run.ts",
     "bundle:check": "bun scripts/bundle-budget.ts",
     "todo:check": "bun scripts/no-todo-markers.ts",
+    "security:audit": "bun audit --audit-level high",
     "flake:check": "bun scripts/flake-detect.ts",
     "api:extract": "bunx api-extractor run --local",
     "api:check": "bunx api-extractor run",
@@ -100,7 +105,7 @@
     "fast-xml-parser": "5.7.1",
     "google-auth-library": "10.6.2",
     "bash-language-server": "file:vendor/bash-language-server",
-    "lodash": "4.18.1",
+    "lodash": "4.17.21",
     "minimatch": "^10.2.5",
     "uuid": "file:vendor/uuid-cjs"
   }

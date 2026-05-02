@@ -212,6 +212,7 @@ export class OtlpExporter implements SpanExporter {
       () => controller.abort(),
       this._config.timeoutMs,
     );
+    timer.unref?.();
 
     try {
       const body = serialiseSpans(batch);

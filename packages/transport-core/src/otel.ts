@@ -81,7 +81,8 @@ async function probeOtel(): Promise<OtelApi | null> {
   try {
     const mod = await dynamicImport('@opentelemetry/api');
     otelApi = mod as OtelApi;
-  } catch {
+  } catch (error) {
+    void error;
     otelApi = null;
   }
   return otelApi;
@@ -101,7 +102,8 @@ function probeOtelSync(): OtelApi | null {
     } else {
       otelApi = null;
     }
-  } catch {
+  } catch (error) {
+    void error;
     otelApi = null;
   }
   return otelApi;
@@ -131,7 +133,8 @@ export function injectTraceparent(headers: Record<string, string>): void {
     if (traceState) {
       headers['tracestate'] = traceState;
     }
-  } catch {
+  } catch (error) {
+    void error;
     // Never let OTel errors propagate into transport logic.
   }
 }
@@ -155,7 +158,8 @@ export async function injectTraceparentAsync(headers: Record<string, string>): P
     if (traceState) {
       headers['tracestate'] = traceState;
     }
-  } catch {
+  } catch (error) {
+    void error;
     // Never let OTel errors propagate into transport logic.
   }
 }

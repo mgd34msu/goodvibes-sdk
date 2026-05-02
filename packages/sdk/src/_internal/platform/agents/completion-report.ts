@@ -1,5 +1,8 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
+import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
+
 /**
  * Structured completion reports — per-archetype output contracts.
  * Agents include these in their final output. The WrfcController extracts them.
@@ -118,7 +121,9 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
     try {
       const parsed = JSON.parse(jsonBlockMatch[1]);
       if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as unknown as CompletionReport;
-    } catch { /* fall through */ }
+    } catch (error) {
+      logger.debug('Completion report fenced JSON parse failed', { error: summarizeError(error) });
+    }
   }
 
   // Strategy 2: Brace-counting extraction — find "version": 1, walk backward for opening {,
@@ -146,7 +151,9 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
         try {
           const parsed = JSON.parse(candidate);
           if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as unknown as CompletionReport;
-        } catch { /* fall through */ }
+        } catch (error) {
+          logger.debug('Completion report brace-count JSON parse failed', { error: summarizeError(error) });
+        }
       }
     }
   }

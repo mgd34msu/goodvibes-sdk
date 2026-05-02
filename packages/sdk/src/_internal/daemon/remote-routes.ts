@@ -5,6 +5,8 @@ import { serializableJsonResponse } from './route-helpers.js';
 
 type JsonBody = Record<string, unknown>;
 type RemotePeerAuth = unknown;
+const MAX_REMOTE_RESULT_BYTES = 1_000_000;
+const MAX_REMOTE_PAYLOAD_BYTES = 1_000_000;
 
 interface DistributedRuntimeRouteService {
   listPairRequests(): unknown;
@@ -92,8 +94,8 @@ export async function handleRemotePairRequest(
     commands: Array.isArray(body.commands) ? body.commands.filter((value): value is string => typeof value === 'string') : [],
     metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
     requestedBy: 'remote',
-    remoteAddress: req.headers.get('x-forwarded-for') ?? undefined,
-    ttlMs: typeof body.ttlMs === 'number' ? body.ttlMs : undefined,
+    remoteAddress: readForwardedForForDisplay(req),
+    ttlMs: boundedPositiveNumber(body.ttlMs, 1_000, 86_400_000),
   });
   return Response.json(created, { status: 201 });
 }
@@ -110,7 +112,7 @@ export async function handleRemotePairVerify(
     return Response.json({ error: 'Missing requestId or challenge' }, { status: 400 });
   }
   const verified = await context.distributedRuntime.verifyPairRequest(requestId, challenge, {
-    remoteAddress: req.headers.get('x-forwarded-for') ?? undefined,
+    remoteAddress: readForwardedForForDisplay(req),
     metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
   });
   return verified
@@ -127,7 +129,7 @@ export async function handleRemotePeerHeartbeat(
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const peer = await context.distributedRuntime.heartbeatPeer(auth, {
-    remoteAddress: req.headers.get('x-forwarded-for') ?? undefined,
+    remoteAddress: readForwardedForForDisplay(req),
     capabilities: Array.isArray(body.capabilities) ? body.capabilities.filter((value): value is string => typeof value === 'string') : undefined,
     commands: Array.isArray(body.commands) ? body.commands.filter((value): value is string => typeof value === 'string') : undefined,
     version: typeof body.version === 'string' ? body.version : undefined,
@@ -146,8 +148,8 @@ export async function handleRemotePeerWorkPull(
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const work = await context.distributedRuntime.claimWork(auth, {
-    maxItems: typeof body.maxItems === 'number' ? body.maxItems : undefined,
-    leaseMs: typeof body.leaseMs === 'number' ? body.leaseMs : undefined,
+    maxItems: boundedPositiveNumber(body.maxItems, 1, 100),
+    leaseMs: boundedPositiveNumber(body.leaseMs, 1_000, 3_600_000),
   });
   return Response.json({ work });
 }
@@ -161,15 +163,38 @@ export async function handleRemotePeerWorkComplete(
   if (auth instanceof Response) return auth;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
+  const result = validateRemoteJsonPayload(body.result, MAX_REMOTE_RESULT_BYTES, 'result');
+  if (result instanceof Response) return result;
   const work = await context.distributedRuntime.completeWork(auth, workId, {
     status: body.status === 'failed' || body.status === 'cancelled' ? body.status : body.status === 'completed' ? 'completed' : undefined,
-    result: body.result,
+    result,
     error: typeof body.error === 'string' ? body.error : undefined,
     metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
   });
   return work
     ? Response.json({ work })
     : Response.json({ error: 'Unknown or unclaimed remote work item' }, { status: 404 });
+}
+
+function boundedPositiveNumber(value: unknown, min: number, max: number): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.max(min, Math.min(max, Math.trunc(value)));
+}
+
+function validateRemoteJsonPayload(value: unknown, maxBytes: number, field: string): unknown | Response {
+  const encoded = new TextEncoder().encode(JSON.stringify(value ?? null));
+  if (encoded.byteLength <= maxBytes) return value;
+  return Response.json({
+    error: `Remote ${field} exceeds ${maxBytes} byte limit`,
+  }, { status: 413 });
+}
+
+function readForwardedForForDisplay(req: Request): string | undefined {
+  // x-forwarded-for is caller-controlled unless the daemon is explicitly behind
+  // a trusted proxy. Preserve a small display/audit hint, but never use it for
+  // authorization decisions.
+  const value = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  return value || undefined;
 }
 
 function operatorActor(context: DaemonRemoteRouteContext, req: Request): string {
@@ -260,15 +285,17 @@ async function handleInvokeRemotePeer(context: DaemonRemoteRouteContext, peerId:
   if (!command) {
     return Response.json({ error: 'Missing remote invoke command' }, { status: 400 });
   }
+  const payload = validateRemoteJsonPayload(body.payload, MAX_REMOTE_PAYLOAD_BYTES, 'payload');
+  if (payload instanceof Response) return payload;
   try {
     const invoked = await context.distributedRuntime.invokePeer({
       peerId,
       command,
-      payload: body.payload,
+      payload,
       priority: body.priority === 'high' || body.priority === 'default' ? body.priority : 'normal',
       actor: operatorActor(context, req),
-      waitMs: typeof body.waitMs === 'number' ? body.waitMs : undefined,
-      timeoutMs: typeof body.timeoutMs === 'number' ? body.timeoutMs : undefined,
+      waitMs: boundedPositiveNumber(body.waitMs, 0, 300_000),
+      timeoutMs: boundedPositiveNumber(body.timeoutMs, 1_000, 300_000),
       sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
       routeId: typeof body.routeId === 'string' ? body.routeId : undefined,
       automationRunId: typeof body.automationRunId === 'string' ? body.automationRunId : undefined,

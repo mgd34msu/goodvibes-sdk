@@ -219,10 +219,8 @@ export function createNetworkTransportError(
     method,
     body: { error: message },
     hint,
+    cause: error,
   });
-  if (error !== undefined) {
-    Object.defineProperty(networkError, 'cause', { value: error, writable: true, configurable: true });
-  }
   const transportPayload: TransportJsonError = {
     status: 0,
     body: { error: message },
@@ -241,11 +239,7 @@ function toStringValue(value: unknown, key: string): string {
 }
 
 function addQueryValue(url: URL, key: string, value: unknown): void {
-  if (value === undefined) return;
-  if (value === null) {
-    url.searchParams.append(key, 'null');
-    return;
-  }
+  if (value === undefined || value === null) return;
   if (Array.isArray(value)) {
     for (const item of value) {
       addQueryValue(url, key, item);
@@ -257,6 +251,11 @@ function addQueryValue(url: URL, key: string, value: unknown): void {
     return;
   }
   url.searchParams.append(key, String(value));
+}
+
+function hasHeader(headers: Record<string, string>, name: string): boolean {
+  const normalized = name.toLowerCase();
+  return Object.keys(headers).some((key) => key.toLowerCase() === normalized);
 }
 
 function splitContractInput(path: string, input: Record<string, unknown> = {}): {
@@ -326,7 +325,8 @@ export async function readJsonBody(response: Response): Promise<unknown> {
   if (!text.trim()) return null;
   try {
     return JSON.parse(text) as unknown;
-  } catch {
+  } catch (error) {
+    void error;
     return text;
   }
 }
@@ -379,6 +379,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
     // Determine idempotency: non-GET mutations without an explicit idempotent flag do NOT retry.
     // This is enforced below by gating the retry check on method type.
     const isMutatingMethod = IDEMPOTENCY_KEY_METHODS.has(method.toUpperCase());
+    const idempotencyKey = isMutatingMethod ? generateIdempotencyKey() : undefined;
 
     let attempt = 0;
 
@@ -402,8 +403,8 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
       injectTraceparent(mergedHeaders);
 
       // Inject idempotency key for mutating methods.
-      if (isMutatingMethod) {
-        mergedHeaders['Idempotency-Key'] = generateIdempotencyKey();
+      if (idempotencyKey && !hasHeader(mergedHeaders, 'Idempotency-Key')) {
+        mergedHeaders['Idempotency-Key'] = idempotencyKey;
       }
 
       // Notify observer before dispatching the request.
@@ -507,9 +508,8 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
               category: 'unknown',
               source: 'transport',
               recoverable: false,
+              cause: { middleware: middlewareName, originalError: error },
             });
-            const causeValue = { middleware: middlewareName, originalError: error };
-            Object.defineProperty(wrapped, 'cause', { value: causeValue, writable: true, configurable: true });
             return wrapped;
           }
           if (error instanceof GoodVibesSdkError) return error;

@@ -28,21 +28,20 @@
  * Startup behaviour:
  *   - wrangler dev cold-starts in ~5-15s (first run populates Miniflare's workerd cache)
  *   - CI timeout: 120s for the job; wrangler startup timeout here: 60s
- *   - Port: randomised above 10000 to avoid collisions with other test jobs
+ *   - Port: reserved via the OS ephemeral-port allocator before wrangler starts
  */
 
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { createServer } from 'node:net';
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HARNESS_DIR = resolve(__dirname); // test/workers-wrangler/
 
-// Pick a random port in [12000, 19999] to avoid collisions.
-// Not 8787 (wrangler default) or common dev ports.
-const PORT = 12000 + Math.floor(Math.random() * 8000);
-const BASE_URL = `http://127.0.0.1:${PORT}`;
+let port = 0;
+let baseUrl = '';
 
 // Maximum time to wait for wrangler to report ready (ms).
 const STARTUP_TIMEOUT_MS = 60_000;
@@ -51,18 +50,36 @@ const POLL_INTERVAL_MS = 500;
 
 let wranglerProcess: ChildProcess;
 
+async function findAvailablePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once('error', rejectListen);
+    server.listen(0, '127.0.0.1', resolveListen);
+  });
+  const address = server.address();
+  await new Promise<void>((resolveClose, rejectClose) => {
+    server.close((error) => error ? rejectClose(error) : resolveClose());
+  });
+  if (!address || typeof address === 'string') {
+    throw new Error('Unable to reserve an ephemeral port for wrangler.');
+  }
+  return address.port;
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle: spawn wrangler dev, poll /health, kill after tests
 // ---------------------------------------------------------------------------
 
 beforeAll(async () => {
+  port = await findAvailablePort();
+  baseUrl = `http://127.0.0.1:${port}`;
   wranglerProcess = spawn(
     'bunx',
     [
       'wrangler',
       'dev',
       '--local',
-      '--port', String(PORT),
+      '--port', String(port),
     ],
     {
       cwd: HARNESS_DIR,
@@ -100,13 +117,13 @@ beforeAll(async () => {
       const logs = stderrLines.join('');
       throw new Error(
         `wrangler dev exited early (code ${wranglerProcess.exitCode}).\n` +
-        `Port: ${PORT}\n` +
+        `Port: ${port}\n` +
         `Output:\n${logs}`,
       );
     }
 
     try {
-      const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(1000) });
+      const res = await fetch(`${baseUrl}/health`, { signal: AbortSignal.timeout(1000) });
       if (res.status === 200) {
         ready = true;
         break;
@@ -120,7 +137,7 @@ beforeAll(async () => {
     const logs = stderrLines.join('');
     wranglerProcess.kill('SIGKILL');
     throw new Error(
-      `wrangler dev did not become ready within ${STARTUP_TIMEOUT_MS}ms on port ${PORT}.\n` +
+      `wrangler dev did not become ready within ${STARTUP_TIMEOUT_MS}ms on port ${port}.\n` +
       `Output:\n${logs}`,
     );
   }
@@ -138,11 +155,14 @@ afterAll(async () => {
 });
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }
 
 async function get(path: string): Promise<{ status: number; body: unknown }> {
-  const res = await fetch(`${BASE_URL}${path}`, { signal: AbortSignal.timeout(10_000) });
+  const res = await fetch(`${baseUrl}${path}`, { signal: AbortSignal.timeout(10_000) });
   const body = await res.json();
   return { status: res.status, body };
 }

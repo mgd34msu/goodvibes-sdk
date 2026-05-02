@@ -260,6 +260,18 @@ export function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+export function readHomeAssistantMetadataString(
+  node: { readonly metadata: Record<string, unknown> },
+  ...keys: readonly string[]
+): string | undefined {
+  const homeAssistant = readRecord(node.metadata.homeAssistant);
+  for (const key of keys) {
+    const value = readString(homeAssistant[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
 export function normalizeHomeGraphObjectInput(
   kind: HomeGraphObjectKind | HomeGraphNodeKind,
   value: HomeGraphObjectInput | Record<string, unknown>,
@@ -347,7 +359,7 @@ function idForKind(
   }
 }
 
-function readString(value: unknown): string | undefined {
+export function readString(value: unknown): string | undefined {
   if (typeof value === 'string') {
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : undefined;
@@ -356,9 +368,30 @@ function readString(value: unknown): string | undefined {
   return undefined;
 }
 
-function readStringArray(value: unknown): string[] {
+export function readStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return uniqueStrings(value.map((entry) => readString(entry)));
+}
+
+export function mergeSourceStatus(
+  incoming: KnowledgeSourceRecord['status'],
+  existing: KnowledgeSourceRecord['status'] | undefined,
+): KnowledgeSourceRecord['status'] {
+  if (!existing) return incoming;
+  return sourceStatusRank(incoming) >= sourceStatusRank(existing) ? incoming : existing;
+}
+
+function sourceStatusRank(status: KnowledgeSourceRecord['status']): number {
+  switch (status) {
+    case 'indexed':
+      return 4;
+    case 'pending':
+      return 3;
+    case 'failed':
+      return 1;
+    case 'stale':
+      return 0;
+  }
 }
 
 function hasSnakeCaseHomeAssistantFields(raw: Record<string, unknown>): boolean {
@@ -372,7 +405,8 @@ function stableJson(value: unknown): string {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
       return Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right)));
     });
-  } catch {
+  } catch (error) {
+    void error;
     return String(value);
   }
 }

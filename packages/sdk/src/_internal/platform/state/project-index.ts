@@ -245,6 +245,7 @@ export class ProjectIndex {
         logger.debug('ProjectIndex: scheduled flush failed', { error: summarizeError(err) });
       });
     }, 5000);
+    this.flushTimer.unref?.();
   }
 
   private async flush(): Promise<void> {

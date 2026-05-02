@@ -7,7 +7,7 @@ import type {
   KnowledgeSourceRecord,
   KnowledgeSourceType,
 } from '../types.js';
-import { belongsToSpace, edgeIsActive, readRecord } from './helpers.js';
+import { belongsToSpace, edgeIsActive, readRecord, readStringArray } from './helpers.js';
 import type { HomeGraphRenderState } from './rendering.js';
 
 export interface HomeGraphState extends Omit<HomeGraphRenderState, 'title'> {
@@ -119,12 +119,6 @@ function sourceLinkedObjectIds(source: KnowledgeSourceRecord): string[] {
     ...readStringArray(metadata.linkedObjectIds),
     ...readStringArray(discovery.linkedObjectIds),
   ];
-}
-
-function readStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
-    : [];
 }
 
 export function missingDevicePassportFields(

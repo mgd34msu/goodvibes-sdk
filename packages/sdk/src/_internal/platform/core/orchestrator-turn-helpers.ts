@@ -292,7 +292,7 @@ export function handleFinalResponseOutcome(args: {
   if (pendingPlan) {
     const pendingItems = planManager?.getNextItems(pendingPlan) ?? [];
     if (pendingItems.length > 0) {
-      args.setAutoSpawnTimeout(setTimeout(() => {
+      const timeout = setTimeout(() => {
         args.setAutoSpawnTimeout(null);
         const stillActivePlan = planManager?.getActive(args.sessionId) ?? null;
         if (!stillActivePlan) return;
@@ -316,7 +316,9 @@ export function handleFinalResponseOutcome(args: {
           );
           args.requestRender();
         }
-      }, args.autoSpawnTimeoutMs));
+      }, args.autoSpawnTimeoutMs);
+      timeout.unref?.();
+      args.setAutoSpawnTimeout(timeout);
     }
   }
 

@@ -16,6 +16,7 @@ describe('peer sdk', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       authToken: 'peer-token',
+      validateResponses: false,
       fetch: async (input, init) => {
         calls.push({ url: String(input), init });
         return createJsonResponse({ ok: true });
@@ -40,6 +41,7 @@ describe('peer sdk', () => {
   test('supports simple pairing requests', async () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
+      validateResponses: false,
       fetch: async () => createJsonResponse({ requestId: 'pair-1' }),
     });
 

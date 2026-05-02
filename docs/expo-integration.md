@@ -19,7 +19,7 @@ const sdk = createExpoGoodVibesSdk({
 
 - prefer bearer tokens for Expo apps
 - store tokens in `expo-secure-store` or equivalent secure storage
-- prefer `sdk.realtime.runtime()` / WebSocket-backed realtime over SSE
+- prefer `sdk.realtime.viaWebSocket()` over SSE
 - reconnect on foreground/resume transitions
 - wrap token access in a `tokenStore` or `getAuthToken` so reconnects do not keep stale tokens
 

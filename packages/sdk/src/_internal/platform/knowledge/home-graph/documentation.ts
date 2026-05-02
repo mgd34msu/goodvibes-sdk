@@ -5,6 +5,7 @@ import {
   buildHomeGraphMetadata,
   homeGraphSourceId,
   readRecord,
+  readString,
   uniqueStrings,
 } from './helpers.js';
 import type { HomeGraphObjectInput } from './types.js';
@@ -91,10 +92,4 @@ function integrationDomain(node: KnowledgeNodeRecord, object: HomeGraphObjectInp
 function candidateUrl(value: unknown, title: string, kind: string): readonly { readonly url: string; readonly title: string; readonly kind: string }[] {
   const url = readString(value);
   return url && /^https?:\/\//i.test(url) ? [{ url, title, kind }] : [];
-}
-
-function readString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
 }

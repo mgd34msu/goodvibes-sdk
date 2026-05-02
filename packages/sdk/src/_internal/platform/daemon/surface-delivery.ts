@@ -479,7 +479,10 @@ export class DaemonSurfaceDeliveryHelper {
           text: isPending ? `Approval required: ${summary}` : `Approval ${approval.status}: ${summary}`,
           ...(blocks ? { blocks } : {}),
         }),
-      }).catch(() => {});
+      }).catch((error) => logger.warn('Slack approval response delivery failed', {
+        approvalId: approval.id,
+        error: summarizeError(error),
+      }));
       return;
     }
     if (binding.channelId) {
@@ -504,11 +507,22 @@ export class DaemonSurfaceDeliveryHelper {
     const applicationId = typeof binding.metadata.applicationId === 'string' ? binding.metadata.applicationId : undefined;
     const interactionToken = typeof binding.metadata.interactionToken === 'string' ? binding.metadata.interactionToken : undefined;
     if (applicationId && interactionToken) {
-      await discord.editOriginalResponse(applicationId, interactionToken, content).catch(() => {});
+      await discord.editOriginalResponse(applicationId, interactionToken, content).catch((error) => {
+        logger.warn('Discord approval interaction update failed', {
+          approvalId: approval.id,
+          error: summarizeError(error),
+        });
+      });
       return;
     }
     if (binding.channelId) {
-      await discord.postMessage(binding.channelId, content).catch(() => {});
+      await discord.postMessage(binding.channelId, content).catch((error) => {
+        logger.warn('Discord approval channel update failed', {
+          approvalId: approval.id,
+          channelId: binding.channelId,
+          error: summarizeError(error),
+        });
+      });
     }
   }
 
@@ -526,7 +540,11 @@ export class DaemonSurfaceDeliveryHelper {
       title: approval.request.tool,
       ...(webUrl ? { click: webUrl } : {}),
       markGoodVibesOrigin: true,
-    }).catch(() => {});
+    }).catch((error) => logger.warn('ntfy approval update failed', {
+      approvalId: approval.id,
+      topic,
+      error: summarizeError(error),
+    }));
   }
 
   async deliverWebhookApprovalUpdate(approval: SharedApprovalRecord, binding: RouteBinding): Promise<void> {
@@ -553,7 +571,10 @@ export class DaemonSurfaceDeliveryHelper {
       method: 'POST',
       headers,
       body: payload,
-    }).catch(() => {});
+    }).catch((error) => logger.warn('Webhook approval update failed', {
+      approvalId: approval.id,
+      error: summarizeError(error),
+    }));
   }
 
   private async resolveSlackWebhookUrl(): Promise<string | null> {

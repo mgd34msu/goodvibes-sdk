@@ -344,7 +344,10 @@ describe('transport realtime', () => {
       payloads.push(event.payload);
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    const deadline = Date.now() + 500;
+    while (Date.now() < deadline && payloads.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
     unsubscribe();
 
     expect(seenLastEventIds.slice(0, 2)).toEqual([null, 'evt-1']);

@@ -77,6 +77,12 @@ function parseNumber(value: string | null): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function parseLimit(value: string | null): number | undefined {
+  const parsed = parseNumber(value);
+  if (parsed === undefined) return undefined;
+  return Math.min(1_000, Math.max(1, Math.floor(parsed)));
+}
+
 function parseCsv<T extends string>(value: string | null): readonly T[] | undefined {
   if (!value) return undefined;
   const parsed = value
@@ -97,20 +103,27 @@ function parseView(value: string | null): TelemetryViewMode | undefined {
 }
 
 function buildFilter(url: URL): TelemetryFilter {
+  const limit = parseLimit(url.searchParams.get('limit'));
+  const since = parseNumber(url.searchParams.get('since'));
+  const until = parseNumber(url.searchParams.get('until'));
+  const domains = parseCsv<RuntimeEventDomain>(url.searchParams.get('domains'));
+  const eventTypes = parseCsv<string>(url.searchParams.get('types'));
+  const severity = parseSeverity(url.searchParams.get('severity'));
+  const view = parseView(url.searchParams.get('view'));
   return {
-    ...(parseNumber(url.searchParams.get('limit')) !== undefined ? { limit: parseNumber(url.searchParams.get('limit')) } : {}),
-    ...(parseNumber(url.searchParams.get('since')) !== undefined ? { since: parseNumber(url.searchParams.get('since')) } : {}),
-    ...(parseNumber(url.searchParams.get('until')) !== undefined ? { until: parseNumber(url.searchParams.get('until')) } : {}),
-    ...(parseCsv<RuntimeEventDomain>(url.searchParams.get('domains')) ? { domains: parseCsv<RuntimeEventDomain>(url.searchParams.get('domains')) } : {}),
-    ...(parseCsv<string>(url.searchParams.get('types')) ? { eventTypes: parseCsv<string>(url.searchParams.get('types')) } : {}),
-    ...(parseSeverity(url.searchParams.get('severity')) ? { severity: parseSeverity(url.searchParams.get('severity')) } : {}),
+    ...(limit !== undefined ? { limit } : {}),
+    ...(since !== undefined ? { since } : {}),
+    ...(until !== undefined ? { until } : {}),
+    ...(domains ? { domains } : {}),
+    ...(eventTypes ? { eventTypes } : {}),
+    ...(severity ? { severity } : {}),
     ...(url.searchParams.get('traceId') ? { traceId: url.searchParams.get('traceId') ?? undefined } : {}),
     ...(url.searchParams.get('sessionId') ? { sessionId: url.searchParams.get('sessionId') ?? undefined } : {}),
     ...(url.searchParams.get('turnId') ? { turnId: url.searchParams.get('turnId') ?? undefined } : {}),
     ...(url.searchParams.get('agentId') ? { agentId: url.searchParams.get('agentId') ?? undefined } : {}),
     ...(url.searchParams.get('taskId') ? { taskId: url.searchParams.get('taskId') ?? undefined } : {}),
     ...(url.searchParams.get('cursor') ? { cursor: url.searchParams.get('cursor') ?? undefined } : {}),
-    ...(parseView(url.searchParams.get('view')) ? { view: parseView(url.searchParams.get('view')) } : {}),
+    ...(view ? { view } : {}),
   };
 }
 
@@ -175,7 +188,8 @@ async function parseOtlpBody(
   if (acceptsProtobuf) {
     try {
       return decodeOtlpProtobuf(kind, new Uint8Array(raw));
-    } catch {
+    } catch (error) {
+      void error;
       return Response.json(
         { error: 'OTLP ingest body is not valid protobuf', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
         { status: 400 },
@@ -193,7 +207,8 @@ async function parseOtlpBody(
       );
     }
     return parsed as Record<string, unknown>;
-  } catch {
+  } catch (error) {
+    void error;
     return Response.json(
       { error: 'OTLP ingest body is not valid JSON', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
       { status: 400 },

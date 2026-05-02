@@ -21,9 +21,17 @@ import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 export class WebhookNotifier {
   private urls: string[];
   private unsubscribers: Array<() => void> = [];
+  private readonly timeoutMs: number;
+  private readonly maxConcurrent: number;
+  private readonly maxBodyBytes: number;
+  private readonly signingSecret?: string | Uint8Array;
 
-  constructor(urls: string[] = []) {
-    this.urls = [...urls];
+  constructor(urls: string[] = [], options: WebhookNotifierOptions = {}) {
+    this.urls = validateWebhookUrls(urls);
+    this.timeoutMs = normalizeWebhookTimeoutMs(options.timeoutMs);
+    this.maxConcurrent = normalizePositiveInteger(options.maxConcurrent, 8, 1, 32);
+    this.maxBodyBytes = normalizePositiveInteger(options.maxBodyBytes, 64 * 1024, 1_024, 256 * 1024);
+    this.signingSecret = normalizeSigningSecret(options.signingSecret);
   }
 
   /**
@@ -57,7 +65,7 @@ export class WebhookNotifier {
 
   /** Replace all webhook URLs. */
   setUrls(urls: string[]): void {
-    this.urls = [...urls];
+    this.urls = validateWebhookUrls(urls);
   }
 
   /** Get a copy of all configured webhook URLs. */
@@ -78,15 +86,13 @@ export class WebhookNotifier {
    * Send a plain-text notification to all configured webhooks.
    *
    * Uses ntfy.sh format by default: POST with text/plain body.
-   * All URLs are fired in parallel; individual failures are logged but do not
-   * throw — remaining URLs still receive the notification.
+   * URLs are delivered with bounded concurrency; individual failures are
+   * logged but do not throw — remaining URLs still receive the notification.
    */
   async send(text: string): Promise<void> {
     if (this.urls.length === 0) return;
 
-    const results = await Promise.allSettled(
-      this.urls.map((url) => this.postOne(url, text)),
-    );
+    const results = await mapSettledWithConcurrency(this.urls, this.maxConcurrent, (url) => this.postOne(url, text));
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
@@ -103,9 +109,7 @@ export class WebhookNotifier {
   async test(): Promise<{ url: string; ok: boolean; error?: string }[]> {
     if (this.urls.length === 0) return [];
 
-    const results = await Promise.allSettled(
-      this.urls.map((url) => this.postOne(url, 'goodvibes-sdk: webhook test')),
-    );
+    const results = await mapSettledWithConcurrency(this.urls, this.maxConcurrent, (url) => this.postOne(url, 'goodvibes-sdk: webhook test'));
 
     return this.urls.map((url, i) => {
       const result = results[i];
@@ -127,25 +131,25 @@ export class WebhookNotifier {
 
     this.unsubscribers.push(
       bus.on<Extract<AgentEvent, { type: 'AGENT_COMPLETED' }>>('AGENT_COMPLETED', ({ payload }) => {
-        void this.send(`Agent completed: ${payload.agentId}`);
+        this.sendRuntimeNotification(`Agent completed: ${payload.agentId}`);
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<AgentEvent, { type: 'AGENT_FAILED' }>>('AGENT_FAILED', ({ payload }) => {
-        void this.send(`Agent failed: ${payload.agentId} — ${payload.error}`);
+        this.sendRuntimeNotification(`Agent failed: ${payload.agentId} — ${payload.error}`);
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_PASSED' }>>('WORKFLOW_CHAIN_PASSED', ({ payload }) => {
-        void this.send(`WRFC passed: chain ${payload.chainId}`);
+        this.sendRuntimeNotification(`WRFC passed: chain ${payload.chainId}`);
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_FAILED' }>>('WORKFLOW_CHAIN_FAILED', ({ payload }) => {
-        void this.send(`WRFC failed: ${payload.reason}`);
+        this.sendRuntimeNotification(`WRFC failed: ${payload.reason}`);
       }),
     );
 
@@ -175,15 +179,149 @@ export class WebhookNotifier {
       }
     }
 
-    const res = await instrumentedFetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: text,
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`HTTP ${res.status}: ${body}`);
+    const signal = createTimeoutSignal(this.timeoutMs);
+    try {
+      const body = truncateUtf8(text, this.maxBodyBytes);
+      const headers: Record<string, string> = { 'Content-Type': 'text/plain' };
+      if (this.signingSecret) {
+        Object.assign(headers, await createWebhookSignatureHeaders(body, this.signingSecret));
+      }
+      const res = await instrumentedFetch(url, {
+        method: 'POST',
+        headers,
+        body,
+        signal: signal.signal,
+      });
+      if (!res.ok) {
+        let responseText = '';
+        try {
+          responseText = await res.text();
+        } catch (error) {
+          logger.warn('WebhookNotifier: failed to read non-2xx response body', {
+            url,
+            status: res.status,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        throw new Error(`HTTP ${res.status}: ${truncateUtf8(responseText, 4_096)}`);
+      }
+    } finally {
+      signal.dispose();
     }
   }
+
+  private sendRuntimeNotification(text: string): void {
+    void this.send(text).catch((error) => {
+      logger.warn('WebhookNotifier: runtime event notification dispatch failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
+}
+
+export interface WebhookNotifierOptions {
+  timeoutMs?: number;
+  maxConcurrent?: number;
+  maxBodyBytes?: number;
+  signingSecret?: string | Uint8Array;
+}
+
+function normalizeWebhookTimeoutMs(timeoutMs: number | undefined): number {
+  if (typeof timeoutMs !== 'number' || !Number.isFinite(timeoutMs)) {
+    return 10_000;
+  }
+  return Math.min(60_000, Math.max(1_000, Math.trunc(timeoutMs)));
+}
+
+function normalizePositiveInteger(value: number | undefined, fallback: number, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(min, Math.min(max, Math.trunc(value)));
+}
+
+function validateWebhookUrls(urls: readonly string[]): string[] {
+  return urls.map((url) => {
+    new URL(url);
+    return url;
+  });
+}
+
+function normalizeSigningSecret(secret: string | Uint8Array | undefined): string | Uint8Array | undefined {
+  if (typeof secret === 'string') return secret.trim().length > 0 ? secret : undefined;
+  if (secret instanceof Uint8Array) return secret.byteLength > 0 ? secret : undefined;
+  return undefined;
+}
+
+function truncateUtf8(value: string, maxBytes: number): string {
+  const encoder = new TextEncoder();
+  if (encoder.encode(value).byteLength <= maxBytes) return value;
+  let out = '';
+  let bytes = 0;
+  for (const char of value) {
+    const next = encoder.encode(char).byteLength;
+    if (bytes + next > maxBytes) break;
+    out += char;
+    bytes += next;
+  }
+  return out;
+}
+
+function createTimeoutSignal(timeoutMs: number): { readonly signal: AbortSignal; dispose: () => void } {
+  if (typeof AbortSignal.timeout === 'function') {
+    return { signal: AbortSignal.timeout(timeoutMs), dispose: () => {} };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('Request timed out')), timeoutMs);
+  timer.unref?.();
+  return { signal: controller.signal, dispose: () => clearTimeout(timer) };
+}
+
+async function createWebhookSignatureHeaders(
+  body: string,
+  secret: string | Uint8Array,
+): Promise<Record<string, string>> {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const encoder = new TextEncoder();
+  const keyBytes = typeof secret === 'string' ? encoder.encode(secret) : secret;
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('Webhook signing requires Web Crypto HMAC support.');
+  }
+  const key = await globalThis.crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const payload = encoder.encode(`${timestamp}.${body}`);
+  const signature = await globalThis.crypto.subtle.sign('HMAC', key, payload);
+  return {
+    'X-GoodVibes-Webhook-Timestamp': timestamp,
+    'X-GoodVibes-Webhook-Signature': `v1=${hex(new Uint8Array(signature))}`,
+  };
+}
+
+function hex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function mapSettledWithConcurrency<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  worker: (value: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(values.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+    while (next < values.length) {
+      const index = next;
+      next += 1;
+      try {
+        results[index] = { status: 'fulfilled', value: await worker(values[index]!) };
+      } catch (reason) {
+        results[index] = { status: 'rejected', reason };
+      }
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }

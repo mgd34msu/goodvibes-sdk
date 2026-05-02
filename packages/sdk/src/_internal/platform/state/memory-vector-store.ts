@@ -451,5 +451,8 @@ function distanceToSimilarity(distance: number): number {
 }
 
 function yieldToEventLoop(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, 0);
+    timer.unref?.();
+  });
 }

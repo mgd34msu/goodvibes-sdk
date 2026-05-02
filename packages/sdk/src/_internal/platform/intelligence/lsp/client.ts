@@ -58,6 +58,7 @@ export class LspClient {
         this.pendingRequests.delete(id);
         reject(new Error(`LspClient: request '${method}' timed out after ${timeoutMs}ms`));
       }, timeoutMs);
+      timer.unref?.();
 
       this.pendingRequests.set(id, {
         resolve: resolve as (value: unknown) => void,

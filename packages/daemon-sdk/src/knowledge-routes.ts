@@ -220,7 +220,14 @@ export function createDaemonKnowledgeRouteHandlers(
 }
 
 function readLimit(url: URL, fallback: number): number {
-  return Math.max(1, Number(url.searchParams.get('limit') ?? fallback) || fallback);
+  return readBoundedPositiveInteger(url.searchParams.get('limit'), fallback, 1_000);
+}
+
+function readBoundedPositiveInteger(raw: string | null, fallback: number, max: number): number {
+  if (raw === null || raw.trim() === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(value)));
 }
 
 function readBooleanQuery(url: URL, key: string): boolean | undefined {
@@ -230,7 +237,7 @@ function readBooleanQuery(url: URL, key: string): boolean | undefined {
 }
 
 function readKnowledgeMapFilters(url: URL): JsonBody {
-  const minConfidence = Number(url.searchParams.get('minConfidence'));
+  const minConfidence = readOptionalNumber(url.searchParams.get('minConfidence'));
   return {
     ...(url.searchParams.get('query') ? { query: url.searchParams.get('query')! } : {}),
     ...(Number.isFinite(minConfidence) ? { minConfidence } : {}),
@@ -247,6 +254,12 @@ function readKnowledgeMapFilters(url: URL): JsonBody {
     edgeRelations: readStringList(url, 'edgeRelations', 'edgeRelation'),
     tags: readStringList(url, 'tags', 'tag'),
   };
+}
+
+function readOptionalNumber(raw: string | null): number | undefined {
+  if (raw === null || raw.trim() === '') return undefined;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : undefined;
 }
 
 function readStringList(url: URL, ...names: readonly string[]): readonly string[] {
@@ -427,7 +440,7 @@ async function handleKnowledgeGraphql(context: DaemonKnowledgeRouteContext, req:
 function buildKnowledgePrivateHostFetchOptions(
   context: DaemonKnowledgeRouteContext,
   requested: unknown,
-): { allowPrivateHosts: true } | {} | Response {
+): { allowPrivateHosts: true } | undefined | Response {
   return resolvePrivateHostFetchOptions(requested, {
     configManager: context.configManager,
   });
@@ -451,7 +464,7 @@ async function handleKnowledgeIngestUrl(context: DaemonKnowledgeRouteContext, re
       ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
       ...(typeof body.sourceType === 'string' ? { sourceType: body.sourceType as KnowledgeSourceType } : {}),
       ...(typeof body.connectorId === 'string' ? { connectorId: body.connectorId } : {}),
-      ...privateHostFetchOptions,
+      ...(privateHostFetchOptions ?? {}),
       ...(typeof body.metadata === 'object' && body.metadata !== null ? { metadata: body.metadata as Record<string, unknown> } : {}),
     }), { status: 201 });
   } catch (error) {
@@ -491,7 +504,7 @@ async function handleKnowledgeIngestArtifact(context: DaemonKnowledgeRouteContex
       ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
       ...(typeof body.sourceType === 'string' ? { sourceType: body.sourceType as KnowledgeSourceType } : {}),
       ...(typeof body.connectorId === 'string' ? { connectorId: body.connectorId } : {}),
-      ...privateHostFetchOptions,
+      ...(privateHostFetchOptions ?? {}),
       ...(typeof body.metadata === 'object' && body.metadata !== null ? { metadata: body.metadata as Record<string, unknown> } : {}),
     }), { status: 201 });
   } catch (error) {
@@ -539,7 +552,7 @@ async function handleKnowledgeImportBookmarks(context: DaemonKnowledgeRouteConte
     return Response.json(await context.knowledgeService.importBookmarksFromFile({
       path,
       ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
-      ...privateHostFetchOptions,
+      ...(privateHostFetchOptions ?? {}),
     }), { status: 201 });
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });
@@ -559,7 +572,7 @@ async function handleKnowledgeImportUrls(context: DaemonKnowledgeRouteContext, r
     return Response.json(await context.knowledgeService.importUrlsFromFile({
       path,
       ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
-      ...privateHostFetchOptions,
+      ...(privateHostFetchOptions ?? {}),
     }), { status: 201 });
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });
@@ -582,7 +595,7 @@ async function handleKnowledgeIngestConnector(context: DaemonKnowledgeRouteConte
       ...(typeof body.content === 'string' ? { content: body.content } : {}),
       ...(typeof body.path === 'string' ? { path: body.path } : {}),
       ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
-      ...privateHostFetchOptions,
+      ...(privateHostFetchOptions ?? {}),
     }), { status: 201 });
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });

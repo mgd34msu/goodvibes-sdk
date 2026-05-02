@@ -30,7 +30,7 @@ describe('createPeerRemoteClient — listEndpoints / getEndpoint', () => {
   test('listEndpoints returns all endpoints from contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getPeerContract();
-    const client = createPeerRemoteClient(transport, contract);
+    const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
     const endpoints = client.listEndpoints();
     expect(Array.isArray(endpoints)).toBe(true);
     expect(endpoints.length).toBeGreaterThan(0);
@@ -40,7 +40,7 @@ describe('createPeerRemoteClient — listEndpoints / getEndpoint', () => {
   test('getEndpoint returns the matching endpoint contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getPeerContract();
-    const client = createPeerRemoteClient(transport, contract);
+    const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
     const endpoint = client.getEndpoint('pair.request');
     expect(endpoint.id).toBe('pair.request');
   });
@@ -48,9 +48,16 @@ describe('createPeerRemoteClient — listEndpoints / getEndpoint', () => {
   test('getEndpoint throws GoodVibesSdkError for unknown endpoint id', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getPeerContract();
-    const client = createPeerRemoteClient(transport, contract);
+    const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
     expect(() => client.getEndpoint('does.not.exist')).toThrow(GoodVibesSdkError);
     expect(() => client.getEndpoint('does.not.exist')).toThrow(/Unknown peer endpoint/);
+  });
+
+  test('response validation rejects incompatible peer response shapes', async () => {
+    const transport = makeTransport(async () => createJsonResponse({ requestId: 'pair-1' }));
+    const contract = getPeerContract();
+    const client = createPeerRemoteClient(transport, contract);
+    await expect(client.invoke('pair.request', { peerId: 'node-a', label: 'runner' })).rejects.toThrow(/Response validation failed/);
   });
 
   test('transport and contract are exposed as properties', () => {
@@ -90,6 +97,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const calls: string[] = [];
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
+      validateResponses: false,
       fetch: async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ verified: true });
@@ -104,6 +112,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const calls: string[] = [];
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
+      validateResponses: false,
       fetch: async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ ok: true });
@@ -118,6 +127,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const calls: string[] = [];
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
+      validateResponses: false,
       fetch: async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ work: null });
@@ -132,6 +142,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const calls: string[] = [];
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
+      validateResponses: false,
       fetch: async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ snapshot: {} });
@@ -147,10 +158,10 @@ describe('createPeerSdk — getEndpoint is accessible', () => {
   test('getEndpoint returns endpoint contract from PeerSdk', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
+      validateResponses: false,
       fetch: async () => createJsonResponse({ ok: true }),
     });
     const endpoint = sdk.getEndpoint('pair.request');
     expect(endpoint.id).toBe('pair.request');
   });
 });
-

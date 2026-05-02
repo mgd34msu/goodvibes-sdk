@@ -44,15 +44,16 @@ export async function executeGateCommand(command: string): Promise<{ passed: boo
       stderr: 'pipe',
     });
     const timer = setTimeout(() => {
-      try { proc.kill(); } catch {}
+      killGateProcess(proc, 'timeout');
     }, WRFC_GATE_TIMEOUT_MS);
+    timer.unref?.();
     let exitCode: number;
     try {
       exitCode = await proc.exited;
       clearTimeout(timer);
     } catch (error) {
       clearTimeout(timer);
-      try { proc.kill(); } catch {}
+      killGateProcess(proc, 'exit-error');
       throw error;
     }
     const stdout = await new Response(proc.stdout).text();
@@ -66,5 +67,13 @@ export async function executeGateCommand(command: string): Promise<{ passed: boo
       passed: false,
       output: summarizeError(error),
     };
+  }
+}
+
+function killGateProcess(proc: ReturnType<typeof Bun.spawn>, reason: string): void {
+  try {
+    proc.kill();
+  } catch (error) {
+    process.stderr.write(`[wrfc-gates] failed to kill gate process after ${reason}: ${summarizeError(error)}\n`);
   }
 }

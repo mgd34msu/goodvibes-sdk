@@ -1,4 +1,4 @@
-import { promises as fs, renameSync, mkdirSync, existsSync } from 'fs';
+import { promises as fs, existsSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -13,14 +13,18 @@ import { summarizeError } from '../utils/error-display.js';
 export class PersistentStore<T extends Record<string, unknown>> {
   private readonly filePath: string;
   private readonly dir: string;
+  private readonly inMemory: boolean;
+  private memoryData: T | null = null;
 
   constructor(filePath: string) {
     this.filePath = filePath;
     this.dir = join(filePath, '..');
+    this.inMemory = filePath === ':memory:';
   }
 
   /** Load JSON data from disk, or return null if the file does not exist or is invalid. */
   async load(): Promise<T | null> {
+    if (this.inMemory) return this.memoryData;
     if (!existsSync(this.filePath)) {
       return null;
     }
@@ -35,6 +39,10 @@ export class PersistentStore<T extends Record<string, unknown>> {
 
   /** Atomically persist data to disk. */
   async persist(data: T): Promise<void> {
+    if (this.inMemory) {
+      this.memoryData = structuredClone(data);
+      return;
+    }
     try {
       await fs.mkdir(this.dir, { recursive: true });
       const tmpPath = `${this.filePath}.tmp`;

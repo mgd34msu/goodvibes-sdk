@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import {
   type AutomationScheduleDefinition,
 } from '../automation/schedules.js';
+import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 import { ArtifactStore } from '../artifacts/index.js';
 import type { MemoryRegistry } from '../state/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -759,7 +761,14 @@ export class KnowledgeService {
     readonly metadata?: Record<string, unknown>;
   }): void {
     queueMicrotask(() => {
-      void this.recordUsage(input).catch(() => {});
+      void this.recordUsage(input).catch((error: unknown) => {
+        logger.warn('Knowledge usage recording failed', {
+          targetKind: input.targetKind,
+          targetId: input.targetId,
+          usageKind: input.usageKind,
+          error: summarizeError(error),
+        });
+      });
     });
   }
 

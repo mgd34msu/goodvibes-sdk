@@ -58,6 +58,13 @@ function toDataUrl(artifact: MediaArtifact): string | undefined {
   return undefined;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
+}
+
 function resolveReferenceArtifact(request: MediaGenerationRequest): MediaArtifact | null {
   const options = asRecord(request.options);
   const candidate = asRecord(options?.['referenceArtifact']) ?? asRecord(options?.['sourceArtifact']);
@@ -209,7 +216,7 @@ function createByteplusProvider(): MediaProvider {
           const error = asRecord(payload['error']);
           throw new Error(trimString(error?.['message']) ?? 'BytePlus generation failed');
         }
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        await sleep(5_000);
       }
       if (!completed) throw new Error('BytePlus generation timed out');
       const contentRecord = asRecord(completed['content']);
@@ -288,7 +295,7 @@ function createRunwayProvider(): MediaProvider {
         if (status === 'FAILED' || status === 'CANCELLED') {
           throw new Error(trimString(payload['failure']) ?? 'Runway generation failed');
         }
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        await sleep(5_000);
       }
       if (!completed) throw new Error('Runway generation timed out');
       const outputs = Array.isArray(completed['output'])
@@ -364,7 +371,7 @@ function createAlibabaProvider(): MediaProvider {
         if (status === 'FAILED' || status === 'CANCELED') {
           throw new Error(trimString(output?.['message']) ?? 'Alibaba generation failed');
         }
-        await new Promise((resolve) => setTimeout(resolve, 2_500));
+        await sleep(2_500);
       }
       if (!completed) throw new Error('Alibaba generation timed out');
       const output = asRecord(completed['output']);
@@ -441,7 +448,7 @@ function createFalProvider(): MediaProvider {
         if (status === 'FAILED' || status === 'CANCELLED') {
           throw new Error(trimString(payload['detail']) ?? trimString(asRecord(payload['error'])?.['message']) ?? 'fal generation failed');
         }
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        await sleep(5_000);
       }
       if (!completed) throw new Error('fal generation timed out');
       const videoUrl = trimString(asRecord(completed['video'])?.['url'])
@@ -532,7 +539,7 @@ function createComfyProvider(): MediaProvider {
             break;
           }
         }
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        await sleep(5_000);
       }
       if (outputs.length === 0) throw new Error('Comfy generation timed out');
       const artifacts: MediaArtifact[] = [];

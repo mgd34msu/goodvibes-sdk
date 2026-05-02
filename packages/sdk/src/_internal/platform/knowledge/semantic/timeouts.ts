@@ -6,6 +6,7 @@ export async function withTimeout<T>(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(message)), Math.max(1, timeoutMs));
+    timer.unref?.();
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -20,7 +21,8 @@ export async function withTimeoutOrNull<T>(
 ): Promise<T | null> {
   try {
     return await withTimeout(promise, timeoutMs, 'operation timed out');
-  } catch {
+  } catch (error) {
+    void error;
     return null;
   }
 }

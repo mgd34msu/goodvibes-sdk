@@ -131,11 +131,13 @@ describe('Home Graph knowledge spaces', () => {
       devices,
     });
     const pages = await service.listPages({ installationId: 'house-1', limit: 80 });
+    const priorityPages = await service.listPages({ installationId: 'house-1', limit: 5 });
 
     expect(synced.generated.devicePassports).toBe(32);
     expect(synced.generated.deferredDevicePassports).toBe(16);
     expect(synced.generated.truncated).toBe(true);
     expect(pages.pages.some((page) => page.source.title === 'LG webOS Smart TV passport')).toBe(true);
+    expect(priorityPages.pages.some((page) => page.source.title === 'LG webOS Smart TV passport')).toBe(true);
   });
 
   test('lists generated pages with graph subjects and navigation neighbors', async () => {

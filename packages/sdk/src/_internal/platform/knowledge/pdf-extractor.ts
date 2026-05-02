@@ -1,5 +1,7 @@
 import { inflateSync } from 'node:zlib';
 import type { KnowledgeExtractionResult } from './extractors.js';
+import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 
 const MAX_STRUCTURE_SEARCH_TEXT_CHARS = 128 * 1024;
 
@@ -110,7 +112,10 @@ async function extractPdfWithPdfJs(buffer: Buffer): Promise<KnowledgeExtractionR
         limitations: ['PDF text extraction does not perform OCR for scanned images.'],
       },
     };
-  } catch {
+  } catch (error) {
+    logger.debug('PDF extraction: pdfjs path failed; trying raw stream extraction', {
+      error: summarizeError(error),
+    });
     return undefined;
   }
 }
@@ -177,7 +182,10 @@ function decodePdfStreamChunk(dictionary: string, rawChunk: string): string {
   if (!/\/FlateDecode\b/i.test(dictionary)) return rawChunk;
   try {
     return inflateSync(Buffer.from(rawChunk, 'latin1')).toString('latin1');
-  } catch {
+  } catch (error) {
+    logger.debug('PDF extraction: failed to inflate FlateDecode stream', {
+      error: summarizeError(error),
+    });
     return '';
   }
 }

@@ -335,7 +335,7 @@ async function handleArtifactCreate(context: DaemonMediaRouteContext, req: Reque
       ...(typeof body.text === 'string' ? { text: body.text } : {}),
       ...(typeof body.path === 'string' ? { path: body.path } : {}),
       ...(typeof body.uri === 'string' ? { uri: body.uri } : {}),
-      ...privateHostFetchOptions,
+      ...(privateHostFetchOptions ?? {}),
       ...(typeof body.retentionMs === 'number' ? { retentionMs: body.retentionMs } : {}),
       ...(typeof body.metadata === 'object' && body.metadata !== null ? { metadata: body.metadata as Record<string, unknown> } : {}),
     });
@@ -444,7 +444,7 @@ async function handleMultimodalAnalyze(context: DaemonMediaRouteContext, req: Re
       ...(requestedArtifact ? {
         artifact: {
           ...requestedArtifact,
-          ...privateHostFetchOptions,
+          ...(privateHostFetchOptions ?? {}),
         },
       } : {}),
       ...(typeof body.prompt === 'string' ? { prompt: body.prompt } : {}),

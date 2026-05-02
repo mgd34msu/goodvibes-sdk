@@ -12,7 +12,8 @@ async function exists(path: string): Promise<boolean> {
   try {
     await access(path);
     return true;
-  } catch {
+  } catch (error) {
+    void error;
     return false;
   }
 }
@@ -44,4 +45,3 @@ export async function copyLockedBrowserSqlite(sourcePath: string): Promise<Locke
     },
   };
 }
-

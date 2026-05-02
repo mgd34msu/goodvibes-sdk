@@ -400,6 +400,7 @@ export class DeliveryQueue {
         // Fire-and-forget; outcome tracked via metrics
         void this._attempt(entry);
       }, delayMs);
+      timer.unref?.();
       this._timers.set(entry.id, timer);
 
       return 'retrying';

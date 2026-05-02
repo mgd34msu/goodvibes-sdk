@@ -2,6 +2,9 @@
   "name": "@pellux/goodvibes-transport-core",
   "private": true,
   "version": "0.28.22",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Shared GoodVibes client transport primitives for direct, HTTP, and realtime integrations.",
   "type": "module",
   "main": "./dist/index.js",
@@ -32,8 +35,5 @@
     "transport",
     "events",
     "client"
-  ],
-  "publishConfig": {
-    "access": "public"
-  }
+  ]
 }

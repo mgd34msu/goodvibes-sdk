@@ -28,12 +28,12 @@ const PROFILE_RULES: readonly ProfileRule[] = [
     kind: 'specification',
     labels: ['display', 'picture'],
     aliases: ['display', 'picture', 'screen'],
-    intent: /\b(display|screen|resolution|picture|panel|hdr|refresh|hz|dolby vision|nanocell|lcd|led|oled)\b/,
+    intent: /\b(display|screen|resolution|picture|panel|hdr|refresh|hz|dolby vision|lcd|led|oled|qled|mini[- ]?led)\b/,
     minimumMatches: 2,
     terms: [
-      ['86-inch class screen', /\b86(?:\.0)?\s*(?:inch|inches|in\.|")\b|\b86nano/i],
+      ['screen size/class', /\b\d{2,3}(?:\.0)?\s*(?:inch|inches|in\.|")\b/i],
       ['4K UHD resolution', /\b4k\b|\buhd\b|\b3840\s*(?:x|×)\s*2160\b/i],
-      ['NanoCell display technology', /\bnanocell\b/i],
+      ['display panel technology', /\boled\b|\bqled\b|\bmini[- ]?led\b|\bled\b|\blcd\b/i],
       ['LCD/LED display', /\blcd\b|\bled\b/i],
       ['100/120 Hz refresh rate', /\b(?:100|120)\s*hz\b|\btrumotion\s*240\b/i],
       ['HDR10', /\bhdr10\b/i],
@@ -64,11 +64,11 @@ const PROFILE_RULES: readonly ProfileRule[] = [
     kind: 'feature',
     labels: ['smart-tv', 'apps'],
     aliases: ['smart tv', 'apps', 'platform'],
-    intent: /\b(smart|webos|apps?|streaming|airplay|homekit|thinq|voice|assistant|alexa|google assistant)\b/,
+    intent: /\b(smart|webos|apps?|streaming|airplay|homekit|voice|assistant|alexa|google assistant)\b/,
     minimumMatches: 1,
     terms: [
       ['webOS smart TV platform', /\bwebos\b/i],
-      ['LG ThinQ AI', /\bthinq\b/i],
+      ['vendor smart-home integration', /\bsmartthings\b|\bhomekit\b|\bgoogle home\b|\balexa\b/i],
       ['Apple AirPlay 2', /\bairplay\s*2?\b/i],
       ['Apple HomeKit', /\bhomekit\b/i],
       ['voice assistant support', /\bvoice\b|\balexa\b|\bgoogle assistant\b/i],
@@ -110,7 +110,7 @@ const PROFILE_RULES: readonly ProfileRule[] = [
     intent: /\b(audio|speaker|sound|dolby atmos|dolby digital|earc|arc|watts?|channels?)\b/,
     minimumMatches: 1,
     terms: [
-      ['2 x 10W speakers', /\b2\s*x\s*10\s*w\b/i],
+      ['speaker wattage', /\b\d+\s*x\s*\d+\s*w\b|\b\d+(?:\.\d+)?\s*w\b/i],
       ['speaker/audio output', /\bspeakers?\b|\b(?:10|20|40)\s*w\b|\b2(?:\.0)?\s*ch\b/i],
       ['Dolby audio formats', /\bdolby atmos\b|\bdolby digital\b|\bdolby audio\b/i],
       ['HDMI ARC/eARC audio', /\bearc\b|\barc\b/i],
@@ -138,12 +138,7 @@ export function deriveRepairProfileFacts(input: {
   readonly source: KnowledgeSourceRecord;
   readonly text: string;
 }): readonly RepairProfileFact[] {
-  const text = profileEvidenceText([
-    input.source.title,
-    input.source.summary,
-    input.source.description,
-    input.text,
-  ]);
+  const text = profileEvidenceText([input.text]);
   if (!hasConcreteFeatureSignal(text)) return [];
   const query = input.query.toLowerCase();
   const broadProfileIntent = /\b(features?|specifications?|profile|capabilities)\b/.test(query);

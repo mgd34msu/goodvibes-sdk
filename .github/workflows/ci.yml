@@ -24,6 +24,22 @@ jobs:
       - name: Validate workspace
         run: bun run validate
 
+  security-audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Dependency audit
+        run: bun audit --audit-level high
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ---------------------------------------------------------------------------
   # Single build job. Uploads packages/sdk/dist as an artifact so downstream
   # consumers test the exact same bytes. Ensures build determinism across
@@ -41,7 +57,7 @@ jobs:
       - name: Build SDK
         run: bun run build
       - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sdk-dist
           path: packages/sdk/dist
@@ -120,6 +136,13 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
+      - name: Ensure ripgrep is available
+        run: |
+          set -euo pipefail
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ripgrep
+          fi
       - name: Raw throw guard
         run: |
           set -euo pipefail
@@ -178,7 +201,7 @@ jobs:
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: sdk-dist
           path: packages/sdk/dist
@@ -200,7 +223,7 @@ jobs:
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: sdk-dist
           path: packages/sdk/dist
@@ -218,7 +241,7 @@ jobs:
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: sdk-dist
           path: packages/sdk/dist
@@ -240,7 +263,7 @@ jobs:
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: sdk-dist
           path: packages/sdk/dist
@@ -276,7 +299,7 @@ jobs:
             console.log('SBOM schema OK — specVersion:', sbom.specVersion, 'components:', sbom.components.length);
           "
       - name: Upload SBOM as CI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sbom-cdx-json
           path: sbom.cdx.json

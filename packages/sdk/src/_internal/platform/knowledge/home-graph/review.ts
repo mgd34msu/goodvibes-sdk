@@ -4,7 +4,7 @@ import type {
   KnowledgeSourceRecord,
 } from '../types.js';
 import type { KnowledgeStore } from '../store.js';
-import { belongsToSpace, buildHomeGraphMetadata, readRecord } from './helpers.js';
+import { belongsToSpace, buildHomeGraphMetadata, readRecord, readString } from './helpers.js';
 import type { HomeGraphReviewInput } from './types.js';
 
 export interface HomeGraphReviewResult {
@@ -208,8 +208,4 @@ function issueStatusForAction(action: HomeGraphReviewInput['action'], current: K
 
 function readCategory(input: HomeGraphReviewInput): string | undefined {
   return readString(readRecord(input.value).category)?.toLowerCase().replace(/[-\s]+/g, '_');
-}
-
-function readString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }

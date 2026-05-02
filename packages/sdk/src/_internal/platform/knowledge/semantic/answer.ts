@@ -23,6 +23,7 @@ import {
   normalizeWhitespace,
   readRecord,
   readString,
+  readStringArray,
   scoreSemanticText,
   semanticHash,
   semanticMetadata,
@@ -189,13 +190,14 @@ export async function answerKnowledgeQuery(
   const cleanedLlmText = llmText ? cleanSynthesizedAnswer(llmText, featureIntent) : undefined;
   const dropLowValueLlmAnswer = featureIntent && Boolean(cleanedLlmText) && isLowValueFeatureOrSpecText(cleanedLlmText ?? '');
   const fallback = renderFallbackAnswer(input.query, mode, evidence, facts);
+  const hasZeroSourceBackedFeatureFacts = featureIntent && linkedObjects.length > 0 && sources.length > 0 && facts.length === 0;
   const preferFallback = shouldPreferFallbackAnswer(featureIntent, cleanedLlmText, fallback.text);
-  const useFallback = dropLowValueLlmAnswer || preferFallback || !cleanedLlmText;
+  const useFallback = hasZeroSourceBackedFeatureFacts || dropLowValueLlmAnswer || preferFallback || !cleanedLlmText;
   const text = cleanSynthesizedAnswer((useFallback ? fallback.text : cleanedLlmText) || '', featureIntent);
   const synthesized = useFallback ? fallback.synthesized : Boolean(cleanedLlmText);
   const confidence = input.includeConfidence === false
     ? 0
-    : dropLowValueLlmAnswer || (useFallback && !fallback.synthesized) ? 0 : answerConfidence(preferFallback ? null : llmAnswer, evidence);
+    : hasZeroSourceBackedFeatureFacts || dropLowValueLlmAnswer || (useFallback && !fallback.synthesized) ? 0 : answerConfidence(preferFallback ? null : llmAnswer, evidence);
   return {
     ok: true,
     spaceId,
@@ -382,7 +384,8 @@ function withAnswerFactContract(
 ): readonly AnswerFactRecord[] {
   if (facts.length === 0) return [];
   const linkedObjectIds = new Set(linkedObjects.map((node) => node.id));
-  return facts.map((fact) => {
+  const result: AnswerFactRecord[] = [];
+  for (const fact of facts) {
     const source = fact.sourceId ? store.getSource(fact.sourceId) : null;
     const discovery = readRecord(source?.metadata.sourceDiscovery);
     const metadataLinkedIds = uniqueStrings([
@@ -390,14 +393,17 @@ function withAnswerFactContract(
       ...readStringArray(fact.metadata.subjectIds),
       ...readStringArray(discovery.linkedObjectIds),
     ]);
-    const subjectIds = metadataLinkedIds.filter((id) => linkedObjectIds.has(id));
-    const fallbackSubjectIds = subjectIds.length > 0
-      ? subjectIds
-      : linkedObjects.length === 1 ? [linkedObjects[0]!.id] : [];
-    const subjects = fallbackSubjectIds
+    const subjectIds = uniqueStrings([
+      ...metadataLinkedIds.filter((id) => linkedObjectIds.has(id)),
+      ...factSubjectIdsFromGraph(store, fact, linkedObjects),
+    ]);
+    const subjects = subjectIds
       .map((id) => linkedObjects.find((node) => node.id === id) ?? store.getNode(id))
       .filter((node): node is KnowledgeNodeRecord => Boolean(node && node.status !== 'stale'));
-    if (subjects.length === 0) return fact as AnswerFactRecord;
+    if (subjects.length === 0) {
+      if (linkedObjectIds.size === 0) result.push(fact as AnswerFactRecord);
+      continue;
+    }
     const targetHints = answerTargetHints(subjects);
     const metadata = {
       ...fact.metadata,
@@ -406,15 +412,52 @@ function withAnswerFactContract(
       linkedObjectIds: subjects.map((node) => node.id),
       targetHints,
     };
-    return {
+    result.push({
       ...fact,
       metadata,
       subject: metadata.subject as string | undefined,
       subjectIds: metadata.subjectIds as readonly string[],
       linkedObjectIds: metadata.linkedObjectIds as readonly string[],
       targetHints,
-    };
-  });
+    });
+  }
+  return result;
+}
+
+function factSubjectIdsFromGraph(
+  store: KnowledgeStore,
+  fact: KnowledgeNodeRecord,
+  linkedObjects: readonly KnowledgeNodeRecord[],
+): string[] {
+  if (linkedObjects.length === 0) return [];
+  const linkedIds = new Set(linkedObjects.map((node) => node.id));
+  const factSourceId = readString(fact.metadata.sourceId) ?? fact.sourceId;
+  const sourcesSupportingFact = new Set<string>();
+  const sourcesLinkedToSubject = new Map<string, Set<string>>();
+  const directSubjectIds = new Set<string>();
+  for (const edge of store.listEdges()) {
+    if (edge.fromKind === 'node' && edge.fromId === fact.id && edge.toKind === 'node' && linkedIds.has(edge.toId) && edge.relation === 'describes') {
+      directSubjectIds.add(edge.toId);
+    }
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && edge.toId === fact.id && edge.relation === 'supports_fact') {
+      sourcesSupportingFact.add(edge.fromId);
+    }
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && linkedIds.has(edge.toId)) {
+      const current = sourcesLinkedToSubject.get(edge.fromId) ?? new Set<string>();
+      current.add(edge.toId);
+      sourcesLinkedToSubject.set(edge.fromId, current);
+    }
+    if (edge.fromKind === 'node' && linkedIds.has(edge.fromId) && edge.toKind === 'source') {
+      const current = sourcesLinkedToSubject.get(edge.toId) ?? new Set<string>();
+      current.add(edge.fromId);
+      sourcesLinkedToSubject.set(edge.toId, current);
+    }
+  }
+  if (factSourceId) sourcesSupportingFact.add(factSourceId);
+  for (const sourceId of sourcesSupportingFact) {
+    for (const subjectId of sourcesLinkedToSubject.get(sourceId) ?? []) directSubjectIds.add(subjectId);
+  }
+  return [...directSubjectIds];
 }
 
 function answerTargetHints(nodes: readonly KnowledgeNodeRecord[]): readonly Record<string, unknown>[] {
@@ -512,8 +555,8 @@ function featureFamilyCount(text: string): number {
   return [
     /\b(hdmi|earc|arc|ports?|usb|ethernet|optical|rf|antenna|rs-?232c?)\b/,
     /\b(hdr|hdr10|dolby vision|hlg|filmmaker)\b/,
-    /\b(4k|8k|uhd|resolution|refresh|120\s*hz|100\s*hz|nanocell|display|screen)\b/,
-    /\b(webos|apps?|streaming|airplay|homekit|chromecast|smart tv|thinq)\b/,
+    /\b(4k|8k|uhd|resolution|refresh|120\s*hz|100\s*hz|display|screen|panel)\b/,
+    /\b(webos|apps?|streaming|airplay|homekit|chromecast|smart tv)\b/,
     /\b(wi-?fi|bluetooth|wireless lan)\b/,
     /\b(audio|speakers?|dolby atmos|sound)\b/,
     /\b(game|gaming|vrr|allm|freesync|g-sync)\b/,
@@ -625,6 +668,7 @@ function isLowValueFactForQuery(
   if (!['feature', 'capability', 'specification', 'compatibility', 'configuration', 'identity'].includes(kind)) return false;
   const text = semanticFactText(fact);
   if (isLowValueFeatureOrSpecText(text)) return true;
+  if (!hasConcreteFeatureSignal(text)) return true;
   const extractor = readString(fact.metadata.extractor);
   const confidence = typeof fact.confidence === 'number' ? fact.confidence : 0;
   if (extractor !== 'deterministic' || confidence > 60) return false;
@@ -957,11 +1001,12 @@ function answerConfidence(answer: KnowledgeSemanticLlmAnswer | null, evidence: r
 }
 
 function renderFactForScoring(fact: KnowledgeNodeRecord): string {
+  const evidence = cleanFactEvidenceForAnswer(fact);
   return [
     fact.title,
     fact.summary,
     readString(fact.metadata.value),
-    readString(fact.metadata.evidence),
+    evidence,
     Array.isArray(fact.metadata.labels) ? fact.metadata.labels.join(' ') : '',
   ].filter(Boolean).join(' ');
 }
@@ -969,8 +1014,26 @@ function renderFactForScoring(fact: KnowledgeNodeRecord): string {
 function renderFactForPrompt(fact: KnowledgeNodeRecord): string {
   const kind = readString(fact.metadata.factKind) ?? 'fact';
   const value = readString(fact.metadata.value);
-  const evidence = readString(fact.metadata.evidence);
+  const evidence = cleanFactEvidenceForAnswer(fact);
   return `${kind}: ${fact.title}${value ? ` = ${value}` : ''}${fact.summary ? ` - ${fact.summary}` : ''}${evidence ? ` Evidence: ${evidence}` : ''}`;
+}
+
+function cleanFactEvidenceForAnswer(fact: KnowledgeNodeRecord): string | undefined {
+  const evidence = normalizeWhitespace(readString(fact.metadata.evidence) ?? '');
+  if (!evidence) return undefined;
+  if (isLowValueFeatureOrSpecText(evidence)) return undefined;
+  const normalizedEvidence = normalizeFactText(evidence);
+  if (!normalizedEvidence) return undefined;
+  const title = normalizeFactText(fact.title);
+  const summary = normalizeFactText(fact.summary ?? '');
+  const value = normalizeFactText(readString(fact.metadata.value) ?? '');
+  if (normalizedEvidence === title || normalizedEvidence === summary || normalizedEvidence === value) return undefined;
+  if (title && value && normalizedEvidence.includes(title) && normalizedEvidence.includes(value)) return undefined;
+  return evidence;
+}
+
+function normalizeFactText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 function renderNodeEvidence(node: KnowledgeNodeRecord): string {
@@ -1037,12 +1100,6 @@ function withAnswerSourceAliases(source: KnowledgeSourceRecord): KnowledgeSource
     sourceId: source.id,
     url: source.sourceUri ?? source.canonicalUri,
   };
-}
-
-function readStringArray(value: unknown): readonly string[] {
-  return Array.isArray(value)
-    ? uniqueStrings(value.map((entry) => typeof entry === 'string' ? entry : undefined))
-    : [];
 }
 
 function readGapArray(value: unknown): readonly KnowledgeSemanticGapInput[] {

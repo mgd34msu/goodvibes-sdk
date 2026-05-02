@@ -195,6 +195,7 @@ function isCatalogCacheStale(cache: CatalogCacheFile): boolean {
 export async function fetchCatalog(): Promise<CatalogModel[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CATALOG_FETCH_TIMEOUT_MS);
+  timer.unref?.();
 
   try {
     const response = await instrumentedFetch(MODELS_DEV_URL, {

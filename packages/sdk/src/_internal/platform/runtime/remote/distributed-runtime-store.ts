@@ -236,6 +236,7 @@ export async function waitForDistributedWork(
       removeDistributedRuntimeWaiter(state, workId, resolve);
       resolve(null);
     }, timeoutMs);
+    timer.unref?.();
     const bucket = state.waiters.get(workId) ?? [];
     bucket.push({ resolve, timer });
     state.waiters.set(workId, bucket);

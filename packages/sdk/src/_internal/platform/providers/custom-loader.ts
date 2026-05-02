@@ -385,6 +385,7 @@ export function watchCustomProviders(
           debounceTimer = null;
           onChange();
         }, WATCH_DEBOUNCE_MS);
+        debounceTimer.unref?.();
       });
 
       watcher.on('error', (err) => {

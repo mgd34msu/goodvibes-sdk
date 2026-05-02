@@ -1,10 +1,10 @@
 import type { ArtifactStore } from '../../artifacts/index.js';
 import type { ArtifactDescriptor } from '../../artifacts/types.js';
 import type { KnowledgeStore } from '../store.js';
-import type { KnowledgeExtractionRecord, KnowledgeIssueRecord, KnowledgeSourceRecord } from '../types.js';
+import type { KnowledgeExtractionRecord, KnowledgeIssueRecord, KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import type { KnowledgeSemanticService } from '../semantic/index.js';
 import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
-import { isGeneratedPageSource, uniqueStrings } from './helpers.js';
+import { isGeneratedPageSource, readHomeAssistantMetadataString, uniqueStrings } from './helpers.js';
 import { resolveReadableHomeGraphSpace } from './space-selection.js';
 import { readHomeGraphSearchState } from './search.js';
 import { readHomeGraphState } from './state.js';
@@ -236,12 +236,24 @@ function devicesLinkedToSources(
 ): string[] {
   const wantedSources = new Set(sourceIds);
   if (wantedSources.size === 0) return [];
-  return state.edges
-    .filter((edge) => edge.fromKind === 'source' && wantedSources.has(edge.fromId) && edge.toKind === 'node')
-    .filter((edge) => edge.relation === 'source_for' || edge.relation === 'has_manual' || edge.relation === 'repairs_gap')
-    .map((edge) => state.nodes.find((node) => node.id === edge.toId && node.kind === 'ha_device'))
-    .map((node) => readHomeAssistantObjectId(node) ?? node?.id)
-    .filter((deviceId): deviceId is string => Boolean(deviceId));
+  const nodesById = new Map(state.nodes.map((node) => [node.id, node]));
+  const factIds = new Set<string>();
+  const deviceIds = new Set<string>();
+  for (const edge of state.edges) {
+    if (edge.fromKind !== 'source' || !wantedSources.has(edge.fromId) || edge.toKind !== 'node') continue;
+    const node = nodesById.get(edge.toId);
+    if ((edge.relation === 'source_for' || edge.relation === 'has_manual' || edge.relation === 'repairs_gap') && node?.kind === 'ha_device') {
+      const deviceId = readHomeAssistantMetadataString(node, 'objectId', 'deviceId') ?? node.id;
+      deviceIds.add(deviceId);
+    }
+    if (edge.relation === 'supports_fact' && node?.kind === 'fact') factIds.add(node.id);
+  }
+  for (const edge of state.edges) {
+    if (edge.fromKind !== 'node' || !factIds.has(edge.fromId) || edge.toKind !== 'node' || edge.relation !== 'describes') continue;
+    const device = nodesById.get(edge.toId);
+    if (device?.kind === 'ha_device') deviceIds.add(readHomeAssistantMetadataString(device, 'objectId', 'deviceId') ?? device.id);
+  }
+  return [...deviceIds];
 }
 
 function devicesWithStaleGeneratedPages(
@@ -258,18 +270,9 @@ function devicesWithStaleGeneratedPages(
     .filter((edge) => edge.fromKind === 'source' && stalePageIds.has(edge.fromId) && edge.toKind === 'node')
     .filter((edge) => edge.relation === 'source_for')
     .map((edge) => state.nodes.find((node) => node.id === edge.toId && node.kind === 'ha_device_passport'))
-    .map((passport) => readHomeAssistantObjectId(passport))
+    .filter((passport): passport is KnowledgeNodeRecord => Boolean(passport))
+    .map((passport) => readHomeAssistantMetadataString(passport, 'objectId', 'deviceId'))
     .filter((deviceId): deviceId is string => Boolean(deviceId));
-}
-
-function readHomeAssistantObjectId(node: unknown): string | undefined {
-  if (!node || typeof node !== 'object') return undefined;
-  const metadata = (node as { readonly metadata?: unknown }).metadata;
-  const ha = metadata && typeof metadata === 'object' ? (metadata as { readonly homeAssistant?: unknown }).homeAssistant : undefined;
-  if (!ha || typeof ha !== 'object') return undefined;
-  const objectId = (ha as { readonly objectId?: unknown; readonly deviceId?: unknown }).objectId;
-  const deviceId = (ha as { readonly objectId?: unknown; readonly deviceId?: unknown }).deviceId;
-  return typeof objectId === 'string' && objectId ? objectId : typeof deviceId === 'string' && deviceId ? deviceId : undefined;
 }
 
 function emptyGeneratedPagesSummary(): {

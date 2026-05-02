@@ -333,6 +333,7 @@ export class ChainEngine {
             });
           }
         }, debounceMs);
+        state.debounceTimer.unref?.();
         continue;
       }
 

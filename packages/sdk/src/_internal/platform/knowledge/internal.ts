@@ -97,7 +97,8 @@ export function canonicalizeUri(input: string): string | null {
       url.pathname = url.pathname.replace(/\/+$/, '');
     }
     return url.toString();
-  } catch {
+  } catch (error) {
+    void error;
     return null;
   }
 }

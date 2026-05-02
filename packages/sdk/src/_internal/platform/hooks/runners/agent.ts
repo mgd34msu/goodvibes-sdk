@@ -82,7 +82,10 @@ export async function run(
     }
 
     // Agent still pending/running — wait a tick
-    await new Promise<void>((resolve) => setTimeout(resolve, pollInterval));
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, pollInterval);
+      timer.unref?.();
+    });
   }
 
   // Timed out — cancel the agent and return error

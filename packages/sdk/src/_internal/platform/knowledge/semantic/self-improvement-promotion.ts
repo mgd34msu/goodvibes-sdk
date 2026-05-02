@@ -1,4 +1,4 @@
-import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
+import { sleep, yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import { getKnowledgeSpaceId } from '../spaces.js';
 import type { KnowledgeStore } from '../store.js';
 import type {
@@ -16,6 +16,7 @@ import {
   normalizeWhitespace,
   readRecord,
   readString,
+  readStringArray,
   semanticHash,
   semanticMetadata,
   semanticSlug,
@@ -29,6 +30,14 @@ export interface SelfImprovePromotionContext {
   readonly enrichSource?: (sourceId: string, options: { readonly force?: boolean; readonly knowledgeSpaceId?: string }) => Promise<unknown>;
 }
 
+export interface PromoteRepairSourcesResult {
+  readonly promotedFactCount: number;
+  readonly repairComplete: boolean;
+  readonly promotedSourceIds: readonly string[];
+}
+
+const REPAIR_SOURCE_TEXT_WAIT_MS = 1_500;
+
 export async function promoteRepairSources(
   context: SelfImprovePromotionContext,
   spaceId: string,
@@ -36,38 +45,82 @@ export async function promoteRepairSources(
   sourceIds: readonly string[],
   task: KnowledgeRefinementTaskRecord,
   deadlineAt: number,
-): Promise<number> {
+): Promise<PromoteRepairSourcesResult> {
+  const targetUsableFactCount = repairTargetUsableFactCount(gap);
+  const subjects = linkedRepairSubjects(context.store, spaceId, gap);
+  const subjectIds = new Set(subjects.map((subject) => subject.id));
+  const processedSourceIds: string[] = [];
   if (context.enrichSource) {
     for (const [index, sourceId] of sourceIds.entries()) {
       await yieldEvery(index, 2);
-      await waitForRepairSourceText(context.store, sourceId, deadlineAt);
+      processedSourceIds.push(sourceId);
+      await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, [sourceId]);
+      if (countUsableRepairFacts(context.store, spaceId, processedSourceIds, subjectIds) >= targetUsableFactCount) break;
+      await waitForRepairSourceText(context.store, sourceId, Math.min(deadlineAt, Date.now() + REPAIR_SOURCE_TEXT_WAIT_MS));
+      await promoteRepairEvidenceFacts(context.store, spaceId, gap, [sourceId]);
+      await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, [sourceId]);
+      if (countUsableRepairFacts(context.store, spaceId, processedSourceIds, subjectIds) >= targetUsableFactCount) break;
       const remainingMs = Math.max(0, deadlineAt - Date.now());
       if (remainingMs < 1_000) break;
-      await withTimeout(
-        context.enrichSource(sourceId, { knowledgeSpaceId: spaceId, force: true }),
-        Math.min(remainingMs, 20_000),
-        'Semantic repair source enrichment exceeded its run budget.',
-      );
+      try {
+        await withTimeout(
+          context.enrichSource(sourceId, { knowledgeSpaceId: spaceId, force: true }),
+          Math.min(remainingMs, 20_000),
+          'Semantic repair source enrichment exceeded its run budget.',
+        );
+      } catch (error) {
+        await waitForRepairSourceText(context.store, sourceId, Math.min(deadlineAt, Date.now() + REPAIR_SOURCE_TEXT_WAIT_MS));
+        await promoteRepairEvidenceFacts(context.store, spaceId, gap, [sourceId]);
+        await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, [sourceId]);
+        await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'applying', 'Repair source enrichment did not finish for one accepted source.', {
+          sourceId,
+          enrichmentError: error instanceof Error ? error.message : String(error),
+          promotedSourceIds: processedSourceIds,
+          promotedFactCount: countUsableRepairFacts(context.store, spaceId, processedSourceIds, subjectIds),
+        });
+        if (deadlineAt - Date.now() < 1_000) break;
+        continue;
+      }
+      await waitForRepairSourceText(context.store, sourceId, Math.min(deadlineAt, Date.now() + REPAIR_SOURCE_TEXT_WAIT_MS));
+      await promoteRepairEvidenceFacts(context.store, spaceId, gap, [sourceId]);
+      await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, [sourceId]);
+      if (countUsableRepairFacts(context.store, spaceId, processedSourceIds, subjectIds) >= targetUsableFactCount) break;
       await yieldToEventLoop();
     }
   }
-  const promotedFactCount = await promoteRepairEvidenceFacts(context.store, spaceId, gap, sourceIds);
-  await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, sourceIds);
+  const promotionSourceIds = processedSourceIds.length > 0 ? uniqueStrings(processedSourceIds) : sourceIds;
+  const promotedFactCount = processedSourceIds.length > 0
+    ? 0
+    : await promoteRepairEvidenceFacts(context.store, spaceId, gap, sourceIds);
+  await linkPromotedFactsToRepairSubjects(context.store, spaceId, gap, promotionSourceIds);
   const usableFactCount = promotedFactCount > 0
     ? promotedFactCount
-    : countUsableRepairFacts(context.store, spaceId, sourceIds);
-  if (usableFactCount > 0) {
+    : countUsableRepairFacts(context.store, spaceId, promotionSourceIds, subjectIds);
+  const repairComplete = usableFactCount >= targetUsableFactCount;
+  if (repairComplete) {
     await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'verified', 'Accepted repair sources were semantically enriched.', {
-      promotedSourceIds: sourceIds,
+      promotedSourceIds: promotionSourceIds,
       promotedFactCount: usableFactCount,
+    });
+  } else if (usableFactCount > 0) {
+    await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'applying', 'Accepted repair sources yielded partial subject-linked facts.', {
+      promotedSourceIds: promotionSourceIds,
+      promotedFactCount: usableFactCount,
+      targetPromotedFactCount: targetUsableFactCount,
     });
   } else {
     await updateRefinementTask(context.store, context.store.getRefinementTask(task.id) ?? task, 'applying', 'Accepted repair sources did not yield usable subject-linked facts.', {
-      promotedSourceIds: sourceIds,
+      promotedSourceIds: promotionSourceIds,
       promotedFactCount: usableFactCount,
     });
   }
-  return usableFactCount;
+  return { promotedFactCount: usableFactCount, repairComplete, promotedSourceIds: promotionSourceIds };
+}
+
+function repairTargetUsableFactCount(gap: KnowledgeNodeRecord): number {
+  const text = `${gap.title} ${gap.summary ?? ''}`.toLowerCase();
+  if (/\b(complete|full|features?|capabilities|specifications?|profile)\b/.test(text)) return 3;
+  return 1;
 }
 
 async function waitForRepairSourceText(
@@ -80,9 +133,9 @@ async function waitForRepairSourceText(
     if (!source) return;
     const extraction = store.getExtractionBySourceId(source.id);
     if (extractedSemanticText(extraction).length >= 40) return;
-    if (!source.sourceUri && !source.canonicalUri && sourceSemanticText(source, extraction).length >= 80) return;
+    if (!source.url && !source.sourceUri && !source.canonicalUri && sourceSemanticText(source, extraction).length >= 80) return;
     await yieldToEventLoop();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await sleep(100);
   }
 }
 
@@ -90,8 +143,6 @@ function extractedSemanticText(extraction: ReturnType<KnowledgeStore['getExtract
   const structure = readRecord(extraction?.structure);
   const metadata = readRecord(extraction?.metadata);
   return normalizeWhitespace([
-    extraction?.title,
-    extraction?.summary,
     extraction?.excerpt,
     ...(extraction?.sections ?? []),
     readString(structure.searchText),
@@ -103,7 +154,15 @@ function extractedSemanticText(extraction: ReturnType<KnowledgeStore['getExtract
 }
 
 function sourceRequiresExtractedEvidence(source: KnowledgeSourceRecord): boolean {
-  return Boolean(source.sourceUri || source.canonicalUri);
+  return Boolean(source.url || source.sourceUri || source.canonicalUri);
+}
+
+function repairSourceEvidenceText(
+  source: KnowledgeSourceRecord,
+  extraction: ReturnType<KnowledgeStore['getExtractionBySourceId']>,
+): string {
+  const extracted = extractedSemanticText(extraction);
+  return sourceRequiresExtractedEvidence(source) ? extracted : sourceSemanticText(source, extraction);
 }
 
 async function promoteRepairEvidenceFacts(
@@ -121,7 +180,7 @@ async function promoteRepairEvidenceFacts(
     const extraction = store.getExtractionBySourceId(source.id);
     if (sourceRequiresExtractedEvidence(source) && extractedSemanticText(extraction).length < 40) continue;
     const authority = sourceAuthority(source);
-    const text = sourceSemanticText(source, extraction);
+    const text = repairSourceEvidenceText(source, extraction);
     const profileFacts = deriveRepairProfileFacts({
       query: gap.title,
       source,
@@ -245,10 +304,35 @@ async function linkPromotedFactsToRepairSubjects(
   const subjects = linkedRepairSubjects(store, spaceId, gap);
   if (subjects.length === 0) return;
   const linkedObjectIds = subjects.map((subject) => subject.id);
+  const targetHints = repairSubjectHints(subjects);
   const edges = store.listEdges();
   const nodesById = new Map(store.listNodes(10_000).filter((node) => getKnowledgeSpaceId(node) === spaceId).map((node) => [node.id, node]));
   for (const sourceId of sourceIds) {
     for (const fact of factsForSource(sourceId, edges, nodesById)) {
+      if (!isUsableRepairFact(fact) || !isRepairFactCompatibleWithSubjects(fact, subjects)) continue;
+      await store.upsertNode({
+        id: fact.id,
+        kind: fact.kind,
+        slug: fact.slug,
+        title: fact.title,
+        summary: fact.summary,
+        aliases: fact.aliases,
+        status: fact.status,
+        confidence: fact.confidence,
+        sourceId: fact.sourceId ?? sourceId,
+        metadata: semanticMetadata(spaceId, {
+          ...fact.metadata,
+          subject: readString(fact.metadata.subject) ?? subjects[0]?.title,
+          subjectIds: uniqueStrings([...readStringArray(fact.metadata.subjectIds), ...linkedObjectIds]),
+          linkedObjectIds: uniqueStrings([...readStringArray(fact.metadata.linkedObjectIds), ...linkedObjectIds]),
+          targetHints: uniqueTargetHints([
+            ...readTargetHints(fact.metadata.targetHints),
+            ...targetHints,
+          ]),
+          sourceId: fact.sourceId ?? sourceId,
+          linkedBy: readString(fact.metadata.linkedBy) ?? 'semantic-gap-repair',
+        }),
+      });
       for (const objectId of linkedObjectIds) {
         await store.upsertEdge({
           fromKind: 'node',
@@ -324,10 +408,10 @@ interface RepairFactClassification {
 
 function classifyRepairFact(sentence: string): RepairFactClassification | null {
   const lower = sentence.toLowerCase();
-  if (/\b(resolution|4k|8k|uhd|display|screen|nanocell|lcd|oled|qled|refresh|hz|hdr|dolby vision|hlg)\b/.test(lower)) {
+  if (/\b(resolution|4k|8k|uhd|display|screen|panel|lcd|led|oled|qled|mini[- ]?led|refresh|hz|hdr|dolby vision|hlg)\b/.test(lower)) {
     return buildRepairFactClassification('specification', 'Display and picture specifications', ['display', 'picture'], ['display', 'picture'], sentence, [
       ['4K UHD resolution', /\b4k\b|\buhd\b|\b3840\s*(?:x|×)\s*2160\b/i],
-      ['NanoCell display technology', /\bnanocell\b/i],
+      ['display panel technology', /\boled\b|\bqled\b|\bmini[- ]?led\b|\bled\b|\blcd\b/i],
       ['LCD/LED display', /\blcd\b|\bled\b/i],
       ['100/120 Hz refresh rate', /\b(?:100|120)\s*hz\b|\btrumotion\s*240\b/i],
       ['HDR10', /\bhdr10\b/i],
@@ -359,7 +443,7 @@ function classifyRepairFact(sentence: string): RepairFactClassification | null {
   }
   if (/\b(speaker|audio|dolby atmos|dolby audio|sound|watts?|channels?)\b/.test(lower)) {
     return buildRepairFactClassification('specification', 'Audio capabilities', ['audio'], ['audio', 'speakers'], sentence, [
-      ['2 x 10W speakers', /\b2\s*x\s*10\s*w\b/i],
+      ['speaker wattage', /\b\d+\s*x\s*\d+\s*w\b|\b\d+(?:\.\d+)?\s*w\b/i],
       ['speaker/audio output', /\bspeakers?\b|\b(?:10|20|40)\s*w\b|\b2(?:\.0)?\s*ch\b/i],
       ['Dolby audio formats', /\bdolby atmos\b|\bdolby digital\b|\bdolby audio\b|\btruehd\b|\bpcm\b/i],
       ['HDMI ARC/eARC audio', /\bearc\b|\barc\b/i],
@@ -425,7 +509,7 @@ function repairIntentPatterns(query: string): readonly RegExp[] {
   if (/\b(port|ports|input|output|hdmi|usb|optical|rf|antenna|rs-?232|composite|component|i\/o)\b/.test(lower)) patterns.push(/\b(hdmi|usb|optical|rf|antenna|ethernet|rs-?232|composite|component|earc|arc|ports?|input|output)\b/);
   if (/\b(bluetooth|wifi|wi-fi|wireless|network)\b/.test(lower)) patterns.push(/\b(bluetooth|wi-?fi|wireless|network|ethernet|airplay|homekit)\b/);
   if (/\b(refresh|hz|hdr|dolby|vision|gaming|vrr|allm|freesync)\b/.test(lower)) patterns.push(/\b(refresh|hz|hdr|hdr10|dolby vision|hlg|game|vrr|allm|freesync|120\s*hz|100\s*hz)\b/);
-  if (/\b(display|screen|resolution|panel|nanocell|lcd|oled)\b/.test(lower)) patterns.push(/\b(display|screen|resolution|4k|uhd|nanocell|lcd|oled|panel)\b/);
+  if (/\b(display|screen|resolution|panel|lcd|led|oled|qled|mini[- ]?led)\b/.test(lower)) patterns.push(/\b(display|screen|resolution|4k|uhd|lcd|led|oled|qled|panel)\b/);
   if (patterns.length === 0) patterns.push(/\b(hdmi|usb|hdr|dolby|resolution|refresh|wi-?fi|bluetooth|speaker|audio|webos|smart tv|tuner|gaming|ports?)\b/);
   return patterns;
 }
@@ -481,25 +565,111 @@ function factsForSource(
 
 function sourceAuthority(source: KnowledgeSourceRecord): 'official-vendor' | 'vendor' | 'secondary' {
   const discovery = readRecord(source.metadata.sourceDiscovery);
-  const trust = `${readString(discovery.trustReason) ?? ''} ${readString(discovery.sourceDomain) ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`.toLowerCase();
-  if (/\bofficial-vendor-domain\b/.test(trust) || /(^|[/.])lg\.com\b|(^|[/.])sony\.com\b|(^|[/.])samsung\.com\b|(^|[/.])apple\.com\b/.test(trust)) {
+  const trust = [
+    readString(discovery.trustReason),
+    readString(discovery.sourceDomain),
+    source.title,
+    source.summary,
+    source.description,
+    source.url,
+    source.sourceUri,
+    source.canonicalUri,
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (/\bofficial-vendor-domain\b/.test(trust)) return 'official-vendor';
+  if (/\bofficial\b/.test(trust) && /\b(support|specifications?|manual|product|docs?|datasheet)\b/.test(trust) && !isCommercialLowValueSourceText(trust)) {
     return 'official-vendor';
   }
   if (/\bmanufacturer-domain\b/.test(trust)) return 'vendor';
   return 'secondary';
 }
 
-function countUsableRepairFacts(store: KnowledgeStore, spaceId: string, sourceIds: readonly string[]): number {
+function isCommercialLowValueSourceText(text: string): boolean {
+  return /\b(shopping|shop now|affiliate|associate program|buy now|add to cart|price comparison|marketplace|retailer|store listing|seller listing|sponsored listing|latest price|compare prices)\b/.test(text)
+    || /(^|\.)amazon\.[a-z.]+\b|(^|\.)ebay\.[a-z.]+\b|(^|\.)walmart\.[a-z.]+\b|(^|\.)bestbuy\.[a-z.]+\b|(^|\.)target\.[a-z.]+\b/.test(text);
+}
+
+function countUsableRepairFacts(
+  store: KnowledgeStore,
+  spaceId: string,
+  sourceIds: readonly string[],
+  subjectIds: ReadonlySet<string>,
+): number {
   const sources = new Set(sourceIds);
   return store.listNodes(10_000)
     .filter((node) => node.kind === 'fact' && node.status !== 'stale')
     .filter((node) => getKnowledgeSpaceId(node) === spaceId)
     .filter((node) => node.sourceId && sources.has(node.sourceId))
-    .filter((node) => ['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(readString(node.metadata.factKind) ?? ''))
-    .filter((node) => readStringArray(node.metadata.linkedObjectIds).length > 0 || readStringArray(node.metadata.subjectIds).length > 0)
-    .filter((node) => !isLowValueFeatureOrSpecText(`${node.title} ${node.summary ?? ''} ${readString(node.metadata.value) ?? ''} ${readString(node.metadata.evidence) ?? ''}`))
-    .filter((node) => hasConcreteFeatureSignal(`${node.title} ${node.summary ?? ''} ${readString(node.metadata.value) ?? ''} ${readString(node.metadata.evidence) ?? ''}`))
+    .filter(isUsableRepairFact)
+    .filter((node) => {
+      if (subjectIds.size === 0) return true;
+      const linkedIds = uniqueStrings([
+        ...readStringArray(node.metadata.linkedObjectIds),
+        ...readStringArray(node.metadata.subjectIds),
+      ]);
+      return linkedIds.some((id) => subjectIds.has(id));
+    })
     .length;
+}
+
+function isUsableRepairFact(node: KnowledgeNodeRecord): boolean {
+  if (!['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(readString(node.metadata.factKind) ?? '')) {
+    return false;
+  }
+  const text = `${node.title} ${node.summary ?? ''} ${readString(node.metadata.value) ?? ''} ${readString(node.metadata.evidence) ?? ''}`;
+  return hasConcreteFeatureSignal(text) && !isLowValueFeatureOrSpecText(text);
+}
+
+function isRepairFactCompatibleWithSubjects(fact: KnowledgeNodeRecord, subjects: readonly KnowledgeNodeRecord[]): boolean {
+  const subjectIds = new Set(subjects.map((subject) => subject.id));
+  const existingIds = uniqueStrings([
+    ...readStringArray(fact.metadata.linkedObjectIds),
+    ...readStringArray(fact.metadata.subjectIds),
+  ]);
+  if (existingIds.length > 0) return existingIds.some((id) => subjectIds.has(id));
+  const subject = readString(fact.metadata.subject);
+  if (subject && !subjects.some((node) => textMatchesSubject(subject, node))) return false;
+  const factModels = modelLikeTokens(`${fact.title} ${fact.summary ?? ''} ${readString(fact.metadata.value) ?? ''} ${readString(fact.metadata.evidence) ?? ''}`);
+  if (factModels.length === 0) return true;
+  const subjectModels = uniqueStrings(subjects.flatMap((node) => modelLikeTokens(`${node.title} ${node.aliases.join(' ')} ${readString(node.metadata.model) ?? ''}`)));
+  return subjectModels.length === 0 || factModels.some((model) => subjectModels.includes(model));
+}
+
+function textMatchesSubject(value: string, subject: KnowledgeNodeRecord): boolean {
+  const text = normalizeWhitespace(value).toLowerCase();
+  const candidates = uniqueStrings([
+    subject.title,
+    ...subject.aliases,
+    readString(subject.metadata.manufacturer),
+    readString(subject.metadata.model),
+  ]).map((entry) => entry.toLowerCase());
+  return candidates.some((candidate) => candidate.length >= 3 && (text.includes(candidate) || candidate.includes(text)));
+}
+
+function modelLikeTokens(value: string): readonly string[] {
+  return uniqueStrings([
+    ...(value.match(/\b[A-Z]{2,}[-_ ]?[0-9][A-Z0-9._-]{2,}\b/g) ?? []),
+    ...(value.match(/\b[0-9]{2,}[A-Z][A-Z0-9._-]{2,}\b/g) ?? []),
+  ]
+    .map((token) => token.replace(/[\s_-]+/g, '').toLowerCase())
+    .filter((token) => !/^(hdr10|hdmi2(?:\.\d)?|usb[0-9]|wifi[0-9]|wi-fi[0-9]|atsc[0-9]?|ntsc|qam)$/.test(token)));
+}
+
+function readTargetHints(value: unknown): readonly Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === 'object' && !Array.isArray(entry)));
+}
+
+function uniqueTargetHints(values: readonly Record<string, unknown>[]): readonly Record<string, unknown>[] {
+  const seen = new Set<string>();
+  const result: Record<string, unknown>[] = [];
+  for (const value of values) {
+    const id = readString(value.id);
+    const key = id ?? JSON.stringify(value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+  return result;
 }
 
 function uniqueById<T extends { readonly id: string }>(items: readonly (T | undefined)[]): T[] {
@@ -511,9 +681,4 @@ function uniqueById<T extends { readonly id: string }>(items: readonly (T | unde
     result.push(item);
   }
   return result;
-}
-
-function readStringArray(value: unknown): readonly string[] {
-  if (!Array.isArray(value)) return [];
-  return uniqueStrings(value.map((entry) => typeof entry === 'string' ? entry : undefined));
 }

@@ -168,7 +168,14 @@ export function writeOperatorTokenFile(daemonHomeDir: string, content: string): 
   chmodSync(tmpPath, 0o600);
   renameSync(tmpPath, tokenPath);
   // Apply chmod again after rename — some filesystems reset permissions on rename
-  try { chmodSync(tokenPath, 0o600); } catch { /* best-effort */ }
+  try {
+    chmodSync(tokenPath, 0o600);
+  } catch (error) {
+    logger.warn('daemon-home: failed to chmod operator token file after rename', {
+      path: tokenPath,
+      error: String(error),
+    });
+  }
 }
 
 /**
@@ -229,9 +236,23 @@ export function writeDaemonSetting(daemonHomeDir: string, key: string, value: st
   }
   // SEC-12: daemon-settings.json may contain sensitive pairing state; write at 0600.
   writeFileSync(tmpPath, JSON.stringify({ ...existing, [key]: value }, null, 2), { encoding: 'utf-8', mode: 0o600 });
-  try { chmodSync(tmpPath, 0o600); } catch { /* best-effort */ }
+  try {
+    chmodSync(tmpPath, 0o600);
+  } catch (error) {
+    logger.warn('daemon-home: failed to chmod temporary daemon settings file', {
+      path: tmpPath,
+      error: String(error),
+    });
+  }
   renameSync(tmpPath, settingsPath);
-  try { chmodSync(settingsPath, 0o600); } catch { /* best-effort */ }
+  try {
+    chmodSync(settingsPath, 0o600);
+  } catch (error) {
+    logger.warn('daemon-home: failed to chmod daemon settings file after rename', {
+      path: settingsPath,
+      error: String(error),
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

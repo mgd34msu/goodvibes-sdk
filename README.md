@@ -76,8 +76,8 @@ daemon for you unless you are using the daemon embedding APIs.
 ```ts
 import {
   createGoodVibesSdk,
-  createMemoryTokenStore,
 } from '@pellux/goodvibes-sdk';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
@@ -139,30 +139,11 @@ export default createGoodVibesCloudflareWorker();
 
 ## Current Documentation
 
-- [Documentation index](./docs/README.md)
+- [Documentation index](./docs/README.md) — the canonical index for guides,
+  integrations, architecture notes, and operations docs.
 - [Getting started](./docs/getting-started.md)
 - [Packages and entry points](./docs/packages.md)
-- [Runtime surfaces](./docs/surfaces.md)
-- [Authentication](./docs/authentication.md)
-- [Configuration defaults](./docs/defaults.md)
-- [Secret references](./docs/secrets.md)
-- [Provider and model API](./docs/provider-model-api.md)
-- [Daemon embedding](./docs/daemon-embedding.md)
-- [Runtime orchestration](./docs/runtime-orchestration.md)
-- [Companion app patterns](./docs/companion-app-patterns.md)
-- [Realtime and telemetry](./docs/realtime-and-telemetry.md)
-- [Knowledge system](./docs/knowledge.md)
-- [Browser knowledge ingestion](./docs/knowledge-browser-history.md)
-- [Project Planning](./docs/project-planning.md)
-- [Tool system](./docs/tools.md)
-- [Channel surfaces](./docs/channel-surfaces.md)
-- [Home Assistant integration](./docs/homeassistant-integration.md)
-- [Cloudflare and batch processing](./docs/daemon-batch-processing.md)
-- [Voice and streaming TTS](./docs/voice.md)
-- [Security](./docs/security.md)
-- [Feature flags](./docs/feature-flags.md)
-- [Testing and validation](./docs/testing-and-validation.md)
-- [Release and publishing](./docs/release-and-publishing.md)
+- [Public surface](./docs/public-surface.md)
 
 Generated references:
 

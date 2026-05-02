@@ -2,6 +2,9 @@
   "name": "@pellux/goodvibes-daemon-sdk",
   "private": true,
   "version": "0.28.22",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Embeddable GoodVibes daemon route contracts, dispatchers, and server-side handler builders.",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,9 +36,6 @@
     "server",
     "control-plane"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
     "@pellux/goodvibes-errors": "workspace:*"

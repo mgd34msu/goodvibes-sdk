@@ -180,7 +180,10 @@ function cacheKey(
 }
 
 function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise((r) => {
+    const timer = setTimeout(r, ms);
+    timer.unref?.();
+  });
 }
 
 interface FetchOneOptions {
@@ -241,6 +244,7 @@ async function fetchOneRaw(
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
+  timer.unref?.();
   try {
     const response = sanitizationEnabled
       ? await fetchWithValidatedRedirects({
@@ -598,7 +602,7 @@ async function readResponseText(
       const remaining = maxBytes - total;
       if (remaining <= 0) {
         truncated = true;
-        await reader.cancel('Response body limit reached').catch(() => {});
+        await cancelResponseReader(reader, 'Response body limit reached');
         break;
       }
       const chunk = value.byteLength > remaining ? value.subarray(0, remaining) : value;
@@ -606,7 +610,7 @@ async function readResponseText(
       total += chunk.byteLength;
       if (value.byteLength > remaining) {
         truncated = true;
-        await reader.cancel('Response body limit reached').catch(() => {});
+        await cancelResponseReader(reader, 'Response body limit reached');
         break;
       }
     }
@@ -614,6 +618,20 @@ async function readResponseText(
     return { text, truncated };
   } finally {
     reader.releaseLock();
+  }
+}
+
+async function cancelResponseReader(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  reason: string,
+): Promise<void> {
+  try {
+    await reader.cancel(reason);
+  } catch (error) {
+    logger.warn('Fetch response reader cancel failed', {
+      reason,
+      error: summarizeError(error),
+    });
   }
 }
 

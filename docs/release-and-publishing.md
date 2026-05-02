@@ -157,7 +157,8 @@ Generate and validate the CycloneDX SBOM before release:
 bun run sbom:generate
 ```
 
-The published package includes `sbom.cdx.json`.
+The SBOM is a release artifact. It is generated for review and CI/release upload,
+but it is not committed or included in the SDK npm package payload.
 
 ## Failure Handling
 

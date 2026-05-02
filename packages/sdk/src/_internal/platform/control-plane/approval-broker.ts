@@ -140,6 +140,7 @@ export class ApprovalBroker {
             void this.expireApproval(approval.id, `timed out after ${input.timeoutMs}ms`);
           }, input.timeoutMs)
         : undefined;
+      timer?.unref?.();
       this.pendingResolvers.set(approval.id, { resolve, timer });
     });
     this.approvals.set(approval.id, approval);
@@ -164,7 +165,10 @@ export class ApprovalBroker {
           actor: 'tui-local',
           actorSurface: 'tui',
         }))
-        .catch(() => {});
+        .catch((error) => logger.warn('Local approval prompt failed', {
+          approvalId: approval.id,
+          error: error instanceof Error ? error.message : String(error),
+        }));
     }
 
     return pendingDecision;

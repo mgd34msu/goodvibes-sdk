@@ -19,6 +19,7 @@ import {
   normalizeWhitespace,
   readRecord,
   readString,
+  readStringArray,
   semanticHash,
   semanticMetadata,
   semanticSlug,
@@ -29,6 +30,7 @@ import {
   uniqueStrings,
 } from './utils.js';
 import { canonicalRepairSubjectNodes } from './repair-subjects.js';
+import { hasConcreteFeatureSignal, isLowValueFeatureOrSpecText } from './fact-quality.js';
 
 export interface KnowledgeSemanticEnrichmentContext {
   readonly store: KnowledgeStore;
@@ -265,9 +267,11 @@ async function persistSemanticExtraction(
   }
 
   const sourceLinkedObjects = linkedObjectsForSource(store, source);
-  const sourceLinkedObjectIds = sourceLinkedObjects.map((node) => node.id);
-  const sourceTargetHints = sourceLinkedObjects.map((node) => ({ id: node.id, kind: node.kind, title: node.title }));
   for (const fact of semantic.facts.slice(0, 160)) {
+    if (!shouldPersistSemanticFact(fact)) continue;
+    const factLinkedObjects = sourceLinkedObjectsForFact(sourceLinkedObjects, fact);
+    const sourceLinkedObjectIds = factLinkedObjects.map((node) => node.id);
+    const sourceTargetHints = factLinkedObjects.map((node) => ({ id: node.id, kind: node.kind, title: node.title }));
     const targetHints = fact.targetHints?.length ? fact.targetHints : sourceTargetHints;
     const node = await store.upsertNode({
       id: `sem-fact-${semanticHash(spaceId, source.id, fact.kind, fact.title, fact.value ?? fact.summary)}`,
@@ -298,6 +302,7 @@ async function persistSemanticExtraction(
     });
     facts.push(node);
     await linkSourceToNode(store, source.id, node.id, 'supports_fact', spaceId, semantic.extractor);
+    await linkFactToSourceLinkedObjects(store, source.id, node, factLinkedObjects, spaceId, semantic.extractor);
     await linkFactToEntities(store, node, entities, fact, spaceId, semantic.extractor);
   }
 
@@ -355,6 +360,28 @@ async function persistSemanticExtraction(
     ...(wikiPage ? [wikiPage.id] : []),
   ]));
   return { source, skipped: false, extractor: semantic.extractor, facts, entities, gaps, ...(wikiPage ? { wikiPage } : {}) };
+}
+
+function shouldPersistSemanticFact(fact: KnowledgeSemanticFactInput): boolean {
+  if (!['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(fact.kind)) return true;
+  const text = [
+    fact.title,
+    fact.summary,
+    fact.value,
+    fact.evidence,
+    ...(fact.labels ?? []),
+  ].filter(Boolean).join(' ');
+  return hasConcreteFeatureSignal(text) && !isLowValueFeatureOrSpecText(text);
+}
+
+function sourceLinkedObjectsForFact(
+  linkedObjects: readonly KnowledgeNodeRecord[],
+  fact: KnowledgeSemanticFactInput,
+): readonly KnowledgeNodeRecord[] {
+  if (linkedObjects.length === 0) return [];
+  const hints = uniqueStrings(fact.targetHints ?? []);
+  if (hints.length === 0) return linkedObjects;
+  return linkedObjects.filter((object) => hints.some((hint) => entityMatchesHint(object, hint)));
 }
 
 async function markPreviousSemanticNodesStale(
@@ -474,6 +501,27 @@ async function linkFactToEntities(
       toId: entity.id,
       relation: 'describes',
       metadata: semanticMetadata(spaceId, { extractor }),
+    });
+  }
+}
+
+async function linkFactToSourceLinkedObjects(
+  store: KnowledgeStore,
+  sourceId: string,
+  fact: KnowledgeNodeRecord,
+  linkedObjects: readonly KnowledgeNodeRecord[],
+  spaceId: string,
+  extractor: string,
+): Promise<void> {
+  for (const object of linkedObjects.slice(0, 8)) {
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: fact.id,
+      toKind: 'node',
+      toId: object.id,
+      relation: 'describes',
+      weight: extractor === 'llm' ? 0.88 : 0.72,
+      metadata: semanticMetadata(spaceId, { extractor, sourceId }),
     });
   }
 }
@@ -609,12 +657,6 @@ function readArray(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function readStringArray(value: unknown): readonly string[] {
-  return Array.isArray(value)
-    ? uniqueStrings(value.map((entry) => typeof entry === 'string' ? entry : undefined))
-    : [];
-}
-
 function linkedObjectsForSource(store: KnowledgeStore, source: KnowledgeSourceRecord): KnowledgeNodeRecord[] {
   const discovery = readRecord(source.metadata.sourceDiscovery);
   const sourceSpaceId = sourceKnowledgeSpace(source);
@@ -680,9 +722,23 @@ function inferLabels(text: string): readonly string[] {
 
 function entityMatchesHint(entity: KnowledgeNodeRecord, hint: string): boolean {
   const lower = hint.toLowerCase();
-  return entity.title.toLowerCase().includes(lower)
-    || entity.aliases.some((alias) => alias.toLowerCase().includes(lower))
-    || lower.includes(entity.title.toLowerCase());
+  const candidates = uniqueStrings([
+    entity.title,
+    entity.summary,
+    ...entity.aliases,
+    readString(entity.metadata.manufacturer),
+    readString(entity.metadata.model),
+    readString(entity.metadata.modelId),
+    readString(entity.metadata.model_id),
+  ]).map((entry) => entry.toLowerCase());
+  const compactHint = lower.replace(/[\s_-]+/g, '');
+  return candidates.some((candidate) => {
+    const compactCandidate = candidate.replace(/[\s_-]+/g, '');
+    return candidate.includes(lower)
+      || lower.includes(candidate)
+      || (compactCandidate.length >= 4 && compactHint.includes(compactCandidate))
+      || (compactHint.length >= 4 && compactCandidate.includes(compactHint));
+  });
 }
 
 function findSemanticNode(nodes: readonly KnowledgeNodeRecord[], label: string): KnowledgeNodeRecord | undefined {

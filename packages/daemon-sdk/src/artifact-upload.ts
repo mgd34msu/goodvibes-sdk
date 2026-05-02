@@ -41,6 +41,7 @@ interface UploadFileLike {
 
 const JSON_FIELD_NAMES = new Set(['metadata', 'target', 'options']);
 const MAX_MULTIPART_FIELD_BYTES = 1024 * 1024;
+const MAX_MULTIPART_BODY_OVERHEAD_BYTES = MAX_MULTIPART_FIELD_BYTES;
 
 export function isJsonContentType(contentType: string | null): boolean {
   const lower = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
@@ -86,7 +87,8 @@ function parseJsonField(value: string, fieldName: string): unknown {
   if (!value) return {};
   try {
     return JSON.parse(value) as unknown;
-  } catch {
+  } catch (error) {
+    void error;
     throw new Error(`Invalid JSON in multipart field ${fieldName}.`);
   }
 }
@@ -132,7 +134,8 @@ async function createArtifactFromMultipart(
   let form: FormData;
   try {
     form = await req.formData();
-  } catch {
+  } catch (error) {
+    void error;
     return Response.json({ error: 'Invalid multipart upload.' }, { status: 400 });
   }
 
@@ -154,12 +157,17 @@ async function createArtifactFromMultipart(
   }
 
   if (!file) return Response.json({ error: 'Multipart upload requires a file field.' }, { status: 400 });
+  const maxBytes = artifactStore.getMaxBytes?.();
+  if (typeof maxBytes === 'number' && typeof file.size === 'number' && file.size > maxBytes) {
+    return Response.json({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
+  }
   const artifact = await createArtifactFromStream(artifactStore, {
     stream: file.stream(),
     fields,
     filename: readStringField(fields, 'filename') ?? file.name,
     mimeType: readStringField(fields, 'mimeType') ?? file.type,
     sizeBytes: typeof file.size === 'number' ? file.size : undefined,
+    maxBytes,
   });
   const artifactId = readArtifactId(artifact);
   return artifactId instanceof Response ? artifactId : { artifact, artifactId, fields };
@@ -178,6 +186,7 @@ async function createArtifactFromStreamingMultipart(
       filename: readStringField(spooled.fields, 'filename') ?? spooled.filename,
       mimeType: readStringField(spooled.fields, 'mimeType') ?? spooled.mimeType,
       sizeBytes: spooled.sizeBytes,
+      maxBytes: artifactStore.getMaxBytes?.(),
     });
     const artifactId = readArtifactId(artifact);
     return artifactId instanceof Response ? artifactId : { artifact, artifactId, fields: spooled.fields };
@@ -196,6 +205,11 @@ async function createArtifactFromRawBody(
   const url = new URL(req.url);
   const fields = readFieldsFromSearchParams(url.searchParams);
   const contentType = req.headers.get('content-type')?.split(';')[0]?.trim();
+  const maxBytes = artifactStore.getMaxBytes?.();
+  const sizeBytes = readContentLength(req);
+  if (typeof maxBytes === 'number' && typeof sizeBytes === 'number' && sizeBytes > maxBytes) {
+    return Response.json({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
+  }
   const artifact = await createArtifactFromStream(artifactStore, {
     stream: req.body,
     fields,
@@ -203,7 +217,8 @@ async function createArtifactFromRawBody(
       ?? req.headers.get('x-goodvibes-filename')?.trim()
       ?? filenameFromContentDisposition(req.headers.get('content-disposition')),
     mimeType: readStringField(fields, 'mimeType') ?? contentType ?? undefined,
-    sizeBytes: readContentLength(req),
+    sizeBytes,
+    maxBytes,
   });
   const artifactId = readArtifactId(artifact);
   return artifactId instanceof Response ? artifactId : { artifact, artifactId, fields };
@@ -229,7 +244,8 @@ function readFieldsFromSearchParams(params: URLSearchParams): ArtifactUploadFiel
     try {
       const parsed = parseUploadField(name, value);
       if (parsed !== undefined) fields[name] = parsed;
-    } catch {
+    } catch (error) {
+      void error;
       fields[name] = value;
     }
   }
@@ -247,7 +263,8 @@ function filenameFromContentDisposition(header: string | null): string | undefin
   if (!match?.[1]) return undefined;
   try {
     return decodeURIComponent(match[1].replace(/^"|"$/g, ''));
-  } catch {
+  } catch (error) {
+    void error;
     return match[1].replace(/^"|"$/g, '');
   }
 }
@@ -279,7 +296,8 @@ function decodeHeaderValue(value: string): string {
   const unquoted = value.trim().replace(/^"|"$/g, '');
   try {
     return decodeURIComponent(unquoted.replace(/^UTF-8''/i, ''));
-  } catch {
+  } catch (error) {
+    void error;
     return unquoted;
   }
 }
@@ -310,6 +328,14 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
   const boundary = multipartBoundary(req.headers.get('content-type') ?? '');
   if (!boundary) throw new Error('Multipart upload is missing a boundary.');
   if (!req.body) throw new Error('Multipart upload requires a request body.');
+  const contentLength = readContentLength(req);
+  if (
+    typeof maxFileBytes === 'number'
+    && typeof contentLength === 'number'
+    && contentLength > maxFileBytes + MAX_MULTIPART_BODY_OVERHEAD_BYTES
+  ) {
+    throw new Error(`Artifact exceeds the ${maxFileBytes}-byte limit.`);
+  }
 
   const tempDir = await mkdtemp(join(tmpdir(), 'goodvibes-upload-'));
   const filePath = join(tempDir, `${randomUUID()}.upload`);
@@ -448,11 +474,36 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
       sizeBytes,
       fields,
       cleanup: async () => {
-        await rm(tempDir, { recursive: true, force: true });
+        await cleanupTempDir(tempDir);
       },
     };
   } catch (error) {
+    await cleanupTempDir(tempDir, error);
+    throw error;
+  } finally {
+    releaseReaderLock(reader);
+  }
+}
+
+async function cleanupTempDir(tempDir: string, originalError?: unknown): Promise<void> {
+  try {
     await rm(tempDir, { recursive: true, force: true });
+  } catch (cleanupError) {
+    if (originalError !== undefined) {
+      throw new AggregateError(
+        [originalError, cleanupError],
+        'Multipart upload failed and temporary upload cleanup also failed.',
+      );
+    }
+    throw cleanupError;
+  }
+}
+
+function releaseReaderLock(reader: ReadableStreamDefaultReader<Uint8Array>): void {
+  try {
+    reader.releaseLock();
+  } catch (error) {
+    if (error instanceof TypeError) return;
     throw error;
   }
 }
@@ -465,8 +516,12 @@ async function createArtifactFromStream(
     readonly filename?: string;
     readonly mimeType?: string;
     readonly sizeBytes?: number;
+    readonly maxBytes?: number;
   },
 ): Promise<unknown> {
+  if (typeof input.maxBytes === 'number' && typeof input.sizeBytes === 'number' && input.sizeBytes > input.maxBytes) {
+    throw new Error(`Artifact exceeds the ${input.maxBytes}-byte limit.`);
+  }
   const base = {
     ...(readStringField(input.fields, 'kind') ? { kind: readStringField(input.fields, 'kind') } : {}),
     ...(input.mimeType ? { mimeType: input.mimeType } : {}),
@@ -484,7 +539,7 @@ async function createArtifactFromStream(
       ...base,
     });
   }
-  const buffer = await bufferUploadStream(input.stream);
+  const buffer = await bufferUploadStream(input.stream, input.maxBytes);
   return artifactStore.create({
     ...base,
     dataBase64: buffer.toString('base64'),
@@ -515,13 +570,7 @@ async function* iterateUploadStream(
         if (value) yield value;
       }
     } finally {
-      try {
-        reader.releaseLock();
-      } catch {
-        // Some server runtimes expose request body readers whose releaseLock
-        // throws after successful consumption. Upload cleanup must not fail the
-        // artifact write.
-      }
+      releaseReaderLock(reader);
     }
     return;
   }
@@ -534,10 +583,17 @@ async function* iterateUploadStream(
 
 async function bufferUploadStream(
   stream: Parameters<NonNullable<ArtifactStoreUploadLike['createFromStream']>>[0]['stream'],
+  maxBytes?: number,
 ): Promise<Buffer> {
   const chunks: Buffer[] = [];
+  let totalBytes = 0;
   for await (const chunk of iterateUploadStream(stream)) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk));
+    const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk);
+    totalBytes += buffer.byteLength;
+    if (typeof maxBytes === 'number' && totalBytes > maxBytes) {
+      throw new Error(`Artifact exceeds the ${maxBytes}-byte limit.`);
+    }
+    chunks.push(buffer);
   }
   return Buffer.concat(chunks);
 }

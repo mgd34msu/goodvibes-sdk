@@ -31,12 +31,12 @@ export function semanticFactText(fact: KnowledgeNodeRecord): string {
 
 export function isLowValueFeatureOrSpecText(text: string): boolean {
   const lower = text.toLowerCase();
-  const magicRemoteDetail = /\bmagic remote\b/.test(lower) || /\bbluetooth\b/.test(lower);
+  const remoteAccessoryDetail = /\bremote(?: control)?\b/.test(lower) || /\bbluetooth\b/.test(lower);
   const nonRemoteFeatureSignal = hasNonRemoteFeatureSignal(lower);
   if (/\?\s*$/.test(text.trim())) return true;
-  if (/\bsemantic-gap-repair\b/.test(lower)) return true;
+  if (/\b(?:semantic-gap-repair|source-backed facts identify|matching sources? (?:exist|identify)|available source-backed details|canonical fact|routing fragments?)\b/.test(lower)) return true;
   if (isUrlOrPathFragment(lower) && !hasConcreteFeatureSignal(lower)) return true;
-  if (isUrlOrPathFragment(lower) && /\b(source-backed facts identify|current page|database|manual\.nz|loading|semantic-gap-repair)\b/.test(lower)) return true;
+  if (isUrlOrPathFragment(lower) && /\b(source-backed facts identify|current page|database|manuals? database|loading|semantic-gap-repair)\b/.test(lower)) return true;
   if (isTruncatedManualFragment(lower)) return true;
   if (/\b(items? supplied|supplied items?|included accessories|optional extras?|sold separately|separate purchase|accessories may vary|contents? of (this )?manual|may be changed|may change|subject to change|without prior notice|available menus? and options?|certified cable|unapproved items?)\b/.test(lower)) {
     return true;
@@ -60,10 +60,32 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(series_url|exhibition display|supported audio formats|supported video formats|supported picture formats)\b/.test(lower)) {
     return true;
   }
+  if (/\.\.\.|…/.test(text)) {
+    return true;
+  }
+  if (hasRepeatedLeadingPhrase(lower)) {
+    return true;
+  }
+  if (/\b(selected features?|ranking system|ranked by|affiliate|associate program|latest price|view latest|buy now|add to cart|marketplace|retailer|store listing|seller listing|sponsored listing)\b/.test(lower)) {
+    return true;
+  }
+  if (/(^|\.)amazon\.[a-z.]+\b|(^|\.)ebay\.[a-z.]+\b|(^|\.)walmart\.[a-z.]+\b|(^|\.)bestbuy\.[a-z.]+\b|(^|\.)target\.[a-z.]+\b/.test(lower)) {
+    return true;
+  }
+  if (/\b(energy monitoring cutoff|quantity table|table fragment)\b/.test(lower)) {
+    return true;
+  }
+  if (/\bwf:\s*\d+\s*w\b|\b\d+\s*w\/wf:\s*\d+\s*w\b|\bcompatibility line\b.*\bper channel\b/.test(lower)) {
+    return true;
+  }
+  if (hasConcreteFeatureSignal(lower)
+    && /\b(history|historical|introduced|developed by|royalty[- ]free|consumer technology association|generic)\b/.test(lower)) {
+    return true;
+  }
   if (/\b(button|buttons|remote control)\b/.test(lower) && /[\u25b2\u25bc\u25c4\u25ba]|[▲▼◄►]|\\u25/.test(text)) {
     return true;
   }
-  if (!magicRemoteDetail && /\b(may vary|depending (upon|on) (the )?model|depending on country|depending on region)\b/.test(lower)) {
+  if (!remoteAccessoryDetail && /\b(may vary|depending (upon|on) (the )?model|depending on country|depending on region)\b/.test(lower)) {
     return true;
   }
   if (/\b(fasten|screws?|stand|tip over|overturn|fall over|transporting|move the tv|moving the tv|oils?|lubricants?|cleaning cloth|dry cloth|power cord|electric shock|fire hazard|near water|ventilation|antenna grounding|qualified personnel|qualified service personnel|service personnel|customer service|servicing|repair is required|refer all servicing)\b/.test(lower)) {
@@ -73,18 +95,18 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
     && /\b(support|supports|safe|safely|recommended|install|installation|place|placement|mount|mounting)\b/.test(lower)) {
     return true;
   }
-  if (/\b(infrared light|remote control sensor|point (the )?(magic )?remote|aim (the )?(magic )?remote)\b/.test(lower)) {
+  if (/\b(infrared light|remote control sensor|point (the )?remote|aim (the )?remote)\b/.test(lower)) {
     return true;
   }
-  if (/\b(magic remote|remote control)\b/.test(lower)
+  if (/\bremote(?: control)?\b/.test(lower)
     && /\b(accessor(y|ies)|battery|batteries|button|environment|infrared|mr20ga|point|pointer|remote sensor|sap|sensor|shake|voice recognition)\b/.test(lower)
     && !nonRemoteFeatureSignal) {
     return true;
   }
-  if (/\b(crutchfield|speakercompare|speaker compare|equal[- ]power|equal[- ]volume|speaker shopping|speaker recommendations?)\b/.test(lower)) {
+  if (/\b(speaker\s*compare|equal[- ]power|equal[- ]volume|speaker shopping|speaker recommendations?)\b/.test(lower)) {
     return true;
   }
-  if (/\b(compare sonic characteristics|listening modes?|listening room|auditioning speakers|speakers side-by-side|same amount of power|money-back guarantee|advisors have listened|best choice for your system|speakercompare listening kit|headphones? brand model)\b/.test(lower)) {
+  if (/\b(compare sonic characteristics|listening modes?|listening room|auditioning speakers|speakers side-by-side|same amount of power|money-back guarantee|advisors have listened|best choice for your system|speaker\s*compare listening kit|headphones? brand model)\b/.test(lower)) {
     return true;
   }
   if (/\b(more direct comparison|direct comparison|compare products?|product comparison)\b/.test(lower)) {
@@ -106,7 +128,10 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\bultra hd broadcast standards?\b/.test(lower) && /\b(not confirmed|may not|vary|depending)\b/.test(lower)) {
     return true;
   }
-  if (/\b(usb to serial|rs-?232c|service only|external control setup)\b/.test(lower)) {
+  if (/\b(usb to serial|service only|external control setup)\b/.test(lower)) {
+    return true;
+  }
+  if (/\brs-?232c\b/.test(lower) && /\b(setup|service only|command|usb to serial)\b/.test(lower)) {
     return true;
   }
   if (/\bexternal devices supported\b/.test(lower)) {
@@ -118,13 +143,13 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\bhdmi\s+2\.?\s*$/.test(lower) || /\bmultiple hdmi\s+2\.?\s*(ports?)?\s*$/.test(lower)) {
     return true;
   }
-  if (/\b(game mode in lg nano90|smart tv in lg nano90|specifications and in the end|present for both models|technical parameters are slightly different|pros and cons in this section|overall \d{2}\b)\b/.test(lower)) {
+  if (/\b(specifications and in the end|present for both models|technical parameters are slightly different|pros and cons in this section|overall \d{2}\b|source list|page title|database entry)\b/.test(lower)) {
     return true;
   }
   if (/\b(more actions?|more remote functions?|remote functions?|remote control buttons?|button map|button functions?)\b/.test(lower)) {
     return true;
   }
-  if (/\b(magic remote|remote)\b/.test(lower)
+  if (/\bremote\b/.test(lower)
     && /\b(shake|pointer|cursor appears|environment|operating environment|voice recognition|recognition performance|point|sensor|press|button|sap|more actions?)\b/.test(lower)
     && !nonRemoteFeatureSignal) {
     return true;
@@ -135,7 +160,7 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(press|pressing|pressed|hold|holding)\b/.test(lower) && /\b(button|remote|key)\b/.test(lower)) {
     return true;
   }
-  if (/\bmagic remote\b/.test(lower)
+  if (/\bremote\b/.test(lower)
     && /\b(compatib|mr20ga|wireless module|bluetooth|separate purchase|sold separately|accessor(y|ies))\b/.test(lower)
     && !/\b(voice|microphone|cursor|pointer|gesture|motion control|universal control)\b/.test(lower)) {
     return true;
@@ -149,7 +174,7 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\bchange\b/.test(lower) && /\bsetting to off\b/.test(lower)) {
     return true;
   }
-  if (/\bbatter(y|ies)\b/.test(lower) && /\b(remote|magic remote|button)\b/.test(lower)) {
+  if (/\bbatter(y|ies)\b/.test(lower) && /\b(remote|button)\b/.test(lower)) {
     return true;
   }
   if (/\b(bezel|less than \d+(?:\.\d+)?\s*(mm|cm|inches?)|does not fit|will not fit|fit your tv'?s usb port|usb port may not fit|usb flash drive does not fit|usb cable does not fit)\b/.test(lower)) {
@@ -184,6 +209,21 @@ function isTruncatedManualFragment(value: string): boolean {
   return false;
 }
 
+function hasRepeatedLeadingPhrase(value: string): boolean {
+  const words = value
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length < 8) return false;
+  for (let size = 3; size <= Math.min(8, Math.floor(words.length / 2)); size++) {
+    const phrase = words.slice(0, size).join(' ');
+    const rest = words.slice(size).join(' ');
+    if (rest.includes(phrase) && hasConcreteFeatureSignal(phrase)) return true;
+  }
+  return false;
+}
+
 export function hasConcreteFeatureSignal(text: string): boolean {
   return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|wireless lan|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation|atsc|ntsc|qam|tuner|broadcast|rs-?232c|external control)\b/.test(text.toLowerCase());
 }
@@ -195,7 +235,7 @@ export function isUsefulHomeGraphPageFact(fact: KnowledgeNodeRecord): boolean {
   if (!USEFUL_PAGE_FACT_KINDS.has(kind)) return false;
   const text = semanticFactText(fact);
   if (isLowValueFeatureOrSpecText(text)) return false;
-  if (/\b(magic remote|remote control)\b/.test(text)
+  if (/\bremote(?: control)?\b/.test(text)
     && /\b(accessor(y|ies)|battery|batteries|button|environment|infrared|mr20ga|point|pointer|remote sensor|sap|sensor|shake|voice recognition)\b/.test(text)) {
     return false;
   }

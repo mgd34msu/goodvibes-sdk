@@ -12,7 +12,10 @@ export interface DeferredStartupCoordinator {
 }
 
 export function createDeferredStartupCoordinator(
-  scheduler: (callback: () => void) => void = (callback) => setTimeout(callback, 0),
+  scheduler: (callback: () => void) => void = (callback) => {
+    const timer = setTimeout(callback, 0);
+    timer.unref?.();
+  },
 ): DeferredStartupCoordinator {
   const pending = new Set<Promise<void>>();
 
@@ -46,7 +49,10 @@ export function createDeferredStartupCoordinator(
       }
       await Promise.race([
         settle,
-        new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+        new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, timeoutMs);
+          timer.unref?.();
+        }),
       ]);
     },
   };

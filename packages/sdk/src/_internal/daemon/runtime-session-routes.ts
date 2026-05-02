@@ -14,6 +14,17 @@ type SharedSessionSteerSubmission = Awaited<ReturnType<DaemonRuntimeRouteContext
 type SharedSessionFollowUpSubmission = Awaited<ReturnType<DaemonRuntimeRouteContext['sessionBroker']['followUpMessage']>>;
 type SessionSubmission = SharedSessionSubmission | SharedSessionSteerSubmission | SharedSessionFollowUpSubmission;
 
+const DEFAULT_LIST_LIMIT = 100;
+const MAX_LIST_LIMIT = 500;
+
+function readBoundedLimit(url: URL, key = 'limit'): number {
+  const raw = url.searchParams.get(key);
+  if (raw === null) return DEFAULT_LIST_LIMIT;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return DEFAULT_LIST_LIMIT;
+  return Math.min(MAX_LIST_LIMIT, Math.max(1, Math.floor(parsed)));
+}
+
 export function createDaemonRuntimeSessionRouteHandlers(
   context: DaemonRuntimeRouteContext,
 ): Pick<
@@ -223,7 +234,7 @@ async function handleGetSharedSessionMessages(
   if (!session) {
     return Response.json({ error: 'Unknown shared session' }, { status: 404 });
   }
-  const limit = Number(url.searchParams.get('limit') ?? 100);
+  const limit = readBoundedLimit(url);
   return Response.json({
     session,
     messages: context.sessionBroker.getMessages(sessionId, limit),
@@ -240,7 +251,7 @@ async function handleGetSharedSessionInputs(
   if (!session) {
     return Response.json({ error: 'Unknown shared session' }, { status: 404 });
   }
-  const limit = Number(url.searchParams.get('limit') ?? 100);
+  const limit = readBoundedLimit(url);
   return Response.json({
     session,
     inputs: context.sessionBroker.getInputs(sessionId, limit),

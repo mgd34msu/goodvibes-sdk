@@ -16,7 +16,7 @@ export default function App() {
       const snapshot = await sdk.operator.control.snapshot();
       console.log(snapshot);
 
-      stop = sdk.realtime.runtime().agents.on('AGENT_COMPLETED', (event) => {
+      stop = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (event) => {
         console.log('agent completed', event);
       });
     })();

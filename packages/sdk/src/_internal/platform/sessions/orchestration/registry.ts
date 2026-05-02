@@ -330,6 +330,7 @@ export class CrossSessionTaskRegistry {
         });
       }
     }, 100);
+    this._flushTimer.unref?.();
   }
 
   /** Perform a synchronous write — used by shutdown/dispose and flush(). */

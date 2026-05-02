@@ -290,6 +290,42 @@ describe('Home Graph repair and generated pages', () => {
         title: 'This gives you a more direct comparison',
         summary: 'This gives you a more direct comparison of speaker output.',
       },
+      {
+        slug: 'truncated-freesync-fragment',
+        title: 'AMD Freesync Premium and HGiG mode…',
+        summary: 'AMD Freesync Premium and HGiG mode… AMD Freesync Premium and HGiG mode for smoother gameplay.',
+      },
+      {
+        slug: 'selected-features-marketing',
+        title: 'Selected Features Nano Cell Technology',
+        summary: 'Selected Features Nano Cell Technology and webOS marketing copy.',
+      },
+      {
+        slug: 'affiliate-ranking-junk',
+        title: 'Amazon affiliate ranking system',
+        summary: 'Amazon affiliate ranking system and latest price comparison.',
+      },
+      {
+        slug: 'marketplace-url-junk',
+        title: 'Amazon product listing',
+        summary: 'https://www.amazon.com/example-product Sponsored marketplace seller listing.',
+      },
+      {
+        slug: 'routing-fragment',
+        title: 'Source-backed facts identify semantic-gap-repair',
+        summary: 'Source-backed facts identify semantic-gap-repair route fragments instead of a device feature.',
+      },
+      {
+        slug: 'speaker-channel-fragment',
+        title: 'Compatibility line 40W/WF:20W/10W per Channel',
+        summary: 'Compatibility line 40W/WF:20W/10W per Channel from a source table.',
+      },
+      {
+        slug: 'audio-speaker-spec',
+        title: 'Audio capabilities',
+        summary: 'Audio capabilities: 2 x 10W speakers.',
+        value: '2 x 10W speakers',
+      },
     ] as const) {
       const fact = await store.upsertNode({
         kind: 'fact',
@@ -335,9 +371,16 @@ describe('Home Graph repair and generated pages', () => {
     const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
 
     expect(page.markdown).toContain('Display and picture specifications: 4K UHD resolution, HDR10, Dolby Vision');
+    expect(page.markdown).toContain('Audio capabilities: 2 x 10W speakers');
     expect(page.markdown.match(/Display and picture specifications/g)?.length).toBe(1);
     expect(page.markdown).not.toContain('01 x Ethernet RJ45');
     expect(page.markdown).not.toContain('This gives you a more direct comparison');
+    expect(page.markdown).not.toContain('AMD Freesync Premium and HGiG mode');
+    expect(page.markdown).not.toContain('Selected Features');
+    expect(page.markdown).not.toContain('Amazon affiliate');
+    expect(page.markdown).not.toContain('Amazon product listing');
+    expect(page.markdown).not.toContain('semantic-gap-repair');
+    expect(page.markdown).not.toContain('40W/WF');
   });
 
   test('generated device pages include sources attached through promoted subject facts', async () => {
@@ -435,6 +478,79 @@ describe('Home Graph repair and generated pages', () => {
         sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
       },
     });
+    const secondarySource = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA secondary specifications',
+      canonicalUri: 'https://example.test/lg-86nano90una-specifications',
+      sourceUri: 'https://example.test/lg-86nano90una-specifications',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'secondary-source, model:86NANO90UNA', sourceRank: 4 },
+      },
+    });
+    const marketplaceSource = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'Amazon affiliate LG listing',
+      canonicalUri: 'https://www.amazon.com/example-lg-86nano90una',
+      sourceUri: 'https://www.amazon.com/example-lg-86nano90una',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'marketplace, price comparison', sourceRank: 2 },
+      },
+    });
+    const pendingSource = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'Pending LG candidate source',
+      canonicalUri: 'https://pending.example.test/lg-86nano90una',
+      sourceUri: 'https://pending.example.test/lg-86nano90una',
+      tags: ['semantic-gap-repair'],
+      status: 'pending',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'secondary-source, model:86NANO90UNA', sourceRank: 3 },
+      },
+    });
+    const responseOnlyOfficialSourceId = 'source-lg-official-response-only';
+    await store.upsertSource({
+      id: responseOnlyOfficialSourceId,
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'Pending stale official candidate',
+      canonicalUri: 'https://pending.example.test/stale-lg-86nano90una',
+      sourceUri: 'https://pending.example.test/stale-lg-86nano90una',
+      tags: ['semantic-gap-repair'],
+      status: 'pending',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    const sourceWithoutUris = (({ sourceUri, canonicalUri, ...rest }) => {
+      void sourceUri;
+      void canonicalUri;
+      return rest;
+    })(source);
+    const responseOnlyOfficialSource = {
+      ...sourceWithoutUris,
+      id: responseOnlyOfficialSourceId,
+      title: 'LG 86NANO90UNA official specifications',
+      url: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+    };
+    const responseOnlyMarketplaceSourceId = 'source-amazon-response-only';
+    const responseOnlyMarketplaceSource = {
+      ...source,
+      id: responseOnlyMarketplaceSourceId,
+      title: 'Amazon affiliate LG listing',
+      sourceUri: 'https://www.amazon.com/example-lg-86nano90una',
+      canonicalUri: 'https://www.amazon.com/example-lg-86nano90una',
+    };
     const storedFact = await store.upsertNode({
       kind: 'fact',
       slug: 'lg-display-audio-specs',
@@ -443,13 +559,13 @@ describe('Home Graph repair and generated pages', () => {
       aliases: [],
       status: 'active',
       confidence: 92,
-      sourceId: source.id,
+      sourceId: secondarySource.id,
       metadata: {
         knowledgeSpaceId: spaceId,
         semanticKind: 'fact',
         factKind: 'specification',
         value: '4K UHD NanoCell display, HDR10, Dolby Vision, 120 Hz, 2 x 10W speakers',
-        sourceId: source.id,
+        sourceId: secondarySource.id,
         extractor: 'repair-promotion',
       },
     });
@@ -465,7 +581,7 @@ describe('Home Graph repair and generated pages', () => {
         text: 'The LG TV supports 4K UHD NanoCell video, HDR10, Dolby Vision, 120 Hz refresh, and 2 x 10W speakers.',
         mode: 'standard',
         confidence: 92,
-        sources: [source],
+        sources: [marketplaceSource, pendingSource, { ...secondarySource, status: 'pending' as const }, responseOnlyOfficialSource, responseOnlyMarketplaceSource],
         linkedObjects: [device!],
         facts: [{
           ...storedFact,
@@ -491,8 +607,14 @@ describe('Home Graph repair and generated pages', () => {
     const listedPage = pages.pages.find((entry) => entry.source.title === 'LG webOS Smart TV passport');
 
     expect(refresh).toEqual({ requested: true, refreshed: 1 });
-    expect(listedPage?.markdown).toContain('The Home Graph links this device to 0 Home Assistant entity record(s) and 1 source(s).');
+    expect(listedPage?.markdown).toContain('The Home Graph links this device to 0 Home Assistant entity record(s) and 2 source(s).');
     expect(listedPage?.markdown).toContain('LG 86NANO90UNA official specifications');
+    expect(listedPage?.markdown).toContain('LG 86NANO90UNA secondary specifications');
+    expect(store.getSource(secondarySource.id)?.status).toBe('indexed');
+    expect(store.getSource(responseOnlyMarketplaceSourceId)).toBeUndefined();
+    expect(listedPage?.markdown).not.toContain('Amazon affiliate');
+    expect(listedPage?.markdown).not.toContain('Pending LG candidate source');
+    expect(listedPage?.markdown).not.toContain('Pending stale official candidate');
     expect(listedPage?.markdown).toContain('2 x 10W speakers');
     expect(listedPage?.markdown).not.toContain('0 source(s)');
     expect(listedPage?.markdown).not.toContain('manual/source');
@@ -559,6 +681,74 @@ describe('Home Graph repair and generated pages', () => {
     expect(page.markdown).toContain('0 source(s)');
     expect(page.markdown).not.toContain('Stale LG specification source');
     expect(page.markdown).not.toContain('Audio capabilities: 2 x 10W speakers');
+  });
+
+  test('ask page refresh does not persist unlinked answer facts onto the only device', async () => {
+    const { service, store, artifactStore } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const browse = await service.browse({ installationId: 'house-1' });
+    const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
+    expect(device).toBeDefined();
+    const source = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'Unlinked TV comparison notes',
+      canonicalUri: 'https://example.test/tv-comparison',
+      sourceUri: 'https://example.test/tv-comparison',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'unlinked-page-refresh-fact',
+      title: 'Display and picture specifications',
+      summary: 'Display and picture specifications: 4K UHD resolution, HDR10, Dolby Vision, and 120 Hz refresh rate.',
+      aliases: [],
+      status: 'active',
+      confidence: 90,
+      sourceId: source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'specification',
+        sourceId: source.id,
+        extractor: 'repair-promotion',
+      },
+    });
+    const answer: HomeGraphAskResult = {
+      ok: true,
+      spaceId,
+      query: 'What features does the LG TV have?',
+      answer: {
+        text: 'The LG TV supports 4K UHD, HDR10, Dolby Vision, and 120 Hz refresh.',
+        mode: 'standard',
+        confidence: 92,
+        sources: [source],
+        linkedObjects: [device!],
+        facts: [fact],
+        gaps: [],
+        synthesized: true,
+      },
+      results: [],
+    };
+
+    await refreshDevicePagesForHomeGraphAsk({
+      store,
+      artifactStore,
+      spaceId,
+      installationId: 'house-1',
+      answer,
+    });
+    const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
+
+    expect(page.markdown).not.toContain('Display and picture specifications: 4K UHD resolution');
+    expect(store.getNode(fact.id)?.metadata.linkedObjectIds).toBeUndefined();
+    expect(store.getNode(fact.id)?.metadata.subjectIds).toBeUndefined();
   });
 });
 

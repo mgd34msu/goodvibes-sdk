@@ -102,7 +102,7 @@ function inferCategory(message: string, status?: number): DaemonErrorCategory {
   if (status === 402) return DaemonErrorCategory.BILLING;
   if (status === 403) return DaemonErrorCategory.AUTHORIZATION;
   if (status === 404) return DaemonErrorCategory.NOT_FOUND;
-  if (status === 408) return DaemonErrorCategory.TIMEOUT;
+  if (status === 408 || status === 504) return DaemonErrorCategory.TIMEOUT;
   if (status === 429) return DaemonErrorCategory.RATE_LIMIT;
   if (status === 400) return DaemonErrorCategory.BAD_REQUEST;
   if (status !== undefined && status >= 500) return DaemonErrorCategory.SERVICE;

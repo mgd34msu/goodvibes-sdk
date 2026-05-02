@@ -8,7 +8,7 @@ const sdk = createReactNativeGoodVibesSdk({
 const snapshot = await sdk.operator.control.snapshot();
 console.log(snapshot);
 
-const unsubscribe = sdk.realtime.runtime().agents.on('AGENT_COMPLETED', (event) => {
+const unsubscribe = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (event) => {
   console.log('agent completed', event);
 });
 

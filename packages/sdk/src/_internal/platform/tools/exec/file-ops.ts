@@ -54,7 +54,15 @@ async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoo
 
   function walkDir(dir: string): void {
     let entries: string[];
-    try { entries = readdirSync(dir); } catch { return; }
+    try {
+      entries = readdirSync(dir);
+    } catch (error) {
+      logger.debug('file move import update: failed to read directory', {
+        dir,
+        error: summarizeError(error),
+      });
+      return;
+    }
     for (const entry of entries) {
       if (SKIP_DIRS.has(entry)) continue;
       const full = join(dir, entry);
@@ -63,8 +71,11 @@ async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoo
         if (st.isDirectory()) { walkDir(full); continue; }
         const ext = full.slice(full.lastIndexOf('.'));
         if (TS_EXTS.has(ext)) allFiles.push(full);
-      } catch {
-        // skip
+      } catch (error) {
+        logger.debug('file move import update: failed to stat path', {
+          path: full,
+          error: summarizeError(error),
+        });
       }
     }
   }
@@ -74,7 +85,15 @@ async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoo
   for (const file of allFiles) {
     if (file === newDst) continue;
     let content: string;
-    try { content = readFileSync(file, 'utf-8'); } catch { continue; }
+    try {
+      content = readFileSync(file, 'utf-8');
+    } catch (error) {
+      logger.debug('file move import update: failed to read file', {
+        file,
+        error: summarizeError(error),
+      });
+      continue;
+    }
 
     const oldSpecifier = computeRelativeImportPath(file, oldSrc);
     const newSpecifier = computeRelativeImportPath(file, newDst);

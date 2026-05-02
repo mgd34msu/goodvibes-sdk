@@ -47,6 +47,7 @@ export async function sleepWithSignal(
       cleanup();
       resolve();
     }, delayMs);
+    timer.unref?.();
     const onAbort = () => {
       clearTimeout(timer);
       cleanup();

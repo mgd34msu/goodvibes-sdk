@@ -8,6 +8,8 @@ import type { PanelConfig } from '../types.js';
 import { DEFAULT_PANEL_CONFIG } from '../types.js';
 import type { FailureReport } from '../../forensics/types.js';
 import type { ForensicsRegistry } from '../../forensics/registry.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 export class ForensicsDataPanel {
   private readonly _config: PanelConfig;
@@ -67,7 +69,11 @@ export class ForensicsDataPanel {
 
   private _notify(): void {
     for (const cb of this._subscribers) {
-      try { cb(); } catch { /* non-fatal */ }
+      try {
+        cb();
+      } catch (error) {
+        logger.warn('Forensics panel subscriber failed', { error: summarizeError(error) });
+      }
     }
   }
 }

@@ -142,7 +142,9 @@ export async function handleSlackSurfacePayload(
                 response_type: 'in_channel',
                 text: `Continuing session ${submission.session.id} via agent ${submission.activeAgentId}.`,
               }),
-            }).catch(() => {});
+            }).catch((error) => logger.warn('handleSlackSurfaceWebhook: failed to send continuation response', {
+              error: summarizeError(error),
+            }));
           }
           return;
         }
@@ -164,7 +166,9 @@ export async function handleSlackSurfacePayload(
                 response_type: 'in_channel',
                 text: `Agent spawn failed: ${message}`,
               }),
-            }).catch(() => {});
+            }).catch((error) => logger.warn('handleSlackSurfaceWebhook: failed to send spawn failure response', {
+              error: summarizeError(error),
+            }));
           }
           return;
         }

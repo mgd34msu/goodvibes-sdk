@@ -4,6 +4,7 @@ import type { ConfigManager } from '../config/manager.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { LLMProvider, ProviderBatchResult } from '../providers/interface.js';
 import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 import type {
   CreateDaemonBatchJobInput,
   DaemonBatchJob,
@@ -54,8 +55,11 @@ export class DaemonBatchManager {
   start(): void {
     if (this.interval !== null) return;
     this.interval = setInterval(() => {
-      void this.tick().catch(() => undefined);
+      void this.tick().catch((error) => {
+        logger.warn('Batch manager tick failed', { error: summarizeError(error) });
+      });
     }, this.getNumberConfig('batch.tickIntervalMs', 60_000));
+    this.interval.unref?.();
   }
 
   dispose(): void {

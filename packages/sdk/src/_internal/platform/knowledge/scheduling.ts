@@ -4,6 +4,7 @@ import type { KnowledgeJobMode, KnowledgeJobRecord, KnowledgeJobRunRecord, Knowl
 import { emitKnowledgeJobCompleted, emitKnowledgeJobFailed, emitKnowledgeJobQueued, emitKnowledgeJobStarted } from '../runtime/emitters/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 
 export interface KnowledgeSchedulingContext {
   readonly store: KnowledgeStore;
@@ -35,7 +36,9 @@ export class KnowledgeScheduleService {
       { id: 'knowledge-light-consolidation', kind: 'light-consolidation', title: 'Light Consolidation', description: 'Score recent usage, refresh candidate promotions, and write a deterministic consolidation report.', defaultMode: 'background', metadata: { category: 'consolidation' } },
       { id: 'knowledge-deep-consolidation', kind: 'deep-consolidation', title: 'Deep Consolidation', description: 'Run the full consolidation loop, including high-confidence memory promotion and deterministic reporting.', defaultMode: 'background', metadata: { category: 'consolidation' } },
     ];
-    void this.initializeSchedules();
+    void this.initializeSchedules().catch((error) => {
+      logger.warn('Knowledge schedule initialization failed', { error: summarizeError(error) });
+    });
   }
 
   listJobs(): readonly KnowledgeJobRecord[] {
@@ -202,9 +205,17 @@ export class KnowledgeScheduleService {
       });
       if (!normalized.nextRunAt) continue;
       const delay = Math.max(250, Math.min(2_147_483_647, normalized.nextRunAt - Date.now()));
-      this.scheduleTimers.set(normalized.id, setTimeout(() => {
-        void this.runScheduledJob(normalized.id);
-      }, delay));
+      const timer = setTimeout(() => {
+        void this.runScheduledJob(normalized.id).catch((error) => {
+          logger.warn('Scheduled knowledge job failed before run record completion', {
+            scheduleId: normalized.id,
+            jobId: normalized.jobId,
+            error: summarizeError(error),
+          });
+        });
+      }, delay);
+      timer.unref?.();
+      this.scheduleTimers.set(normalized.id, timer);
     }
   }
 

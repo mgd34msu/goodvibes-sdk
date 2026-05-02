@@ -13,7 +13,8 @@ async function pathExists(path: string): Promise<boolean> {
   try {
     await access(path);
     return true;
-  } catch {
+  } catch (error) {
+    void error;
     return false;
   }
 }
@@ -22,7 +23,8 @@ async function matchingSubdirs(dir: string, pattern: RegExp): Promise<string[]> 
   let entries: Dirent[];
   try {
     entries = await readdir(dir, { withFileTypes: true });
-  } catch {
+  } catch (error) {
+    void error;
     return [];
   }
   return entries.filter((entry) => entry.isDirectory() && pattern.test(entry.name)).map((entry) => entry.name);
@@ -83,7 +85,8 @@ export async function discoverBrowserKnowledgeProfiles(
         let profilePath = rawProfilePath;
         try {
           profilePath = await realpath(rawProfilePath);
-        } catch {
+        } catch (error) {
+          void error;
           // Keep the raw path if symlink resolution is unavailable.
         }
         if (seen.has(profilePath)) continue;

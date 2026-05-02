@@ -24,6 +24,10 @@ export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions
 
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {}
 
+export interface OperatorRemoteClientOptions {
+  readonly getResponseSchema?: (methodId: string) => ContractInvokeOptions['responseSchema'];
+}
+
 type RequiredKeys<T extends object> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
 }[keyof T];
@@ -185,6 +189,7 @@ function requireMethodRoute(
 export function createOperatorRemoteClient(
   transport: HttpTransport,
   contract: OperatorContractManifest,
+  clientOptions: OperatorRemoteClientOptions = {},
 ): OperatorRemoteClient {
   function invokeTyped<TMethodId extends OperatorTypedMethodId>(
     methodId: TMethodId,
@@ -200,7 +205,13 @@ export function createOperatorRemoteClient(
     input?: Record<string, unknown>,
     options: OperatorRemoteClientInvokeOptions = {},
   ): Promise<T> {
-    return invokeContractRoute<T>(transport, requireMethodRoute(contract, methodId), input, options);
+    const schema = options.responseSchema ?? clientOptions.getResponseSchema?.(methodId);
+    return invokeContractRoute<T>(
+      transport,
+      requireMethodRoute(contract, methodId),
+      input,
+      schema ? { ...options, responseSchema: schema } : options,
+    );
   }
 
   function streamTyped<TMethodId extends OperatorStreamMethodId>(

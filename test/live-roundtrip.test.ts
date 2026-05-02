@@ -36,7 +36,7 @@ describe('sdk live roundtrip', () => {
         }
         const handlers = createDaemonControlRouteHandlers({
           authToken: null,
-          version: '0.18.2',
+          version: '0.28.22',
           sessionCookieName: 'goodvibes_session',
           controlPlaneGateway: {
             getSnapshot: () => ({ ok: true }),
@@ -153,13 +153,30 @@ describe('sdk live roundtrip', () => {
     const snapshot = await sdk.operator.control.snapshot();
     expect(snapshot).toEqual({ ok: true });
 
-    const events: unknown[] = [];
-    const unsubscribe = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (payload) => {
-      events.push(payload);
-    });
-    await new Promise((resolve) => setTimeout(resolve, 25));
-    unsubscribe();
+    let unsubscribe: (() => void) | undefined;
+    const event = await withTestTimeout(new Promise<unknown>((resolve) => {
+      unsubscribe = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (payload) => {
+        unsubscribe?.();
+        resolve(payload);
+      });
+    }), 1_000, 'Timed out waiting for AGENT_COMPLETED SSE event.');
+    unsubscribe?.();
 
-    expect(events).toEqual([{ agentId: 'agent-1' }]);
+    expect(event).toEqual({ agentId: 'agent-1' });
   });
 });
+
+async function withTestTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}

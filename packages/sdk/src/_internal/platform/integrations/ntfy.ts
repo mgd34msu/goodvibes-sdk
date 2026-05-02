@@ -469,6 +469,7 @@ function waitForNtfyReconnectDelay(signal: AbortSignal | undefined, delayMs: num
     };
     const abort = () => done();
     timeout = setTimeout(done, delayMs);
+    timeout.unref?.();
     signal?.addEventListener('abort', abort, { once: true });
   });
 }

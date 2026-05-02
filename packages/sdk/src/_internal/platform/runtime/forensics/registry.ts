@@ -12,6 +12,8 @@ import type {
   ForensicsReplayMismatchEvidence,
   ForensicsReplayTurnEvidence,
 } from './types.js';
+import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 
 export interface ReplaySnapshotInput {
   readonly status: string;
@@ -169,7 +171,11 @@ export class ForensicsRegistry {
 
   private _notify(): void {
     for (const cb of this._subscribers) {
-      try { cb(); } catch { /* non-fatal — subscriber errors must not affect the registry */ }
+      try {
+        cb();
+      } catch (error) {
+        logger.warn('Forensics registry subscriber failed', { error: summarizeError(error) });
+      }
     }
   }
 

@@ -548,7 +548,10 @@ export async function runAgentTask(
               context.emitAgentProgress(record.id, record.progress);
               context.emitOrchestrationProgress(record, record.progress);
               networkAttempt++;
-              await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+              await new Promise<void>((resolve) => {
+                const timer = setTimeout(resolve, delayMs);
+                timer.unref?.();
+              });
               if ((record as { status: string }).status === 'cancelled') {
                 throw new Error('Agent cancelled during network retry');
               }
@@ -562,7 +565,10 @@ export async function runAgentTask(
               context.emitAgentProgress(record.id, record.progress);
               context.emitOrchestrationProgress(record, record.progress);
               rateLimitAttempt++;
-              await new Promise<void>((resolve) => setTimeout(resolve, RATE_LIMIT_RETRY_DELAY_MS));
+              await new Promise<void>((resolve) => {
+                const timer = setTimeout(resolve, RATE_LIMIT_RETRY_DELAY_MS);
+                timer.unref?.();
+              });
               if ((record as { status: string }).status === 'cancelled') {
                 throw new Error('Agent cancelled during rate limit retry');
               }

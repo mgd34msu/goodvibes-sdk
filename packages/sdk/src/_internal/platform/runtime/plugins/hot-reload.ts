@@ -167,9 +167,10 @@ export async function runHotReload(
   try {
     healthResult = await Promise.race([
       healthCheck(name),
-      new Promise<PluginHealthCheckResult>((_, reject) =>
-        setTimeout(() => reject(new Error(`health check timed out after ${timeoutMs}ms`)), timeoutMs),
-      ),
+      new Promise<PluginHealthCheckResult>((_, reject) => {
+        const timer = setTimeout(() => reject(new Error(`health check timed out after ${timeoutMs}ms`)), timeoutMs);
+        timer.unref?.();
+      }),
     ]);
   } catch (err) {
     healthResult = {
@@ -183,7 +184,9 @@ export async function runHotReload(
   try {
     const mutableRecord = lcm.getRecord(name) as { reloading: boolean } | undefined;
     if (mutableRecord) mutableRecord.reloading = false;
-  } catch { /* non-fatal */ }
+  } catch (error) {
+    logger.warn(`[plugin-hot-reload] ${name}: failed to clear reloading flag`, { error: summarizeError(error) });
+  }
 
   if (healthResult.healthy) {
     logger.info(`[plugin-hot-reload] ${name}: hot-reload complete — active (${Date.now() - startTs}ms)`);

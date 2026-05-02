@@ -126,7 +126,9 @@ export async function handleDiscordInteractionPayload(
         if (submission.mode === 'continued-live') {
           await discord
             .editOriginalResponse(appId, token, `Continuing session ${submission.session.id} via agent ${submission.activeAgentId}.`)
-            .catch(() => {});
+            .catch((error) => logger.warn('handleDiscordSurfaceWebhook: failed to edit continuation response', {
+              error: summarizeError(error),
+            }));
           return;
         }
 
@@ -139,7 +141,11 @@ export async function handleDiscordInteractionPayload(
           const payload = await spawnResult.json() as { error?: string };
           const message = payload.error ?? 'Agent spawn failed';
           logger.error('handleDiscordSurfaceWebhook: spawn failed', { error: message });
-          await discord.editOriginalResponse(appId, token, `Agent spawn failed: ${message}`).catch(() => {});
+          await discord.editOriginalResponse(appId, token, `Agent spawn failed: ${message}`).catch((error) => {
+            logger.warn('handleDiscordSurfaceWebhook: failed to edit spawn failure response', {
+              error: summarizeError(error),
+            });
+          });
           return;
         }
 

@@ -190,7 +190,11 @@ afterEach(() => {
     manager.dispose();
   }
   for (const dir of cleanupDirs.splice(0)) {
-    try { rmSync(dir, { recursive: true, force: true }); } catch {}
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch (error) {
+      console.warn('Failed to remove session-cookie auth test directory', { dir, error });
+    }
   }
 });
 

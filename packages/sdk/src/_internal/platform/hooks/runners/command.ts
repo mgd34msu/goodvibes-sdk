@@ -44,8 +44,9 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
 
     // Kill the process on timeout; always clear the timer on success.
     const timer = setTimeout(() => {
-      try { proc.kill(); } catch { /* already exited */ }
+      killHookProcess(proc, command, 'timeout');
     }, timeoutMs);
+    timer.unref?.();
 
     let exitCode: number;
     try {
@@ -53,7 +54,7 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
       clearTimeout(timer);
     } catch (err) {
       clearTimeout(timer);
-      try { proc.kill(); } catch { /* already dead */ }
+      killHookProcess(proc, command, 'spawn error');
       throw err;
     }
 
@@ -89,5 +90,17 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
     const message = summarizeError(err);
     logger.error('command hook error', { command, error: message });
     return { ok: false, error: message };
+  }
+}
+
+function killHookProcess(proc: ReturnType<typeof Bun.spawn>, command: string, reason: string): void {
+  try {
+    proc.kill();
+  } catch (error) {
+    logger.debug('command hook kill failed; process may already be exited', {
+      command,
+      reason,
+      error: summarizeError(error),
+    });
   }
 }

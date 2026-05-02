@@ -1,6 +1,13 @@
 // Synced from packages/daemon-sdk/src/operator.ts
 import type { DaemonApiRouteHandlers } from './context.js';
 
+function readBoundedPositiveInteger(raw: string | null, fallback: number, max = 1_000): number {
+  if (raw === null || raw.trim() === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(value)));
+}
+
 export async function dispatchOperatorRoutes(
   req: Request,
   handlers: Pick<
@@ -196,7 +203,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/control-plane/contract' && method === 'GET') return handlers.getOperatorContract();
   if (pathname === '/api/control-plane/web' && method === 'GET') return handlers.getControlPlaneWeb();
   if (pathname === '/api/control-plane/recent-events' && method === 'GET') {
-    const limit = Number(url.searchParams.get('limit') ?? 100);
+    const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), 100);
     return handlers.getControlPlaneRecentEvents(limit);
   }
   if (pathname === '/api/control-plane/messages' && method === 'GET') return handlers.getControlPlaneMessages();
@@ -319,7 +326,7 @@ export async function dispatchOperatorRoutes(
   if (channelPolicyMatch && method === 'POST') return handlers.postChannelPolicy(channelPolicyMatch[1], req);
   if (channelPolicyMatch && method === 'PATCH') return handlers.patchChannelPolicy(channelPolicyMatch[1], req);
   if (pathname === '/api/channels/policies/audit' && method === 'GET') {
-    const limit = Number(url.searchParams.get('limit') ?? 100);
+    const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), 100);
     return handlers.getChannelPolicyAudit(limit);
   }
   if (pathname === '/api/channels/status' && method === 'GET') return handlers.getChannelStatus();
