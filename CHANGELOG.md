@@ -20,6 +20,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.28.22] - 2026-05-02
+
+### Breaking
+- none
+
+### Added
+- none
+
+### Fixed
+- Home Graph Ask page refresh now persists response-level subject-linked facts
+  back into graph edges before regenerating device passports, so generated
+  pages can render repaired sources and canonical facts immediately after a
+  warm Ask.
+- Generated device passport refresh now links only vetted, non-generated,
+  non-stale answer facts to the concrete HA device subject, preventing
+  response-only fact metadata from leaving pages stale with `0 source(s)` and
+  open manual/source questions.
+
+### Migration
+- none
+
+---
+
 ## [0.28.21] - 2026-05-02
 
 ### Breaking

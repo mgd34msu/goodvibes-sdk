@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-let version = '0.28.21';
+let version = '0.28.22';
 try {
   const pkg = JSON.parse(readFileSync(join(import.meta.dir, '..', '..', 'package.json'), 'utf-8'));
   version = pkg.version ?? version;
