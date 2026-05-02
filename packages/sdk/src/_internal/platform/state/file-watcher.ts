@@ -208,7 +208,12 @@ export class FileWatcher {
       let isDir = false;
       try {
         isDir = statSync(absPath).isDirectory();
-      } catch { /* non-fatal */ }
+      } catch (error) {
+        logger.debug('FileWatcher: stat before watch failed', {
+          path: absPath,
+          error: summarizeError(error),
+        });
+      }
 
       const watcher = watch(
         absPath,
@@ -254,6 +259,7 @@ export class FileWatcher {
       this.debounceTimers.delete(absPath);
       this._handleChange(absPath);
     }, FileWatcher.DEBOUNCE_MS);
+    timer.unref?.();
 
     this.debounceTimers.set(absPath, timer);
   }

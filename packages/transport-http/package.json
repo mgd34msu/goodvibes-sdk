@@ -2,6 +2,9 @@
   "name": "@pellux/goodvibes-transport-http",
   "private": true,
   "version": "0.28.22",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "HTTP, JSON, path, and SSE transport primitives for GoodVibes client integrations.",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,9 +36,6 @@
     "sse",
     "transport"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "dependencies": {
     "@pellux/goodvibes-errors": "workspace:*",
     "zod": "^4.3.6"

@@ -70,6 +70,7 @@ export function scheduleAutomationFailureFollowUp(
       });
     });
   }, Math.max(1_000, job.failure.cooldownMs));
+  timer.unref?.();
   context.retryTimers.set(retryKey, timer);
 }
 

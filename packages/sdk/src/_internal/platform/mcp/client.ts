@@ -247,6 +247,7 @@ export class McpClient {
         this.pendingRequests.delete(id);
         reject(new Error(`McpClient(${this.config.name}): request '${method}' timed out after ${timeoutMs}ms`));
       }, timeoutMs);
+      timer.unref?.();
 
       this.pendingRequests.set(id, {
         resolve: resolve as (value: unknown) => void,
@@ -354,7 +355,7 @@ export class McpClient {
     const delay = RESTART_DELAY_MS * this.restartCount;
     logger.info('McpClient: scheduling restart', { server: this.config.name, attempt: this.restartCount, delayMs: delay });
 
-    setTimeout(async () => {
+    const timer = setTimeout(async () => {
       if (this.proc && this.isConnected) return; // Already restarted by something else
       try {
         await this._startProcess();
@@ -366,6 +367,7 @@ export class McpClient {
         logger.error('McpClient: restart failed', { server: this.config.name, err: summarizeError(err) });
       }
     }, delay);
+    timer.unref?.();
   }
 
   /**

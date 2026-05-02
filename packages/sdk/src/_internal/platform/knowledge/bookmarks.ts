@@ -151,7 +151,8 @@ export function parseBookmarkSeeds(content: string): KnowledgeBookmarkSeed[] {
   if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
     try {
       return parseJsonBookmarks(JSON.parse(trimmed));
-    } catch {
+    } catch (error) {
+      void error;
       return parseUrlList(trimmed);
     }
   }

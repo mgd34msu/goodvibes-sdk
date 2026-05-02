@@ -265,7 +265,10 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
           sessionId: context.sessionId,
           timestamp: Date.now(),
           payload: { model: model.id, provider: model.provider, error: chatErr instanceof Error ? chatErr.message : String(chatErr) },
-        }).catch(() => {});
+        }).catch((error) => logger.warn('Fail:llm:chat hook dispatch failed', {
+          sessionId: context.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        }));
       }
       throw chatErr;
     }
@@ -354,7 +357,10 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
           outputTokens: response.usage.outputTokens,
           toolCallCount: response.toolCalls.length,
         },
-      }).catch(() => {});
+      }).catch((error) => logger.warn('Post:llm:chat hook dispatch failed', {
+        sessionId: context.sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      }));
     }
 
     const reasoningForMsg = reasoningAccumulated || undefined;

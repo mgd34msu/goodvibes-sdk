@@ -14,7 +14,10 @@ const MAX_ATTEMPTS = Number.parseInt(process.env.GOODVIBES_VERIFY_ATTEMPTS || '2
 const RETRY_DELAY_MS = Number.parseInt(process.env.GOODVIBES_VERIFY_DELAY_MS || '5000', 10);
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }
 
 async function verifyPublishedVersion() {

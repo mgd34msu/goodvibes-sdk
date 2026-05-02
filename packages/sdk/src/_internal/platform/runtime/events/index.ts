@@ -312,13 +312,21 @@ export class RuntimeEventBus {
     const typeListeners = this._listeners.get('OPS_LISTENER_MISBEHAVING');
     if (typeListeners) {
       for (const h of Array.from(typeListeners)) {
-        try { h(envelope); } catch { /* suppress secondary errors */ }
+        try {
+          h(envelope);
+        } catch (error) {
+          logger.warn('OPS_LISTENER_MISBEHAVING listener failed', { error: summarizeError(error) });
+        }
       }
     }
     const domainListeners = this._domainListeners.get('ops');
     if (domainListeners) {
       for (const h of Array.from(domainListeners)) {
-        try { h(envelope); } catch { /* suppress secondary errors */ }
+        try {
+          h(envelope);
+        } catch (error) {
+          logger.warn('OPS_LISTENER_MISBEHAVING domain listener failed', { error: summarizeError(error) });
+        }
       }
     }
   }

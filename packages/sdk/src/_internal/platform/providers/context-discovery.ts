@@ -59,6 +59,7 @@ async function probe(
 ): Promise<Response | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  timer.unref?.();
 
   try {
     const headers: Record<string, string> = { Accept: 'application/json' };

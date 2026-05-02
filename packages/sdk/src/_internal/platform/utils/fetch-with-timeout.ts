@@ -85,6 +85,7 @@ export async function fetchWithTimeout(
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new DOMException('Request timed out', 'TimeoutError')), timeoutMs);
+  timer.unref?.();
 
   let signal: AbortSignal;
   const callerSignal = init?.signal;

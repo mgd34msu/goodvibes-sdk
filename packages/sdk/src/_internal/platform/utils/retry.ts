@@ -93,7 +93,10 @@ export async function withRetry<T>(
 
       const delayMs = computeDelay(attempt, cfg.initialDelayMs, cfg.maxDelayMs);
       onRetry?.(attempt + 1, lastError, delayMs);
-      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, delayMs);
+        timer.unref?.();
+      });
     }
   }
 

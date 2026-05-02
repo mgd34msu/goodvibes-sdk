@@ -57,7 +57,8 @@ export interface TransportObserver {
 export function invokeTransportObserver(fn: () => void): void {
   try {
     fn();
-  } catch {
+  } catch (error) {
+    void error;
     // Observer errors must not propagate into transport logic.
   }
 }

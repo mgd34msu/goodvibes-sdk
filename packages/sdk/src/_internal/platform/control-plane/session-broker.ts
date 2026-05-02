@@ -128,7 +128,13 @@ export class SharedSessionBroker {
       this._gcInterval = null;
     }
     for (const u of this._busUnsubs) {
-      try { u(); } catch {}
+      try {
+        u();
+      } catch (error) {
+        logger.warn('SharedSessionBroker bus unsubscribe failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
     this._busUnsubs = [];
     this._busAttached = false;

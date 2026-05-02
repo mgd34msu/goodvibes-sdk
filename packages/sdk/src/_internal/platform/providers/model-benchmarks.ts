@@ -291,6 +291,7 @@ export class BenchmarkStore {
   private async fetchBenchmarks(): Promise<BenchmarkEntry[]> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    timer.unref?.();
     try {
       const response = await instrumentedFetch(ZEROEVAL_URL, {
         signal: controller.signal,

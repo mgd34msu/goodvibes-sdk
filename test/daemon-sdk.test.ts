@@ -14,7 +14,7 @@ describe('daemon sdk', () => {
   test('builds control route handlers from injected host services', async () => {
     const handlers = createDaemonControlRouteHandlers({
       authToken: 'shared-token',
-      version: '0.18.2',
+      version: '0.28.22',
       sessionCookieName: 'goodvibes_session',
       controlPlaneGateway: {
         getSnapshot: () => ({ ok: true }),
@@ -55,7 +55,7 @@ describe('daemon sdk', () => {
     const statusResponse = await handlers.getStatus();
     expect(statusResponse.status).toBe(200);
     const status = await statusResponse.json() as { version: string };
-    expect(status.version).toBe('0.18.2');
+    expect(status.version).toBe('0.28.22');
 
     const authResponse = await handlers.getCurrentAuth(new Request('http://127.0.0.1/api/control-plane/auth', {
       headers: {

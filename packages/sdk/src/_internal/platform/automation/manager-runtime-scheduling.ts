@@ -51,6 +51,7 @@ export function scheduleAutomationJob(context: AutomationSchedulingContext, job:
   const delayMs = Math.max(0, nextRunAt - Date.now());
   if (delayMs > MAX_TIMEOUT_MS) {
     const timer = setTimeout(() => scheduleAutomationJob(context, refreshed), MAX_TIMEOUT_MS);
+    timer.unref?.();
     context.timers.set(job.id, timer);
     return;
   }
@@ -108,6 +109,7 @@ export function scheduleAutomationJob(context: AutomationSchedulingContext, job:
         void context.saveJobs();
       });
   }, delayMs);
+  timer.unref?.();
   context.timers.set(job.id, timer);
 }
 

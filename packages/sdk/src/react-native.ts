@@ -58,7 +58,7 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
  *   authToken: await SecureStore.getItemAsync('token'),
  * });
  *
- * const events = sdk.realtime.runtime();
+ * const events = sdk.realtime.viaWebSocket();
  * events.agents.on('AGENT_SPAWNING', ({ agentId }) => console.log(agentId));
  */
 export { forSession } from './transport-realtime.js';

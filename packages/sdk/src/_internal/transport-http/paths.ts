@@ -35,7 +35,7 @@ export function normalizeBaseUrl(baseUrl: string): string {
   if (!normalized) {
     throw new ConfigurationError('Transport baseUrl is required. Pass a non-empty baseUrl string to your transport or SDK options.', { code: 'SDK_TRANSPORT_BASE_URL_REQUIRED' });
   }
-  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+  return normalized.replace(/\/+$/, '');
 }
 
 export function buildUrl(baseUrl: string, path: string): string {

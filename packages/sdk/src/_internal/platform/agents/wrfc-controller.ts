@@ -548,11 +548,12 @@ export class WrfcController {
   }
 
   private scheduleChainCleanup(chain: WrfcChain): void {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       if (chain.state === 'passed' || chain.state === 'failed') {
         this.chains.delete(chain.id);
       }
     }, CHAIN_CLEANUP_DELAY_MS);
+    timer.unref?.();
   }
 
   private async checkAndRunGatesForAll(): Promise<void> {

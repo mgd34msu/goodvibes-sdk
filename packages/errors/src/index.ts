@@ -35,6 +35,7 @@ export type SDKErrorKind =
   | 'not-found'
   | 'rate-limit'
   | 'server'
+  | 'tool'
   | 'validation'
   | 'unknown';
 
@@ -63,6 +64,7 @@ function inferKind(category: ErrorCategory): SDKErrorKind {
     case 'bad_request':
       return 'validation';
     case 'tool':
+      return 'tool';
     case 'unknown':
     default:
       return 'unknown';
@@ -86,6 +88,7 @@ export interface GoodVibesSdkErrorOptions {
   readonly providerCode?: string;
   readonly providerType?: string;
   readonly retryAfterMs?: number;
+  readonly cause?: unknown;
 }
 
 export const RETRYABLE_STATUS_CODES: readonly number[] = [408, 429, 500, 502, 503, 504];
@@ -143,9 +146,10 @@ export class GoodVibesSdkError extends Error {
   public readonly providerCode?: string;
   public readonly providerType?: string;
   public readonly retryAfterMs?: number;
+  public override readonly cause?: unknown;
 
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
-    super(message);
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = this.constructor.name;
     this.code = options.code;
     this.category = options.category ?? inferCategory(options.status);
@@ -164,7 +168,48 @@ export class GoodVibesSdkError extends Error {
     this.providerCode = options.providerCode;
     this.providerType = options.providerType;
     this.retryAfterMs = options.retryAfterMs;
+    this.cause = options.cause;
   }
+
+  toJSON(): Record<string, unknown> {
+    return omitUndefined({
+      name: this.name,
+      message: this.message,
+      kind: this.kind,
+      code: this.code,
+      category: this.category,
+      source: this.source,
+      recoverable: this.recoverable,
+      status: this.status,
+      url: this.url,
+      method: this.method,
+      body: this.body,
+      hint: this.hint,
+      provider: this.provider,
+      operation: this.operation,
+      phase: this.phase,
+      requestId: this.requestId,
+      providerCode: this.providerCode,
+      providerType: this.providerType,
+      retryAfterMs: this.retryAfterMs,
+      cause: serializeCause(this.cause),
+    });
+  }
+}
+
+function serializeCause(cause: unknown): unknown {
+  if (cause === undefined) return undefined;
+  if (cause instanceof Error) {
+    return omitUndefined({
+      name: cause.name,
+      message: cause.message,
+    });
+  }
+  return cause;
+}
+
+function omitUndefined(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
 }
 
 /**
@@ -291,7 +336,7 @@ export function createHttpStatusError(
       category: body.category,
       source: body.source ?? 'transport',
       recoverable: body.recoverable,
-      status: body.status ?? status,
+      status,
       url,
       method,
       body,

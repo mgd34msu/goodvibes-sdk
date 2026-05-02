@@ -47,11 +47,17 @@ export class WrfcWorkmap {
     try {
       const lines = readFileSync(this.filePath, 'utf-8').trim().split('\n').filter(Boolean);
       const entries = lines.map(line => {
-        try { return JSON.parse(line) as WorkmapEntry; } catch { logger.debug('WrfcWorkmap: malformed JSONL line skipped'); return null; }
+        try {
+          return JSON.parse(line) as WorkmapEntry;
+        } catch (error) {
+          logger.debug('WrfcWorkmap: malformed JSONL line skipped', { error: summarizeError(error) });
+          return null;
+        }
       }).filter((e): e is WorkmapEntry => e !== null);
       if (wrfcId) return entries.filter(e => e.wrfcId === wrfcId);
       return entries;
-    } catch {
+    } catch (error) {
+      logger.debug('WrfcWorkmap: read failed', { error: summarizeError(error) });
       return [];
     }
   }
@@ -82,6 +88,9 @@ export class WrfcWorkmap {
         .map((f: string) => ({ name: f, mtime: statSync(join(dir, f)).mtimeMs }))
         .sort((a: { mtime: number }, b: { mtime: number }) => b.mtime - a.mtime);
       return files.length > 0 ? join(dir, files[0].name) : null;
-    } catch { return null; }
+    } catch (error) {
+      logger.debug('WrfcWorkmap: latest file discovery failed', { error: summarizeError(error) });
+      return null;
+    }
   }
 }

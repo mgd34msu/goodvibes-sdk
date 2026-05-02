@@ -2,6 +2,9 @@
   "name": "@pellux/goodvibes-transport-realtime",
   "private": true,
   "version": "0.28.22",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Realtime event-domain connectors for GoodVibes SSE and WebSocket integrations.",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,9 +36,6 @@
     "websocket",
     "events"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
     "@pellux/goodvibes-transport-core": "workspace:*",

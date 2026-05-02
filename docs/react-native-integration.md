@@ -20,7 +20,7 @@ const sdk = createReactNativeGoodVibesSdk({
 React Native should use WebSocket for realtime:
 
 ```ts
-const events = sdk.realtime.runtime();
+const events = sdk.realtime.viaWebSocket();
 const unsubscribe = events.agents.on('AGENT_COMPLETED', (event) => {
   console.log(event);
 });

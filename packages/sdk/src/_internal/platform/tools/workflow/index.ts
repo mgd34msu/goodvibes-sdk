@@ -1,6 +1,7 @@
 import type { Tool } from '../../types/tools.js';
 import { workflowSchema } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 
 // ---------------------------------------------------------------------------
 // Workflow definitions
@@ -300,7 +301,11 @@ export class ScheduleManager {
     this.schedules.clear();
     // Kill any still-running spawned processes
     for (const { proc } of this.spawnedProcs) {
-      try { proc.kill(); } catch { /* non-fatal */ }
+      try {
+        proc.kill();
+      } catch (error) {
+        logger.debug('Workflow scheduler process kill failed during destroy', { error: summarizeError(error) });
+      }
     }
     this.spawnedProcs = [];
   }

@@ -79,7 +79,8 @@ export class OrchestratorFollowUpRuntime {
     if (this.queue.length === 0) return;
     const state = this.options.getThinkingState();
     if (state.isThinking || state.isCompacting || this.isRunning || this.options.getQueuedUserMessageCount() > 0) {
-      setTimeout(() => this.scheduleFlush(), FOLLOW_UP_RETRY_DELAY_MS);
+      const timer = setTimeout(() => this.scheduleFlush(), FOLLOW_UP_RETRY_DELAY_MS);
+      timer.unref?.();
       return;
     }
 

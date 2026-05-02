@@ -54,10 +54,25 @@ function sourceAnswerQuality(
 
 export function sourceAuthorityBoostForAnswer(source: KnowledgeSourceRecord): number {
   const discovery = readRecord(source.metadata.sourceDiscovery);
-  const text = `${readString(discovery.trustReason) ?? ''} ${readString(discovery.sourceDomain) ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`.toLowerCase();
-  if (/\bofficial-vendor-domain\b/.test(text) || /(^|[/.])(?:lg|sony|samsung|apple)\.com\b/.test(text)) return 140;
+  const text = [
+    readString(discovery.trustReason),
+    readString(discovery.sourceDomain),
+    source.title,
+    source.summary,
+    source.description,
+    source.url,
+    source.sourceUri,
+    source.canonicalUri,
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (/\bofficial-vendor-domain\b/.test(text)) return 140;
+  if (/\bofficial\b/.test(text) && /\b(support|specifications?|manual|product|docs?|datasheet)\b/.test(text) && !isCommercialLowValueSourceText(text)) return 120;
   if (/\bmanufacturer-domain\b/.test(text)) return 80;
   return 0;
+}
+
+function isCommercialLowValueSourceText(text: string): boolean {
+  return /\b(shopping|shop now|affiliate|associate program|buy now|add to cart|price comparison|marketplace|retailer|store listing|seller listing|sponsored listing|latest price|compare prices)\b/.test(text)
+    || /(^|\.)amazon\.[a-z.]+\b|(^|\.)ebay\.[a-z.]+\b|(^|\.)walmart\.[a-z.]+\b|(^|\.)bestbuy\.[a-z.]+\b|(^|\.)target\.[a-z.]+\b/.test(text);
 }
 
 function uniqueSources(values: readonly KnowledgeSourceRecord[]): KnowledgeSourceRecord[] {

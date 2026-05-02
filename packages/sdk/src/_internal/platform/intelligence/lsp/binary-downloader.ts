@@ -209,7 +209,14 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
     logger.debug(`BinaryDownloader: failed to download ${name}`, { error: summarizeError(err) });
     // Clean up partial download
     const tmpPath = `${destPath}.tmp`;
-    try { if (existsSync(tmpPath)) unlinkSync(tmpPath); } catch { /* ignore */ }
+    try {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+    } catch (cleanupError) {
+      logger.warn(`BinaryDownloader: failed to remove partial download for ${name}`, {
+        path: tmpPath,
+        error: summarizeError(cleanupError),
+      });
+    }
     return null;
   }
 }

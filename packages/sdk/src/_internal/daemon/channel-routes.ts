@@ -3,6 +3,13 @@ import type { DaemonApiRouteHandlers } from './context.js';
 import { readChannelConversationKind, readChannelLifecycleAction } from './route-helpers.js';
 import type { ChannelDirectoryScope, ChannelSurface, DaemonChannelRouteContext } from './channel-route-types.js';
 
+function readBoundedPositiveInteger(raw: string | null, fallback: number, max = 1_000): number {
+  if (raw === null || raw.trim() === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(value)));
+}
+
 export function createDaemonChannelRouteHandlers(
   context: DaemonChannelRouteContext,
 ): Pick<
@@ -351,7 +358,7 @@ export function createDaemonChannelRouteHandlers(
         query: url.searchParams.get('q') ?? '',
         ...(url.searchParams.get('scope') ? { scope: url.searchParams.get('scope') as ChannelDirectoryScope } : {}),
         ...(url.searchParams.get('groupId') ? { groupId: url.searchParams.get('groupId') as string } : {}),
-        ...(url.searchParams.get('limit') ? { limit: Number(url.searchParams.get('limit')) } : {}),
+        ...(url.searchParams.get('limit') ? { limit: readBoundedPositiveInteger(url.searchParams.get('limit'), 100) } : {}),
         ...(url.searchParams.get('live') ? { live: url.searchParams.get('live') === 'true' } : {}),
       },
     ).then((entries) => Response.json({ entries })),

@@ -66,6 +66,7 @@ async function completeWithCurrentModel(
         controller.abort();
         resolve(timeoutSentinel);
       }, timeoutMs);
+      timer.unref?.();
     });
     const response = await Promise.race([chatPromise, timeoutPromise]);
     if (response === timeoutSentinel) {

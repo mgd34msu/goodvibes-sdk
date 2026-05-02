@@ -1,8 +1,12 @@
 import type { ArtifactStore } from '../../artifacts/index.js';
-import { yieldEvery } from '../cooperative.js';
+import { logger } from '../../utils/logger.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
 import type { KnowledgeEdgeRecord, KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import { edgeIsActive, isGeneratedPageSource, readRecord } from './helpers.js';
 import type { HomeGraphPageGraphNeighbor, HomeGraphPageGraphNode, HomeGraphPageListResult, HomeGraphRelatedPage } from './types.js';
+
+const MAX_RELATED_GENERATED_PAGES = 24;
+const GENERATED_PAGE_MARKDOWN_READ_CONCURRENCY = 8;
 
 export async function listHomeGraphPages(input: {
   readonly artifactStore: ArtifactStore;
@@ -13,21 +17,19 @@ export async function listHomeGraphPages(input: {
   readonly limit: number;
   readonly includeMarkdown: boolean;
 }): Promise<HomeGraphPageListResult> {
-  const pages: HomeGraphPageListResult['pages'][number][] = [];
+  const graph = buildPageGraph(input.sources, input.nodes, input.edges);
   const sources = input.sources
     .filter(isGeneratedPageSource)
-    .sort(compareGeneratedPages)
+    .sort((left, right) => compareGeneratedPages(left, right, graph))
     .slice(0, input.limit);
-  const graph = buildPageGraph(input.sources, input.nodes, input.edges);
-  for (const [index, source] of sources.entries()) {
-    await yieldEvery(index, 4);
+  const pages = await mapWithConcurrency(sources, GENERATED_PAGE_MARKDOWN_READ_CONCURRENCY, async (source) => {
     const artifact = typeof source.artifactId === 'string' ? input.artifactStore.get(source.artifactId) : undefined;
     const markdown = input.includeMarkdown && artifact
       ? await readMarkdown(input.artifactStore, artifact.id)
       : undefined;
     const target = graph.targetBySourceId.get(source.id);
     const subject = target ? resolvePageSubject(target, graph) : undefined;
-    pages.push({
+    return {
       source,
       ...(artifact ? {
         artifact: {
@@ -43,8 +45,8 @@ export async function listHomeGraphPages(input: {
       ...(subject ? { subject: pageGraphNode(subject) } : {}),
       ...(subject ? { neighbors: pageNeighbors(subject, graph) } : {}),
       ...(subject ? { relatedPages: relatedPages(source.id, subject, graph) } : {}),
-    });
-  }
+    };
+  });
   return { ok: true, spaceId: input.spaceId, pages };
 }
 
@@ -111,7 +113,7 @@ function relatedPages(
       subject: pageGraphNode(pageSubject),
     });
   }
-  return result.slice(0, 24);
+  return result.slice(0, MAX_RELATED_GENERATED_PAGES);
 }
 
 function pageNeighbors(subject: KnowledgeNodeRecord, graph: PageGraph): HomeGraphPageGraphNeighbor[] {
@@ -163,19 +165,47 @@ function pageGraphNode(node: KnowledgeNodeRecord): HomeGraphPageGraphNode {
   };
 }
 
-function compareGeneratedPages(left: KnowledgeSourceRecord, right: KnowledgeSourceRecord): number {
+function compareGeneratedPages(left: KnowledgeSourceRecord, right: KnowledgeSourceRecord, graph: PageGraph): number {
   const leftKind = typeof left.metadata.projectionKind === 'string' ? left.metadata.projectionKind : '';
   const rightKind = typeof right.metadata.projectionKind === 'string' ? right.metadata.projectionKind : '';
-  return leftKind.localeCompare(rightKind)
+  return generatedPagePriority(right, graph) - generatedPagePriority(left, graph)
+    || leftKind.localeCompare(rightKind)
     || (left.title ?? left.id).localeCompare(right.title ?? right.id)
     || left.id.localeCompare(right.id);
+}
+
+function generatedPagePriority(source: KnowledgeSourceRecord, graph: PageGraph): number {
+  const target = graph.targetBySourceId.get(source.id);
+  const subject = target ? resolvePageSubject(target, graph) : undefined;
+  const projectionKind = typeof source.metadata.projectionKind === 'string' ? source.metadata.projectionKind : '';
+  const subjectMetadata = subject?.metadata ?? {};
+  const text = [
+    source.title,
+    source.summary,
+    subject?.title,
+    subject?.summary,
+    typeof subjectMetadata.manufacturer === 'string' ? subjectMetadata.manufacturer : undefined,
+    typeof subjectMetadata.model === 'string' ? subjectMetadata.model : undefined,
+  ].filter(Boolean).join(' ').toLowerCase();
+  let score = 0;
+  if (projectionKind === 'device-passport') score += 30;
+  if (projectionKind === 'room-page') score += 18;
+  if (subject?.kind === 'ha_device') score += 24;
+  if (subject?.kind === 'ha_area' || subject?.kind === 'ha_room') score += 16;
+  if (/\b(tv|television|webos|iphone|phone|router|printer|camera|thermostat|lock|garage|espresso|appliance|esp32|proxy|speaker|receiver)\b/.test(text)) score += 12;
+  if (/\b(home assistant|plugin|theme|card|conversation|tts|stt|task|backup)\b/.test(text)) score -= 10;
+  return score;
 }
 
 async function readMarkdown(artifactStore: ArtifactStore, artifactId: string): Promise<string | undefined> {
   try {
     const { buffer } = await artifactStore.readContent(artifactId);
     return buffer.toString('utf-8');
-  } catch {
+  } catch (error) {
+    logger.debug('Home Graph generated page markdown read failed', {
+      artifactId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return undefined;
   }
 }

@@ -19,6 +19,7 @@ import {
   homeGraphSourceId,
   isGeneratedPageSource,
   namespacedCanonicalUri,
+  readHomeAssistantMetadataString,
   readRecord,
   uniqueStrings,
 } from './helpers.js';
@@ -37,7 +38,8 @@ import {
 } from './rendering.js';
 import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
 import { deriveRepairProfileFacts } from '../semantic/repair-profile.js';
-import { semanticHash, semanticSlug, sourceSemanticText } from '../semantic/utils.js';
+import { semanticHash, semanticSlug } from '../semantic/utils.js';
+import { compareHomeGraphPageSources, isUsefulHomeGraphPageSource } from './page-quality.js';
 import type {
   HomeGraphDevicePassportResult,
   HomeGraphGeneratedPagesSummary,
@@ -60,6 +62,9 @@ const DEFAULT_SYNC_PAGE_RUN_MS = 15_000;
 const MAX_FOREGROUND_SYNC_DEVICE_PASSPORTS = 32;
 const MAX_FOREGROUND_SYNC_ROOM_PAGES = 12;
 const MAX_FOREGROUND_SYNC_PAGE_RUN_MS = 30_000;
+const MAX_PROFILE_SOURCES_PER_DEVICE_PAGE = 8;
+const PAGE_PROFILE_SOURCE_WEIGHT = 0.78;
+const PAGE_PROFILE_DESCRIBES_WEIGHT = 0.76;
 
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
@@ -115,7 +120,7 @@ async function generateHomeGraphPagesForCurrentState(
         break;
       }
       await yieldEvery(index, 2);
-      const deviceId = readHomeAssistantObjectId(device, 'objectId', 'deviceId') ?? device.id;
+      const deviceId = readHomeAssistantMetadataString(device, 'objectId', 'deviceId') ?? device.id;
       try {
         const page = await refreshHomeGraphDevicePassport({
           ...context,
@@ -151,7 +156,7 @@ async function generateHomeGraphPagesForCurrentState(
         break;
       }
       await yieldEvery(index, 2);
-      const areaId = readHomeAssistantObjectId(room, 'objectId', 'areaId') ?? room.id;
+      const areaId = readHomeAssistantMetadataString(room, 'objectId', 'areaId') ?? room.id;
       try {
         const page = await generateHomeGraphRoomPage({
           ...context,
@@ -202,8 +207,7 @@ export async function refreshHomeGraphDevicePassport(
       && edge.relation === 'belongs_to_device'
     ))
   ));
-  const sources = sourcesForDevicePassport(device.id, state.sources, state.nodes, state.edges)
-    .filter((source) => !isGeneratedPageSource(source));
+  const sources = sourcesForDevicePassport(device.id, state.sources, state.nodes, state.edges);
   const pageProfileFacts = await upsertDevicePageProfileFacts({ store, spaceId, installationId, device, sources });
   const semanticFacts = uniqueNodesById([
     ...semanticFactsForNode(device.id, sources, state.nodes, state.edges),
@@ -530,7 +534,11 @@ function sourcesForDevicePassport(
     const fact = nodesById.get(factId);
     if (fact?.sourceId) sourceIds.add(fact.sourceId);
   }
-  return [...sourceIds].map((sourceId) => byId.get(sourceId)).filter((source): source is KnowledgeSourceRecord => Boolean(source));
+  return [...sourceIds]
+    .map((sourceId) => byId.get(sourceId))
+    .filter((source): source is KnowledgeSourceRecord => Boolean(source))
+    .filter(isUsefulHomeGraphPageSource)
+    .sort(compareHomeGraphPageSources);
 }
 
 function filterDevicePassportIssues(
@@ -549,12 +557,12 @@ async function upsertDevicePageProfileFacts(input: {
   readonly sources: readonly KnowledgeSourceRecord[];
 }): Promise<KnowledgeNodeRecord[]> {
   const facts: KnowledgeNodeRecord[] = [];
-  for (const source of input.sources.slice(0, 8)) {
+  for (const source of input.sources.filter(isUsefulHomeGraphPageSource).sort(compareHomeGraphPageSources).slice(0, MAX_PROFILE_SOURCES_PER_DEVICE_PAGE)) {
     const extraction = input.store.getExtractionBySourceId(source.id);
     const profileFacts = deriveRepairProfileFacts({
       query: `complete features specifications ${input.device.title}`,
       source,
-      text: sourceSemanticText(source, extraction),
+      text: extractedPageSourceText(extraction),
     });
     for (const profileFact of profileFacts) {
       const fact = await input.store.upsertNode({
@@ -587,7 +595,7 @@ async function upsertDevicePageProfileFacts(input: {
         toKind: 'node',
         toId: fact.id,
         relation: 'supports_fact',
-        weight: 0.78,
+        weight: PAGE_PROFILE_SOURCE_WEIGHT,
         metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
           linkedBy: 'generated-page-profile',
         }),
@@ -598,7 +606,7 @@ async function upsertDevicePageProfileFacts(input: {
         toKind: 'node',
         toId: input.device.id,
         relation: 'describes',
-        weight: 0.76,
+        weight: PAGE_PROFILE_DESCRIBES_WEIGHT,
         metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
           linkedBy: 'generated-page-profile',
           sourceId: source.id,
@@ -608,6 +616,21 @@ async function upsertDevicePageProfileFacts(input: {
     }
   }
   return facts;
+}
+
+function extractedPageSourceText(extraction: ReturnType<KnowledgeStore['getExtractionBySourceId']>): string {
+  if (!extraction) return '';
+  const structure = readRecord(extraction.structure);
+  const metadata = readRecord(extraction.metadata);
+  return [
+    extraction.excerpt,
+    ...(extraction.sections ?? []),
+    typeof structure.searchText === 'string' ? structure.searchText : undefined,
+    typeof structure.text === 'string' ? structure.text : undefined,
+    typeof structure.content === 'string' ? structure.content : undefined,
+    typeof metadata.searchText === 'string' ? metadata.searchText : undefined,
+    typeof metadata.text === 'string' ? metadata.text : undefined,
+  ].filter(Boolean).join('\n\n');
 }
 
 function uniqueNodesById(nodes: readonly KnowledgeNodeRecord[]): KnowledgeNodeRecord[] {
@@ -625,15 +648,6 @@ function limitRecords<T>(records: readonly T[], limit: number | undefined): read
 function clampForegroundLimit(value: number | undefined, fallback: number, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.min(max, Math.trunc(value)));
-}
-
-function readHomeAssistantObjectId(node: KnowledgeNodeRecord, ...keys: readonly string[]): string | undefined {
-  const homeAssistant = readRecord(node.metadata.homeAssistant);
-  for (const key of keys) {
-    const value = homeAssistant[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return undefined;
 }
 
 function resolveRoomTitle(nodes: readonly KnowledgeNodeRecord[], areaId: string | undefined): string | undefined {

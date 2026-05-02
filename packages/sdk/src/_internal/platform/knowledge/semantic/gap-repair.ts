@@ -4,6 +4,9 @@ import type {
   WebSearchResult,
 } from '../../web-search/types.js';
 import { canonicalizeUri } from '../internal.js';
+import { sleep } from '../cooperative.js';
+import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 import type { KnowledgeSourceType } from '../types.js';
 import type {
   KnowledgeSemanticGapRepairer,
@@ -181,7 +184,11 @@ async function repairKnowledgeGapsWithWeb(
       if (ingested.source.status === 'indexed' || ingested.source.status === 'pending') {
         ingestedSourceIds.push(ingested.source.id);
       }
-    } catch {
+    } catch (error) {
+      logger.warn('Semantic gap repair: failed to ingest accepted source', {
+        url: result.url,
+        error: summarizeError(error),
+      });
       skippedUrls.push(result.url);
     }
     await yieldToEventLoop();
@@ -244,7 +251,7 @@ function inferGapProfileTerms(request: KnowledgeSemanticGapRepairRequest): strin
   if (/\b(bluetooth|wifi|wi-fi|wireless|network)\b/.test(text)) terms.push('wireless bluetooth wi-fi network');
   if (/\b(refresh|hz|hdr|dolby|vision|gaming|vrr|allm|freesync)\b/.test(text)) terms.push('refresh rate hdr gaming vrr allm');
   if (/\b(audio|speaker|sound|earc|arc)\b/.test(text)) terms.push('audio speakers earc arc');
-  if (/\b(display|screen|resolution|panel|lcd|oled|qled|nanocell)\b/.test(text)) terms.push('display resolution panel');
+  if (/\b(display|screen|resolution|panel|lcd|led|oled|qled|mini[- ]?led)\b/.test(text)) terms.push('display resolution panel');
   return uniqueStrings([
     ...terms,
     ...tokenizeSemanticQuery(text)
@@ -260,6 +267,7 @@ function clampSearchTerms(value: string): string {
 
 function existingSources(request: KnowledgeSemanticGapRepairRequest): ReadonlySet<string> {
   return new Set(request.sources.flatMap((source) => [
+    canonicalizeUri(source.url ?? ''),
     canonicalizeUri(source.canonicalUri ?? ''),
     canonicalizeUri(source.sourceUri ?? ''),
   ].filter((value): value is string => Boolean(value))));
@@ -300,7 +308,7 @@ function selectExistingRepairSources(
   const byDomain = new Map<string, GapRepairCandidate>();
   for (const source of request.sources) {
     if ((source.status !== 'indexed' && source.status !== 'pending') || isGeneratedOrSyntheticSource(source)) continue;
-    const url = source.sourceUri ?? source.canonicalUri;
+    const url = source.url ?? source.sourceUri ?? source.canonicalUri;
     if (!url) continue;
     const domain = safeDomain(url);
     if (!domain || byDomain.has(domain)) continue;
@@ -495,11 +503,11 @@ function sourceIdentityHints(request: KnowledgeSemanticGapRepairRequest): {
     readString(node.metadata.modelId),
     readString(node.metadata.model_id),
     ...modelLikeTokens(`${node.title} ${node.aliases.join(' ')}`),
-  ]).concat(request.sources.flatMap((source) => modelLikeTokens(`${source.title ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`))));
+  ]).concat(request.sources.flatMap((source) => modelLikeTokens(`${source.title ?? ''} ${source.url ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`))));
   const manufacturers = uniqueStrings(request.linkedObjects.flatMap((node) => [
     readString(node.metadata.manufacturer),
     readString(node.metadata.vendor),
-  ]).concat(request.sources.flatMap((source) => manufacturerHints(`${source.title ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`)))
+  ]).concat(request.sources.flatMap((source) => manufacturerHints(`${source.title ?? ''} ${source.url ?? ''} ${source.sourceUri ?? ''} ${source.canonicalUri ?? ''}`)))
     .map((manufacturer) => manufacturer?.trim().toLowerCase())
     .filter((manufacturer): manufacturer is string => Boolean(manufacturer)));
   return { models, manufacturers, subjects };
@@ -507,13 +515,7 @@ function sourceIdentityHints(request: KnowledgeSemanticGapRepairRequest): {
 
 function trustedHostsForRepair(request: KnowledgeSemanticGapRepairRequest): readonly string[] {
   const manufacturers = sourceIdentityHints(request).manufacturers;
-  const hosts: string[] = [];
-  if (manufacturers.includes('lg')) hosts.push('lg.com', 'www.lg.com');
-  if (manufacturers.includes('sony')) hosts.push('sony.com', 'www.sony.com');
-  if (manufacturers.includes('samsung')) hosts.push('samsung.com', 'www.samsung.com');
-  if (manufacturers.includes('apple')) hosts.push('apple.com', 'support.apple.com');
-  if (manufacturers.includes('espressif') || manufacturers.includes('esp32')) hosts.push('espressif.com', 'docs.espressif.com');
-  return uniqueStrings(hosts);
+  return uniqueStrings(manufacturers.flatMap(candidateOfficialHostsForManufacturer));
 }
 
 function isGenericSubject(value: string): boolean {
@@ -525,8 +527,10 @@ function modelLikeTokens(value: string): readonly string[] {
 }
 
 function manufacturerHints(value: string): readonly string[] {
-  const hints = value.match(/\b(lg|samsung|sony|vizio|tcl|hisense|philips|panasonic|kasa|tp-link|ecobee|honeywell|ring|arlo|nest|eufy|aqara|sonoff|shelly|lutron|leviton|ikea|bosch|ge|whirlpool|frigidaire|apple|espressif|esp32|nabu casa|home assistant)\b/gi) ?? [];
-  return uniqueStrings(hints.map((hint) => hint.toLowerCase()));
+  return uniqueStrings([
+    ...domainManufacturerHints(value),
+    ...titleManufacturerHints(value),
+  ]);
 }
 
 function isGeneratedOrSyntheticSource(source: KnowledgeSemanticGapRepairRequest['sources'][number]): boolean {
@@ -537,11 +541,74 @@ function isGeneratedOrSyntheticSource(source: KnowledgeSemanticGapRepairRequest[
 
 function isOfficialVendorDomain(domain: string, manufacturers: readonly string[]): boolean {
   const lower = domain.toLowerCase();
-  if (manufacturers.some((manufacturer) => manufacturer === 'lg' && /(^|\.)lg\.com$/.test(lower))) return true;
-  if (manufacturers.some((manufacturer) => manufacturer === 'sony' && /(^|\.)sony\.(com|net)$/.test(lower))) return true;
-  if (manufacturers.some((manufacturer) => manufacturer === 'samsung' && /(^|\.)samsung\.com$/.test(lower))) return true;
-  if (manufacturers.some((manufacturer) => manufacturer === 'apple' && /(^|\.)apple\.com$/.test(lower))) return true;
-  return manufacturers.some((manufacturer) => manufacturer.length >= 4 && lower.includes(manufacturer.toLowerCase()) && /\b(support|docs?|developer|product)\b/.test(lower));
+  return manufacturers.some((manufacturer) => domainMatchesManufacturer(lower, manufacturer));
+}
+
+function candidateOfficialHostsForManufacturer(manufacturer: string): readonly string[] {
+  const slug = manufacturerDomainSlug(manufacturer);
+  if (!slug || isGenericManufacturerSlug(slug)) return [];
+  return [
+    `${slug}.com`,
+    `www.${slug}.com`,
+    `support.${slug}.com`,
+    `docs.${slug}.com`,
+    `developer.${slug}.com`,
+  ];
+}
+
+function domainMatchesManufacturer(domain: string, manufacturer: string): boolean {
+  const slug = manufacturerDomainSlug(manufacturer);
+  if (!slug || isGenericManufacturerSlug(slug)) return false;
+  const normalizedDomain = domain.replace(/^www\./, '');
+  const domainPattern = new RegExp(`(^|\\.)${escapeRegExp(slug)}\\.(?:com|net|org|io|dev|tv|ca|co\\.uk)$`);
+  return domainPattern.test(normalizedDomain)
+    || normalizedDomain.includes(slug) && /\b(support|docs?|developer|product)\b/.test(normalizedDomain);
+}
+
+function manufacturerDomainSlug(value: string): string {
+  return value.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '').trim();
+}
+
+function domainManufacturerHints(value: string): readonly string[] {
+  const hints: string[] = [];
+  for (const match of value.toLowerCase().matchAll(/\b(?:https?:\/\/)?(?:www\.|support\.|docs\.|developer\.)?([a-z0-9-]+)\.(?:com|net|org|io|dev|tv|ca|co\.uk)\b/g)) {
+    const label = match[1]?.replace(/-/g, ' ').trim();
+    if (label && !isGenericManufacturerSlug(manufacturerDomainSlug(label))) hints.push(label);
+  }
+  return hints;
+}
+
+function titleManufacturerHints(value: string): readonly string[] {
+  const hints: string[] = [];
+  const modelMatches = [...value.matchAll(/\b([A-Z][A-Za-z0-9&.-]{1,}(?:\s+[A-Z][A-Za-z0-9&.-]{1,}){0,2})\s+[A-Z]{2,}[-_ ]?[0-9][A-Z0-9._-]{2,}\b/g)];
+  for (const match of modelMatches) {
+    const hint = match[1]?.trim();
+    if (hint && !isGenericManufacturerSlug(manufacturerDomainSlug(hint))) hints.push(hint.toLowerCase());
+  }
+  return hints;
+}
+
+function isGenericManufacturerSlug(slug: string): boolean {
+  return slug.length < 2 || [
+    'www',
+    'support',
+    'docs',
+    'developer',
+    'manual',
+    'manuals',
+    'review',
+    'reviews',
+    'product',
+    'products',
+    'shop',
+    'store',
+    'home',
+    'assistant',
+  ].includes(slug);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function isOfficialOrVendorSource(reasons: readonly string[]): boolean {
@@ -569,13 +636,14 @@ function hasIdentity(searchable: string, value: string): boolean {
 function safeDomain(url: string): string | undefined {
   try {
     return new URL(url).hostname;
-  } catch {
+  } catch (error) {
+    void error;
     return undefined;
   }
 }
 
 async function yieldToEventLoop(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await sleep(0);
 }
 
 function gapRepairTags(request: KnowledgeSemanticGapRepairRequest): readonly string[] {

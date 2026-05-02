@@ -21,8 +21,8 @@ export function canonicalRepairSubjectNodes(input: {
   if (entities.length > 0) return entities;
   const concreteKnowledge = usable.filter((node) => node.kind === 'knowledge_entity' && hasConcreteProductIdentity(node));
   if (concreteKnowledge.length > 0) return concreteKnowledge;
-  const nonIntegration = usable.filter((node) => node.kind !== 'ha_integration');
-  if (nonIntegration.length > 0) return nonIntegration;
+  const concreteObjects = usable.filter(isConcreteObjectSubject);
+  if (concreteObjects.length > 0) return concreteObjects;
   const integrationIntent = /\b(integration|platform|add-?on|addon|plugin|service|api|setup|configure|configuration|auth|credential|rate limit)\b/i.test(input.text ?? '');
   const integrations = usable.filter((node) => node.kind === 'ha_integration');
   return integrationIntent ? integrations : [];
@@ -49,6 +49,14 @@ function hasConcreteProductIdentity(node: KnowledgeNodeRecord): boolean {
   if (readString(node.metadata.model)) return true;
   const text = `${node.title} ${node.summary ?? ''} ${node.aliases.join(' ')}`;
   return /\b[A-Z]{2,}[-_ ]?[0-9][A-Z0-9._-]{2,}\b/.test(text);
+}
+
+function isConcreteObjectSubject(node: KnowledgeNodeRecord): boolean {
+  if (node.kind === 'ha_area' || node.kind === 'ha_room') return true;
+  if (node.kind === 'ha_automation' || node.kind === 'ha_script' || node.kind === 'ha_scene') return true;
+  if (node.kind === 'device' || node.kind === 'product' || node.kind === 'appliance' || node.kind === 'controller') return true;
+  if (node.kind === 'service' || node.kind === 'provider' || node.kind === 'capability' || node.kind === 'platform' || node.kind === 'tool') return true;
+  return false;
 }
 
 function uniqueNodes(nodes: readonly (KnowledgeNodeRecord | undefined)[]): KnowledgeNodeRecord[] {

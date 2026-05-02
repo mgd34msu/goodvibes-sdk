@@ -13,6 +13,7 @@ import {
   isLowValueFeatureOrSpecText,
   isUsefulHomeGraphPageFact,
 } from '../semantic/fact-quality.js';
+import { isUsefulHomeGraphPageSource } from './page-quality.js';
 
 export interface HomeGraphRenderState {
   readonly spaceId: string;
@@ -269,9 +270,20 @@ function matchesAreaFilter(
 
 function sourceIdsLinkedToNodes(edges: readonly KnowledgeEdgeRecord[], nodeIds: ReadonlySet<string>): Set<string> {
   const sourceIds = new Set<string>();
+  const factIds = new Set<string>();
   for (const edge of edges) {
+    if (!edgeIsActive(edge)) continue;
     if (edge.fromKind === 'source' && edge.toKind === 'node' && nodeIds.has(edge.toId)) sourceIds.add(edge.fromId);
     if (edge.fromKind === 'node' && nodeIds.has(edge.fromId) && edge.toKind === 'source') sourceIds.add(edge.toId);
+    if (edge.fromKind === 'node' && edge.toKind === 'node' && nodeIds.has(edge.toId) && edge.relation === 'describes') {
+      factIds.add(edge.fromId);
+    }
+  }
+  for (const edge of edges) {
+    if (!edgeIsActive(edge)) continue;
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && factIds.has(edge.toId) && edge.relation === 'supports_fact') {
+      sourceIds.add(edge.fromId);
+    }
   }
   return sourceIds;
 }
@@ -361,8 +373,9 @@ function renderSourceList(title: string, sources: readonly KnowledgeSourceRecord
     `## ${title}`,
     '',
     ...sources.slice(0, 100).map((source) => {
-      const label = source.title ?? source.sourceUri ?? source.id;
-      return `- ${label}${source.sourceUri ? ` (${source.sourceUri})` : ''}`;
+      const uri = source.sourceUri ?? source.url ?? source.canonicalUri;
+      const label = source.title ?? uri ?? source.id;
+      return `- ${label}${uri ? ` (${uri})` : ''}`;
     }),
     '',
   ].join('\n');
@@ -407,9 +420,25 @@ function renderPageFactLine(fact: KnowledgeNodeRecord): string {
   const value = cleanPageFactDetail(readString(fact.metadata.value));
   const summary = cleanPageFactDetail(fact.summary);
   const evidence = cleanPageFactDetail(readString(fact.metadata.evidence));
-  const detail = selectPageFactDetail(fact.title, value, summary, evidence);
-  const line = `- ${fact.title}${value ? `: ${value}` : ''}${detail ? ` - ${detail}` : ''}`;
+  const canonicalValue = selectPageFactValue(fact.title, value, summary, evidence);
+  const detail = selectPageFactDetail(fact.title, canonicalValue, summary, evidence);
+  const line = `- ${fact.title}${canonicalValue ? `: ${canonicalValue}` : ''}${detail ? ` - ${detail}` : ''}`;
   return isLowValueFeatureOrSpecText(line) ? '' : line;
+}
+
+function selectPageFactValue(
+  title: string,
+  value: string | undefined,
+  summary: string | undefined,
+  evidence: string | undefined,
+): string | undefined {
+  for (const candidate of [value, extractSummaryValue(title, summary), extractSummaryValue(title, evidence)]) {
+    if (!candidate) continue;
+    if (isLowValueFeatureOrSpecText(candidate)) continue;
+    if (isRedundantPageFactDetail(title, undefined, candidate)) continue;
+    return candidate;
+  }
+  return undefined;
 }
 
 function selectPageFactDetail(
@@ -422,13 +451,30 @@ function selectPageFactDetail(
     if (!detail) continue;
     const normalized = normalizePageFactText(detail);
     if (!normalized) continue;
-    if (value && normalized === normalizePageFactText(value)) continue;
-    if (normalized === normalizePageFactText(title)) continue;
-    if (value && normalized === normalizePageFactText(`${title}: ${value}.`)) continue;
-    if (value && detail.toLowerCase().trim().startsWith(`${title.toLowerCase()}:`)) continue;
+    if (isRedundantPageFactDetail(title, value, detail)) continue;
     return detail;
   }
   return undefined;
+}
+
+function extractSummaryValue(title: string, detail: string | undefined): string | undefined {
+  if (!detail) return undefined;
+  const trimmed = detail.trim();
+  const titlePattern = escapeRegExp(title.trim()).replace(/\s+/g, '\\s+');
+  const match = trimmed.match(new RegExp(`^${titlePattern}\\s*[:\\-]\\s*(.+?)\\.?$`, 'i'));
+  return match?.[1] ? match[1].trim() : undefined;
+}
+
+function isRedundantPageFactDetail(title: string, value: string | undefined, detail: string): boolean {
+  const normalized = normalizePageFactText(detail);
+  if (!normalized) return true;
+  const normalizedTitle = normalizePageFactText(title);
+  const normalizedValue = normalizePageFactText(value ?? '');
+  if (normalized === normalizedTitle || normalized === normalizedValue) return true;
+  if (normalizedValue && normalized === normalizePageFactText(`${title}: ${value}.`)) return true;
+  if (normalizedTitle && normalizedValue && normalized.includes(normalizedTitle) && normalized.includes(normalizedValue)) return true;
+  if (normalizedTitle && normalized.startsWith(`${normalizedTitle} `) && normalized.length <= normalizedTitle.length + 12) return true;
+  return false;
 }
 
 function cleanPageFactDetail(value: string | undefined): string | undefined {
@@ -440,6 +486,10 @@ function cleanPageFactDetail(value: string | undefined): string | undefined {
 
 function normalizePageFactText(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function semanticFactsLinkedToSources(
@@ -548,7 +598,7 @@ function relatedSources(
   edges: readonly KnowledgeEdgeRecord[],
   nodeIds: ReadonlySet<string>,
 ): KnowledgeSourceRecord[] {
-  const visibleSources = sources.filter((source) => !isGeneratedPageSource(source));
+  const visibleSources = sources.filter((source) => !isGeneratedPageSource(source) && isUsefulHomeGraphPageSource(source));
   if (nodeIds.size === 0) return visibleSources;
   const sourceIds = new Set(edges.filter((edge) => (
     edgeIsActive(edge)

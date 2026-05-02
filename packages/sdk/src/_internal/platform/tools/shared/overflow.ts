@@ -129,7 +129,11 @@ export class FileBackend implements SpillBackend {
         createdAt: Date.now(),
         backendType: 'file',
       };
-    } catch {
+    } catch (error) {
+      logger.debug('OverflowHandler: failed to write spill file', {
+        path: target,
+        error: summarizeError(error),
+      });
       return null;
     }
   }
@@ -137,20 +141,44 @@ export class FileBackend implements SpillBackend {
   read(id: string): string | null {
     const target = this._safePath(id);
     if (!target) return null;
-    try { return readFileSync(target, 'utf-8'); } catch { return null; }
+    try {
+      return readFileSync(target, 'utf-8');
+    } catch (error) {
+      logger.debug('OverflowHandler: failed to read spill file', {
+        path: target,
+        error: summarizeError(error),
+      });
+      return null;
+    }
   }
 
   cleanup(policy?: RetentionPolicyConfig): void {
     const cfg = { ...DEFAULT_RETENTION, ...policy };
     const now = Date.now();
     let files: string[];
-    try { files = readdirSync(this.overflowDir); } catch { return; }
+    try {
+      files = readdirSync(this.overflowDir);
+    } catch (error) {
+      logger.debug('OverflowHandler: failed to read overflow directory during cleanup', {
+        path: this.overflowDir,
+        error: summarizeError(error),
+      });
+      return;
+    }
 
     interface FE { file: string; path: string; mtimeMs: number; size: number; }
     const entries: FE[] = [];
     for (const file of files) {
       const p = join(this.overflowDir, file);
-      try { const s = statSync(p); entries.push({ file, path: p, mtimeMs: s.mtimeMs, size: s.size }); } catch { }
+      try {
+        const s = statSync(p);
+        entries.push({ file, path: p, mtimeMs: s.mtimeMs, size: s.size });
+      } catch (error) {
+        logger.debug('OverflowHandler: failed to stat spill file during cleanup', {
+          path: p,
+          error: summarizeError(error),
+        });
+      }
     }
     entries.sort((a, b) => a.mtimeMs - b.mtimeMs);
 
@@ -166,22 +194,51 @@ export class FileBackend implements SpillBackend {
       let total = ac.reduce((s, e) => s + e.size, 0);
       for (const e of ac) { if (total <= cfg.maxSizeBytes) break; toDelete.add(e.path); total -= e.size; }
     }
-    for (const p of toDelete) { try { unlinkSync(p); } catch { } }
+    for (const p of toDelete) {
+      try {
+        unlinkSync(p);
+      } catch (error) {
+        logger.debug('OverflowHandler: failed to delete spill file', {
+          path: p,
+          error: summarizeError(error),
+        });
+      }
+    }
   }
 
   /** Lists all overflow entries. Reads file content eagerly — acceptable for small overflow directories. */
   list(): SpillEntry[] {
     let files: string[];
-    try { files = readdirSync(this.overflowDir); } catch { return []; }
+    try {
+      files = readdirSync(this.overflowDir);
+    } catch (error) {
+      logger.debug('OverflowHandler: failed to read overflow directory during list', {
+        path: this.overflowDir,
+        error: summarizeError(error),
+      });
+      return [];
+    }
     const result: SpillEntry[] = [];
     for (const file of files) {
       const p = join(this.overflowDir, file);
       try {
         const s = statSync(p);
         let content = '';
-        try { content = readFileSync(p, 'utf-8'); } catch { }
+        try {
+          content = readFileSync(p, 'utf-8');
+        } catch (error) {
+          logger.debug('OverflowHandler: failed to read spill file during list', {
+            path: p,
+            error: summarizeError(error),
+          });
+        }
         result.push({ id: file, filename: file, content, sizeBytes: s.size, createdAt: s.mtimeMs, backendType: 'file' });
-      } catch { }
+      } catch (error) {
+        logger.debug('OverflowHandler: failed to list spill file metadata', {
+          path: p,
+          error: summarizeError(error),
+        });
+      }
     }
     return result;
   }

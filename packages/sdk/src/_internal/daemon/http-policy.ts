@@ -57,8 +57,8 @@ export function buildMissingScopeBody(
 export function resolvePrivateHostFetchOptions(
   requested: unknown,
   context: PrivateHostFetchConfig | ElevatedPrivateHostFetchConfig,
-): { allowPrivateHosts: true; fetchMode: 'allow-private-hosts' } | {} | Response {
-  if (requested !== true) return {};
+): { allowPrivateHosts: true; fetchMode: 'allow-private-hosts' } | undefined | Response {
+  if (requested !== true) return undefined;
   if (!Boolean(context.configManager.get('network.remoteFetch.allowPrivateHosts'))) {
     return Response.json({ error: 'Private-host remote fetches are disabled by config.' }, { status: 403 });
   }

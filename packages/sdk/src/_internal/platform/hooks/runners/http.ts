@@ -32,6 +32,7 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    timer.unref?.();
 
     let response: Response;
     try {

@@ -4,6 +4,7 @@ import {
   emitKnowledgeExtractionFailed,
 } from '../runtime/emitters/index.js';
 import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 import { extractKnowledgeArtifact } from './extractors.js';
 import {
   canonicalizeUri,
@@ -20,6 +21,10 @@ import type {
   KnowledgeSourceRecord,
   KnowledgeSourceType,
 } from './types.js';
+
+const MAX_EXTRACTION_SECTION_NODES = 12;
+const MAX_EXTRACTION_LINK_EDGES = 24;
+const MAX_ENTITY_HINT_VALUES_PER_KIND = 8;
 
 export async function finalizeKnowledgeIngestedSource(
   context: KnowledgeIngestContext,
@@ -87,7 +92,12 @@ export async function finalizeKnowledgeIngestedSource(
     });
 
     await compileKnowledgeSource(context, source, extraction);
-    void Promise.resolve(context.semanticEnrichSource?.(source.id, readKnowledgeSpaceId(source.metadata))).catch(() => {});
+    void Promise.resolve(context.semanticEnrichSource?.(source.id, readKnowledgeSpaceId(source.metadata))).catch((error: unknown) => {
+      logger.warn('Knowledge semantic enrichment after ingest failed', {
+        sourceId: source.id,
+        error: summarizeError(error),
+      });
+    });
     await context.syncReviewedMemory();
     return { source, artifactId: input.artifactId, extraction };
   } catch (error) {
@@ -138,7 +148,7 @@ function extractionNeedsRefresh(extraction: KnowledgeExtractionRecord | null): b
 
 function readSearchText(record: Record<string, unknown>): string | undefined {
   const value = record.searchText ?? record.text ?? record.content;
-  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+  return typeof value === 'string' && hasUsefulText(value) ? value : undefined;
 }
 
 function hasUsefulText(value: string | undefined): boolean {
@@ -147,7 +157,42 @@ function hasUsefulText(value: string | undefined): boolean {
   return !normalized.includes('pdf extraction produced limited text')
     && !normalized.includes('no readable text streams')
     && !normalized.includes('no specialized extractor matched')
-    && !normalized.includes('has no specialized in-core extractor');
+    && !normalized.includes('has no specialized in-core extractor')
+    && !looksLikeRawPdfPayload(value)
+    && !looksBinaryLike(value);
+}
+
+function looksLikeRawPdfPayload(value: string): boolean {
+  const lower = value.toLowerCase();
+  return lower.includes('%pdf')
+    || /\b\d+\s+\d+\s+obj\b/.test(lower)
+    || (lower.includes(' endobj') && lower.includes(' stream'))
+    || (lower.includes('/filter') && lower.includes('/flatedecode'));
+}
+
+function looksBinaryLike(value: string): boolean {
+  const sample = value.slice(0, 4_096);
+  if (sample.length < 120) return false;
+  let control = 0;
+  let extended = 0;
+  let letters = 0;
+  let whitespace = 0;
+  let punctuation = 0;
+  for (const char of sample) {
+    const code = char.charCodeAt(0);
+    if ((code < 32 && char !== '\n' && char !== '\r' && char !== '\t') || code === 65533) control += 1;
+    if (code > 126) extended += 1;
+    if (/[a-z0-9]/i.test(char)) letters += 1;
+    if (/\s/.test(char)) whitespace += 1;
+    if (/[^a-z0-9\s]/i.test(char)) punctuation += 1;
+  }
+  const length = sample.length;
+  const extendedRatio = extended / length;
+  const usefulRatio = (letters + whitespace) / length;
+  const punctuationRatio = punctuation / length;
+  return control > 0
+    || (extendedRatio > 0.18 && usefulRatio < 0.78)
+    || (punctuationRatio > 0.42 && whitespace / length < 0.08);
 }
 
 export async function compileKnowledgeSource(
@@ -187,7 +232,12 @@ export async function compileKnowledgeSource(
         toId: domainNode.id,
         relation: 'belongs_to_domain',
       });
-    } catch {
+    } catch (error) {
+      logger.debug('Knowledge ingest: source URL could not be canonicalized for domain node', {
+        sourceId: source.id,
+        uri: domain,
+        error: summarizeError(error),
+      });
       // invalid URLs are linted separately
     }
   }
@@ -250,7 +300,7 @@ export async function compileKnowledgeSource(
 
   if (extraction) {
     const tagSlugs = new Set(source.tags.map((tag) => slugify(tag)));
-    for (const section of extraction.sections.slice(0, 12)) {
+    for (const section of extraction.sections.slice(0, MAX_EXTRACTION_SECTION_NODES)) {
       if (tagSlugs.has(slugify(section))) continue;
       const topicNode = await context.store.upsertNode({
         kind: 'topic',
@@ -271,7 +321,7 @@ export async function compileKnowledgeSource(
         relation: 'mentions_section',
       });
     }
-    for (const outbound of extraction.links.slice(0, 24)) {
+    for (const outbound of extraction.links.slice(0, MAX_EXTRACTION_LINK_EDGES)) {
       const canonicalOutbound = canonicalizeUri(outbound);
       if (!canonicalOutbound) continue;
       const linked = context.store.getSourceByCanonicalUri(canonicalOutbound);
@@ -389,7 +439,7 @@ export async function compileKnowledgeStructuredEntityHints(
   ];
 
   for (const spec of entitySpecs) {
-    for (const value of spec.values.slice(0, 8)) {
+    for (const value of spec.values.slice(0, MAX_ENTITY_HINT_VALUES_PER_KIND)) {
       const title = value.trim();
       if (!title) continue;
       const node = await context.store.upsertNode({

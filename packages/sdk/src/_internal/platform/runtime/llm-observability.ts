@@ -133,7 +133,10 @@ export async function instrumentedLlmCall<T>(
     } catch (err) {
       lastError = err;
       if (attempt < maxRetries && retryDelayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, retryDelayMs));
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, retryDelayMs);
+          timer.unref?.();
+        });
       }
     }
   }

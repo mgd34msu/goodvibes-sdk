@@ -14,11 +14,12 @@ import type {
   KnowledgeSemanticSelfImproveResult,
 } from './types.js';
 import { recoverNoRepairerTasks, recoverStaleActiveTasks } from './self-improvement-recovery.js';
-import { readRecord, readString, semanticHash, semanticMetadata, semanticSlug, sourceKnowledgeSpace, uniqueStrings } from './utils.js';
+import { readRecord, readString, readStringArray, semanticHash, semanticMetadata, semanticSlug, sourceKnowledgeSpace, uniqueStrings } from './utils.js';
 import { withTimeout } from './timeouts.js';
 import { updateRefinementTask, upsertRefinementTaskForGap } from './self-improvement-tasks.js';
 import { promoteRepairSources } from './self-improvement-promotion.js';
 import { canonicalRepairSubjectNodes, repairSubjectIds } from './repair-subjects.js';
+import { hasConcreteFeatureSignal, isLowValueFeatureOrSpecText, semanticFactText } from './fact-quality.js';
 
 const RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_REFINEMENT_LIMIT = 12;
@@ -162,6 +163,7 @@ export async function runKnowledgeSemanticSelfImprovement(
       const remainingMs = Math.max(1_000, startedAt + maxRunMs - Date.now());
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), remainingMs);
+      timer.unref?.();
       const result = await (async () => {
         try {
           return await withTimeout(gapRepairer({
@@ -174,7 +176,7 @@ export async function runKnowledgeSemanticSelfImprovement(
             maxSources: 5,
             deadlineAt: Date.now() + remainingMs,
             signal: controller.signal,
-          }), remainingMs, 'Semantic gap repair exceeded its run budget.');
+      }), remainingMs, 'Semantic gap repair exceeded its run budget.');
         } finally {
           clearTimeout(timer);
           controller.abort();
@@ -197,11 +199,14 @@ export async function runKnowledgeSemanticSelfImprovement(
         task = await updateRefinementTask(context.store, task, 'applying', 'Linking accepted repair sources into the graph.');
       }
       linkedRepairs += await linkRepairSources(context.store, spaceId, gap, gapAcceptedSourceIds, result?.query ?? gap.title);
+      let gapRepairComplete = false;
       if (gapAcceptedSourceIds.length > 0) {
-        gapPromotedFactCount = await promoteRepairSources(context, spaceId, gap, gapAcceptedSourceIds, task, startedAt + maxRunMs);
+        const promotion = await promoteRepairSources(context, spaceId, gap, gapAcceptedSourceIds, task, startedAt + maxRunMs);
+        gapPromotedFactCount = promotion.promotedFactCount;
+        gapRepairComplete = promotion.repairComplete;
         promotedFactCount += gapPromotedFactCount;
       }
-      const evidenceSufficient = result?.evidenceSufficient !== false && gapAcceptedSourceIds.length > 0 && gapPromotedFactCount > 0;
+      const evidenceSufficient = result?.evidenceSufficient !== false && gapAcceptedSourceIds.length > 0 && gapRepairComplete;
       await markGapRepairAttempt(context.store, gap, spaceId, {
         status: evidenceSufficient ? 'repaired' : gapAcceptedSourceIds.length ? 'deferred' : 'searched_no_sources',
         reason: result?.reason,
@@ -495,7 +500,14 @@ function hasRepairEdge(context: GapContext): boolean {
 
 function hasRepairFactEvidence(context: GapContext): boolean {
   const repairSourceIds = new Set(context.repairSourceIds);
-  return context.facts.some((fact) => fact.sourceId && repairSourceIds.has(fact.sourceId) && readString(fact.metadata.extractor) === 'repair-promotion');
+  const subjectIds = new Set(context.linkedObjects.map((node) => node.id));
+  const usableFacts = context.facts.filter((fact) => (
+    fact.sourceId
+    && repairSourceIds.has(fact.sourceId)
+    && readString(fact.metadata.extractor) === 'repair-promotion'
+    && isUsableSelfImprovementFact(fact, subjectIds)
+  ));
+  return usableFacts.length >= repairTargetFactCount(context.gap);
 }
 
 function isNotApplicableGap(context: GapContext): boolean {
@@ -510,7 +522,7 @@ function hasConcreteSubject(context: GapContext): boolean {
   return context.linkedObjects.some((node) => {
     if (isConcreteRepairSubject(node)) return true;
     return Boolean(readString(node.metadata.manufacturer) && readString(node.metadata.model));
-  }) || context.sources.some((source) => Boolean(source.title || source.sourceUri || source.canonicalUri));
+  }) || context.sources.some((source) => Boolean(source.title || source.url || source.sourceUri || source.canonicalUri));
 }
 
 async function suppressGap(store: KnowledgeStore, gap: KnowledgeNodeRecord, reason: string | undefined, spaceId: string): Promise<void> {
@@ -743,6 +755,7 @@ function factCoverage(facts: readonly KnowledgeNodeRecord[]): { readonly coreFac
   const coveredAreas = new Set<string>();
   let coreFactCount = 0;
   for (const fact of facts) {
+    if (!isUsableSelfImprovementFact(fact)) continue;
     const kind = readString(fact.metadata.factKind);
     if (!['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(kind ?? '')) continue;
     coreFactCount += 1;
@@ -759,6 +772,27 @@ function factCoverage(facts: readonly KnowledgeNodeRecord[]): { readonly coreFac
     }
   }
   return { coreFactCount, coveredAreas };
+}
+
+function isUsableSelfImprovementFact(fact: KnowledgeNodeRecord, subjectIds: ReadonlySet<string> = new Set()): boolean {
+  if (fact.status === 'stale') return false;
+  if (fact.metadata.semanticKind !== 'fact') return false;
+  const kind = readString(fact.metadata.factKind);
+  if (!['feature', 'capability', 'specification', 'compatibility', 'configuration', 'identity'].includes(kind ?? '')) return false;
+  const text = semanticFactText(fact);
+  if (isLowValueFeatureOrSpecText(text) || !hasConcreteFeatureSignal(text)) return false;
+  if (subjectIds.size === 0) return true;
+  const linkedIds = uniqueStrings([
+    ...readStringArray(fact.metadata.linkedObjectIds),
+    ...readStringArray(fact.metadata.subjectIds),
+  ]);
+  return linkedIds.length > 0 && linkedIds.some((id) => subjectIds.has(id));
+}
+
+function repairTargetFactCount(gap: KnowledgeNodeRecord): number {
+  const text = `${gap.title} ${gap.summary ?? ''}`.toLowerCase();
+  if (/\b(complete|full|features?|capabilities|specifications?|profile)\b/.test(text)) return 3;
+  return 1;
 }
 
 function subjectTitle(subject: KnowledgeNodeRecord): string {
@@ -778,11 +812,6 @@ function uniqueById<T extends { readonly id: string }>(items: readonly (T | unde
     result.push(item);
   }
   return result;
-}
-
-function readStringArray(value: unknown): readonly string[] {
-  if (!Array.isArray(value)) return [];
-  return uniqueStrings(value.map((entry) => typeof entry === 'string' ? entry : undefined));
 }
 
 function readNumber(value: unknown): number | undefined {

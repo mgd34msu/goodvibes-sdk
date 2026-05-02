@@ -14,6 +14,8 @@ export interface ServerSentEventHandlers {
   readonly onReady?: (payload: unknown) => void;
   readonly onError?: (error: unknown) => void;
   readonly onReconnect?: (input: { readonly attempt: number; readonly delayMs: number }) => void;
+  readonly onClose?: () => void;
+  readonly onTerminate?: (input: { readonly error: unknown; readonly reconnectAttempts: number }) => void;
 }
 
 export interface ServerSentEventOptions {
@@ -29,7 +31,8 @@ function readEventPayload(data: string): unknown {
   if (!data.trim()) return null;
   try {
     return JSON.parse(data) as unknown;
-  } catch {
+  } catch (error) {
+    void error;
     return data;
   }
 }
@@ -71,13 +74,7 @@ function createStreamError(
 }
 
 function reportStreamError(error: unknown, handlers: ServerSentEventHandlers): void {
-  if (handlers.onError) {
-    handlers.onError(error);
-    return;
-  }
-  queueMicrotask(() => {
-    throw error;
-  });
+  handlers.onError?.(error);
 }
 
 export async function openServerSentEventStream(
@@ -227,14 +224,16 @@ export async function openServerSentEventStream(
         try {
           await runConnection();
           reconnectAttempts = 0;
+          handlers.onClose?.();
           return;
         } catch (error) {
           if (isAbortError(error) || outerController.signal.aborted || stopped) {
             return;
           }
           const nextAttempt = reconnectAttempts + 1;
-          const shouldReconnect = reconnectPolicy.enabled && nextAttempt < reconnectPolicy.maxAttempts;
+          const shouldReconnect = reconnectPolicy.enabled && nextAttempt <= reconnectPolicy.maxAttempts;
           if (!shouldReconnect) {
+            handlers.onTerminate?.({ error, reconnectAttempts: nextAttempt });
             reportStreamError(error, handlers);
             return;
           }

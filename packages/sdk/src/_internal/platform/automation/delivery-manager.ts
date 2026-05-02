@@ -22,7 +22,10 @@ import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
 import { isFeatureGateEnabled, isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }
 
 function calculateRetryDelay(baseDelayMs: number, attempt: number, strategy: 'fixed' | 'linear' | 'exponential', maxDelayMs?: number, jitterMs?: number): number {

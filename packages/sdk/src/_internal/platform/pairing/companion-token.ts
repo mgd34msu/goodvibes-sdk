@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { logger } from '../utils/logger.js';
 
 export interface CompanionPairingResult {
   readonly token: string;
@@ -80,7 +81,14 @@ export function getOrCreateCompanionToken(
   mkdirSync(dir, { recursive: true });
   // Write with mode 0600 (owner read/write only) and enforce after write
   writeFileSync(tokenPath, JSON.stringify(record, null, 2), { encoding: 'utf-8', mode: 0o600 });
-  try { chmodSync(tokenPath, 0o600); } catch { /* best-effort */ }
+  try {
+    chmodSync(tokenPath, 0o600);
+  } catch (error) {
+    logger.warn('Companion token chmod failed after write', {
+      path: tokenPath,
+      error: String(error),
+    });
+  }
 
   return { token: record.token, peerId: record.peerId, createdAt: record.createdAt };
 }

@@ -5,5 +5,10 @@
   },
   "include": [
     "test/types/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "./packages/sdk"
+    }
   ]
 }

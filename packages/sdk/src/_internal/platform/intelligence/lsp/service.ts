@@ -119,7 +119,14 @@ export class LspService {
       return client;
     } catch (err) {
       logger.error('LspService: failed to start server', { langId, err: summarizeError(err) });
-      try { await client.stop(); } catch { /* ignore */ }
+      try {
+        await client.stop();
+      } catch (stopError) {
+        logger.warn('LspService: failed to stop server after startup failure', {
+          langId,
+          error: summarizeError(stopError),
+        });
+      }
       return null;
     }
   }
@@ -166,7 +173,9 @@ export class LspService {
 
   /** Stop all running servers. */
   async shutdown(): Promise<void> {
-    const stops = Array.from(this.clients.values()).map(c => c.stop().catch(() => {}));
+    const stops = Array.from(this.clients.values()).map(c => c.stop().catch((error) => {
+      logger.warn('LSP server stop failed during shutdown', { error: summarizeError(error) });
+    }));
     await Promise.all(stops);
     this.clients.clear();
     this.initializing.clear();

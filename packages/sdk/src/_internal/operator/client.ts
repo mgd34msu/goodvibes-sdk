@@ -28,8 +28,8 @@ export interface OperatorSdkOptions extends HttpTransportOptions {
   /**
    * When `true` (default), response bodies for typed operator methods are
    * validated against their Zod contract schemas. Set to `false` to opt out.
-   * This is useful in environments where Zod cannot be bundled (e.g. Cloudflare
-   * Workers with strict module constraints).
+   * This is useful when a caller wants raw response bodies for compatibility
+   * debugging or benchmarking.
    */
   readonly validateResponses?: boolean;
 }
@@ -63,30 +63,9 @@ export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk {
   const validateResponses = options.validateResponses !== false;
   const transport = createHttpTransport(options);
   const contract = getOperatorContract();
-  const base = createOperatorRemoteClient(transport, contract);
-
-  if (!validateResponses) {
-    return base as OperatorSdk;
-  }
-
-  // Wrap invoke to auto-inject registered Zod schemas so every typed call
-  // validates its response against the contract shape. The schema registry
-  // is loaded lazily on the first invocation to avoid bundling zod upfront.
-  const invoke = async <T = unknown>(
-    methodId: string,
-    input?: Record<string, unknown>,
-    invokeOptions: OperatorRemoteClientInvokeOptions = {},
-  ): Promise<T> => {
-    const registry = getSchemaRegistry();
-    const schema = registry[methodId];
-    return base.invoke<T>(methodId, input, {
-      ...invokeOptions,
-      ...(schema ? { responseSchema: schema } : {}),
-    });
-  };
-
-  return {
-    ...base,
-    invoke,
-  } as OperatorSdk;
+  return createOperatorRemoteClient(transport, contract, {
+    getResponseSchema: validateResponses
+      ? (methodId) => getSchemaRegistry()[methodId]
+      : undefined,
+  }) as OperatorSdk;
 }

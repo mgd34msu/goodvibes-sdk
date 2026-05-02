@@ -140,12 +140,35 @@ async function startVerdaccio(): Promise<VerdaccioHandle> {
   const stop = (): Promise<void> =>
     new Promise((res) => {
       if (procExited) { res(); return; }
-      proc.once('exit', () => res());
-      try { proc.kill('SIGTERM'); } catch { res(); return; }
-      setTimeout(() => {
-        try { proc.kill('SIGKILL'); } catch { /* ignore */ }
+      let settled = false;
+      let killTimer: ReturnType<typeof setTimeout> | undefined;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (killTimer) clearTimeout(killTimer);
         res();
+      };
+      proc.once('exit', finish);
+      try {
+        proc.kill('SIGTERM');
+      } catch (error) {
+        warnCleanupFailure('verdaccio SIGTERM', error);
+        finish();
+        return;
+      }
+      killTimer = setTimeout(() => {
+        if (procExited) {
+          finish();
+          return;
+        }
+        try {
+          proc.kill('SIGKILL');
+        } catch (error) {
+          warnCleanupFailure('verdaccio SIGKILL', error);
+        }
+        finish();
       }, 5000);
+      killTimer.unref?.();
     });
 
   return { port, registryUrl, storageDir, configDir, stop };
@@ -161,7 +184,10 @@ async function waitForVerdaccio(registryUrl: string, timeoutMs: number): Promise
     } catch (err) {
       lastError = err;
     }
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 300);
+      timer.unref?.();
+    });
   }
   throw new Error(
     `Verdaccio did not become ready within ${timeoutMs}ms. Last error: ${lastError}`,
@@ -324,13 +350,29 @@ let verdaccioHandle: VerdaccioHandle | null = null;
 let stageRoot: string | null = null;
 let scratchDir: string | null = null;
 
+function warnCleanupFailure(label: string, error: unknown): void {
+  console.warn(`[verdaccio-dry-run] cleanup failed for ${label}:`, error instanceof Error ? error.message : String(error));
+}
+
+function removePathBestEffort(label: string, path: string): void {
+  try {
+    rmSync(path, { recursive: true, force: true });
+  } catch (error) {
+    warnCleanupFailure(label, error);
+  }
+}
+
 function cleanup(): void {
   if (scratchDir) {
-    try { rmSync(scratchDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    removePathBestEffort('scratch project', scratchDir);
     scratchDir = null;
   }
   if (stageRoot) {
-    try { cleanupStage(stageRoot); } catch { /* ignore */ }
+    try {
+      cleanupStage(stageRoot);
+    } catch (error) {
+      warnCleanupFailure('staged packages', error);
+    }
     stageRoot = null;
   }
 }
@@ -353,8 +395,8 @@ async function main(): Promise<void> {
     if (verdaccioHandle) {
       console.log('[verdaccio] shutting down ...');
       await verdaccioHandle.stop();
-      try { rmSync(storageDir, { recursive: true, force: true }); } catch { /* ignore */ }
-      try { rmSync(configDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      removePathBestEffort('verdaccio storage', storageDir);
+      removePathBestEffort('verdaccio config', configDir);
       verdaccioHandle = null;
     }
   }
@@ -371,12 +413,16 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   cleanup();
-  void verdaccioHandle?.stop().catch(() => {});
-  if (verdaccioHandle?.storageDir) {
-    try { rmSync(verdaccioHandle.storageDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  const handle = verdaccioHandle;
+  verdaccioHandle = null;
+  void handle?.stop().catch((stopError) => {
+    warnCleanupFailure('verdaccio stop', stopError);
+  });
+  if (handle?.storageDir) {
+    removePathBestEffort('verdaccio storage', handle.storageDir);
   }
-  if (verdaccioHandle?.configDir) {
-    try { rmSync(verdaccioHandle.configDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  if (handle?.configDir) {
+    removePathBestEffort('verdaccio config', handle.configDir);
   }
   console.error('[verdaccio-dry-run] FAILED:', err instanceof Error ? err.message : String(err));
   if (err instanceof Error && err.stack) console.error(err.stack);

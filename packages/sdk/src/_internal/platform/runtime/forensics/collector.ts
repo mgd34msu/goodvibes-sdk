@@ -16,6 +16,8 @@ import { randomUUID } from 'node:crypto';
 import type { RuntimeEventBus, RuntimeEventEnvelope } from '../events/index.js';
 import { createEventEnvelope } from '../events/index.js';
 import type { AnyRuntimeEvent } from '../events/domain-map.js';
+import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 import type {
   FailureReport,
   PhaseTimingEntry,
@@ -683,7 +685,11 @@ export class ForensicsCollector {
   /** Dispose all event bus subscriptions. */
   public dispose(): void {
     for (const unsub of this._unsubs) {
-      try { unsub(); } catch { /* non-fatal */ }
+      try {
+        unsub();
+      } catch (error) {
+        logger.warn('Forensics collector unsubscribe failed', { error: summarizeError(error) });
+      }
     }
     this._unsubs.length = 0;
     this._turns.clear();

@@ -43,6 +43,7 @@ export async function executePhase(
           () => reject(new Error(`Tool '${call.name}' timed out after ${timeoutMs}ms`)),
           timeoutMs,
         );
+        timer.unref?.();
       }),
     ]);
     clearTimeout(timer);

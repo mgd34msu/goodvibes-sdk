@@ -5,7 +5,7 @@ import {
 
 const controlHandlers = createDaemonControlRouteHandlers({
   authToken: null,
-  version: '0.18.2',
+  version: '0.28.22',
   sessionCookieName: 'goodvibes_session',
   controlPlaneGateway: {
     getSnapshot: () => ({ ok: true }),

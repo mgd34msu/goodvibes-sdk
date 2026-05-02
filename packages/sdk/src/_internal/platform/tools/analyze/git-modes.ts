@@ -97,7 +97,10 @@ async function trySemanticDiffLlm(
   try {
     return await Promise.race([
       toolLLM.chat(prompt, { maxTokens: 512 }),
-      new Promise<string>((resolve) => setTimeout(() => resolve(''), 1200)),
+      new Promise<string>((resolve) => {
+        const timer = setTimeout(() => resolve(''), 1200);
+        timer.unref?.();
+      }),
     ]);
   } catch {
     return '';

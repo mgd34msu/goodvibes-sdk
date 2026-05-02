@@ -248,7 +248,11 @@ function makeFakeOperatorSdk(
 const serversToStop: Array<{ stop: () => void }> = [];
 afterEach(() => {
   for (const s of serversToStop.splice(0)) {
-    try { s.stop(); } catch {}
+    try {
+      s.stop();
+    } catch (error) {
+      console.warn('Failed to stop auth-flow test server', { error });
+    }
   }
 });
 

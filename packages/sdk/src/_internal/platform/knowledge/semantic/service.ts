@@ -1,6 +1,7 @@
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeSourceRecord } from '../types.js';
-import { yieldEvery, yieldToEventLoop } from '../cooperative.js';
+import { logger } from '../../utils/logger.js';
+import { scheduleBackground, sleep, yieldEvery, yieldToEventLoop } from '../cooperative.js';
 import { getKnowledgeSpaceId, normalizeKnowledgeSpaceId } from '../spaces.js';
 import { answerKnowledgeQuery } from './answer.js';
 import { enrichKnowledgeSource } from './enrichment.js';
@@ -29,7 +30,7 @@ export interface KnowledgeSemanticServiceOptions {
 
 export class KnowledgeSemanticService {
   private readonly activeGapRepairs = new Set<string>();
-  private activeSelfImprovementRun: Promise<KnowledgeSemanticSelfImproveResult> | null = null;
+  private readonly activeSelfImprovementRuns = new Map<string, Promise<KnowledgeSemanticSelfImproveResult>>();
 
   constructor(
     private readonly store: KnowledgeStore,
@@ -247,21 +248,29 @@ export class KnowledgeSemanticService {
 
   private runSelfImprovementInBackground(input: KnowledgeSemanticSelfImproveInput, delayMs = 0): void {
     if (!this.options.gapRepairer) return;
-    setTimeout(() => {
-      void this.selfImprove(input).catch(() => {});
+    scheduleBackground(() => {
+      void this.selfImprove(input).catch((error: unknown) => {
+        logger.warn('Knowledge semantic background self-improvement failed', {
+          error: error instanceof Error ? error.message : String(error),
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          reason: input.reason,
+        });
+      });
     }, Math.max(0, delayMs));
   }
 
   async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {
     await this.store.init();
     if (input.deferRepair !== true) {
-      if (this.activeSelfImprovementRun && !input.gapIds?.length) return activeSelfImproveResult(input);
+      const runKey = selfImprovementRunKey(input);
+      const activeRun = this.activeSelfImprovementRuns.get(runKey);
+      if (activeRun && !input.gapIds?.length) return activeSelfImproveResult(input);
       const run = this.runSelfImproveUnlocked(input);
-      if (!input.gapIds?.length) this.activeSelfImprovementRun = run;
+      if (!input.gapIds?.length) this.activeSelfImprovementRuns.set(runKey, run);
       try {
         return await run;
       } finally {
-        if (this.activeSelfImprovementRun === run) this.activeSelfImprovementRun = null;
+        if (this.activeSelfImprovementRuns.get(runKey) === run) this.activeSelfImprovementRuns.delete(runKey);
       }
     }
     return this.runSelfImproveUnlocked(input);
@@ -320,7 +329,7 @@ export class KnowledgeSemanticService {
       const active = keys.some((key) => this.activeGapRepairs.has(key));
       if (!active) return true;
       await yieldToEventLoop();
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await sleep(100);
     }
     return false;
   }
@@ -365,7 +374,10 @@ function answerNeedsForegroundRepair(
 }
 
 function answerHasUsableEvidence(answer: KnowledgeSemanticAnswerResult): boolean {
-  return answer.answer.facts.length > 0 && answer.answer.sources.length > 0 && answer.answer.confidence >= 50;
+  return answer.answer.gaps.length === 0
+    && answer.answer.facts.length > 0
+    && answer.answer.sources.length > 0
+    && answer.answer.confidence >= 50;
 }
 
 function withRefinementTaskIds(
@@ -451,6 +463,12 @@ function activeSelfImproveResult(input: KnowledgeSemanticSelfImproveInput): Know
     truncated: true,
     budgetExhausted: true,
   };
+}
+
+function selfImprovementRunKey(input: KnowledgeSemanticSelfImproveInput): string {
+  if (input.knowledgeSpaceId) return `space:${normalizeKnowledgeSpaceId(input.knowledgeSpaceId)}`;
+  if (input.sourceIds?.length) return `sources:${uniqueStrings(input.sourceIds).sort().join(',')}`;
+  return 'global';
 }
 
 function sourceCanUseLlmUpgrade(store: KnowledgeStore, source: KnowledgeSourceRecord): boolean {

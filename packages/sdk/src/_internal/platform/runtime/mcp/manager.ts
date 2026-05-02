@@ -468,6 +468,7 @@ export class McpLifecycleManager {
       current.reconnectPending = false;
       void this._connect(serverName);
     }, delay);
+    timer.unref?.();
 
     this.reconnectTimers.set(serverName, timer);
   }

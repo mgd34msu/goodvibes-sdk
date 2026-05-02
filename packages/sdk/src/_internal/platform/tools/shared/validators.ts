@@ -41,6 +41,7 @@ export async function runValidator(name: ValidatorName, cwd: string): Promise<Va
     timedOut = true;
     proc.kill();
   }, TIMEOUT_MS);
+  timeoutHandle.unref?.();
 
   const [exitCode, stdoutBuf, stderrBuf] = await Promise.all([
     proc.exited,

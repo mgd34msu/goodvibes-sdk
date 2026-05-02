@@ -40,6 +40,7 @@ export async function run(
       timerId = setTimeout(() => {
         reject(new Error(`prompt hook timed out after ${hook.timeout ?? 30}s`));
       }, timeoutMs);
+      timerId.unref?.();
     });
 
     let response: string;

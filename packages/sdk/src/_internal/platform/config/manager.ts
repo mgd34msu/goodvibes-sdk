@@ -256,7 +256,14 @@ export class ConfigManager {
     const set = this._listeners.get(key);
     if (!set) return;
     for (const cb of set) {
-      try { cb(newValue, oldValue); } catch { /* listener errors must not abort set() */ }
+      try {
+        cb(newValue, oldValue);
+      } catch (error) {
+        logger.warn('Config listener failed during setting update', {
+          key,
+          error: summarizeError(error),
+        });
+      }
     }
   }
 

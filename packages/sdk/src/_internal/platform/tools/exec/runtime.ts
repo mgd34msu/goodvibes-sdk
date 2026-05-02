@@ -67,7 +67,10 @@ function resolveCwd(cwd: string | undefined, workingDirectory: string): string {
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }
 
 function computeRetryDelay(
@@ -209,6 +212,7 @@ async function runCommand(
     }
     timeoutResolve();
   }, timeoutMs);
+  killTimer.unref?.();
 
   try {
     type ProcResult = [string, string, number];
@@ -226,7 +230,14 @@ async function runCommand(
 
     clearTimeout(killTimer);
     if (timedOut) {
-      try { await procPromise; } catch { /* ignore */ }
+      try {
+        await procPromise;
+      } catch (error) {
+        logger.debug('exec foreground command collection failed after timeout', {
+          command: cmdStr,
+          error: summarizeError(error),
+        });
+      }
       return buildTimedOutResult(cmdStr, cwd, Date.now() - startTime);
     }
 
@@ -277,12 +288,13 @@ async function runCommandWithProgress(
       proc.kill('SIGTERM');
       await sleep(200);
       proc.kill('SIGKILL');
-    } catch {
-      // ok
+    } catch (err: unknown) {
+      logger.debug('[ExecRuntime] kill on streamed timeout failed (process may have exited)', { error: String(err) });
     }
     progressFile.append('# Timed out\n');
     timeoutResolve();
   }, timeoutMs);
+  killTimer.unref?.();
 
   let stdoutBuf = '';
   let stderrBuf = '';
@@ -297,8 +309,8 @@ async function runCommandWithProgress(
         stdoutBuf += chunk;
         progressFile.append(chunk);
       }
-    } catch {
-      // stream ended
+    } catch (err: unknown) {
+      logger.debug('[ExecRuntime] stdout stream read ended with error', { error: String(err) });
     } finally {
       reader.releaseLock();
     }
@@ -313,8 +325,8 @@ async function runCommandWithProgress(
         const chunk = decoder.decode(value, { stream: true });
         stderrBuf += chunk;
       }
-    } catch {
-      // stream ended
+    } catch (err: unknown) {
+      logger.debug('[ExecRuntime] stderr stream read ended with error', { error: String(err) });
     } finally {
       reader.releaseLock();
     }
@@ -325,11 +337,24 @@ async function runCommandWithProgress(
   clearTimeout(killTimer);
 
   if (timedOut) {
-    try { await ioPromise; } catch { /* ignore */ }
+    try {
+      await ioPromise;
+    } catch (error) {
+      logger.debug('exec progress command IO collection failed after timeout', {
+        command: cmdStr,
+        error: summarizeError(error),
+      });
+    }
     return { ...buildTimedOutResult(cmdStr, cwd, Date.now() - startTime, progressFile.path), stdout: stdoutBuf, stderr: stderrBuf };
   }
 
-  const ioResult = await ioPromise.catch(() => [undefined, undefined, undefined] as [void, void, number | undefined]);
+  const ioResult = await ioPromise.catch((error) => {
+    logger.debug('exec progress command IO collection failed', {
+      command: cmdStr,
+      error: summarizeError(error),
+    });
+    return [undefined, undefined, undefined] as [void, void, number | undefined];
+  });
   const actualExitCode = (ioResult[2] as number | undefined) ?? await proc.exited;
   const stdoutResult = truncate(overflowHandler, stdoutBuf, 'stdout');
   const stderrResult = truncate(overflowHandler, stderrBuf, 'stderr');
@@ -384,13 +409,18 @@ async function runUntil(
         if (!matched && pattern.test(stdoutBuf + stderrBuf)) {
           matched = true;
           if (killAfter) {
-            try { proc.kill('SIGTERM'); } catch { /* ok */ }
+            killExecProcess(proc, cmdStr, 'match');
           }
           reader.releaseLock();
           return;
         }
       }
-    } catch {
+    } catch (error) {
+      logger.debug('exec run-until stream read failed', {
+        command: cmdStr,
+        stream: isStderr ? 'stderr' : 'stdout',
+        error: summarizeError(error),
+      });
       reader.releaseLock();
     }
   };
@@ -399,7 +429,7 @@ async function runUntil(
   await Promise.race([Promise.all([readStream(proc.stdout, false), readStream(proc.stderr, true)]), timeoutPromise]);
 
   if (!killAfter && !matched) {
-    try { proc.kill('SIGTERM'); } catch { /* ok */ }
+    killExecProcess(proc, cmdStr, 'timeout');
   }
 
   const exitCode = await proc.exited;
@@ -417,6 +447,18 @@ async function runUntil(
     ...(stdoutResult.truncated && { stdout_truncated: true }),
     ...(stderrResult.truncated && { stderr_truncated: true }),
   };
+}
+
+function killExecProcess(proc: ReturnType<typeof Bun.spawn>, command: string, reason: string): void {
+  try {
+    proc.kill('SIGTERM');
+  } catch (error) {
+    logger.debug('exec process kill failed; process may already be exited', {
+      command,
+      reason,
+      error: summarizeError(error),
+    });
+  }
 }
 
 /**

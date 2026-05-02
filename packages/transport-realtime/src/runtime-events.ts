@@ -94,13 +94,32 @@ export function buildWebSocketUrl(
   baseUrl: string,
   domains: readonly RuntimeEventDomain[],
 ): string {
-  const base = normalizeBaseUrl(baseUrl);
-  const url = new URL('/api/control-plane/ws', base.replace(/^http(s?):\/\//, 'ws$1://'));
+  const url = new URL('/api/control-plane/ws', normalizeBaseUrl(baseUrl));
+  if (url.protocol === 'http:') {
+    url.protocol = 'ws:';
+  } else if (url.protocol === 'https:') {
+    url.protocol = 'wss:';
+  } else if (url.protocol !== 'ws:' && url.protocol !== 'wss:') {
+    throw new Error(`Unsupported WebSocket base URL protocol: ${url.protocol}`);
+  }
+  assertWebSocketAuthTransportIsSafe(url);
   url.searchParams.set('clientKind', 'web');
   if (domains.length > 0) {
     url.searchParams.set('domains', domains.join(','));
   }
   return url.toString();
+}
+
+function assertWebSocketAuthTransportIsSafe(url: URL): void {
+  if (url.protocol !== 'ws:') return;
+  const host = url.hostname.toLowerCase();
+  const isLoopback = host === 'localhost'
+    || host === '127.0.0.1'
+    || host === '::1'
+    || host.startsWith('127.');
+  if (!isLoopback) {
+    throw new Error('Refusing to send GoodVibes WebSocket authentication over insecure ws:// transport. Use https:// or wss://.');
+  }
 }
 
 export function createEventSourceConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
@@ -110,7 +129,7 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
   options: RuntimeEventConnectorOptions = {},
 ): DomainEventConnector<RuntimeEventDomain, TEvent> {
   const { observer } = options;
-  const handleError = options.onError ?? (options.reconnect?.enabled ? (() => {}) : undefined);
+  const handleError = options.onError;
   return async (domain, onEnvelope) => {
     const url = buildEventSourceUrl(baseUrl, domain);
     const getAuthToken = normalizeAuthToken(token ?? undefined);
@@ -172,6 +191,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     // and flushed on the next successful open event.
     const outboundQueue: string[] = [];
     let droppedOutboundCount = 0;
+    let queueOverflowNotified = false;
 
     /**
      * Enqueue a message for delivery over this WebSocket connection.
@@ -187,7 +207,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
      * @param data - Serialised message string to send.
      */
     const emitLocal = (data: string): void => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      if (socket && socket.readyState === WebSocketImpl.OPEN) {
         socket.send(data);
         return;
       }
@@ -195,9 +215,12 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         // Drop oldest message to make room (drop-oldest policy).
         outboundQueue.shift();
         droppedOutboundCount += 1;
-        options.onError?.(new Error(
-          `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE}). Oldest message dropped; total dropped: ${droppedOutboundCount}.`,
-        ));
+        if (!queueOverflowNotified) {
+          queueOverflowNotified = true;
+          options.onError?.(new Error(
+            `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE}). Dropping oldest messages until the socket reconnects.`,
+          ));
+        }
       }
       outboundQueue.push(data);
     };
@@ -218,7 +241,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     const scheduleReconnect = () => {
       if (!enabled || stopped) return;
       const nextAttempt = reconnectAttempt + 1;
-      if (nextAttempt >= reconnectPolicy.maxAttempts) return;
+      if (nextAttempt > reconnectPolicy.maxAttempts) return;
       reconnectAttempt = nextAttempt;
       // Use shared backoff helper so WS and SSE are on identical schedule.
       const delayMs = getStreamReconnectDelay(nextAttempt, reconnectPolicy);
@@ -226,6 +249,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         reconnectTimer = null;
         void connect();
       }, delayMs);
+      reconnectTimer.unref?.();
     };
 
     const flushOutboundQueue = (ws: WebSocket) => {
@@ -234,35 +258,47 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       }
     };
 
-    const onOpen = async () => {
-      const authToken = (await normalizeAuthToken(token ?? undefined)()) ?? null;
-      if (!authToken || !socket) return;
-      // Notify observer of outbound WS connection.
-      invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
-      // Send auth frame first, then drain any messages buffered during resolution.
-      // Inject traceparent into the auth frame for W3C Trace Context propagation over WebSocket.
-      const wsTraceHeaders: Record<string, string> = {};
-      await injectTraceparentAsync(wsTraceHeaders);
-      socket.send(JSON.stringify({
-        type: 'auth',
-        token: authToken,
-        domains: [domain],
-        ...(wsTraceHeaders['traceparent'] ? { traceparent: wsTraceHeaders['traceparent'] } : {}),
-        ...(wsTraceHeaders['tracestate'] ? { tracestate: wsTraceHeaders['tracestate'] } : {}),
-      }));
-      flushOutboundQueue(socket);
+    const onOpen = async (event: Event) => {
+      const candidateSocket = event.currentTarget as WebSocket | null;
+      const openedSocket = candidateSocket && typeof candidateSocket.send === 'function'
+        ? candidateSocket
+        : socket;
+      try {
+        const authToken = (await normalizeAuthToken(token ?? undefined)()) ?? null;
+        if (!authToken || !openedSocket || stopped || socket !== openedSocket || openedSocket.readyState !== WebSocketImpl.OPEN) return;
+        // Notify observer of outbound WS connection.
+        invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
+        // Send auth frame first, then drain any messages buffered during resolution.
+        // Inject traceparent into the auth frame for W3C Trace Context propagation over WebSocket.
+        const wsTraceHeaders: Record<string, string> = {};
+        await injectTraceparentAsync(wsTraceHeaders);
+        if (stopped || socket !== openedSocket || openedSocket.readyState !== WebSocketImpl.OPEN) return;
+        openedSocket.send(JSON.stringify({
+          type: 'auth',
+          token: authToken,
+          domains: [domain],
+          ...(wsTraceHeaders['traceparent'] ? { traceparent: wsTraceHeaders['traceparent'] } : {}),
+          ...(wsTraceHeaders['tracestate'] ? { tracestate: wsTraceHeaders['tracestate'] } : {}),
+        }));
+        flushOutboundQueue(openedSocket);
+      } catch (error) {
+        const sendError = error instanceof Error ? error : new Error(String(error));
+        invokeTransportObserver(() => observer?.onError?.(sendError));
+        options.onError?.(sendError);
+        closeSocket();
+        scheduleReconnect();
+      }
     };
 
     const onMessage = (event: MessageEvent<string>) => {
       try {
         const frame = JSON.parse(event.data) as { type?: string; event?: string; payload?: unknown };
+        if (!hasReceivedMessage) {
+          hasReceivedMessage = true;
+          reconnectAttempt = 0;
+        }
+        queueOverflowNotified = false;
         if (frame.type === 'event' && frame.event === domain && frame.payload && typeof frame.payload === 'object') {
-          // Reset reconnect counter on first successful message — transient mid-session
-          // failures should not compound with failures from the initial connection phase.
-          if (!hasReceivedMessage) {
-            hasReceivedMessage = true;
-            reconnectAttempt = 0;
-          }
           const wsPayload = frame.payload as SerializedRuntimeEnvelope<TEvent>;
           onEnvelope(wsPayload);
           // Notify observer of inbound WS event.
@@ -273,8 +309,10 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
             }
           });
         }
-      } catch {
-        // Ignore malformed frames.
+      } catch (error) {
+        const malformed = new Error(`Malformed WebSocket runtime event frame: ${error instanceof Error ? error.message : String(error)}`);
+        invokeTransportObserver(() => observer?.onError?.(malformed));
+        options.onError?.(malformed);
       }
     };
 

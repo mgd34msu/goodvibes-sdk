@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+sbom.cdx.json
 .tmp/
 .goodvibes/
 
@@ -14,5 +15,5 @@ temp/
 # wrangler dev --local cache — created inside test/workers-wrangler/ on first run
 test/workers-wrangler/.wrangler/
 
-# Test leak: code that passes literal ':memory:' as a filesystem path instead of SQLite's in-memory sentinel
+# Defensive guard against accidental SQLite `:memory:` sentinel file leaks
 :memory:

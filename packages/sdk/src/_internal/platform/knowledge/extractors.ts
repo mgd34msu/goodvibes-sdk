@@ -5,6 +5,8 @@ import { guessMimeType } from '../artifacts/types.js';
 import { extractReadableHtml } from './html-readability.js';
 import { extractPdf } from './pdf-extractor.js';
 import type { KnowledgeExtractionFormat } from './types.js';
+import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 
 const MAX_STRUCTURE_SEARCH_TEXT_CHARS = 128 * 1024;
 
@@ -151,8 +153,10 @@ function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
         },
       };
     }
-  } catch {
-    // Fall back to the lightweight extractor below for malformed or hostile HTML.
+  } catch (error) {
+    logger.debug('Knowledge extraction: readability extraction failed; using lightweight HTML extractor', {
+      error: summarizeError(error),
+    });
   }
   const title = cleanText(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '')
     || cleanText(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '');
@@ -248,7 +252,10 @@ function extractJson(buffer: Buffer): KnowledgeExtractionResult {
       },
       metadata: {},
     };
-  } catch {
+  } catch (error) {
+    logger.debug('Knowledge extraction: JSON parse failed; using text fallback', {
+      error: summarizeError(error),
+    });
     return extractTextLike(buffer, 'json', 'json-fallback');
   }
 }

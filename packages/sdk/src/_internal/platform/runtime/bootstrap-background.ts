@@ -140,7 +140,7 @@ export function scheduleBackgroundMcpDiscovery(options: BackgroundMcpDiscoveryOp
     logger.debug('MCP auto-connect failed (non-fatal)', { error: summarizeError(err) });
   });
 
-  setTimeout(() => {
+  const scanTimer = setTimeout(() => {
     const registeredNames = new Set(mcpRegistry.serverNames);
     scanMcpServers({ ...shellPaths, surfaceRoot }, registeredNames).then((result) => {
       if (result.suggestions.length === 0) return;
@@ -154,6 +154,7 @@ export function scheduleBackgroundMcpDiscovery(options: BackgroundMcpDiscoveryOp
       logger.debug('MCP auto-discovery scan failed (non-fatal)', { error: summarizeError(err) });
     });
   }, 2000);
+  scanTimer.unref?.();
 }
 
 export const startBackgroundProviderRegistration = startBackgroundProviderDiscovery;

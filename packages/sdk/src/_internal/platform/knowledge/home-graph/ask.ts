@@ -1,4 +1,6 @@
 import type { KnowledgeSemanticService } from '../semantic/index.js';
+import { logger } from '../../utils/logger.js';
+import { scheduleBackground } from '../cooperative.js';
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import { collectLinkedObjects, renderAskAnswer } from './state.js';
@@ -51,12 +53,17 @@ async function answerHomeGraphQueryOnce(input: {
       autoRepairGaps: true,
       timeoutMs: input.query.timeoutMs,
     });
-    setTimeout(() => {
+    scheduleBackground(() => {
       void input.semanticService?.enrichSources(uniqueSources(sources), {
         knowledgeSpaceId: input.spaceId,
         limit: Math.min(3, Math.max(1, sources.length)),
-      }).catch(() => {});
-    }, 0);
+      }).catch((error: unknown) => {
+        logger.warn('Home Graph post-answer enrichment failed', {
+          spaceId: input.spaceId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    });
     return {
       ok: true,
       spaceId: input.spaceId,

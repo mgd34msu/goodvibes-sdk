@@ -12,6 +12,8 @@ import type { RuntimeStore, DomainDispatch } from '../../store/index.js';
 import type { RuntimeTask } from '../../store/domains/tasks.js';
 import type { SubagentStatus } from '../../../acp/protocol.js';
 import type { AcpManager } from '../../../acp/manager.js';
+import { logger } from '../../../utils/logger.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 /**
  * Maps an ACP SubagentStatus to a RuntimeTask lifecycle state.
@@ -142,9 +144,12 @@ export class AcpTaskAdapter {
     if (remoteId === undefined) return;
 
     if (manager) {
-      // Fire-and-forget cancellation; errors are non-fatal
-      void manager.cancel(remoteId).catch(() => {
-        // Non-fatal: process may have already exited
+      void manager.cancel(remoteId).catch((error) => {
+        logger.debug('ACP remote cancellation failed after task cancellation', {
+          taskId,
+          remoteId,
+          error: summarizeError(error),
+        });
       });
     }
 

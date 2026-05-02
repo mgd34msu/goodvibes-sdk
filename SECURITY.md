@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.25.1 and later 0.25.x (latest pre-1.0 line) | :white_check_mark: |
-| < 0.25.1 | :x: |
+| 0.28.x (latest pre-1.0 line) | :white_check_mark: |
+| < 0.28.0 | :x: |
 
 Pre-1.0 policy: security fixes land in the latest published pre-1.0 line. Earlier minor lines are not patched; upgrade to the latest release to receive security updates.
 
@@ -14,11 +14,11 @@ Pre-1.0 policy: security fixes land in the latest published pre-1.0 line. Earlie
 The repo uses package-manager overrides for transitive advisory remediation when
 the upstream dependency range has not yet moved but a compatible fixed package is
 available. Current non-vendored overrides are declared in the root
-`package.json` and `packages/sdk/package.json`:
+`package.json`:
 
 - `fast-xml-parser@5.7.1` for the AWS XML builder path
 - `ajv@8.18.0` for Verdaccio and documentation tooling paths
-- `lodash@4.18.1` for Verdaccio legacy-storage paths
+- `lodash@4.17.21` for Verdaccio legacy-storage paths
 - `google-auth-library@10.6.2` for the in-tree Anthropic Vertex authentication path
 - `minimatch@^10.2.5` for source-workspace installs
 
@@ -54,7 +54,7 @@ not inherit dependency-package overrides:
     "ajv": "8.18.0",
     "fast-xml-parser": "5.7.1",
     "google-auth-library": "10.6.2",
-    "lodash": "4.18.1",
+    "lodash": "4.17.21",
     "minimatch": "^10.2.5"
   }
 }

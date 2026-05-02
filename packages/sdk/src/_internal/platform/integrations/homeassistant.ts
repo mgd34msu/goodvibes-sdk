@@ -1,4 +1,6 @@
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 
 const DEFAULT_HOME_ASSISTANT_TIMEOUT_MS = 15_000;
 const DEFAULT_HOME_ASSISTANT_RESPONSE_BYTES = 2_000_000;
@@ -223,7 +225,7 @@ function isHomeAssistantService(value: unknown): value is HomeAssistantServiceRe
 async function readResponseTextWithinLimit(response: Response, maxBytes: number): Promise<string> {
   const contentLength = Number.parseInt(response.headers.get('content-length') ?? '0', 10);
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-    await response.body?.cancel().catch(() => undefined);
+    if (response.body) await cancelHomeAssistantBody(response.body, 'Response content-length exceeds limit');
     throw new Error(`Home Assistant response too large: ${contentLength} bytes`);
   }
   if (!response.body) return '';
@@ -237,7 +239,7 @@ async function readResponseTextWithinLimit(response: Response, maxBytes: number)
       if (done) break;
       total += value.byteLength;
       if (total > maxBytes) {
-        await reader.cancel('Response too large').catch(() => undefined);
+        await cancelHomeAssistantReader(reader, 'Response too large');
         throw new Error(`Home Assistant response exceeded ${maxBytes} bytes`);
       }
       text += decoder.decode(value, { stream: true });
@@ -246,5 +248,24 @@ async function readResponseTextWithinLimit(response: Response, maxBytes: number)
     return text;
   } finally {
     reader.releaseLock();
+  }
+}
+
+async function cancelHomeAssistantBody(body: ReadableStream<Uint8Array>, reason: string): Promise<void> {
+  try {
+    await body.cancel(reason);
+  } catch (error) {
+    logger.warn('Home Assistant response body cancel failed', { reason, error: summarizeError(error) });
+  }
+}
+
+async function cancelHomeAssistantReader(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  reason: string,
+): Promise<void> {
+  try {
+    await reader.cancel(reason);
+  } catch (error) {
+    logger.warn('Home Assistant response reader cancel failed', { reason, error: summarizeError(error) });
   }
 }

@@ -1,5 +1,5 @@
 import { mkdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -45,6 +45,12 @@ interface SqlDatabase {
   close(): void;
 }
 
+function isEphemeralDbPath(path: string | null | undefined): boolean {
+  if (!path) return true;
+  if (path === ':memory:') return true;
+  return /^file:.*(?:^|[?&])mode=memory(?:&|$)/.test(path);
+}
+
 // ---------------------------------------------------------------------------
 // TelemetryDB
 // ---------------------------------------------------------------------------
@@ -75,7 +81,7 @@ export class TelemetryDB {
       // Dynamic import to avoid top-level WASM load overhead
       const initSqlJs = (await import('sql.js')).default;
       const SQL = await initSqlJs();
-      if (this.dbPath && existsSync(this.dbPath)) {
+      if (this.dbPath && !isEphemeralDbPath(this.dbPath) && existsSync(this.dbPath)) {
         // Load existing DB from disk
         const { readFileSync } = await import('node:fs');
         const data = readFileSync(this.dbPath);
@@ -250,15 +256,17 @@ export class TelemetryDB {
    */
   async save(): Promise<boolean> {
     this.assertReady();
-    if (!this.dbPath) return false;
+    if (isEphemeralDbPath(this.dbPath)) return false;
+    const dbPath = this.dbPath;
+    if (!dbPath) return false;
 
     try {
-      const dir = join(this.dbPath, '..');
+      const dir = dirname(dbPath);
       mkdirSync(dir, { recursive: true });
       const data: Uint8Array = this._db.export();
       const { writeFileSync } = await import('node:fs');
-      writeFileSync(this.dbPath, Buffer.from(data));
-      logger.info('TelemetryDB: saved to disk', { path: this.dbPath });
+      writeFileSync(dbPath, Buffer.from(data));
+      logger.info('TelemetryDB: saved to disk', { path: dbPath });
       return true;
     } catch (err) {
       logger.error('TelemetryDB: failed to save', {

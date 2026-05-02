@@ -226,6 +226,7 @@ export class KVState {
         logger.debug('KVState: scheduled persist failed', { error: summarizeError(err) });
       });
     }, 5000);
+    this.persistTimer.unref?.();
   }
 
   private static generateId(): string {

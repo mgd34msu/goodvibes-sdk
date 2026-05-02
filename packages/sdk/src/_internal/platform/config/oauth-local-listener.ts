@@ -146,6 +146,7 @@ export async function createOAuthLocalListener(config: OAuthLocalListenerConfig)
     settleFailure(new Error('Timed out waiting for OAuth callback.'));
     close();
   }, timeoutMs);
+  timeout.unref?.();
 
   return {
     redirectUri: `http://${host}:${address.port}${path}`,

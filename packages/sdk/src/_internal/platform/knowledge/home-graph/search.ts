@@ -59,7 +59,7 @@ const STOPWORDS = new Set([
   'with',
 ]);
 
-const SHORT_MEANINGFUL_TOKENS = new Set(['ac', 'av', 'dc', 'ha', 'ip', 'ir', 'lg', 'pc', 'tv']);
+const SHORT_MEANINGFUL_TOKENS = new Set(['ac', 'av', 'dc', 'ha', 'ip', 'ir', 'pc', 'tv']);
 
 const GENERIC_ANCHOR_TOKENS = new Set([
   'area',

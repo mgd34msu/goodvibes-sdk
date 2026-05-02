@@ -80,6 +80,11 @@ export function readString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+export function readStringArray(value: unknown): readonly string[] {
+  if (!Array.isArray(value)) return [];
+  return uniqueStrings(value.map((entry) => readString(entry)));
+}
+
 export function uniqueStrings(values: readonly (string | undefined | null)[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -118,6 +123,7 @@ export function sourceSemanticText(source: KnowledgeSourceRecord, extraction?: K
     source.title,
     source.summary,
     source.description,
+    source.url,
     source.sourceUri,
     source.canonicalUri,
     source.tags.join(' '),
@@ -173,7 +179,8 @@ export function extractJsonObject(text: string): unknown | null {
   for (const candidate of candidates) {
     try {
       return JSON.parse(candidate);
-    } catch {
+    } catch (error) {
+      void error;
       // try the next candidate
     }
   }

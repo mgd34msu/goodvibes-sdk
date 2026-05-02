@@ -11,6 +11,7 @@ import {
   edgeIsActive,
   isGeneratedPageSource,
   readRecord,
+  readString,
   uniqueStrings,
 } from './helpers.js';
 import type { HomeGraphState } from './state.js';
@@ -277,15 +278,6 @@ function includesIdentity(haystack: string, identity: string): boolean {
     return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(normalized)}(?:$|[^a-z0-9])`).test(haystack);
   }
   return haystack.includes(normalized);
-}
-
-function readString(value: unknown): string | undefined {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
-  return undefined;
 }
 
 function escapeRegExp(value: string): string {

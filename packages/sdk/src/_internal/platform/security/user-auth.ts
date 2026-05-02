@@ -113,9 +113,17 @@ function atomicWriteSecretFile(filePath: string, content: string): void {
   mkdirSync(dirname(filePath), { recursive: true });
   const tmpPath = filePath + '.tmp';
   writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 });
-  try { chmodSync(tmpPath, 0o600); } catch { /* best-effort */ }
+  try {
+    chmodSync(tmpPath, 0o600);
+  } catch (error) {
+    logger.warn('User auth secret temp chmod failed', { path: tmpPath, error: String(error) });
+  }
   renameSync(tmpPath, filePath);
-  try { chmodSync(filePath, 0o600); } catch { /* best-effort */ }
+  try {
+    chmodSync(filePath, 0o600);
+  } catch (error) {
+    logger.warn('User auth secret chmod failed after rename', { path: filePath, error: String(error) });
+  }
 }
 
 function writeBootstrapUsers(filePath: string, users: AuthUser[]): void {

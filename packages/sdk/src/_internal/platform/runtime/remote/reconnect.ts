@@ -364,6 +364,7 @@ export class ReconnectEngine {
         this._pendingTimer = null;
         resolve();
       }, ms);
+      this._pendingTimer.unref?.();
     });
   }
 }

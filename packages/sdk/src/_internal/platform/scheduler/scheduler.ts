@@ -592,6 +592,7 @@ export class TaskScheduler {
 
     if (delayMs > MAX_TIMEOUT_MS) {
       const timer = setTimeout(() => this.scheduleNext(task), MAX_TIMEOUT_MS);
+      timer.unref?.();
       this.timers.set(task.id, timer);
       return;
     }
@@ -607,6 +608,7 @@ export class TaskScheduler {
         });
     }, Math.max(0, delayMs));
 
+    timer.unref?.();
     this.timers.set(task.id, timer);
   }
 
