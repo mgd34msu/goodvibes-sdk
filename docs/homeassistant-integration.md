@@ -91,7 +91,7 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/link` | Attach a source or fact to an HA object. |
 | `POST /api/homeassistant/home-graph/unlink` | Mark a source/object link inactive without deleting history. |
 | `POST /api/homeassistant/home-graph/ask` | Ask source-backed questions over only the HA knowledge space; responses use the shared semantic wiki answer layer instead of raw snippet dumps. |
-| `POST /api/homeassistant/home-graph/reindex` | Reparse already-stored HA Home Graph artifacts whose extraction is missing, placeholder-only, or from the old weak PDF extractor, then refresh semantic facts/pages/gaps. |
+| `POST /api/homeassistant/home-graph/reindex` | Reparse already-stored HA Home Graph artifacts whose extraction is missing, placeholder-only, or from the old placeholder PDF extractor, then refresh semantic facts/pages/gaps. |
 | `POST /api/homeassistant/home-graph/device-passport` | Refresh and materialize a device passport page. |
 | `POST /api/homeassistant/home-graph/room-page` | Generate a room/area page as markdown artifact. |
 | `POST /api/homeassistant/home-graph/packet` | Generate guest, sitter, emergency, contractor, network, or custom packets. |
@@ -107,7 +107,7 @@ config flow setup. The most useful endpoints are:
 | `GET`/`POST /api/homeassistant/home-graph/map` | Return a visual node/edge map as JSON layout data plus SVG, or SVG directly with `format=svg`. |
 | `POST /api/homeassistant/home-graph/export` | Export the HA knowledge space. |
 | `POST /api/homeassistant/home-graph/import` | Import a HA knowledge space export. |
-| `POST /api/homeassistant/home-graph/reset` | Admin-only reset for one HA knowledge space. Pass `dryRun: true` to preview delete counts without changing storage. Export first if the current graph may be needed for diagnosis. Reset clears graph rows, issues, extractions, refinement tasks, and related bookkeeping for the space; artifact blobs are not deleted. |
+| `POST /api/homeassistant/home-graph/reset` | Admin-only reset for one HA knowledge space. Pass `dryRun: true` to preview delete counts without changing storage. Export first if the current graph may be needed for diagnosis. Reset clears graph rows and deletes artifacts for the selected HA space by default; pass `preserveArtifacts: true` only for a records-only reset. |
 
 All daemon API calls require normal daemon authentication. The inbound webhook
 below additionally requires the Home Assistant webhook secret because webhook
@@ -167,9 +167,9 @@ generated-projection primitive used by the base knowledge/wiki system, so
 generated Home Graph pages are stable sources with durable markdown artifacts
 instead of temporary one-off files. Generated page markdown includes Home
 Assistant identity, exposed entities, linked source evidence, extracted semantic
-facts, quality issues, and open questions. Linked manuals and other sources
-contribute bounded extracted snippets and durable fact nodes, so device passport
-pages act like real wiki pages rather than source inventory cards. Generated
+facts, quality issues, and open questions. Linked manuals and other sources are
+converted into typed durable fact nodes before rendering; device passport pages
+do not include raw source-snippet sections. Generated
 page sources are marked with
 `metadata.homeGraphGeneratedPage: true`, `metadata.projectionKind`, and
 `metadata.pageEditable: true`; the source id stays stable across regenerations
@@ -278,7 +278,8 @@ PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
 fallback only when the dedicated parser cannot load the file. The raw fallback
 inflates Flate-compressed streams before reading literal strings and refuses to
 persist binary-like stream data as `searchText`, summaries, sections, or page
-content.
+content. If no readable text can be extracted, the PDF extraction fails instead
+of becoming placeholder Home Graph evidence.
 
 Ask excerpt selection scans bounded windows throughout the stored searchable
 text, so a query can match a feature/spec/reset section that appears later in a
@@ -287,12 +288,12 @@ bounded by the SDK search caps and does not rescan whole documents on every
 question.
 
 Older Home Graph artifact sources do not need to be uploaded again. When ask
-finds a relevant linked source with missing, placeholder, or old weak PDF
-extraction data, the SDK re-extracts the already-stored artifact and saves the
+finds a relevant linked source with missing, placeholder, or old PDF extraction
+data, the SDK re-extracts the already-stored artifact and saves the
 new extraction record before ranking the answer. Later questions reuse that
 stored extraction instead of parsing the manual on every request. Clients that
 want to repair the whole Home Assistant knowledge space immediately can call
-`POST /api/homeassistant/home-graph/reindex`. Reindex reparses weak stored
+`POST /api/homeassistant/home-graph/reindex`. Reindex reparses stale stored
 artifacts, auto-links matching manuals and documents to Home Assistant devices
 or entities when model/entity/source identity is strong enough, refreshes
 semantic facts/pages/gaps for changed or explicitly forced sources, and
@@ -320,13 +321,15 @@ diagnosis. Then call the admin-only
 `POST /api/homeassistant/home-graph/reset` route with `installationId` or
 `knowledgeSpaceId`. Use `dryRun: true` first to get the exact delete counts
 without mutating the graph; the response includes `dryRun: true` and the same
-`deleted` summary shape as the real reset. A non-dry run deletes only the
-selected Home Assistant knowledge space rows: sources, nodes, edges, issues,
-extractions, refinement tasks, job runs, usage records, consolidation records,
-and schedules. It intentionally does not delete artifact blobs from disk. After
-reset, re-sync the real Home Assistant snapshot, reingest or relink
-manuals/documents from the integration, then run reindex/refinement/page
-generation against the clean space.
+`deleted` summary shape as the real reset, plus artifact candidate counts. A
+non-dry run deletes the selected Home Assistant knowledge space rows: sources,
+nodes, edges, issues, extractions, refinement tasks, job runs, usage records,
+consolidation records, and schedules. It also deletes artifacts referenced by
+those sources and orphan artifacts tagged to that knowledge space. Pass
+`preserveArtifacts: true` only when intentionally preserving uploads for a
+records-only cleanup. After reset, re-sync the real Home Assistant snapshot,
+reingest or relink manuals/documents from the integration, then run
+reindex/refinement/page generation against the clean space.
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
@@ -483,7 +486,8 @@ Home Assistant-specific filters. Generic filters include `recordKinds`,
 `linkedToIds`, `query`, and `minConfidence`. Home Assistant filters live under
 `ha` for JSON requests and include `objectKinds`, `entityIds`, `deviceIds`,
 `areaIds`, `integrationIds`, `integrationDomains`, `domains`, `deviceClasses`,
-and `labels`. Each field is multi-select: values inside one field are ORed
+and `labels`. The same HA filter names are also accepted as top-level aliases
+for simpler clients. Each field is multi-select: values inside one field are ORed
 together, and different fields are ANDed together. When a Home Assistant filter
 matches a leaf object such as an entity domain, the SDK also keeps immediate
 device, area, source, fact, and gap context edges so the map remains a graph

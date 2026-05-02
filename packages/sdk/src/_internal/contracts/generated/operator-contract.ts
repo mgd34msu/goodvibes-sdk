@@ -6,7 +6,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.16"
+    "version": "0.28.17"
   },
   "auth": {
     "modes": [
@@ -28015,6 +28015,60 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "minConfidence": {
               "type": "number"
             },
+            "objectKinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "entityIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "deviceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "areaIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "integrationIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "integrationDomains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "domains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "deviceClasses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "ha": {
               "type": "object",
               "properties": {
@@ -30090,6 +30144,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "dryRun": {
               "type": "boolean"
+            },
+            "preserveArtifacts": {
+              "type": "boolean"
             }
           },
           "additionalProperties": true
@@ -30136,6 +30193,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 ]
               }
             },
+            "artifactDeleteCandidates": {
+              "type": "number"
+            },
+            "deletedArtifacts": {
+              "type": "number"
+            },
+            "preservedArtifacts": {
+              "type": "number"
+            },
             "artifactsDeleted": {
               "type": "boolean"
             }
@@ -30146,6 +30212,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "installationId",
             "dryRun",
             "deleted",
+            "artifactDeleteCandidates",
+            "deletedArtifacts",
+            "preservedArtifacts",
             "artifactsDeleted"
           ],
           "additionalProperties": true

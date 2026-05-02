@@ -695,8 +695,15 @@ describe('Home Graph knowledge spaces', () => {
       ha: { domains: ['media_player'] },
       includeSources: true,
     });
+    const topLevelMap = await service.map({
+      installationId: 'house-1',
+      domains: ['media_player'],
+      includeSources: true,
+    });
 
     expect(map.nodes.some((node) => node.title === 'Living Room TV')).toBe(true);
+    expect(topLevelMap.nodeCount).toBe(map.nodeCount);
+    expect(topLevelMap.edgeCount).toBe(map.edgeCount);
     expect(map.edgeCount).toBeGreaterThan(0);
     expect(map.edges.some((edge) => edge.relation === 'belongs_to_device' || edge.relation === 'located_in')).toBe(true);
     expect(map.edges.every((edge) => typeof edge.source === 'string' && typeof edge.target === 'string')).toBe(true);
@@ -704,7 +711,7 @@ describe('Home Graph knowledge spaces', () => {
     expect(map.edges.every((edge) => edge.source !== edge.target)).toBe(true);
   });
 
-  test('repairs already-uploaded weak PDF manual extractions during ask', async () => {
+  test('repairs already-uploaded stale legacy PDF manual extractions during ask', async () => {
     const { service, store, artifactStore } = createHomeGraphService();
     await service.syncSnapshot({
       installationId: 'house-1',
@@ -990,6 +997,16 @@ describe('Home Graph knowledge spaces', () => {
       method: 'POST',
       body: JSON.stringify({ installationId: 'house-1' }),
     }));
+    const orphanArtifact = await artifactStore.createFromStream({
+      kind: 'document',
+      mimeType: 'text/plain',
+      filename: 'stale-homegraph-upload.txt',
+      stream: ['stale upload'],
+      metadata: {
+        knowledgeSpaceId: homeAssistantKnowledgeSpaceId('house-1'),
+        namespace: homeAssistantKnowledgeSpaceId('house-1'),
+      },
+    });
     const resetDryRunResponse = await routes.handle(new Request('http://daemon.local/api/homeassistant/home-graph/reset', {
       method: 'POST',
       body: JSON.stringify({ installationId: 'house-1', dryRun: true }),
@@ -1020,9 +1037,19 @@ describe('Home Graph knowledge spaces', () => {
     const map = await mapResponse!.json() as Record<string, unknown>;
     const svg = await svgResponse!.text();
     const exported = await exportResponse!.json() as { readonly sources?: readonly unknown[] };
-    const resetDryRun = await resetDryRunResponse!.json() as { readonly dryRun?: boolean; readonly deleted?: { readonly sources?: number; readonly nodes?: number } };
+    const resetDryRun = await resetDryRunResponse!.json() as {
+      readonly dryRun?: boolean;
+      readonly deleted?: { readonly sources?: number; readonly nodes?: number };
+      readonly artifactDeleteCandidates?: number;
+      readonly deletedArtifacts?: number;
+    };
     const dryRunStatus = await dryRunStatusResponse!.json() as Record<string, unknown>;
-    const reset = await resetResponse!.json() as { readonly dryRun?: boolean; readonly deleted?: { readonly sources?: number; readonly nodes?: number }; readonly artifactsDeleted?: boolean };
+    const reset = await resetResponse!.json() as {
+      readonly dryRun?: boolean;
+      readonly deleted?: { readonly sources?: number; readonly nodes?: number };
+      readonly artifactsDeleted?: boolean;
+      readonly deletedArtifacts?: number;
+    };
     const resetStatus = await resetStatusResponse!.json() as Record<string, unknown>;
     expect(status.spaceId).toBe(homeAssistantKnowledgeSpaceId('house-1'));
     expect(status.nodeCount).toBeGreaterThanOrEqual(2);
@@ -1034,12 +1061,16 @@ describe('Home Graph knowledge spaces', () => {
     expect(resetDryRun.dryRun).toBe(true);
     expect(resetDryRun.deleted?.sources).toBeGreaterThan(0);
     expect(resetDryRun.deleted?.nodes).toBeGreaterThan(0);
+    expect(resetDryRun.artifactDeleteCandidates).toBeGreaterThan(0);
+    expect(resetDryRun.deletedArtifacts).toBe(0);
     expect(dryRunStatus.nodeCount).toBe(status.nodeCount);
     expect(reset.dryRun).toBe(false);
     expect(reset.deleted?.sources).toBeGreaterThan(0);
     expect(reset.deleted?.nodes).toBeGreaterThan(0);
-    expect(reset.artifactsDeleted).toBe(false);
+    expect(reset.artifactsDeleted).toBe(true);
+    expect(reset.deletedArtifacts).toBeGreaterThan(0);
     expect(resetStatus.nodeCount).toBe(0);
+    expect(artifactStore.get(orphanArtifact.id)).toBeNull();
   });
 
   test('accepts native Home Assistant snake_case snapshot objects', async () => {

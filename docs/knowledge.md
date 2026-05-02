@@ -75,7 +75,9 @@ PDF.js for text-layer parsing and falls back to a lightweight raw-stream reader
 only when the dedicated parser cannot load the file. The raw PDF fallback
 inflates Flate-compressed streams before extracting text literals and rejects
 binary-like stream data, so compressed PDF bytes are not stored as searchable
-text, summaries, sections, or wiki page material. Other non-HTML extractors are
+text, summaries, sections, or wiki page material. If neither parser can produce
+readable text, PDF ingestion fails and the source is marked for retry/review
+instead of indexing placeholder evidence. Other non-HTML extractors are
 format-specific and produce extraction metadata plus best-effort limitations
 when specialized parsing is unavailable.
 
@@ -84,12 +86,12 @@ retrieval. This field is intentionally bounded and separate from the short
 summary/excerpt/section fields so large manuals, PDFs, website snapshots, and
 office documents remain searchable without turning every query into an
 unbounded full-document scan. Home Graph also repairs older artifact-backed
-sources in place: when ask finds a relevant source with missing or weak
-extraction text, it re-extracts the stored artifact once and saves the improved
-extraction record for later queries. The general knowledge reindex path also
-re-extracts stored artifacts whose extraction is missing, placeholder-only, or
-from the old weak PDF extractor, so existing non-Home-Graph PDFs can be repaired
-without reuploading.
+sources in place: when ask finds a relevant source with missing, stale, or
+legacy placeholder extraction text, it re-extracts the stored artifact once and
+saves the improved extraction record for later queries. The general knowledge
+reindex path also re-extracts stored artifacts whose extraction is missing,
+placeholder-only, or from the old placeholder PDF extractor, so existing
+non-Home-Graph PDFs can be repaired without reuploading.
 
 ## Semantic Wiki Loop
 
@@ -428,7 +430,7 @@ and Home Graph generated sources carry stable ids plus
 generated pages are excluded from answer/reindex ranking and from linked-source
 page lists so they do not compete with manuals, receipts, notes, and other
 source evidence. Generated Home Graph pages include Home Assistant identity,
-entity lists, linked sources, high-value extracted semantic facts, scoped open
+entity lists, linked sources, typed semantic/profile facts, scoped open
 issues, and open questions. Room pages only render issues attached to the room,
 its devices/entities/automations/scenes/scripts, linked sources, or scoped gap
 nodes; graph-wide backlogs are not dumped into individual room pages. Page
@@ -442,14 +444,16 @@ or heading-only spec fragments, certified-cable warnings, service-only port
 fragments, unsupported-broadcast notices, recommended cable-type notes, remote
 button-map noise, remote battery-low notes, remote infrared/sensor usage
 snippets, dry-cloth cleaning notes, and generic service/repair boilerplate so
-living pages do not become dumps of low-value manual text. Clients
+living pages do not become dumps of low-value manual text. Device passport pages
+render structured facts and source inventory, not raw source-snippet sections.
+Clients
 can read the current page index and markdown through
 `GET /api/homeassistant/home-graph/pages` or the
 `homeassistant.homeGraph.pages.list` operator method instead of reconstructing
 page content from source inventory locally.
 
 Home Graph reindex repairs existing uploads in place. It re-extracts
-placeholder or old weak PDF extraction rows, auto-links sources to matching Home
+placeholder or old PDF extraction rows, auto-links sources to matching Home
 Assistant devices/entities when identity evidence is strong enough, semantically
 enriches changed or forced sources into facts/pages/gaps, and regenerates
 generated pages for devices affected by repaired/newly linked evidence or an
@@ -473,7 +477,8 @@ The Home Graph map route uses the shared knowledge map renderer. It returns
 both layout data and SVG for visualizing the knowledge base, can include sources
 or show only graph nodes, and filters edges to the rendered node set so clients
 can embed the SDK SVG or build a native interactive map from the same node/edge
-payload.
+payload. Home Assistant facet filters can be sent under `ha` or through
+top-level aliases such as `domains`, `areaIds`, and `objectKinds`.
 
 Home Graph quality checks use Home Assistant metadata to avoid noisy issues.
 Unknown-battery checks are limited to plausible battery-powered physical

@@ -453,6 +453,7 @@ describe('semantic knowledge/wiki enrichment', () => {
       includeLinkedObjects: true,
     });
     const repairSource = repaired.answer.sources.find((source) => source.title === 'LG 86NANO90UNA product specifications');
+    const page = await service.refreshDevicePassport({ installationId: 'house', deviceId: 'tv' });
 
     expect(repaired.answer.text).toContain('NanoCell 4K');
     expect(repairSource).toBeDefined();
@@ -464,6 +465,10 @@ describe('semantic knowledge/wiki enrichment', () => {
       && edge.toId === tvNode?.id
       && edge.relation === 'source_for'
     ))).toBe(true);
+    expect(page.markdown).toContain('LG 86NANO90UNA product specifications');
+    expect(page.markdown).toContain('Verified Device Facts');
+    expect(page.markdown).toContain('Display and picture specifications');
+    expect(page.markdown).not.toContain('manual/source');
   });
 
   test('Home Graph semantic ask does not let unrelated semantic pages become object anchors', async () => {
@@ -663,10 +668,10 @@ describe('semantic knowledge/wiki enrichment', () => {
 
     const answer = await semantic.answer({ query: 'what features does the LG 86NANO90UNA have?', includeSources: true });
 
-    expect(answer.answer.synthesized).toBe(true);
+    expect(answer.answer.synthesized).toBe(false);
     expect(answer.answer.text.trim().startsWith('-')).toBe(false);
-    expect(answer.answer.text).toContain('indexed evidence');
-    expect(answer.answer.text).toContain('NanoCell');
+    expect(answer.answer.text).toContain('matching sources');
+    expect(answer.answer.text).not.toContain('NanoCell');
   });
 
   test('web gap repair ingests at least two distinct sources for answer gaps', async () => {
@@ -1004,7 +1009,11 @@ describe('semantic knowledge/wiki enrichment', () => {
     expect(answer.answer.synthesized).toBe(true);
     expect(answer.answer.text).toContain('120 Hz');
     expect(answer.answer.text).toContain('Dolby Vision');
+    expect(answer.answer.text.trim().startsWith('-')).toBe(false);
+    expect(answer.answer.sources[0]?.id).toBe(official.id);
     expect(answer.answer.facts.some((fact) => fact.metadata.extractor === 'repair-promotion')).toBe(true);
+    expect(answer.answer.facts.some((fact) => fact.title === 'Display and picture specifications')).toBe(true);
+    expect(answer.answer.facts.some((fact) => fact.title === 'Smart TV platform and integrations')).toBe(true);
   });
 
   test('web gap repair rejects low-confidence search results', async () => {
@@ -1631,7 +1640,7 @@ describe('semantic knowledge/wiki enrichment', () => {
     await first;
 
     expect(second.requestedLimit).toBe(500);
-    expect(second.effectiveLimit).toBe(500);
+    expect(second.effectiveLimit).toBe(0);
     expect(second.skippedGaps).toBe(1);
     expect(second.truncated).toBe(true);
     expect(second.budgetExhausted).toBe(true);

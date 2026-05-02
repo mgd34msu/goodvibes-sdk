@@ -28173,6 +28173,60 @@ Return a visual Home Graph node/edge map with deterministic layout data and SVG.
     "minConfidence": {
       "type": "number"
     },
+    "objectKinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "entityIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "deviceIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "areaIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "integrationIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "integrationDomains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "deviceClasses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "ha": {
       "type": "object",
       "properties": {
@@ -30280,6 +30334,9 @@ Clear one Home Assistant Home Graph knowledge space after callers export any dia
     },
     "dryRun": {
       "type": "boolean"
+    },
+    "preserveArtifacts": {
+      "type": "boolean"
     }
   },
   "additionalProperties": true
@@ -30331,6 +30388,15 @@ Clear one Home Assistant Home Graph knowledge space after callers export any dia
         ]
       }
     },
+    "artifactDeleteCandidates": {
+      "type": "number"
+    },
+    "deletedArtifacts": {
+      "type": "number"
+    },
+    "preservedArtifacts": {
+      "type": "number"
+    },
     "artifactsDeleted": {
       "type": "boolean"
     }
@@ -30341,6 +30407,9 @@ Clear one Home Assistant Home Graph knowledge space after callers export any dia
     "installationId",
     "dryRun",
     "deleted",
+    "artifactDeleteCandidates",
+    "deletedArtifacts",
+    "preservedArtifacts",
     "artifactsDeleted"
   ],
   "additionalProperties": true

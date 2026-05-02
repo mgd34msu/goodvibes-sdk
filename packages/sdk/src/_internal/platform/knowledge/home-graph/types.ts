@@ -97,6 +97,7 @@ export interface HomeGraphSpaceInput {
 
 export interface HomeGraphResetInput extends HomeGraphSpaceInput {
   readonly dryRun?: boolean;
+  readonly preserveArtifacts?: boolean;
 }
 
 export interface HomeGraphObjectInput {
@@ -306,6 +307,15 @@ export interface HomeGraphMapInput extends HomeGraphSpaceInput {
   readonly edgeRelations?: readonly string[];
   readonly tags?: readonly string[];
   readonly minConfidence?: number;
+  readonly objectKinds?: readonly string[];
+  readonly entityIds?: readonly string[];
+  readonly deviceIds?: readonly string[];
+  readonly areaIds?: readonly string[];
+  readonly integrationIds?: readonly string[];
+  readonly integrationDomains?: readonly string[];
+  readonly domains?: readonly string[];
+  readonly deviceClasses?: readonly string[];
+  readonly labels?: readonly string[];
   readonly ha?: HomeGraphMapHaFilterInput;
 }
 
@@ -465,5 +475,8 @@ export interface HomeGraphResetResult {
     readonly consolidationReports: number;
     readonly schedules: number;
   };
-  readonly artifactsDeleted: false;
+  readonly artifactDeleteCandidates: number;
+  readonly deletedArtifacts: number;
+  readonly preservedArtifacts: number;
+  readonly artifactsDeleted: boolean;
 }

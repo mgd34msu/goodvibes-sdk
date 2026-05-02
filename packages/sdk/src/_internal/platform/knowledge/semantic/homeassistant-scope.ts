@@ -80,9 +80,19 @@ export function nodeInHomeAssistantAnswerScope(
 function sourceIdsLinkedToAnchors(store: KnowledgeStore, anchorNodeIds: ReadonlySet<string>): Set<string> {
   const sourceIds = new Set<string>();
   if (anchorNodeIds.size === 0) return sourceIds;
-  for (const edge of store.listEdges()) {
+  const edges = store.listEdges();
+  const factIds = new Set<string>();
+  for (const edge of edges) {
     if (edge.fromKind === 'source' && edge.toKind === 'node' && anchorNodeIds.has(edge.toId)) sourceIds.add(edge.fromId);
     if (edge.fromKind === 'node' && anchorNodeIds.has(edge.fromId) && edge.toKind === 'source') sourceIds.add(edge.toId);
+    if (edge.fromKind === 'node' && edge.toKind === 'node' && anchorNodeIds.has(edge.toId) && edge.relation === 'describes') {
+      factIds.add(edge.fromId);
+    }
+  }
+  for (const edge of edges) {
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && factIds.has(edge.toId) && edge.relation === 'supports_fact') {
+      sourceIds.add(edge.fromId);
+    }
   }
   return sourceIds;
 }
@@ -102,6 +112,23 @@ function linkedSourceQualityByAnchor(store: KnowledgeStore): Map<string, number>
       scores.set(edge.toId, (scores.get(edge.toId) ?? 0) + score);
     } else if (edge.fromKind === 'node' && edge.toKind === 'source') {
       scores.set(edge.fromId, (scores.get(edge.fromId) ?? 0) + score);
+    }
+  }
+  const describingFacts = new Map<string, Set<string>>();
+  for (const edge of store.listEdges()) {
+    if (edge.fromKind === 'node' && edge.toKind === 'node' && edge.relation === 'describes') {
+      const current = describingFacts.get(edge.fromId) ?? new Set<string>();
+      current.add(edge.toId);
+      describingFacts.set(edge.fromId, current);
+    }
+  }
+  for (const edge of store.listEdges()) {
+    if (edge.fromKind !== 'source' || edge.toKind !== 'node' || edge.relation !== 'supports_fact') continue;
+    const source = sourcesById.get(edge.fromId);
+    if (!source) continue;
+    const score = linkedSourceQuality(source, edge.relation);
+    for (const anchorId of describingFacts.get(edge.toId) ?? []) {
+      scores.set(anchorId, (scores.get(anchorId) ?? 0) + score);
     }
   }
   return scores;

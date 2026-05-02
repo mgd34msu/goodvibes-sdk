@@ -129,7 +129,7 @@ export async function recompileKnowledgeSource(context: KnowledgeIngestContext, 
 
 function extractionNeedsRefresh(extraction: KnowledgeExtractionRecord | null): boolean {
   if (!extraction) return true;
-  if (extraction.format === 'pdf' && extraction.extractorId !== 'pdfjs') return true;
+  if (extraction.format === 'pdf' && extraction.extractorId === 'pdf') return true;
   const searchText = readSearchText(extraction.structure) ?? readSearchText(extraction.metadata);
   if (searchText) return false;
   if (hasUsefulText(extraction.excerpt) || hasUsefulText(extraction.summary) || extraction.sections.some(hasUsefulText)) return false;

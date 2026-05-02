@@ -55,14 +55,15 @@ export async function runKnowledgeSemanticSelfImprovement(
   const createdGaps = await discoverIntrinsicGaps(context.store, spaceId, sourceIdFilter);
   const candidates = collectCandidateGaps(context.store, spaceId, sourceIdFilter, gapIdFilter);
   const requestedLimit = Math.max(1, input.limit ?? DEFAULT_REFINEMENT_LIMIT);
-  const effectiveLimit = Math.min(requestedLimit, MAX_REFINEMENT_LIMIT);
+  const cappedLimit = Math.min(requestedLimit, MAX_REFINEMENT_LIMIT);
   const maxRunMs = Math.min(
     MAX_REFINEMENT_RUN_MS,
     Math.max(5_000, input.maxRunMs ?? DEFAULT_REFINEMENT_RUN_MS),
   );
   const startedAt = Date.now();
-  const gaps = candidates.slice(0, effectiveLimit);
-  let truncated = candidates.length > gaps.length || requestedLimit > effectiveLimit;
+  const gaps = candidates.slice(0, cappedLimit);
+  const effectiveLimit = gaps.length;
+  let truncated = candidates.length > gaps.length || requestedLimit > cappedLimit;
   let budgetExhausted = false;
   let processedGaps = 0;
   let repairableGaps = 0;

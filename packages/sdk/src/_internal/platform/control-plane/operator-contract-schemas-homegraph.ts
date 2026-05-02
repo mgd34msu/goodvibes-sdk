@@ -30,6 +30,7 @@ export const HOME_GRAPH_RESET_INPUT_SCHEMA = objectSchema({
   installationId: STRING_SCHEMA,
   knowledgeSpaceId: STRING_SCHEMA,
   dryRun: BOOLEAN_SCHEMA,
+  preserveArtifacts: BOOLEAN_SCHEMA,
 }, [], { additionalProperties: true });
 
 export const HOME_GRAPH_STATUS_SCHEMA = objectSchema({
@@ -201,5 +202,18 @@ export const HOME_GRAPH_RESET_OUTPUT_SCHEMA = objectSchema({
   installationId: STRING_SCHEMA,
   dryRun: BOOLEAN_SCHEMA,
   deleted: JSON_RECORD_SCHEMA,
+  artifactDeleteCandidates: NUMBER_SCHEMA,
+  deletedArtifacts: NUMBER_SCHEMA,
+  preservedArtifacts: NUMBER_SCHEMA,
   artifactsDeleted: BOOLEAN_SCHEMA,
-}, ['ok', 'spaceId', 'installationId', 'dryRun', 'deleted', 'artifactsDeleted'], { additionalProperties: true });
+}, [
+  'ok',
+  'spaceId',
+  'installationId',
+  'dryRun',
+  'deleted',
+  'artifactDeleteCandidates',
+  'deletedArtifacts',
+  'preservedArtifacts',
+  'artifactsDeleted',
+], { additionalProperties: true });

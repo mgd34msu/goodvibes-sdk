@@ -295,6 +295,25 @@ export class ArtifactStore {
     return this.records.get(id) ?? null;
   }
 
+  delete(id: string): boolean {
+    this.pruneExpired();
+    const record = this.records.get(id);
+    if (!record) return false;
+    this.removeRecordFiles(record);
+    return true;
+  }
+
+  deleteMany(ids: Iterable<string>): number {
+    let deleted = 0;
+    const seen = new Set<string>();
+    for (const id of ids) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (this.delete(id)) deleted += 1;
+    }
+    return deleted;
+  }
+
   async readContent(id: string): Promise<{ record: ArtifactRecord; buffer: Buffer }> {
     this.pruneExpired();
     const record = this.records.get(id);

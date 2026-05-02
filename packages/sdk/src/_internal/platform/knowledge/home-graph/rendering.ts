@@ -76,7 +76,6 @@ export function renderDevicePassportPage(input: {
   readonly issues: readonly KnowledgeIssueRecord[];
   readonly missingFields: readonly string[];
   readonly semanticFacts?: readonly KnowledgeNodeRecord[];
-  readonly sourceBackedNotes?: readonly string[];
 }): string {
   return [
     `# ${input.device.title}`,
@@ -96,7 +95,6 @@ export function renderDevicePassportPage(input: {
     '',
     renderNodeList('Entities Exposed To Home Assistant', input.entities),
     renderSemanticFacts('Verified Device Facts', input.semanticFacts ?? []),
-    renderTextList('Source-Backed Features And Notes', input.sourceBackedNotes ?? []),
     renderSourceList('Sources', input.sources),
     renderIssueList('Open Issues', input.issues.filter((issue) => issue.status === 'open')),
     input.missingFields.length > 0
@@ -395,17 +393,6 @@ function renderSemanticFacts(title: string, facts: readonly KnowledgeNodeRecord[
       }),
       '',
     ]),
-  ].join('\n');
-}
-
-function renderTextList(title: string, items: readonly string[]): string {
-  const entries = uniqueStrings(items).slice(0, 80);
-  if (entries.length === 0) return '';
-  return [
-    `## ${title}`,
-    '',
-    ...entries.map((item) => `- ${item}`),
-    '',
   ].join('\n');
 }
 

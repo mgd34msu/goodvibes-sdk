@@ -50,6 +50,7 @@ import {
   refreshAutomaticHomeGraphPages,
   refreshHomeGraphDevicePassport,
 } from './generated-pages.js';
+import { refreshDevicePagesForHomeGraphAsk } from './ask-page-refresh.js';
 import { coalescedHomeGraphReindexResult, runHomeGraphReindex } from './reindex.js';
 import { listHomeGraphPages } from './pages.js';
 import { browseHomeGraph, listHomeGraphSources } from './inventory.js';
@@ -265,8 +266,9 @@ export class HomeGraphService {
   async ask(input: HomeGraphAskInput): Promise<HomeGraphAskResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveReadableHomeGraphSpace(this.store, input);
-    const state = readHomeGraphSearchState(this.store, spaceId);
-    void this.repairWeakExtractionsForAsk(spaceId, installationId, input.query, state).catch(() => {});
+    const initialState = readHomeGraphSearchState(this.store, spaceId);
+    const repairedExtractions = await this.repairStaleExtractionsForAsk(spaceId, installationId, input.query, initialState);
+    const state = repairedExtractions > 0 ? readHomeGraphSearchState(this.store, spaceId) : initialState;
     const results = scoreHomeGraphResults(
       input.query,
       state.sources,
@@ -275,7 +277,15 @@ export class HomeGraphService {
       (sourceId) => state.extractionBySourceId.get(sourceId),
       input.limit ?? 8,
     );
-    return answerHomeGraphQuery({ store: this.store, semanticService: this.options.semanticService, spaceId, query: input, state, results });
+    const answer = await answerHomeGraphQuery({ store: this.store, semanticService: this.options.semanticService, spaceId, query: input, state, results });
+    await refreshDevicePagesForHomeGraphAsk({
+      store: this.store,
+      artifactStore: this.artifactStore,
+      spaceId,
+      installationId,
+      answer,
+    });
+    return answer;
   }
 
   async reindex(input: HomeGraphReindexInput = {}): Promise<HomeGraphReindexResult> {
@@ -297,7 +307,7 @@ export class HomeGraphService {
     }
   }
 
-  private async repairWeakExtractionsForAsk(
+  private async repairStaleExtractionsForAsk(
     spaceId: string,
     installationId: string,
     query: string,
@@ -513,7 +523,7 @@ export class HomeGraphService {
   }
 
   async resetSpace(input: HomeGraphResetInput): Promise<HomeGraphResetResult> {
-    return resetHomeGraphSpace(this.store, input);
+    return resetHomeGraphSpace(this.store, this.artifactStore, input);
   }
 
   private async ingestCreatedArtifact(input: {
