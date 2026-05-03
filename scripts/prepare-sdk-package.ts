@@ -19,7 +19,7 @@ const DIST_ARTIFACTS = resolve(
   'contracts/artifacts',
 );
 
-function ensureExists(path) {
+function ensureExists(path: string): void {
   if (!existsSync(path)) {
     throw new Error(`Expected path to exist: ${path}`);
   }

@@ -34,6 +34,36 @@ export function normalizeBaseUrl(baseUrl: string): string {
   if (!normalized) {
     throw new ConfigurationError('Transport baseUrl is required. Pass a non-empty baseUrl string to your transport or SDK options.', { code: 'SDK_TRANSPORT_BASE_URL_REQUIRED' });
   }
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch (cause) {
+    throw new ConfigurationError('Transport baseUrl must be an absolute URL.', {
+      code: 'SDK_TRANSPORT_BASE_URL_INVALID',
+      source: 'transport',
+      hint: 'Pass a full URL such as https://goodvibes.example.com.',
+      cause,
+    });
+  }
+  const protocol = parsed.protocol;
+  if (protocol !== 'https:' && protocol !== 'wss:' && protocol !== 'http:' && protocol !== 'ws:') {
+    throw new ConfigurationError(`Unsupported transport baseUrl protocol: ${protocol}`, {
+      code: 'SDK_TRANSPORT_BASE_URL_PROTOCOL_UNSUPPORTED',
+      source: 'transport',
+      hint: 'Use https:// or wss://. http:// and ws:// are accepted only for local development or explicit insecure deployments.',
+    });
+  }
+  const host = parsed.hostname.toLowerCase();
+  const local = host === 'localhost' || host === '::1' || host === '127.0.0.1' || host.startsWith('127.');
+  const runtimeProcess = (globalThis as { readonly process?: { readonly env?: Record<string, string | undefined> } }).process;
+  const allowInsecure = runtimeProcess?.env?.GOODVIBES_ALLOW_INSECURE_TRANSPORT === 'true';
+  if ((protocol === 'http:' || protocol === 'ws:') && !local && !allowInsecure) {
+    throw new ConfigurationError('Refusing insecure non-local GoodVibes transport baseUrl.', {
+      code: 'SDK_TRANSPORT_INSECURE_BASE_URL',
+      source: 'transport',
+      hint: 'Use https:// or wss://, or set GOODVIBES_ALLOW_INSECURE_TRANSPORT=true for an intentional non-local development deployment.',
+    });
+  }
   return normalized.replace(/\/+$/, '');
 }
 

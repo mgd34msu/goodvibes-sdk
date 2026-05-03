@@ -319,14 +319,14 @@ export interface DaemonMultimodalRouteHandlers {
 export interface DaemonRuntimeSessionRouteHandlers {
   createSharedSession(req: Request): MaybeResponse;
   getSharedSession(sessionId: string): MaybeResponse;
-  closeSharedSession(sessionId: string): MaybeResponse;
-  reopenSharedSession(sessionId: string): MaybeResponse;
+  closeSharedSession(sessionId: string, req: Request): MaybeResponse;
+  reopenSharedSession(sessionId: string, req: Request): MaybeResponse;
   getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
   getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
   postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
   postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
   postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
-  cancelSharedSessionInput(sessionId: string, inputId: string): MaybeResponse;
+  cancelSharedSessionInput(sessionId: string, inputId: string, req: Request): MaybeResponse;
   getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
 }
 
@@ -346,14 +346,14 @@ export interface DaemonRuntimeAutomationRouteHandlers {
   postAutomationHeartbeat(req: Request): MaybeResponse;
   automationRunAction(runId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
   patchAutomationJob(jobId: string, req: Request): MaybeResponse;
-  deleteAutomationJob(jobId: string): MaybeResponse;
-  setAutomationJobEnabled(jobId: string, enabled: boolean): MaybeResponse;
-  runAutomationJobNow(jobId: string): MaybeResponse;
+  deleteAutomationJob(jobId: string, req: Request): MaybeResponse;
+  setAutomationJobEnabled(jobId: string, enabled: boolean, req: Request): MaybeResponse;
+  runAutomationJobNow(jobId: string, req: Request): MaybeResponse;
   getSchedules(): MaybeResponse;
   postSchedule(req: Request): MaybeResponse;
-  deleteSchedule(scheduleId: string): MaybeResponse;
-  setScheduleEnabled(scheduleId: string, enabled: boolean): MaybeResponse;
-  runScheduleNow(scheduleId: string): MaybeResponse;
+  deleteSchedule(scheduleId: string, req: Request): MaybeResponse;
+  setScheduleEnabled(scheduleId: string, enabled: boolean, req: Request): MaybeResponse;
+  runScheduleNow(scheduleId: string, req: Request): MaybeResponse;
   getSchedulerCapacity(): MaybeResponse;
 }
 

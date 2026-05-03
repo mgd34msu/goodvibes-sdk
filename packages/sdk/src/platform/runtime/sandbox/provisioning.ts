@@ -366,6 +366,7 @@ export function createSandboxQemuImage(
   workspaceRoot: string,
   imagePathArg: string,
   sizeGb: number,
+  // Operator-controlled escape hatch for deployments where qemu-img is not on PATH.
   qemuImgBinary = process.env.QEMU_IMG_BIN || 'qemu-img',
 ): { path: string; sizeGb: number } {
   const targetPath = resolve(workspaceRoot, imagePathArg);

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { ContractError, GoodVibesSdkError, HttpStatusError } from '../packages/errors/dist/index.js';
 import { createHttpTransport, openServerSentEventStream } from '../packages/transport-http/dist/index.js';
 import { createTransportError, createNetworkTransportError } from '../packages/transport-http/src/http-core.js';
+import { settleEvents } from './_helpers/test-timeout.js';
 
 function createFetchStub(factory: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): typeof fetch {
   return factory as unknown as typeof fetch;
@@ -152,7 +153,7 @@ describe('transport-http', () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await settleEvents(10);
     stop();
 
     const headers = calls[0]?.init?.headers instanceof Headers ? calls[0].init.headers : new Headers(calls[0]?.init?.headers);

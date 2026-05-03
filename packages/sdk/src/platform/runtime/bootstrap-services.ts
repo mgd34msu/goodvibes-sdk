@@ -95,6 +95,8 @@ export interface HostServicesConfig {
   ): boolean | string | number;
 }
 const DEFAULT_SERVICE_START_TIMEOUT_MS = 1500;
+const TCP_PORT_PROBE_TIMEOUT_MS = 250;
+const DAEMON_IDENTITY_PROBE_TIMEOUT_MS = 750;
 
 interface StartableService {
   start(): Promise<void>;
@@ -183,7 +185,7 @@ async function startGuardedService<TService extends StartableService>(options: {
   }
 }
 
-async function isTcpPortInUse(host: string, port: number, timeoutMs = 250): Promise<boolean> {
+async function isTcpPortInUse(host: string, port: number, timeoutMs = TCP_PORT_PROBE_TIMEOUT_MS): Promise<boolean> {
   return await new Promise<boolean>((resolve) => {
     const socket = new net.Socket();
     let settled = false;
@@ -233,7 +235,7 @@ async function probeGoodVibesDaemonIdentity(
   token?: string,
 ): Promise<DaemonIdentityProbeResult> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 750);
+  const timeout = setTimeout(() => controller.abort(), DAEMON_IDENTITY_PROBE_TIMEOUT_MS);
   timeout.unref?.();
   try {
     const headers = new Headers();
@@ -350,8 +352,8 @@ export async function startHostServices(
   const probeDaemonIdentity = factories.probeDaemonIdentity ?? probeGoodVibesDaemonIdentity;
   const probeHttpListenerPortInUse = factories.probeHttpListenerPortInUse ?? ((host: string, port: number) => isTcpPortInUse(host, port));
 
-  let daemonServer: DaemonService | null = null;
-  let httpListener: HttpListenerService | null = null;
+  let embeddedDaemonServer: DaemonService | null = null;
+  let embeddedHttpListener: HttpListenerService | null = null;
   let daemonStatus = createServiceStatus('disabled', daemonHost, daemonPort, { reason: 'danger.daemon is disabled' });
   let httpListenerStatus = createServiceStatus('disabled', httpListenerHost, httpListenerPort, {
     reason: 'danger.httpListener is disabled',
@@ -387,10 +389,10 @@ export async function startHostServices(
         );
       }
     } else {
-      daemonServer = factories.createDaemonServer
+      const pendingDaemonServer = factories.createDaemonServer
         ? factories.createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices)
         : await createDefaultDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
-      const service = daemonServer;
+      const service = pendingDaemonServer;
       service.enable({ daemon: true }, factories.sharedDaemonToken);
       const started = await startGuardedService({
         label: 'Daemon server',
@@ -427,7 +429,7 @@ export async function startHostServices(
           });
         },
       });
-      daemonServer = started.service;
+      embeddedDaemonServer = started.service;
       daemonStatus = started.status;
     }
   }
@@ -442,10 +444,10 @@ export async function startHostServices(
         port: httpListenerPort,
       });
     } else {
-      httpListener = factories.createHttpListener
+      const pendingHttpListener = factories.createHttpListener
         ? factories.createHttpListener(hookDispatcher, sharedUserAuth, runtimeServices.configManager)
         : await createDefaultHttpListener(hookDispatcher, sharedUserAuth, runtimeServices.configManager);
-      const service = httpListener;
+      const service = pendingHttpListener;
       service.enable({ httpListener: true }, factories.sharedHttpListenerToken);
       const started = await startGuardedService({
         label: 'HTTP listener',
@@ -462,23 +464,23 @@ export async function startHostServices(
           return createServiceStatus('blocked', httpListenerHost, httpListenerPort, { reason: message });
         },
       });
-      httpListener = started.service;
+      embeddedHttpListener = started.service;
       httpListenerStatus = started.status;
     }
   }
 
   return {
-    daemonServer,
-    httpListener,
+    daemonServer: embeddedDaemonServer,
+    httpListener: embeddedHttpListener,
     daemonStatus,
     httpListenerStatus,
     listRecentControlPlaneEvents(limit: number): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[] {
-      return daemonServer?.listRecentControlPlaneEvents(limit) ?? [];
+      return embeddedDaemonServer?.listRecentControlPlaneEvents(limit) ?? [];
     },
     async stop(): Promise<void> {
       await Promise.allSettled([
-        daemonServer?.stop(),
-        httpListener?.stop(),
+        embeddedDaemonServer?.stop(),
+        embeddedHttpListener?.stop(),
       ]);
     },
   };

@@ -139,7 +139,7 @@ function validateJsonSchemaResponse(endpoint: PeerEndpointContract, body: unknow
   const failure = firstJsonSchemaFailure(schema as Record<string, unknown>, body);
   if (!failure) return;
   throw new ContractError(
-    `Response validation failed for peer endpoint "${endpoint.id}": field "${failure.path}" expected ${failure.expected} but received ${failure.received}. Ensure the peer daemon is running the matching GoodVibes contract version.`,
+    `Response validation failed for peer endpoint "${endpoint.id}": field "${failure.path}" expected ${failure.expected} but received ${failure.received}. Ensure the peer endpoint and client are using the same GoodVibes contract package version.`,
     { source: 'contract' },
   );
 }

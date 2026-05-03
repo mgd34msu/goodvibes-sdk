@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
+import { settleEvents } from './_helpers/test-timeout.js';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionChatEventPublisher,
@@ -81,14 +82,14 @@ describe('I1: session-scoped event isolation', () => {
 
     // Post a message to session A only
     await manager.postMessage(sessionA.id, 'Hello from A');
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     // All A events should carry clientId A
     const aEvents = eventsForClient(publisher.events, clientIdA);
     expect(aEvents.map((event) => event.event)).toEqual([
-      'companion.chat.message',
-      'companion.chat.delta',
-      'companion.chat.done',
+      'companion-chat.turn.started',
+      'companion-chat.turn.delta',
+      'companion-chat.turn.completed',
     ]);
 
     // None of session A’s events should carry session B’s clientId
@@ -107,7 +108,7 @@ describe('I1: session-scoped event isolation', () => {
     // Session B has NO registered subscriber — simulates "nobody is listening"
 
     await manager.postMessage(sessionA.id, 'Only A talks');
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     // No events should be scoped to session B’s ID
     const bId = sessionB.id;
@@ -133,7 +134,7 @@ describe('I1: session-scoped event isolation', () => {
       manager.postMessage(sessionA.id, 'Message A'),
       manager.postMessage(sessionB.id, 'Message B'),
     ]);
-    await new Promise((r) => setTimeout(r, 100));
+    await settleEvents(100);
 
     // Events scoped to A should only have sessionId=A
     const aEvents = publisher.events.filter((e) => e.filter?.clientId === clientIdA);
@@ -168,14 +169,14 @@ describe('I2: no leak into global control-plane feed', () => {
     manager.registerSubscriber(session.id, `companion-chat:${session.id}`);
 
     await manager.postMessage(session.id, 'Test message');
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     // Every event must carry a non-empty clientId filter.
     // Events without a clientId would broadcast to ALL connected SSE clients
     // (including the TUI), which violates isolation.
     for (const e of publisher.events) {
-      expect(e.filter?.clientId).toBeTruthy();
       expect(typeof e.filter?.clientId).toBe('string');
+      expect(e.filter!.clientId).not.toBe('');
     }
   });
 
@@ -193,7 +194,7 @@ describe('I2: no leak into global control-plane feed', () => {
     const session = manager.createSession();
     // Deliberately do NOT call registerSubscriber
     await manager.postMessage(session.id, 'No subscriber');
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     // When no subscriber is registered, subscriberClientId is null.
     // The manager should publish with undefined filter — those events are
@@ -225,7 +226,7 @@ describe('I3: conversation history isolation', () => {
     const sessionB = manager.createSession();
 
     await manager.postMessage(sessionA.id, 'Only for A');
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     const msgsA = manager.getMessages(sessionA.id);
     const msgsB = manager.getMessages(sessionB.id);

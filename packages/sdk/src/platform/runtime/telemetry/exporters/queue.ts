@@ -7,6 +7,7 @@
  * - Drops oldest entries when full (back-pressure relief).
  * - Drains best-effort on shutdown with a configurable timeout.
  */
+import { randomInt } from 'node:crypto';
 import type { ReadableSpan } from '../types.js';
 import type {
   ExportQueueConfig,
@@ -33,7 +34,8 @@ function computeDelay(attempt: number, config: RetryConfig): number {
   const base = config.baseDelayMs * Math.pow(config.backoffFactor, attempt);
   const capped = Math.min(base, config.maxDelayMs);
   // Add ±10% jitter to avoid thundering-herd
-  const jitter = capped * 0.1 * (Math.random() * 2 - 1);
+  const jitterWindow = Math.max(1, Math.floor(capped * 0.1));
+  const jitter = randomInt(-jitterWindow, jitterWindow + 1);
   return Math.max(0, Math.round(capped + jitter));
 }
 

@@ -8,7 +8,6 @@ import { z } from 'zod/v4';
  */
 export const SerializedEventEnvelopeSchema = z.object({
   type: z.string(),
-  timestamp: z.number().optional(),
   ts: z.number().optional(),
   traceId: z.string().optional(),
   sessionId: z.string().optional(),

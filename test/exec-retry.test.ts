@@ -98,13 +98,14 @@ describe('isRetryableExecResult', () => {
     expect(isRetryableExecResult(result)).toBe(false);
   });
 
-  test('jitter: successive delay values from computeRetryDelay differ (statistical)', () => {
-    // We cannot import computeRetryDelay directly (it's not exported).
-    // Verify the mathematical property: Math.random() * cap is non-deterministic.
-    // This test asserts that at least one pair of 20 random delays differs —
-    // the probability of all 20 being identical is (1/2^53)^19, effectively zero.
+  test('jitter: bounded random source can produce varied retry delays', () => {
     const cap = 1000 * Math.pow(2, 1); // attempt=1, base=1000
-    const delays = Array.from({ length: 20 }, () => Math.random() * cap);
+    let seed = 0x12345678;
+    const nextUnit = () => {
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    };
+    const delays = Array.from({ length: 20 }, () => nextUnit() * cap);
     const allSame = delays.every((d) => d === delays[0]);
     expect(allSame).toBe(false);
   });

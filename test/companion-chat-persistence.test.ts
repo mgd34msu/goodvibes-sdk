@@ -11,6 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { settleEvents } from './_helpers/test-timeout.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -59,7 +60,7 @@ describe('P1: active sessions restored on re-instantiation', () => {
       expect(session.status).toBe('active');
 
       // Wait for async persist to flush
-      await new Promise((r) => setTimeout(r, 50));
+      await settleEvents();
 
       managerA.dispose();
 
@@ -95,7 +96,7 @@ describe('P2: messages restored in order after restart', () => {
       await managerA.postMessage(session.id, 'Hello world');
 
       // Give the async turn time to complete and persist
-      await new Promise((r) => setTimeout(r, 100));
+      await settleEvents(100);
 
       const msgsA = managerA.getMessages(session.id);
       expect(msgsA.length).toBeGreaterThanOrEqual(1);
@@ -139,7 +140,7 @@ describe('P3: closed sessions are not restored on restart', () => {
       const session = managerA.createSession();
       managerA.closeSession(session.id);
 
-      await new Promise((r) => setTimeout(r, 50));
+      await settleEvents();
       managerA.dispose();
 
       // Restart
@@ -169,7 +170,7 @@ describe('P4: sessions directory created if missing', () => {
       await manager.init(); // should not throw even if dir doesn't exist
 
       const session = manager.createSession({ title: 'Auto-created dir' });
-      await new Promise((r) => setTimeout(r, 50));
+      await settleEvents();
 
       // Confirm the session was persisted (directory was auto-created)
       manager.dispose();

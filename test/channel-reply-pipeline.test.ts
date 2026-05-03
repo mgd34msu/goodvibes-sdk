@@ -9,6 +9,7 @@ import {
   emitWorkflowChainPassed,
   emitWorkflowReviewCompleted,
 } from '../packages/sdk/src/platform/runtime/emitters/workflows.js';
+import { waitFor } from './_helpers/test-timeout.js';
 
 describe('ChannelReplyPipeline', () => {
   test('routes child-agent completion status to the parent ntfy reply target', async () => {
@@ -291,13 +292,3 @@ describe('ChannelReplyPipeline', () => {
     }
   });
 });
-
-async function waitFor(predicate: () => boolean, timeoutMs = 1_000): Promise<void> {
-  const start = Date.now();
-  while (!predicate()) {
-    if (Date.now() - start > timeoutMs) {
-      throw new Error('timed out waiting for condition');
-    }
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-}

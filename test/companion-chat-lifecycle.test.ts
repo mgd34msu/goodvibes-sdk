@@ -11,6 +11,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { settleEvents } from './_helpers/test-timeout.js';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionLLMProvider,
@@ -49,7 +50,7 @@ describe('L1: create → message → close lifecycle', () => {
     const manager = makeManager();
 
     const session = manager.createSession({ title: 'My chat', model: 'claude-sonnet' });
-    expect(session.id).toBeTruthy();
+    expect(session.id).not.toBe('');
     expect(session.kind).toBe('companion-chat');
     expect(session.status).toBe('active');
 
@@ -58,7 +59,7 @@ describe('L1: create → message → close lifecycle', () => {
     expect(typeof messageId).toBe('string');
 
     // Give async turn a tick
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     // Messages should include user + assistant
     const messages = manager.getMessages(session.id);
@@ -69,7 +70,7 @@ describe('L1: create → message → close lifecycle', () => {
     // Close
     const closed = manager.closeSession(session.id);
     expect(closed?.status).toBe('closed');
-    expect(closed?.closedAt).toBeTruthy();
+    expect(typeof closed?.closedAt).toBe('number');
 
     // getSession still returns the closed session
     const retrieved = manager.getSession(session.id);
@@ -184,7 +185,7 @@ describe('L5: GC closes active sessions after idleActiveMs', () => {
     const session = manager.createSession();
 
     await manager.postMessage(session.id, 'Hello');
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     expect(manager.getMessages(session.id).map((message) => message.role)).toEqual(['user', 'assistant']);
 
@@ -209,7 +210,7 @@ describe('L6: GC does not close recently-active sessions', () => {
     const session = manager.createSession();
 
     await manager.postMessage(session.id, 'Recent message');
-    await new Promise((r) => setTimeout(r, 20));
+    await settleEvents(20);
 
     // lastActivityAt is fresh (< 100ms ago)
     manager._gcSweep();

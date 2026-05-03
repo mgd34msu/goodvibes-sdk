@@ -1,4 +1,5 @@
 import { VoiceProviderRegistry } from './provider-registry.js';
+import { DaemonErrorCategory, GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type {
   VoiceDescriptor,
   VoiceRealtimeSession,
@@ -45,7 +46,7 @@ export class VoiceService {
   async synthesize(providerId: string | undefined, request: VoiceSynthesisRequest): Promise<VoiceSynthesisResult> {
     const provider = this.registry.findProvider('tts', providerId);
     if (!provider?.synthesize) {
-      throw new Error(providerId ? `Voice TTS provider unavailable: ${providerId}` : 'No voice TTS provider is registered');
+      throw providerNotConfiguredError(providerId, 'Voice TTS provider');
     }
     return provider.synthesize(request);
   }
@@ -53,7 +54,7 @@ export class VoiceService {
   async synthesizeStream(providerId: string | undefined, request: VoiceSynthesisRequest): Promise<VoiceSynthesisStreamResult> {
     const provider = this.registry.findProvider('tts-stream', providerId);
     if (!provider?.synthesizeStream) {
-      throw new Error(providerId ? `Voice streaming TTS provider unavailable: ${providerId}` : 'No streaming voice TTS provider is registered');
+      throw providerNotConfiguredError(providerId, 'Voice streaming TTS provider');
     }
     return provider.synthesizeStream(request);
   }
@@ -61,7 +62,7 @@ export class VoiceService {
   async transcribe(providerId: string | undefined, request: VoiceTranscriptionRequest): Promise<VoiceTranscriptionResult> {
     const provider = this.registry.findProvider('stt', providerId);
     if (!provider?.transcribe) {
-      throw new Error(providerId ? `Voice STT provider unavailable: ${providerId}` : 'No voice STT provider is registered');
+      throw providerNotConfiguredError(providerId, 'Voice STT provider');
     }
     return provider.transcribe(request);
   }
@@ -69,8 +70,21 @@ export class VoiceService {
   async openRealtimeSession(providerId: string | undefined, request: VoiceRealtimeSessionRequest): Promise<VoiceRealtimeSession> {
     const provider = this.registry.findProvider('realtime', providerId);
     if (!provider?.openRealtimeSession) {
-      throw new Error(providerId ? `Voice realtime provider unavailable: ${providerId}` : 'No voice realtime provider is registered');
+      throw providerNotConfiguredError(providerId, 'Voice realtime provider');
     }
     return provider.openRealtimeSession(request);
   }
+}
+
+function providerNotConfiguredError(providerId: string | undefined, label: string): GoodVibesSdkError {
+  return new GoodVibesSdkError(
+    providerId ? `${label} is unavailable: ${providerId}` : `${label} is not registered`,
+    {
+      code: 'PROVIDER_NOT_CONFIGURED',
+      category: DaemonErrorCategory.CONFIG,
+      source: 'provider',
+      recoverable: false,
+      ...(providerId ? { provider: providerId } : {}),
+    },
+  );
 }

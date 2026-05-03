@@ -1,4 +1,5 @@
 import type { DaemonRuntimeRouteHandlers } from './context.js';
+import type { JsonRecord } from './route-helpers.js';
 
 /**
  * Stable envelope shape for conversation-message-related events published
@@ -14,8 +15,6 @@ export interface ConversationMessageEnvelope {
   /** Optional metadata (tool info, model id, etc.) */
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
-
-export type JsonBody = Record<string, unknown>;
 
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
@@ -61,8 +60,8 @@ interface RuntimeTaskStateLike {
 }
 
 export interface DaemonRuntimeRouteContext {
-  readonly parseJsonBody: (req: Request) => Promise<JsonBody | Response>;
-  readonly parseOptionalJsonBody: (req: Request) => Promise<JsonBody | null | Response>;
+  readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
+  readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
   readonly recordApiResponse: (req: Request, path: string, response: Response) => Response;
   readonly requireAdmin: (req: Request) => Response | null;
   readonly snapshotMetrics: () => Record<string, unknown>;
@@ -222,17 +221,9 @@ export interface DaemonRuntimeRouteContext {
       source: string,
     ): void;
   } | null;
-  /**
-   * Publish a conversation follow-up event scoped to a specific session.
-   * Used by kind='message' routing to broadcast a ConversationMessageEnvelope
-   * to TUI surface subscribers so the operator can see the companion message.
-   */
+  /** Publish a conversation follow-up event scoped to a shared session. */
   readonly publishConversationFollowup: (sessionId: string, envelope: Omit<ConversationMessageEnvelope, 'sessionId'>) => void;
-  /**
-   * Open a session-scoped SSE event stream for the companion app.
-   * Streams turn events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events
-   * for the given shared session back to the caller over SSE.
-   */
+  /** Open a shared-session SSE stream for turn and agent events. */
   readonly openSessionEventStream: (req: Request, sessionId: string) => Response;
 }
 

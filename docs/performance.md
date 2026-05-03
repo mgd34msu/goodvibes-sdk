@@ -160,7 +160,7 @@ import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
-  tokenStore: createMemoryTokenStore(), // refreshed externally via tokenStore.set()
+  tokenStore: createMemoryTokenStore(), // refreshed externally via tokenStore.setToken()
 });
 ```
 

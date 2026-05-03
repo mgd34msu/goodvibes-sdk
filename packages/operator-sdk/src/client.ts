@@ -48,43 +48,30 @@ export type OperatorSdk =
     getOperation(methodId: OperatorMethodId): OperatorMethodContract;
     dispose(): void;
     asyncDispose(): Promise<void>;
-    [Symbol.dispose](): void;
-    [Symbol.asyncDispose](): Promise<void>;
   };
 
 type ZodSchemaExports = Record<string, unknown>;
+
+const OPERATOR_RESPONSE_SCHEMA_EXPORTS: Partial<Record<OperatorMethodId, string>> = {
+  'accounts.snapshot': 'AccountsSnapshotResponseSchema',
+  'control.auth.current': 'ControlAuthCurrentResponseSchema',
+  'control.auth.login': 'ControlAuthLoginResponseSchema',
+  'control.status': 'ControlStatusResponseSchema',
+  'local_auth.status': 'LocalAuthStatusResponseSchema',
+};
 
 function isZodSchema(value: unknown): value is ZodType {
   return Boolean(value && typeof value === 'object' && 'safeParse' in value && typeof (value as { readonly safeParse?: unknown }).safeParse === 'function');
 }
 
-function pascalCaseContractPart(part: string): string {
-  return part
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-    .join('');
-}
-
-function responseSchemaExportCandidates(methodId: string): readonly string[] {
-  const parts = methodId.split('.').filter(Boolean).map(pascalCaseContractPart);
-  if (parts.length === 0) return [];
-  const fullName = `${parts.join('')}ResponseSchema`;
-  const verbFirst = parts.length > 1
-    ? `${parts[parts.length - 1]}${parts.slice(0, -1).join('')}ResponseSchema`
-    : fullName;
-  return fullName === verbFirst ? [fullName] : [fullName, verbFirst];
-}
-
 function buildSchemaRegistry(methodIds: readonly string[], schemas: ZodSchemaExports): Partial<Record<string, ZodType>> {
   const registry: Partial<Record<string, ZodType>> = {};
   for (const methodId of methodIds) {
-    for (const exportName of responseSchemaExportCandidates(methodId)) {
-      const schema = schemas[exportName];
-      if (!isZodSchema(schema)) continue;
-      registry[methodId] = schema;
-      break;
-    }
+    const exportName = OPERATOR_RESPONSE_SCHEMA_EXPORTS[methodId as OperatorMethodId];
+    if (!exportName) continue;
+    const schema = schemas[exportName];
+    if (!isZodSchema(schema)) continue;
+    registry[methodId] = schema;
   }
   return registry;
 }
@@ -112,12 +99,6 @@ export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk {
       // SDK object gives callers a stable lifecycle hook as transports evolve.
     },
     async asyncDispose(): Promise<void> {
-      this.dispose();
-    },
-    [Symbol.dispose](): void {
-      this.dispose();
-    },
-    async [Symbol.asyncDispose](): Promise<void> {
       this.dispose();
     },
   };

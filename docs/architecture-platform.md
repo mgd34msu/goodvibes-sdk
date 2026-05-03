@@ -39,7 +39,7 @@ This document maps every top-level directory under `packages/sdk/src/platform/`.
 | `permissions/` | `PermissionManager`, layered policy evaluation (allow/deny/auto-approve), per-call approval prompting, and brief generation for operator review |
 | `plugins/` | Plugin loader, `PluginManager` lifecycle (registration → activation → hook dispatch → deactivation), `PluginApi`, hook dispatcher |
 | `profiles/` | Named configuration profiles — display, provider model, and behavior overrides that can be switched per session |
-| `providers/` | `ProviderRegistry` and per-provider adapters (Anthropic, OpenAI, Gemini, InceptionLabs, Ollama, etc.); stop-reason canonical mapper |
+| `providers/` | `ProviderRegistry` and per-provider adapters (Anthropic, OpenAI, Gemini, Inception Labs, Ollama, etc.); stop-reason canonical mapper |
 | `runtime/` | Runtime subsystems: `RuntimeStore` (Redux-style state), `RuntimeEventBus`, compaction strategies, session memory, diagnostics panels, perf monitor, task adapters |
 | `scheduler/` | Cron-based task scheduler: cron expression evaluation, task persistence, missed-run tracking, and prompt dispatch to the agent engine |
 | `security/` | Security utilities: input sanitization, CSP helpers, private-host policy enforcement |

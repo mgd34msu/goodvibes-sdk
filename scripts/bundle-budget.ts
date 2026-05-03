@@ -129,9 +129,9 @@ function loadBudgets(): BudgetConfig {
     process.exit(1);
   }
   const raw = JSON.parse(readFileSync(BUDGETS_PATH, 'utf8')) as Record<string, unknown>;
-  // Strip the _comment metadata key before returning
-  const { _comment, ...budgets } = raw;
-  return budgets as BudgetConfig;
+  return Object.fromEntries(
+    Object.entries(raw).filter(([key]) => !key.startsWith('_')),
+  ) as BudgetConfig;
 }
 
 function loadExports(): Record<string, ExportValue> {

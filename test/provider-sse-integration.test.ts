@@ -20,6 +20,7 @@ import { describe, expect, test } from 'bun:test';
 import { ControlPlaneGateway, DEFAULT_DOMAINS_TEST_EXPORT } from '../packages/sdk/src/platform/control-plane/gateway.js';
 import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.js';
 import type { RuntimeEventDomain } from '../packages/sdk/src/platform/runtime/events/index.js';
+import { settleEvents } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
 // C-2: DEFAULT_DOMAINS includes 'providers' (cheap sanity check)
@@ -123,8 +124,8 @@ describe('ControlPlaneGateway SSE — real end-to-end', () => {
       void readLoop();
     });
 
-    // Wait a tick for subscriptions to register, then emit the event
-    await new Promise<void>((r) => setTimeout(r, 10));
+    // Wait a tick for subscriptions to register, then emit the event.
+    await settleEvents(10);
 
     const envelope = createEventEnvelope('MODEL_CHANGED', {
       type: 'MODEL_CHANGED',
@@ -140,8 +141,8 @@ describe('ControlPlaneGateway SSE — real end-to-end', () => {
     // Abort the stream cleanly
     abort.abort();
 
-    // Give the teardown a moment
-    await new Promise<void>((r) => setTimeout(r, 10));
+    // Give the teardown a moment.
+    await settleEvents(10);
 
     // Assert exactly ONE 'providers' domain frame was received (the MODEL_CHANGED one)
     const providerFrames = received.filter((f) => f.event === 'providers');

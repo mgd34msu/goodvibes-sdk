@@ -38,4 +38,4 @@ type/API review. They are not standalone `bun examples/...` scripts.
 
 Examples that use TypeScript JSON import attributes, such as
 `daemon-fetch-handler-quickstart.ts`, expect the repository's pinned Bun runtime
-or a Node runtime that supports import attributes.
+or Node 22.6+ with import-attributes support enabled.

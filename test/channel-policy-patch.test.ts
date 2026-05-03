@@ -160,6 +160,38 @@ describe('F19 — PATCH /api/channels/policies/:surface: admin guard', () => {
   });
 });
 
+describe('channel optional JSON bodies', () => {
+  test('POST channel tool returns parser errors even without a content-length hint', async () => {
+    let toolCalled = false;
+    const { service } = makePolicyStore({});
+    const baseContext = makeContext(service);
+    const ctx: DaemonChannelRouteContext = {
+      ...baseContext,
+      parseOptionalJsonBody: async () => new Response('Bad JSON', { status: 400 }),
+      channelPlugins: {
+        ...baseContext.channelPlugins,
+        runTool: async () => {
+          toolCalled = true;
+          return { ok: true };
+        },
+      },
+    };
+    const handlers = createDaemonChannelRouteHandlers(ctx);
+
+    const res = await handlers.postChannelTool(
+      'slack',
+      'send-message',
+      new Request('http://localhost/api/channels/slack/tools/send-message', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(toolCalled).toBe(false);
+  });
+});
+
 describe('F19 — PATCH /api/channels/policies/:surface: field filter', () => {
   test('handler strips untyped fields — only known typed fields reach upsertPolicy', async () => {
     // B3: production field-filter test

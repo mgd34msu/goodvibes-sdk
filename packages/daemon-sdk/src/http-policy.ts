@@ -1,3 +1,4 @@
+import { jsonErrorResponse } from './error-response.js';
 import { missingScopes } from './route-helpers.js';
 
 export type AuthenticatedPrincipalKind = 'user' | 'bot' | 'service' | 'token';
@@ -59,7 +60,7 @@ export function resolvePrivateHostFetchOptions(
 ): { allowPrivateHosts: true; fetchMode: 'allow-private-hosts' } | Record<string, never> | Response {
   if (requested !== true) return {};
   if (!Boolean(context.configManager.get('network.remoteFetch.allowPrivateHosts'))) {
-    return Response.json({ error: 'Private-host remote fetches are disabled by config.' }, { status: 403 });
+    return jsonErrorResponse({ error: 'Private-host remote fetches are disabled by config.' }, { status: 403 });
   }
   if ('requireElevatedAccess' in context) {
     const denied = context.requireElevatedAccess(context.req);

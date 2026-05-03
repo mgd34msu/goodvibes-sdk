@@ -173,7 +173,7 @@ function deterministicSemanticExtraction(
   extraction: KnowledgeExtractionRecord | null,
   text: string,
 ): KnowledgeSemanticExtraction {
-  const factText = cleanDeterministicSourceText(text);
+  const factText = cleanDeterministicSourceText(deterministicFactSourceText(extraction) || text);
   const sentences = splitSentences(factText);
   const profileFacts = deriveRepairProfileFacts({
     query: 'complete features specifications capabilities',
@@ -220,11 +220,34 @@ function deterministicSemanticExtraction(
   };
 }
 
+function deterministicFactSourceText(extraction: KnowledgeExtractionRecord | null): string {
+  const structure = readRecord(extraction?.structure);
+  const nestedStructure = readRecord(structure.structure);
+  const metadata = readRecord(extraction?.metadata);
+  const nestedMetadata = readRecord(structure.metadata);
+  return uniqueStrings([
+    extraction?.title,
+    extraction?.summary,
+    extraction?.excerpt,
+    readString(structure.searchText),
+    readString(structure.text),
+    readString(structure.content),
+    readString(nestedStructure.searchText),
+    readString(nestedStructure.text),
+    readString(nestedStructure.content),
+    readString(metadata.searchText),
+    readString(metadata.text),
+    readString(nestedMetadata.searchText),
+    readString(nestedMetadata.text),
+  ]).join('\n\n');
+}
+
 function cleanDeterministicSourceText(text: string): string {
   return normalizeWhitespace(text
     .replace(/https?:\/\/\S+/gi, ' ')
     .replace(/\bsemantic-gap-repair\b/gi, ' ')
     .replace(/\bhomegraph:\/\/\S+/gi, ' ')
+    .replace(/\b(?:manual|file|artifact):\/\/\S+/gi, ' ')
     .replace(/\b[a-z0-9-]+\.(?:com|net|org|io|dev|tv|ca|co\.uk)(?:\/\S*)?/gi, ' '));
 }
 
@@ -389,14 +412,20 @@ async function persistSemanticExtraction(
 
 function shouldPersistSemanticFact(fact: KnowledgeSemanticFactInput): boolean {
   if (!['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(fact.kind)) return true;
-  const text = semanticInputFactText([
+  const signalText = semanticInputFactText([
     fact.title,
     fact.summary,
     fact.value,
     fact.evidence,
     ...(fact.labels ?? []),
   ]);
-  return hasConcreteFeatureSignal(text) && !isLowValueFeatureOrSpecText(text);
+  const qualityText = semanticInputFactText([
+    fact.summary,
+    fact.value,
+    fact.evidence,
+    ...(fact.labels ?? []),
+  ]) || signalText;
+  return hasConcreteFeatureSignal(signalText) && !isLowValueFeatureOrSpecText(qualityText);
 }
 
 function semanticInputFactText(parts: readonly (string | undefined)[]): string {

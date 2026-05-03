@@ -13,6 +13,7 @@ import type { DivergenceDashboardSnapshot, EnforceGateResult } from '../../permi
 import { DivergenceDashboard } from '../../permissions/divergence-dashboard.js';
 import type { ComponentConfig } from '../types.js';
 import { DEFAULT_COMPONENT_CONFIG } from '../types.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * DivergencePanel — diagnostics data provider for the divergence dashboard.
@@ -99,7 +100,7 @@ export class DivergencePanel {
         cb();
       } catch (err) {
         // Non-fatal: subscriber errors must not crash the panel
-        console.debug('[DivergencePanel] subscriber error:', err);
+        logger.debug('[DivergencePanel] subscriber error', { err });
       }
     }
   }

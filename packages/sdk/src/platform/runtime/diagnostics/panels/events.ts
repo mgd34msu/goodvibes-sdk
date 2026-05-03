@@ -99,12 +99,12 @@ export class EventsPanel {
       type: envelope.type,
       domain,
       ts: envelope.ts,
-      traceId: envelope.traceId,
-      sessionId: envelope.sessionId,
+      traceId: envelope.traceId ?? '',
+      sessionId: envelope.sessionId ?? '',
       turnId: envelope.turnId,
       agentId: envelope.agentId,
       taskId: envelope.taskId,
-      source: envelope.source,
+      source: envelope.source ?? '',
       summary: summarizePayload(envelope.type, envelope.payload),
     };
     appendBounded(this._buffer, entry, this._config.bufferLimit);

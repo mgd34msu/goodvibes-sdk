@@ -10,6 +10,7 @@ import type {
   ArgShapeRule,
   EvaluationStep,
 } from '../types.js';
+import { compileSafeRegExp, safeRegExpTest } from '../../../utils/safe-regex.js';
 
 /** Result returned by evaluateArgShapeRule. */
 export interface ArgShapeRuleResult {
@@ -48,8 +49,8 @@ function matchArgValue(actual: unknown, expected: unknown): boolean {
     const flags = lastSlash > 0 ? expected.slice(lastSlash + 1) : '';
     const source = expected.slice(1, lastSlash > 0 ? lastSlash : undefined);
     try {
-      const re = new RegExp(source, flags);
-      return re.test(String(actual));
+      const re = compileSafeRegExp(source, flags, { operation: 'permission arg-shape', maxPatternChars: 256 });
+      return safeRegExpTest(re, String(actual), { operation: 'permission arg-shape', maxInputChars: 4_096 });
     } catch {
       // Invalid regex — treat as literal string match
       return actual === expected;

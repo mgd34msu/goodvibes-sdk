@@ -20,6 +20,7 @@ import {
 } from './constants.js';
 import { discoverZones, resolveZone, selectDiscoveredZone, tryDiscover } from './discovery.js';
 import { normalizeProvisionHostnames } from './hostnames.js';
+import { buildCloudflareControlPlaneStatus } from './status.js';
 import {
   configureDns,
   ensureAccess,
@@ -94,41 +95,7 @@ export class CloudflareControlPlaneManager {
     const apiToken = await this.resolveApiToken({});
     const workerToken = await this.resolveOperatorToken({});
     const workerClientToken = await this.resolveWorkerClientToken({});
-    const configured = {
-      accountId: config.accountId.length > 0,
-      apiToken: apiToken.value !== null,
-      zone: config.zoneId.length > 0 || config.zoneName.length > 0,
-      workerName: config.workerName.length > 0,
-      daemonBaseUrl: config.daemonBaseUrl.length > 0,
-      daemonHostname: config.daemonHostname.length > 0,
-      workerBaseUrl: config.workerBaseUrl.length > 0,
-      workerHostname: config.workerHostname.length > 0,
-      queueName: config.queueName.length > 0,
-      deadLetterQueueName: config.deadLetterQueueName.length > 0,
-      workerToken: workerToken.value !== null,
-      workerClientToken: workerClientToken.value !== null,
-      tunnel: config.tunnelId.length > 0 || config.tunnelName.length > 0,
-      access: config.accessAppId.length > 0 || config.accessServiceTokenId.length > 0 || config.accessServiceTokenRef.length > 0,
-      kv: config.kvNamespaceId.length > 0 || config.kvNamespaceName.length > 0,
-      durableObjects: config.durableObjectNamespaceId.length > 0 || config.durableObjectNamespaceName.length > 0,
-      r2: config.r2BucketName.length > 0,
-      secretsStore: config.secretsStoreId.length > 0 || config.secretsStoreName.length > 0,
-    };
-    const warnings: string[] = [];
-    if (config.enabled && !configured.apiToken) warnings.push('Cloudflare is enabled but no API token is configured.');
-    if (config.enabled && !configured.daemonBaseUrl) warnings.push('Cloudflare is enabled but no daemonBaseUrl is configured for Worker-to-daemon calls.');
-    if (config.enabled && !configured.workerToken) warnings.push('Cloudflare is enabled but no Worker-to-daemon operator token is configured.');
-    if (config.enabled && !configured.workerClientToken) warnings.push('Cloudflare Worker client auth is not configured; provisioning will generate one.');
-    const ready = config.enabled &&
-      configured.accountId &&
-      configured.apiToken &&
-      configured.workerName &&
-      configured.daemonBaseUrl &&
-      configured.workerBaseUrl &&
-      configured.queueName &&
-      configured.deadLetterQueueName &&
-      configured.workerToken;
-    return { enabled: config.enabled, ready, configured, config, warnings };
+    return buildCloudflareControlPlaneStatus({ config, apiToken, workerToken, workerClientToken });
   }
 
   tokenRequirements(input: CloudflareTokenRequirementsInput = {}): CloudflareTokenRequirementsResult {

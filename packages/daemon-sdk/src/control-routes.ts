@@ -1,11 +1,16 @@
 import type { DaemonControlRouteHandlers } from './context.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
+import { jsonErrorResponse } from './error-response.js';
 import type { AuthenticatedPrincipal } from './http-policy.js';
-import { serializableJsonResponse } from './route-helpers.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  serializableJsonResponse,
+  type JsonRecord,
+} from './route-helpers.js';
 
 interface GatewayMethodDescriptorLike {
-  readonly dangerous?: boolean;
-  readonly access?: string;
+  readonly access?: 'public' | 'authenticated' | 'admin' | 'remote-peer';
 }
 
 interface GatewayMethodCatalogLike {
@@ -50,10 +55,27 @@ interface ControlRouteContext {
       readonly clientKind?: string;
     };
   }) => Promise<{ status: number; ok: boolean; body: unknown }>;
-  readonly parseOptionalJsonBody: (req: Request) => Promise<Record<string, unknown> | null | Response>;
+  readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
   readonly requireAdmin: (req: Request) => Response | null;
   readonly requireAuthenticatedSession: (req: Request) => { username: string; roles: readonly string[] } | null;
 }
+
+type GatewayInvokeBody = {
+  readonly query?: Record<string, unknown>;
+  readonly body?: unknown;
+};
+
+const controlBodySchemas = createRouteBodySchemaRegistry({
+  gatewayInvoke: createRouteBodySchema<GatewayInvokeBody>('POST /api/control/gateway-methods/:methodId/invoke', (body) => {
+    const query = body.query && typeof body.query === 'object' && !Array.isArray(body.query)
+      ? body.query as Record<string, unknown>
+      : undefined;
+    return {
+      ...(query ? { query } : {}),
+      body: Object.hasOwn(body, 'body') ? body.body : body,
+    };
+  }),
+});
 
 export function createDaemonControlRouteHandlers(
   context: ControlRouteContext,
@@ -132,24 +154,29 @@ export function createDaemonControlRouteHandlers(
       const method = context.gatewayMethods.get(methodId);
       return method
         ? serializableJsonResponse({ method })
-        : Response.json({ error: 'Unknown gateway method' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown gateway method' }, { status: 404 });
     },
     invokeGatewayMethod: async (methodId, req) => {
       const descriptor = context.gatewayMethods.get(methodId);
-      if (!descriptor) return Response.json({ error: 'Unknown gateway method' }, { status: 404 });
-      if (descriptor.dangerous || descriptor.access === 'admin') {
+      if (!descriptor) return jsonErrorResponse({ error: 'Unknown gateway method' }, { status: 404 });
+      const access = descriptor.access ?? 'admin';
+      if (access === 'admin' || access === 'remote-peer') {
         const admin = context.requireAdmin(req);
         if (admin) return admin;
       }
       const principal = context.resolveAuthenticatedPrincipal(req);
+      if (access === 'authenticated' && !principal) {
+        return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
+      }
       const parsedBody = await context.parseOptionalJsonBody(req);
       if (parsedBody instanceof Response) return parsedBody;
-      const payload = parsedBody ?? {};
+      const payload = controlBodySchemas.gatewayInvoke.parse(parsedBody ?? {});
+      if (payload instanceof Response) return payload;
       const response = await context.invokeGatewayMethodCall({
         authToken: context.extractAuthToken(req),
         methodId,
-        query: typeof payload.query === 'object' && payload.query !== null ? payload.query as Record<string, unknown> : undefined,
-        body: Object.hasOwn(payload, 'body') ? payload.body : payload,
+        query: payload.query,
+        body: payload.body,
         context: {
           principalId: principal?.principalId,
           principalKind: principal?.principalKind,
@@ -165,13 +192,14 @@ export function createDaemonControlRouteHandlers(
       const rawDomains = url.searchParams.get('domains');
       const domains = (rawDomains ? rawDomains.split(',').map((value) => value.trim()).filter(Boolean) : []) as RuntimeEventDomain[];
       const principal = context.resolveAuthenticatedPrincipal(req);
+      if (!principal) return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
       return context.controlPlaneGateway.createEventStream(req, {
         clientKind: 'web',
         transport: 'sse',
         domains,
-        principalId: principal?.principalId ?? (context.authToken ? 'shared-token' : context.requireAuthenticatedSession(req)?.username ?? 'session-user'),
-        principalKind: principal?.principalKind ?? (context.authToken ? 'token' : 'user'),
-        scopes: principal?.scopes ?? ['read:events', 'read:control-plane'],
+        principalId: principal.principalId,
+        principalKind: principal.principalKind,
+        scopes: principal.scopes,
       });
     },
   };

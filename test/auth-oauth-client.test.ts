@@ -36,7 +36,7 @@ describe('OAuthClient', () => {
       const client = new OAuthClient(BASE_CONFIG);
       const result = await client.beginAuthorization();
       const url = new URL(result.authorizationUrl);
-      expect(url.searchParams.get('code_challenge')).toBeTruthy();
+      expect(url.searchParams.get('code_challenge')).toEqual(expect.any(String));
       expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     });
 

@@ -3,6 +3,7 @@ import { statSync, lstatSync } from 'node:fs';
 import type { FilesQuery, OutputOptions } from './shared.js';
 import { buildGitignoreMatcher, collectGlobFiles, makeCountResult, makeFilesResult, matchesGlob, validateSearchPath } from './shared.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
 
 export async function executeFilesQuery(
   query: FilesQuery,
@@ -36,7 +37,7 @@ export async function executeFilesQuery(
   let hasContentRegex: RegExp | undefined;
   if (query.has_content) {
     try {
-      hasContentRegex = new RegExp(query.has_content);
+      hasContentRegex = compileSafeRegExp(query.has_content, '', { operation: 'find files has_content' });
     } catch (e) {
       return { error: `Invalid has_content regex: ${summarizeError(e)}` };
     }
@@ -103,7 +104,7 @@ export async function executeFilesQuery(
     for (const entry of entries) {
       try {
         const text = await Bun.file(entry.path).text();
-        if (hasContentRegex.test(text)) filtered.push(entry);
+        if (safeRegExpTest(hasContentRegex, text, { operation: 'find files has_content', maxInputChars: 500_000 })) filtered.push(entry);
       } catch {
         // unreadable file
       }

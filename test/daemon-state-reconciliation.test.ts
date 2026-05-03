@@ -12,7 +12,7 @@
  * DR2: AgentTaskAdapter — same bus events drive task records from 'running' to
  *      terminal. Missing wire kept tasks.list returning stale 'running' rows.
  *
- * DR3: SharedSessionBroker idle-session GC — _gcSweep() closes empty ghost
+ * DR3: SharedSessionBroker idle-session GC — gcSweep() closes empty ghost
  *      sessions (messageCount=0, idle >= idleEmptyMs) and long-idle content
  *      sessions (idle >= idleLongMs) while leaving sessions with live agents
  *      alone.
@@ -25,6 +25,7 @@ import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/i
 import type { RuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.js';
 import type { AgentEvent } from '../packages/sdk/src/events/agents.js';
+import { settleEvents } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Real Zustand store for AgentTaskAdapter (required — createDomainDispatch uses store.setState)
@@ -340,13 +341,9 @@ describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
     const store = makeStore();
     const adapter = new AgentTaskAdapter(store);
     adapter.attachRuntimeBus(bus);
-    // Second call — should warn and return no-op unsub
-    const warnSpy: string[] = [];
-    const orig = console.warn;
-    console.warn = (...args: unknown[]) => { warnSpy.push(String(args[0])); };
+    // Second call returns a no-op unsubscribe and must not double-subscribe.
     const unsub2 = adapter.attachRuntimeBus(bus);
-    console.warn = orig;
-    expect(warnSpy.some((w) => w.includes('AgentTaskAdapter'))).toBe(true);
+    expect(typeof unsub2).toBe('function');
 
     const taskId = adapter.wrapAgent('ag-idem2', 'Task', { sessionId: 'sess-x' });
     adapter.handleAgentStateChange('ag-idem2', 'running');
@@ -474,41 +471,42 @@ describe('M3: SharedSessionBroker.stop() — graceful teardown', () => {
     const broker = makeBroker();
     await broker.start();
 
-    // _gcInterval should be set after start()
     expect((broker as unknown as { _gcInterval: ReturnType<typeof setInterval> | null })._gcInterval).not.toBeNull();
-    expect((broker as unknown as { _busUnsubs: Array<() => void> })._busUnsubs).toHaveLength(0); // no bus attached yet
 
     await broker.stop();
 
     expect((broker as unknown as { _gcInterval: ReturnType<typeof setInterval> | null })._gcInterval).toBeNull();
-    expect((broker as unknown as { _busUnsubs: Array<() => void> })._busUnsubs).toHaveLength(0);
   });
 
-  test('stop() with attached bus clears _busAttached flag', async () => {
+  test('stop() with attached bus removes event subscriptions', async () => {
     const bus = new RuntimeEventBus();
     const broker = makeBroker();
     await broker.start();
+    const session = await broker.createSession({ title: 'Stop unsubscribe' });
+    await broker.bindAgent(session.id, 'ag-stop');
     broker.attachRuntimeBus(bus, () => null);
-    expect((broker as unknown as { _busAttached: boolean })._busAttached).toBe(true);
 
     await broker.stop();
-    expect((broker as unknown as { _busAttached: boolean })._busAttached).toBe(false);
-    expect((broker as unknown as { _busUnsubs: Array<() => void> })._busUnsubs).toHaveLength(0);
+    emitAgentOnBus(bus, 'AGENT_COMPLETED', 'ag-stop', { output: 'late completion' });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(broker.getSession(session.id)?.activeAgentId).toBe('ag-stop');
   });
 
   test('attachRuntimeBus after stop() is accepted (idempotency reset)', async () => {
     const bus = new RuntimeEventBus();
     const broker = makeBroker();
     await broker.start();
+    const session = await broker.createSession({ title: 'Reattach after stop' });
+    await broker.bindAgent(session.id, 'ag-reattach');
     broker.attachRuntimeBus(bus, () => null);
     await broker.stop();
-    // After stop, _busAttached is false — second attach should succeed silently
-    const warnSpy: string[] = [];
-    const orig = console.warn;
-    console.warn = (...args: unknown[]) => { warnSpy.push(String(args[0])); };
-    broker.attachRuntimeBus(bus, () => null);
-    console.warn = orig;
-    expect(warnSpy.some((w) => w.includes('SharedSessionBroker'))).toBe(false);
+    broker.attachRuntimeBus(bus, (agentId) => agentId === 'ag-reattach' ? session.id : null);
+
+    emitAgentOnBus(bus, 'AGENT_COMPLETED', 'ag-reattach', { output: 'done' });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(broker.getSession(session.id)?.activeAgentId).toBeUndefined();
   });
 });
 
@@ -517,23 +515,19 @@ describe('M3: SharedSessionBroker.stop() — graceful teardown', () => {
 // ---------------------------------------------------------------------------
 
 describe('m3: SharedSessionBroker.attachRuntimeBus is idempotent', () => {
-  test('second call warns and returns no-op unsub', async () => {
+  test('second call returns no-op unsub', async () => {
     const bus = new RuntimeEventBus();
     const broker = makeBroker();
     await broker.start();
     broker.attachRuntimeBus(bus, () => null);
 
-    const warnSpy: string[] = [];
-    const orig = console.warn;
-    console.warn = (...args: unknown[]) => { warnSpy.push(String(args[0])); };
-    broker.attachRuntimeBus(bus, () => null);
-    console.warn = orig;
-    expect(warnSpy.some((w) => w.includes('SharedSessionBroker'))).toBe(true);
+    const unsub = broker.attachRuntimeBus(bus, () => null);
+    expect(typeof unsub).toBe('function');
   });
 });
 
 // ---------------------------------------------------------------------------
-// M4: _touch() + lastActivityAt coverage
+// M4: touch lifecycle + lastActivityAt coverage
 // ---------------------------------------------------------------------------
 
 describe('M4: lastActivityAt bumped at touch sites', () => {
@@ -542,7 +536,7 @@ describe('M4: lastActivityAt bumped at touch sites', () => {
     const sess = await broker.createSession({ title: 'Touch test' });
     const before = broker.getSession(sess.id)!.lastActivityAt;
     // Wait a tick to ensure time advances
-    await new Promise((r) => setTimeout(r, 2));
+    await settleEvents(2);
     await broker.submitMessage({
       sessionId: sess.id,
       surfaceKind: 'tui',
@@ -558,7 +552,7 @@ describe('M4: lastActivityAt bumped at touch sites', () => {
     const sess = await broker.createSession({ title: 'Complete touch' });
     await broker.bindAgent(sess.id, 'ag-touch');
     const before = broker.getSession(sess.id)!.lastActivityAt;
-    await new Promise((r) => setTimeout(r, 2));
+    await settleEvents(2);
     await broker.completeAgent(sess.id, 'ag-touch', 'result', { status: 'completed' });
     const after = broker.getSession(sess.id)!.lastActivityAt;
     expect(after).toBeGreaterThan(before);
@@ -568,7 +562,7 @@ describe('M4: lastActivityAt bumped at touch sites', () => {
     const broker = makeBroker();
     const sess = await broker.createSession({ title: 'Close touch' });
     const before = broker.getSession(sess.id)!.lastActivityAt;
-    await new Promise((r) => setTimeout(r, 2));
+    await settleEvents(2);
     await broker.closeSession(sess.id);
     const after = broker.getSession(sess.id)!.lastActivityAt;
     expect(after).toBeGreaterThan(before);
@@ -586,7 +580,7 @@ describe('M4: lastActivityAt bumped at touch sites', () => {
     });
     await broker.bindAgent(sess.id, 'ag-finalize');
     const before = broker.getSession(sess.id)!.lastActivityAt;
-    await new Promise((r) => setTimeout(r, 2));
+    await settleEvents(2);
     // Call finalizeAgentInputs directly (bypasses completeAgent)
     (broker as unknown as { finalizeAgentInputs(sessionId: string, agentId: string, outcome: string): void }).finalizeAgentInputs(sess.id, 'ag-finalize', 'completed');
     const after = broker.getSession(sess.id)!.lastActivityAt;
@@ -614,7 +608,7 @@ describe('M4: GC guard — pendingInputCount > 0 prevents sweep', () => {
       s.set(sessionId, { ...session, lastActivityAt: Date.now() - idleMs });
     };
     backdateSession(broker, sess.id, 5000);
-    (broker as unknown as { _gcSweep(): void })._gcSweep();
+    (broker as unknown as { gcSweep(): void }).gcSweep();
 
     expect(broker.getSession(sess.id)?.status).toBe('active');
   });
@@ -647,7 +641,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     expect(session.status).toBe('active');
 
     backdateSession(broker, session.id, 2); // idle 2ms > 1ms threshold
-    (broker as unknown as { _gcSweep(): void })._gcSweep();
+    (broker as unknown as { gcSweep(): void }).gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     expect(afterSweep?.status).toBe('closed');
@@ -662,7 +656,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     sessions.set(session.id, { ...session, messageCount: 1 });
 
     backdateSession(broker, session.id, 2);
-    (broker as unknown as { _gcSweep(): void })._gcSweep();
+    (broker as unknown as { gcSweep(): void }).gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     // Has messages — should NOT be closed by the empty-ghost policy
@@ -683,7 +677,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     });
 
     backdateSession(broker, session.id, 2);
-    (broker as unknown as { _gcSweep(): void })._gcSweep();
+    (broker as unknown as { gcSweep(): void }).gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     expect(afterSweep?.status).toBe('closed');
@@ -696,7 +690,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     await broker.bindAgent(session.id, 'ag-live');
 
     backdateSession(broker, session.id, 10_000);
-    (broker as unknown as { _gcSweep(): void })._gcSweep();
+    (broker as unknown as { gcSweep(): void }).gcSweep();
 
     const afterSweep = broker.getSession(session.id);
     expect(afterSweep?.status).toBe('active');
@@ -713,7 +707,7 @@ describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
     });
 
     backdateSession(broker, session.id, 2);
-    (broker as unknown as { _gcSweep(): void })._gcSweep();
+    (broker as unknown as { gcSweep(): void }).gcSweep();
 
     expect(closedPayload?.reason).toBe('idle-empty');
     expect(closedPayload?.id).toBe(session.id);

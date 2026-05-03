@@ -1,6 +1,6 @@
 # GoodVibes SDK Documentation
 
-These documents describe the v0.30.0 SDK architecture. The SDK is a monorepo of
+These documents describe the SDK architecture. The SDK is a monorepo of
 source-of-truth packages plus a main facade package; public imports are explicit
 package entrypoints, not arbitrary repo folder paths. `CHANGELOG.md` remains the
 release-history source.
@@ -16,8 +16,8 @@ release-history source.
 
 ## Client Integration
 
-- [Authentication](./authentication.md)
-- [Auth architecture](./auth.md)
+- [Authentication](./authentication.md) — consumer token/session guidance.
+- [Auth architecture](./auth.md) — internal auth plumbing and daemon enforcement.
 - [Browser integration](./browser-integration.md)
 - [Web UI integration](./web-ui-integration.md)
 - [React Native integration](./react-native-integration.md)
@@ -69,12 +69,12 @@ release-history source.
 - [Observability](./observability.md)
 - [Performance and tuning](./performance.md)
 - [Transport architecture](./transports.md)
-- [Error architecture](./errors.md)
-- [Error handling](./error-handling.md)
-- [Error kinds reference](./error-kinds.md)
+- [Error architecture](./errors.md) — internal error model and category sources.
+- [Error handling](./error-handling.md) — consumer patterns for catching structured errors.
+- [Error kinds reference](./error-kinds.md) — public `SDKErrorKind` reference table.
 - [Troubleshooting](./troubleshooting.md)
-- [Testing and validation](./testing-and-validation.md)
-- [Testing architecture](./testing.md)
+- [Testing and validation](./testing-and-validation.md) — commands and CI gates.
+- [Testing architecture](./testing.md) — suite structure and intent.
 - [Release and publishing](./release-and-publishing.md)
 - [Semver policy](./semver-policy.md)
 

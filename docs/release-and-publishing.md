@@ -64,9 +64,8 @@ Every release must have a matching section in `CHANGELOG.md`:
 
 ### Breaking
 ### Added
-### Changed
 ### Fixed
-### Security
+### Migration
 ```
 
 Only include sections that apply. The changelog is the canonical release

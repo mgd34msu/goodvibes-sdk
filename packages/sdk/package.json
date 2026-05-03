@@ -287,6 +287,10 @@
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
     },
+    "./platform/runtime/bootstrap": {
+      "types": "./dist/platform/runtime/bootstrap.d.ts",
+      "import": "./dist/platform/runtime/bootstrap.js"
+    },
     "./platform/runtime/events": {
       "types": "./dist/platform/runtime/events/index.d.ts",
       "import": "./dist/platform/runtime/events/index.js"
@@ -299,6 +303,26 @@
       "types": "./dist/platform/runtime/network/index.d.ts",
       "import": "./dist/platform/runtime/network/index.js"
     },
+    "./platform/runtime/observability": {
+      "types": "./dist/platform/runtime/observability.d.ts",
+      "import": "./dist/platform/runtime/observability.js"
+    },
+    "./platform/runtime/operations": {
+      "types": "./dist/platform/runtime/operations.d.ts",
+      "import": "./dist/platform/runtime/operations.js"
+    },
+    "./platform/runtime/security": {
+      "types": "./dist/platform/runtime/security.d.ts",
+      "import": "./dist/platform/runtime/security.js"
+    },
+    "./platform/runtime/shell": {
+      "types": "./dist/platform/runtime/shell.d.ts",
+      "import": "./dist/platform/runtime/shell.js"
+    },
+    "./platform/runtime/state": {
+      "types": "./dist/platform/runtime/state.d.ts",
+      "import": "./dist/platform/runtime/state.js"
+    },
     "./platform/runtime/store": {
       "types": "./dist/platform/runtime/store/index.d.ts",
       "import": "./dist/platform/runtime/store/index.js"
@@ -310,6 +334,14 @@
     "./platform/runtime/store/helpers": {
       "types": "./dist/platform/runtime/store/helpers/index.d.ts",
       "import": "./dist/platform/runtime/store/helpers/index.js"
+    },
+    "./platform/runtime/transport": {
+      "types": "./dist/platform/runtime/transport.d.ts",
+      "import": "./dist/platform/runtime/transport.js"
+    },
+    "./platform/runtime/ui": {
+      "types": "./dist/platform/runtime/ui-surface.d.ts",
+      "import": "./dist/platform/runtime/ui-surface.js"
     },
     "./platform/scheduler": {
       "types": "./dist/platform/scheduler/index.d.ts",

@@ -3,6 +3,7 @@ import { RouteBindingManager } from '../packages/sdk/src/platform/channels/route
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import type { AutomationRouteStore } from '../packages/sdk/src/platform/automation/store/routes.js';
 import type { AutomationRouteBinding } from '../packages/sdk/src/platform/automation/routes.js';
+import { settleEvents } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
 // In-memory route store stub
@@ -40,7 +41,7 @@ interface CapturedEvent {
 }
 
 async function flush(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await settleEvents(0);
 }
 
 function captureRouteEvents(bus: RuntimeEventBus): CapturedEvent[] {

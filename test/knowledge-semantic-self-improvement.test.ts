@@ -17,6 +17,7 @@ import {
   createStores,
   waitFor,
 } from './_helpers/knowledge-semantic-fixtures.js';
+import { settleEvents } from './_helpers/test-timeout.js';
 
 describe('semantic knowledge/wiki enrichment: self-improvement', () => {
   test('strict answers keep official sources linked by graph edges even without source discovery metadata', async () => {
@@ -186,7 +187,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     });
     const semantic = new KnowledgeSemanticService(store, {
       gapRepairer: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await settleEvents(150);
         return {
           searched: true,
           evidenceSufficient: true,
@@ -206,7 +207,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       candidateSourceIds: [generated.id],
       autoRepairGaps: false,
     });
-    expect(seed.answer.gaps.map((gap) => gap.title)).toContain('What are the complete features and specifications for LG 86NANO90UNA?');
+    expect(seed.answer.gaps.map((gap) => gap.title)).toContain('What features does the LG 86NANO90UNA have?');
 
     const background = semantic.selfImprove({
       knowledgeSpaceId: spaceId,
@@ -214,7 +215,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       force: true,
       maxRunMs: 5_000,
     });
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await settleEvents(10);
     const answer = await semantic.answer({
       knowledgeSpaceId: spaceId,
       query: 'What features does the LG 86NANO90UNA have?',
@@ -869,7 +870,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       llm: new GapRepairAnswerLlm(),
       gapRepairer: async (request) => {
         calls.push(request);
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await settleEvents(500);
         return {
           searched: true,
           query: 'lg 86nano90una full specifications',

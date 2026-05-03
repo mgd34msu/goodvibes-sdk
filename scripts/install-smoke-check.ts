@@ -17,7 +17,13 @@ import {
 
 const REGISTRY_MODE = process.argv.includes('--registry');
 const PUBLIC_PACKAGE_DIR = 'packages/sdk';
-const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || readPackage(PUBLIC_PACKAGE_DIR).name;
+const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || requirePackageName(PUBLIC_PACKAGE_DIR);
+
+function requirePackageName(dir: string): string {
+  const name = readPackage(dir).name;
+  if (typeof name !== 'string' || !name) throw new Error(`Package ${dir} is missing a string name.`);
+  return name;
+}
 const WEB_ENTRY = `${PUBLIC_PACKAGE_NAME}/web`;
 const NATIVE_ENTRY = `${PUBLIC_PACKAGE_NAME}/react-native`;
 const AUTH_ENTRY = `${PUBLIC_PACKAGE_NAME}/auth`;
@@ -27,6 +33,7 @@ const DAEMON_ENTRY = `${PUBLIC_PACKAGE_NAME}/daemon`;
 const CONTRACTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/contracts`;
 const REALTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/transport-realtime`;
 const RUNTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime`;
+const RUNTIME_OBSERVABILITY_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/observability`;
 const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
 const smokeScript = `
@@ -45,6 +52,7 @@ const daemon = await import('${DAEMON_ENTRY}');
 const contracts = await import('${CONTRACTS_ENTRY}');
 const runtimeEvents = await import('${REALTIME_ENTRY}');
 const runtime = await import('${RUNTIME_ENTRY}');
+const runtimeObservability = await import('${RUNTIME_OBSERVABILITY_ENTRY}');
 
 const sdk = root.createGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
 if (!sdk?.operator || !sdk?.peer || !sdk?.realtime) throw new Error('sdk entrypoint missing expected surfaces');
@@ -54,7 +62,8 @@ if (typeof peer.createPeerSdk !== 'function') throw new Error('peer client expor
 if (typeof daemon.createDaemonControlRouteHandlers !== 'function') throw new Error('daemon route export missing');
 if (!contracts.OPERATOR_METHOD_IDS || !contracts.PEER_ENDPOINT_IDS) throw new Error('contracts export missing');
 if (typeof runtimeEvents.createRemoteRuntimeEvents !== 'function') throw new Error('runtime realtime export missing');
-if (typeof runtime.TimelineBuffer !== 'function') throw new Error('runtime state inspector export missing');
+if (!runtime.observability || !runtime.transport || !runtime.state) throw new Error('runtime namespace seams missing');
+if (typeof runtimeObservability.TimelineBuffer !== 'function') throw new Error('runtime observability state inspector export missing');
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');
@@ -171,8 +180,8 @@ function buildRegistrySpecs() {
   return [`${PUBLIC_PACKAGE_NAME}@${version}`];
 }
 
-function buildTarballSpecs() {
-  const { tempRoot, publicStages } = stagePackages();
+async function buildTarballSpecs() {
+  const { tempRoot, publicStages } = await stagePackages();
   const packDestination = createSdkTempDir('goodvibes-sdk-tarballs-');
   const packResults = publicStages.map((stage) => packStage(stage.stageDir, packDestination));
   const tarballs = collectTarballs(packResults, packDestination);
@@ -185,7 +194,7 @@ if (REGISTRY_MODE) {
   installWithBun(specs);
   console.log('registry install smoke passed');
 } else {
-  const { tempRoot, specs } = buildTarballSpecs();
+  const { tempRoot, specs } = await buildTarballSpecs();
   const packDir = specs.length > 0 ? resolve(specs[0], '..') : null;
   try {
     installWithNpm(specs);

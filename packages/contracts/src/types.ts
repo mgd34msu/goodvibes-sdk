@@ -6,7 +6,14 @@ export type GatewayMethodAccess = 'public' | 'authenticated' | 'admin' | 'remote
 export type GatewayEventTransport = 'sse' | 'ws' | 'internal';
 export type { RuntimeEventDomain } from './generated/runtime-event-domains.js';
 export type DistributedPeerKind = 'node' | 'device';
-export type DistributedWorkType = 'invoke' | 'status.request' | 'location.request' | 'session.message' | 'automation.run';
+const DISTRIBUTED_WORK_TYPES = [
+  'invoke',
+  'status.request',
+  'location.request',
+  'session.message',
+  'automation.run',
+] as const;
+export type DistributedWorkType = (typeof DISTRIBUTED_WORK_TYPES)[number];
 export type DistributedWorkStatus = 'queued' | 'claimed' | 'completed' | 'failed' | 'cancelled' | 'expired';
 
 export interface ContractHttpDefinition {

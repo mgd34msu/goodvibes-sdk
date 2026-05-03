@@ -31,7 +31,7 @@ const controlHandlers = createDaemonControlRouteHandlers({
     listEvents: () => [],
     get: () => null,
   },
-  getOperatorContract: () => ({ version: 1 }),
+  getOperatorContract: () => ({ version: 1 }), // minimal example contract; real contracts come from buildOperatorContract().
   inspectInboundTls: () => ({ mode: 'off' }),
   inspectOutboundTls: () => ({ mode: 'system' }),
   invokeGatewayMethodCall: async () => ({
@@ -41,6 +41,7 @@ const controlHandlers = createDaemonControlRouteHandlers({
     body: { error: 'No gateway methods are registered in this quickstart' },
   }),
   parseOptionalJsonBody: async (request) => {
+    // Parse request JSON in your daemon host; this quickstart keeps the body optional.
     const text = await request.text();
     return text.trim() ? JSON.parse(text) as Record<string, unknown> : null;
   },

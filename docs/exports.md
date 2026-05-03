@@ -1,6 +1,6 @@
 # Public Exports
 
-GoodVibes SDK v0.30.0 exposes deliberate entrypoints. Code under repository
+GoodVibes SDK exposes deliberate entrypoints. Code under repository
 source folders is implementation, not public API.
 
 ## Facade Package

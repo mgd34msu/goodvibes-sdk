@@ -11,7 +11,6 @@ type EventLike = { readonly type: string };
 
 export interface SerializedEventEnvelope<TEvent extends EventLike = EventLike> {
   readonly type: string;
-  readonly timestamp?: number;
   readonly ts?: number;
   readonly traceId?: string;
   readonly sessionId?: string;
@@ -78,14 +77,10 @@ function toEventEnvelope<TEvent extends EventLike>(
 ): EventEnvelope<string, TEvent> {
   return {
     type: envelope.type,
-    ts: typeof envelope.ts === 'number'
-      ? envelope.ts
-      : typeof envelope.timestamp === 'number'
-        ? envelope.timestamp
-        : Date.now(),
-    traceId: typeof envelope.traceId === 'string' ? envelope.traceId : 'transport-trace',
-    sessionId: typeof envelope.sessionId === 'string' ? envelope.sessionId : 'transport',
-    source: typeof envelope.source === 'string' ? envelope.source : 'transport',
+    ts: typeof envelope.ts === 'number' ? envelope.ts : Date.now(),
+    traceId: typeof envelope.traceId === 'string' ? envelope.traceId : undefined,
+    sessionId: typeof envelope.sessionId === 'string' ? envelope.sessionId : undefined,
+    source: typeof envelope.source === 'string' ? envelope.source : undefined,
     payload: envelope.payload,
   };
 }

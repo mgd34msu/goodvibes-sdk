@@ -6,8 +6,7 @@
     "composite": false,
     "jsx": "react-jsx",
     "lib": [
-      "ES2023",
-      "ESNext.Disposable",
+      "ES2024",
       "DOM"
     ],
     "noEmit": true,
@@ -17,6 +16,8 @@
     ]
   },
   "include": [
+    // Examples intentionally cover JavaScript, TypeScript, and ESM entry
+    // points only; native mobile snippets live in docs, not this typecheck.
     "*.mjs",
     "*.ts",
     "*.tsx"

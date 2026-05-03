@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger.js';
 import { CodeIntelligence } from '../../intelligence/index.js';
 import type { EditItem, OccurrenceSpec, EditResult, EditResultStatus } from './types.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { assertSafeRegexInput, compileSafeRegExp, safeRegExpExec } from '../../utils/safe-regex.js';
 
 type AstGrepModule = typeof import('@ast-grep/napi');
 
@@ -93,7 +94,8 @@ export function findAllPositions(
       if (!flags.includes('s')) flags += 's';
       if (!flags.includes('m')) flags += 'm';
     }
-    const re = new RegExp(find, flags);
+    assertSafeRegexInput(content, { operation: 'edit regex search', maxInputChars: 500_000 });
+    const re = compileSafeRegExp(find, flags, { operation: 'edit regex search' });
     let m: RegExpExecArray | null;
     while ((m = re.exec(content)) !== null) {
       positions.push({ start: m.index, end: m.index + m[0].length });
@@ -283,8 +285,8 @@ export function applyReplacements(
     if (mode === 'regex') {
       try {
         const flags = caseSensitive ? '' : 'i';
-        const re = new RegExp(find, flags);
-        const m = re.exec(content.slice(start, end));
+        const re = compileSafeRegExp(find, flags, { operation: 'edit regex replacement' });
+        const m = safeRegExpExec(re, content.slice(start, end), { operation: 'edit regex replacement' });
         if (m) {
           replacement = replace.replace(/\$(\d+)/g, (_full, digit) => m[parseInt(digit)] ?? '');
         }

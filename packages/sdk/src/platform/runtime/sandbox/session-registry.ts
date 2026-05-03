@@ -232,6 +232,7 @@ export class SandboxSessionRegistry {
     options: {
       readonly cwd?: string;
       readonly env?: NodeJS.ProcessEnv;
+      readonly inheritHostEnv?: boolean;
       readonly timeoutMs?: number;
       readonly input?: string;
     } = {},

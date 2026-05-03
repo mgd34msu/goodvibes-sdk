@@ -1,6 +1,22 @@
 import type { DaemonKnowledgeRefinementRouteHandlers } from './context.js';
+import { jsonErrorResponse } from './error-response.js';
 import type { DaemonKnowledgeRouteContext } from './knowledge-route-types.js';
-import { readBoundedPositiveInteger } from './route-helpers.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  readBoundedBodyInteger,
+  readBoundedPositiveInteger,
+  readOptionalStringField,
+  readStringArrayField,
+} from './route-helpers.js';
+
+type KnowledgeRefinementRunBody = {
+  readonly knowledgeSpaceId?: string;
+  readonly gapIds?: string[];
+  readonly sourceIds?: string[];
+  readonly limit?: number;
+  readonly force?: boolean;
+};
 
 export function createDaemonKnowledgeRefinementRouteHandlers(
   context: DaemonKnowledgeRouteContext,
@@ -13,7 +29,7 @@ export function createDaemonKnowledgeRefinementRouteHandlers(
       const task = context.knowledgeService.getRefinementTask(taskId);
       return task
         ? Response.json({ task })
-        : Response.json({ error: 'Unknown knowledge refinement task' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge refinement task' }, { status: 404 });
     },
     postKnowledgeRunRefinement: async (request) => handleKnowledgeRunRefinement(context, request),
     postKnowledgeCancelRefinementTask: async (taskId, request) => handleKnowledgeCancelRefinementTask(context, taskId, request),
@@ -35,20 +51,29 @@ function readRefinementTaskFilter(url: URL): Record<string, unknown> {
   };
 }
 
+const knowledgeRefinementBodySchemas = createRouteBodySchemaRegistry({
+  run: createRouteBodySchema<KnowledgeRefinementRunBody>('POST /api/knowledge/refinement/run', (body) => {
+    const knowledgeSpaceId = readOptionalStringField(body, 'knowledgeSpaceId') ?? readOptionalStringField(body, 'spaceId');
+    const gapIds = readStringArrayField(body, 'gapIds');
+    const sourceIds = readStringArrayField(body, 'sourceIds');
+    return {
+      ...(knowledgeSpaceId ? { knowledgeSpaceId } : {}),
+      ...(gapIds ? { gapIds } : {}),
+      ...(sourceIds ? { sourceIds } : {}),
+      ...(Object.hasOwn(body, 'limit') ? { limit: readBoundedBodyInteger(body.limit, 1, 500) } : {}),
+      ...(typeof body.force === 'boolean' ? { force: body.force } : {}),
+    };
+  }),
+});
+
 async function handleKnowledgeRunRefinement(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
   const admin = context.requireAdmin(request);
   if (admin) return admin;
   const body = await context.parseOptionalJsonBody(request);
   if (body instanceof Response) return body;
-  const input = body ?? {};
-  return Response.json(await context.knowledgeService.runRefinement({
-    ...(typeof input.knowledgeSpaceId === 'string' ? { knowledgeSpaceId: input.knowledgeSpaceId } : {}),
-    ...(typeof input.spaceId === 'string' ? { knowledgeSpaceId: input.spaceId } : {}),
-    ...(Array.isArray(input.gapIds) ? { gapIds: input.gapIds.filter(isString) } : {}),
-    ...(Array.isArray(input.sourceIds) ? { sourceIds: input.sourceIds.filter(isString) } : {}),
-    ...(typeof input.limit === 'number' ? { limit: Math.max(1, input.limit) } : {}),
-    ...(typeof input.force === 'boolean' ? { force: input.force } : {}),
-  }));
+  const input = knowledgeRefinementBodySchemas.run.parse(body ?? {});
+  if (input instanceof Response) return input;
+  return Response.json(await context.knowledgeService.runRefinement(input));
 }
 
 async function handleKnowledgeCancelRefinementTask(
@@ -61,9 +86,5 @@ async function handleKnowledgeCancelRefinementTask(
   const task = await context.knowledgeService.cancelRefinementTask(taskId);
   return task
     ? Response.json({ task })
-    : Response.json({ error: 'Unknown knowledge refinement task' }, { status: 404 });
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
+    : jsonErrorResponse({ error: 'Unknown knowledge refinement task' }, { status: 404 });
 }

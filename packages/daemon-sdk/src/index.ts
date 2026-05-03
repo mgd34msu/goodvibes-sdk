@@ -33,20 +33,27 @@ export {
 } from './http-policy.js';
 export type { AuthenticatedPrincipal, AuthenticatedPrincipalKind } from './http-policy.js';
 export {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
   isJsonRecord,
   missingScopes,
+  readBoundedBodyInteger,
   readBoundedInteger,
   readBoundedPositiveInteger,
   readChannelConversationKind,
   readChannelLifecycleAction,
   readOptionalBoundedInteger,
+  readOptionalStringField,
+  readStringArrayField,
   scopeMatches,
 } from './route-helpers.js';
 export type {
   BoundedIntegerOptions,
   ChannelConversationKind,
   ChannelLifecycleAction,
+  JsonBody,
   JsonRecord,
+  RouteBodySchema,
 } from './route-helpers.js';
 export type {
   ChannelDirectoryQuery,
@@ -128,7 +135,7 @@ export { createDaemonSystemRouteHandlers } from './system-routes.js';
 export { createDaemonKnowledgeRouteHandlers } from './knowledge-routes.js';
 export { createDaemonKnowledgeRefinementRouteHandlers } from './knowledge-refinement-routes.js';
 export { createDaemonMediaRouteHandlers } from './media-routes.js';
-export type { DaemonRuntimeRouteContext, JsonBody } from './runtime-route-types.js';
+export type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
 export { createDaemonRuntimeAutomationRouteHandlers } from './runtime-automation-routes.js';
 export { createDaemonRuntimeSessionRouteHandlers } from './runtime-session-routes.js';
 export { createDaemonRuntimeRouteHandlers } from './runtime-routes.js';

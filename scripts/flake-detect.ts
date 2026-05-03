@@ -12,8 +12,9 @@
  * Configuration (environment variables):
  *   FLAKE_RUNS   — number of test runs (default: 5)
  *
- * Note: Do NOT run this in normal CI as a blocking gate without reducing N.
- * The CI YAML job uses FLAKE_RUNS=3. Local default is 5.
+ * Note: CI runs this as a separate gate with FLAKE_RUNS=3. Local default is 5.
+ * This detects non-determinism only; use `bun test --coverage` to find
+ * unexercised subsystems.
  *
  * Exit 0 when all runs agree. Exit 1 with a flake report if any run differs.
  */
@@ -108,6 +109,7 @@ console.log(`flake-detect: summary`);
 console.log(`  Total runs : ${N}`);
 console.log(`  Passed     : ${passCount}`);
 console.log(`  Failed     : ${failCount}`);
+console.log('  Coverage   : run `bun test --coverage` when reviewing untested subsystem inventory');
 
 if (allPass) {
   console.log(`\nflake-detect: OK — all ${N} runs passed. No flakiness detected.`);

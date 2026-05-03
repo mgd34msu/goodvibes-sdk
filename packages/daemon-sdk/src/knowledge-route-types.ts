@@ -1,4 +1,5 @@
 import type { ArtifactStoreUploadLike } from './artifact-upload.js';
+import type { JsonRecord } from './route-helpers.js';
 
 export type AutomationScheduleDefinition = unknown;
 export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue' | 'dashboard' | 'rollup';
@@ -128,9 +129,9 @@ export interface DaemonKnowledgeRouteContext {
     interval: number | string,
     anchorAt?: number,
   ) => AutomationScheduleDefinition;
-  readonly parseJsonBody: (req: Request) => Promise<Record<string, unknown> | Response>;
-  readonly parseOptionalJsonBody: (req: Request) => Promise<Record<string, unknown> | null | Response>;
-  readonly parseJsonText: (raw: string) => Record<string, unknown> | Response;
+  readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
+  readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
+  readonly parseJsonText: (raw: string) => JsonRecord | Response;
   readonly requireAdmin: (req: Request) => Response | null;
   readonly resolveAuthenticatedPrincipal: (req: Request) => AuthenticatedPrincipalLike | null;
   readonly knowledgeService: KnowledgeServiceLike;

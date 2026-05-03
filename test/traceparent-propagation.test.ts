@@ -14,6 +14,7 @@
 
 import { describe, expect, test, mock, afterEach } from 'bun:test';
 import { injectTraceparent, injectTraceparentAsync } from '../packages/transport-core/src/otel.js';
+import { settleEvents } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Reset module-level cache between tests by re-importing with a fresh cache
@@ -552,7 +553,7 @@ describe('WebSocket transport: traceparent in auth frame when OTel is present', 
 
     await connector('agents', () => {});
     // Allow async onOpen handler (which calls injectTraceparentAsync) to complete.
-    await new Promise((r) => setTimeout(r, 30));
+    await settleEvents(30);
 
     // Always clear the override so subsequent tests are not affected.
     __resetOtelCache();

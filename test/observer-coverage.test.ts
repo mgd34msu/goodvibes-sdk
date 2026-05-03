@@ -18,6 +18,7 @@ import type {
   OtelSpan,
 } from '../packages/sdk/src/observer/index.js';
 import { GoodVibesSdkError } from '../packages/errors/src/index.js';
+import { captureConsole } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
 // createConsoleObserver — debug level exercises all callbacks
@@ -26,23 +27,19 @@ import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 describe('createConsoleObserver — debug level', () => {
   test('onTransportActivity at debug level logs to console.debug (send — no status/dur)', () => {
     const obs = createConsoleObserver({ level: 'debug' });
-    const logged: unknown[][] = [];
-    const orig = console.debug;
-    console.debug = (...args: unknown[]) => { logged.push(args); };
+    const capture = captureConsole('debug');
     try {
       obs.onTransportActivity?.({ direction: 'send', url: 'http://localhost/api', kind: 'http' });
-      expect(logged).toHaveLength(1);
-      expect(String(logged[0][0])).toMatch(/transport send http http:\/\/localhost\/api/);
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0][0])).toMatch(/transport send http http:\/\/localhost\/api/);
     } finally {
-      console.debug = orig;
+      capture.restore();
     }
   });
 
   test('onTransportActivity at debug level logs status and duration when present', () => {
     const obs = createConsoleObserver({ level: 'debug' });
-    const logged: unknown[][] = [];
-    const orig = console.debug;
-    console.debug = (...args: unknown[]) => { logged.push(args); };
+    const capture = captureConsole('debug');
     try {
       obs.onTransportActivity?.({
         direction: 'recv',
@@ -51,66 +48,58 @@ describe('createConsoleObserver — debug level', () => {
         status: 200,
         durationMs: 42,
       });
-      expect(logged).toHaveLength(1);
-      expect(String(logged[0][0])).toMatch(/status=200/);
-      expect(String(logged[0][0])).toMatch(/42ms/);
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0][0])).toMatch(/status=200/);
+      expect(String(capture.messages[0][0])).toMatch(/42ms/);
     } finally {
-      console.debug = orig;
+      capture.restore();
     }
   });
 
   test('onTransportActivity at info level does NOT log', () => {
     const obs = createConsoleObserver({ level: 'info' });
-    const logged: unknown[][] = [];
-    const orig = console.debug;
-    console.debug = (...args: unknown[]) => { logged.push(args); };
+    const capture = captureConsole('debug');
     try {
       obs.onTransportActivity?.({ direction: 'send', url: 'http://localhost/api', kind: 'http' });
-      expect(logged).toHaveLength(0);
+      expect(capture.messages).toHaveLength(0);
     } finally {
-      console.debug = orig;
+      capture.restore();
     }
   });
 
   test('onEvent at debug level logs to console.debug', () => {
     const obs = createConsoleObserver({ level: 'debug' });
-    const logged: unknown[][] = [];
-    const orig = console.debug;
-    console.debug = (...args: unknown[]) => { logged.push(args); };
+    const capture = captureConsole('debug');
     try {
       obs.onEvent?.({ type: 'runtime.turn.start' } as Parameters<NonNullable<typeof obs.onEvent>>[0]);
-      expect(logged).toHaveLength(1);
-      expect(String(logged[0][0])).toMatch(/event runtime.turn.start/);
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0][0])).toMatch(/event runtime.turn.start/);
     } finally {
-      console.debug = orig;
+      capture.restore();
     }
   });
 
   test('onEvent at info level does NOT log', () => {
     const obs = createConsoleObserver({ level: 'info' });
-    const logged: unknown[][] = [];
-    const orig = console.debug;
-    console.debug = (...args: unknown[]) => { logged.push(args); };
+    const capture = captureConsole('debug');
     try {
       obs.onEvent?.({ type: 'runtime.turn.start' } as Parameters<NonNullable<typeof obs.onEvent>>[0]);
-      expect(logged).toHaveLength(0);
+      expect(capture.messages).toHaveLength(0);
     } finally {
-      console.debug = orig;
+      capture.restore();
     }
   });
 
   test('onError logs kind and category to console.error', () => {
     const obs = createConsoleObserver({ level: 'info' });
-    const logged: unknown[][] = [];
-    const orig = console.error;
-    console.error = (...args: unknown[]) => { logged.push(args); };
+    const capture = captureConsole('error');
     try {
       const err = new GoodVibesSdkError('test error', { category: 'rate_limit' });
       obs.onError?.(err);
-      expect(logged).toHaveLength(1);
-      expect(String(logged[0][0])).toMatch(/rate-limit/);
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0][0])).toMatch(/rate-limit/);
     } finally {
-      console.error = orig;
+      capture.restore();
     }
   });
 });

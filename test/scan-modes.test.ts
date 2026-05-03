@@ -105,13 +105,13 @@ describe('runDeadCode — dead_code mode', () => {
     await writeFixture(
       tmpDir,
       'lib.ts',
-      `export function orphanedHelper(): void {\n  console.log('I am unreferenced');\n}\n`,
+      `/* fixture: scan-target */\nexport function orphanedHelper(): void {\n  console.log('I am unreferenced');\n}\n`,
     );
     // Fixture B: unrelated file that doesn't reference orphanedHelper
     await writeFixture(
       tmpDir,
       'main.ts',
-      `export function main(): void {\n  console.log('main');\n}\n`,
+      `/* fixture: scan-target */\nexport function main(): void {\n  console.log('main');\n}\n`,
     );
 
     const result = await runDeadCode(
@@ -137,7 +137,7 @@ describe('runDeadCode — dead_code mode', () => {
     await writeFixture(
       tmpDir,
       'consumer.ts',
-      `import { computeSum } from './utils.js';\nexport function run(): void {\n  const result = computeSum(1, 2);\n  console.log(result);\n}\n`,
+      `/* fixture: scan-target */\nimport { computeSum } from './utils.js';\nexport function run(): void {\n  const result = computeSum(1, 2);\n  console.log(result);\n}\n`,
     );
 
     const result = await runDeadCode(

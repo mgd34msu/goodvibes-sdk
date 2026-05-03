@@ -12,6 +12,7 @@ import type { RuntimeStore, DomainDispatch } from '../../store/index.js';
 import type { RuntimeTask } from '../../store/domains/tasks.js';
 import type { AgentLifecycleState } from '../../store/domains/agents.js';
 import type { RuntimeEventBus } from '../../events/index.js';
+import { logger } from '../../../utils/logger.js';
 
 /** Owner context for an agent task. */
 export interface AgentOwner {
@@ -90,9 +91,8 @@ export class AgentTaskAdapter {
    * @returns An unsubscribe function that removes all three listeners.
    */
   attachRuntimeBus(bus: RuntimeEventBus): () => void {
-    // m3: idempotent — second call is a no-op with a warning
     if (this._busAttached) {
-      console.warn('[AgentTaskAdapter] attachRuntimeBus called more than once — ignoring duplicate call');
+      logger.warn('[AgentTaskAdapter] attachRuntimeBus called more than once — ignoring duplicate call');
       return () => {};
     }
     this._busAttached = true;

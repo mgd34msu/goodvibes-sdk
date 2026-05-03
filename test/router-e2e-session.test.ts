@@ -55,10 +55,10 @@ function makeSessionHandlers(
     getSharedSession: (sessionId) =>
       Response.json(makeSession(sessionId)),
 
-    closeSharedSession: (sessionId) =>
+    closeSharedSession: (sessionId, _req) =>
       Response.json({ ok: true, sessionId }),
 
-    reopenSharedSession: (sessionId) =>
+    reopenSharedSession: (sessionId, _req) =>
       Response.json({ ok: true, sessionId }),
 
     getSharedSessionMessages: (sessionId, _url) =>
@@ -76,7 +76,7 @@ function makeSessionHandlers(
     postSharedSessionFollowUp: async (sessionId, _req) =>
       Response.json({ ok: true, sessionId }),
 
-    cancelSharedSessionInput: (sessionId, inputId) =>
+    cancelSharedSessionInput: (sessionId, inputId, _req) =>
       Response.json({ ok: true, sessionId, inputId }),
 
     getSharedSessionEvents: (_sessionId, _req) =>
@@ -143,7 +143,7 @@ describe('router-e2e session — messages (happy path)', () => {
   test('POST /api/sessions/:id/close closes session', async () => {
     let capturedId: string | null = null;
     const handlers = makeSessionHandlers({
-      closeSharedSession: (sessionId) => {
+      closeSharedSession: (sessionId, _req) => {
         capturedId = sessionId;
         return Response.json({ ok: true, sessionId });
       },
@@ -180,7 +180,7 @@ describe('router-e2e session — failure paths', () => {
   test('POST /api/sessions/:id/inputs/:inputId/cancel cancels input', async () => {
     let capturedInput: string | null = null;
     const handlers = makeSessionHandlers({
-      cancelSharedSessionInput: (sessionId, inputId) => {
+      cancelSharedSessionInput: (sessionId, inputId, _req) => {
         capturedInput = inputId;
         return Response.json({ ok: true, sessionId, inputId });
       },

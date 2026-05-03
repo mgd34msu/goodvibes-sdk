@@ -16,12 +16,47 @@ async function optionalJson(request) {
   try {
     return JSON.parse(text);
   } catch {
-    return {};
+    return { __goodvibesInvalidJson: true };
   }
 }
 
 function resolveDaemonUrl(env) {
-  return String(env.GOODVIBES_DAEMON_URL || '').replace(/\\/+$/, '');
+  const raw = String(env.GOODVIBES_DAEMON_URL || '').trim();
+  if (!raw) return { error: 'GOODVIBES_DAEMON_URL is not configured', code: 'DAEMON_URL_REQUIRED', status: 503 };
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    return { error: 'GOODVIBES_DAEMON_URL is not a valid URL', code: 'DAEMON_URL_INVALID', status: 400 };
+  }
+  const allowInsecure = String(env.GOODVIBES_ALLOW_INSECURE_DAEMON_URL || '') === 'true';
+  const allowPrivate = String(env.GOODVIBES_ALLOW_PRIVATE_DAEMON_URL || '') === 'true';
+  if (url.protocol !== 'https:' && !(allowInsecure && (url.protocol === 'http:'))) {
+    return { error: 'GOODVIBES_DAEMON_URL must use https unless GOODVIBES_ALLOW_INSECURE_DAEMON_URL=true', code: 'DAEMON_URL_INSECURE', status: 400 };
+  }
+  if (!allowPrivate && isPrivateDaemonHost(url.hostname)) {
+    return { error: 'GOODVIBES_DAEMON_URL targets a private, loopback, or link-local host. Set GOODVIBES_ALLOW_PRIVATE_DAEMON_URL=true only for an intentional tunnel/private deployment.', code: 'DAEMON_URL_PRIVATE_HOST', status: 403 };
+  }
+  url.pathname = url.pathname.replace(/\\/+$/, '');
+  url.search = '';
+  url.hash = '';
+  return { baseUrl: url.toString().replace(/\\/+$/, '') };
+}
+
+function isPrivateDaemonHost(hostname) {
+  const host = String(hostname || '').toLowerCase().replace(/^\\[|\\]$/g, '');
+  if (host === 'localhost' || host.endsWith('.localhost')) return true;
+  if (host === '::1' || host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd')) return true;
+  const parts = host.split('.').map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  const [a, b] = parts;
+  return a === 10
+    || a === 127
+    || (a === 169 && b === 254)
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 100 && b >= 64 && b <= 127)
+    || a === 0;
 }
 
 function toDaemonBatchPath(pathname) {
@@ -40,15 +75,15 @@ function requireWorkerAuth(request, env) {
 }
 
 async function proxyDaemonJson(env, path, init) {
-  const baseUrl = resolveDaemonUrl(env);
-  if (!baseUrl) {
-    return json({ error: 'GOODVIBES_DAEMON_URL is not configured', code: 'DAEMON_URL_REQUIRED' }, 503);
+  const daemon = resolveDaemonUrl(env);
+  if (daemon.error) {
+    return json({ error: daemon.error, code: daemon.code }, daemon.status);
   }
   const headers = new Headers();
   if (init.body !== undefined) headers.set('Content-Type', 'application/json');
   const token = String(env.GOODVIBES_OPERATOR_TOKEN || '');
   if (token) headers.set('Authorization', 'Bearer ' + token);
-  return fetch(baseUrl + path + (init.search || ''), {
+  return fetch(daemon.baseUrl + path + (init.search || ''), {
     method: init.method,
     headers,
     body: init.body,
@@ -103,6 +138,7 @@ export default {
       const queue = env.GOODVIBES_BATCH_QUEUE;
       if (!queue) return json({ error: 'GOODVIBES_BATCH_QUEUE is not bound', code: 'QUEUE_NOT_CONFIGURED' }, 503);
       const body = await optionalJson(request);
+      if (body.__goodvibesInvalidJson === true) return json({ error: 'Invalid JSON request body', code: 'INVALID_JSON' }, 400);
       await queue.send({
         type: 'batch.tick',
         force: toRecord(body).force === true,
@@ -124,6 +160,7 @@ export default {
       const queue = env.GOODVIBES_BATCH_QUEUE;
       if (!queue) return json({ error: 'GOODVIBES_BATCH_QUEUE is not bound', code: 'QUEUE_NOT_CONFIGURED' }, 503);
       const body = await optionalJson(request);
+      if (body.__goodvibesInvalidJson === true) return json({ error: 'Invalid JSON request body', code: 'INVALID_JSON' }, 400);
       await queue.send({
         type: 'batch.job.create',
         body: toRecord(body),

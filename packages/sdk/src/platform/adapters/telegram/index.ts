@@ -14,13 +14,21 @@ function readNumberString(value: unknown): string | undefined {
   return readString(value);
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeBotUsername(value?: string): string {
+  return value ? value.replace(/^@/, '').trim() : '';
+}
+
 function extractTelegramTask(message: Record<string, unknown>, botUsername?: string): string {
   const text = readString(message.text) ?? readString(message.caption) ?? '';
   if (!text) return '';
   const trimmed = text.trim();
-  const botHandle = botUsername ? botUsername.replace(/^@/, '') : '';
+  const botHandle = normalizeBotUsername(botUsername);
   const commandPattern = botHandle
-    ? new RegExp(`^/goodvibes(?:@${botHandle})?\\s*`, 'i')
+    ? new RegExp(`^/goodvibes(?:@${escapeRegExp(botHandle)})?\\s*`, 'i')
     : /^\/goodvibes\s*/i;
   return trimmed.replace(commandPattern, '').trim();
 }
@@ -65,12 +73,13 @@ export async function handleTelegramSurfaceWebhook(req: Request, context: Surfac
   if (!chatId) return Response.json({ ok: true, ignored: true });
   const threadId = readNumberString(message.message_thread_id);
   const botUsername = readString(context.configManager.get('surfaces.telegram.botUsername'));
+  const botHandle = normalizeBotUsername(botUsername);
   const task = extractTelegramTask(message, botUsername);
   const text = readString(message.text) ?? readString(message.caption) ?? '';
   const mentioned = Boolean(
     (chat?.type === 'private')
     || /^\/goodvibes\b/i.test(text)
-    || (botUsername && new RegExp(`@${botUsername.replace(/^@/, '')}\\b`, 'i').test(text)),
+    || (botHandle && new RegExp(`@${escapeRegExp(botHandle)}\\b`, 'i').test(text)),
   );
   const policy = await context.authorizeSurfaceIngress({
     surface: 'telegram',

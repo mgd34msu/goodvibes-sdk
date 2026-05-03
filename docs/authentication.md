@@ -1,5 +1,7 @@
 # Authentication
 
+> Consumer guidance. For internal auth architecture see [Auth Architecture](./auth.md).
+
 Auth is available on both full and companion surfaces. See [Runtime Surfaces](./surfaces.md).
 
 GoodVibes currently exposes two auth modes through the operator contract:

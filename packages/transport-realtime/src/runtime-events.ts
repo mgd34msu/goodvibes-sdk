@@ -1,4 +1,8 @@
-import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';
+import {
+  RUNTIME_EVENT_DOMAINS,
+  TypedSerializedEventEnvelopeSchema,
+  type RuntimeEventDomain,
+} from '@pellux/goodvibes-contracts';
 import { ConfigurationError, GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import {
   normalizeAuthToken,
@@ -68,6 +72,8 @@ export { forSession as forSessionRuntime } from './domain-events.js';
 export interface RuntimeEventConnectorOptions {
   readonly reconnect?: StreamReconnectPolicy;
   readonly onError?: (error: unknown) => void;
+  readonly onOpen?: () => void;
+  readonly onReconnect?: (attempt: number, delayMs: number) => void;
   readonly observer?: TransportObserver;
   /**
    * Called once the WebSocket connector is set up, providing an `emitLocal`
@@ -89,6 +95,8 @@ const MAX_OUTBOUND_QUEUE = 1024;
 const MAX_OUTBOUND_MESSAGE_BYTES = 1024 * 1024;
 /** Maximum total queued outbound WebSocket payload bytes. */
 const MAX_OUTBOUND_QUEUE_BYTES = 16 * 1024 * 1024;
+/** Maximum size accepted for one inbound WebSocket runtime-event frame. */
+const MAX_INBOUND_FRAME_BYTES = 1024 * 1024;
 const textEncoder = new TextEncoder();
 
 function getSocketOpenState(WebSocketImpl: typeof WebSocket): number {
@@ -100,6 +108,13 @@ function isSocketOpen(socket: WebSocket, WebSocketImpl: typeof WebSocket): boole
 }
 
 export class WebSocketTransportError extends GoodVibesSdkError {
+  /**
+   * WebSocket runtime-event transport error.
+   *
+   * Canonical internal codes are `WS_CLOSE_ABNORMAL`,
+   * `WS_EVENT_ERROR`, `WS_QUEUE_OVERFLOW`, `WS_REMOTE_ERROR`, and
+   * `WS_FRAME_TOO_LARGE`.
+   */
   constructor(message: string, options: { readonly cause?: unknown; readonly hint?: string; readonly code?: string } = {}) {
     super(message, {
       code: options.code ?? 'WEBSOCKET_TRANSPORT_ERROR',
@@ -256,6 +271,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     let outboundQueueBytes = 0;
     let droppedOutboundCount = 0;
     let queueOverflowNotified = false;
+    const getAuthToken = normalizeAuthToken(token ?? undefined);
 
     /**
      * Enqueue a message for delivery over this WebSocket connection.
@@ -335,6 +351,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       reconnectAttempt = nextAttempt;
       // Use shared backoff helper so WS and SSE are on identical schedule.
       const delayMs = getStreamReconnectDelay(nextAttempt, reconnectPolicy);
+      options.onReconnect?.(nextAttempt, delayMs);
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         void connect().catch((error) => {
@@ -344,6 +361,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           scheduleReconnect();
         });
       }, delayMs) as TimeoutHandle;
+      // Do not keep Node/Bun processes alive solely to wait for a reconnect.
       reconnectTimer.unref?.();
     };
 
@@ -354,6 +372,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         outboundQueueBytes -= item.sizeBytes;
         ws.send(item.data);
       }
+      queueOverflowNotified = false;
     };
 
     const onOpen = async (event: Event) => {
@@ -362,7 +381,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         ? candidateSocket
         : socket;
       try {
-        const authToken = (await normalizeAuthToken(token ?? undefined)()) ?? null;
+        const authToken = (await getAuthToken()) ?? null;
         if (!authToken || !openedSocket || stopped || socket !== openedSocket) return;
         // Notify observer of outbound WS connection.
         invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
@@ -379,6 +398,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           ...(wsTraceHeaders['tracestate'] ? { tracestate: wsTraceHeaders['tracestate'] } : {}),
         }));
         flushOutboundQueue(openedSocket);
+        options.onOpen?.();
       } catch (error) {
         const sendError = transportErrorFromUnknown(error, 'WebSocket send failed');
         invokeTransportObserver(() => observer?.onError?.(sendError));
@@ -390,14 +410,30 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 
     const onMessage = (event: MessageEvent<string>) => {
       try {
+        if (typeof event.data !== 'string') {
+          throw new WebSocketTransportError('WebSocket runtime event frame was not a string payload.', { code: 'WS_EVENT_ERROR' });
+        }
+        const frameBytes = textEncoder.encode(event.data).byteLength;
+        if (frameBytes > MAX_INBOUND_FRAME_BYTES) {
+          throw new WebSocketTransportError(
+            `WebSocket runtime event frame too large (${frameBytes} bytes, limit ${MAX_INBOUND_FRAME_BYTES}).`,
+            { code: 'WS_FRAME_TOO_LARGE' },
+          );
+        }
         const frame = JSON.parse(event.data) as { type?: string; event?: string; payload?: unknown };
         if (!hasReceivedMessage) {
           hasReceivedMessage = true;
           reconnectAttempt = 0;
         }
-        queueOverflowNotified = false;
         if (frame.type === 'event' && frame.event === domain && frame.payload && typeof frame.payload === 'object') {
-          const wsPayload = frame.payload as SerializedRuntimeEnvelope<TEvent>;
+          const parsedPayload = TypedSerializedEventEnvelopeSchema.safeParse(frame.payload);
+          if (!parsedPayload.success) {
+            throw new WebSocketTransportError('WebSocket runtime event payload failed schema validation.', {
+              code: 'WS_EVENT_ERROR',
+              cause: parsedPayload.error,
+            });
+          }
+          const wsPayload = parsedPayload.data as SerializedRuntimeEnvelope<TEvent>;
           onEnvelope(wsPayload);
           // Notify observer of inbound WS event.
           invokeTransportObserver(() => {

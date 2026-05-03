@@ -71,7 +71,7 @@
     "api:check": "bunx api-extractor run",
     "test:workers:wrangler": "bun run build && bun scripts/test.ts test/workers-wrangler/wrangler.test.ts",
     "any:check": "bun scripts/no-any-types.ts",
-    "prepublishOnly": "bun run validate:strict"
+    "platform-console:check": "bun scripts/no-platform-console.ts"
   },
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
@@ -91,16 +91,22 @@
     "@microsoft/api-extractor": "^7.58.4",
     "@types/bun": "^1.3.10",
     "@types/jsdom": "^28.0.1",
-    "@types/node": "^25.6.0",
+    "@types/node": "^22.16.5",
     "fast-check": "4.7.0",
     "miniflare": "^4.20260415.0",
     "msw": "^2.7.0",
     "publint": "0.3.18",
     "typescript": "^6.0.3",
+    "verdaccio": "^6.5.2",
     "wrangler": "4.87.0"
   },
   "overridesRationale": {
+    "ajv": "Pinned to keep JSON Schema validation on the audited 8.x line used by release tooling dependencies.",
     "bash-language-server": "Vendored to keep shell language support while preserving a clean high-severity audit surface for the Verdaccio dry-run dependency graph.",
+    "fast-xml-parser": "Pinned to the audited 5.x parser release used by transitive Google/Cloud tooling.",
+    "google-auth-library": "Pinned to an audited release for Cloudflare/Wrangler transitive auth tooling.",
+    "lodash": "Pinned away from vulnerable transitive ranges in release-tool dependencies that have not moved off lodash.",
+    "minimatch": "Pinned to a patched glob matcher across build and release transitive dependencies.",
     "uuid": "Vendored CommonJS uuid v4 package for Verdaccio @cypress/request, which still requires a CommonJS uuid entry."
   },
   "overrides": {

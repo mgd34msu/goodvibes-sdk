@@ -69,12 +69,19 @@ Daemon HTTP API types, route helpers, and server bootstrap utilities.
 **Status:** stable
 
 Operator ACP client. Use `createOperatorSdk` to connect to a running daemon.
+The operator surface is intentionally resource-oriented (`sessions`,
+`tasks`, `approvals`) because it is used by human/operator UIs that browse and
+act on daemon resources.
 
 ### `./peer` — `@pellux/goodvibes-sdk/peer`
 
 **Status:** stable
 
 Peer ACP client. Use `createPeerSdk` for peer-to-peer connections.
+The peer surface is intentionally capability-oriented (`pairing`, `peer`,
+`work`, `operator`) because peer nodes negotiate capabilities before work is
+available. This differs from the operator client by design; both clients share
+the same generated contract ids underneath.
 
 ### `./errors` — `@pellux/goodvibes-sdk/errors`
 

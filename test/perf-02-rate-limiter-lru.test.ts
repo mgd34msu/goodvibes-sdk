@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.ts';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.ts';
+import { installFrozenNow } from './_helpers/test-timeout.ts';
 
 function tempDir(suffix: string): string {
   const d = join(tmpdir(), `gv-perf02-${suffix}-${randomUUID()}`);
@@ -26,14 +27,15 @@ function tempDir(suffix: string): string {
 }
 
 const TEST_NOW_MS = 1_800_000_000_000;
-const originalDateNow = Date.now;
+let restoreNow: (() => void) | undefined;
 
 beforeEach(() => {
-  Date.now = () => TEST_NOW_MS;
+  restoreNow = installFrozenNow(TEST_NOW_MS);
 });
 
 afterEach(() => {
-  Date.now = originalDateNow;
+  restoreNow?.();
+  restoreNow = undefined;
 });
 
 type RateLimiterInternal = {

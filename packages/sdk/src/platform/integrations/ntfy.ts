@@ -308,6 +308,12 @@ function readNtfyJsonStreamWithHttp1(
     };
     const fail = (error: unknown) => settle(() => reject(error));
     const finish = () => settle(resolve);
+    const finishQueuedJson = () => {
+      state.queue
+        .then(() => flushNtfyJsonBuffer(state, onMessage))
+        .then(finish)
+        .catch(fail);
+    };
     const abort = () => {
       aborted = true;
       req.destroy();
@@ -334,9 +340,7 @@ function readNtfyJsonStreamWithHttp1(
           .catch(fail);
       });
       res.on('end', () => {
-        state.queue
-          .then(() => flushNtfyJsonBuffer(state, onMessage))
-          .then(finish, fail);
+        finishQueuedJson();
       });
       res.on('error', (error) => {
         if (aborted) finish();
@@ -377,6 +381,12 @@ function readNtfyJsonStreamWithHttp2(
     };
     const fail = (error: unknown) => settle(() => reject(error));
     const finish = () => settle(resolve);
+    const finishQueuedJson = () => {
+      state.queue
+        .then(() => flushNtfyJsonBuffer(state, onMessage))
+        .then(finish)
+        .catch(fail);
+    };
     const abort = () => {
       aborted = true;
       stream.close();
@@ -406,9 +416,7 @@ function readNtfyJsonStreamWithHttp2(
         fail(new NtfyStreamHttpError(status, errorBody));
         return;
       }
-      state.queue
-        .then(() => flushNtfyJsonBuffer(state, onMessage))
-        .then(finish, fail);
+      finishQueuedJson();
     });
     stream.on('error', (error) => {
       if (aborted) finish();

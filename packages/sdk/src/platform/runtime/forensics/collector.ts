@@ -154,8 +154,8 @@ export class ForensicsCollector {
         }
         this._turns.set(turnId, {
           turnId,
-          sessionId: env.sessionId,
-          traceId: env.traceId,
+          sessionId: env.sessionId ?? '',
+          traceId: env.traceId ?? '',
           startedAt: env.ts,
           phaseTimings: [],
           phaseLedger: [],
@@ -266,8 +266,8 @@ export class ForensicsCollector {
         }
         this._tasks.set(taskId, {
           taskId,
-          sessionId: env.sessionId,
-          traceId: env.traceId,
+          sessionId: env.sessionId ?? '',
+          traceId: env.traceId ?? '',
           startedAt: env.ts,
           phaseTimings: [],
           phaseLedger: [],

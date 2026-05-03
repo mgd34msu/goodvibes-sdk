@@ -5,6 +5,7 @@ import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-nativ
 
 const sdk = createReactNativeGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
+  // In production, read from SecureStore.getItemAsync('gv-token').
   authToken: 'replace-me',
 });
 

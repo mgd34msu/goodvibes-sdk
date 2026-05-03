@@ -20,14 +20,16 @@ export async function dispatchDaemonApiRoutes(
   handlers: DaemonApiRouteHandlers,
   extensions?: readonly DaemonApiRouteExtension[],
 ): Promise<Response | null> {
-  const coreResult = (
-    await dispatchRemoteRoutes(req, handlers)
-    ?? await dispatchOperatorRoutes(req, handlers)
-    ?? await dispatchAutomationRoutes(req, handlers)
-    ?? await dispatchSessionRoutes(req, handlers)
-    ?? await dispatchTaskRoutes(req, handlers)
-  );
-  if (coreResult !== null) return coreResult;
+  let result = await dispatchRemoteRoutes(req, handlers);
+  if (result !== null) return result;
+  result = await dispatchOperatorRoutes(req, handlers);
+  if (result !== null) return result;
+  result = await dispatchAutomationRoutes(req, handlers);
+  if (result !== null) return result;
+  result = await dispatchSessionRoutes(req, handlers);
+  if (result !== null) return result;
+  result = await dispatchTaskRoutes(req, handlers);
+  if (result !== null) return result;
   if (extensions) {
     for (const extension of extensions) {
       const result = await extension(req);

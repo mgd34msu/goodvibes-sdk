@@ -21,7 +21,7 @@ export function attachAgentDomain(
           agentId: env.payload.agentId,
           taskId: env.payload.taskId,
           task: env.payload.task,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         agentSpans.set(env.payload.agentId, span);
       });
@@ -122,7 +122,7 @@ export function attachPermissionDomain(
           callId: env.payload.callId,
           tool: env.payload.tool,
           category: env.payload.category,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         permissionSpans.set(env.payload.callId, span);
       });
@@ -226,7 +226,7 @@ export function attachSessionDomain(
       helpers.safe(() => {
         const span = startSessionSpan(helpers.tracer, {
           sessionId: env.payload.sessionId,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
           profileId: env.payload.profileId,
           workingDir: env.payload.workingDir,
         });
@@ -241,7 +241,7 @@ export function attachSessionDomain(
         if (!sessionSpans.has(env.payload.sessionId)) {
           const span = startSessionSpan(helpers.tracer, {
             sessionId: env.payload.sessionId,
-            traceId: env.traceId,
+            traceId: env.traceId ?? '',
             path: env.payload.path,
           });
           sessionSpans.set(env.payload.sessionId, span);
@@ -329,7 +329,7 @@ export function attachCompactionDomain(
           strategy: 'check',
           tokenCount: env.payload.tokenCount,
           threshold: env.payload.threshold,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         compactionSpans.set(env.payload.sessionId, span);
       });
@@ -344,7 +344,7 @@ export function attachCompactionDomain(
           sessionId: env.payload.sessionId,
           strategy: env.payload.strategy,
           tokenCount: env.payload.tokensBefore,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         compactionSpans.set(env.payload.sessionId, span);
       });
@@ -360,7 +360,7 @@ export function attachCompactionDomain(
           strategy: 'reactive',
           tokenCount: env.payload.tokenCount,
           limit: env.payload.limit,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         compactionSpans.set(env.payload.sessionId, span);
       });

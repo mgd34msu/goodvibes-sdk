@@ -78,7 +78,7 @@ export async function extractPdf(buffer: Buffer): Promise<KnowledgeExtractionRes
 
 async function extractPdfWithPdfJs(buffer: Buffer): Promise<KnowledgeExtractionResult | undefined> {
   try {
-    const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
     const loadingTask = pdfjs.getDocument({
       data: new Uint8Array(buffer),
       useSystemFonts: true,

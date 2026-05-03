@@ -6,5 +6,7 @@
     "declaration": false,
     "declarationMap": false
   },
+  // api-extractor uses the workspace build output and bundled package config
+  // for sibling package resolution; see scripts/api-extractor.SETUP.md.
   "references": []
 }

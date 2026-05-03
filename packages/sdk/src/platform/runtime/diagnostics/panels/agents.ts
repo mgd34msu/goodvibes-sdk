@@ -75,8 +75,8 @@ export class AgentsPanel {
     const p = envelope.payload;
     if (!('type' in p)) return;
     const type = (p as { type: string }).type;
-    const traceId = envelope.traceId;
-    const sessionId = envelope.sessionId;
+    const traceId = envelope.traceId ?? '';
+    const sessionId = envelope.sessionId ?? '';
 
     switch (type) {
       case 'AGENT_SPAWNING': {

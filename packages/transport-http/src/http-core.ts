@@ -407,8 +407,13 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           const retryAfterMs = parseRetryAfterMs(response.headers);
           throw createTransportError(response.status, c.url, c.method, body, retryAfterMs);
         }
-        // Return synthetic Response carrying parsed body so callers can .json() it.
-        return new Response(JSON.stringify(body), { status: response.status });
+        // Return synthetic Response carrying parsed body so callers can .json()
+        // it, while preserving HTTP metadata visible to middleware.
+        return new Response(JSON.stringify(body), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
       };
 
       try {

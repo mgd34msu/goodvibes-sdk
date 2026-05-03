@@ -102,7 +102,7 @@ export function normalizeAuthToken(input: AuthTokenInput): AuthTokenResolver {
     return async () => input;
   }
   if (typeof input === 'function') {
-    return async () => await (input as () => string | null | undefined | Promise<string | null | undefined>)() ?? undefined;
+    return async () => (await (input as () => string | null | undefined | Promise<string | null | undefined>)()) ?? undefined;
   }
   // { token: string } wrapper object
   return async () => input.token;

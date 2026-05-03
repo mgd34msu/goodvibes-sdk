@@ -11,6 +11,7 @@
  */
 
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import { settleEvents } from './_helpers/test-timeout.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
@@ -351,7 +352,7 @@ describe('companion-chat provider adapter: stream-error path', () => {
     await manager.postMessage(session.id, 'trigger error');
 
     // Wait for the async turn to complete.
-    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    await settleEvents(100);
 
     manager.dispose();
 
@@ -391,7 +392,7 @@ describe('companion-chat provider adapter: stream-error path', () => {
 
     const session = manager.createSession({ title: 'throw-test' });
     await manager.postMessage(session.id, 'trigger throw');
-    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    await settleEvents(100);
     manager.dispose();
 
     expect(publishedEvents.map((e) => e.event)).toContain('companion-chat.turn.error');

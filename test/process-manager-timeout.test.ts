@@ -8,6 +8,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { ProcessManager } from '../packages/sdk/src/platform/tools/shared/process-manager.js';
+import { waitFor } from './_helpers/test-timeout.js';
 
 describe('ProcessManager.spawn', () => {
   test('returns process_id and pid', async () => {
@@ -26,14 +27,9 @@ describe('ProcessManager.spawn', () => {
     const result = await pm.spawn('echo done', '/tmp', undefined, { timeout_ms: 5000 });
     const id = result.process_id!;
 
-    // Wait for the process to complete naturally
-    await new Promise<void>((resolve) => {
-      const check = () => {
-        const status = pm.getStatus(id);
-        if (!status || status.done) { resolve(); return; }
-        setTimeout(check, 10);
-      };
-      check();
+    await waitFor(() => {
+      const status = pm.getStatus(id);
+      return status === null || status.done === true;
     });
 
     const status = pm.getStatus(id);
@@ -53,18 +49,14 @@ describe('ProcessManager.spawn', () => {
     });
     const id = result.process_id!;
 
-    // Wait for the timeout + grace to fire
-    await new Promise<void>((resolve) => setTimeout(resolve, 250));
+    await waitFor(() => {
+      const status = pm.getStatus(id);
+      return status === null || status.killDeadline !== null;
+    }, { timeoutMs: 500 });
 
-    // The process should be done (killed) and killDeadline should be set
     const status = pm.getStatus(id);
-    if (status) {
-      // Still tracked — verify killDeadline was set
-      expect(status.killDeadline).not.toBeNull();
-      expect(status.killDeadline!).toBeGreaterThan(before);
-    }
-    // Either done and killed or not in map at all — both are acceptable
-    // (entry is cleaned up by the collection promise completion)
+    expect(status === null || status.killDeadline !== null).toBe(true);
+    if (status) expect(status.killDeadline!).toBeGreaterThan(before);
   }, 2000);
 
   test('bg_list and bg_status commands work', async () => {

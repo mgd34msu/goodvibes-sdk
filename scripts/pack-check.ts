@@ -11,7 +11,14 @@ import {
   stagePackages,
 } from './release-shared.ts';
 
-function assertNoWorkspaceRanges(manifest, label) {
+type PackageManifestLike = Record<string, unknown> & {
+  readonly dependencies?: Record<string, unknown>;
+  readonly peerDependencies?: Record<string, unknown>;
+  readonly optionalDependencies?: Record<string, unknown>;
+  readonly scripts?: Record<string, unknown>;
+};
+
+function assertNoWorkspaceRanges(manifest: PackageManifestLike, label: string): void {
   for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
     const group = manifest[field];
     if (!group || typeof group !== 'object') {
@@ -25,7 +32,7 @@ function assertNoWorkspaceRanges(manifest, label) {
   }
 }
 
-function assertBundledBashLspMitigationManifest(manifest, label) {
+function assertBundledBashLspMitigationManifest(manifest: PackageManifestLike, label: string): void {
   if (manifest.optionalDependencies?.['bash-language-server'] !== 'file:vendor/bash-language-server') {
     throw new Error(`${label} must publish the vendored bash-language-server mitigation`);
   }
@@ -34,8 +41,10 @@ function assertBundledBashLspMitigationManifest(manifest, label) {
   }
 }
 
-function assertBundledBashLspPatchManifest(tarball) {
-  const manifest = JSON.parse(readPackedText(tarball, 'package/vendor/bash-language-server/package.json'));
+function assertBundledBashLspPatchManifest(tarball: string): void {
+  const manifest = JSON.parse(readPackedText(tarball, 'package/vendor/bash-language-server/package.json')) as PackageManifestLike & {
+    readonly goodvibesPatch?: { readonly source?: unknown };
+  };
   if (manifest.dependencies?.editorconfig !== '3.0.2') {
     throw new Error(`${tarball} vendored bash-language-server must pin editorconfig@3.0.2`);
   }
@@ -58,14 +67,14 @@ const sourceOfTruthSpecifiers = [
   '@pellux/goodvibes-transport-realtime',
 ];
 
-function assertFlatPackageLayout(tarball, files) {
+function assertFlatPackageLayout(tarball: string, files: readonly string[]): void {
   const leakedEntries = files.filter((file) => file.startsWith('package/node_modules/'));
   if (leakedEntries.length > 0) {
     throw new Error(`${tarball} contains nested node_modules entries: ${leakedEntries.slice(0, 5).join(', ')}`);
   }
 }
 
-function assertSecurityMitigationAssets(tarball, files) {
+function assertSecurityMitigationAssets(tarball: string, files: readonly string[]): void {
   const requiredEntries = [
     'package/vendor/bash-language-server/package.json',
     'package/vendor/bash-language-server/GOODVIBES_PATCH.md',
@@ -78,7 +87,11 @@ function assertSecurityMitigationAssets(tarball, files) {
   }
 }
 
-function assertFacadeImportsAreDeclared(tarball, files, manifest) {
+function assertFacadeImportsAreDeclared(
+  tarball: string,
+  files: readonly string[],
+  manifest: PackageManifestLike,
+): void {
   const distFiles = files.filter(
     (file) => file.startsWith('package/dist/') && (file.endsWith('.js') || file.endsWith('.d.ts')),
   );
@@ -92,7 +105,7 @@ function assertFacadeImportsAreDeclared(tarball, files, manifest) {
   }
 }
 
-const { tempRoot, publicStages } = stagePackages();
+const { tempRoot, publicStages } = await stagePackages();
 
 try {
   const packDestination = createSdkTempDir('goodvibes-sdk-pack-');

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import type { ArtifactReference, ArtifactStore } from '../artifacts/index.js';
 import { ChannelDeliveryRouter, RouteBindingManager } from '../channels/index.js';
 import { ServiceRegistry } from '../config/service-registry.js';
@@ -31,7 +31,7 @@ function sleep(ms: number): Promise<void> {
 function calculateRetryDelay(baseDelayMs: number, attempt: number, strategy: 'fixed' | 'linear' | 'exponential', maxDelayMs?: number, jitterMs?: number): number {
   const multiplier = strategy === 'fixed' ? 1 : strategy === 'linear' ? attempt : Math.pow(2, attempt - 1);
   const base = baseDelayMs * multiplier;
-  const jitter = jitterMs ? Math.floor(Math.random() * jitterMs) : 0;
+  const jitter = jitterMs ? randomInt(0, Math.max(1, Math.floor(jitterMs) + 1)) : 0;
   return Math.min(base + jitter, maxDelayMs ?? Number.MAX_SAFE_INTEGER);
 }
 

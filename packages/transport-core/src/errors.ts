@@ -40,9 +40,13 @@ export function describeUnknownTransportError(error: unknown): string {
 
 export function transportErrorFromUnknown(error: unknown, context: string): Error {
   if (error instanceof Error) return error;
+  const recoverable = typeof error === 'object'
+    && error !== null
+    && typeof (error as { readonly code?: unknown }).code === 'string'
+    && /^(?:EAI_AGAIN|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EPIPE|ECONNABORTED)$/.test((error as { readonly code: string }).code);
   return new GoodVibesSdkError(`${context}: ${describeUnknownTransportError(error)}`, {
     category: 'network',
     source: 'transport',
-    recoverable: true,
+    recoverable,
   });
 }

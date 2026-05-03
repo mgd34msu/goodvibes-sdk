@@ -1,5 +1,5 @@
 import { join, resolve, isAbsolute } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import type { Tool } from '../../types/tools.js';
 import { logger } from '../../utils/logger.js';
 import { EXEC_TOOL_SCHEMA } from './schema.js';
@@ -11,6 +11,7 @@ import { executeFileOperations } from './file-ops.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
 import { mapWithConcurrency } from '../../utils/concurrency.js';
+import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const PROGRESS_AUTO_THRESHOLD_MS = 30_000;
@@ -83,7 +84,7 @@ function computeRetryDelay(
   if (backoff === 'fixed') return delayMs;
   // Full jitter: random in [0, min(base * 2^attempt, maxDelay)] — avoids thundering herd
   const cap = Math.min(delayMs * Math.pow(2, attempt), maxDelayMs);
-  return Math.random() * cap;
+  return randomInt(0, Math.max(1, Math.floor(cap) + 1));
 }
 
 function buildCleanEnv(): Record<string, string> {
@@ -389,7 +390,7 @@ async function runUntil(
   startTime: number,
 ): Promise<ExecCommandResult> {
   const until = cmdInput.until!;
-  const pattern = new RegExp(until.pattern);
+  const pattern = compileSafeRegExp(until.pattern, '', { operation: 'exec until pattern' });
   const untilTimeout = until.timeout_ms ?? timeoutMs;
   const killAfter = until.kill_after ?? false;
   const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { cwd, env, stdout: 'pipe', stderr: 'pipe' });
@@ -407,7 +408,7 @@ async function runUntil(
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         if (isStderr) stderrBuf += chunk; else stdoutBuf += chunk;
-        if (!matched && pattern.test(stdoutBuf + stderrBuf)) {
+        if (!matched && safeRegExpTest(pattern, stdoutBuf + stderrBuf, { operation: 'exec until pattern', maxInputChars: 500_000 })) {
           matched = true;
           if (killAfter) {
             killExecProcess(proc, cmdStr, 'match');

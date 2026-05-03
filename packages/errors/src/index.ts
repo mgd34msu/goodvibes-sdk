@@ -136,7 +136,10 @@ function readErrorCategory(value: unknown): ErrorCategory | undefined {
     : undefined;
 }
 
-function inferCategoryFromCause(cause: unknown, seen = new Set<object>()): ErrorCategory | undefined {
+const MAX_ERROR_CAUSE_DEPTH = 32;
+
+function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth = 0): ErrorCategory | undefined {
+  if (depth >= MAX_ERROR_CAUSE_DEPTH) return undefined;
   if (!cause || typeof cause !== 'object') return undefined;
   const objectCause = cause as object;
   if (seen.has(objectCause)) return undefined;
@@ -149,9 +152,9 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>()): Error
   };
   const category = readErrorCategory(record.category);
   if (category && category !== 'unknown') return category;
-  return inferCategoryFromCause(record.cause, seen)
-    ?? inferCategoryFromCause(record.originalError, seen)
-    ?? inferCategoryFromCause(record.error, seen);
+  return inferCategoryFromCause(record.cause, seen, depth + 1)
+    ?? inferCategoryFromCause(record.originalError, seen, depth + 1)
+    ?? inferCategoryFromCause(record.error, seen, depth + 1);
 }
 
 /**
@@ -205,14 +208,7 @@ export class GoodVibesSdkError extends Error {
     }
     if (typeof value !== 'object' || value === null) return false;
     const record = value as Record<PropertyKey, unknown>;
-    return record[GOODVIBES_SDK_ERROR_BRAND] === true
-      || (
-        value instanceof Error
-        && typeof record.kind === 'string'
-        && typeof record.category === 'string'
-        && typeof record.source === 'string'
-        && typeof record.recoverable === 'boolean'
-      );
+    return record[GOODVIBES_SDK_ERROR_BRAND] === true;
   }
 
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {

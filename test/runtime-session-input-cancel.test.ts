@@ -12,6 +12,8 @@ import { describe, expect, test } from 'bun:test';
 import { createDaemonRuntimeSessionRouteHandlers } from '../packages/daemon-sdk/src/runtime-session-routes.js';
 import type { DaemonRuntimeRouteContext } from '../packages/daemon-sdk/src/runtime-route-types.js';
 
+const ADMIN_REQUEST = new Request('http://localhost/api/sessions/test-session/inputs/input/cancel', { method: 'POST' });
+
 // ---------------------------------------------------------------------------
 // Minimal context stub
 // ---------------------------------------------------------------------------
@@ -110,7 +112,7 @@ describe('F17 — cancelSharedSessionInput: queued → cancelled', () => {
     ]);
     const ctx = makeContext(inputs);
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
-    const res = await handlers.cancelSharedSessionInput('test-session', 'input-queued-1');
+    const res = await handlers.cancelSharedSessionInput('test-session', 'input-queued-1', ADMIN_REQUEST);
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['input']).toBeDefined();
@@ -124,7 +126,7 @@ describe('F17 — cancelSharedSessionInput: queued → cancelled', () => {
     ]);
     const ctx = makeContext(inputs);
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
-    const res = await handlers.cancelSharedSessionInput('test-session', 'input-cancelled-1');
+    const res = await handlers.cancelSharedSessionInput('test-session', 'input-cancelled-1', ADMIN_REQUEST);
     expect(res.status).toBe(200);
   });
 });
@@ -136,7 +138,7 @@ describe('F17 — cancelSharedSessionInput: spawned → 409 CANCEL_NOT_ALLOWED',
     ]);
     const ctx = makeContext(inputs);
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
-    const res = await handlers.cancelSharedSessionInput('test-session', 'input-spawned-1');
+    const res = await handlers.cancelSharedSessionInput('test-session', 'input-spawned-1', ADMIN_REQUEST);
     expect(res.status).toBe(409);
     const body = await res.json() as Record<string, unknown>;
     expect(body['code']).toBe('CANCEL_NOT_ALLOWED');
@@ -150,7 +152,7 @@ describe('F17 — cancelSharedSessionInput: spawned → 409 CANCEL_NOT_ALLOWED',
     ]);
     const ctx = makeContext(inputs);
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
-    const res = await handlers.cancelSharedSessionInput('test-session', 'input-running-1');
+    const res = await handlers.cancelSharedSessionInput('test-session', 'input-running-1', ADMIN_REQUEST);
     expect(res.status).toBe(409);
     const body = await res.json() as Record<string, unknown>;
     expect(body['code']).toBe('CANCEL_NOT_ALLOWED');
@@ -162,7 +164,7 @@ describe('F17 — cancelSharedSessionInput: unknown input → 404', () => {
     const inputs = new Map<string, InputRecord>();
     const ctx = makeContext(inputs);
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
-    const res = await handlers.cancelSharedSessionInput('test-session', 'no-such-input');
+    const res = await handlers.cancelSharedSessionInput('test-session', 'no-such-input', ADMIN_REQUEST);
     expect(res.status).toBe(404);
   });
 });

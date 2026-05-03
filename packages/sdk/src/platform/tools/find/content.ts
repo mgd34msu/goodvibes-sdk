@@ -1,6 +1,7 @@
 import { stat as statAsync } from 'node:fs/promises';
 import type { ContentQuery, OutputOptions, ContentMatch } from './shared.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
 import {
   collectFilesForSearch,
   isBinary,
@@ -59,7 +60,7 @@ async function executeContentQuery(
 
   let regex: RegExp;
   try {
-    regex = new RegExp(rawPattern, flags);
+    regex = compileSafeRegExp(rawPattern, flags, { operation: 'find content' });
   } catch (e) {
     return { error: `Invalid regex: ${summarizeError(e)}` };
   }
@@ -71,8 +72,8 @@ async function executeContentQuery(
     for (const file of files) {
       const content = await readTextFile(file);
       if (content === null) continue;
-      regex.lastIndex = 0;
-      if (!regex.test(content)) {
+      if (content.length > 500_000) continue;
+      if (!safeRegExpTest(regex, content, { operation: 'find content negate', maxInputChars: 500_000 })) {
         nonMatchingFiles.push(file);
         if (nonMatchingFiles.length >= maxTotal) break;
       }
@@ -108,9 +109,9 @@ async function executeContentQuery(
       for (let i = 0; i < lines.length; i++) {
         if (fileMatches.length >= maxPerFile) break;
         if (totalMatches >= maxTotal) break outer;
+        if (lines[i].length > 50_000) continue;
 
-        regex.lastIndex = 0;
-        if (regex.test(lines[i])) {
+        if (safeRegExpTest(regex, lines[i], { operation: 'find content line' })) {
           const match: ContentMatch = { file, line: i + 1, text: lines[i] };
           if (format === 'context') {
             match.context_before = lines.slice(Math.max(0, i - ctxBefore), i);
@@ -234,7 +235,7 @@ async function executeContentQuery(
         let replacedText: string | undefined;
         if (query.preview_replace !== undefined) {
           try {
-            const replaceRegex = new RegExp(rawPattern, flags);
+            const replaceRegex = compileSafeRegExp(rawPattern, flags, { operation: 'find content preview_replace' });
             replacedText = m.text.replace(replaceRegex, query.preview_replace);
           } catch {
             // ignore

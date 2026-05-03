@@ -22,49 +22,80 @@ export const packageDirs = [
 
 export const publicPackageDirs = packageDirs;
 
-export function getRootPackage() {
+export interface PackageManifest extends Record<string, unknown> {
+  name?: string;
+  version?: string;
+  files?: readonly string[];
+  repository?: unknown;
+  dependencies?: Record<string, unknown>;
+  devDependencies?: Record<string, unknown>;
+  peerDependencies?: Record<string, unknown>;
+  optionalDependencies?: Record<string, unknown>;
+}
+
+export interface PackageStage {
+  readonly dir: string;
+  readonly sourceDir: string;
+  readonly stageDir: string;
+  readonly manifest: PackageManifest;
+}
+
+export interface RunOptions {
+  readonly auth?: boolean;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly registry?: string;
+  readonly packageName?: string;
+  readonly stdio?: 'inherit' | 'pipe' | 'ignore';
+  readonly encoding?: BufferEncoding;
+}
+
+export function getRootPackage(): PackageManifest {
   return JSON.parse(readFileSync(resolve(SDK_ROOT, 'package.json'), 'utf8'));
 }
 
-export function getRootVersion() {
-  return getRootPackage().version;
+export function getRootVersion(): string {
+  const version = getRootPackage().version;
+  if (typeof version !== 'string') throw new Error('Root package version must be a string.');
+  return version;
 }
 
-export function readJson(path) {
+export function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
-export function getPackageDirectoryPath(dir) {
+export function getPackageDirectoryPath(dir: string): string {
   return resolve(SDK_ROOT, dir);
 }
 
-export function getPackageJsonPath(dir) {
+export function getPackageJsonPath(dir: string): string {
   return resolve(getPackageDirectoryPath(dir), 'package.json');
 }
 
-export function readPackage(dir) {
-  return readJson(getPackageJsonPath(dir));
+export function readPackage(dir: string): PackageManifest {
+  const value = readJson(getPackageJsonPath(dir));
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Package JSON is not an object: ${dir}`);
+  return value as PackageManifest;
 }
 
-export function getPublicPackageNameOverride() {
+export function getPublicPackageNameOverride(): string | null {
   const value = process.env.GOODVIBES_PUBLIC_PACKAGE_NAME?.trim();
   return value ? value : null;
 }
 
-export function getPublishRegistryOverride() {
+export function getPublishRegistryOverride(): string | null {
   const value = process.env.GOODVIBES_PUBLISH_REGISTRY?.trim();
   return value ? value.replace(/\/+$/, '') : null;
 }
 
-export function isPublicPackageDir(dir) {
+export function isPublicPackageDir(dir: string): boolean {
   return publicPackageDirs.includes(dir);
 }
 
-function shouldCopyPath(path) {
+function shouldCopyPath(path: string): boolean {
   return !path.split('/').includes('node_modules');
 }
 
-function stageSdkSecurityMitigationAssets(stageDir) {
+function stageSdkSecurityMitigationAssets(stageDir: string): void {
   const vendorDir = resolve(stageDir, 'vendor');
   mkdirSync(vendorDir, { recursive: true });
   rmSync(resolve(vendorDir, 'bash-language-server'), { recursive: true, force: true });
@@ -75,11 +106,11 @@ function stageSdkSecurityMitigationAssets(stageDir) {
   );
 }
 
-function normalizeDependencyGroup(group, rootVersion) {
+function normalizeDependencyGroup(group: unknown, rootVersion: string): unknown {
   if (!group || typeof group !== 'object') {
     return group;
   }
-  const next = {};
+  const next: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(group)) {
     next[name] = typeof value === 'string' && value.startsWith('workspace:')
       ? rootVersion
@@ -88,15 +119,17 @@ function normalizeDependencyGroup(group, rootVersion) {
   return next;
 }
 
-function addUniqueFiles(files, entries) {
-  const next = Array.isArray(files) ? [...files] : [];
+function addUniqueFiles(files: unknown, entries: readonly string[]): readonly string[] {
+  const next = Array.isArray(files)
+    ? files.filter((entry): entry is string => typeof entry === 'string')
+    : [];
   for (const entry of entries) {
     if (!next.includes(entry)) next.push(entry);
   }
   return next;
 }
 
-function addSdkSecurityMitigationManifestFields(manifest) {
+function addSdkSecurityMitigationManifestFields(manifest: PackageManifest): PackageManifest {
   return {
     ...manifest,
     dependencies: omitPackageName(manifest.dependencies, 'bash-language-server'),
@@ -110,25 +143,26 @@ function addSdkSecurityMitigationManifestFields(manifest) {
   };
 }
 
-function omitPackageName(group, name) {
+function omitPackageName(group: unknown, name: string): unknown {
   if (!group || typeof group !== 'object') return group;
   const next = Object.fromEntries(Object.entries(group).filter(([entry]) => entry !== name));
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-function normalizeRepository(repository) {
-  if (!repository || typeof repository !== 'object' || typeof repository.url !== 'string') {
+function normalizeRepository(repository: unknown): unknown {
+  if (!repository || typeof repository !== 'object' || typeof (repository as { readonly url?: unknown }).url !== 'string') {
     return repository;
   }
-  const url = repository.url.startsWith('git+')
-    ? repository.url
-    : repository.url.endsWith('.git')
-      ? `git+${repository.url}`
-      : `git+${repository.url}.git`;
-  return { ...repository, url };
+  const record = repository as Record<string, unknown> & { readonly url: string };
+  const url = record.url.startsWith('git+')
+    ? record.url
+    : record.url.endsWith('.git')
+      ? `git+${record.url}`
+      : `git+${record.url}.git`;
+  return { ...record, url };
 }
 
-export function normalizeManifest(pkg, rootVersion = getRootVersion()) {
+export function normalizeManifest(pkg: PackageManifest, rootVersion = getRootVersion()): PackageManifest {
   return {
     ...pkg,
     repository: normalizeRepository(pkg.repository),
@@ -139,17 +173,17 @@ export function normalizeManifest(pkg, rootVersion = getRootVersion()) {
   };
 }
 
-export function createSdkTempDir(prefix) {
+export function createSdkTempDir(prefix: string): string {
   mkdirSync(SDK_TEMP_ROOT, { recursive: true });
   return mkdtempSync(join(SDK_TEMP_ROOT, prefix));
 }
 
-export function stagePackages() {
+export async function stagePackages(): Promise<{ readonly tempRoot: string; readonly stages: readonly PackageStage[]; readonly publicStages: readonly PackageStage[] }> {
   return withWorkspaceLock('stage packages', () => {
     const rootVersion = getRootVersion();
     const publicPackageNameOverride = getPublicPackageNameOverride();
     const tempRoot = createSdkTempDir('goodvibes-sdk-release-');
-    const stages = [];
+    const stages: PackageStage[] = [];
     for (const dir of packageDirs) {
       const sourceDir = getPackageDirectoryPath(dir);
       const stageDir = resolve(tempRoot, dir);
@@ -172,16 +206,16 @@ export function stagePackages() {
   });
 }
 
-export function cleanupStage(tempRoot) {
+export function cleanupStage(tempRoot: string): void {
   rmSync(tempRoot, { recursive: true, force: true });
 }
 
-function getRegistryHost(registryUrl) {
+export function getRegistryHost(registryUrl: string): string {
   const normalized = (registryUrl || 'https://registry.npmjs.org').replace(/\/+$/, '');
   return new URL(normalized).host;
 }
 
-export function getAuthToken(registryUrl = 'https://registry.npmjs.org') {
+export function getAuthToken(registryUrl = 'https://registry.npmjs.org'): string | null {
   const host = getRegistryHost(registryUrl);
   if (host === 'npm.pkg.github.com') {
     return process.env.GITHUB_PACKAGES_TOKEN
@@ -194,7 +228,7 @@ export function getAuthToken(registryUrl = 'https://registry.npmjs.org') {
   return process.env.NODE_AUTH_TOKEN || process.env.NPM_TOKEN || null;
 }
 
-function getPackageScope(packageName) {
+function getPackageScope(packageName: unknown): string | null {
   if (typeof packageName !== 'string' || !packageName.startsWith('@')) {
     return null;
   }
@@ -202,7 +236,7 @@ function getPackageScope(packageName) {
   return slashIndex > 1 ? packageName.slice(0, slashIndex) : null;
 }
 
-export function createAuthEnv(extraEnv = {}, options = {}) {
+export function createAuthEnv(extraEnv: NodeJS.ProcessEnv = {}, options: { readonly registry?: string; readonly packageName?: string } = {}): NodeJS.ProcessEnv {
   const env = { ...process.env, ...extraEnv };
   const registry = options.registry || 'https://registry.npmjs.org';
   const token = getAuthToken(registry);
@@ -225,7 +259,7 @@ export function createAuthEnv(extraEnv = {}, options = {}) {
   return env;
 }
 
-export function run(command, args, cwd, options = {}) {
+export function run(command: string, args: readonly string[], cwd: string, options: RunOptions = {}): string {
   const env = options.auth
     ? createAuthEnv(options.env, {
       registry: options.registry,
@@ -240,7 +274,7 @@ export function run(command, args, cwd, options = {}) {
   });
 }
 
-export function packStage(stageDir, packDestination) {
+export function packStage(stageDir: string, packDestination: string): { readonly filename: string } {
   const output = run(
     'npm',
     ['pack', '--json', '--pack-destination', packDestination],
@@ -250,7 +284,7 @@ export function packStage(stageDir, packDestination) {
   return JSON.parse(output)[0];
 }
 
-export function inspectPackedManifest(tarballPath) {
+export function inspectPackedManifest(tarballPath: string): PackageManifest {
   return JSON.parse(
     execFileSync('tar', ['-xOf', tarballPath, 'package/package.json'], {
       encoding: 'utf8',
@@ -260,7 +294,7 @@ export function inspectPackedManifest(tarballPath) {
   );
 }
 
-export function listPackedFiles(tarballPath) {
+export function listPackedFiles(tarballPath: string): string[] {
   return execFileSync('tar', ['-tf', tarballPath], {
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
@@ -271,7 +305,7 @@ export function listPackedFiles(tarballPath) {
     .filter(Boolean);
 }
 
-export function readPackedText(tarballPath, entryPath) {
+export function readPackedText(tarballPath: string, entryPath: string): string {
   return execFileSync('tar', ['-xOf', tarballPath, entryPath], {
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
@@ -279,6 +313,27 @@ export function readPackedText(tarballPath, entryPath) {
   });
 }
 
-export function collectTarballs(packResults, packDestination) {
+export function collectTarballs(packResults: readonly { readonly filename: string }[], packDestination: string): string[] {
   return packResults.map((result) => resolve(packDestination, result.filename));
+}
+
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function assertChangelogSection(version: string, label: string): void {
+  const changelogPath = resolve(SDK_ROOT, 'CHANGELOG.md');
+  const changelog = readFileSync(changelogPath, 'utf8');
+  const headerPattern = new RegExp(`^##\\s*\\[${escapeRegExp(version)}\\]`, 'm');
+  if (headerPattern.test(changelog)) return;
+  throw new Error(
+    `[${label}] RELEASE BLOCKED: CHANGELOG.md is missing a section for v${version}.\n\n` +
+    `  Add a section before publishing:\n\n` +
+    `    ## [${version}] - YYYY-MM-DD\n` +
+    `    ### Breaking\n` +
+    `    ### Added\n` +
+    `    ### Fixed\n` +
+    `    ### Migration\n\n` +
+    `  See docs/release-and-publishing.md for the Changelog Gate requirements.`,
+  );
 }

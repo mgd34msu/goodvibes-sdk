@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger.js';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { GoodVibesSdkError, RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors';
 import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 
@@ -476,7 +476,7 @@ export class DeliveryQueue {
 
   private _computeDelay(attempt: number): number {
     const exponential = this._config.initialDelayMs * Math.pow(2, attempt - 1);
-    const jitter = Math.random() * this._config.initialDelayMs * 0.5;
+    const jitter = randomInt(0, Math.max(1, Math.floor(this._config.initialDelayMs * 0.5) + 1));
     return Math.min(exponential + jitter, this._config.maxDelayMs);
   }
 }

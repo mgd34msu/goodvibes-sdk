@@ -31,6 +31,25 @@ interface StructuredErrorLike {
   readonly retryAfterMs?: number;
 }
 
+interface ErrorPropertyLike {
+  readonly error: string;
+  readonly code?: string;
+  readonly recoverable?: boolean;
+  readonly status?: number;
+  readonly statusCode?: number;
+  readonly hint?: string;
+  readonly guidance?: string;
+  readonly source?: string;
+  readonly category?: string;
+  readonly provider?: string;
+  readonly operation?: string;
+  readonly phase?: string;
+  readonly requestId?: string;
+  readonly providerCode?: string;
+  readonly providerType?: string;
+  readonly retryAfterMs?: number;
+}
+
 const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: DaemonErrorCategory; message: (provider?: string) => string }> = [
   {
     pattern: /ECONNREFUSED/i,
@@ -119,6 +138,9 @@ function inferCategory(status?: number, code?: string): DaemonErrorCategory {
 
 function inferCategoryFromMessage(message: string): DaemonErrorCategory {
   const msg = message.toLowerCase();
+  // Order matters: credential/authentication patterns are intentionally checked
+  // before generic bad-request wording so provider credential failures remain
+  // actionable for clients.
   if (/api[_\s-]?key|auth|token|credential|jwt|unauthoriz/.test(msg)) return DaemonErrorCategory.AUTHENTICATION;
   if (/forbidden|access denied|permission denied|not allowed/.test(msg)) return DaemonErrorCategory.AUTHORIZATION;
   if (/billing|payment required|credits?|quota|depleted|insufficient balance/.test(msg)) return DaemonErrorCategory.BILLING;
@@ -205,6 +227,26 @@ function isStructuredErrorLike(error: unknown): error is StructuredErrorLike {
   );
 }
 
+function isErrorPropertyLike(error: unknown): error is ErrorPropertyLike {
+  return Boolean(
+    error
+    && typeof error === 'object'
+    && typeof (error as { error?: unknown }).error === 'string'
+  );
+}
+
+function readNumberProperty(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readStringProperty(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readBooleanProperty(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
 export function buildErrorResponseBody(
   error: unknown,
   options: JsonErrorResponseOptions = {},
@@ -250,6 +292,43 @@ export function buildErrorResponseBody(
       ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
     };
   }
+  if (isErrorPropertyLike(error)) {
+    const status = readNumberProperty(error.status) ?? readNumberProperty(error.statusCode) ?? options.status;
+    const code = readStringProperty(error.code);
+    const provider = readStringProperty(error.provider);
+    const providerCode = readStringProperty(error.providerCode);
+    const phase = readStringProperty(error.phase);
+    const requestId = readStringProperty(error.requestId);
+    const source = normalizeSource(readStringProperty(error.source));
+    const recoverable = readBooleanProperty(error.recoverable);
+    const operation = readStringProperty(error.operation);
+    const providerType = readStringProperty(error.providerType);
+    const retryAfterMs = readNumberProperty(error.retryAfterMs);
+    const message = error.error.trim() || options.fallbackMessage || 'Unexpected error';
+    const network = getNetworkErrorMessage(message, provider);
+    const inferred = inferCategory(status, code ?? providerCode);
+    const messageCategory = inferred === DaemonErrorCategory.UNKNOWN
+      ? inferCategoryFromMessage(message)
+      : inferred;
+    const category = normalizeCategory(readStringProperty(error.category)) ?? network?.category ?? messageCategory;
+    const hint = readStringProperty(error.hint) ?? readStringProperty(error.guidance) ?? inferHint(category, status);
+    return {
+      error: buildSummary(network?.summary ?? message, { requestId, providerCode, phase }),
+      ...(hint ? { hint } : {}),
+      ...(code ? { code } : {}),
+      category,
+      ...(source ? { source } : {}),
+      ...(recoverable !== undefined ? { recoverable } : {}),
+      ...(status !== undefined ? { status } : {}),
+      ...(provider ? { provider } : {}),
+      ...(operation ? { operation } : {}),
+      ...(phase ? { phase } : {}),
+      ...(requestId ? { requestId } : {}),
+      ...(providerCode ? { providerCode } : {}),
+      ...(providerType ? { providerType } : {}),
+      ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+    };
+  }
   const message = readMessage(error, options.fallbackMessage);
   const network = getNetworkErrorMessage(message);
   const inferred = inferCategory(options.status);
@@ -271,9 +350,7 @@ export function jsonErrorResponse(error: unknown, options: JsonErrorResponseOpti
   const body = buildErrorResponseBody(error, options);
   const status = options.status ?? body.status ?? 500;
   return Response.json(
-    body.status === undefined && options.status !== undefined
-      ? { ...body, status: options.status }
-      : body,
+    { ...body, status },
     { status },
   );
 }

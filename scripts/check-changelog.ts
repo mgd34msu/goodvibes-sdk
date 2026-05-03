@@ -8,9 +8,10 @@
  * Exit 0 when the section is present. Exit 1 with a clear error when missing.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertChangelogSection, readPackage } from './release-shared.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -31,32 +32,19 @@ if (!existsSync(changelogPath)) {
   process.exit(1);
 }
 
-const sdkPkg = JSON.parse(readFileSync(sdkPkgPath, 'utf8'));
-const version: string = sdkPkg.version;
+const sdkPkg = readPackage('packages/sdk');
+const version = sdkPkg.version;
 
 if (!version || typeof version !== 'string') {
   console.error('[changelog-check] ERROR: Could not read version from packages/sdk/package.json');
   process.exit(1);
 }
 
-const changelog = readFileSync(changelogPath, 'utf8');
-
-// Match a Keep-a-Changelog section header: ## [X.Y.Z] or ## [X.Y.Z] - YYYY-MM-DD
-const headerPattern = new RegExp(`^##\\s*\\[${version.replace(/\./g, '\\.')}\\]`, 'm');
-
-if (!headerPattern.test(changelog)) {
+try {
+  assertChangelogSection(version, 'changelog-check');
+} catch (error) {
   console.error(
-    `[changelog-check] RELEASE BLOCKED: CHANGELOG.md is missing a section for v${version}.\n` +
-    `\n` +
-    `  Add a section before publishing:\n` +
-    `\n` +
-    `    ## [${version}] - YYYY-MM-DD\n` +
-    `    ### Breaking\n` +
-    `    ### Added\n` +
-    `    ### Fixed\n` +
-    `    ### Migration\n` +
-    `\n` +
-    `  See docs/release-and-publishing.md for the Changelog Gate requirements.`,
+    error instanceof Error ? error.message : String(error),
   );
   process.exit(1);
 }

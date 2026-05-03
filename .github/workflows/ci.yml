@@ -40,6 +40,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  flake-check:
+    name: Flake detector
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Run flake detector
+        env:
+          FLAKE_RUNS: "3"
+        run: bun run flake:check
+
   # ---------------------------------------------------------------------------
   # Single build job. Uploads packages/sdk/dist as an artifact so downstream
   # consumers test the exact same bytes. Ensures build determinism across
