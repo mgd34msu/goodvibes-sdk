@@ -54,3 +54,50 @@ export function getConfiguredSystemPrompt(configManager: Pick<ConfigManager, 'ge
 }
 
 export { getConfiguredApiKeys, resolveApiKeys } from './api-keys.js';
+export { HelperModel, HelperRouter } from './helper-model.js';
+export type {
+  HelperChatOptions,
+  HelperModelDeps,
+  HelperTask,
+  HelperUsage,
+  ResolvedHelper,
+} from './helper-model.js';
+export {
+  beginOpenAICodexLogin,
+  exchangeOpenAICodexCode,
+  refreshOpenAICodexToken,
+  OPENAI_CODEX_AUTHORIZE_URL,
+  OPENAI_CODEX_CLIENT_ID,
+  OPENAI_CODEX_REDIRECT_URI,
+  OPENAI_CODEX_TOKEN_URL,
+} from './openai-codex-auth.js';
+export type { OpenAICodexLoginStart, OpenAICodexTokenResult } from './openai-codex-auth.js';
+export * from './secret-refs.js';
+export { SecretsManager } from './secrets.js';
+export type {
+  SecretDeleteOptions,
+  SecretRecord,
+  SecretScope,
+  SecretSource,
+  SecretStorageMedium,
+  SecretStorageMode,
+  SecretStorageReview,
+  SecretWriteOptions,
+  SecretsManagerOptions,
+} from './secrets.js';
+export { ServiceRegistry } from './service-registry.js';
+export type * from './service-registry.js';
+export { SubscriptionManager } from './subscriptions.js';
+export type {
+  OAuthProviderConfig,
+  PendingSubscriptionLogin,
+  ProviderSubscription,
+} from './subscriptions.js';
+export * from './subscription-auth.js';
+export * from './subscription-providers.js';
+export { resolveToolLLM, ToolLLM } from './tool-llm.js';
+export type {
+  ResolvedToolLLM,
+  ToolLLMChatOptions,
+  ToolLLMDeps,
+} from './tool-llm.js';

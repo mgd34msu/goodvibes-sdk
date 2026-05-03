@@ -121,6 +121,7 @@ jobs:
   publish-github-packages:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    continue-on-error: true
     needs: [verify-tag-version, generate-sbom]
     if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped')
     permissions:
