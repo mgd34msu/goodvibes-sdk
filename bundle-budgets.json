@@ -243,6 +243,10 @@
     "gzip_bytes": 3644,
     "rationale": "dependency refresh baseline; measured 3036 B gzip * 1.2"
   },
+  "./platform/runtime/bootstrap": {
+    "gzip_bytes": 509,
+    "rationale": "public runtime seam; measured 424 B gzip * 1.2"
+  },
   "./platform/runtime/events": {
     "gzip_bytes": 3376,
     "rationale": "public runtime seam; measured 2813 B gzip * 1.2"
@@ -255,6 +259,26 @@
     "gzip_bytes": 318,
     "rationale": "public runtime seam; measured 265 B gzip * 1.2"
   },
+  "./platform/runtime/observability": {
+    "gzip_bytes": 516,
+    "rationale": "public runtime seam; measured 430 B gzip * 1.2"
+  },
+  "./platform/runtime/operations": {
+    "gzip_bytes": 947,
+    "rationale": "public runtime seam; measured 789 B gzip * 1.2"
+  },
+  "./platform/runtime/security": {
+    "gzip_bytes": 614,
+    "rationale": "public runtime seam; measured 511 B gzip * 1.2"
+  },
+  "./platform/runtime/shell": {
+    "gzip_bytes": 232,
+    "rationale": "public runtime seam; measured 182 B gzip + 50 B floor"
+  },
+  "./platform/runtime/state": {
+    "gzip_bytes": 423,
+    "rationale": "public runtime seam; measured 352 B gzip * 1.2"
+  },
   "./platform/runtime/store": {
     "gzip_bytes": 1371,
     "rationale": "public runtime seam; measured 1142 B gzip * 1.2"
@@ -266,6 +290,14 @@
   "./platform/runtime/store/helpers": {
     "gzip_bytes": 113,
     "rationale": "public runtime seam; measured 94 B gzip * 1.2"
+  },
+  "./platform/runtime/transport": {
+    "gzip_bytes": 501,
+    "rationale": "public runtime seam; measured 417 B gzip * 1.2"
+  },
+  "./platform/runtime/ui": {
+    "gzip_bytes": 521,
+    "rationale": "public runtime seam; measured 434 B gzip * 1.2"
   },
   "./platform/scheduler": {
     "gzip_bytes": 63,

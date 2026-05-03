@@ -78,7 +78,7 @@ if (existsSync(nestedInternalRoot)) {
 console.log('install smoke ok');
 `;
 
-function writeConsumerFiles(projectDir) {
+function writeConsumerFiles(projectDir: string): void {
   writeFileSync(
     resolve(projectDir, 'package.json'),
     `${JSON.stringify({
@@ -93,7 +93,7 @@ function writeConsumerFiles(projectDir) {
   }
 }
 
-function writeRegistryConfig(projectDir) {
+function writeRegistryConfig(projectDir: string): void {
   const token = getAuthToken(REGISTRY);
   if (!token) {
     return;
@@ -113,7 +113,7 @@ function writeRegistryConfig(projectDir) {
 // transient ECONNRESET / ETIMEDOUT on CI runners; without retry a single
 // network blip fails the release. Code-level errors (parse, missing entry)
 // are NOT retried.
-function retryOnNetworkError(op, label) {
+async function retryOnNetworkError(op: () => Promise<void> | void, label: string): Promise<void> {
   const MAX_ATTEMPTS = 3;
   const BACKOFF_MS = [0, 2000, 5000];
   let lastErr;
@@ -122,10 +122,9 @@ function retryOnNetworkError(op, label) {
       if (attempt > 1) {
         const delay = BACKOFF_MS[attempt - 1] ?? 5000;
         console.log(`[install-smoke] ${label}: attempt ${attempt}/${MAX_ATTEMPTS} after ${delay}ms backoff`);
-        const wait = Date.now() + delay;
-        while (Date.now() < wait) { /* sync sleep */ }
+        await new Promise<void>((r) => setTimeout(r, delay));
       }
-      op();
+      await op();
       return;
     } catch (err) {
       lastErr = err;
@@ -138,11 +137,11 @@ function retryOnNetworkError(op, label) {
   throw lastErr;
 }
 
-function installWithNpm(specs) {
+async function installWithNpm(specs: readonly string[]): Promise<void> {
   const projectDir = createSdkTempDir('goodvibes-sdk-npm-smoke-');
   try {
     writeConsumerFiles(projectDir);
-    retryOnNetworkError(() => {
+    await retryOnNetworkError(() => {
       run('npm', ['install', ...specs], projectDir, {
         auth: REGISTRY_MODE,
         registry: REGISTRY,
@@ -155,14 +154,14 @@ function installWithNpm(specs) {
   }
 }
 
-function installWithBun(specs) {
+async function installWithBun(specs: readonly string[]): Promise<void> {
   const projectDir = createSdkTempDir('goodvibes-sdk-bun-smoke-');
   try {
     writeConsumerFiles(projectDir);
     // Pin zod@^4 explicitly so Bun resolves the dist's `zod/v4` subpath import
     // even when another dependency tree brings an older zod.
     const bunSpecs = [...specs, 'zod@^4'];
-    retryOnNetworkError(() => {
+    await retryOnNetworkError(() => {
       run('bun', ['add', '--force', '--no-cache', ...bunSpecs], projectDir, {
         auth: REGISTRY_MODE,
         registry: REGISTRY,
@@ -175,7 +174,7 @@ function installWithBun(specs) {
   }
 }
 
-function buildRegistrySpecs() {
+function buildRegistrySpecs(): string[] {
   const version = getRootVersion();
   return [`${PUBLIC_PACKAGE_NAME}@${version}`];
 }
