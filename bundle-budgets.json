@@ -1,13 +1,13 @@
 {
   "_comment": [
     "Bundle-size budgets for @pellux/goodvibes-sdk runtime entry points.",
-    "Methodology: gzip_bytes = ceil(actual_gzipped_bytes * 1.2) measured on",
-    "2026-04-17 against the post-Wave-6 dist/ build (pre-Zod, post-error-message audit).",
+    "Methodology: gzip_bytes = ceil(actual_gzipped_bytes * 1.2) for the last",
+    "accepted dist/ baseline.",
     "The 1.2x multiplier provides 20% growth headroom before CI fails.",
-    "To update after Zod lands or a new entry is added:",
+    "To update after a legitimate bundle-size change or a new entry is added:",
     "  1. Run `bun run bundle:check` to see the current actual sizes.",
     "  2. Set gzip_bytes to ceil(actual * 1.2) for each changed entry.",
-    "  3. Update the date in this comment.",
+    "  3. Keep this comment free of stale wave/date-specific rationale.",
     "Entry keys must match the `exports` map keys in packages/sdk/package.json exactly."
   ],
   ".": {

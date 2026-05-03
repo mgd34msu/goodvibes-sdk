@@ -29,6 +29,17 @@ Full surface (Bun only) additionally requires:
 
 Attempting to import the full surface in Hermes, a browser, or any non-Bun runtime will fail at runtime.
 
+## Engine Policy
+
+Published packages declare `node >=20` because the runtime-neutral packages and
+package-manager/tooling metadata should install on current LTS Node releases.
+That declaration does not make Node a supported full-surface runtime; the full
+surface remains Bun-only.
+
+The private workspace root requires Node 22 for CI and release tooling. GitHub
+Actions jobs use Node 22 deliberately while the published package floor remains
+lower for consumers of runtime-neutral entry points.
+
 ## Companion Bundle Guard
 
 CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `workers.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
