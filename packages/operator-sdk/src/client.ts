@@ -61,6 +61,7 @@ function isZodSchema(value: unknown): value is ZodType {
  * e.g. "local_auth.status" → "LocalAuthStatusResponseSchema"
  *      "control.auth.login" → "ControlAuthLoginResponseSchema"
  */
+// Supported id grammar: /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/
 function methodIdToSchemaName(methodId: string): string {
   const pascal = methodId
     .split('.')
@@ -77,7 +78,7 @@ function methodIdToSchemaName(methodId: string): string {
  * dropped. This handles snake_case namespace segments (e.g. `local_auth.status`)
  * correctly, which a naive PascalCase→dot transform cannot.
  */
-export function buildSchemaRegistry(
+function buildSchemaRegistry(
   methodIds: readonly string[],
   schemas: Record<string, unknown>,
 ): Partial<Record<string, ZodType>> {
@@ -97,7 +98,7 @@ export function buildSchemaRegistry(
 }
 
 /** @internal Exposed for unit testing only. */
-export const __internal__ = { buildSchemaRegistry, methodIdToSchemaName };
+export const __internal__ = { buildSchemaRegistry, methodIdToSchemaName } as const;
 
 export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk {
   const validateResponses = options.validateResponses !== false;
