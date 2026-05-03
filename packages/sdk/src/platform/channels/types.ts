@@ -345,7 +345,6 @@ export type ChannelSetupFieldKind =
   | 'select';
 
 export type ChannelDoctorStatus = 'pass' | 'warn' | 'fail';
-export type ChannelLifecycleAction = 'noop' | 'migrate';
 export type ChannelAllowlistTargetKind = 'user' | 'channel' | 'group';
 export type ChannelReasoningVisibility = 'suppress' | 'private' | 'public' | 'summary';
 export type ChannelRenderFormat = 'plain' | 'markdown' | 'json';
@@ -438,22 +437,11 @@ export interface ChannelDoctorReport {
   readonly metadata: Record<string, unknown>;
 }
 
-export interface ChannelLifecycleMigrationRecord {
-  readonly id: string;
-  readonly fromVersion: number;
-  readonly toVersion: number;
-  readonly action: ChannelLifecycleAction;
-  readonly applied: boolean;
-  readonly detail: string;
-  readonly metadata: Record<string, unknown>;
-}
-
 export interface ChannelLifecycleState {
   readonly surface: ChannelSurface;
   readonly accountId?: string;
   readonly currentVersion: number;
   readonly targetVersion: number;
-  readonly migrations: readonly ChannelLifecycleMigrationRecord[];
   readonly metadata: Record<string, unknown>;
 }
 

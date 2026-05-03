@@ -17,7 +17,8 @@ describe('ProcessManager.spawn', () => {
     expect(typeof result.process_id).toBe('string');
     expect(result.process_id!.startsWith('bg_')).toBe(true);
     expect(typeof result.pid).toBe('number');
-    expect(result.pid!).toBeGreaterThan(0);
+    expect(Number.isInteger(result.pid)).toBe(true);
+    expect(result.pid).not.toBe(process.pid);
   });
 
   test('normal short-lived process: done=true, no killDeadline after completion', async () => {
@@ -45,15 +46,15 @@ describe('ProcessManager.spawn', () => {
   test('hanging process: SIGKILL deadline is set after timeout', async () => {
     const pm = new ProcessManager();
     const before = Date.now();
-    // Use a sleep that far exceeds our timeout
-    const result = await pm.spawn('sleep 60', '/tmp', undefined, {
-      timeout_ms: 150,
-      sigterm_grace_ms: 100,
+    // Use a sleep that exceeds the short timeout but keeps the test bounded.
+    const result = await pm.spawn('sleep 10', '/tmp', undefined, {
+      timeout_ms: 50,
+      sigterm_grace_ms: 30,
     });
     const id = result.process_id!;
 
     // Wait for the timeout + grace to fire
-    await new Promise<void>((resolve) => setTimeout(resolve, 400));
+    await new Promise<void>((resolve) => setTimeout(resolve, 250));
 
     // The process should be done (killed) and killDeadline should be set
     const status = pm.getStatus(id);

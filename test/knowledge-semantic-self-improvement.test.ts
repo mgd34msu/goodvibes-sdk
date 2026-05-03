@@ -206,7 +206,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       candidateSourceIds: [generated.id],
       autoRepairGaps: false,
     });
-    expect(seed.answer.gaps.length).toBeGreaterThan(0);
+    expect(seed.answer.gaps.map((gap) => gap.title)).toContain('What are the complete features and specifications for LG 86NANO90UNA?');
 
     const background = semantic.selfImprove({
       knowledgeSpaceId: spaceId,
@@ -229,7 +229,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
 
     expect(answer.answer.gaps).toHaveLength(0);
     expect(answer.answer.sources[0]?.id).toBe(official.id);
-    expect(answer.answer.facts.length).toBeGreaterThan(0);
+    expect(answer.answer.facts.map((fact) => fact.title)).toContain('Display and picture specifications');
     expect(answer.answer.facts.every((fact) => fact.linkedObjectIds?.includes(device.id))).toBe(true);
     expect(answer.answer.text).toContain('Dolby Vision');
     expect(answer.answer.text).not.toContain('matching sources');
@@ -282,7 +282,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     await semantic.enrichSource(official.id);
     const facts = store.listNodes(100).filter((node) => node.kind === 'fact' && node.sourceId === official.id);
 
-    expect(facts.length).toBeGreaterThan(0);
+    expect(facts.map((fact) => fact.title)).toContain('Display and picture specifications');
     expect(facts.every((fact) => (fact.metadata.linkedObjectIds as string[] | undefined)?.includes(device.id))).toBe(true);
     expect(facts.every((fact) => (fact.metadata.subjectIds as string[] | undefined)?.includes(device.id))).toBe(true);
   });
@@ -355,7 +355,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     const facts = store.listNodes(100).filter((node) => node.kind === 'fact' && node.metadata.extractor === 'repair-promotion');
 
     expect(result.closedGaps).toBe(1);
-    expect(facts.length).toBeGreaterThan(0);
+    expect(facts.map((fact) => fact.title)).toContain('Display and picture specifications');
     expect(facts.every((fact) => JSON.stringify(fact.metadata.linkedObjectIds) === JSON.stringify([device.id]))).toBe(true);
     expect(store.listEdges().some((edge) => edge.fromKind === 'source' && edge.fromId === official.id && edge.toKind === 'node' && edge.toId === device.id && edge.relation === 'source_for')).toBe(true);
   });
@@ -900,7 +900,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     const answer = await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
 
     expect(Date.now() - startedAt).toBeLessThan(250);
-    expect(answer.answer.refinementTaskIds?.length).toBeGreaterThan(0);
+    expect(answer.answer.refinementTaskIds).toHaveLength(1);
     await waitFor(() => calls.length === 1, 250);
     await waitFor(() => store.listRefinementTasks(10, { state: 'blocked' }).length === 1, 1_000);
   });

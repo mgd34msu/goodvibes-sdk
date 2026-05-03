@@ -39,7 +39,7 @@ Imported via:
 - `./auth` — auth client, token stores
 - `./errors` — typed error surface
 - `./contracts` — ACP contract types and method IDs
-- `./transport-core`, `./transport-direct`, `./transport-http`, `./transport-realtime` — transport primitives; `./transport-direct` is a facade over `transport-core`
+- `./transport-core`, `./transport-direct`, `./transport-http`, `./transport-realtime` — transport primitives; see [Transports](./transports.md) for the `./transport-direct` facade description
 - `./peer` — peer ACP client
 
 This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers, and Bun. Metro's bundler (React Native) and standard browser bundlers (Vite, webpack, esbuild) can trace and bundle these entry points without modification.

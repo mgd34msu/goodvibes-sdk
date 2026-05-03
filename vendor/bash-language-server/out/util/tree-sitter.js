@@ -107,4 +107,3 @@ function resolveStaticString(node) {
     }
     return null;
 }
-//# sourceMappingURL=tree-sitter.js.map

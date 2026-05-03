@@ -43,7 +43,6 @@ export type {
   ChannelDoctorCheck,
   ChannelRepairAction,
   ChannelDoctorReport,
-  ChannelLifecycleMigrationRecord,
   ChannelLifecycleState,
   ChannelAllowlistTarget,
   ChannelAllowlistResolution,

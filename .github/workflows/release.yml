@@ -29,27 +29,12 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ github.ref }}
-      - name: Verify git tag matches package.json version
-        run: |
-          set -euo pipefail
-          TAG_NAME="${GITHUB_REF_NAME}"
-          PKG_VERSION=$(node -e "process.stdout.write(require('./packages/sdk/package.json').version)")
-          EXPECTED_TAG="v${PKG_VERSION}"
-          if [ "${TAG_NAME}" != "${EXPECTED_TAG}" ]; then
-            echo "ERROR: Git tag '${TAG_NAME}' does not match package.json version '${PKG_VERSION}' (expected tag: '${EXPECTED_TAG}')." >&2
-            exit 1
-          fi
-          echo "Tag verification OK: ${TAG_NAME} == v${PKG_VERSION}"
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.3.10"
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: Build workspace packages
-        run: bun run build
-      - name: Verify generated contract artifacts
-        run: bun run contracts:check
+      - name: Verify git tag matches package.json version
+        run: bun scripts/verify-release-tag-version.ts
 
   generate-sbom:
     runs-on: ubuntu-latest
@@ -80,11 +65,41 @@ jobs:
           path: sbom.cdx.json
           retention-days: 90
 
-  publish-npm:
+  validate-release:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [verify-tag-version, generate-sbom]
     if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.3.10"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Validate workspace once before publish jobs
+        run: bun run validate
+      - name: Verify generated contract artifacts
+        run: bun run contracts:check
+      - name: Archive workspace build output
+        run: tar -czf /tmp/workspace-build-output.tgz packages/*/dist
+      - name: Upload workspace build output
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: workspace-build-output
+          path: /tmp/workspace-build-output.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-npm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [verify-tag-version, generate-sbom, validate-release]
+    if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped') && needs.validate-release.result == 'success'
     permissions:
       contents: read
       id-token: write
@@ -104,8 +119,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Validate workspace
-        run: bun run validate
+      - name: Download workspace build output
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace build output
+        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
       - name: Release dry run
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
         run: bun run release:dry-run
@@ -122,8 +142,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     continue-on-error: true
-    needs: [verify-tag-version, generate-sbom]
-    if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped')
+    needs: [verify-tag-version, generate-sbom, validate-release]
+    if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped') && needs.validate-release.result == 'success'
     permissions:
       contents: read
       packages: write
@@ -147,8 +167,13 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Validate workspace
-        run: bun run validate
+      - name: Download workspace build output
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace build output
+        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
       - name: Release dry run
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
         env:

@@ -211,6 +211,9 @@ jobs:
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
       - name: Build workspace dependency declarations
+        # API Extractor reads sibling-package declaration files from the
+        # workspace, while the SDK package surface is checked against the exact
+        # dist artifact built by the main build job. Both are required here.
         run: bun run build
       - name: Download dist artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -273,45 +276,9 @@ jobs:
           fi
           echo "sbom-check: sbom.cdx.json is ${SIZE} bytes — OK"
       - name: Validate SBOM schema (CycloneDX)
-        run: |
-          set -euo pipefail
-          node -e "
-            const sbom = JSON.parse(require('fs').readFileSync('sbom.cdx.json', 'utf8'));
-            if (!sbom.bomFormat || sbom.bomFormat !== 'CycloneDX') {
-              console.error('ERROR: bomFormat is not CycloneDX'); process.exit(1);
-            }
-            if (!sbom.specVersion) {
-              console.error('ERROR: specVersion missing'); process.exit(1);
-            }
-            if (!sbom.components || !Array.isArray(sbom.components)) {
-              console.error('ERROR: components array missing'); process.exit(1);
-            }
-            console.log('SBOM schema OK — specVersion:', sbom.specVersion, 'components:', sbom.components.length);
-          "
+        run: bun scripts/sbom-validate.ts sbom.cdx.json
       - name: Enforce license policy
-        run: |
-          set -euo pipefail
-          node -e "
-            const sbom = JSON.parse(require('fs').readFileSync('sbom.cdx.json', 'utf8'));
-            const blocked = /^(?:AGPL|GPL|LGPL|SSPL)(?:-|$)/i;
-            const offenders = [];
-            for (const component of sbom.components ?? []) {
-              const licenses = (component.licenses ?? []).flatMap((entry) => {
-                if (entry.license?.id) return [entry.license.id];
-                if (entry.license?.name) return [entry.license.name];
-                if (entry.expression) return [entry.expression];
-                return [];
-              });
-              if (licenses.some((license) => blocked.test(String(license)))) {
-                offenders.push(component.name + '@' + component.version + ' (' + licenses.join(', ') + ')');
-              }
-            }
-            if (offenders.length > 0) {
-              console.error('Blocked license(s):\n' + offenders.join('\n'));
-              process.exit(1);
-            }
-            console.log('License policy OK');
-          "
+        run: bun scripts/sbom-license-policy.ts sbom.cdx.json
       - name: Upload SBOM as CI artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

@@ -44,7 +44,7 @@ import { createOperatorRemoteClient } from './operator-remote-client.js';
 import { createPeerRemoteClient } from './peer-remote-client.js';
 import {
   createEventSourceConnector,
-  requestJson,
+  requestJsonRaw,
 } from './shared.js';
 import type { TransportPaths } from './transport-paths.js';
 import type {
@@ -395,7 +395,7 @@ function createOperatorClient(
   return {
     sessions: {
       current: async (): Promise<UiSessionSnapshot> =>
-        await requestJson(fetchImpl, buildTransportUrl(paths.controlPlaneUrl, '/api/session'), createJsonRequestInit(token)),
+        await requestJsonRaw(fetchImpl, buildTransportUrl(paths.controlPlaneUrl, '/api/session'), createJsonRequestInit(token)),
       list: async (limit = 100): Promise<readonly SharedSessionRecord[]> =>
         (await operatorApi.sessions.list({ limit })).sessions.map((entry) => normalizeSharedSessionRecord(entry as Record<string, unknown>)),
       get: async (sessionId): Promise<SharedSessionRecord | null> => {
@@ -760,7 +760,7 @@ export function createHttpTransport(options: HttpTransportOptions): HttpTranspor
         operator.sessions.list(),
         operator.controlPlane.snapshot(),
         operator.providers.snapshot(),
-        requestJson<Record<string, unknown>>(fetchImpl, paths.remoteUrl, createJsonRequestInit(options.authToken)),
+        requestJsonRaw<Record<string, unknown>>(fetchImpl, paths.remoteUrl, createJsonRequestInit(options.authToken)),
         peer.getNodeHostContract(),
         peer.getSnapshot(),
       ]);

@@ -106,7 +106,6 @@ const AUTOMATION_RUN_TRIGGER_SCHEMA = enumSchema([
   'webhook',
   'surface',
   'watcher',
-  'migration',
 ]);
 const AUTOMATION_SURFACE_KIND_SCHEMA = enumSchema([
   'tui',
@@ -135,7 +134,6 @@ const AUTOMATION_SOURCE_KIND_SCHEMA = enumSchema([
   'webhook',
   'surface',
   'watcher',
-  'migration',
 ]);
 const AUTOMATION_EXECUTION_KIND_SCHEMA = enumSchema(['isolated', 'current', 'pinned', 'background', 'main']);
 const AUTOMATION_EXECUTION_TARGET_KIND_SCHEMA = enumSchema([

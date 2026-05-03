@@ -467,7 +467,7 @@ describe('WorkspaceSwapManager: edge cases', () => {
     // Swap itself should succeed
     expect(result.ok).toBe(true);
     // COMPLETED event must have been emitted
-    expect(completedPayloads.length).toBeGreaterThan(0);
+    expect(completedPayloads).toHaveLength(1);
     // persistedInDaemonSettings must be false (write failed non-fatally)
     expect(completedPayloads[0]!['persistedInDaemonSettings']).toBe(false);
   });

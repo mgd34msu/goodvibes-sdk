@@ -10,8 +10,7 @@ describe('obs-08 workspace swap failed', () => {
     const err = new Error('Workspace swap failed: target directory not found');
     const result = normalizeError(err);
     expect(result.name).toBe('Error');
-    expect(typeof result.message).toBe('string');
-    expect(result.message.length).toBeGreaterThan(0);
+    expect(result.message).toBe('Workspace swap failed: target directory not found');
   });
 
   test('normalizeError infers recoverable=false for unknown errors', async () => {
@@ -24,7 +23,6 @@ describe('obs-08 workspace swap failed', () => {
   test('summarizeError returns a non-empty string', async () => {
     const { summarizeError } = await import('../packages/sdk/src/platform/utils/error-display.js');
     const result = summarizeError(new Error('workspace gone'));
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+    expect(result).toBe('workspace gone');
   });
 });

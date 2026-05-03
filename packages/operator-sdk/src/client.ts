@@ -27,8 +27,18 @@ export interface OperatorSdkOptions extends HttpTransportOptions {
   readonly validateResponses?: boolean;
 }
 
+/**
+ * Public invocation options intentionally wrap the remote-client options so
+ * operator-sdk can add operator-specific fields without changing the generic
+ * remote client contract.
+ */
 export interface OperatorInvokeOptions extends OperatorRemoteClientInvokeOptions {}
 
+/**
+ * Public stream options intentionally wrap the remote-client stream options so
+ * operator-sdk can add stream-specific surface fields while keeping the
+ * generic client contract stable.
+ */
 export interface OperatorStreamOptions extends OperatorRemoteClientStreamOptions {}
 
 export type OperatorSdk =

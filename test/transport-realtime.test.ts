@@ -359,8 +359,7 @@ describe('transport realtime', () => {
   // F-CONC-02: Default maxAttempts is finite (not POSITIVE_INFINITY)
   // ---------------------------------------------------------------------------
   test('WebSocket connector: DEFAULT_WS_MAX_ATTEMPTS is finite and positive', () => {
-    expect(Number.isFinite(DEFAULT_WS_MAX_ATTEMPTS)).toBe(true);
-    expect(DEFAULT_WS_MAX_ATTEMPTS).toBeGreaterThan(0);
+    expect(DEFAULT_WS_MAX_ATTEMPTS).toBe(10);
   });
 
   test('WebSocket connector: omitting maxAttempts uses DEFAULT_WS_MAX_ATTEMPTS, not POSITIVE_INFINITY', async () => {

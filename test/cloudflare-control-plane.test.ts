@@ -495,8 +495,8 @@ describe('CloudflareControlPlaneManager', () => {
     expect(hasTokenResource(policies, 'com.cloudflare.api.account.acct-1')).toBe(true);
     expect(hasTokenResource(policies, 'com.cloudflare.api.account.zone.zone-1')).toBe(true);
     expect(hasTokenResource(policies, 'com.cloudflare.edge.r2.bucket.*')).toBe(false);
-    expect(tokenPolicyForResource(policies, 'com.cloudflare.api.account.acct-1')?.permission_groups.length).toBeGreaterThan(0);
-    expect(tokenPolicyForResource(policies, 'com.cloudflare.api.account.zone.zone-1')?.permission_groups.length).toBeGreaterThan(0);
+    expect(tokenPolicyForResource(policies, 'com.cloudflare.api.account.acct-1')?.permission_groups.map((group) => group.id)).toContain('pg-kv');
+    expect(tokenPolicyForResource(policies, 'com.cloudflare.api.account.zone.zone-1')?.permission_groups.map((group) => group.id)).toContain('pg-dns');
   });
 
   test('rejects Cloudflare-created operational tokens when policies are not persisted', async () => {

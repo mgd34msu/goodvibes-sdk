@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "composite": true,
-    "incremental": true
+    "incremental": true,
+    "types": []
   },
   "files": [],
   "references": [

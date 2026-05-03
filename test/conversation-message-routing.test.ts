@@ -303,7 +303,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     const body = await res.json() as { messageId: string; routedTo: string; sessionId: string };
     // Short-circuit response: no session/mode/agentId — just messageId, routedTo, sessionId
     expect(typeof body.messageId).toBe('string');
-    expect(body.messageId.length).toBeGreaterThan(0);
+    expect(body.messageId).toMatch(/^companion-/);
     expect(body.routedTo).toBe('conversation');
     expect(body.sessionId).toBe(sessionId);
   });
@@ -327,6 +327,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
       `http://localhost/api/sessions/${sessionId}/messages`,
       { body: 'Test message body', kind: 'message' },
     );
+    const before = Date.now();
     await handlers.postSharedSessionMessage(sessionId, req);
     const event = followupEvents[0];
     expect(event).toBeDefined();
@@ -337,7 +338,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     expect(envelope.body).toBe('Test message body');
     expect(envelope.source).toBe('companion-followup');
     expect(typeof envelope.timestamp).toBe('number');
-    expect(envelope.timestamp).toBeGreaterThan(0);
+    expect(envelope.timestamp).toBeGreaterThanOrEqual(before);
   });
 
   test('event is scoped to the target session only (sessionId on event)', async () => {

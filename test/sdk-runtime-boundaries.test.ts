@@ -61,7 +61,7 @@ describe('SDK runtime boundaries and export map', () => {
   test('keeps client capabilities free of node-only requirements', () => {
     const clientCapabilities = listGoodVibesRuntimeCapabilities('client');
 
-    expect(clientCapabilities.length).toBeGreaterThan(0);
+    expect(clientCapabilities.map((capability) => capability.id)).toEqual(['remote-client']);
     expect(clientCapabilities.every((capability) => (
       !capability.requirements.includes('filesystem')
       && !capability.requirements.includes('child-process')

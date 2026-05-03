@@ -779,4 +779,3 @@ class Analyzer {
     }
 }
 exports.default = Analyzer;
-//# sourceMappingURL=analyser.js.map

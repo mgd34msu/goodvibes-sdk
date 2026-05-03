@@ -102,4 +102,3 @@ function getLogLevelFromEnvironment() {
     }
     return LOG_LEVELS_TO_MESSAGE_TYPES[exports.DEFAULT_LOG_LEVEL];
 }
-//# sourceMappingURL=logger.js.map

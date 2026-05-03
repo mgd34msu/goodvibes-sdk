@@ -10,4 +10,3 @@ function isPositionIncludedInRange(position, range) {
         range.start.character <= position.character &&
         range.end.character >= position.character);
 }
-//# sourceMappingURL=lsp.js.map

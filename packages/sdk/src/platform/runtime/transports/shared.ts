@@ -29,7 +29,7 @@ export {
   createJsonInit,
   createJsonRequestInit,
   readJsonBody,
-  requestJson,
+  requestJsonRaw,
 } from './http-json-transport.js';
 export type { ResolvedHttpRetryPolicy } from './http-retry.js';
 export { DEFAULT_HTTP_RETRY_POLICY, getHttpRetryDelay, isRetryableHttpStatus, isRetryableNetworkError, normalizeHttpRetryPolicy, resolveHttpRetryPolicy } from './http-retry.js';

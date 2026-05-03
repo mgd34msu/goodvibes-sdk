@@ -43,7 +43,6 @@ export const OPERATOR_METHOD_IDS = [
   "channels.directory.query",
   "channels.doctor.get",
   "channels.lifecycle.get",
-  "channels.lifecycle.migrate",
   "channels.policies.audit",
   "channels.policies.list",
   "channels.policies.update",

@@ -50,4 +50,3 @@ function analyzeShebang(fileContent) {
         shellDialect: (_a = getShellDialectFromShellDirective(fileContent)) !== null && _a !== void 0 ? _a : (shebang ? getShellDialect(shebang) : null),
     };
 }
-//# sourceMappingURL=shebang.js.map

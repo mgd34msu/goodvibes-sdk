@@ -28,9 +28,8 @@ These subpaths re-export real workspace packages:
 - `@pellux/goodvibes-sdk/transport-http`
 - `@pellux/goodvibes-sdk/transport-realtime`
 
-`transport-direct` is the SDK facade name for in-process direct transport backed
-by `transport-core`; there is no separate `packages/transport-direct` source
-package.
+See [Transports](./transports.md) for the canonical `transport-direct` facade
+description.
 
 ## Platform Surfaces
 

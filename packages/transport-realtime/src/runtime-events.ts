@@ -85,6 +85,11 @@ export const DEFAULT_WS_MAX_ATTEMPTS = 10;
 
 /** Maximum number of messages that may be queued in the outbound queue before the oldest entry is dropped. */
 const MAX_OUTBOUND_QUEUE = 1024;
+/** Maximum size for a single queued outbound WebSocket message. */
+const MAX_OUTBOUND_MESSAGE_BYTES = 1024 * 1024;
+/** Maximum total queued outbound WebSocket payload bytes. */
+const MAX_OUTBOUND_QUEUE_BYTES = 16 * 1024 * 1024;
+const textEncoder = new TextEncoder();
 
 function getSocketOpenState(WebSocketImpl: typeof WebSocket): number {
   return typeof WebSocketImpl.OPEN === 'number' ? WebSocketImpl.OPEN : 1;
@@ -95,9 +100,9 @@ function isSocketOpen(socket: WebSocket, WebSocketImpl: typeof WebSocket): boole
 }
 
 export class WebSocketTransportError extends GoodVibesSdkError {
-  constructor(message: string, options: { readonly cause?: unknown; readonly hint?: string } = {}) {
+  constructor(message: string, options: { readonly cause?: unknown; readonly hint?: string; readonly code?: string } = {}) {
     super(message, {
-      code: 'WEBSOCKET_TRANSPORT_ERROR',
+      code: options.code ?? 'WEBSOCKET_TRANSPORT_ERROR',
       category: 'network',
       source: 'transport',
       recoverable: true,
@@ -244,10 +249,11 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     let hasReceivedMessage = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: TimeoutHandle | null = null;
-    // Bounded outbound message queue — max MAX_OUTBOUND_QUEUE entries, drop-oldest policy.
+    // Bounded outbound message queue — max entries and total bytes, drop-oldest policy.
     // Messages pushed while the socket is not yet open or is reconnecting are buffered here
     // and flushed on the next successful open event.
-    const outboundQueue: string[] = [];
+    const outboundQueue: Array<{ readonly data: string; readonly sizeBytes: number }> = [];
+    let outboundQueueBytes = 0;
     let droppedOutboundCount = 0;
     let queueOverflowNotified = false;
 
@@ -258,9 +264,11 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
      * If the socket is not yet open (or is reconnecting), the message is
      * buffered and will be flushed once the connection is re-established.
      *
-     * When the buffer is full (> MAX_OUTBOUND_QUEUE), the oldest pending
-     * message is silently dropped and a counter is incremented. Callers that
-     * need back-pressure should check `socket?.readyState` before calling.
+     * When the buffer is full by count or byte budget, the oldest pending
+     * message is dropped and a counter is incremented. A single message larger
+     * than MAX_OUTBOUND_MESSAGE_BYTES is rejected instead of being queued.
+     * Callers that need back-pressure should check `socket?.readyState` before
+     * calling.
      *
      * @param data - Serialised message string to send.
      */
@@ -269,21 +277,42 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         socket.send(data);
         return;
       }
-      if (outboundQueue.length >= MAX_OUTBOUND_QUEUE) {
-        // Drop oldest message to make room (drop-oldest policy).
-        outboundQueue.shift();
+      const sizeBytes = textEncoder.encode(data).byteLength;
+      if (sizeBytes > MAX_OUTBOUND_MESSAGE_BYTES) {
         droppedOutboundCount += 1;
         if (!queueOverflowNotified) {
           queueOverflowNotified = true;
           options.onError?.(new WebSocketTransportError(
-            `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE}). Dropping oldest messages until the socket reconnects.`,
+            `WebSocket outbound message too large (${sizeBytes} bytes, limit ${MAX_OUTBOUND_MESSAGE_BYTES}). Dropping the message while the socket reconnects.`,
             {
+              code: 'WS_QUEUE_OVERFLOW',
+              hint: 'Split large runtime event frames before enqueueing them while the WebSocket is disconnected.',
+            },
+          ));
+        }
+        return;
+      }
+      while (
+        outboundQueue.length >= MAX_OUTBOUND_QUEUE
+        || outboundQueueBytes + sizeBytes > MAX_OUTBOUND_QUEUE_BYTES
+      ) {
+        const dropped = outboundQueue.shift();
+        if (!dropped) break;
+        outboundQueueBytes -= dropped.sizeBytes;
+        droppedOutboundCount += 1;
+        if (!queueOverflowNotified) {
+          queueOverflowNotified = true;
+          options.onError?.(new WebSocketTransportError(
+            `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE} messages / ${MAX_OUTBOUND_QUEUE_BYTES} bytes). Dropping oldest messages until the socket reconnects.`,
+            {
+              code: 'WS_QUEUE_OVERFLOW',
               hint: 'Wait for the runtime event WebSocket to reconnect before sending more local frames.',
             },
           ));
         }
       }
-      outboundQueue.push(data);
+      outboundQueue.push({ data, sizeBytes });
+      outboundQueueBytes += sizeBytes;
     };
 
     // Notify caller of the emitter handle for tests and local frame injection.
@@ -320,9 +349,10 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 
     const flushOutboundQueue = (ws: WebSocket) => {
       while (outboundQueue.length > 0) {
-        const data = outboundQueue.shift();
-        if (data === undefined) break;
-        ws.send(data);
+        const item = outboundQueue.shift();
+        if (!item) break;
+        outboundQueueBytes -= item.sizeBytes;
+        ws.send(item.data);
       }
     };
 
@@ -401,7 +431,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     };
 
     const onError = (event: Event) => {
-      const streamError = webSocketEventError(event);
+      const streamError = webSocketEventError(event, socket, url);
       invokeTransportObserver(() => observer?.onError?.(streamError));
       options.onError?.(streamError);
     };
@@ -445,14 +475,25 @@ function webSocketCloseError(event: CloseEvent): Error {
     `wasClean=${wasClean}`,
   ].filter(Boolean).join(' ');
   return new WebSocketTransportError(`WebSocket runtime event stream closed unexpectedly: ${detail}`, {
-    cause: event,
+    code: 'WS_CLOSE_ABNORMAL',
+    cause: { code, reason, wasClean },
   });
 }
 
-function webSocketEventError(event: Event): Error {
+function webSocketEventError(event: Event, socket: WebSocket | null, url: string): Error {
   const candidate = event as ErrorEvent;
+  const cause = {
+    eventType: event.type,
+    url,
+    readyState: socket?.readyState,
+    message: typeof candidate.message === 'string' ? candidate.message : undefined,
+    error: candidate.error,
+  };
   if (candidate.error) {
-    return transportErrorFromUnknown(candidate.error, 'WebSocket runtime event stream error');
+    return new WebSocketTransportError(
+      `WebSocket runtime event stream error: ${transportErrorFromUnknown(candidate.error, 'WebSocket error').message}`,
+      { code: 'WS_REMOTE_ERROR', cause },
+    );
   }
   const eventMessage = typeof candidate.message === 'string' && candidate.message.trim().length > 0
     ? candidate.message.trim()
@@ -461,6 +502,6 @@ function webSocketEventError(event: Event): Error {
     eventMessage
       ? `WebSocket runtime event stream error: ${eventMessage}`
       : `WebSocket runtime event stream error: ${describeUnknownTransportError(event)}`,
-    { cause: event },
+    { code: 'WS_REMOTE_ERROR', cause },
   );
 }

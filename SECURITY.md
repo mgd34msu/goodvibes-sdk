@@ -18,7 +18,7 @@ available. Current non-vendored overrides are declared in the root
 
 - `fast-xml-parser@5.7.1` for the AWS XML builder path
 - `ajv@8.18.0` for Verdaccio and documentation tooling paths
-- `lodash@4.17.21` for Verdaccio legacy-storage paths
+- `lodash@4.17.21` for Verdaccio storage paths
 - `google-auth-library@10.6.2` for the in-tree Anthropic Vertex authentication path
 - `minimatch@^10.2.5` for source-workspace installs
 

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { createDaemonMediaRouteHandlers } from '../packages/daemon-sdk/src/media-routes.js';
 import { DEFAULT_CONFIG, CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.js';
 import { VoiceProviderRegistry } from '../packages/sdk/src/platform/voice/provider-registry.js';
@@ -19,6 +19,18 @@ async function* byteChunks(chunks: readonly Uint8Array[]): AsyncIterable<VoiceAu
     yield { data, sequence };
   }
 }
+
+const originalFetch = globalThis.fetch;
+const originalElevenLabsKey = process.env.ELEVENLABS_API_KEY;
+const originalXiKey = process.env.XI_API_KEY;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  if (originalElevenLabsKey === undefined) delete process.env.ELEVENLABS_API_KEY;
+  else process.env.ELEVENLABS_API_KEY = originalElevenLabsKey;
+  if (originalXiKey === undefined) delete process.env.XI_API_KEY;
+  else process.env.XI_API_KEY = originalXiKey;
+});
 
 describe('streaming TTS configuration', () => {
   test('defaults to ElevenLabs while allowing clients to override provider and voice', () => {
@@ -64,9 +76,6 @@ describe('VoiceService.synthesizeStream', () => {
 
 describe('ElevenLabs streaming TTS provider', () => {
   test('calls the ElevenLabs streaming endpoint and yields audio chunks', async () => {
-    const originalFetch = globalThis.fetch;
-    const originalElevenLabsKey = process.env.ELEVENLABS_API_KEY;
-    const originalXiKey = process.env.XI_API_KEY;
     let captured: { input: RequestInfo | URL; init?: RequestInit } | null = null;
 
     process.env.ELEVENLABS_API_KEY = 'test-key';
@@ -83,58 +92,50 @@ describe('ElevenLabs streaming TTS provider', () => {
       return new Response(body, { status: 200, headers: { 'content-type': 'audio/mpeg' } });
     }) as typeof globalThis.fetch;
 
-    try {
-      const provider = createElevenLabsProvider();
-      const result = await provider.synthesizeStream?.({
-        text: 'Hello there',
-        voiceId: 'voice-1',
-        modelId: 'eleven_flash_v2_5',
-        format: 'mp3',
-        speed: 1.1,
-        metadata: {
-          stability: 0.2,
-          similarityBoost: 0.8,
-          style: 0.1,
-          useSpeakerBoost: false,
-          languageCode: 'en',
-          enableLogging: false,
-        },
-      });
-
-      expect(result).toBeDefined();
-      expect(await collectBytes(result!.chunks)).toEqual([10, 11, 12]);
-      expect(result!.providerId).toBe('elevenlabs');
-      expect(result!.mimeType).toBe('audio/mpeg');
-      expect(result!.format).toBe('mp3');
-
-      expect(captured).not.toBeNull();
-      const url = new URL(String(captured!.input));
-      expect(url.pathname).toBe('/v1/text-to-speech/voice-1/stream');
-      expect(url.searchParams.get('output_format')).toBe('mp3_44100_128');
-      expect(url.searchParams.get('enable_logging')).toBe('false');
-
-      const headers = new Headers(captured!.init?.headers);
-      expect(headers.get('xi-api-key')).toBe('test-key');
-      expect(headers.get('accept')).toBe('audio/mpeg');
-
-      const requestBody = JSON.parse(String(captured!.init?.body)) as Record<string, unknown>;
-      expect(requestBody.text).toBe('Hello there');
-      expect(requestBody.model_id).toBe('eleven_flash_v2_5');
-      expect(requestBody.language_code).toBe('en');
-      expect(requestBody.voice_settings).toMatchObject({
+    const provider = createElevenLabsProvider();
+    const result = await provider.synthesizeStream?.({
+      text: 'Hello there',
+      voiceId: 'voice-1',
+      modelId: 'eleven_flash_v2_5',
+      format: 'mp3',
+      speed: 1.1,
+      metadata: {
         stability: 0.2,
-        similarity_boost: 0.8,
+        similarityBoost: 0.8,
         style: 0.1,
-        use_speaker_boost: false,
-        speed: 1.1,
-      });
-    } finally {
-      globalThis.fetch = originalFetch;
-      if (originalElevenLabsKey === undefined) delete process.env.ELEVENLABS_API_KEY;
-      else process.env.ELEVENLABS_API_KEY = originalElevenLabsKey;
-      if (originalXiKey === undefined) delete process.env.XI_API_KEY;
-      else process.env.XI_API_KEY = originalXiKey;
-    }
+        useSpeakerBoost: false,
+        languageCode: 'en',
+        enableLogging: false,
+      },
+    });
+
+    expect(result).toBeDefined();
+    expect(await collectBytes(result!.chunks)).toEqual([10, 11, 12]);
+    expect(result!.providerId).toBe('elevenlabs');
+    expect(result!.mimeType).toBe('audio/mpeg');
+    expect(result!.format).toBe('mp3');
+
+    expect(captured).not.toBeNull();
+    const url = new URL(String(captured!.input));
+    expect(url.pathname).toBe('/v1/text-to-speech/voice-1/stream');
+    expect(url.searchParams.get('output_format')).toBe('mp3_44100_128');
+    expect(url.searchParams.get('enable_logging')).toBe('false');
+
+    const headers = new Headers(captured!.init?.headers);
+    expect(headers.get('xi-api-key')).toBe('test-key');
+    expect(headers.get('accept')).toBe('audio/mpeg');
+
+    const requestBody = JSON.parse(String(captured!.init?.body)) as Record<string, unknown>;
+    expect(requestBody.text).toBe('Hello there');
+    expect(requestBody.model_id).toBe('eleven_flash_v2_5');
+    expect(requestBody.language_code).toBe('en');
+    expect(requestBody.voice_settings).toMatchObject({
+      stability: 0.2,
+      similarity_boost: 0.8,
+      style: 0.1,
+      use_speaker_boost: false,
+      speed: 1.1,
+    });
   });
 });
 

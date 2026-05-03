@@ -9,33 +9,66 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { resolve, join } from 'node:path';
-import { existsSync } from 'node:fs';
+import { dirname, delimiter, join, resolve } from 'node:path';
+import { existsSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-const SDK_ROOT = new URL('..', import.meta.url).pathname;
+const SDK_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUTPUT_FILE = join(SDK_ROOT, 'sbom.cdx.json');
 
-// Locate system npm-cli.js by walking PATH to find the real npm binary
-function findSystemNpmCli(): string | undefined {
-  const pathDirs = (process.env.PATH ?? '').split(':');
+function normalizeExistingFile(path: string | undefined): string | undefined {
+  if (!path || !existsSync(path)) return undefined;
+  return realpathSync.native?.(path) ?? realpathSync(path);
+}
+
+function resolveNpmCliFromPackage(): string | undefined {
+  try {
+    return normalizeExistingFile(fileURLToPath(import.meta.resolve('npm/bin/npm-cli.js')));
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveNpmCliFromEnv(): string | undefined {
+  const resolved = normalizeExistingFile(process.env.npm_execpath);
+  if (resolved?.endsWith('npm-cli.js')) return resolved;
+  return undefined;
+}
+
+function candidateNpmCliPaths(npmBin: string): string[] {
+  const resolvedBin = normalizeExistingFile(npmBin);
+  const candidates = new Set<string>();
+  if (resolvedBin) {
+    candidates.add(resolvedBin);
+    candidates.add(join(dirname(resolvedBin), 'npm-cli.js'));
+    candidates.add(join(dirname(resolvedBin), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'));
+  }
+  candidates.add(join(dirname(npmBin), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'));
+  return [...candidates];
+}
+
+// Locate system npm-cli.js without assuming POSIX PATH separators or readlink(1).
+function findSystemNpmCli(): string {
+  const direct = resolveNpmCliFromPackage() ?? resolveNpmCliFromEnv();
+  if (direct) return direct;
+
+  const pathDirs = (process.env.PATH ?? '').split(delimiter).filter(Boolean);
+  const executableNames = process.platform === 'win32'
+    ? ['npm.cmd', 'npm.exe', 'npm.ps1', 'npm']
+    : ['npm'];
   for (const dir of pathDirs) {
-    const npmBin = join(dir, 'npm');
-    if (!existsSync(npmBin)) continue;
-    // Resolve symlink to find npm-cli.js
-    try {
-      const target = execFileSync('readlink', ['-f', npmBin], { encoding: 'utf8' }).trim();
-      // npm binary is npm-cli.js or links near it
-      const cliPath = join(target, '../npm-cli.js');
-      if (existsSync(cliPath)) return cliPath;
-      // Some installs: target IS npm-cli.js
-      if (target.endsWith('npm-cli.js') && existsSync(target)) return target;
-    } catch {
-      // readlink not available or not a symlink — try adjacent npm-cli.js
-      const cliPath = join(dir, '../lib/node_modules/npm/bin/npm-cli.js');
-      if (existsSync(cliPath)) return cliPath;
+    for (const executable of executableNames) {
+      const npmBin = join(dir, executable);
+      if (!existsSync(npmBin)) continue;
+      for (const candidate of candidateNpmCliPaths(npmBin)) {
+        const resolved = normalizeExistingFile(candidate);
+        if (resolved?.endsWith('npm-cli.js')) return resolved;
+      }
     }
   }
-  return undefined;
+  throw new Error(
+    '[sbom:generate] Could not locate npm/bin/npm-cli.js. Install Node.js npm, add it to PATH, or run with npm_execpath pointing at npm-cli.js.',
+  );
 }
 
 const cyclonedxBin = resolve(SDK_ROOT, 'node_modules/.bin/cyclonedx-npm');
@@ -46,12 +79,8 @@ if (!existsSync(cyclonedxBin)) {
 
 const npmCliPath = findSystemNpmCli();
 const env = { ...process.env };
-if (npmCliPath) {
-  env.npm_execpath = npmCliPath;
-  console.log(`[sbom:generate] Using npm-cli.js: ${npmCliPath}`);
-} else {
-  console.warn('[sbom:generate] WARN: Could not find system npm-cli.js; cyclonedx-npm may fail.');
-}
+env.npm_execpath = npmCliPath;
+console.log(`[sbom:generate] Using npm-cli.js: ${npmCliPath}`);
 
 console.log(`[sbom:generate] Generating SBOM → ${OUTPUT_FILE}`);
 
@@ -78,7 +107,10 @@ try {
     console.log(`[sbom:generate] SBOM generated (with npm warnings — expected in bun workspace).`);
   } else {
     console.error(`[sbom:generate] ERROR: SBOM generation failed and no output file was written.`);
-    if (e != null && typeof e === 'object' && 'stderr' in e && e.stderr) process.stderr.write(e.stderr as string);
+    const stderr = e != null && typeof e === 'object' && 'stderr' in e
+      ? (e as { readonly stderr?: Buffer | string }).stderr
+      : undefined;
+    if (stderr) process.stderr.write(stderr);
     process.exit(1);
   }
 }

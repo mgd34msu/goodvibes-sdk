@@ -185,8 +185,7 @@ describe('Workers harness: transport-http round-trip', () => {
     expect(validKinds).toContain(body.kind as string);
 
     // m-2: assert 'ctor' is a string (the constructor name of the thrown error)
-    expect(typeof body.ctor).toBe('string');
-    expect((body.ctor as string).length).toBeGreaterThan(0);
+    expect(body.ctor).toBe('GoodVibesSdkError');
   }, 10_000);
 });
 
@@ -202,7 +201,6 @@ describe('Workers harness: error taxonomy', () => {
     expect(body.sdkErrorWorks).toBe(true);
     // m-4: errorClassNames contains only actual Error subclasses
     const names = body.errorClassNames as string[];
-    expect(names.length).toBeGreaterThan(0);
     // Sentinel: GoodVibesSdkError must be present (it IS an Error subclass)
     expect(names).toContain('GoodVibesSdkError');
   }, 10_000);

@@ -47,7 +47,6 @@ interface BuiltinPluginRegistrationContext {
     | 'doctor'
     | 'listRepairActions'
     | 'getLifecycleState'
-    | 'migrateLifecycle'
     | 'resolveAllowlist'
     | 'editAllowlist'
   >;

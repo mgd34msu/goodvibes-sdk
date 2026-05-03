@@ -430,7 +430,7 @@ describe('companion-chat session creation via session-cookie auth', () => {
     expect(res2!.status).toBe(201);
     const body = await res2!.json() as { sessionId: string };
     expect(typeof body.sessionId).toBe('string');
-    expect(body.sessionId.length).toBeGreaterThan(0);
+    expect(body.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
   test('auth gate rejects unauthenticated companion session creation when sharedToken is set', async () => {

@@ -99,6 +99,10 @@
     "typescript": "^6.0.3",
     "wrangler": "4.87.0"
   },
+  "overridesRationale": {
+    "bash-language-server": "Vendored to keep shell language support while preserving a clean high-severity audit surface for the Verdaccio dry-run dependency graph.",
+    "uuid": "Vendored CommonJS uuid v4 package for Verdaccio @cypress/request, which still requires a CommonJS uuid entry."
+  },
   "overrides": {
     "ajv": "8.18.0",
     "fast-xml-parser": "5.7.1",

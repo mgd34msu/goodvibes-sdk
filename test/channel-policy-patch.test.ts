@@ -46,7 +46,6 @@ function makeChannelPlugins(): DaemonChannelRouteContext['channelPlugins'] {
     doctor: async () => null,
     listRepairActions: async () => [],
     getLifecycleState: async () => null,
-    migrateLifecycle: async () => null,
     runAccountAction: async () => null,
     listCapabilities: async () => [],
     listTools: async () => [],

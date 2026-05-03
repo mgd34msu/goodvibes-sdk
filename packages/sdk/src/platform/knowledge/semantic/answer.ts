@@ -6,13 +6,9 @@ import { normalizeKnowledgeSpaceId } from '../spaces.js';
 import type {
   KnowledgeSemanticAnswerInput,
   KnowledgeSemanticAnswerResult,
-  KnowledgeSemanticGapInput,
-  KnowledgeSemanticLlm,
   KnowledgeSemanticLlmAnswer,
 } from './types.js';
 import {
-  MAX_ANSWER_EVIDENCE_CHARS,
-  clampText,
   readRecord,
   readString,
   readStringArray,
@@ -25,7 +21,6 @@ import {
 } from './fact-quality.js';
 import { concreteAnswerGapSpaceId } from './answer-space.js';
 import { answerNeedsFeatureGap, cleanSynthesizedAnswer } from './answer-quality.js';
-import { clampTimeoutMs, withTimeoutOrNull } from './timeouts.js';
 import { renderFallbackAnswer } from './answer-fallback.js';
 import { rankAnswerSources } from './answer-source-ranking.js';
 import {
@@ -36,7 +31,6 @@ import {
 import {
   filterFactsForQuery,
   hasFeatureIntentForQuery,
-  renderFactForPrompt,
 } from './answer-fact-selection.js';
 import {
   collectAnswerEvidence,
@@ -55,6 +49,7 @@ import {
   persistAnswerGaps,
   shouldPersistNoMatchGap,
 } from './answer-gaps.js';
+import { answerConfidence, synthesizeAnswer } from './answer-llm.js';
 
 export async function answerKnowledgeQuery(
   context: KnowledgeAnswerContext,
@@ -64,59 +59,14 @@ export async function answerKnowledgeQuery(
   const mode = input.mode ?? 'standard';
   const limit = Math.max(1, input.limit ?? 8);
   const objectProfiles = context.objectProfiles ?? [];
-  let evidence = collectAnswerEvidence(context.store, input, spaceId, limit, objectProfiles);
-  if (evidence.length === 0) {
-    const linkedObjects = input.includeLinkedObjects === false
-      ? []
-      : filterAnswerLinkedObjects(spaceId, input.query, [...(input.linkedObjects ?? [])], objectProfiles);
-    const linkedEvidence = includeOfficialLinkedEvidence(context.store, spaceId, input.query, evidence, linkedObjects, limit);
-    if (linkedEvidence.length > 0) {
-      evidence = linkedEvidence;
-    } else {
-      const gap = shouldPersistNoMatchGap(spaceId, input.query, linkedObjects)
-        ? await persistAnswerGap(context.store, concreteAnswerGapSpaceId(spaceId, [], [], linkedObjects), input.query, 'No indexed evidence matched the question.', {
-            linkedObjects,
-          })
-        : null;
-      return {
-        ok: true,
-        spaceId,
-        query: input.query,
-        answer: {
-          text: input.noMatchMessage ?? `No knowledge matched "${input.query}".`,
-          mode,
-          confidence: 0,
-          sources: [],
-          linkedObjects,
-          facts: [],
-          gaps: gap ? [gap] : [],
-          synthesized: false,
-        },
-        results: [],
-      };
-    }
-  }
+  const evidenceResolution = await resolveAnswerEvidence(context, input, spaceId, mode, limit, objectProfiles);
+  if (evidenceResolution.kind === 'no-match') return evidenceResolution.result;
 
-  let rawFacts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
-  const inferredObjectLinkedObjects = input.includeLinkedObjects === false
-    ? []
-    : inferObjectLinkedObjects(context.store, spaceId, input.query, context.objectProfiles ?? []);
-  const evidenceLinkedObjects = shouldUseEvidenceLinkedObjects(spaceId, input, inferredObjectLinkedObjects)
-    ? evidence.flatMap((item) => item.node ? [item.node] : [])
-    : [];
-  const rawLinkedObjects = input.includeLinkedObjects === false
-    ? []
-    : uniqueNodes([
-      ...(input.linkedObjects ?? []),
-      ...evidenceLinkedObjects,
-      ...inferredObjectLinkedObjects,
-      ...linkedObjectsFromFacts(context.store, rawFacts),
-    ])
-      .filter(isSemanticAnswerLinkedObject)
-      .slice(0, 24);
-  const linkedObjects = filterAnswerLinkedObjects(spaceId, input.query, rawLinkedObjects, objectProfiles);
+  let evidence = evidenceResolution.evidence;
+  let rawFacts = collectRawAnswerFacts(input.query, evidence);
+  const linkedObjects = resolveAnswerLinkedObjects(context, input, spaceId, evidence, rawFacts, objectProfiles);
   evidence = includeOfficialLinkedEvidence(context.store, spaceId, input.query, evidence, linkedObjects, limit);
-  rawFacts = filterFactsForQuery(input.query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
+  rawFacts = collectRawAnswerFacts(input.query, evidence);
   const llmAnswer = await synthesizeAnswer(context.llm ?? null, input.query, mode, evidence, input.timeoutMs);
   const rankedSources = rankAnswerSources(evidence, rawFacts);
   const facts = withAnswerFactContract(context.store, rawFacts, linkedObjects);
@@ -154,40 +104,142 @@ export async function answerKnowledgeQuery(
         linkedObjects,
       })
     : null;
-  const llmText = llmAnswer?.answer?.trim();
-  const cleanedLlmText = llmText ? cleanSynthesizedAnswer(llmText, featureIntent) : undefined;
-  const dropLowValueLlmAnswer = featureIntent && Boolean(cleanedLlmText) && isLowValueFeatureOrSpecText(cleanedLlmText ?? '');
-  const fallback = renderFallbackAnswer(input.query, mode, evidence, facts);
-  const hasZeroSourceBackedFeatureFacts = featureIntent
-    && linkedObjects.length > 0
-    && sources.length > 0
-    && facts.length === 0
-    && !fallback.synthesized;
-  const preferFallback = shouldPreferFallbackAnswer(featureIntent, cleanedLlmText, fallback.text);
-  const useFallback = hasZeroSourceBackedFeatureFacts || dropLowValueLlmAnswer || preferFallback || !cleanedLlmText;
-  const text = cleanSynthesizedAnswer((useFallback ? fallback.text : cleanedLlmText) || '', featureIntent, {
-    fallbackText: fallback.text,
+  const answerText = chooseAnswerText({
+    input,
+    mode,
+    featureIntent,
+    evidence,
+    facts,
+    sources,
+    linkedObjects,
+    llmAnswer,
   });
-  const synthesized = useFallback ? fallback.synthesized : Boolean(cleanedLlmText);
-  const confidence = input.includeConfidence === false
-    ? 0
-    : hasZeroSourceBackedFeatureFacts || dropLowValueLlmAnswer || (useFallback && !fallback.synthesized) ? 0 : answerConfidence(preferFallback ? null : llmAnswer, evidence);
   return {
     ok: true,
     spaceId,
     query: input.query,
     answer: {
-      text,
+      text: answerText.text,
       mode,
-      confidence,
+      confidence: answerText.confidence,
       sources: input.includeSources === false ? [] : sources,
       linkedObjects,
       facts,
       gaps: evidenceGap && !isRepairedAnswerGap(evidenceGap) ? uniqueNodes([...gaps, evidenceGap]) : gaps,
-      synthesized,
+      synthesized: answerText.synthesized,
     },
     results: evidence.map(toSearchResult),
   };
+}
+
+type ObjectProfiles = NonNullable<KnowledgeAnswerContext['objectProfiles']>;
+
+type AnswerEvidenceResolution =
+  | { readonly kind: 'matched'; readonly evidence: readonly EvidenceItem[] }
+  | { readonly kind: 'no-match'; readonly result: KnowledgeSemanticAnswerResult };
+
+async function resolveAnswerEvidence(
+  context: KnowledgeAnswerContext,
+  input: KnowledgeSemanticAnswerInput,
+  spaceId: string,
+  mode: string,
+  limit: number,
+  objectProfiles: ObjectProfiles,
+): Promise<AnswerEvidenceResolution> {
+  const evidence = collectAnswerEvidence(context.store, input, spaceId, limit, objectProfiles);
+  if (evidence.length > 0) return { kind: 'matched', evidence };
+
+  const linkedObjects = input.includeLinkedObjects === false
+    ? []
+    : filterAnswerLinkedObjects(spaceId, input.query, [...(input.linkedObjects ?? [])], objectProfiles);
+  const linkedEvidence = includeOfficialLinkedEvidence(context.store, spaceId, input.query, evidence, linkedObjects, limit);
+  if (linkedEvidence.length > 0) return { kind: 'matched', evidence: linkedEvidence };
+
+  const gap = shouldPersistNoMatchGap(spaceId, input.query, linkedObjects)
+    ? await persistAnswerGap(context.store, concreteAnswerGapSpaceId(spaceId, [], [], linkedObjects), input.query, 'No indexed evidence matched the question.', {
+      linkedObjects,
+    })
+    : null;
+  return {
+    kind: 'no-match',
+    result: {
+      ok: true,
+      spaceId,
+      query: input.query,
+      answer: {
+        text: input.noMatchMessage ?? `No knowledge matched "${input.query}".`,
+        mode,
+        confidence: 0,
+        sources: [],
+        linkedObjects,
+        facts: [],
+        gaps: gap ? [gap] : [],
+        synthesized: false,
+      },
+      results: [],
+    },
+  };
+}
+
+function collectRawAnswerFacts(query: string, evidence: readonly EvidenceItem[]): readonly KnowledgeNodeRecord[] {
+  return filterFactsForQuery(query, uniqueNodes(evidence.flatMap((item) => item.facts))).slice(0, 24);
+}
+
+function resolveAnswerLinkedObjects(
+  context: KnowledgeAnswerContext,
+  input: KnowledgeSemanticAnswerInput,
+  spaceId: string,
+  evidence: readonly EvidenceItem[],
+  rawFacts: readonly KnowledgeNodeRecord[],
+  objectProfiles: ObjectProfiles,
+): readonly KnowledgeNodeRecord[] {
+  if (input.includeLinkedObjects === false) return [];
+  const inferredObjectLinkedObjects = inferObjectLinkedObjects(context.store, spaceId, input.query, objectProfiles);
+  const evidenceLinkedObjects = shouldUseEvidenceLinkedObjects(spaceId, input, inferredObjectLinkedObjects)
+    ? evidence.flatMap((item) => item.node ? [item.node] : [])
+    : [];
+  const rawLinkedObjects = uniqueNodes([
+    ...(input.linkedObjects ?? []),
+    ...evidenceLinkedObjects,
+    ...inferredObjectLinkedObjects,
+    ...linkedObjectsFromFacts(context.store, rawFacts),
+  ])
+    .filter(isSemanticAnswerLinkedObject)
+    .slice(0, 24);
+  return filterAnswerLinkedObjects(spaceId, input.query, rawLinkedObjects, objectProfiles);
+}
+
+function chooseAnswerText(options: {
+  readonly input: KnowledgeSemanticAnswerInput;
+  readonly mode: string;
+  readonly featureIntent: boolean;
+  readonly evidence: readonly EvidenceItem[];
+  readonly facts: readonly AnswerFactRecord[];
+  readonly sources: readonly unknown[];
+  readonly linkedObjects: readonly KnowledgeNodeRecord[];
+  readonly llmAnswer: KnowledgeSemanticLlmAnswer | null;
+}): { readonly text: string; readonly synthesized: boolean; readonly confidence: number } {
+  const llmText = options.llmAnswer?.answer?.trim();
+  const cleanedLlmText = llmText ? cleanSynthesizedAnswer(llmText, options.featureIntent) : undefined;
+  const dropLowValueLlmAnswer = options.featureIntent && Boolean(cleanedLlmText) && isLowValueFeatureOrSpecText(cleanedLlmText ?? '');
+  const fallback = renderFallbackAnswer(options.input.query, options.mode, options.evidence, options.facts);
+  const hasZeroSourceBackedFeatureFacts = options.featureIntent
+    && options.linkedObjects.length > 0
+    && options.sources.length > 0
+    && options.facts.length === 0
+    && !fallback.synthesized;
+  const preferFallback = shouldPreferFallbackAnswer(options.featureIntent, cleanedLlmText, fallback.text);
+  const useFallback = hasZeroSourceBackedFeatureFacts || dropLowValueLlmAnswer || preferFallback || !cleanedLlmText;
+  const text = cleanSynthesizedAnswer((useFallback ? fallback.text : cleanedLlmText) || '', options.featureIntent, {
+    fallbackText: fallback.text,
+  });
+  const synthesized = useFallback ? fallback.synthesized : Boolean(cleanedLlmText);
+  const confidence = options.input.includeConfidence === false
+    ? 0
+    : hasZeroSourceBackedFeatureFacts || dropLowValueLlmAnswer || (useFallback && !fallback.synthesized)
+      ? 0
+      : answerConfidence(preferFallback ? null : options.llmAnswer, options.evidence);
+  return { text, synthesized, confidence };
 }
 
 function withAnswerFactContract(
@@ -332,104 +384,4 @@ function featureFamilyCount(text: string): number {
     /\b(game|gaming|vrr|allm|freesync|g-sync)\b/,
     /\b(tuner|atsc|qam|ntsc|broadcast)\b/,
   ].filter((pattern) => pattern.test(lower)).length;
-}
-
-async function synthesizeAnswer(
-  llm: KnowledgeSemanticLlm | null,
-  query: string,
-  mode: string,
-  evidence: readonly EvidenceItem[],
-  requestedTimeoutMs: number | undefined,
-): Promise<KnowledgeSemanticLlmAnswer | null> {
-  if (!llm) return null;
-  const timeoutMs = clampTimeoutMs(requestedTimeoutMs, 15_000, 1_000, 15_000);
-  const controller = new AbortController();
-  const response = await withTimeoutOrNull(llm.completeJson({
-    purpose: 'knowledge-answer-synthesis',
-    maxTokens: mode === 'detailed' ? 2200 : mode === 'concise' ? 700 : 1400,
-    signal: controller.signal,
-    timeoutMs,
-    systemPrompt: [
-      'You answer questions from a GoodVibes self-improving knowledge wiki.',
-      'Use only the supplied evidence. Synthesize the answer for the user intent rather than dumping snippets.',
-      'If evidence is insufficient, say what is missing. Prefer concrete features, specs, procedures, and relationships.',
-      'For feature or specification questions, ignore manual boilerplate about accessories, cable recommendations, USB/HDMI physical-fit guidance, button maps, remote aiming instructions, batteries, cleaning, servicing, safety, furniture, wall mounting, and future product changes unless the user asks about those topics.',
-      'Do not mention future features, specifications changing without notice, cable fit, USB extension cables, remote sensor aiming, service personnel, or child-safety/furniture/platform guidance in a feature/spec answer.',
-      'Return only JSON with answer, confidence, usedSourceIds, usedNodeIds, and optional gaps.',
-    ].join(' '),
-    prompt: JSON.stringify({
-      query,
-      mode,
-      evidence: renderEvidenceForPrompt(evidence),
-      outputShape: {
-        answer: 'source-backed natural language answer',
-        confidence: 0,
-        usedSourceIds: ['source ids used'],
-        usedNodeIds: ['node ids used'],
-        gaps: [{ question: 'unanswered follow-up gap', reason: 'missing evidence', severity: 'info' }],
-      },
-    }),
-  }), timeoutMs);
-  controller.abort();
-  return normalizeLlmAnswer(response);
-}
-
-function renderEvidenceForPrompt(evidence: readonly EvidenceItem[]): readonly Record<string, unknown>[] {
-  let budget = MAX_ANSWER_EVIDENCE_CHARS;
-  const rendered: Record<string, unknown>[] = [];
-  for (const item of evidence.slice(0, 12)) {
-    if (budget <= 0) break;
-    const factText = item.facts.slice(0, 16).map(renderFactForPrompt).join('\n');
-    const excerpt = clampText(item.excerpt, Math.min(1600, budget));
-    const record = {
-      kind: item.kind,
-      id: item.id,
-      title: item.title,
-      sourceId: item.source?.id,
-      nodeId: item.node?.id,
-      sourceType: item.source?.sourceType,
-      nodeKind: item.node?.kind,
-      excerpt,
-      facts: factText,
-    };
-    budget -= JSON.stringify(record).length;
-    rendered.push(record);
-  }
-  return rendered;
-}
-
-function normalizeLlmAnswer(value: unknown): KnowledgeSemanticLlmAnswer | null {
-  const record = readRecord(value);
-  const answer = readString(record.answer);
-  if (!answer) return null;
-  return {
-    answer,
-    ...(typeof record.confidence === 'number' ? { confidence: Math.max(0, Math.min(100, Math.round(record.confidence))) } : {}),
-    usedSourceIds: readStringArray(record.usedSourceIds),
-    usedNodeIds: readStringArray(record.usedNodeIds),
-    gaps: readGapArray(record.gaps),
-  };
-}
-
-function answerConfidence(answer: KnowledgeSemanticLlmAnswer | null, evidence: readonly EvidenceItem[]): number {
-  if (typeof answer?.confidence === 'number') return answer.confidence;
-  const top = evidence[0]?.score ?? 0;
-  const factBoost = Math.min(35, uniqueNodes(evidence.flatMap((item) => item.facts)).length * 4);
-  return Math.max(10, Math.min(92, Math.round(top / 5) + factBoost));
-}
-
-function readGapArray(value: unknown): readonly KnowledgeSemanticGapInput[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((entry) => {
-    const record = readRecord(entry);
-    const question = readString(record.question);
-    if (!question) return [];
-    const severity = readString(record.severity);
-    return [{
-      question,
-      ...(readString(record.reason) ? { reason: readString(record.reason) } : {}),
-      ...(readString(record.subject) ? { subject: readString(record.subject) } : {}),
-      severity: severity === 'warning' || severity === 'error' ? severity : 'info',
-    }];
-  });
 }

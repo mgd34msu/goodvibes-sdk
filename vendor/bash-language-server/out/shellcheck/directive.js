@@ -59,4 +59,3 @@ function parseShellCheckDirective(line) {
     }
     return directives;
 }
-//# sourceMappingURL=directive.js.map

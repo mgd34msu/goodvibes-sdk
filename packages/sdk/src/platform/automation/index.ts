@@ -57,8 +57,6 @@ export type {
 
 export { AutomationDeliveryManager } from './delivery-manager.js';
 export { AutomationService } from './service.js';
-export { migrateLegacySchedules } from './legacy-scheduler.js';
-export type { LegacySchedulerHistoryEntry, LegacySchedulerSnapshot, LegacySchedulerTask } from './legacy-scheduler.js';
 export { AutomationJobStore } from './store/jobs.js';
 export { AutomationRunStore } from './store/runs.js';
 export { AutomationRouteStore } from './store/routes.js';

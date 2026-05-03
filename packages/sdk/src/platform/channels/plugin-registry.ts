@@ -50,7 +50,6 @@ export interface ChannelPlugin {
   readonly doctor?: (accountId?: string) => Promise<ChannelDoctorReport> | ChannelDoctorReport;
   readonly listRepairActions?: (accountId?: string) => Promise<readonly ChannelRepairAction[]> | readonly ChannelRepairAction[];
   readonly getLifecycleState?: (accountId?: string) => Promise<ChannelLifecycleState> | ChannelLifecycleState;
-  readonly migrateLifecycle?: (accountId?: string, input?: Record<string, unknown>) => Promise<ChannelLifecycleState> | ChannelLifecycleState;
   readonly resolveAllowlist?: (input: ChannelAllowlistEditInput) => Promise<ChannelAllowlistResolution> | ChannelAllowlistResolution;
   readonly editAllowlist?: (input: ChannelAllowlistEditInput) => Promise<ChannelAllowlistEditResult> | ChannelAllowlistEditResult;
   readonly getStatus?: () => Promise<ChannelStatusSnapshot>;
@@ -244,16 +243,6 @@ export class ChannelPluginRegistry {
     const plugin = this.getBySurface(surface);
     if (!plugin?.getLifecycleState) return null;
     return plugin.getLifecycleState(accountId);
-  }
-
-  async migrateLifecycle(
-    surface: ChannelSurface,
-    accountId?: string,
-    input?: Record<string, unknown>,
-  ): Promise<ChannelLifecycleState | null> {
-    const plugin = this.getBySurface(surface);
-    if (!plugin?.migrateLifecycle) return null;
-    return plugin.migrateLifecycle(accountId, input);
   }
 
   async resolveAllowlist(surface: ChannelSurface, input: ChannelAllowlistEditInput): Promise<ChannelAllowlistResolution | null> {

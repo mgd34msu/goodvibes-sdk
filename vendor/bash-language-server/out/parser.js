@@ -33,4 +33,3 @@ function initializeParser() {
         return parser;
     });
 }
-//# sourceMappingURL=parser.js.map

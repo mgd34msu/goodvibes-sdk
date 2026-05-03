@@ -13,8 +13,6 @@ import type { AutomationJob } from './jobs.js';
 import type { AutomationRun, AutomationRunContinuationMode, AutomationRunTelemetry } from './runs.js';
 import type { AutomationRunTrigger, AutomationSurfaceKind } from './types.js';
 import { SharedSessionBroker } from '../control-plane/index.js';
-import type { LegacySchedulerSnapshot } from './legacy-scheduler.js';
-import { migrateLegacySchedules } from './legacy-scheduler.js';
 import type {
   CreateAutomationJobInput,
   SpawnAutomationTaskInput,
@@ -87,9 +85,6 @@ export type { AutomationHeartbeatWake } from './manager-runtime-scheduling.js';
 interface AutomationManagerConfig {
   readonly jobStore?: AutomationJobStore;
   readonly runStore?: AutomationRunStore;
-  readonly legacyStore?: {
-    load(): Promise<LegacySchedulerSnapshot | null>;
-  };
   readonly spawnTask?: (input: SpawnAutomationTaskInput) => string;
   readonly cancelTask?: (agentId: string) => void;
   readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'>;
@@ -117,9 +112,6 @@ export interface AutomationHeartbeatResult {
 export class AutomationManager {
   private readonly jobStore: AutomationJobStore;
   private readonly runStore: AutomationRunStore;
-  private readonly legacyStore?: {
-    load(): Promise<LegacySchedulerSnapshot | null>;
-  };
   private readonly spawnTask?: (input: SpawnAutomationTaskInput) => string;
   private readonly cancelTask?: (agentId: string) => void;
   private readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'>;
@@ -147,7 +139,6 @@ export class AutomationManager {
     this.configManager = config.configManager;
     this.jobStore = config.jobStore ?? new AutomationJobStore({ configManager: this.configManager });
     this.runStore = config.runStore ?? new AutomationRunStore({ configManager: this.configManager });
-    this.legacyStore = config.legacyStore;
     this.routeBindings = config.routeBindings;
     this.sessionBroker = config.sessionBroker;
     this.defaultSurfaceKind = config.defaultSurfaceKind;
@@ -540,20 +531,6 @@ export class AutomationManager {
       this.jobStore.load(),
       this.runStore.load(),
     ]);
-    if (jobSnapshot.jobs.length === 0 && runSnapshot.runs.length === 0 && this.legacyStore) {
-      const legacySnapshot = await this.legacyStore.load();
-      if (legacySnapshot) {
-        const migrated = migrateLegacySchedules(legacySnapshot);
-        if (migrated.jobs.length > 0 || migrated.runs.length > 0) {
-          await Promise.all([
-            this.jobStore.save(migrated.jobs),
-            this.runStore.save(migrated.runs),
-          ]);
-          jobSnapshot = { version: 1, jobs: [...migrated.jobs] };
-          runSnapshot = { version: 1, runs: [...migrated.runs] };
-        }
-      }
-    }
     for (const job of jobSnapshot.jobs) {
       const normalizedJob = normalizeJobRecord(job, this.configManager);
       this.jobs.set(normalizedJob.id, normalizedJob);

@@ -19,8 +19,7 @@ import {
 describe('buildEngineerConstraintAddendum', () => {
   test('contains non-build / unconstrained language', () => {
     const result = buildEngineerConstraintAddendum();
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+    expect(result).toContain('## Constraint enumeration');
     expect(result).toContain('non-build or unconstrained');
   });
 
@@ -66,8 +65,7 @@ describe('buildEngineerConstraintAddendum', () => {
 describe('buildReviewerConstraintAddendum', () => {
   test('contains rubric-independence clause', () => {
     const result = buildReviewerConstraintAddendum();
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+    expect(result).toContain('## Constraint verification');
     expect(result).toContain('runs alongside the 10-dimension rubric, NOT instead of it');
   });
 
@@ -111,8 +109,7 @@ describe('buildReviewerConstraintAddendum', () => {
 describe('buildFixerConstraintAddendum', () => {
   test('contains constraint preservation heading', () => {
     const result = buildFixerConstraintAddendum();
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+    expect(result).toContain('## Constraint preservation');
     expect(result).toContain('Constraint preservation during fix');
   });
 

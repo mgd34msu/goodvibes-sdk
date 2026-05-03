@@ -98,7 +98,6 @@ export interface DaemonChannelRouteHandlers {
   getChannelDoctor(surface: string, url: URL): MaybeResponse;
   getChannelRepairActions(surface: string, url: URL): MaybeResponse;
   getChannelLifecycle(surface: string, url: URL): MaybeResponse;
-  postChannelLifecycleMigrate(surface: string, req: Request): MaybeResponse;
   postChannelAccountAction(surface: string, accountId: string | null, action: string, req: Request): MaybeResponse;
   getChannelCapabilities(): MaybeResponse;
   getChannelSurfaceCapabilities(surface: string): MaybeResponse;

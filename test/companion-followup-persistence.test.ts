@@ -220,6 +220,7 @@ describe('companion-followup-persistence: kind=message persists before emitting'
       body: 'hello from companion',
       kind: 'message',
     });
+    const before = Date.now();
     await handlers.postSharedSessionMessage(sessionId, req);
 
     expect(appendCalls).toHaveLength(1);
@@ -227,9 +228,9 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     expect(appendCalls[0].input.body).toBe('hello from companion');
     expect(appendCalls[0].input.source).toBe('companion-followup');
     expect(typeof appendCalls[0].input.messageId).toBe('string');
-    expect(appendCalls[0].input.messageId.length).toBeGreaterThan(0);
+    expect(appendCalls[0].input.messageId).toMatch(/^companion-/);
     expect(typeof appendCalls[0].input.timestamp).toBe('number');
-    expect(appendCalls[0].input.timestamp).toBeGreaterThan(0);
+    expect(appendCalls[0].input.timestamp).toBeGreaterThanOrEqual(before);
   });
 
   test('GET /api/sessions/:id/messages returns the persisted message', async () => {

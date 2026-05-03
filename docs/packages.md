@@ -70,7 +70,7 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 | `@pellux/goodvibes-sdk/transport-core` | Transport/event-feed primitives |
 | `@pellux/goodvibes-sdk/transport-http` | HTTP/SSE/auth/retry primitives |
 | `@pellux/goodvibes-sdk/transport-realtime` | Runtime-event connectors over SSE and WebSocket |
-| `@pellux/goodvibes-sdk/transport-direct` | In-process direct transport facade backed by `transport-core` |
+| `@pellux/goodvibes-sdk/transport-direct` | In-process direct transport facade subpath; see [Transports](./transports.md) |
 
 CI job `platform-matrix` (`rn-bundle` dimension) enforces that companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports.
 

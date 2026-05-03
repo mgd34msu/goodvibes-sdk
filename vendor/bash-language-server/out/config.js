@@ -93,4 +93,3 @@ function getDefaultConfiguration() {
 }
 const toBoolean = (s) => typeof s !== 'undefined' ? s === 'true' || s === '1' : undefined;
 const toNumber = (s) => typeof s !== 'undefined' ? parseInt(s, 10) : undefined;
-//# sourceMappingURL=config.js.map

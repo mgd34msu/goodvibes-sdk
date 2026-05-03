@@ -364,7 +364,7 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
     });
 
     expect(result.closedGaps).toBe(1);
-    expect(facts.length).toBeGreaterThan(0);
+    expect(facts.map((fact) => fact.title)).toContain('Display and picture specifications');
     expect(facts.some((fact) => fact.metadata.sourceAuthority === 'official-vendor')).toBe(true);
     expect(facts.every((fact) => JSON.stringify(fact.metadata.linkedObjectIds) === JSON.stringify([device.id]))).toBe(true);
     expect(facts.every((fact) => JSON.stringify(fact.metadata.subjectIds) === JSON.stringify([device.id]))).toBe(true);

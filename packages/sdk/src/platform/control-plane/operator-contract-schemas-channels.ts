@@ -138,24 +138,13 @@ export const CHANNEL_DOCTOR_REPORT_SCHEMA = objectSchema({
   metadata: METADATA_SCHEMA,
 }, ['surface', 'state', 'summary', 'checkedAt', 'checks', 'repairActions', 'metadata']);
 
-const CHANNEL_LIFECYCLE_MIGRATION_SCHEMA = objectSchema({
-  id: STRING_SCHEMA,
-  fromVersion: NUMBER_SCHEMA,
-  toVersion: NUMBER_SCHEMA,
-  action: STRING_SCHEMA,
-  applied: BOOLEAN_SCHEMA,
-  detail: STRING_SCHEMA,
-  metadata: METADATA_SCHEMA,
-}, ['id', 'fromVersion', 'toVersion', 'action', 'applied', 'detail']);
-
 export const CHANNEL_LIFECYCLE_STATE_SCHEMA = objectSchema({
   surface: STRING_SCHEMA,
   accountId: STRING_SCHEMA,
   currentVersion: NUMBER_SCHEMA,
   targetVersion: NUMBER_SCHEMA,
-  migrations: arraySchema(CHANNEL_LIFECYCLE_MIGRATION_SCHEMA),
   metadata: METADATA_SCHEMA,
-}, ['surface', 'currentVersion', 'targetVersion', 'migrations', 'metadata']);
+}, ['surface', 'currentVersion', 'targetVersion', 'metadata']);
 
 const CHANNEL_LIFECYCLE_RESULT_SCHEMA = objectSchema({
   surface: STRING_SCHEMA,

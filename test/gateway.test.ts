@@ -101,8 +101,7 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
     const match = received.find((r) => r.event === 'my-event');
     expect(match).toBeDefined();
     expect((match!.payload as { value: number }).value).toBe(42);
-    expect(typeof match!.id).toBe('string');
-    expect(match!.id!.length).toBeGreaterThan(0);
+    expect(match!.id).toMatch(/^evt-/);
 
     // Must also appear in listRecentEvents
     const recent = gateway.listRecentEvents();
@@ -159,7 +158,7 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
 
     expect(result.clientId).toBeTruthy();
     expect(Array.isArray(result.domains)).toBe(true);
-    expect(result.domains.length).toBeGreaterThan(0);
+    expect(result.domains).toEqual(DEFAULT_DOMAINS_TEST_EXPORT);
     // 'ready' must be the first event sent
     expect(events[0]).toBe('ready');
 

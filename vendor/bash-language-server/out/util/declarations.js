@@ -292,4 +292,3 @@ function isDefinedVariableInExpression(definition, variable, position) {
         (variable.endPosition.column < position.character ||
             variable.endPosition.row < position.line));
 }
-//# sourceMappingURL=declarations.js.map

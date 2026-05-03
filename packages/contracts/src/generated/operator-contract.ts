@@ -3060,8 +3060,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "catch_up",
                       "webhook",
                       "surface",
-                      "watcher",
-                      "migration"
+                      "watcher"
                     ]
                   },
                   "dueRun": {
@@ -3180,8 +3179,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "hook",
                           "webhook",
                           "surface",
-                          "watcher",
-                          "migration"
+                          "watcher"
                         ]
                       },
                       "label": {
@@ -4122,8 +4120,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "catch_up",
                       "webhook",
                       "surface",
-                      "watcher",
-                      "migration"
+                      "watcher"
                     ]
                   },
                   "dueRun": {
@@ -5460,8 +5457,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "hook",
                     "webhook",
                     "surface",
-                    "watcher",
-                    "migration"
+                    "watcher"
                   ]
                 },
                 "label": {
@@ -6432,8 +6428,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "hook",
                           "webhook",
                           "surface",
-                          "watcher",
-                          "migration"
+                          "watcher"
                         ]
                       },
                       "label": {
@@ -7722,8 +7717,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "hook",
                     "webhook",
                     "surface",
-                    "watcher",
-                    "migration"
+                    "watcher"
                   ]
                 },
                 "label": {
@@ -8123,8 +8117,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "hook",
                         "webhook",
                         "surface",
-                        "watcher",
-                        "migration"
+                        "watcher"
                       ]
                     },
                     "label": {
@@ -9115,8 +9108,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "hook",
                         "webhook",
                         "surface",
-                        "watcher",
-                        "migration"
+                        "watcher"
                       ]
                     },
                     "label": {
@@ -10200,8 +10192,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "hook",
                           "webhook",
                           "surface",
-                          "watcher",
-                          "migration"
+                          "watcher"
                         ]
                       },
                       "label": {
@@ -11193,8 +11184,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "hook",
                         "webhook",
                         "surface",
-                        "watcher",
-                        "migration"
+                        "watcher"
                       ]
                     },
                     "label": {
@@ -13107,8 +13097,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "hook",
                     "webhook",
                     "surface",
-                    "watcher",
-                    "migration"
+                    "watcher"
                   ]
                 },
                 "label": {
@@ -14067,8 +14056,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "hook",
                           "webhook",
                           "surface",
-                          "watcher",
-                          "migration"
+                          "watcher"
                         ]
                       },
                       "label": {
@@ -14276,8 +14264,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "hook",
                           "webhook",
                           "surface",
-                          "watcher",
-                          "migration"
+                          "watcher"
                         ]
                       },
                       "label": {
@@ -18341,7 +18328,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "channels.lifecycle.get",
         "title": "Get Channel Lifecycle State",
-        "description": "Return lifecycle migration posture for a channel surface.",
+        "description": "Return lifecycle version posture for a channel surface.",
         "category": "channels",
         "source": "builtin",
         "access": "authenticated",
@@ -18383,68 +18370,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "targetVersion": {
               "type": "number"
             },
-            "migrations": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "fromVersion": {
-                    "type": "number"
-                  },
-                  "toVersion": {
-                    "type": "number"
-                  },
-                  "action": {
-                    "type": "string"
-                  },
-                  "applied": {
-                    "type": "boolean"
-                  },
-                  "detail": {
-                    "type": "string"
-                  },
-                  "metadata": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {}
-                        },
-                        {
-                          "type": "array",
-                          "items": {}
-                        }
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "id",
-                  "fromVersion",
-                  "toVersion",
-                  "action",
-                  "applied",
-                  "detail"
-                ],
-                "additionalProperties": false
-              }
-            },
             "metadata": {
               "type": "object",
               "additionalProperties": {
@@ -18477,177 +18402,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "surface",
             "currentVersion",
             "targetVersion",
-            "migrations",
-            "metadata"
-          ],
-          "additionalProperties": false
-        },
-        "invokable": true
-      },
-      {
-        "id": "channels.lifecycle.migrate",
-        "title": "Migrate Channel Lifecycle",
-        "description": "Apply lifecycle migrations for a channel surface.",
-        "category": "channels",
-        "source": "builtin",
-        "access": "admin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "scopes": [
-          "write:channels"
-        ],
-        "http": {
-          "method": "POST",
-          "path": "/api/channels/lifecycle/{surface}/migrate"
-        },
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "accountId": {
-              "type": "string"
-            },
-            "metadata": {
-              "type": "object",
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": {}
-                  },
-                  {
-                    "type": "array",
-                    "items": {}
-                  }
-                ]
-              }
-            }
-          },
-          "additionalProperties": true
-        },
-        "outputSchema": {
-          "type": "object",
-          "properties": {
-            "surface": {
-              "type": "string"
-            },
-            "accountId": {
-              "type": "string"
-            },
-            "currentVersion": {
-              "type": "number"
-            },
-            "targetVersion": {
-              "type": "number"
-            },
-            "migrations": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "fromVersion": {
-                    "type": "number"
-                  },
-                  "toVersion": {
-                    "type": "number"
-                  },
-                  "action": {
-                    "type": "string"
-                  },
-                  "applied": {
-                    "type": "boolean"
-                  },
-                  "detail": {
-                    "type": "string"
-                  },
-                  "metadata": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {}
-                        },
-                        {
-                          "type": "array",
-                          "items": {}
-                        }
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "id",
-                  "fromVersion",
-                  "toVersion",
-                  "action",
-                  "applied",
-                  "detail"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "metadata": {
-              "type": "object",
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": {}
-                  },
-                  {
-                    "type": "array",
-                    "items": {}
-                  }
-                ]
-              }
-            }
-          },
-          "required": [
-            "surface",
-            "currentVersion",
-            "targetVersion",
-            "migrations",
             "metadata"
           ],
           "additionalProperties": false
@@ -69045,10 +68799,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 264,
-      "typedInputs": 264,
+      "methods": 263,
+      "typedInputs": 263,
       "genericInputs": 0,
-      "typedOutputs": 264,
+      "typedOutputs": 263,
       "genericOutputs": 0
     },
     "eventCoverage": {

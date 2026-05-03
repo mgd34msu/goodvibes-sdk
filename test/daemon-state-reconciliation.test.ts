@@ -318,7 +318,7 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
 
     const completed = store.getState().tasks.tasks.get(taskId);
     expect(completed?.status).toBe('completed');
-    expect(completed?.endedAt).toBeGreaterThan(0);
+    expect(completed?.endedAt).toBeGreaterThanOrEqual(completed?.startedAt ?? 0);
   });
 
   test('wrapAgent is idempotent — second call returns same taskId', () => {
