@@ -1,23 +1,8 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonSessionRouteHandlers } from './context.js';
 
 export async function dispatchSessionRoutes(
   req: Request,
-  handlers: Pick<
-    DaemonApiRouteHandlers,
-    | 'getIntegrationSessions'
-    | 'createSharedSession'
-    | 'getSharedSession'
-    | 'closeSharedSession'
-    | 'reopenSharedSession'
-    | 'getSharedSessionMessages'
-    | 'postSharedSessionMessage'
-    | 'getSharedSessionInputs'
-    | 'postSharedSessionInput'
-    | 'postSharedSessionSteer'
-    | 'postSharedSessionFollowUp'
-    | 'cancelSharedSessionInput'
-    | 'getSharedSessionEvents'
-  >,
+  handlers: DaemonSessionRouteHandlers,
 ): Promise<Response | null> {
   const url = new URL(req.url);
   const { pathname } = url;

@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonControlRouteHandlers } from './context.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import type { AuthenticatedPrincipal } from './http-policy.js';
 import { serializableJsonResponse } from './route-helpers.js';
@@ -58,22 +58,7 @@ interface ControlRouteContext {
 export function createDaemonControlRouteHandlers(
   context: ControlRouteContext,
   request: Request,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getStatus'
-  | 'getCurrentAuth'
-  | 'getControlPlaneSnapshot'
-  | 'getOperatorContract'
-  | 'getControlPlaneWeb'
-  | 'getControlPlaneRecentEvents'
-  | 'getControlPlaneMessages'
-  | 'getControlPlaneClients'
-  | 'getGatewayMethods'
-  | 'getGatewayEvents'
-  | 'getGatewayMethod'
-  | 'invokeGatewayMethod'
-  | 'createControlPlaneEventStream'
-> {
+): DaemonControlRouteHandlers {
   const hasAuthorizationHeader = Boolean(request.headers.get('authorization')?.trim());
   const sessionCookiePresent = (request.headers.get('cookie') ?? '')
     .split(';')

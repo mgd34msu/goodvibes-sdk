@@ -1,29 +1,10 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonRuntimeAutomationRouteHandlers } from './context.js';
 import type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
 import { jsonErrorResponse } from './error-response.js';
 
 export function createDaemonRuntimeAutomationRouteHandlers(
   context: DaemonRuntimeRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getAutomationJobs'
-  | 'postAutomationJob'
-  | 'getAutomationRuns'
-  | 'getAutomationRun'
-  | 'getAutomationHeartbeat'
-  | 'postAutomationHeartbeat'
-  | 'automationRunAction'
-  | 'patchAutomationJob'
-  | 'deleteAutomationJob'
-  | 'setAutomationJobEnabled'
-  | 'runAutomationJobNow'
-  | 'getSchedules'
-  | 'postSchedule'
-  | 'deleteSchedule'
-  | 'setScheduleEnabled'
-  | 'runScheduleNow'
-  | 'getSchedulerCapacity'
-> {
+): DaemonRuntimeAutomationRouteHandlers {
   return {
     getAutomationJobs: () => Response.json({ jobs: context.automationManager.listJobs() }),
     postAutomationJob: async (request) => handlePostSchedule(context, request),

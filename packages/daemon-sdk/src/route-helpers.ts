@@ -27,6 +27,36 @@ export function serializableJsonResponse(body: unknown, init?: ResponseInit): Re
   return Response.json(toSerializableJson(body), init);
 }
 
+export interface BoundedIntegerOptions {
+  readonly fallback: number;
+  readonly min?: number;
+  readonly max?: number;
+}
+
+export function readBoundedInteger(raw: string | null, options: BoundedIntegerOptions): number {
+  const min = options.min ?? 1;
+  const max = options.max ?? 1_000;
+  if (raw === null || raw.trim() === '') return clampInteger(options.fallback, min, max);
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return clampInteger(options.fallback, min, max);
+  return clampInteger(value, min, max);
+}
+
+export function readBoundedPositiveInteger(raw: string | null, fallback: number, max = 1_000): number {
+  return readBoundedInteger(raw, { fallback, min: 1, max });
+}
+
+export function readOptionalBoundedInteger(raw: string | null, min: number, max: number): number | undefined {
+  if (raw === null || raw.trim() === '') return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return undefined;
+  return clampInteger(value, min, max);
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.trunc(value)));
+}
+
 export function scopeMatches(granted: string, required: string): boolean {
   if (granted === '*' || granted === required) return true;
   if (granted.endsWith(':*')) {

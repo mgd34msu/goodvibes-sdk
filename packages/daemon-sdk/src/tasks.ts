@@ -1,15 +1,8 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonTaskRouteHandlers } from './context.js';
 
 export async function dispatchTaskRoutes(
   req: Request,
-  handlers: Pick<
-    DaemonApiRouteHandlers,
-    | 'getIntegrationTasks'
-    | 'getRuntimeTask'
-    | 'runtimeTaskAction'
-    | 'getTaskStatus'
-    | 'postTask'
-  >,
+  handlers: DaemonTaskRouteHandlers,
 ): Promise<Response | null> {
   const url = new URL(req.url);
   const { pathname } = url;

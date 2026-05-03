@@ -1,49 +1,10 @@
-import type { DaemonApiRouteHandlers } from './context.js';
-import { readChannelConversationKind, readChannelLifecycleAction } from './route-helpers.js';
+import type { DaemonChannelRouteHandlers } from './context.js';
+import { readBoundedPositiveInteger, readChannelConversationKind, readChannelLifecycleAction } from './route-helpers.js';
 import type { ChannelDirectoryScope, ChannelSurface, DaemonChannelRouteContext } from './channel-route-types.js';
-
-function readBoundedPositiveInteger(raw: string | null, fallback: number, max = 1_000): number {
-  if (raw === null || raw.trim() === '') return fallback;
-  const value = Number(raw);
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(max, Math.max(1, Math.floor(value)));
-}
 
 export function createDaemonChannelRouteHandlers(
   context: DaemonChannelRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getSurfaces'
-  | 'getChannelAccounts'
-  | 'getChannelSurfaceAccounts'
-  | 'getChannelAccount'
-  | 'getChannelSetupSchema'
-  | 'getChannelDoctor'
-  | 'getChannelRepairActions'
-  | 'getChannelLifecycle'
-  | 'postChannelLifecycleMigrate'
-  | 'postChannelAccountAction'
-  | 'getChannelCapabilities'
-  | 'getChannelSurfaceCapabilities'
-  | 'getChannelTools'
-  | 'getChannelSurfaceTools'
-  | 'getChannelAgentTools'
-  | 'getChannelSurfaceAgentTools'
-  | 'postChannelTool'
-  | 'getChannelActions'
-  | 'getChannelSurfaceActions'
-  | 'postChannelAction'
-  | 'postChannelResolveTarget'
-  | 'postChannelAuthorize'
-  | 'postChannelAllowlistResolve'
-  | 'postChannelAllowlistEdit'
-  | 'getChannelPolicies'
-  | 'postChannelPolicy'
-  | 'patchChannelPolicy'
-  | 'getChannelPolicyAudit'
-  | 'getChannelStatus'
-  | 'getChannelDirectory'
-> {
+): DaemonChannelRouteHandlers {
   return {
     getSurfaces: () => Response.json({ surfaces: context.surfaceRegistry.list() }),
     getChannelAccounts: () => context.channelPlugins.listAccounts().then((accounts) => Response.json({ accounts })),

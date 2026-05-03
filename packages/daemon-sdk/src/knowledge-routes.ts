@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonKnowledgeRouteHandlers } from './context.js';
 import {
   buildMissingScopeBody,
   resolvePrivateHostFetchOptions,
@@ -6,6 +6,7 @@ import {
 import { GoodVibesSdkError, DaemonErrorCategory } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
 import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
+import { readBoundedPositiveInteger } from './route-helpers.js';
 import { createDaemonKnowledgeRefinementRouteHandlers } from './knowledge-refinement-routes.js';
 import type {
   AutomationScheduleDefinition,
@@ -21,57 +22,7 @@ type JsonBody = Record<string, unknown>;
 
 export function createDaemonKnowledgeRouteHandlers(
   context: DaemonKnowledgeRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getKnowledgeStatus'
-  | 'getKnowledgeSources'
-  | 'getKnowledgeNodes'
-  | 'getKnowledgeIssues'
-  | 'getKnowledgeItem'
-  | 'getKnowledgeConnectors'
-  | 'getKnowledgeConnector'
-  | 'getKnowledgeConnectorDoctor'
-  | 'getKnowledgeProjectionTargets'
-  | 'getKnowledgeMap'
-  | 'getKnowledgeGraphqlSchema'
-  | 'getKnowledgeExtractions'
-  | 'getKnowledgeUsage'
-  | 'getKnowledgeCandidates'
-  | 'getKnowledgeCandidate'
-  | 'getKnowledgeReports'
-  | 'getKnowledgeReport'
-  | 'getKnowledgeExtraction'
-  | 'getKnowledgeSourceExtraction'
-  | 'getKnowledgeJobs'
-  | 'getKnowledgeJob'
-  | 'getKnowledgeJobRuns'
-  | 'getKnowledgeRefinementTasks'
-  | 'getKnowledgeRefinementTask'
-  | 'postKnowledgeRunRefinement'
-  | 'postKnowledgeCancelRefinementTask'
-  | 'getKnowledgeSchedules'
-  | 'getKnowledgeSchedule'
-  | 'postKnowledgeIngestUrl'
-  | 'postKnowledgeIngestArtifact'
-  | 'postKnowledgeSyncBrowserHistory'
-  | 'postKnowledgeImportBookmarks'
-  | 'postKnowledgeImportUrls'
-  | 'postKnowledgeIngestConnector'
-  | 'postKnowledgeSearch'
-  | 'postKnowledgeAsk'
-  | 'postKnowledgePacket'
-  | 'postKnowledgeReviewIssue'
-  | 'postKnowledgeDecideCandidate'
-  | 'postKnowledgeRunJob'
-  | 'postKnowledgeLint'
-  | 'postKnowledgeReindex'
-  | 'postKnowledgeSaveSchedule'
-  | 'deleteKnowledgeSchedule'
-  | 'postKnowledgeSetScheduleEnabled'
-  | 'postKnowledgeRenderProjection'
-  | 'postKnowledgeMaterializeProjection'
-  | 'executeKnowledgeGraphql'
-> {
+): DaemonKnowledgeRouteHandlers {
   return {
     getKnowledgeStatus: async () => Response.json(await context.knowledgeService.getStatus()),
     getKnowledgeSources: async (url) => Response.json({ sources: context.knowledgeService.listSources(readLimit(url, 100)) }),
@@ -221,13 +172,6 @@ export function createDaemonKnowledgeRouteHandlers(
 
 function readLimit(url: URL, fallback: number): number {
   return readBoundedPositiveInteger(url.searchParams.get('limit'), fallback, 1_000);
-}
-
-function readBoundedPositiveInteger(raw: string | null, fallback: number, max: number): number {
-  if (raw === null || raw.trim() === '') return fallback;
-  const value = Number(raw);
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(max, Math.max(1, Math.floor(value)));
 }
 
 function readBooleanQuery(url: URL, key: string): boolean | undefined {

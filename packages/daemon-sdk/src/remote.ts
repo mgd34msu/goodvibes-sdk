@@ -1,21 +1,8 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonRemoteDispatchRouteHandlers } from './context.js';
 
 export async function dispatchRemoteRoutes(
   req: Request,
-  handlers: Pick<
-    DaemonApiRouteHandlers,
-    | 'getRemote'
-    | 'getRemotePairRequests'
-    | 'approveRemotePairRequest'
-    | 'rejectRemotePairRequest'
-    | 'getRemotePeers'
-    | 'rotateRemotePeerToken'
-    | 'revokeRemotePeerToken'
-    | 'disconnectRemotePeer'
-    | 'getRemoteWork'
-    | 'invokeRemotePeer'
-    | 'cancelRemoteWork'
-  >,
+  handlers: DaemonRemoteDispatchRouteHandlers,
 ): Promise<Response | null> {
   const url = new URL(req.url);
   const { pathname } = url;

@@ -1,4 +1,24 @@
-export type { MaybeResponse, DaemonApiRouteHandlers } from './context.js';
+export type {
+  MaybeResponse,
+  DaemonApiRouteHandlers,
+  DaemonRemoteDispatchRouteHandlers,
+  DaemonOperatorRouteHandlers,
+  DaemonAutomationRouteHandlers,
+  DaemonSessionRouteHandlers,
+  DaemonTaskRouteHandlers,
+  DaemonControlRouteHandlers,
+  DaemonTelemetryRouteHandlers,
+  DaemonChannelRouteHandlers,
+  DaemonIntegrationRouteHandlers,
+  DaemonSystemRouteHandlers,
+  DaemonRemoteManagementRouteHandlers,
+  DaemonKnowledgeRouteHandlers,
+  DaemonKnowledgeRefinementRouteHandlers,
+  DaemonMediaRouteHandlers,
+  DaemonRuntimeSessionRouteHandlers,
+  DaemonRuntimeAutomationRouteHandlers,
+  DaemonRuntimeRouteHandlers,
+} from './context.js';
 export { dispatchAutomationRoutes } from './automation.js';
 export { dispatchSessionRoutes } from './sessions.js';
 export { dispatchTaskRoutes } from './tasks.js';
@@ -15,11 +35,15 @@ export type { AuthenticatedPrincipal, AuthenticatedPrincipalKind } from './http-
 export {
   isJsonRecord,
   missingScopes,
+  readBoundedInteger,
+  readBoundedPositiveInteger,
   readChannelConversationKind,
   readChannelLifecycleAction,
+  readOptionalBoundedInteger,
   scopeMatches,
 } from './route-helpers.js';
 export type {
+  BoundedIntegerOptions,
   ChannelConversationKind,
   ChannelLifecycleAction,
   JsonRecord,

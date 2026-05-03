@@ -1,4 +1,5 @@
 export type {
+  BoundedIntegerOptions,
   ChannelConversationKind,
   ChannelLifecycleAction,
   JsonRecord,
@@ -6,8 +7,11 @@ export type {
 export {
   isJsonRecord,
   missingScopes,
+  readBoundedInteger,
+  readBoundedPositiveInteger,
   readChannelConversationKind,
   readChannelLifecycleAction,
+  readOptionalBoundedInteger,
   scopeMatches,
 } from '../../../daemon.js';
 
