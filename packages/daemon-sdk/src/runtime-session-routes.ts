@@ -1,4 +1,5 @@
 import type { DaemonRuntimeSessionRouteHandlers, DaemonRuntimeTaskRouteHandlers } from './context.js';
+import { withAdmin } from './auth-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { jsonErrorResponse } from './error-response.js';
 import type {
@@ -53,18 +54,10 @@ export function createDaemonRuntimeSessionRouteHandlers(
     getRuntimeTask: (taskId) => handleGetRuntimeTask(context, taskId),
     runtimeTaskAction: (taskId, action, request) => withAdmin(context, request, () => handleRuntimeTaskAction(context, taskId, action, request)),
     getTaskStatus: (agentId) => handleGetTaskStatus(context, agentId),
-    getSharedSessionEvents: (sessionId, request) => handleGetSharedSessionEvents(context, sessionId, request),
+    getSharedSessionEvents: (sessionId, request) => withAdmin(context, request, () => handleGetSharedSessionEvents(context, sessionId, request)),
   };
 }
 
-function withAdmin(
-  context: DaemonRuntimeRouteContext,
-  req: Request,
-  next: () => Response | Promise<Response>,
-): Response | Promise<Response> {
-  const denied = context.requireAdmin(req);
-  return denied ?? next();
-}
 
 const runtimeSessionBodySchemas = createRouteBodySchemaRegistry({
   task: createRouteBodySchema<RuntimeTaskBody>('POST /task', (body) => {

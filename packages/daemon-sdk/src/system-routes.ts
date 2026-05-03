@@ -61,7 +61,6 @@ const systemBodySchemas = createRouteBodySchemaRegistry({
 
 export function createDaemonSystemRouteHandlers(
   context: DaemonSystemRouteContext,
-  request: Request,
 ): DaemonSystemRouteHandlers {
   return {
     getWatchers: () => Response.json({ watchers: context.watcherRegistry.list() }),
@@ -75,13 +74,13 @@ export function createDaemonSystemRouteHandlers(
       if (admin) return admin;
       return handleUpdateWatcher(context, watcherId, req);
     },
-    watcherAction: (watcherId, action) => {
-      const admin = context.requireAdmin(request);
+    watcherAction: (watcherId, action, req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return handleWatcherAction(context, watcherId, action);
     },
-    deleteWatcher: (watcherId) => {
-      const admin = context.requireAdmin(request);
+    deleteWatcher: (watcherId, req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       const removed = context.watcherRegistry.removeWatcher(watcherId);
       return removed
@@ -96,28 +95,28 @@ export function createDaemonSystemRouteHandlers(
         outbound: context.inspectOutboundTls(),
       },
     }),
-    installService: () => {
-      const admin = context.requireAdmin(request);
+    installService: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return Response.json(context.platformServiceManager.install());
     },
-    startService: () => {
-      const admin = context.requireAdmin(request);
+    startService: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return Response.json(context.platformServiceManager.start());
     },
-    stopService: () => {
-      const admin = context.requireAdmin(request);
+    stopService: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return Response.json(context.platformServiceManager.stop());
     },
-    restartService: () => {
-      const admin = context.requireAdmin(request);
+    restartService: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return Response.json(context.platformServiceManager.restart());
     },
-    uninstallService: () => {
-      const admin = context.requireAdmin(request);
+    uninstallService: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return Response.json(context.platformServiceManager.uninstall());
     },
@@ -169,8 +168,8 @@ export function createDaemonSystemRouteHandlers(
         ? Response.json(updated)
         : jsonErrorResponse({ error: 'Unknown route binding' }, { status: 404 });
     },
-    deleteRouteBinding: async (bindingId) => {
-      const admin = context.requireAdmin(request);
+    deleteRouteBinding: async (bindingId, req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       const removed = await context.routeBindings.removeBinding(bindingId);
       return removed
@@ -184,8 +183,8 @@ export function createDaemonSystemRouteHandlers(
       return Response.json(context.integrationHelpers.getApprovalSnapshot());
     },
     approvalAction: (approvalId, action, req) => handleApprovalAction(context, approvalId, action, req),
-    getConfig: () => {
-      const admin = context.requireAdmin(request);
+    getConfig: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return Response.json(context.configManager.getAll());
     },

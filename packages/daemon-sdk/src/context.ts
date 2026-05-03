@@ -165,12 +165,12 @@ export interface DaemonMemoryRouteHandlers {
 }
 
 export interface DaemonLocalAuthAdminRouteHandlers {
-  getLocalAuth(): MaybeResponse;
+  getLocalAuth(req: Request): MaybeResponse;
   postLocalAuthUser(req: Request): MaybeResponse;
-  deleteLocalAuthUser(username: string): MaybeResponse;
+  deleteLocalAuthUser(username: string, req: Request): MaybeResponse;
   postLocalAuthPassword(username: string, req: Request): MaybeResponse;
-  deleteLocalAuthSession(sessionId: string): MaybeResponse;
-  deleteBootstrapFile(): MaybeResponse;
+  deleteLocalAuthSession(sessionId: string, req: Request): MaybeResponse;
+  deleteBootstrapFile(req: Request): MaybeResponse;
 }
 
 export interface DaemonPanelRouteHandlers {
@@ -186,21 +186,21 @@ export interface DaemonSystemRouteHandlers {
   getWatchers(): MaybeResponse;
   postWatcher(req: Request): MaybeResponse;
   patchWatcher(watcherId: string, req: Request): MaybeResponse;
-  watcherAction(watcherId: string, action: 'start' | 'stop' | 'run'): MaybeResponse;
-  deleteWatcher(watcherId: string): MaybeResponse;
+  watcherAction(watcherId: string, action: 'start' | 'stop' | 'run', req: Request): MaybeResponse;
+  deleteWatcher(watcherId: string, req: Request): MaybeResponse;
   getServiceStatus(): MaybeResponse;
-  installService(): MaybeResponse;
-  startService(): MaybeResponse;
-  stopService(): MaybeResponse;
-  restartService(): MaybeResponse;
-  uninstallService(): MaybeResponse;
+  installService(req: Request): MaybeResponse;
+  startService(req: Request): MaybeResponse;
+  stopService(req: Request): MaybeResponse;
+  restartService(req: Request): MaybeResponse;
+  uninstallService(req: Request): MaybeResponse;
   getRouteBindings(): MaybeResponse;
   postRouteBinding(req: Request): MaybeResponse;
   patchRouteBinding(bindingId: string, req: Request): MaybeResponse;
-  deleteRouteBinding(bindingId: string): MaybeResponse;
+  deleteRouteBinding(bindingId: string, req: Request): MaybeResponse;
   getApprovals(): MaybeResponse;
   approvalAction(approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request): MaybeResponse;
-  getConfig(): MaybeResponse;
+  getConfig(req: Request): MaybeResponse;
   postConfig(req: Request): MaybeResponse;
 }
 

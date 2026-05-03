@@ -1,5 +1,6 @@
 import type { DaemonRuntimeAutomationRouteHandlers } from './context.js';
 import type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
+import { withAdmin } from './auth-helpers.js';
 import { jsonErrorResponse } from './error-response.js';
 import {
   createRouteBodySchema,
@@ -45,14 +46,6 @@ export function createDaemonRuntimeAutomationRouteHandlers(
   };
 }
 
-function withAdmin(
-  context: DaemonRuntimeRouteContext,
-  req: Request,
-  next: () => Response | Promise<Response>,
-): Response | Promise<Response> {
-  const denied = context.requireAdmin(req);
-  return denied ?? next();
-}
 
 function handleGetSchedules(context: DaemonRuntimeRouteContext): Response {
   const jobs = context.automationManager.listJobs();

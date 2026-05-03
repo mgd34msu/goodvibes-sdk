@@ -417,7 +417,7 @@ export class DaemonHttpRouter {
         },
         requireAdmin: (request) => this.context.requireAdmin(request),
         userAuth: this.context.userAuth,
-      }, req),
+      }),
       ...createDaemonTelemetryRouteHandlers({
         telemetryApi: this.telemetryApi,
         resolveAuthenticatedPrincipal: (request) => {
@@ -454,7 +454,7 @@ export class DaemonHttpRouter {
           swapManager: this.context.swapManager,
           watcherRegistry: this.context.watcherRegistry,
         }),
-      }, req),
+      }),
       ...createDaemonRuntimeRouteHandlers({
         parseJsonBody: (request) => this.parseJsonBody(request),
         parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
