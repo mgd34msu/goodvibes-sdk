@@ -2,7 +2,7 @@
 
 > **Internal source map:** This document describes the internal source layout under `packages/sdk/src/_internal/platform/`. It is an orientation guide for contributors navigating the codebase — **not** a consumer import reference.
 >
-> Consumers access these modules via `./platform/*` barrel exports as documented in [Public Surface Reference](./public-surface.md). See [Runtime Surfaces](./surfaces.md) for the distinction between the full surface (Bun) and companion surfaces (Hermes/browser/React Native).
+> Consumers access these modules via explicit `./platform/...` entrypoints as documented in [Public Surface Reference](./public-surface.md). See [Runtime Surfaces](./surfaces.md) for the distinction between the full surface (Bun) and companion surfaces (Hermes/browser/React Native).
 
 This document maps every top-level directory under `packages/sdk/src/_internal/platform/`. Each directory is a bounded subsystem with a single responsibility. Use this as an orientation guide when navigating the codebase.
 

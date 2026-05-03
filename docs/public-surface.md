@@ -138,15 +138,15 @@ Expo-specific SDK entry built on top of `react-native`.
 
 ---
 
-## Platform surface (`./platform/*`)
+## Platform surface (`./platform/...`)
 
-### `./platform/*` — `@pellux/goodvibes-sdk/platform/<subsystem>/<module>`
+### Explicit platform entrypoints — `@pellux/goodvibes-sdk/platform/<subsystem>/<module>`
 
 **Status:** beta
 
-Granular platform modules exposed through stable public subpaths. Each path re-exports the corresponding implementation module through a public path that does not expose `_internal`.
+Granular platform modules exposed through explicit public subpaths. Each path re-exports the corresponding implementation module through a public path that does not expose `_internal`.
 
-The `platform/*` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
+The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package no longer exports a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
 
 Stability contract: the module shape (exported names and their TypeScript signatures) is stable within a minor version. Pre-1.0 releases may still make breaking changes; current behavior is recorded in `CHANGELOG.md`.
 
@@ -202,4 +202,4 @@ The following paths are intentionally NOT exported and will cause a module resol
 
 - `@pellux/goodvibes-sdk/_internal/**` — implementation internals.
 
-Consumers must not import `_internal` paths directly. Use the corresponding `platform/*` subpath when one is exported.
+Consumers must not import `_internal` paths directly. Use the corresponding `platform/...` subpath when one is exported.
