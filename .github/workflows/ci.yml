@@ -57,7 +57,7 @@ jobs:
       - name: Build SDK
         run: bun run build
       - name: Upload dist artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sdk-dist
           path: packages/sdk/dist
@@ -307,7 +307,7 @@ jobs:
             console.log('License policy OK');
           "
       - name: Upload SBOM as CI artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sbom-cdx-json
           path: sbom.cdx.json
