@@ -67,8 +67,8 @@
     "rationale": "v0.30.1 expanded platform namespace facade; measured 447 B gzip * 1.2"
   },
   "./platform/acp": {
-    "gzip_bytes": 104,
-    "rationale": "v0.30.2 public ACP seam with default agent command helper; measured 86 B gzip * 1.2"
+    "gzip_bytes": 128,
+    "rationale": "dependency refresh baseline; measured 106 B gzip * 1.2"
   },
   "./platform/adapters": {
     "gzip_bytes": 390,
@@ -147,16 +147,16 @@
     "rationale": "v0.30.1 public config seam; measured 1208 B gzip * 1.2"
   },
   "./platform/control-plane": {
-    "gzip_bytes": 171,
-    "rationale": "v0.30.0 public entry facade; measured 142 B gzip * 1.2"
+    "gzip_bytes": 452,
+    "rationale": "dependency refresh baseline; measured 376 B gzip * 1.2"
   },
   "./platform/core": {
     "gzip_bytes": 342,
     "rationale": "v0.30.1 public platform seam; measured 285 B gzip * 1.2"
   },
   "./platform/daemon": {
-    "gzip_bytes": 182,
-    "rationale": "v0.30.0 public entry facade; measured 151 B gzip * 1.2"
+    "gzip_bytes": 414,
+    "rationale": "dependency refresh baseline; measured 345 B gzip * 1.2"
   },
   "./platform/discovery": {
     "gzip_bytes": 149,
@@ -203,8 +203,8 @@
     "rationale": "v0.30.0 public entry facade; measured 106 B gzip * 1.2"
   },
   "./platform/media": {
-    "gzip_bytes": 126,
-    "rationale": "v0.30.0 public entry facade; measured 105 B gzip * 1.2"
+    "gzip_bytes": 191,
+    "rationale": "dependency refresh baseline; measured 159 B gzip * 1.2"
   },
   "./platform/multimodal": {
     "gzip_bytes": 80,
@@ -235,12 +235,12 @@
     "rationale": "v0.30.1 public platform seam; measured 60 B gzip * 1.2"
   },
   "./platform/providers": {
-    "gzip_bytes": 467,
-    "rationale": "v0.30.2 expanded provider seam for TUI host provider registry, model limits, benchmarks, tiers, favorites, and optimizer APIs; measured 389 B gzip * 1.2"
+    "gzip_bytes": 1206,
+    "rationale": "dependency refresh baseline; measured 1005 B gzip * 1.2"
   },
   "./platform/runtime": {
-    "gzip_bytes": 2608,
-    "rationale": "v0.30.2 expanded runtime seam for TUI host shell, session, diagnostics, provider-account, worktree, sandbox, permission, UI read-model, and lifecycle APIs; measured 2173 B gzip * 1.2"
+    "gzip_bytes": 3644,
+    "rationale": "dependency refresh baseline; measured 3036 B gzip * 1.2"
   },
   "./platform/runtime/events": {
     "gzip_bytes": 3376,
@@ -271,8 +271,8 @@
     "rationale": "v0.30.1 public platform seam; measured 52 B gzip * 1.2"
   },
   "./platform/security": {
-    "gzip_bytes": 202,
-    "rationale": "v0.30.0 public entry facade; measured 168 B gzip * 1.2"
+    "gzip_bytes": 285,
+    "rationale": "dependency refresh baseline; measured 237 B gzip * 1.2"
   },
   "./platform/sessions": {
     "gzip_bytes": 106,
@@ -287,8 +287,8 @@
     "rationale": "v0.30.1 public platform seam; measured 50 B gzip * 1.2"
   },
   "./platform/tools": {
-    "gzip_bytes": 2158,
-    "rationale": "v0.30.0 public entry facade; measured 1798 B gzip * 1.2"
+    "gzip_bytes": 2757,
+    "rationale": "dependency refresh baseline; measured 2297 B gzip * 1.2"
   },
   "./platform/types": {
     "gzip_bytes": 132,
