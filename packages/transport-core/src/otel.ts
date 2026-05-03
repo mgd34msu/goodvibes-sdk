@@ -29,6 +29,8 @@ interface OtelApi {
   };
 }
 
+type SyncRequire = (moduleName: string) => unknown;
+
 /** Cached result of OTel detection. `null` = not available. `undefined` = not yet probed. */
 let otelApi: OtelApi | null | undefined = undefined;
 
@@ -95,7 +97,7 @@ function probeOtelSync(): OtelApi | null {
   try {
     // Use globalThis.require via indirect reference to avoid bundler module resolution.
     const nodeRequire = typeof globalThis !== 'undefined'
-      ? (globalThis as { require?: NodeRequire }).require
+      ? (globalThis as { require?: SyncRequire }).require
       : undefined;
     if (typeof nodeRequire === 'function') {
       otelApi = nodeRequire('@opentelemetry/api') as OtelApi;

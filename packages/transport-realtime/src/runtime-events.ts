@@ -78,6 +78,7 @@ export interface RuntimeEventConnectorOptions {
 }
 
 type AuthTokenSource = string | null | undefined | AuthTokenResolver;
+type TimeoutHandle = ReturnType<typeof setTimeout> & { unref?: () => void };
 
 /** Default max reconnect attempts for WebSocket connections (finite to prevent infinite auth loops). */
 export const DEFAULT_WS_MAX_ATTEMPTS = 10;
@@ -242,7 +243,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     let reconnectAttempt = 0;
     let hasReceivedMessage = false;
     let socket: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectTimer: TimeoutHandle | null = null;
     // Bounded outbound message queue — max MAX_OUTBOUND_QUEUE entries, drop-oldest policy.
     // Messages pushed while the socket is not yet open or is reconnecting are buffered here
     // and flushed on the next successful open event.
@@ -313,7 +314,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           options.onError?.(connectionError);
           scheduleReconnect();
         });
-      }, delayMs);
+      }, delayMs) as TimeoutHandle;
       reconnectTimer.unref?.();
     };
 
