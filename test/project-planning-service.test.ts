@@ -5,8 +5,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import {
   ProjectPlanningService,
   projectKnowledgeSpaceId,
-} from '../packages/sdk/src/_internal/platform/knowledge/index.js';
-import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
+} from '../packages/sdk/src/platform/knowledge/index.js';
+import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
 

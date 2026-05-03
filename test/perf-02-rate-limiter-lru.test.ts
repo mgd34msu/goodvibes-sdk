@@ -10,19 +10,31 @@
  *   - _sweep removes expired entries.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { UserAuthManager } from '../packages/sdk/src/_internal/platform/security/user-auth.ts';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.ts';
-import { HttpListener } from '../packages/sdk/src/_internal/platform/daemon/http-listener.ts';
+import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.ts';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
+import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.ts';
 
 function tempDir(suffix: string): string {
-  const d = join(tmpdir(), `gv-perf02-${suffix}-${Date.now()}`);
+  const d = join(tmpdir(), `gv-perf02-${suffix}-${randomUUID()}`);
   mkdirSync(d, { recursive: true });
   return d;
 }
+
+const TEST_NOW_MS = 1_800_000_000_000;
+const originalDateNow = Date.now;
+
+beforeEach(() => {
+  Date.now = () => TEST_NOW_MS;
+});
+
+afterEach(() => {
+  Date.now = originalDateNow;
+});
 
 type RateLimiterInternal = {
   check(ip: string): boolean;

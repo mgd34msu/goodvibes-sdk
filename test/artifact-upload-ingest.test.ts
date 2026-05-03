@@ -2,16 +2,16 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/store.ts';
+import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/store.ts';
 import { createDaemonMediaRouteHandlers } from '../packages/daemon-sdk/src/media-routes.ts';
 import { createDaemonKnowledgeRouteHandlers } from '../packages/daemon-sdk/src/knowledge-routes.ts';
 import type { DaemonKnowledgeRouteContext } from '../packages/daemon-sdk/src/knowledge-route-types.ts';
-import { HomeGraphRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/home-graph-routes.ts';
+import { HomeGraphRoutes } from '../packages/sdk/src/platform/daemon/http/home-graph-routes.ts';
 
 const tempDirs: string[] = [];
 
 function tempDir(name: string): string {
-  const dir = join(tmpdir(), `goodvibes-artifact-upload-${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const dir = join(tmpdir(), `goodvibes-artifact-upload-${name}-${Date.now()}-${crypto.randomUUID()}`);
   mkdirSync(dir, { recursive: true });
   tempDirs.push(dir);
   return dir;
@@ -58,7 +58,7 @@ function webStreamWithFailingReleaseLock(data: Uint8Array): ReadableStream<Uint8
 }
 
 describe('artifact uploads and ingest', () => {
-  test('ArtifactStore accepts streamed artifacts larger than the legacy 10 MiB cap', async () => {
+  test('ArtifactStore accepts streamed artifacts larger than the previous 10 MiB cap', async () => {
     const store = createStore('large-stream');
     const artifact = await store.createFromStream({
       stream: repeatedChunks(11, 1024 * 1024),

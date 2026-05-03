@@ -12,11 +12,11 @@ const SDK_ROOT = resolve(__dirname, '..');
 const SDK_DIST = resolve(SDK_ROOT, 'packages/sdk/dist');
 const SOURCE_ARTIFACTS = resolve(
   SDK_ROOT,
-  'packages/sdk/src/_internal/contracts/artifacts',
+  'packages/contracts/artifacts',
 );
 const DIST_ARTIFACTS = resolve(
   SDK_DIST,
-  '_internal/contracts/artifacts',
+  'contracts/artifacts',
 );
 
 function ensureExists(path) {
@@ -29,7 +29,7 @@ ensureExists(SDK_DIST);
 ensureExists(SOURCE_ARTIFACTS);
 
 rmSync(DIST_ARTIFACTS, { recursive: true, force: true });
-mkdirSync(resolve(SDK_DIST, '_internal/contracts'), { recursive: true });
+mkdirSync(resolve(SDK_DIST, 'contracts'), { recursive: true });
 cpSync(SOURCE_ARTIFACTS, DIST_ARTIFACTS, { recursive: true });
 
 console.log('prepared sdk package');

@@ -1,3 +1,6 @@
+/**
+ * Subscribe to approval updates from a browser companion surface.
+ */
 import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 
 const sdk = createBrowserGoodVibesSdk({
@@ -15,11 +18,6 @@ const stopAgentCompleted = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', as
   await refreshApprovals();
 });
 
-const pollHandle = globalThis.setInterval(() => {
-  void refreshApprovals();
-}, 15_000);
-
 globalThis.addEventListener?.('beforeunload', () => {
   stopAgentCompleted();
-  globalThis.clearInterval?.(pollHandle);
 });

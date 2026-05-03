@@ -458,7 +458,9 @@ describe('SSE transport: traceparent in fetch headers when OTel is present', () 
       fetchSpy,
     );
 
-    await expect(connector('agents', () => {})).resolves.toBeUndefined();
+    const stop = await connector('agents', () => {});
+    expect(typeof stop).toBe('function');
+    stop();
 
     // Always clear the override so subsequent tests are not affected.
     __resetOtelCache();

@@ -1,1 +1,1 @@
-export * from '../../../_internal/platform/runtime/inspection/state-inspector.js';
+export * from './state-inspector/index.js';

@@ -1,1 +1,1 @@
-export * from '../../../_internal/platform/daemon/http/channel-routes.js';
+export { createDaemonChannelRouteHandlers } from '@pellux/goodvibes-daemon-sdk';

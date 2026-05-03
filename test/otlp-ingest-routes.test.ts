@@ -376,11 +376,4 @@ describe('F7 — OTLP POST ingest: router dispatch wiring', () => {
     expect(res!.status).toBe(200);
   });
 
-  test('legacy path POST /api/telemetry/otlp/v1/logs is also dispatched', async () => {
-    const handlers = makeFullHandlers();
-    const req = jsonRequest('http://localhost/api/telemetry/otlp/v1/logs', { resourceLogs: [] });
-    const res = await dispatchOperatorRoutes(req, handlers as never);
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(200);
-  });
 });

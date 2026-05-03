@@ -60,8 +60,8 @@ The SDK does not replace your server framework. You still own:
 
 ## Connect-or-start daemon startup
 
-Full-surface hosts such as the TUI can call `startExternalServices` or
-`startHostServices` to start SDK-owned local services. When `danger.daemon` is
+Full-surface hosts such as the TUI call `startHostServices` to start SDK-owned
+local services. When `danger.daemon` is
 enabled, the SDK now treats daemon startup as a connect-or-start decision:
 
 - If the configured `controlPlane.host` and `controlPlane.port` are free, the
@@ -75,7 +75,7 @@ enabled, the SDK now treats daemon startup as a connect-or-start decision:
 - If daemon startup times out, the SDK returns
   `daemonStatus.mode: "unavailable"`.
 
-The legacy `daemonServer` property remains `null` for external, blocked,
+The `daemonServer` property remains `null` for external, blocked,
 disabled, and unavailable cases because there is no embedded server instance to
 stop. Hosts should read `daemonStatus` to distinguish these cases instead of
 treating every `daemonServer: null` as the same outcome. `httpListenerStatus`
@@ -93,7 +93,7 @@ The example at [daemon-fetch-handler-quickstart.ts](../examples/daemon-fetch-han
 
 ## Error handling
 
-All SDK errors extend `GoodVibesSdkError`. The daemon surface emits typed errors across the full `SDKErrorKind` union (`'auth'`, `'config'`, `'contract'`, `'network'`, `'not-found'`, `'rate-limit'`, `'server'`, `'validation'`, `'unknown'`). Tool-execution and agent-execution failures surface as `'server'`, `'validation'`, or `'unknown'` depending on the failure mode — check `err.category` (values like `'tool'`, `'service'`, `'protocol'`) for finer-grained classification. See [Error Kinds](./error-kinds.md) for details.
+All SDK errors extend `GoodVibesSdkError`. The daemon surface emits typed errors across the full `SDKErrorKind` union (`'auth'`, `'config'`, `'contract'`, `'network'`, `'not-found'`, `'protocol'`, `'rate-limit'`, `'service'`, `'internal'`, `'tool'`, `'validation'`, `'unknown'`). Tool-execution, upstream-service, protocol, and daemon-internal failures surface through their matching kind so callers do not need to infer them from English messages. See [Error Kinds](./error-kinds.md) for details.
 
 ```ts
 import { GoodVibesSdkError } from '@pellux/goodvibes-sdk/errors';
@@ -109,9 +109,11 @@ try {
       case 'validation':
         // bad request shape — return 400
         break;
-      case 'server':
-        // tool/agent execution failure, 5xx from daemon — log and degrade
-        // narrow further: err.category === 'tool' | 'service' | 'protocol'
+      case 'service':
+      case 'protocol':
+      case 'tool':
+      case 'internal':
+        // Upstream service, wire-protocol, tool, or daemon-internal failure.
         break;
       case 'unknown':
         // unexpected failure — log with full err context

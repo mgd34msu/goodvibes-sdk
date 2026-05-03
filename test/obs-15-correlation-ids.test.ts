@@ -6,14 +6,14 @@ import { describe, expect, test } from 'bun:test';
  */
 describe('obs-15 correlation ids', () => {
   test('getCorrelationContext returns empty object when no context is active', async () => {
-    const { getCorrelationContext } = await import('../packages/sdk/src/_internal/platform/runtime/correlation.js');
+    const { getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
     const ctx = getCorrelationContext();
     expect(ctx).toBeDefined();
     expect(typeof ctx).toBe('object');
   });
 
   test('withCorrelation provides context within the callback', async () => {
-    const { withCorrelation, getCorrelationContext } = await import('../packages/sdk/src/_internal/platform/runtime/correlation.js');
+    const { withCorrelation, getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
     let captured: ReturnType<typeof getCorrelationContext> = {};
     withCorrelation({ requestId: 'req-abc' }, () => {
       captured = getCorrelationContext();
@@ -22,7 +22,7 @@ describe('obs-15 correlation ids', () => {
   });
 
   test('withCorrelationAsync propagates context through await', async () => {
-    const { withCorrelationAsync, getCorrelationContext } = await import('../packages/sdk/src/_internal/platform/runtime/correlation.js');
+    const { withCorrelationAsync, getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
     let captured: ReturnType<typeof getCorrelationContext> = {};
     await withCorrelationAsync({ sessionId: 'sess-xyz' }, async () => {
       await Promise.resolve();
@@ -32,7 +32,7 @@ describe('obs-15 correlation ids', () => {
   });
 
   test('nested withCorrelation merges parent context', async () => {
-    const { withCorrelation, getCorrelationContext } = await import('../packages/sdk/src/_internal/platform/runtime/correlation.js');
+    const { withCorrelation, getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
     let captured: ReturnType<typeof getCorrelationContext> = {};
     withCorrelation({ requestId: 'outer' }, () => {
       withCorrelation({ sessionId: 'inner-sess' }, () => {
@@ -44,7 +44,7 @@ describe('obs-15 correlation ids', () => {
   });
 
   test('context does not leak outside the callback', async () => {
-    const { withCorrelation, getCorrelationContext } = await import('../packages/sdk/src/_internal/platform/runtime/correlation.js');
+    const { withCorrelation, getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
     withCorrelation({ requestId: 'ephemeral' }, () => { /* nothing */ });
     const ctx = getCorrelationContext();
     expect(ctx.requestId).toBeUndefined();
@@ -52,8 +52,8 @@ describe('obs-15 correlation ids', () => {
 
   // Integration: buildAttributes in api-helpers merges correlation context into event attributes
   test('buildAttributes includes requestId from active correlation context', async () => {
-    const { withCorrelation } = await import('../packages/sdk/src/_internal/platform/runtime/correlation.js');
-    const { buildAttributes } = await import('../packages/sdk/src/_internal/platform/runtime/telemetry/api-helpers.js');
+    const { withCorrelation } = await import('../packages/sdk/src/platform/runtime/correlation.js');
+    const { buildAttributes } = await import('../packages/sdk/src/platform/runtime/telemetry/api-helpers.js');
     let captured: Record<string, unknown> = {};
     withCorrelation({ requestId: 'integ-req-001' }, () => {
       captured = buildAttributes('session', {
@@ -68,7 +68,7 @@ describe('obs-15 correlation ids', () => {
 
   // Integration: two concurrent correlation contexts carry independent requestIds
   test('concurrent withCorrelationAsync contexts have independent requestIds', async () => {
-    const { withCorrelationAsync, getCorrelationContext } = await import('../packages/sdk/src/_internal/platform/runtime/correlation.js');
+    const { withCorrelationAsync, getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
     const ids: string[] = [];
     await Promise.all([
       withCorrelationAsync({ requestId: 'req-A' }, async () => {

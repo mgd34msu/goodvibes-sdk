@@ -1,1 +1,1 @@
-export * from '../../../_internal/platform/daemon/http/control-routes.js';
+export { createDaemonControlRouteHandlers } from '@pellux/goodvibes-daemon-sdk';

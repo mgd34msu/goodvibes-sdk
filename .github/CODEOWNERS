@@ -1,1 +1,11 @@
 * @mgd34msu
+/packages/contracts/ @mgd34msu
+/packages/daemon-sdk/ @mgd34msu
+/packages/operator-sdk/ @mgd34msu
+/packages/peer-sdk/ @mgd34msu
+/packages/transport-core/ @mgd34msu
+/packages/transport-http/ @mgd34msu
+/packages/transport-realtime/ @mgd34msu
+/packages/sdk/src/platform/knowledge/ @mgd34msu
+/scripts/ @mgd34msu
+/.github/workflows/ @mgd34msu

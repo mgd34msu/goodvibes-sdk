@@ -1,8 +1,10 @@
 # Entry Point Guide
 
-This SDK publishes one npm package: `@pellux/goodvibes-sdk`.
-
-Everything in this document is a subpath export from that one package, not a separate install.
+This SDK publishes `@pellux/goodvibes-sdk` plus source-of-truth sibling
+packages such as `@pellux/goodvibes-contracts`, `@pellux/goodvibes-errors`,
+and the transport/client packages. Normal application code should still install
+`@pellux/goodvibes-sdk`; the sibling packages are public dependencies and
+source-of-truth facades, not separate setup steps for most consumers.
 
 See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun) vs. companion surface (Hermes / browser / Workers).
 
@@ -21,7 +23,8 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 | iOS native | JSON contracts via `/contracts` | N/A | [iOS integration](./ios-integration.md) |
 | Android native | JSON contracts via `/contracts` | N/A | [Android integration](./android-integration.md) |
 
-> `/browser` and `/web` are aliases — same bundle, two names for different mental models.
+`/browser` and `/web` are both companion-safe browser runtime entrypoints. Use
+`/browser` for generic browser applications and `/web` for web UI hosts.
 
 ## Advanced Platform Entry Points
 
@@ -35,7 +38,7 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 | `@pellux/goodvibes-sdk/platform/providers` | You are working with provider registries, model catalogs, capabilities, or provider-specific runtime helpers |
 | `@pellux/goodvibes-sdk/platform/tools` | You are registering or executing runtime tools from a full platform host |
 | `@pellux/goodvibes-sdk/platform/pairing` | You need QR code generation, companion token management, and connection info formatting |
-| `@pellux/goodvibes-sdk/platform/daemon/port-check` | You need port-in-use checking before binding a daemon HTTP server |
+| `@pellux/goodvibes-sdk/platform/daemon` | You need daemon HTTP host helpers, including port-in-use checking |
 
 The platform surface is explicit. There is no public
 `@pellux/goodvibes-sdk/platform/*` wildcard export. Import only subpaths listed
@@ -45,8 +48,8 @@ Treat `platform/...` modules as full-platform/server-side unless a specific
 document marks the entry point as companion-safe. Today the full surface is
 Bun-oriented; `platform/node` documents and guards Node-like runtime boundaries
 without making the full platform a supported Node consumer surface. Do not
-import `_internal/**` paths from applications; those paths are implementation
-layout, not the consumer contract.
+bypass the package export map from applications; repository file layout is not
+the consumer contract.
 
 ## Companion-Safe Entry Points
 
@@ -55,9 +58,9 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 | Entry point | Purpose |
 |---|---|
 | `@pellux/goodvibes-sdk/react-native` | React Native (Hermes) defaults |
-| `@pellux/goodvibes-sdk/expo` | Expo alias of `/react-native` |
+| `@pellux/goodvibes-sdk/expo` | Expo companion defaults and Expo secure token stores |
 | `@pellux/goodvibes-sdk/browser` | Browser defaults |
-| `@pellux/goodvibes-sdk/web` | Web app alias of `/browser` |
+| `@pellux/goodvibes-sdk/web` | Web UI companion defaults |
 | `@pellux/goodvibes-sdk/workers` | Manual Cloudflare Worker bridge for optional daemon batch queue/tick integration; SDK-owned provisioning is done through daemon `/api/cloudflare/*` routes |
 | `@pellux/goodvibes-sdk/auth` | Token storage and auth flows |
 | `@pellux/goodvibes-sdk/errors` | Typed error classes |
@@ -67,9 +70,9 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 | `@pellux/goodvibes-sdk/transport-core` | Transport/event-feed primitives |
 | `@pellux/goodvibes-sdk/transport-http` | HTTP/SSE/auth/retry primitives |
 | `@pellux/goodvibes-sdk/transport-realtime` | Runtime-event connectors over SSE and WebSocket |
-| `@pellux/goodvibes-sdk/transport-direct` | In-process direct transport |
+| `@pellux/goodvibes-sdk/transport-direct` | In-process direct transport facade backed by `transport-core` |
 
-CI job `platform-matrix` (`rn-bundle` dimension) enforces that companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports. See [Compatibility](./compatibility.md).
+CI job `platform-matrix` (`rn-bundle` dimension) enforces that companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports.
 
 
 ## Transport Middleware

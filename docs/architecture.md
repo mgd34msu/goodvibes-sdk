@@ -2,7 +2,7 @@
 
 > **Surface scope:** The SDK exposes two consumer-visible surfaces — the full surface (Bun runtime) and the companion surface (Hermes/browser/React Native). This document describes the **internal source organization** that backs the full surface. For the distinction between surfaces and their public barrel exports, see [Runtime Surfaces](./surfaces.md) and [Public Surface Reference](./public-surface.md).
 >
-> Consumers import via explicit `./platform/...` public entrypoints (for example `@pellux/goodvibes-sdk/platform/core/adaptive-planner`), **not** the `_internal/platform/*` paths shown in this document. The `_internal/platform/*` paths are the underlying source layout — accurate descriptions of where things live, but not the import surface exposed to SDK consumers.
+> Consumers import via explicit public entrypoints such as `@pellux/goodvibes-sdk/platform/runtime`, `@pellux/goodvibes-sdk/platform/knowledge`, and `@pellux/goodvibes-sdk/platform/tools`. Source paths described here are implementation layout, not import paths.
 
 This document describes the internal architecture of the GoodVibes SDK: how its packages, subsystems, and runtime components relate to each other, and how you use them to build AI agent products.
 
@@ -50,10 +50,9 @@ All of these share the same orchestration core, permission system, knowledge sto
        │  HTTP + SSE / WebSocket
 ┌──────▼──────────────────────────────────────────────────────────────────┐
 │                       TRANSPORT LAYER                                    │
-│  transport-core (ClientTransport interface, EventEnvelope)              │
+│  transport-core (ClientTransport, direct transport, EventEnvelope)      │
 │  transport-http  (HTTP + SSE, auth, retry, reconnect, backoff)          │
 │  transport-realtime (domain events, runtime events)                     │
-│  transport-direct  (in-process, no network hop)                         │
 └──────┬──────────────────────────────────────────────────────────────────┘
        │
 ┌──────▼──────────────────────────────────────────────────────────────────┐
@@ -69,22 +68,21 @@ All of these share the same orchestration core, permission system, knowledge sto
 
 | Package | Role |
 |---|---|
-| `packages/sdk` | Core SDK. All platform logic lives here under `src/_internal/platform/`. |
+| `packages/sdk` | Core SDK. All platform logic lives here under `src/platform/`. |
 | `packages/contracts` | Generated TypeScript types for the operator and peer wire contracts. Shared by all packages. |
 | `packages/daemon-sdk` | Types and helpers for embedding the daemon HTTP layer into a host process. |
 | `packages/operator-sdk` | High-level operator client with full-access API surface. |
 | `packages/peer-sdk` | Companion/peer client with limited API surface (companion apps, 3rd-party integrators). |
-| `packages/transport-core` | `ClientTransport` interface and `EventEnvelope` types. |
+| `packages/transport-core` | `ClientTransport`, direct in-process transport, and `EventEnvelope` types. |
 | `packages/transport-http` | HTTP + SSE transport implementation with auth, retry, backoff, and reconnect. |
 | `packages/transport-realtime` | Real-time domain and runtime event subscriptions over SSE. |
-| `packages/transport-direct` | In-process transport for embedding the daemon with zero network overhead. |
 | `packages/errors` | Structured error types shared across the SDK. |
 
 ---
 
 ## Orchestrator Core
 
-**Source:** `packages/sdk/src/_internal/platform/core/`
+**Source:** `packages/sdk/src/platform/core/`
 
 The `Orchestrator` class is the central engine of every agent session. It owns the turn loop: receiving user input, sending it to the LLM via `ProviderRegistry`, streaming responses back, executing tool calls, and looping until the model stops requesting tools.
 
@@ -154,7 +152,7 @@ The daemon is an HTTP server (built on Bun) that exposes the agent runtime to ex
 
 ## Agent System
 
-**Source:** `packages/sdk/src/_internal/platform/agents/`
+**Source:** `packages/sdk/src/platform/agents/`
 
 The agent system enables the orchestrator to spawn parallel sub-agents and coordinate multi-agent workflows.
 
@@ -200,7 +198,7 @@ pending → engineering → reviewing → fixing → awaiting_gates → gating �
 
 ## Channel System
 
-**Source:** `packages/sdk/src/_internal/platform/channels/`
+**Source:** `packages/sdk/src/platform/channels/`
 
 The channel system lets agents send and receive messages through external communication platforms.
 
@@ -278,7 +276,7 @@ For `goodvibes-chat`, the SDK owns ntfy reply publication. Inbound chat messages
 
 ## Knowledge System
 
-**Source:** `packages/sdk/src/_internal/platform/knowledge/`
+**Source:** `packages/sdk/src/platform/knowledge/`
 
 The knowledge system provides persistent, queryable memory that agents can read and write during sessions.
 
@@ -297,7 +295,7 @@ The knowledge system provides persistent, queryable memory that agents can read 
 
 ## Config System
 
-**Source:** `packages/sdk/src/_internal/platform/config/`
+**Source:** `packages/sdk/src/platform/config/`
 
 ### ConfigManager
 
@@ -343,7 +341,7 @@ References are expressed as `goodvibes://secrets/source/...` URIs or `secretref:
 
 ## State Management
 
-**Source:** `packages/sdk/src/_internal/platform/runtime/store/`
+**Source:** `packages/sdk/src/platform/runtime/store/`
 
 ### RuntimeStore
 
@@ -386,7 +384,7 @@ The `RuntimeEventBus` is an in-process event emitter that carries typed events a
 
 ## Session System
 
-**Source:** `packages/sdk/src/_internal/platform/runtime/compaction/` and `platform/core/session-*.ts`
+**Source:** `packages/sdk/src/platform/runtime/compaction/` and `platform/core/session-*.ts`
 
 ### Compaction
 
@@ -419,7 +417,7 @@ Four built-in strategies:
 
 ## Plugin System
 
-**Source:** `packages/sdk/src/_internal/platform/plugins/`
+**Source:** `packages/sdk/src/platform/plugins/`
 
 ### Discovery and Loading
 
@@ -441,19 +439,19 @@ Four built-in strategies:
 
 ## Platform Layer Map
 
-For a directory-by-directory breakdown of every subdirectory under `packages/sdk/src/_internal/platform/` — including one-line purpose descriptions, dependency hints, the sync-from-packages pattern, and extraction candidates — see [architecture-platform.md](./architecture-platform.md).
+For a directory-by-directory breakdown of every subdirectory under `packages/sdk/src/platform/` — including one-line purpose descriptions, dependency hints, the sync-from-packages pattern, and extraction candidates — see [architecture-platform.md](./architecture-platform.md).
 
 ---
 
 ## Pairing System
 
-**Source:** `packages/sdk/src/_internal/platform/pairing/`
+**Source:** `packages/sdk/src/platform/pairing/`
 
 The pairing system lets companion apps (mobile, web) establish an authenticated connection to the daemon by scanning a QR code displayed in the TUI or operator interface.
 
 ### Flow
 
-1. **Token generation** — `getOrCreateCompanionToken(surface, { daemonHomeDir })` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`) at mode `0600`. Tokens are stable across restarts and regenerated only on explicit request. The token path is global for a daemon home directory.
+1. **Token generation** — `getOrCreateCompanionToken({ daemonHomeDir })` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`) at mode `0600`. Tokens are stable across restarts and regenerated only on explicit request. The token path is global for a daemon home directory.
 
 2. **Connection info encoding** — `buildCompanionConnectionInfo()` assembles the `CompanionConnectionInfo` payload: daemon URL, token, username, version, and surface name. `encodeConnectionPayload()` serializes it to JSON.
 
@@ -461,7 +459,7 @@ The pairing system lets companion apps (mobile, web) establish an authenticated 
 
 4. **Connection** — the companion app decodes the QR payload, extracts the URL and token, and connects using `transport-http` with the token as a bearer credential.
 
-5. **Revocation** — `regenerateCompanionToken(surface, { daemonHomeDir })` replaces the stored token, invalidating all existing companion/operator connections on that host.
+5. **Revocation** — `regenerateCompanionToken({ daemonHomeDir })` replaces the stored token, invalidating all existing companion/operator connections on that host.
 
 ### CompanionConnectionInfo
 

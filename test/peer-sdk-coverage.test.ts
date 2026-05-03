@@ -2,7 +2,7 @@
  * Coverage backfill for packages/peer-sdk/src/client-core.ts and client.ts
  *
  * Targets:
- * - client-core.ts: listEndpoints, getEndpoint (including throw for unknown), invoke generic
+ * - client-core.ts: listOperations, getOperation (including throw for unknown), invoke generic
  * - client.ts: createPeerSdk (covered by existing peer-sdk.test.ts, but adding missing paths)
  */
 import { describe, expect, test } from 'bun:test';
@@ -26,34 +26,34 @@ function makeTransport(fetch: (input: string | URL | Request, init?: RequestInit
   });
 }
 
-describe('createPeerRemoteClient — listEndpoints / getEndpoint', () => {
-  test('listEndpoints returns all endpoints from contract', () => {
+describe('createPeerRemoteClient — listOperations / getOperation', () => {
+  test('listOperations returns all endpoints from contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getPeerContract();
     const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
-    const endpoints = client.listEndpoints();
+    const endpoints = client.listOperations();
     expect(Array.isArray(endpoints)).toBe(true);
     expect(endpoints.length).toBeGreaterThan(0);
     expect(endpoints.some((e) => e.id === 'pair.request')).toBe(true);
   });
 
-  test('getEndpoint returns the matching endpoint contract', () => {
+  test('getOperation returns the matching endpoint contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getPeerContract();
     const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
-    const endpoint = client.getEndpoint('pair.request');
+    const endpoint = client.getOperation('pair.request');
     expect(endpoint.id).toBe('pair.request');
   });
 
-  test('getEndpoint throws GoodVibesSdkError for unknown endpoint id', () => {
+  test('getOperation throws GoodVibesSdkError for unknown endpoint id', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getPeerContract();
     const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
-    expect(() => client.getEndpoint('does.not.exist')).toThrow(GoodVibesSdkError);
-    expect(() => client.getEndpoint('does.not.exist')).toThrow(/Unknown peer endpoint/);
+    expect(() => client.getOperation('does.not.exist')).toThrow(GoodVibesSdkError);
+    expect(() => client.getOperation('does.not.exist')).toThrow(/Unknown peer endpoint/);
   });
 
-  test('response validation rejects incompatible peer response shapes', async () => {
+  test('response validation rejects unsupported peer response shapes', async () => {
     const transport = makeTransport(async () => createJsonResponse({ requestId: 'pair-1' }));
     const contract = getPeerContract();
     const client = createPeerRemoteClient(transport, contract);
@@ -77,7 +77,7 @@ describe('createPeerRemoteClient — invoke generic overload', () => {
       return createJsonResponse({ requestId: 'pair-1' });
     });
     const contract = getPeerContract();
-    const client = createPeerRemoteClient(transport, contract);
+    const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
     const result = await client.invoke('pair.request', { peerId: 'node-a', label: 'runner' });
     expect(result).toMatchObject({ requestId: 'pair-1' });
     expect(calls).toHaveLength(1);
@@ -154,14 +154,14 @@ describe('createPeerRemoteClient — shorthand methods', () => {
   });
 });
 
-describe('createPeerSdk — getEndpoint is accessible', () => {
-  test('getEndpoint returns endpoint contract from PeerSdk', () => {
+describe('createPeerSdk — getOperation is accessible', () => {
+  test('getOperation returns endpoint contract from PeerSdk', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
       fetch: async () => createJsonResponse({ ok: true }),
     });
-    const endpoint = sdk.getEndpoint('pair.request');
+    const endpoint = sdk.getOperation('pair.request');
     expect(endpoint.id).toBe('pair.request');
   });
 });

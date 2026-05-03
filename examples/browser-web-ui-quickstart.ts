@@ -1,3 +1,6 @@
+/**
+ * Create a browser client for GoodVibes web UI integrations.
+ */
 import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 
 const sdk = createBrowserGoodVibesSdk({

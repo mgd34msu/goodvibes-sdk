@@ -183,6 +183,9 @@ type Row = {
 
 const rows: Row[] = [];
 let anyFail = false;
+const measuredEntries = new Set(entries.map((entry) => entry.entry));
+const staleBudgetEntries = Object.keys(budgets).filter((entry) => !measuredEntries.has(entry));
+if (staleBudgetEntries.length > 0) anyFail = true;
 
 for (const { entry, distRel } of entries) {
   const filePath = resolve(SDK_PKG, distRel);
@@ -266,6 +269,13 @@ console.log(sep + '\n');
 if (anyFail) {
   const overBudget = rows.filter((r) => r.status === 'FAIL');
   const noBudget = rows.filter((r) => r.status === 'NO BUDGET');
+  if (staleBudgetEntries.length > 0) {
+    console.error(
+      `ERROR: ${staleBudgetEntries.length} stale bundle budget entr${staleBudgetEntries.length === 1 ? 'y' : 'ies'} do not match a JS export:\n` +
+        staleBudgetEntries.map((entry) => `  ${entry}`).join('\n') +
+        '\nRemove stale entries or add the corresponding package export.',
+    );
+  }
 
   if (overBudget.length > 0) {
     console.error(

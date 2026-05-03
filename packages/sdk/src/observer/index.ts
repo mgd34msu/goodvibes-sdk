@@ -5,8 +5,8 @@
  * via the `observer` option on supported client factories. All methods are
  * optional; the SDK works identically whether an observer is present or not.
  *
- * Observer call sites are wrapped in a silent try/catch: an observer that
- * throws will not propagate into SDK logic. This is intentional — observer
+ * Observer call sites are wrapped through `invokeObserver`: an observer that
+ * throws will not propagate into SDK logic. This is intentional because observer
  * errors must never break the SDK flow.
  *
  * @example
@@ -20,7 +20,7 @@
 const SPAN_STATUS_ERROR = 2 as const; // OpenTelemetry SpanStatusCode.ERROR
 
 import type { GoodVibesSdkError } from '@pellux/goodvibes-errors';
-import type { AnyRuntimeEvent } from '../_internal/platform/runtime/events/domain-map.js';
+import type { AnyRuntimeEvent } from '../events/domain-map.js';
 import type { TransportObserver, TransportActivityInfo } from '@pellux/goodvibes-transport-core';
 
 export type { AnyRuntimeEvent };
@@ -57,8 +57,8 @@ export interface AuthTransitionInfo {
  * Optional observer interface. Implement any subset of methods and pass the
  * instance to a supported client factory. All methods are optional.
  *
- * Every call site is wrapped in `try { observer.onX?.(...) } catch (e) {}`
- * — observer errors are swallowed and never propagate into SDK logic.
+ * Every call site should go through `invokeObserver` so observer errors are
+ * isolated from SDK control flow.
  */
 export interface SDKObserver extends TransportObserver {
   /**
@@ -202,7 +202,7 @@ export interface OtelHistogram {
  *
  * Pass a pre-configured `Tracer` and `Meter` from your OpenTelemetry SDK setup.
  * This adapter has no hard dependency on `@opentelemetry/*` — it accepts the
- * abstractions defined above, which are structurally compatible with the real
+ * abstractions defined above, which match the subset of the real
  * OpenTelemetry API.
  *
  * @example

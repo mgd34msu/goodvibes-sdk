@@ -251,7 +251,7 @@ afterEach(() => {
     try {
       s.stop();
     } catch (error) {
-      console.warn('Failed to stop auth-flow test server', { error });
+      void error;
     }
   }
 });

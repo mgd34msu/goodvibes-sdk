@@ -1,5 +1,11 @@
 import type { EventEnvelope } from '@pellux/goodvibes-transport-core';
-import { createRuntimeEventFeeds, type RuntimeEventFeed, type RuntimeEventFeeds } from '@pellux/goodvibes-transport-core';
+import {
+  createRuntimeEventFeeds,
+  isAbortError,
+  transportErrorFromUnknown,
+  type RuntimeEventFeed,
+  type RuntimeEventFeeds,
+} from '@pellux/goodvibes-transport-core';
 
 type EventLike = { readonly type: string };
 
@@ -51,21 +57,12 @@ function hasAnyListener(map: Map<string, Set<unknown>>): boolean {
   return false;
 }
 
-function isExpectedDisconnectError(error: unknown): boolean {
-  return (
-    error instanceof DOMException && error.name === 'AbortError'
-  ) || (
-    typeof error === 'object'
-    && error !== null
-    && 'name' in error
-    && (error as { readonly name?: string }).name === 'AbortError'
-  );
-}
+const isExpectedDisconnectError = isAbortError;
 
 function normalizeConnectionError(error: unknown, domain: string): Error {
   return error instanceof Error
     ? error
-    : new Error(`Remote domain event connection for "${domain}" failed with a non-Error value: ${describeUnknownError(error)}`);
+    : transportErrorFromUnknown(error, `Remote domain event connection for "${domain}" failed`);
 }
 
 function reportUnexpectedConnectionError<TDomain extends string>(
@@ -74,24 +71,6 @@ function reportUnexpectedConnectionError<TDomain extends string>(
   options: RemoteDomainEventsOptions<TDomain>,
 ): void {
   options.onConnectionError?.(normalizeConnectionError(error, domain), domain);
-}
-
-function describeUnknownError(error: unknown): string {
-  if (typeof error === 'string') return error;
-  if (typeof error === 'number' || typeof error === 'boolean' || error === null || error === undefined) {
-    return String(error);
-  }
-  if (typeof error === 'object') {
-    const record = error as Record<string, unknown>;
-    const name = typeof record.name === 'string' ? record.name : undefined;
-    const type = typeof record.type === 'string' ? record.type : undefined;
-    const message = typeof record.message === 'string' ? record.message : undefined;
-    const target = record.target && typeof record.target === 'object'
-      ? `[target:${(record.target as { readonly constructor?: { readonly name?: string } }).constructor?.name ?? 'object'}]`
-      : undefined;
-    return [name, type, message, target].filter(Boolean).join(' ') || Object.prototype.toString.call(error);
-  }
-  return String(error);
 }
 
 function toEventEnvelope<TEvent extends EventLike>(

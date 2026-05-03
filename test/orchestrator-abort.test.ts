@@ -88,7 +88,7 @@ describe('Orchestrator.abort() animInterval cleanup', () => {
     // Dynamic import to avoid pulling all of Orchestrator's heavy deps into the
     // test environment. We only verify the abort() method behaviour on the
     // real class by patching the private field directly.
-    const { Orchestrator } = await import('../packages/sdk/src/_internal/platform/core/orchestrator.js');
+    const { Orchestrator } = await import('../packages/sdk/src/platform/core/orchestrator.js');
 
     // Construct a minimal orchestrator using Object.create to bypass constructor
     const orch = Object.create(Orchestrator.prototype) as InstanceType<typeof Orchestrator>;

@@ -1,1 +1,1 @@
-export * from '../../../_internal/platform/daemon/http/telemetry-routes.js';
+export { createDaemonTelemetryRouteHandlers } from '@pellux/goodvibes-daemon-sdk';

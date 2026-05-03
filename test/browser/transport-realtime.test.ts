@@ -88,7 +88,7 @@ function createMockWebSocketClass(): {
       this.dispatchEvent(new CloseEvent('close', { code: 1000, wasClean: true }));
     }
 
-    // Compatibility shims for property-style event handlers.
+    // Property-style event handler adapters.
     set onmessage(handler: ((event: MessageEvent) => void) | null) {
       if (handler) this.addEventListener('message', handler as EventListener);
     }

@@ -2,16 +2,16 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { registerToolWithContractGate } from '../packages/sdk/src/_internal/platform/tools/index.js';
-import { ToolRegistry } from '../packages/sdk/src/_internal/platform/tools/registry.js';
-import { executeFetchInput } from '../packages/sdk/src/_internal/platform/tools/fetch/index.js';
-import { guardExecCommand } from '../packages/sdk/src/_internal/platform/tools/exec/ast-guard.js';
-import { createPhasedExecutor } from '../packages/sdk/src/_internal/platform/runtime/tools/index.js';
-import { DeliveryQueue } from '../packages/sdk/src/_internal/platform/integrations/delivery.js';
-import { Notifier } from '../packages/sdk/src/_internal/platform/integrations/notifier.js';
-import { RouteBindingManager } from '../packages/sdk/src/_internal/platform/channels/route-manager.js';
-import { ChannelPluginRegistry, SurfaceRegistry } from '../packages/sdk/src/_internal/platform/channels/index.js';
-import { bindProviderOptimizerFeatureFlag } from '../packages/sdk/src/_internal/platform/runtime/services.js';
+import { registerToolWithContractGate } from '../packages/sdk/src/platform/tools/index.js';
+import { ToolRegistry } from '../packages/sdk/src/platform/tools/registry.js';
+import { executeFetchInput } from '../packages/sdk/src/platform/tools/fetch/index.js';
+import { guardExecCommand } from '../packages/sdk/src/platform/tools/exec/ast-guard.js';
+import { createPhasedExecutor } from '../packages/sdk/src/platform/runtime/tools/index.js';
+import { DeliveryQueue } from '../packages/sdk/src/platform/integrations/delivery.js';
+import { Notifier } from '../packages/sdk/src/platform/integrations/notifier.js';
+import { RouteBindingManager } from '../packages/sdk/src/platform/channels/route-manager.js';
+import { ChannelPluginRegistry, SurfaceRegistry } from '../packages/sdk/src/platform/channels/index.js';
+import { bindProviderOptimizerFeatureFlag } from '../packages/sdk/src/platform/runtime/services.js';
 import {
   createDivergenceDashboard,
   createPermissionEvaluator,
@@ -19,36 +19,36 @@ import {
   loadPolicyBundle,
   PermissionSimulator,
   signBundle,
-} from '../packages/sdk/src/_internal/platform/runtime/permissions/index.js';
-import { PermissionManager } from '../packages/sdk/src/_internal/platform/permissions/manager.js';
-import { createPluginLifecycleManager } from '../packages/sdk/src/_internal/platform/runtime/plugins/index.js';
-import { createMcpLifecycleManager } from '../packages/sdk/src/_internal/platform/runtime/mcp/index.js';
-import { createShellPlanRuntime } from '../packages/sdk/src/_internal/platform/runtime/shell-command-ops.js';
-import { AdaptivePlanner } from '../packages/sdk/src/_internal/platform/core/adaptive-planner.js';
-import { createTelemetryProvider } from '../packages/sdk/src/_internal/platform/runtime/telemetry/index.js';
-import { createRuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import { createTaskManager } from '../packages/sdk/src/_internal/platform/runtime/tasks/index.js';
-import { createFeatureFlagManager } from '../packages/sdk/src/_internal/platform/runtime/feature-flags/index.js';
-import { getSecuritySettingsReport } from '../packages/sdk/src/_internal/platform/runtime/security-settings.js';
-import { AgentOrchestrator } from '../packages/sdk/src/_internal/platform/agents/orchestrator.js';
-import { AgentMessageBus } from '../packages/sdk/src/_internal/platform/agents/message-bus.js';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
-import { WatcherRegistry } from '../packages/sdk/src/_internal/platform/watchers/index.js';
-import { PlatformServiceManager } from '../packages/sdk/src/_internal/platform/daemon/service-manager.js';
-import { AutomationDeliveryManager, AutomationManager } from '../packages/sdk/src/_internal/platform/automation/index.js';
-import { ControlPlaneGateway } from '../packages/sdk/src/_internal/platform/control-plane/index.js';
-import { OverflowHandler } from '../packages/sdk/src/_internal/platform/tools/shared/overflow.js';
-import { ApiTokenAuditor } from '../packages/sdk/src/_internal/platform/security/token-audit.js';
-import { ModeManager } from '../packages/sdk/src/_internal/platform/state/mode-manager.js';
-import type { Tool, ToolResult } from '../packages/sdk/src/_internal/platform/types/tools.js';
-import type { ToolRuntimeContext } from '../packages/sdk/src/_internal/platform/runtime/tools/index.js';
-import type { AutomationRouteStore } from '../packages/sdk/src/_internal/platform/automation/store/routes.js';
-import type { AutomationRouteBinding } from '../packages/sdk/src/_internal/platform/automation/routes.js';
-import type { AutomationJob } from '../packages/sdk/src/_internal/platform/automation/jobs.js';
-import type { AutomationRun } from '../packages/sdk/src/_internal/platform/automation/runs.js';
-import type { LLMProvider } from '../packages/sdk/src/_internal/platform/providers/interface.js';
-import type { AgentRecord } from '../packages/sdk/src/_internal/platform/tools/agent/manager.js';
+} from '../packages/sdk/src/platform/runtime/permissions/index.js';
+import { PermissionManager } from '../packages/sdk/src/platform/permissions/manager.js';
+import { createPluginLifecycleManager } from '../packages/sdk/src/platform/runtime/plugins/index.js';
+import { createMcpLifecycleManager } from '../packages/sdk/src/platform/runtime/mcp/index.js';
+import { createShellPlanRuntime } from '../packages/sdk/src/platform/runtime/shell-command-ops.js';
+import { AdaptivePlanner } from '../packages/sdk/src/platform/core/adaptive-planner.js';
+import { createTelemetryProvider } from '../packages/sdk/src/platform/runtime/telemetry/index.js';
+import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import { createTaskManager } from '../packages/sdk/src/platform/runtime/tasks/index.js';
+import { createFeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/index.js';
+import { getSecuritySettingsReport } from '../packages/sdk/src/platform/runtime/security-settings.js';
+import { AgentOrchestrator } from '../packages/sdk/src/platform/agents/orchestrator.js';
+import { AgentMessageBus } from '../packages/sdk/src/platform/agents/message-bus.js';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import { WatcherRegistry } from '../packages/sdk/src/platform/watchers/index.js';
+import { PlatformServiceManager } from '../packages/sdk/src/platform/daemon/service-manager.js';
+import { AutomationDeliveryManager, AutomationManager } from '../packages/sdk/src/platform/automation/index.js';
+import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/index.js';
+import { OverflowHandler } from '../packages/sdk/src/platform/tools/shared/overflow.js';
+import { ApiTokenAuditor } from '../packages/sdk/src/platform/security/token-audit.js';
+import { ModeManager } from '../packages/sdk/src/platform/state/mode-manager.js';
+import type { Tool, ToolResult } from '../packages/sdk/src/platform/types/tools.js';
+import type { ToolRuntimeContext } from '../packages/sdk/src/platform/runtime/tools/index.js';
+import type { AutomationRouteStore } from '../packages/sdk/src/platform/automation/store/routes.js';
+import type { AutomationRouteBinding } from '../packages/sdk/src/platform/automation/routes.js';
+import type { AutomationJob } from '../packages/sdk/src/platform/automation/jobs.js';
+import type { AutomationRun } from '../packages/sdk/src/platform/automation/runs.js';
+import type { LLMProvider } from '../packages/sdk/src/platform/providers/interface.js';
+import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 
 const flags = (enabledIds: readonly string[]) => ({
   isEnabled(id: string): boolean {
@@ -396,12 +396,12 @@ describe('feature flag safe-default gates', () => {
     }
   });
 
-  test('fetch-sanitization disabled preserves legacy fetch behavior', async () => {
+  test('fetch-sanitization disabled leaves raw fetch content unsanitized', async () => {
     const originalFetch = globalThis.fetch;
     let called = false;
     globalThis.fetch = (async () => {
       called = true;
-      return new Response('<script>legacy</script><p>raw</p>', {
+      return new Response('<script>unsanitized</script><p>raw</p>', {
         status: 200,
         headers: { 'content-type': 'text/html' },
       });
@@ -421,7 +421,7 @@ describe('feature flag safe-default gates', () => {
       expect(output.summary.succeeded).toBe(1);
       expect(result?.host_trust_tier).toBe('blocked');
       expect(result?.sanitization_tier).toBe('none');
-      expect(result?.content).toContain('<script>legacy</script>');
+      expect(result?.content).toContain('<script>unsanitized</script>');
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -728,7 +728,7 @@ describe('feature flag safe-default gates', () => {
     expect(enabled.backendType).toBe('ledger');
   }));
 
-  test('watcher-framework gates watcher registry operations and honors legacy alias', () => withTempDir((dir) => {
+  test('watcher-framework gates watcher registry operations', () => withTempDir((dir) => {
     const disabled = new WatcherRegistry({
       storePath: join(dir, 'disabled-watchers.json'),
       featureFlags: flags([]),
@@ -742,37 +742,37 @@ describe('feature flag safe-default gates', () => {
       run: () => 'ok',
     })).toThrow(/watcher-framework feature flag is disabled/);
 
-    const aliasEnabled = new WatcherRegistry({
+    const enabled = new WatcherRegistry({
       storePath: join(dir, 'enabled-watchers.json'),
-      featureFlags: flags(['managed-watcher-services']),
+      featureFlags: flags(['watcher-framework']),
     });
-    aliasEnabled.registerPollingWatcher({
+    enabled.registerPollingWatcher({
       id: 'watcher-1',
       label: 'Watcher 1',
       source: automationSource({ kind: 'watcher' }) as never,
       intervalMs: 1000,
       run: () => 'ok',
     });
-    expect(aliasEnabled.list()).toHaveLength(1);
-    aliasEnabled.stopWatcher('watcher-1');
+    expect(enabled.list()).toHaveLength(1);
+    enabled.stopWatcher('watcher-1');
   }));
 
-  test('service-management gates daemon service mutations and honors legacy alias', () => withTempDir((dir) => {
+  test('service-management gates daemon service mutations', () => withTempDir((dir) => {
     const configManager = testConfigManager(join(dir, 'config'));
     const disabled = new PlatformServiceManager(configManager, {
       workingDirectory: dir,
       homeDirectory: dir,
       featureFlags: flags([]),
     });
-    const aliasEnabled = new PlatformServiceManager(configManager, {
+    const enabled = new PlatformServiceManager(configManager, {
       workingDirectory: dir,
       homeDirectory: dir,
-      featureFlags: flags(['service-installation']),
+      featureFlags: flags(['service-management']),
     });
 
     expect(disabled.status().actionError).toMatch(/service-management feature flag is disabled/);
     expect(() => disabled.install()).toThrow(/service-management feature flag is disabled/);
-    expect(aliasEnabled.status().actionError).toBeUndefined();
+    expect(enabled.status().actionError).toBeUndefined();
   }));
 
   test('surface flags gate configured surfaces and channel plugins', () => withTempDir((dir) => {
@@ -800,21 +800,21 @@ describe('feature flag safe-default gates', () => {
     expect(enabledPlugins.getBySurface('slack')?.id).toBe('slack');
   }));
 
-  test('embedded-web-control-ui legacy alias enables the web surface gate', () => withTempDir((dir) => {
+  test('web-surface enables the web surface gate', () => withTempDir((dir) => {
     const configManager = testConfigManager(join(dir, 'config'));
     configManager.set('web.enabled', true);
-    const registry = new SurfaceRegistry(configManager, undefined, flags(['embedded-web-control-ui']));
+    const registry = new SurfaceRegistry(configManager, undefined, flags(['web-surface']));
 
     expect(registry.syncConfiguredSurfaces().find((surface) => surface.kind === 'web')?.enabled).toBe(true);
   }));
 
-  test('control-plane-gateway gates gateway traffic and honors legacy alias', () => {
+  test('control-plane-gateway gates gateway traffic', () => {
     const disabled = new ControlPlaneGateway({ featureFlags: flags([]) });
-    const aliasEnabled = new ControlPlaneGateway({ featureFlags: flags(['gateway-control-plane']) });
+    const enabled = new ControlPlaneGateway({ featureFlags: flags(['control-plane-gateway']) });
 
     expect(disabled.getSnapshot()).toEqual(expect.objectContaining({ disabled: true, featureFlag: 'control-plane-gateway' }));
     expect(disabled.createEventStream(new Request('http://localhost/events')).status).toBe(503);
-    expect(aliasEnabled.getSnapshot()).not.toEqual(expect.objectContaining({ disabled: true }));
+    expect(enabled.getSnapshot()).not.toEqual(expect.objectContaining({ disabled: true }));
   });
 
   test('delivery-engine gates automation deliveries and surface-specific targets', async () => {
@@ -859,23 +859,23 @@ describe('feature flag safe-default gates', () => {
     expect(delivered).toBe(1);
   });
 
-  test('automation-domain gates automation manager operations and honors legacy alias', async () => withTempDir(async (dir) => {
+  test('automation-domain gates automation manager operations', async () => withTempDir(async (dir) => {
     const disabled = new AutomationManager({
       configManager: testConfigManager(join(dir, 'config-disabled')),
       routeBindings: {} as RouteBindingManager,
       sessionBroker: {} as never,
       featureFlags: flags([]),
     });
-    const aliasEnabled = new AutomationManager({
+    const enabled = new AutomationManager({
       configManager: testConfigManager(join(dir, 'config-enabled')),
       routeBindings: {} as RouteBindingManager,
       sessionBroker: {} as never,
-      featureFlags: flags(['automation-runtime']),
+      featureFlags: flags(['automation-domain']),
     });
 
     expect(disabled.listJobs()).toEqual([]);
     await expect(disabled.createJob({} as never)).rejects.toThrow(/automation-domain feature flag is disabled/);
-    expect(aliasEnabled.listJobs()).toEqual([]);
+    expect(enabled.listJobs()).toEqual([]);
   }));
 
   test('unified-runtime-task gates task manager creation and mutation', () => {

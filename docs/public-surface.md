@@ -2,7 +2,7 @@
 
 > **Runtime surfaces**: See [`docs/surfaces.md`](./surfaces.md) for the full/companion surface split, supported runtimes, and CI enforcement details.
 
-This document lists every stable subpath exported by `@pellux/goodvibes-sdk`. Consumers should only import from paths listed here. Importing from `_internal/**` directly is not supported and will break on any release.
+This document lists every stable subpath exported by `@pellux/goodvibes-sdk`. Consumers should only import from paths listed here. Private repository source layout is not a package contract.
 
 ## Stability levels
 
@@ -82,6 +82,14 @@ Peer ACP client. Use `createPeerSdk` for peer-to-peer connections.
 
 Shared error types and error-contract helpers.
 
+### `./events` and `./events/*` — `@pellux/goodvibes-sdk/events`
+
+**Status:** beta
+
+Runtime event domain types. Use `./events` for the aggregate event-domain
+barrel, or `./events/<domain>` for a single domain such as
+`@pellux/goodvibes-sdk/events/agents`.
+
 ### `./transport-core` — `@pellux/goodvibes-sdk/transport-core`
 
 **Status:** stable
@@ -92,7 +100,9 @@ Abstract transport interfaces, base classes, and shared transport types.
 
 **Status:** stable
 
-In-process direct transport (zero-latency, same-process communication).
+In-process direct transport (zero-latency, same-process communication). This is
+an SDK facade subpath backed by `@pellux/goodvibes-transport-core`, not a
+separate workspace package.
 
 ### `./transport-http` — `@pellux/goodvibes-sdk/transport-http`
 
@@ -144,7 +154,7 @@ Expo-specific SDK entry built on top of `react-native`.
 
 **Status:** beta
 
-Granular platform modules exposed through explicit public subpaths. Each path re-exports the corresponding implementation module through a public path that does not expose `_internal`.
+Granular platform modules exposed through explicit public subpaths. Each path is listed intentionally rather than exposed by a wildcard.
 
 The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package no longer exports a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
 
@@ -162,17 +172,16 @@ that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 |---|---|---|
 | `platform/acp/*` | ACP connection, manager, protocol | beta |
 | `platform/adapters/*` | Channel adapter helpers | beta |
-| `platform/agents/*` | Agent orchestration, WRFC, message bus | beta |
 | `platform/artifacts/*` | Artifact store and types | beta |
 | `platform/automation/*` | Automation jobs, scheduling, delivery | beta |
-| `platform/bookmarks/*` | Bookmark manager | beta |
+| `platform/batch/*` | Batch orchestration and queue helpers | beta |
 | `platform/channels/*` | Channel policy and route managers | beta |
+| `platform/cloudflare/*` | Cloudflare provisioning and worker helpers | beta |
+| `platform/companion/*` | Companion chat and route helpers | beta |
 | `platform/config/*` | Config manager, secrets, schema, subscriptions | beta |
 | `platform/control-plane/*` | Session broker, gateway, method catalog | beta |
-| `platform/core/*` | Conversation engine, orchestrator, tokenizer | beta |
 | `platform/daemon/*` | HTTP server, routes, policy | beta |
 | `platform/discovery/*` | Codebase discovery and scanner | beta |
-| `platform/export/*` | Session and markdown export | beta |
 | `platform/git/*` | Git service integration | beta |
 | `platform/hooks/*` | Hook dispatcher, workbench, runners | beta |
 | `platform/integrations/*` | Delivery, Slack, Discord, Ntfy notifiers | beta |
@@ -183,23 +192,14 @@ that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 | `platform/multimodal/*` | Multimodal input | beta |
 | `platform/node/*` | Node-like runtime boundary and capability metadata | beta |
 | `platform/pairing/*` | Companion token, QR, pairing index | beta |
-| `platform/permissions/*` | Permission analysis, policy, briefs | beta |
-| `platform/plugins/*` | Plugin manager, loader, API | beta |
-| `platform/profiles/*` | Profile manager and shape | beta |
 | `platform/providers/*` | LLM provider registry, catalog, capabilities | beta |
 | `platform/runtime/*` | Full runtime surface (events, store, lifecycle, tasks, sandbox, etc.) | beta |
-| `platform/scheduler/*` | Cron-style scheduler | beta |
 | `platform/security/*` | Token audit, spawn tokens, HTTP auth | beta |
-| `platform/sessions/*` | Session manager and orchestration | beta |
 | `platform/state/*` | File state, KV store, memory, vector store | beta |
-| `platform/templates/*` | Template manager | beta |
 | `platform/tools/*` | Tool registry, exec, fetch, read, write, edit, agent | beta |
-| `platform/types/*` | Shared type definitions (errors, tools) | beta |
-| `platform/utils/*` | Logger, path-safety, clipboard, retry | beta |
 | `platform/voice/*` | Voice provider registry, provider-agnostic TTS/STT/realtime voice types, and streaming TTS primitives | beta |
 | `platform/watchers/*` | File watcher store | beta |
 | `platform/web-search/*` | Web search providers | beta |
-| `platform/workflow/*` | Workflow trigger executor | beta |
 
 ---
 
@@ -207,6 +207,7 @@ that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 
 The following paths are intentionally NOT exported and will cause a module resolution error if imported:
 
-- `@pellux/goodvibes-sdk/_internal/**` — implementation internals.
+- Any `@pellux/goodvibes-sdk/platform/...` path not listed in the package export map.
+- Any `dist/...` file path reached by bypassing the package export map.
 
-Consumers must not import `_internal` paths directly. Use the corresponding `platform/...` subpath when one is exported.
+Consumers must use the corresponding documented subpath when one is exported.

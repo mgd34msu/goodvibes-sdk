@@ -161,7 +161,7 @@ The Worker script uses ES module format (`export default { async fetch() {} }`).
 | `/smoke` | SDK import + factory call |
 | `/auth` | Auth token storage round-trip |
 | `/transport-success` | HTTP transport — success path (mock returns real-shape JSON for `GET /api/sessions`) |
-| `/transport-error` | HTTP transport — error path (mock returns 5xx, asserts typed `'server'` kind) |
+| `/transport-error` | HTTP transport — error path (mock returns 5xx, asserts typed `'service'` kind) |
 | `/errors` | Error taxonomy import + instantiation |
 | `/crypto` | `crypto.subtle` + `crypto.randomUUID` |
 | `/globals` | Audit of Workers global availability |

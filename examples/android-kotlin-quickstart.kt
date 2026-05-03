@@ -1,3 +1,9 @@
+/*
+ * android-kotlin-quickstart.kt — Minimal OkHttp control-plane and WebSocket calls.
+ *
+ * Set GOODVIBES_TOKEN before running. Replace the base URL with your daemon or
+ * companion gateway endpoint.
+ */
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody

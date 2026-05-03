@@ -19,21 +19,10 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { dispatchDaemonApiRoutes } from '../packages/sdk/src/_internal/daemon/api-router.js';
-import { dispatchRemoteRoutes } from '../packages/sdk/src/_internal/daemon/remote.js';
+import { dispatchDaemonApiRoutes } from '../packages/daemon-sdk/src/api-router.js';
+import { dispatchRemoteRoutes } from '../packages/daemon-sdk/src/remote.js';
 import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeRequest(method: string, url: string, body?: unknown): Request {
-  return new Request(url, {
-    method,
-    headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
+import { makeRequest } from './_helpers/router-requests.js';
 
 // ---------------------------------------------------------------------------
 // describe: remote routes — happy paths

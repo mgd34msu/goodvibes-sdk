@@ -1,1 +1,2 @@
-export * from '../../../_internal/platform/runtime/transports/client-transport.js';
+export type { ClientTransport } from '@pellux/goodvibes-transport-core';
+export { createClientTransport } from '@pellux/goodvibes-transport-core';

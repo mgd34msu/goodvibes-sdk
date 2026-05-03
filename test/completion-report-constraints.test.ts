@@ -9,8 +9,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { parseCompletionReport } from '../packages/sdk/src/_internal/platform/agents/completion-report.js';
-import type { EngineerReport, ReviewerReport, Constraint, ConstraintFinding } from '../packages/sdk/src/_internal/platform/agents/completion-report.js';
+import { parseCompletionReport } from '../packages/sdk/src/platform/agents/completion-report.js';
+import type { EngineerReport, ReviewerReport, Constraint, ConstraintFinding } from '../packages/sdk/src/platform/agents/completion-report.js';
 
 /** Encode a plain object as a ```json block for parseCompletionReport to extract. */
 function asJsonBlock(obj: Record<string, unknown>): string {

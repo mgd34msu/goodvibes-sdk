@@ -14,20 +14,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { dispatchTaskRoutes } from '../packages/sdk/src/_internal/daemon/tasks.js';
+import { dispatchTaskRoutes } from '../packages/daemon-sdk/src/tasks.js';
 import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeRequest(method: string, url: string, body?: unknown): Request {
-  return new Request(url, {
-    method,
-    headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
+import { makeRequest } from './_helpers/router-requests.js';
 
 // ---------------------------------------------------------------------------
 // describe: task routes — happy paths

@@ -14,8 +14,14 @@ function run(command: string, args: readonly string[]): void {
 
 run('bun', ['scripts/generate-api-docs.ts', '--check']);
 run('bun', ['scripts/docs-completeness-check.ts']);
+run('bun', ['run', 'error:check']);
+run('bun', ['run', 'changelog:check']);
+run('bun', ['run', 'version:check']);
+run('bun', ['run', 'todo:check']);
+run('bun', ['run', 'test-skip:check']);
 run('bun', ['run', 'build']);
 run('bun', ['run', 'types:check']);
+run('bun', ['run', '--cwd', 'examples', 'typecheck']);
 run('bun', ['scripts/browser-compat-check.ts']);
 run('bun', ['scripts/package-metadata-check.ts']);
 run('bun', ['run', 'any:check']);

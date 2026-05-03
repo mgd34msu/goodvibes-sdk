@@ -133,7 +133,7 @@ On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to 
 
 ## Companion App Pairing
 
-**Source:** `packages/sdk/src/_internal/platform/pairing/`
+**Source:** `packages/sdk/src/platform/pairing/`
 
 The QR pairing flow connects a companion app to the daemon without requiring the user to manually enter credentials.
 
@@ -148,7 +148,7 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 4. **No challenge-response** — the pairing is a direct token transfer. Security relies on:
    - The QR being displayed only in a trusted environment
    - The transport using TLS when the daemon is accessed over a network
-   - The token being revocable: `regenerateCompanionToken(surface, { daemonHomeDir })` instantly invalidates all existing companion connections
+   - The token being revocable: `regenerateCompanionToken({ daemonHomeDir })` instantly invalidates all existing companion connections
 
 5. **Connection** — after scanning, the companion app connects using `transport-http` with `Authorization: Bearer gv_<token>`. The daemon validates this through the normal `authenticateOperatorToken()` path.
 
@@ -156,10 +156,10 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 
 | Event | Action |
 |---|---|
-| First QR display | `getOrCreateCompanionToken(surface, { daemonHomeDir })` — generates and persists token |
+| First QR display | `getOrCreateCompanionToken({ daemonHomeDir })` — generates and persists token |
 | Companion connects | Token validated against stored record |
 | Companion disconnects | Token remains valid; reconnection requires no re-scan |
-| Revocation needed | `regenerateCompanionToken(surface, { daemonHomeDir })` — replaces stored token; all current sessions using old token are rejected on next request |
+| Revocation needed | `regenerateCompanionToken({ daemonHomeDir })` — replaces stored token; all current sessions using old token are rejected on next request |
 | Daemon restart | Token is loaded from disk; companion reconnects without re-scan |
 
 ---
@@ -175,7 +175,7 @@ SDK hosts can expose a user-facing explanation of security-relevant settings wit
 - daemon `GET /api/security-settings`
 - gateway method `security.settings`
 
-Each report entry includes the setting key, default state, current state, what the setting does, why the disabled state is less restrictive, what enabling it changes, and any compatibility requirements. This is intended for TUI/onboarding flows where safe-default feature flags remain off unless the user explicitly opts in.
+Each report entry includes the setting key, default state, current state, what the setting does, why the disabled state is less restrictive, what enabling it changes, and any operational requirements. This is intended for TUI/onboarding flows where safe-default feature flags remain off unless the user explicitly opts in.
 
 The current report covers security-sensitive flags including `fetch-sanitization`, `permissions-policy-engine`, `permissions-simulation`, `permission-divergence-dashboard`, `policy-as-code`, `policy-signing`, `runtime-tools-budget-enforcement`, `shell-ast-normalization`, `token-scope-rotation-audit`, and `tool-contract-verification`.
 
@@ -216,7 +216,7 @@ The `fetch` tool has a separate opt-in protection gate: `featureFlags.fetch-sani
 
 ## Secret Management
 
-**Source:** `packages/sdk/src/_internal/platform/config/secrets.ts` and `config/secret-refs.ts`
+**Source:** `packages/sdk/src/platform/config/secrets.ts` and `config/secret-refs.ts`
 
 ### SecretsManager
 
@@ -287,7 +287,7 @@ Slack setup uses this same URI mechanism. Direct setup writes Slack token values
 
 ## Permission System
 
-**Source:** `packages/sdk/src/_internal/platform/permissions/`
+**Source:** `packages/sdk/src/platform/permissions/`
 
 Every tool call goes through the `PermissionManager` before execution.
 
@@ -367,7 +367,7 @@ The `AuthenticatedPrincipal` type carries a `principalKind` (`user` | `bot` | `s
 
 ### Bootstrap Credential File
 
-**Source:** `packages/sdk/src/_internal/platform/security/user-auth.ts` — `writeBootstrapCredentialFile()`, `clearBootstrapCredentialFile()`
+**Source:** `packages/sdk/src/platform/security/user-auth.ts` — `writeBootstrapCredentialFile()`, `clearBootstrapCredentialFile()`
 
 #### What it is and when it is created
 

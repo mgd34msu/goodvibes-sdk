@@ -11,10 +11,10 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.ts';
-import type { SessionEvent } from '../packages/sdk/src/_internal/platform/runtime/events/session.ts';
-import type { OpsEvent } from '../packages/sdk/src/_internal/platform/runtime/events/ops.ts';
-import type { RuntimeEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.ts';
+import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.ts';
+import type { SessionEvent } from '../packages/sdk/src/events/session.js';
+import type { OpsEvent } from '../packages/sdk/src/events/ops.js';
+import type { RuntimeEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.ts';
 
 function makeSessionEnvelope() {
   const payload = { type: 'SESSION_CREATED', sessionId: 'sess-obs-13' } as SessionEvent;
@@ -32,7 +32,7 @@ async function drainMicrotasks(n = 5): Promise<void> {
 
 describe('OBS-13: listener_errors_total counter', () => {
   test('throwing listener increments listener_errors_total', async () => {
-    const { listenerErrorsTotal } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { listenerErrorsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const bus = new RuntimeEventBus();
 
     const before = listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' });
@@ -48,7 +48,7 @@ describe('OBS-13: listener_errors_total counter', () => {
   });
 
   test('non-throwing listener does not increment listener_errors_total', async () => {
-    const { listenerErrorsTotal } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { listenerErrorsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const bus = new RuntimeEventBus();
 
     const before = listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' });
@@ -62,7 +62,7 @@ describe('OBS-13: listener_errors_total counter', () => {
   });
 
   test('counter increments once per throw, even for same listener throwing multiple times', async () => {
-    const { listenerErrorsTotal } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { listenerErrorsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const bus = new RuntimeEventBus();
 
     const before = listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' });

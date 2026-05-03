@@ -11,8 +11,11 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 | `contract` | Method/route contract violation | No |
 | `network` | Transport or connectivity failure | Yes |
 | `not-found` | Remote resource does not exist | No |
+| `protocol` | Wire-format or protocol failure | Sometimes |
 | `rate-limit` | Upstream rate limit exceeded | Yes |
-| `server` | Remote server error | Sometimes |
+| `service` | Upstream service or HTTP 5xx failure | Sometimes |
+| `internal` | Daemon/internal SDK failure | No |
+| `tool` | Tool execution failure | Sometimes |
 | `validation` | Input failed schema or value checks | No |
 | `unknown` | Unclassified error | No |
 
@@ -88,13 +91,43 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ---
 
-### `server`
+### `protocol`
 
-**When it fires:** The remote server returned HTTP 5xx, or a `protocol`/`service`/`internal` category was surfaced by the daemon error body.
+**When it fires:** The daemon or transport detected a wire-format, stream, contract framing, or protocol-level failure after a request reached the target.
+
+**Remediation:** Check server/client version alignment and transport logs. Retry only when the operation is idempotent and `err.recoverable` is true.
+
+**Retryable:** Sometimes. Check `err.recoverable`.
+
+---
+
+### `service`
+
+**When it fires:** The remote service returned HTTP 5xx, or a daemon error body surfaced category `service`.
 
 **Remediation:** Log `err.requestId` for debugging. Retry with backoff for 500/502/503/504 — these are typically transient. Do not retry on 501.
 
 **Retryable:** Sometimes. Check `err.recoverable` — the SDK sets it based on status code. HTTP 500/502/503/504 are retryable by default.
+
+---
+
+### `internal`
+
+**When it fires:** The daemon or SDK surfaced a bug or invariant violation from inside GoodVibes rather than from user input, transport, or an upstream provider.
+
+**Remediation:** Log the full structured error and report the bug. Do not rely on retry unless `err.recoverable` is explicitly true.
+
+**Retryable:** No by default.
+
+---
+
+### `tool`
+
+**When it fires:** Tool execution failed after dispatch, including tool runtime errors and tool-specific rejected operations.
+
+**Remediation:** Inspect `err.category`, `err.message`, and the tool-specific trace. Retry only when the tool operation is idempotent and marked recoverable.
+
+**Retryable:** Sometimes. Check `err.recoverable`.
 
 ---
 
@@ -112,7 +145,7 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ### `unknown`
 
-**When it fires:** The error could not be mapped to a specific kind. This is a catch-all for `tool`/`unknown` category errors and unexpected conditions.
+**When it fires:** The error could not be mapped to a specific kind. This is a catch-all for unexpected conditions that do not expose structured category metadata.
 
 **Remediation:** Log the full error including `err.message`, `err.category`, and `err.requestId` for investigation.
 

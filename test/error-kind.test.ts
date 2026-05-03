@@ -3,7 +3,7 @@
  *
  * Verifies that:
  * - Each error class sets the correct `kind` tag
- * - `instanceof` checks still work (backward compat)
+ * - `instanceof` checks still work (type behavior)
  * - `kind` is correctly inferred from HTTP status codes
  * - All SDKErrorKind values are exercised
  */
@@ -13,8 +13,11 @@ import {
   ContractError,
   GoodVibesSdkError,
   HttpStatusError,
+  RETRYABLE_STATUS_CODES,
   createHttpStatusError,
 } from '../packages/errors/dist/index.js';
+import { RETRYABLE_STATUS_CODES as SDK_RETRYABLE_STATUS_CODES } from '../packages/sdk/dist/platform/types/errors.js';
+import { DEFAULT_HTTP_RETRY_POLICY } from '../packages/transport-http/dist/index.js';
 import type { SDKErrorKind } from '../packages/errors/dist/index.js';
 
 describe('error-kind: packages/errors', () => {
@@ -80,19 +83,19 @@ describe('error-kind: packages/errors', () => {
       expect(err.kind).toBe('rate-limit');
     });
 
-    test('kind is server when category is service', () => {
+    test('kind is service when category is service', () => {
       const err = new GoodVibesSdkError('test', { category: 'service' });
-      expect(err.kind).toBe('server');
+      expect(err.kind).toBe('service');
     });
 
-    test('kind is server when category is protocol', () => {
+    test('kind is protocol when category is protocol', () => {
       const err = new GoodVibesSdkError('test', { category: 'protocol' });
-      expect(err.kind).toBe('server');
+      expect(err.kind).toBe('protocol');
     });
 
-    test('kind is server when category is internal', () => {
+    test('kind is internal when category is internal', () => {
       const err = new GoodVibesSdkError('test', { category: 'internal' });
-      expect(err.kind).toBe('server');
+      expect(err.kind).toBe('internal');
     });
 
     test('kind is validation when category is bad_request', () => {
@@ -100,9 +103,9 @@ describe('error-kind: packages/errors', () => {
       expect(err.kind).toBe('validation');
     });
 
-    test('kind is unknown when category is tool', () => {
+    test('kind is tool when category is tool', () => {
       const err = new GoodVibesSdkError('test', { category: 'tool' });
-      expect(err.kind).toBe('unknown');
+      expect(err.kind).toBe('tool');
     });
   });
 
@@ -176,14 +179,14 @@ describe('error-kind: packages/errors', () => {
       expect(err.kind).toBe('rate-limit' satisfies SDKErrorKind);
     });
 
-    test('500 produces kind server', () => {
+    test('500 produces kind service', () => {
       const err = createHttpStatusError(500, 'http://example.com', 'GET', { error: 'Internal Server Error' });
-      expect(err.kind).toBe('server' satisfies SDKErrorKind);
+      expect(err.kind).toBe('service' satisfies SDKErrorKind);
     });
 
-    test('503 produces kind server', () => {
+    test('503 produces kind service', () => {
       const err = createHttpStatusError(503, 'http://example.com', 'GET', { error: 'Service Unavailable' });
-      expect(err.kind).toBe('server' satisfies SDKErrorKind);
+      expect(err.kind).toBe('service' satisfies SDKErrorKind);
     });
 
     test('category in body overrides status inference', () => {
@@ -228,8 +231,11 @@ describe('error-kind: packages/errors', () => {
           case 'contract': kinds.push('contract'); break;
           case 'network': kinds.push('network'); break;
           case 'not-found': kinds.push('not-found'); break;
+          case 'protocol': kinds.push('protocol'); break;
           case 'rate-limit': kinds.push('rate-limit'); break;
-          case 'server': kinds.push('server'); break;
+          case 'service': kinds.push('service'); break;
+          case 'internal': kinds.push('internal'); break;
+          case 'tool': kinds.push('tool'); break;
           case 'validation': kinds.push('validation'); break;
           case 'unknown': kinds.push('unknown'); break;
         }
@@ -241,7 +247,7 @@ describe('error-kind: packages/errors', () => {
         'auth',
         'not-found',
         'rate-limit',
-        'server',
+        'service',
         'network',
         'validation',
         'unknown',
@@ -250,30 +256,37 @@ describe('error-kind: packages/errors', () => {
   });
 });
 
-describe('error-kind: sdk compatibility shim (packages/sdk/src/_internal/errors)', () => {
-  test('GoodVibesSdkError from SDK compatibility shim has kind field', async () => {
-    const { GoodVibesSdkError: SdkMirrorBase } = await import('../packages/sdk/src/_internal/errors/index.js');
+describe('retryable status codes', () => {
+  test('SDK and HTTP retry policies use the canonical errors package list', () => {
+    expect(SDK_RETRYABLE_STATUS_CODES).toEqual(RETRYABLE_STATUS_CODES);
+    expect(DEFAULT_HTTP_RETRY_POLICY.retryOnStatuses).toEqual(RETRYABLE_STATUS_CODES);
+  });
+});
+
+describe('error-kind: canonical errors package', () => {
+  test('GoodVibesSdkError from canonical errors package has kind field', async () => {
+    const { GoodVibesSdkError: SdkMirrorBase } = await import('../packages/errors/src/index.js');
     const err = new SdkMirrorBase('test', { category: 'rate_limit' });
     expect(err.kind).toBe('rate-limit');
   });
 
-  test('ConfigurationError from SDK compatibility shim has kind config', async () => {
-    const { ConfigurationError: SdkConfigError } = await import('../packages/sdk/src/_internal/errors/index.js');
+  test('ConfigurationError from canonical errors package has kind config', async () => {
+    const { ConfigurationError: SdkConfigError } = await import('../packages/errors/src/index.js');
     const err = new SdkConfigError('bad config');
     expect(err.kind).toBe('config');
   });
 
-  test('ContractError from SDK compatibility shim has kind contract', async () => {
-    const { ContractError: SdkContractError } = await import('../packages/sdk/src/_internal/errors/index.js');
+  test('ContractError from canonical errors package has kind contract', async () => {
+    const { ContractError: SdkContractError } = await import('../packages/errors/src/index.js');
     const err = new SdkContractError('bad contract');
     expect(err.kind).toBe('contract');
   });
 
-  test('HttpStatusError from SDK compatibility shim instanceof works', async () => {
-    const { HttpStatusError: SdkHttpError, GoodVibesSdkError: SdkBase } = await import('../packages/sdk/src/_internal/errors/index.js');
+  test('HttpStatusError from canonical errors package instanceof works', async () => {
+    const { HttpStatusError: SdkHttpError, GoodVibesSdkError: SdkBase } = await import('../packages/errors/src/index.js');
     const err = new SdkHttpError('test', { category: 'service' });
     expect(err).toBeInstanceOf(SdkBase);
     expect(err).toBeInstanceOf(SdkHttpError);
-    expect(err.kind).toBe('server');
+    expect(err.kind).toBe('service');
   });
 });

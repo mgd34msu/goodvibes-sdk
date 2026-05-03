@@ -1,3 +1,6 @@
+/**
+ * Call peer/distributed-runtime endpoints over HTTP.
+ */
 import { createPeerSdk } from '@pellux/goodvibes-sdk/peer';
 
 const sdk = createPeerSdk({

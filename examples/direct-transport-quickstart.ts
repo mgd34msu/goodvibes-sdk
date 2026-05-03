@@ -1,3 +1,6 @@
+/**
+ * Use the direct in-process transport for embedded operator/peer clients.
+ */
 import { createDirectClientTransport } from '@pellux/goodvibes-sdk/transport-direct';
 
 const operator = {

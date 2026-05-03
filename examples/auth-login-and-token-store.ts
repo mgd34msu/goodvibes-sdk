@@ -1,20 +1,21 @@
-import {
-  createGoodVibesSdk,
-  createMemoryTokenStore,
-} from '@pellux/goodvibes-sdk';
+/**
+ * Login with the operator API and persist the returned token in memory.
+ */
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
+import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const tokenStore = createMemoryTokenStore();
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
   tokenStore,
 });
 
 const login = await sdk.auth.login({
-  username: 'alice',
-  password: 'secret',
+  username: process.env.GOODVIBES_USERNAME ?? 'local-user',
+  password: process.env.GOODVIBES_PASSWORD ?? 'local-password',
 });
 
-console.log('login token', login.token);
-console.log('persisted token', await sdk.auth.getToken());
+console.log('login succeeded', login.authenticated);
+console.log('persisted token present', Boolean(await sdk.auth.getToken()));
 console.log('current auth', await sdk.auth.current());

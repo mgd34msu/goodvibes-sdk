@@ -2,17 +2,17 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { getBuiltinSetupSchema } from '../packages/sdk/src/_internal/platform/channels/builtin/setup-schema.js';
-import { buildBuiltinAccount } from '../packages/sdk/src/_internal/platform/channels/builtin/accounts.js';
-import { runBuiltinAccountAction } from '../packages/sdk/src/_internal/platform/channels/builtin/account-actions.js';
-import { ChannelProviderRuntimeManager } from '../packages/sdk/src/_internal/platform/channels/provider-runtime.js';
-import { DaemonSurfaceDeliveryHelper } from '../packages/sdk/src/_internal/platform/daemon/surface-delivery.js';
-import { ServiceRegistry } from '../packages/sdk/src/_internal/platform/config/service-registry.js';
-import type { BuiltinChannelRuntimeDeps } from '../packages/sdk/src/_internal/platform/channels/builtin/shared.js';
-import type { ChannelSurface } from '../packages/sdk/src/_internal/platform/channels/types.js';
-import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
-import type { SecretsManager } from '../packages/sdk/src/_internal/platform/config/secrets.js';
-import type { SubscriptionManager } from '../packages/sdk/src/_internal/platform/config/subscriptions.js';
+import { getBuiltinSetupSchema } from '../packages/sdk/src/platform/channels/builtin/setup-schema.js';
+import { buildBuiltinAccount } from '../packages/sdk/src/platform/channels/builtin/accounts.js';
+import { runBuiltinAccountAction } from '../packages/sdk/src/platform/channels/builtin/account-actions.js';
+import { ChannelProviderRuntimeManager } from '../packages/sdk/src/platform/channels/provider-runtime.js';
+import { DaemonSurfaceDeliveryHelper } from '../packages/sdk/src/platform/daemon/surface-delivery.js';
+import { ServiceRegistry } from '../packages/sdk/src/platform/config/service-registry.js';
+import type { BuiltinChannelRuntimeDeps } from '../packages/sdk/src/platform/channels/builtin/shared.js';
+import type { ChannelSurface } from '../packages/sdk/src/platform/channels/types.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import type { SecretsManager } from '../packages/sdk/src/platform/config/secrets.js';
+import type { SubscriptionManager } from '../packages/sdk/src/platform/config/subscriptions.js';
 
 type MutableConfig = ConfigManager & { readonly values: Map<string, unknown> };
 

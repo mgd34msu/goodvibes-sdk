@@ -10,7 +10,7 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdirSync, rmSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { UserAuthManager } from '../packages/sdk/src/_internal/platform/security/user-auth.js';
+import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.js';
 
 function tempDir(suffix: string): string {
   const d = join(tmpdir(), `gv-sec01-${suffix}-${Date.now()}`);

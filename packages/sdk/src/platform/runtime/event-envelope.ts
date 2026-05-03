@@ -1,1 +1,2 @@
-export * from '../../_internal/platform/runtime/event-envelope.js';
+export type { EventEnvelope, EventEnvelopeContext } from '@pellux/goodvibes-transport-core';
+export { createEventEnvelope } from '@pellux/goodvibes-transport-core';

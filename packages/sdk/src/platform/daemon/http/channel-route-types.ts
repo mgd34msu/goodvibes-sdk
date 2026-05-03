@@ -1,1 +1,9 @@
-export * from '../../../_internal/platform/daemon/http/channel-route-types.js';
+export type {
+  ChannelDirectoryQuery,
+  ChannelDirectoryScope,
+  ChannelPluginServiceLike,
+  ChannelPolicyServiceLike,
+  ChannelSurface,
+  DaemonChannelRouteContext,
+  SurfaceRegistryLike,
+} from '@pellux/goodvibes-daemon-sdk';

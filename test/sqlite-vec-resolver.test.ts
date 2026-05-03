@@ -16,7 +16,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { resolveSqliteVecPath } from '../packages/sdk/src/_internal/platform/state/memory-vector-store.js';
+import { resolveSqliteVecPath } from '../packages/sdk/src/platform/state/memory-vector-store.js';
 import { join, dirname } from 'node:path';
 
 describe('F5b — resolveSqliteVecPath: dev mode', () => {

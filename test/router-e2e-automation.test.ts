@@ -14,20 +14,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { dispatchAutomationRoutes } from '../packages/sdk/src/_internal/daemon/automation.js';
-import type { DaemonApiRouteHandlers } from '../packages/sdk/src/_internal/daemon/context.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeRequest(method: string, url: string, body?: unknown): Request {
-  return new Request(url, {
-    method,
-    headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
+import { dispatchAutomationRoutes } from '../packages/daemon-sdk/src/automation.js';
+import type { DaemonApiRouteHandlers } from '../packages/daemon-sdk/src/context.js';
+import { makeRequest } from './_helpers/router-requests.js';
 
 function makeJob(id = 'job-1') {
   return {

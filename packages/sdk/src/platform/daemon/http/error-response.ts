@@ -1,1 +1,5 @@
-export * from '../../../_internal/platform/daemon/http/error-response.js';
+export {
+  buildErrorResponseBody,
+  jsonErrorResponse,
+  summarizeErrorForRecord,
+} from '@pellux/goodvibes-daemon-sdk';

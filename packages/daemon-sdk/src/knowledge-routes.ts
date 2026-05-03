@@ -6,7 +6,7 @@ import {
 import { GoodVibesSdkError, DaemonErrorCategory } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
 import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
-import { readBoundedPositiveInteger } from './route-helpers.js';
+import { readBoundedPositiveInteger, readOptionalBoundedInteger } from './route-helpers.js';
 import { createDaemonKnowledgeRefinementRouteHandlers } from './knowledge-refinement-routes.js';
 import type {
   AutomationScheduleDefinition,
@@ -181,7 +181,7 @@ function readBooleanQuery(url: URL, key: string): boolean | undefined {
 }
 
 function readKnowledgeMapFilters(url: URL): JsonBody {
-  const minConfidence = readOptionalNumber(url.searchParams.get('minConfidence'));
+  const minConfidence = readOptionalBoundedInteger(url.searchParams.get('minConfidence'), 0, 100);
   return {
     ...(url.searchParams.get('query') ? { query: url.searchParams.get('query')! } : {}),
     ...(Number.isFinite(minConfidence) ? { minConfidence } : {}),
@@ -198,12 +198,6 @@ function readKnowledgeMapFilters(url: URL): JsonBody {
     edgeRelations: readStringList(url, 'edgeRelations', 'edgeRelation'),
     tags: readStringList(url, 'tags', 'tag'),
   };
-}
-
-function readOptionalNumber(raw: string | null): number | undefined {
-  if (raw === null || raw.trim() === '') return undefined;
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : undefined;
 }
 
 function readStringList(url: URL, ...names: readonly string[]): readonly string[] {
@@ -384,7 +378,7 @@ async function handleKnowledgeGraphql(context: DaemonKnowledgeRouteContext, req:
 function buildKnowledgePrivateHostFetchOptions(
   context: DaemonKnowledgeRouteContext,
   requested: unknown,
-): { allowPrivateHosts: true } | undefined | Response {
+): { allowPrivateHosts: true } | Record<string, never> | Response {
   return resolvePrivateHostFetchOptions(requested, {
     configManager: context.configManager,
   });

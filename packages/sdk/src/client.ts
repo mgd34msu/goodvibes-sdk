@@ -23,7 +23,7 @@ import {
   createWebSocketConnector,
   type RemoteRuntimeEvents,
 } from '@pellux/goodvibes-transport-realtime';
-import type { AnyRuntimeEvent } from './_internal/platform/runtime/events/index.js';
+import type { AnyRuntimeEvent } from './events/index.js';
 import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
@@ -34,7 +34,7 @@ import {
 import {
   AutoRefreshCoordinator,
   createAutoRefreshMiddleware,
-} from './_internal/platform/auth/index.js';
+} from './client-auth/index.js';
 import type { SDKObserver } from './observer/index.js';
 
 /**

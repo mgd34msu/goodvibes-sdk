@@ -72,7 +72,7 @@ The QR code encodes a `CompanionConnectionInfo` JSON object containing everythin
 
 ### Step 1: Host generates a companion token
 
-The host surface calls `getOrCreateCompanionToken(surface, options)` to get an existing persistent token, or generate one if none exists:
+The host surface calls `getOrCreateCompanionToken(options)` to get an existing persistent token, or generate one if none exists:
 
 ```ts
 import { join } from 'node:path';
@@ -80,11 +80,11 @@ import { homedir } from 'node:os';
 import { getOrCreateCompanionToken } from '@pellux/goodvibes-sdk/platform/pairing';
 
 const daemonHomeDir = join(homedir(), '.goodvibes', 'daemon');
-const record = getOrCreateCompanionToken('tui', { daemonHomeDir });
+const record = getOrCreateCompanionToken({ daemonHomeDir });
 // record: { token, peerId, createdAt }
 ```
 
-This is synchronous and idempotent — calling it repeatedly returns the same record until `regenerateCompanionToken` is called. The `surface` argument is retained for API compatibility and audit log context; it does not partition the token path (see [Storage](#storage)).
+This is synchronous and idempotent. Calling it repeatedly returns the same record until `regenerateCompanionToken` is called. Token storage is daemon-home scoped (see [Storage](#storage)).
 
 ### Step 2: Host builds the connection payload
 
@@ -187,16 +187,16 @@ const sdk = createGoodVibesSdk({
 
 ### Creating a token
 
-`getOrCreateCompanionToken(surface, { daemonHomeDir })` creates a JSON record (`{ token, peerId, createdAt }`) if none exists at `<daemonHomeDir>/operator-tokens.json` and returns it. The file is written at mode `0600`.
+`getOrCreateCompanionToken({ daemonHomeDir })` creates a JSON record (`{ token, peerId, createdAt }`) if none exists at `<daemonHomeDir>/operator-tokens.json` and returns it. The file is written at mode `0600`.
 
 ### Regenerating a token
 
-Calling `regenerateCompanionToken(surface, { daemonHomeDir })` (equivalent to `getOrCreateCompanionToken` with `regenerate: true`) issues a new token and replaces the stored record. Any companion app holding the old token will receive `401 Unauthorized` on its next API call and must re-pair.
+Calling `regenerateCompanionToken({ daemonHomeDir })` (equivalent to `getOrCreateCompanionToken` with `regenerate: true`) issues a new token and replaces the stored record. Any companion app holding the old token will receive `401 Unauthorized` on its next API call and must re-pair.
 
 ```ts
 import { regenerateCompanionToken } from '@pellux/goodvibes-sdk/platform/pairing';
 
-const newRecord = regenerateCompanionToken('tui', { daemonHomeDir });
+const newRecord = regenerateCompanionToken({ daemonHomeDir });
 ```
 
 Rotate tokens proactively if:
@@ -204,26 +204,9 @@ Rotate tokens proactively if:
 - You believe the token may have been observed by a third party.
 - You are decommissioning a companion app.
 
-### Pruning non-canonical workspace tokens
-
-Hosts can call `pruneStaleOperatorTokens({ daemonHomeDir, candidatePaths })` on daemon startup to remove candidate token files whose token does not match the canonical `<daemonHomeDir>/operator-tokens.json`:
-
-```ts
-import { pruneStaleOperatorTokens } from '@pellux/goodvibes-sdk/platform/pairing';
-
-const result = pruneStaleOperatorTokens({
-  daemonHomeDir,
-  candidatePaths: [
-    join(workingDir, '.goodvibes', 'operator-tokens.json'),
-    join(workingDir, '.goodvibes', 'tui', 'operator-tokens.json'),
-  ],
-});
-// result: { canonicalPath, canonicalToken, prunedPaths, matchedPaths, absentPaths, failedPaths }
-```
-
 ### Reading a stored token
 
-There is no dedicated `readCompanionToken` export. To inspect the stored record without regenerating, read `<daemonHomeDir>/operator-tokens.json` directly, or call `getOrCreateCompanionToken(surface, { daemonHomeDir })` — it is idempotent and returns the existing record if present.
+There is no dedicated `readCompanionToken` export. To inspect the stored record without regenerating, read `<daemonHomeDir>/operator-tokens.json` directly, or call `getOrCreateCompanionToken({ daemonHomeDir })`; it is idempotent and returns the existing record if present.
 
 ---
 
@@ -272,7 +255,7 @@ The TUI exposes a `/qrcode` command that generates and displays the pairing QR c
 ```
 
 Internally this:
-1. Calls `getOrCreateCompanionToken('tui', { daemonHomeDir })`.
+1. Calls `getOrCreateCompanionToken({ daemonHomeDir })`.
 2. Calls `buildCompanionConnectionInfo({ daemonUrl, token, surface: 'tui', version, password? })`.
 3. Calls `encodeConnectionPayload(info)` to serialize the JSON payload.
 4. Calls `generateQrMatrix(payload)`.
@@ -337,7 +320,7 @@ Native clients that do not use the TypeScript SDK can connect using standard HTT
 
 ```
 # Verify the token is working
-GET /api/control-plane/whoami
+GET /api/control-plane/auth
 Authorization: Bearer gvt_abc123...
 ```
 

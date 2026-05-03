@@ -1,7 +1,6 @@
 {
   "name": "@pellux/goodvibes-operator-sdk",
-  "private": true,
-  "version": "0.28.22",
+  "version": "0.30.0",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -49,5 +48,8 @@
     "@pellux/goodvibes-errors": "workspace:*",
     "@pellux/goodvibes-transport-http": "workspace:*",
     "zod": "^4.3.6"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

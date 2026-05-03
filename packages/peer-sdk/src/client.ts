@@ -18,15 +18,38 @@ export interface PeerSdkOptions extends HttpTransportOptions {
 export interface PeerInvokeOptions extends PeerRemoteClientInvokeOptions {}
 
 export type PeerSdk =
-  & Omit<PeerRemoteClient, 'getEndpoint'>
+  & Omit<PeerRemoteClient, 'getOperation'>
   & {
     readonly transport: HttpTransport;
-    getEndpoint(endpointId: PeerEndpointId): PeerEndpointContract;
+    getOperation(endpointId: PeerEndpointId): PeerEndpointContract;
+    dispose(): void;
+    asyncDispose(): Promise<void>;
+    [Symbol.dispose](): void;
+    [Symbol.asyncDispose](): Promise<void>;
   };
 
 export function createPeerSdk(options: PeerSdkOptions): PeerSdk {
   const transport = createHttpTransport(options);
-  return createPeerRemoteClient(transport, getPeerContract(), {
+  const remote = createPeerRemoteClient(transport, getPeerContract(), {
     validateResponses: options.validateResponses !== false,
-  }) as PeerSdk;
+  });
+  return {
+    ...remote,
+    getOperation(endpointId: PeerEndpointId): PeerEndpointContract {
+      return remote.getOperation(endpointId);
+    },
+    dispose(): void {
+      // HTTP transports do not hold sockets today, but exposing disposal on the
+      // SDK object gives callers a stable lifecycle hook as transports evolve.
+    },
+    async asyncDispose(): Promise<void> {
+      this.dispose();
+    },
+    [Symbol.dispose](): void {
+      this.dispose();
+    },
+    async [Symbol.asyncDispose](): Promise<void> {
+      this.dispose();
+    },
+  };
 }

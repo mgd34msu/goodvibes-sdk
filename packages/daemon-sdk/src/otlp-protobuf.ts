@@ -1,6 +1,17 @@
+import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
+
 type WireType = 0 | 1 | 2 | 3 | 4 | 5;
 
 export type OtlpProtobufKind = 'logs' | 'traces' | 'metrics';
+
+function protobufDecodeError(message: string): GoodVibesSdkError {
+  return new GoodVibesSdkError(message, {
+    category: 'protocol',
+    source: 'runtime',
+    operation: 'daemon.telemetry.decodeOtlpProtobuf',
+    code: 'OTLP_PROTOBUF_DECODE_ERROR',
+  });
+}
 
 class ProtoReader {
   private offset = 0;
@@ -15,7 +26,7 @@ class ProtoReader {
     const tag = this.readVarint();
     const fieldNumber = Number(tag >> 3n);
     const wireType = Number(tag & 0x07n) as WireType;
-    if (fieldNumber <= 0) throw new Error(`Invalid protobuf field number: ${fieldNumber}`);
+    if (fieldNumber <= 0) throw protobufDecodeError(`Invalid protobuf field number: ${fieldNumber}`);
     return { fieldNumber, wireType };
   }
 
@@ -28,7 +39,7 @@ class ProtoReader {
       if ((byte & 0x80) === 0) return value;
       shift += 7n;
     }
-    throw new Error('Invalid protobuf varint');
+    throw protobufDecodeError('Invalid protobuf varint');
   }
 
   readFixed32(): number {
@@ -67,7 +78,7 @@ class ProtoReader {
 
   readLengthDelimited(): Uint8Array {
     const length = Number(this.readVarint());
-    if (!Number.isSafeInteger(length) || length < 0) throw new Error(`Invalid protobuf length: ${length}`);
+    if (!Number.isSafeInteger(length) || length < 0) throw protobufDecodeError(`Invalid protobuf length: ${length}`);
     this.ensure(length);
     const value = this.bytes.subarray(this.offset, this.offset + length);
     this.offset += length;
@@ -96,7 +107,7 @@ class ProtoReader {
         this.offset += 4;
         return;
       default:
-        throw new Error(`Unsupported protobuf wire type: ${wireType}`);
+        throw protobufDecodeError(`Unsupported protobuf wire type: ${wireType}`);
     }
   }
 
@@ -107,7 +118,7 @@ class ProtoReader {
 
   private ensure(length: number): void {
     if (this.offset + length > this.bytes.length) {
-      throw new Error('Truncated protobuf payload');
+      throw protobufDecodeError('Truncated protobuf payload');
     }
   }
 }

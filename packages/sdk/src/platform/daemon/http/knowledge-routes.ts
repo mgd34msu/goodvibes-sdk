@@ -1,1 +1,1 @@
-export * from '../../../_internal/platform/daemon/http/knowledge-routes.js';
+export { createDaemonKnowledgeRouteHandlers } from '@pellux/goodvibes-daemon-sdk';

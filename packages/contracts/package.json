@@ -1,7 +1,6 @@
 {
   "name": "@pellux/goodvibes-contracts",
-  "private": true,
-  "version": "0.28.22",
+  "version": "0.30.0",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -46,10 +45,6 @@
       "types": "./dist/node.d.ts",
       "import": "./dist/node.js"
     },
-    "./types": {
-      "types": "./dist/types.d.ts",
-      "import": "./dist/types.js"
-    },
     "./zod-schemas/accounts": {
       "types": "./dist/zod-schemas/accounts.d.ts",
       "import": "./dist/zod-schemas/accounts.js"
@@ -73,14 +68,6 @@
     "./zod-schemas/session": {
       "types": "./dist/zod-schemas/session.d.ts",
       "import": "./dist/zod-schemas/session.js"
-    },
-    "./generated/*": {
-      "types": "./dist/generated/*.d.ts",
-      "import": "./dist/generated/*.js"
-    },
-    "./zod-schemas/*": {
-      "types": "./dist/zod-schemas/*.d.ts",
-      "import": "./dist/zod-schemas/*.js"
     },
     "./operator-contract.json": "./artifacts/operator-contract.json",
     "./peer-contract.json": "./artifacts/peer-contract.json",
@@ -109,5 +96,8 @@
   ],
   "dependencies": {
     "zod": "^4.3.6"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

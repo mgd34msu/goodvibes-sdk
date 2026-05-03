@@ -44,12 +44,6 @@ Current-auth route:
 GET /api/control-plane/auth
 ```
 
-Alias:
-
-```http
-GET /api/control-plane/whoami
-```
-
 Session cookie:
 - name: `goodvibes_session`
 - `HttpOnly`

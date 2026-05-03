@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { PermissionResolver } from '../packages/sdk/src/_internal/platform/auth/permission-resolver.js';
-import type { ControlPlaneAuthSnapshot } from '../packages/sdk/src/_internal/platform/control-plane/auth-snapshot.js';
+import { PermissionResolver } from '../packages/sdk/src/client-auth/permission-resolver.js';
+import type { ControlPlaneAuthSnapshot } from '../packages/sdk/src/client-auth/control-plane-auth-snapshot.js';
 
 function makeSnapshot(overrides: Partial<ControlPlaneAuthSnapshot> = {}): ControlPlaneAuthSnapshot {
   return {

@@ -1,1 +1,2 @@
-export * from '../../../_internal/platform/runtime/transports/transport-paths.js';
+export type { TransportPaths } from '@pellux/goodvibes-transport-http';
+export { buildUrl, createTransportPaths, normalizeBaseUrl } from '@pellux/goodvibes-transport-http';

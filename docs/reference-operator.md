@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `265`
+- Methods: `264`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -19,7 +19,6 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 
 - Login route: `POST /login`
 - Current-auth route: `GET /api/control-plane/auth`
-- Current-auth aliases: `/api/control-plane/whoami`
 - Session cookie: `goodvibes_session` (Lax, path /)
 - Bearer header: `Authorization: Bearer <token>`
 
@@ -22030,12 +22029,6 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                 "path": {
                   "type": "string"
                 },
-                "aliasPaths": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
                 "responseSchema": {
                   "type": "object",
                   "properties": {
@@ -22120,7 +22113,6 @@ Return the operator-facing control-plane contract manifest, including auth, tran
               "required": [
                 "method",
                 "path",
-                "aliasPaths",
                 "responseSchema"
               ],
               "additionalProperties": false
@@ -22616,19 +22608,12 @@ Return the operator-facing control-plane contract manifest, including auth, tran
             "contractPath": {
               "type": "string"
             },
-            "aliasPaths": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
             "relationship": {
               "type": "string"
             }
           },
           "required": [
             "contractPath",
-            "aliasPaths",
             "relationship"
           ],
           "additionalProperties": false
@@ -29231,6 +29216,51 @@ Mark a queued or active Home Graph refinement task as cancelled.
             "nextRepairAttemptAt": {
               "type": "number"
             },
+            "acceptedSourceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ingestedSourceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "rejectedSourceUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "promotedFactCount": {
+              "type": "number"
+            },
+            "sourceAssessments": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {}
+                ]
+              }
+            },
             "trace": {
               "type": "array",
               "items": {
@@ -29452,6 +29482,51 @@ Return one Home Graph refinement task and its trace.
             },
             "nextRepairAttemptAt": {
               "type": "number"
+            },
+            "acceptedSourceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ingestedSourceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "rejectedSourceUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "promotedFactCount": {
+              "type": "number"
+            },
+            "sourceAssessments": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {}
+                ]
+              }
             },
             "trace": {
               "type": "array",
@@ -29677,6 +29752,51 @@ Return durable Home Graph refinement tasks with states, traces, source assessmen
           },
           "nextRepairAttemptAt": {
             "type": "number"
+          },
+          "acceptedSourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ingestedSourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rejectedSourceUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "promotedFactCount": {
+            "type": "number"
+          },
+          "sourceAssessments": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {}
+              ]
+            }
           },
           "trace": {
             "type": "array",
@@ -30069,7 +30189,7 @@ Generate or refresh the living passport page for one Home Assistant device.
 
 #### `homeassistant.homeGraph.reindex`
 
-Re-extract already-stored Home Graph artifacts with missing or weak extraction records.
+Re-extract already-stored Home Graph artifacts with missing or sparse extraction records.
 
 - Title: `Reindex Home Graph Sources`
 - Source: `builtin`
@@ -40664,6 +40784,51 @@ Mark a queued or active semantic refinement task as cancelled.
         "nextRepairAttemptAt": {
           "type": "number"
         },
+        "acceptedSourceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ingestedSourceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rejectedSourceUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "promotedFactCount": {
+          "type": "number"
+        },
+        "sourceAssessments": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {}
+            ]
+          }
+        },
         "trace": {
           "type": "array",
           "items": {
@@ -40861,6 +41026,51 @@ Return one semantic refinement task and its trace.
         },
         "nextRepairAttemptAt": {
           "type": "number"
+        },
+        "acceptedSourceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ingestedSourceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rejectedSourceUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "promotedFactCount": {
+          "type": "number"
+        },
+        "sourceAssessments": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {}
+            ]
+          }
         },
         "trace": {
           "type": "array",
@@ -41077,6 +41287,51 @@ Return durable semantic refinement tasks with state, traces, accepted/rejected s
           "nextRepairAttemptAt": {
             "type": "number"
           },
+          "acceptedSourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ingestedSourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rejectedSourceUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "promotedFactCount": {
+            "type": "number"
+          },
+          "sourceAssessments": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {}
+              ]
+            }
+          },
           "trace": {
             "type": "array",
             "items": {
@@ -41161,7 +41416,7 @@ Return durable semantic refinement tasks with state, traces, accepted/rejected s
 
 #### `knowledge.reindex`
 
-Rebuild derived knowledge relations and mirror reviewed memory into the structured knowledge store.
+Rebuild derived knowledge relations and sync reviewed memory into the structured knowledge store.
 
 - Title: `Reindex Structured Knowledge`
 - Source: `builtin`
@@ -58562,629 +58817,6 @@ Cancel a queued shared-session input before it is delivered or spawned.
 }
 ```
 
-#### `sessions.inputs.create`
-
-Create a shared-session input. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler.
-
-- Title: `Create Shared Session Input`
-- Source: `builtin`
-- Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/sessions/{sessionId}/inputs`
-- Scopes: `write:sessions`
-- Emits events: none
-- Dangerous: `no`
-- Invokable: `yes`
-
-##### Input schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "body": {
-      "type": "string"
-    },
-    "intent": {
-      "type": "string"
-    },
-    "surfaceKind": {
-      "type": "string"
-    },
-    "surfaceId": {
-      "type": "string"
-    },
-    "routing": {
-      "type": "object",
-      "properties": {
-        "providerId": {
-          "type": "string"
-        },
-        "modelId": {
-          "type": "string"
-        },
-        "providerSelection": {
-          "type": "string",
-          "enum": [
-            "inherit-current",
-            "concrete",
-            "synthetic"
-          ]
-        },
-        "unresolvedModelPolicy": {
-          "type": "string",
-          "enum": [
-            "fallback-to-current",
-            "fail"
-          ]
-        },
-        "providerFailurePolicy": {
-          "type": "string",
-          "enum": [
-            "ordered-fallbacks",
-            "fail"
-          ]
-        },
-        "fallbackModels": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "helperModel": {
-          "type": "object",
-          "properties": {
-            "providerId": {
-              "type": "string"
-            },
-            "modelId": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "providerId",
-            "modelId"
-          ],
-          "additionalProperties": false
-        },
-        "executionIntent": {
-          "type": "object",
-          "properties": {
-            "riskClass": {
-              "type": "string",
-              "enum": [
-                "safe",
-                "elevated",
-                "dangerous"
-              ]
-            },
-            "requiresApproval": {
-              "type": "boolean"
-            },
-            "networkPolicy": {
-              "type": "string",
-              "enum": [
-                "inherit",
-                "allow",
-                "deny",
-                "scoped"
-              ]
-            },
-            "filesystemPolicy": {
-              "type": "string",
-              "enum": [
-                "inherit",
-                "workspace-write",
-                "read-only",
-                "isolated"
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        "tools": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "reasoningEffort": {
-          "type": "string",
-          "enum": [
-            "instant",
-            "low",
-            "medium",
-            "high"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "allowSpawnFallback": {
-      "type": "boolean"
-    }
-  },
-  "required": [
-    "body"
-  ],
-  "additionalProperties": true
-}
-```
-
-##### Output schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "session": {
-      "anyOf": [
-        {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "title": {
-              "type": "string"
-            },
-            "status": {
-              "type": "string",
-              "enum": [
-                "active",
-                "closed"
-              ]
-            },
-            "createdAt": {
-              "type": "number"
-            },
-            "updatedAt": {
-              "type": "number"
-            },
-            "lastMessageAt": {
-              "type": "number"
-            },
-            "closedAt": {
-              "type": "number"
-            },
-            "messageCount": {
-              "type": "number"
-            },
-            "pendingInputCount": {
-              "type": "number"
-            },
-            "routeIds": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "surfaceKinds": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "participants": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "surfaceKind": {
-                    "type": "string"
-                  },
-                  "surfaceId": {
-                    "type": "string"
-                  },
-                  "externalId": {
-                    "type": "string"
-                  },
-                  "userId": {
-                    "type": "string"
-                  },
-                  "displayName": {
-                    "type": "string"
-                  },
-                  "routeId": {
-                    "type": "string"
-                  },
-                  "lastSeenAt": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "surfaceKind",
-                  "surfaceId",
-                  "lastSeenAt"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "activeAgentId": {
-              "type": "string"
-            },
-            "lastAgentId": {
-              "type": "string"
-            },
-            "lastError": {
-              "type": "string"
-            },
-            "metadata": {
-              "type": "object",
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": {}
-                  },
-                  {
-                    "type": "array",
-                    "items": {}
-                  }
-                ]
-              }
-            }
-          },
-          "required": [
-            "id",
-            "title",
-            "status",
-            "createdAt",
-            "updatedAt",
-            "messageCount",
-            "pendingInputCount",
-            "routeIds",
-            "surfaceKinds",
-            "participants",
-            "metadata"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "message": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "sessionId": {
-          "type": "string"
-        },
-        "role": {
-          "type": "string",
-          "enum": [
-            "user",
-            "assistant",
-            "system"
-          ]
-        },
-        "body": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "number"
-        },
-        "surfaceKind": {
-          "type": "string"
-        },
-        "surfaceId": {
-          "type": "string"
-        },
-        "routeId": {
-          "type": "string"
-        },
-        "agentId": {
-          "type": "string"
-        },
-        "userId": {
-          "type": "string"
-        },
-        "displayName": {
-          "type": "string"
-        },
-        "metadata": {
-          "type": "object",
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "object",
-                "additionalProperties": {}
-              },
-              {
-                "type": "array",
-                "items": {}
-              }
-            ]
-          }
-        }
-      },
-      "required": [
-        "id",
-        "sessionId",
-        "role",
-        "body",
-        "createdAt",
-        "metadata"
-      ],
-      "additionalProperties": false
-    },
-    "input": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "sessionId": {
-          "type": "string"
-        },
-        "intent": {
-          "type": "string",
-          "enum": [
-            "submit",
-            "steer",
-            "follow-up"
-          ]
-        },
-        "state": {
-          "type": "string",
-          "enum": [
-            "queued",
-            "delivered",
-            "spawned",
-            "completed",
-            "cancelled",
-            "failed",
-            "rejected"
-          ]
-        },
-        "correlationId": {
-          "type": "string"
-        },
-        "causationId": {
-          "type": "string"
-        },
-        "body": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "number"
-        },
-        "updatedAt": {
-          "type": "number"
-        },
-        "routeId": {
-          "type": "string"
-        },
-        "surfaceKind": {
-          "type": "string"
-        },
-        "surfaceId": {
-          "type": "string"
-        },
-        "externalId": {
-          "type": "string"
-        },
-        "threadId": {
-          "type": "string"
-        },
-        "userId": {
-          "type": "string"
-        },
-        "displayName": {
-          "type": "string"
-        },
-        "activeAgentId": {
-          "type": "string"
-        },
-        "metadata": {
-          "type": "object",
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "object",
-                "additionalProperties": {}
-              },
-              {
-                "type": "array",
-                "items": {}
-              }
-            ]
-          }
-        },
-        "routing": {
-          "type": "object",
-          "properties": {
-            "providerId": {
-              "type": "string"
-            },
-            "modelId": {
-              "type": "string"
-            },
-            "providerSelection": {
-              "type": "string",
-              "enum": [
-                "inherit-current",
-                "concrete",
-                "synthetic"
-              ]
-            },
-            "unresolvedModelPolicy": {
-              "type": "string",
-              "enum": [
-                "fallback-to-current",
-                "fail"
-              ]
-            },
-            "providerFailurePolicy": {
-              "type": "string",
-              "enum": [
-                "ordered-fallbacks",
-                "fail"
-              ]
-            },
-            "fallbackModels": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "helperModel": {
-              "type": "object",
-              "properties": {
-                "providerId": {
-                  "type": "string"
-                },
-                "modelId": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "providerId",
-                "modelId"
-              ],
-              "additionalProperties": false
-            },
-            "executionIntent": {
-              "type": "object",
-              "properties": {
-                "riskClass": {
-                  "type": "string",
-                  "enum": [
-                    "safe",
-                    "elevated",
-                    "dangerous"
-                  ]
-                },
-                "requiresApproval": {
-                  "type": "boolean"
-                },
-                "networkPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "inherit",
-                    "allow",
-                    "deny",
-                    "scoped"
-                  ]
-                },
-                "filesystemPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "inherit",
-                    "workspace-write",
-                    "read-only",
-                    "isolated"
-                  ]
-                }
-              },
-              "additionalProperties": false
-            },
-            "tools": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "reasoningEffort": {
-              "type": "string",
-              "enum": [
-                "instant",
-                "low",
-                "medium",
-                "high"
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        "error": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "sessionId",
-        "intent",
-        "state",
-        "correlationId",
-        "body",
-        "createdAt",
-        "updatedAt",
-        "metadata"
-      ],
-      "additionalProperties": false
-    },
-    "mode": {
-      "type": "string",
-      "enum": [
-        "spawn",
-        "continued-live",
-        "queued-follow-up",
-        "rejected"
-      ]
-    },
-    "agentId": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    }
-  },
-  "required": [
-    "session",
-    "message",
-    "input",
-    "mode",
-    "agentId"
-  ],
-  "additionalProperties": false
-}
-```
-
 #### `sessions.inputs.list`
 
 Return explicit session inputs, including queued follow-ups and delivered steering requests.
@@ -61641,7 +61273,7 @@ Return security-relevant settings, defaults, current state, and enablement trade
               "type": "string"
             }
           },
-          "compatibilityNotes": {
+          "operationalNotes": {
             "type": "array",
             "items": {
               "type": "string"
@@ -61658,7 +61290,7 @@ Return security-relevant settings, defaults, current state, and enablement trade
           "insecureWhen",
           "enablementEffect",
           "enablementRequirements",
-          "compatibilityNotes"
+          "operationalNotes"
         ],
         "additionalProperties": false
       }

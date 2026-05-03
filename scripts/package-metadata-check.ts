@@ -11,14 +11,13 @@ const packageDirs = [
   'packages/errors',
   'packages/daemon-sdk',
   'packages/transport-core',
-  'packages/transport-direct',
   'packages/transport-http',
   'packages/transport-realtime',
   'packages/operator-sdk',
   'packages/peer-sdk',
   'packages/sdk',
 ];
-const publicPackageDirs = ['packages/sdk'];
+const publicPackageDirs = packageDirs;
 
 const requiredStringFields = [
   'name',
@@ -61,8 +60,6 @@ for (const dir of packageDirs) {
     if (Array.isArray(pkg.bundledDependencies) && pkg.bundledDependencies.length > 0) {
       throw new Error(`${dir}/package.json must not use bundledDependencies; flatten the umbrella package instead`);
     }
-  } else if (pkg.private !== true) {
-    throw new Error(`${dir}/package.json must be marked private because only packages/sdk is publishable`);
   }
   if (!pkg.exports || typeof pkg.exports !== 'object') {
     throw new Error(`${dir}/package.json is missing exports`);

@@ -10,8 +10,8 @@ export {
   openContractRouteStream,
   requireContractRoute,
 } from './contract-client.js';
-export type { MethodArgs, RequiredKeys, WithoutKeys } from './client-plumbing.js';
-export { splitClientArgs } from './client-plumbing.js';
+export type { JsonSchemaValidationFailure, MethodArgs, RequiredKeys, WithoutKeys } from './client-plumbing.js';
+export { clientInputRecord, firstJsonSchemaFailure, mergeClientInput, splitClientArgs } from './client-plumbing.js';
 export type {
   HttpJsonRequestOptions,
   HttpTransport,
@@ -35,9 +35,9 @@ export { generateIdempotencyKey } from './http-core.js';
 export type { ServerSentEventHandlers, ServerSentEventOptions } from './sse.js';
 export { openServerSentEventStream } from './sse.js';
 export type { ServerSentEventHandlers as RawServerSentEventHandlers, ServerSentEventOptions as RawServerSentEventOptions } from './sse-stream.js';
-export { openServerSentEventStream as openRawServerSentEventStream } from './sse-stream.js';
+export { openRawServerSentEventStream } from './sse-stream.js';
 export type { AuthTokenInput, AuthTokenResolver, HeaderResolver, MaybePromise } from './auth.js';
-export { mergeHeaders, normalizeAuthToken, resolveAuthToken, resolveHeaders } from './auth.js';
+export { mergeHeaderRecord, mergeHeaders, normalizeAuthToken, resolveAuthToken, resolveHeaders } from './auth.js';
 export type { BackoffPolicy, ResolvedBackoffPolicy } from './backoff.js';
 export { computeBackoffDelay, normalizeBackoffPolicy, sleepWithSignal } from './backoff.js';
 export type { HttpRetryPolicy, PerMethodRetryPolicy, ResolvedHttpRetryPolicy } from './retry.js';

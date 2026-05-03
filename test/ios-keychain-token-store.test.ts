@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { createIOSKeychainTokenStore } from '../packages/sdk/src/_internal/platform/auth/ios-keychain-token-store.js';
+import { createIOSKeychainTokenStore } from '../packages/sdk/src/client-auth/ios-keychain-token-store.js';
 
 // ---------------------------------------------------------------------------
 // Mock react-native-keychain (in-memory)

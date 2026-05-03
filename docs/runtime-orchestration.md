@@ -6,14 +6,14 @@ session state.
 
 Sources:
 
-- `packages/sdk/src/_internal/platform/core/`
-- `packages/sdk/src/_internal/platform/agents/`
-- `packages/sdk/src/_internal/platform/runtime/`
-- `packages/sdk/src/_internal/platform/sessions/`
-- `packages/sdk/src/_internal/platform/workflow/`
-- `packages/sdk/src/_internal/platform/hooks/`
-- `packages/sdk/src/_internal/platform/profiles/`
-- `packages/sdk/src/_internal/platform/templates/`
+- `packages/sdk/src/platform/core/`
+- `packages/sdk/src/platform/agents/`
+- `packages/sdk/src/platform/runtime/`
+- `packages/sdk/src/platform/sessions/`
+- `packages/sdk/src/platform/workflow/`
+- `packages/sdk/src/platform/hooks/`
+- `packages/sdk/src/platform/profiles/`
+- `packages/sdk/src/platform/templates/`
 
 ## Turn Loop
 

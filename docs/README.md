@@ -1,19 +1,23 @@
 # GoodVibes SDK Documentation
 
-These documents describe the current SDK behavior. `CHANGELOG.md` is the
+These documents describe the v0.30.0 SDK architecture. The SDK is a monorepo of
+source-of-truth packages plus a main facade package; public imports are explicit
+package entrypoints, not arbitrary repo folder paths. `CHANGELOG.md` remains the
 release-history source.
 
 ## Start Here
 
 - [Getting started](./getting-started.md)
 - [Packages and entry points](./packages.md)
+- [Public exports](./exports.md)
+- [Runtime surface architecture](./runtime-surfaces.md)
 - [Runtime surfaces](./surfaces.md)
-- [Compatibility](./compatibility.md)
 - [Public surface reference](./public-surface.md)
 
 ## Client Integration
 
 - [Authentication](./authentication.md)
+- [Auth architecture](./auth.md)
 - [Browser integration](./browser-integration.md)
 - [Web UI integration](./web-ui-integration.md)
 - [React Native integration](./react-native-integration.md)
@@ -30,6 +34,7 @@ release-history source.
 
 - [Daemon embedding](./daemon-embedding.md)
 - [Provider and model API](./provider-model-api.md)
+- [Provider architecture](./providers.md)
 - [Runtime orchestration](./runtime-orchestration.md)
 - [Tool system](./tools.md)
 - [Tool safety](./tool-safety.md)
@@ -40,9 +45,11 @@ release-history source.
 ## Knowledge, Media, and Search
 
 - [Knowledge system](./knowledge.md)
+- [Knowledge refinement](./knowledge-refinement.md)
+- [Generated knowledge pages](./knowledge-pages.md)
 - [Browser knowledge ingestion](./knowledge-browser-history.md)
 - [Project Planning](./project-planning.md)
-- [Home Assistant Home Graph](./homeassistant-integration.md#home-graph)
+- [Home Assistant Home Graph](./home-graph.md)
 - [Voice and streaming TTS](./voice.md)
 - [Media and multimodal runtime](./media-and-search.md)
 
@@ -62,10 +69,13 @@ release-history source.
 - [Security](./security.md)
 - [Observability](./observability.md)
 - [Performance and tuning](./performance.md)
+- [Transport architecture](./transports.md)
+- [Error architecture](./errors.md)
 - [Error handling](./error-handling.md)
 - [Error kinds reference](./error-kinds.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Testing and validation](./testing-and-validation.md)
+- [Testing architecture](./testing.md)
 - [Release and publishing](./release-and-publishing.md)
 - [Semver policy](./semver-policy.md)
 

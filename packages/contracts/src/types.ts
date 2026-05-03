@@ -83,7 +83,6 @@ export interface OperatorContractManifest {
     readonly current: {
       readonly method: string;
       readonly path: string;
-      readonly aliasPaths: readonly string[];
       readonly responseSchema: JsonSchema;
     };
     readonly sessionCookie: {
@@ -129,7 +128,6 @@ export interface OperatorContractManifest {
   };
   readonly peer: {
     readonly contractPath: string;
-    readonly aliasPaths: readonly string[];
     readonly relationship: string;
   };
 }

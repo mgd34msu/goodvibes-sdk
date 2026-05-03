@@ -1,3 +1,6 @@
+/**
+ * Subscribe to runtime events over SSE and clean up the subscription.
+ */
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
@@ -11,7 +14,8 @@ const unsubscribe = events.agents.on('AGENT_COMPLETED', (event) => {
   console.log('AGENT_COMPLETED', event);
 });
 
-setTimeout(() => {
+const unsubscribeTimer = setTimeout(() => {
   unsubscribe();
   console.log('unsubscribed from AGENT_COMPLETED');
 }, 30_000);
+unsubscribeTimer.unref?.();

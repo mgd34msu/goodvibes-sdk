@@ -13,13 +13,13 @@ import {
   isGoodVibesNtfyDeliveryEcho,
   resolveGoodVibesNtfyTopics,
   type NtfyMessage,
-} from '../packages/sdk/src/_internal/platform/integrations/ntfy.js';
-import { handleNtfySurfacePayload } from '../packages/sdk/src/_internal/platform/adapters/ntfy/index.js';
-import type { SurfaceAdapterContext } from '../packages/sdk/src/_internal/platform/adapters/types.js';
-import { ChannelProviderRuntimeManager } from '../packages/sdk/src/_internal/platform/channels/provider-runtime.js';
-import { DaemonSurfaceActionHelper } from '../packages/sdk/src/_internal/platform/daemon/surface-actions.js';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import { emitTurnCompleted, emitTurnSubmitted } from '../packages/sdk/src/_internal/platform/runtime/emitters/index.js';
+} from '../packages/sdk/src/platform/integrations/ntfy.js';
+import { handleNtfySurfacePayload } from '../packages/sdk/src/platform/adapters/ntfy/index.js';
+import type { SurfaceAdapterContext } from '../packages/sdk/src/platform/adapters/types.js';
+import { ChannelProviderRuntimeManager } from '../packages/sdk/src/platform/channels/provider-runtime.js';
+import { DaemonSurfaceActionHelper } from '../packages/sdk/src/platform/daemon/surface-actions.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import { emitTurnCompleted, emitTurnSubmitted } from '../packages/sdk/src/platform/runtime/emitters/index.js';
 
 describe('NtfyIntegration.subscribeJsonStream()', () => {
   test('streams newline-delimited JSON with auth and exits cleanly on abort', async () => {
@@ -248,7 +248,7 @@ describe('ntfy topic routing', () => {
     expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
   });
 
-  test('goodvibes-chat falls back to a legacy TUI session tagged in metadata', async () => {
+  test('goodvibes-chat falls back to a TUI session tagged in metadata', async () => {
     const calls = { authorize: 0, submit: 0, spawn: 0 };
     const appended: Array<{ sessionId: string; input: Record<string, unknown> }> = [];
     const context = makeRoutingContext({
@@ -256,7 +256,7 @@ describe('ntfy topic routing', () => {
       sessionBroker: {
         findPreferredSession: async () => null,
         listSessions: () => [
-          { id: 'legacy-tui-session', status: 'active', metadata: { source: 'tui' } },
+          { id: 'tui-session', status: 'active', metadata: { source: 'tui' } },
         ],
         appendCompanionMessage: async (sessionId: string, input: Record<string, unknown>) => {
           appended.push({ sessionId, input });
@@ -275,9 +275,9 @@ describe('ntfy topic routing', () => {
     expect(response.status).toBe(202);
     expect(await response.json()).toMatchObject({
       routedTo: 'tui-chat',
-      sessionId: 'legacy-tui-session',
+      sessionId: 'tui-session',
     });
-    expect(appended[0]?.sessionId).toBe('legacy-tui-session');
+    expect(appended[0]?.sessionId).toBe('tui-session');
     expect(calls).toEqual({ authorize: 1, submit: 0, spawn: 0 });
   });
 
@@ -721,7 +721,7 @@ describe('ntfy GoodVibes self-echo marker', () => {
     expect(isGoodVibesNtfyDeliveryEcho({
       event: 'message',
       topic: 'goodvibes',
-      message: 'legacy-looking outbound',
+      message: 'outbound-looking outbound',
       replyTargetId: 'reply-1',
       click: 'https://example.test/api/control-plane/web',
     })).toBe(false);

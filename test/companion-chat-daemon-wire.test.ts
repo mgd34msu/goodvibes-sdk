@@ -13,16 +13,16 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
+import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionChatManagerConfig,
   CompanionChatEventPublisher,
   CompanionLLMProvider,
   CompanionProviderChunk,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import { dispatchCompanionChatRoutes } from '../packages/sdk/src/_internal/platform/companion/companion-chat-routes.js';
-import type { CompanionChatRouteContext } from '../packages/sdk/src/_internal/platform/companion/companion-chat-route-types.js';
-import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
+import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
+import { DaemonHttpRouter } from '../packages/sdk/src/platform/daemon/http/router.js';
 
 // ---------------------------------------------------------------------------
 // Minimal mock provider
@@ -178,7 +178,7 @@ describe('companion-chat daemon wire: route reachability', () => {
     const req = new Request('http://localhost/api/companion/chat/sessions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'wire-test' }),
+      body: JSON.stringify({ title: 'wire-test', model: 'mercury-2' }),
     });
     const ctx = makeRouteContext(manager);
     const res = await dispatchCompanionChatRoutes(req, ctx);
@@ -189,13 +189,13 @@ describe('companion-chat daemon wire: route reachability', () => {
     expect(body.sessionId.length).toBeGreaterThan(0);
   });
 
-  test('POST /api/companion/chat/sessions with empty body returns 201 (defaults)', async () => {
+  test('POST /api/companion/chat/sessions with empty body rejects without a default resolver', async () => {
     const req = new Request('http://localhost/api/companion/chat/sessions', { method: 'POST' });
     const ctx = makeRouteContext(manager);
     const res = await dispatchCompanionChatRoutes(req, ctx);
-    expect(res!.status).toBe(201);
+    expect(res!.status).toBe(400);
     const body = await res!.json();
-    expect(typeof body.sessionId).toBe('string');
+    expect(body.code).toBe('NO_MODEL_CONFIGURED');
   });
 
   test('dispatchCompanionChatRoutes returns null for non-companion routes', async () => {
@@ -270,7 +270,7 @@ describe('companion-chat daemon wire: DaemonHttpRouter.dispatchApiRoutes integra
     const req = new Request('http://localhost/api/companion/chat/sessions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'router-wire-test' }),
+      body: JSON.stringify({ title: 'router-wire-test', model: 'mercury-2' }),
     });
 
     const res = await router.dispatchApiRoutes(req);
@@ -350,7 +350,7 @@ describe('companion-chat provider adapter: stream-error path', () => {
     const session = manager.createSession({ title: 'error-test' });
     await manager.postMessage(session.id, 'trigger error');
 
-    // Wait for the async turn to complete (fire-and-forget internals)
+    // Wait for the async turn to complete.
     await new Promise<void>((resolve) => setTimeout(resolve, 100));
 
     manager.dispose();
@@ -477,8 +477,7 @@ describe('F16b: DaemonHttpRouter forwards resolveDefaultProviderModel into compa
     expect(body.code).toBe('NO_MODEL_CONFIGURED');
   });
 
-  test('resolver absent → session created even without body provider/model (legacy compat)', async () => {
-    // No resolveDefaultProviderModel on context — legacy behavior preserved.
+  test('resolver absent and body lacks provider/model → 400 NO_MODEL_CONFIGURED', async () => {
     const ctx = makeRouterContext(manager) as unknown as ConstructorParameters<typeof DaemonHttpRouter>[0];
     const router = new DaemonHttpRouter(ctx);
 
@@ -490,14 +489,16 @@ describe('F16b: DaemonHttpRouter forwards resolveDefaultProviderModel into compa
 
     const res = await router.dispatchApiRoutes(req);
     expect(res).not.toBeNull();
-    expect(res!.status).toBe(201);
+    expect(res!.status).toBe(400);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(body['code']).toBe('NO_MODEL_CONFIGURED');
   });
 });
 
 describe('companion-chat facade-composition: composition wire assertion', () => {
   const FACADE_COMPOSITION_PATH = resolve(
     import.meta.dir,
-    '../packages/sdk/src/_internal/platform/daemon/facade-composition.ts',
+    '../packages/sdk/src/platform/daemon/facade-composition.ts',
   );
 
   let sourceText: string;
@@ -548,8 +549,7 @@ describe('companion-chat facade-composition: composition wire assertion', () => 
     // Verifies the F16b plumbing: CreateDaemonFacadeCollaboratorsOptions must
     // declare resolveDefaultProviderModel and DaemonHttpRouter must receive it.
     // If the forwarding line is deleted the companion-chat resolver callback
-    // is silently dropped and every session-create falls back to the legacy
-    // null-provider path (ignoring the registry lookup in DaemonServer).
+    // is silently dropped and session-create cannot use the configured model.
     expect(sourceText).toMatch(
       /^(?!\s*\/\/).*resolveDefaultProviderModel:\s*options\.resolveDefaultProviderModel,/m,
     );

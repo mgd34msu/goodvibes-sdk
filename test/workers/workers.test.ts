@@ -47,7 +47,7 @@ let mf: Miniflare;
 beforeAll(async () => {
   // m-5: Stage a full snapshot of SDK_DIST in a tmp dir OUTSIDE dist/ to
   // eliminate the dist-race foot-gun. modulesRoot points to TMP_DIR so all
-  // static imports (including subdirs like _internal/) resolve from a stable
+  // static imports (including subdirs) resolve from a stable
   // location that concurrent builds cannot race against.
   if (existsSync(TMP_DIR)) {
     rmSync(TMP_DIR, { recursive: true, force: true });
@@ -165,11 +165,11 @@ describe('Workers harness: transport-http round-trip', () => {
     expect(body.ctor).toBeNull();
   }, 10_000);
 
-  // M-1 (error path): mock returns 5xx. Asserts errorKind === 'server' (exact
+  // M-1 (error path): mock returns 5xx. Asserts errorKind === 'service' (exact
   // literal, not regex) — proving SDK error taxonomy works under Workers runtime.
   // m-2: kind and ctor are returned as SEPARATE fields to avoid conflating
   // typed SDKErrorKind values with raw constructor names.
-  test('error path — mock returns 5xx, errorKind is typed \'server\'', async () => {
+  test('error path — mock returns 5xx, errorKind is typed \'service\'', async () => {
     const res = await mf.dispatchFetch('http://workers.test/transport-error');
     // Worker must not crash (status 200 = error was caught and returned as JSON)
     expect(res.status).toBe(200);
@@ -180,8 +180,8 @@ describe('Workers harness: transport-http round-trip', () => {
     expect(body.result).toBeNull();
 
     // m-2: assert 'kind' is a typed SDKErrorKind, not a constructor name
-    const validKinds = ['auth', 'config', 'contract', 'network', 'not-found', 'rate-limit', 'server', 'validation', 'unknown'];
-    expect(body.kind).toBe('server'); // 500 maps to category 'service' -> kind 'server'
+    const validKinds = ['auth', 'config', 'contract', 'network', 'not-found', 'protocol', 'rate-limit', 'service', 'internal', 'tool', 'validation', 'unknown'];
+    expect(body.kind).toBe('service'); // 500 maps to category 'service' -> kind 'service'
     expect(validKinds).toContain(body.kind as string);
 
     // m-2: assert 'ctor' is a string (the constructor name of the thrown error)

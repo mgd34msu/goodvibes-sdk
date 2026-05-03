@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { DaemonChannelRouteHandlers } from './context.js';
 import { readBoundedPositiveInteger, readChannelConversationKind, readChannelLifecycleAction } from './route-helpers.js';
 import type { ChannelDirectoryScope, ChannelSurface, DaemonChannelRouteContext } from './channel-route-types.js';
@@ -290,7 +291,7 @@ export function createDaemonChannelRouteHandlers(
           groupPolicies: body.groupPolicies
             .filter((value): value is Record<string, unknown> => typeof value === 'object' && value !== null)
             .map((value) => ({
-              id: typeof value.id === 'string' ? value.id : `group-policy-${Math.random().toString(36).slice(2, 8)}`,
+              id: typeof value.id === 'string' ? value.id : `group-policy-${randomUUID().slice(0, 8)}`,
               ...(typeof value.label === 'string' ? { label: value.label } : {}),
               ...(typeof value.groupId === 'string' ? { groupId: value.groupId } : {}),
               ...(typeof value.channelId === 'string' ? { channelId: value.channelId } : {}),

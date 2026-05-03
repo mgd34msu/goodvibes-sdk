@@ -10,9 +10,9 @@ import { describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { UserAuthManager } from '../packages/sdk/src/_internal/platform/security/user-auth.ts';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.ts';
-import { HttpListener } from '../packages/sdk/src/_internal/platform/daemon/http-listener.ts';
+import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.ts';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
+import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.ts';
 
 const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
 
@@ -116,7 +116,7 @@ describe('SEC-05: HttpListener parseJsonBody body-size cap', () => {
 // DaemonHttpRouter parseJsonBody / parseOptionalJsonBody
 // ---------------------------------------------------------------------------
 
-import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.ts';
+import { DaemonHttpRouter } from '../packages/sdk/src/platform/daemon/http/router.ts';
 
 function makeRouter(): DaemonHttpRouter {
   const ctx = new Proxy({} as Parameters<typeof DaemonHttpRouter>[0], {

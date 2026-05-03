@@ -132,7 +132,7 @@ The returned permission list describes the operational token the SDK will create
 
 The SDK resolves Cloudflare permission groups dynamically through the official Cloudflare TypeScript SDK. It resolves each required permission by `name` and Cloudflare scope, with aliases for Cloudflare's `Write`/`Edit` naming variants, before falling back to a broad catalog scan. If Cloudflare still returns account-specific permission names that do not match the SDK candidates, token creation fails with the missing permission names so the client can guide the user to create the operational token manually.
 
-Token policies are emitted per Cloudflare resource scope. Account permissions are placed in an account policy, DNS permissions are placed in a zone policy, and R2 uses a separate bucket policy when Cloudflare exposes `Workers R2 Storage Write/Edit` as `com.cloudflare.edge.r2.bucket` scoped. This mirrors Cloudflare's documented token policy model where permission groups only apply to matching resource types.
+Token policies are emitted per Cloudflare resource scope. Account permissions are placed in an account policy, DNS permissions are placed in a zone policy, and R2 uses a separate bucket policy when Cloudflare exposes `Workers R2 Storage Write/Edit` as `com.cloudflare.edge.r2.bucket` scoped. This matches Cloudflare's documented token policy model where permission groups only apply to matching resource types.
 
 After token creation, the SDK asks Cloudflare for the created token policy and refuses to store the token if no expected permission groups were persisted. If the dashboard shows a generated `GoodVibes Cloudflare Operational` token with `-` for permissions/resources, delete that unusable token and rerun the wizard with this SDK version.
 
@@ -224,6 +224,8 @@ The SDK exports `@pellux/goodvibes-sdk/workers` for Worker deployments:
 ```ts
 import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
 
+// Reads GOODVIBES_DAEMON_URL, GOODVIBES_OPERATOR_TOKEN, and
+// GOODVIBES_WORKER_TOKEN from Worker environment bindings.
 export default createGoodVibesCloudflareWorker();
 ```
 

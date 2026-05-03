@@ -1,1 +1,1 @@
-export * from '../../../_internal/platform/runtime/store/selectors/index.js';
+export * from './selectors/index.js';

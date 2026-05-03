@@ -9,8 +9,8 @@
  * to toBeGreaterThan(0).
  */
 import { describe, expect, test } from 'bun:test';
-import { buildOperatorContract } from '../packages/sdk/src/_internal/platform/control-plane/operator-contract.js';
-import { GatewayMethodCatalog } from '../packages/sdk/src/_internal/platform/control-plane/method-catalog.js';
+import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.js';
+import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
 
 // ---------------------------------------------------------------------------
 // Helper: create a catalog with known counts

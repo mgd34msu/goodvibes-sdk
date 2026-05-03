@@ -14,16 +14,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { dispatchOperatorRoutes } from '../packages/sdk/src/_internal/daemon/operator.js';
+import { dispatchOperatorRoutes } from '../packages/daemon-sdk/src/operator.js';
 import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeRequest(method: string, url: string): Request {
-  return new Request(url, { method });
-}
+import { makeRequest } from './_helpers/router-requests.js';
 
 // ---------------------------------------------------------------------------
 // describe: control routes — happy paths

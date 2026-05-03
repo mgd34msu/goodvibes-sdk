@@ -6,17 +6,17 @@ import { describe, expect, test } from 'bun:test';
  */
 describe('obs-19 sse lifecycle', () => {
   test('emitStreamSubscriberConnected is exported from transport emitters', async () => {
-    const mod = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const mod = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     expect(typeof mod.emitStreamSubscriberConnected).toBe('function');
   });
 
   test('emitStreamSubscriberDisconnected is exported from transport emitters', async () => {
-    const mod = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const mod = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     expect(typeof mod.emitStreamSubscriberDisconnected).toBe('function');
   });
 
   test('emitStreamSubscriberConnected emits correct payload', async () => {
-    const { emitStreamSubscriberConnected } = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const { emitStreamSubscriberConnected } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     const { EventEmitter } = await import('node:events');
     const bus = new EventEmitter() as Parameters<typeof emitStreamSubscriberConnected>[0];
     const events: unknown[] = [];
@@ -34,7 +34,7 @@ describe('obs-19 sse lifecycle', () => {
   });
 
   test('emitStreamSubscriberDisconnected emits optional reason', async () => {
-    const { emitStreamSubscriberDisconnected } = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const { emitStreamSubscriberDisconnected } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     const { EventEmitter } = await import('node:events');
     const bus = new EventEmitter() as Parameters<typeof emitStreamSubscriberDisconnected>[0];
     const events: unknown[] = [];
@@ -51,7 +51,7 @@ describe('obs-19 sse lifecycle', () => {
   });
 
   test('sseSubscribers gauge can be set to track connected/disconnected', async () => {
-    const { sseSubscribers } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { sseSubscribers } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     sseSubscribers.set(3);
     expect(sseSubscribers.value()).toBe(3);
     sseSubscribers.set(2);

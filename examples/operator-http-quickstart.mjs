@@ -1,3 +1,6 @@
+/**
+ * Call operator endpoints over HTTP using the umbrella SDK.
+ */
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({

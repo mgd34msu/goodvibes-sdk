@@ -9,7 +9,7 @@ import {
   CompanionChatRateLimiter,
   readThresholdFromEnv,
   DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-rate-limiter.ts';
+} from '../packages/sdk/src/platform/companion/companion-chat-rate-limiter.ts';
 
 // ---------------------------------------------------------------------------
 // readThresholdFromEnv

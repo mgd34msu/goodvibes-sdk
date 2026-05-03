@@ -11,16 +11,16 @@
  * I2(e) getMessagesForLLM reference identity — same ref on cache hit, fresh ref after mutation
  */
 import { describe, expect, test, beforeEach, mock } from 'bun:test';
-import { ConversationManager } from '../packages/sdk/src/_internal/platform/core/conversation.js';
-import { ControlPlaneGateway } from '../packages/sdk/src/_internal/platform/control-plane/gateway.js';
+import { ConversationManager } from '../packages/sdk/src/platform/core/conversation.js';
+import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/gateway.js';
 
 // ---------------------------------------------------------------------------
 // I2(a) + I2(b): ProviderRegistry cache invalidation
 // ---------------------------------------------------------------------------
 // ProviderRegistry has a heavy constructor; we test the invariants by importing
 // the class directly from source and constructing a minimal stub.
-import { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
-import { ProviderCapabilityRegistry } from '../packages/sdk/src/_internal/platform/providers/capabilities.js';
+import { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
+import { ProviderCapabilityRegistry } from '../packages/sdk/src/platform/providers/capabilities.js';
 
 function makeMinimalRegistry(): ProviderRegistry {
   const noop = () => {};
@@ -154,7 +154,7 @@ describe('I2(b): registerRuntimeProvider unregister callback invalidates cache',
     const provider = {
       name: 'plugin-provider',
       complete: async () => { throw new Error('not implemented'); },
-    } as unknown as import('../packages/sdk/src/_internal/platform/providers/interface.js').LLMProvider;
+    } as unknown as import('../packages/sdk/src/platform/providers/interface.js').LLMProvider;
     const model = makeCustomModel('plugin-model', 'plugin-provider:plugin-model');
 
     const unregister = registry.registerRuntimeProvider({ provider, models: [model] });
@@ -245,7 +245,7 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
       getState: () => ({}),
       dispatch: (fn: (slice: Partial<DomainDispatch>) => void) => fn({ syncControlPlaneState: mockDispatch.syncControlPlaneState }),
       subscribe: () => () => {},
-    } as unknown as import('../packages/sdk/src/_internal/platform/runtime/store/index.js').RuntimeStore;
+    } as unknown as import('../packages/sdk/src/platform/runtime/store/index.js').RuntimeStore;
 
     // We use the internal attach mechanism to inject dispatch
     const gw = new ControlPlaneGateway({});
@@ -360,11 +360,11 @@ describe('I2(e): getMessagesForLLM reference identity', () => {
     ['mergeBranch', (c) => {
       // Fork current state, then add a message to the branch so merge actually appends
       c.forkBranch('merge-src');
-      const branchMsgs = (c as unknown as { branches: Map<string, import('../packages/sdk/src/_internal/platform/core/conversation.js').ConversationMessageSnapshot[]> }).branches.get('merge-src')!;
+      const branchMsgs = (c as unknown as { branches: Map<string, import('../packages/sdk/src/platform/core/conversation.js').ConversationMessageSnapshot[]> }).branches.get('merge-src')!;
       branchMsgs.push({ role: 'assistant', content: 'merged-reply' });
       c.mergeBranch('merge-src');
     }],
-    ['fromJSON', (c) => c.fromJSON({ messages: [{ role: 'user', content: 'from-json' }] as import('../packages/sdk/src/_internal/platform/core/conversation.js').ConversationMessageSnapshot[] })],
+    ['fromJSON', (c) => c.fromJSON({ messages: [{ role: 'user', content: 'from-json' }] as import('../packages/sdk/src/platform/core/conversation.js').ConversationMessageSnapshot[] })],
     ['undo', (c) => { c.addUserMessage('extra'); c.undo(); }],
     ['redo', (c) => { c.addUserMessage('extra'); c.undo(); c.redo(); }],
     ['markLastUserMessageCancelled', (c) => c.markLastUserMessageCancelled()],

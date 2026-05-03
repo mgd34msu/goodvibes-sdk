@@ -47,8 +47,6 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
  * - Returns `ReactNativeGoodVibesSdk` (extends `GoodVibesSdk` with a
  *   React-Native-specific `realtime` namespace).
  *
- * `createExpoGoodVibesSdk` is an alias for this function.
- *
  * @example
  * // Example only: replace baseUrl and authToken with your own values.
  * import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
@@ -130,7 +128,7 @@ export {
   type IOSKeychainTokenStore,
   type IOSKeychainTokenStoreOptions,
   type KeychainAccessible,
-} from './_internal/platform/auth/ios-keychain-token-store.js';
+} from './client-auth/ios-keychain-token-store.js';
 
 export {
   createAndroidKeystoreTokenStore,
@@ -138,4 +136,4 @@ export {
   type AndroidKeystoreTokenStoreOptions,
   type AndroidAccessControl,
   type AndroidAccessible,
-} from './_internal/platform/auth/android-keystore-token-store.js';
+} from './client-auth/android-keystore-token-store.js';

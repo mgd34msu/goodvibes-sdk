@@ -2,13 +2,13 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
-import { ToolRegistry } from '../packages/sdk/src/_internal/platform/tools/registry.js';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import { ToolRegistry } from '../packages/sdk/src/platform/tools/registry.js';
 import {
   appendGoodVibesRuntimeAwarenessPrompt,
   createGoodVibesContextTool,
   createGoodVibesSettingsTool,
-} from '../packages/sdk/src/_internal/platform/tools/goodvibes-runtime/index.js';
+} from '../packages/sdk/src/platform/tools/goodvibes-runtime/index.js';
 
 function makeConfigManager(): ConfigManager {
   const root = mkdtempSync(join(tmpdir(), 'goodvibes-runtime-tool-'));

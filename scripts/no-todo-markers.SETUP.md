@@ -1,6 +1,7 @@
-# CI Setup: `no-todo-markers` Gate
+# CI Setup: public source marker gate
 
-Add the following job to `.github/workflows/ci.yml`.
+The repository runs `bun run todo:check` through `bun run validate`. Use a
+standalone job only if that check needs to be isolated later.
 
 Uses the same SHA-pinned action versions as the existing CI jobs.
 
@@ -26,6 +27,6 @@ Uses the same SHA-pinned action versions as the existing CI jobs.
 
 - Script: `scripts/no-todo-markers.ts`
 - Root script: `todo:check` → `bun scripts/no-todo-markers.ts`
-- Scans: `packages/` (excludes `_internal/`, `vendor/`, `generated/`, `*.test.ts`, `node_modules/`, `dist/`)
+- Scans: `packages/` (excludes `vendor/`, `generated/`, `*.test.ts`, `node_modules/`, `dist/`)
 - No build step required — the script reads source `.ts` files directly
 - Exits non-zero and prints `file:line [MARKER]` for every violation found

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'bun:test';
 import {
   GOODVIBES_CLIENT_SAFE_ENTRYPOINTS,
@@ -15,6 +16,15 @@ import {
 } from '../packages/sdk/src/platform/node/runtime-boundary.js';
 
 const SDK_PACKAGE_JSON = new URL('../packages/sdk/package.json', import.meta.url);
+const SDK_SOURCE_DIR = fileURLToPath(new URL('../packages/sdk/src', import.meta.url));
+const SDK_PACKAGE_NAME = '@pellux/goodvibes-sdk';
+
+function sdkExportKey(entrypoint: string): string {
+  if (entrypoint === SDK_PACKAGE_NAME) return '.';
+  return entrypoint.startsWith(`${SDK_PACKAGE_NAME}/`)
+    ? `.${entrypoint.slice(SDK_PACKAGE_NAME.length)}`
+    : entrypoint;
+}
 
 describe('SDK runtime boundaries and export map', () => {
   test('uses explicit platform exports instead of the old wildcard API surface', () => {
@@ -30,12 +40,10 @@ describe('SDK runtime boundaries and export map', () => {
     expect(exports['./platform/node']).toBeDefined();
     expect(exports['./platform/node/runtime-boundary']).toBeDefined();
     for (const entrypoint of GOODVIBES_CLIENT_SAFE_ENTRYPOINTS) {
-      const exportKey = entrypoint.replace('@pellux/goodvibes-sdk', '.') || '.';
-      expect(exports[exportKey]).toBeDefined();
+      expect(exports[sdkExportKey(entrypoint)]).toBeDefined();
     }
     for (const entrypoint of GOODVIBES_NODE_RUNTIME_ENTRYPOINTS) {
-      const exportKey = entrypoint.replace('@pellux/goodvibes-sdk', '.') || '.';
-      expect(exports[exportKey]).toBeDefined();
+      expect(exports[sdkExportKey(entrypoint)]).toBeDefined();
     }
   });
 
@@ -75,7 +83,7 @@ describe('SDK runtime boundaries and export map', () => {
     const forbidden = /\bfrom ['"]node:|import\(['"]node:|platform\/node/;
 
     for (const file of clientFiles) {
-      const source = readFileSync(join(new URL('../packages/sdk/src', import.meta.url).pathname, file), 'utf8');
+      const source = readFileSync(join(SDK_SOURCE_DIR, file), 'utf8');
       expect(source, `${file} should remain client-safe`).not.toMatch(forbidden);
     }
   });

@@ -26,7 +26,7 @@ const PEER_ENTRY = `${PUBLIC_PACKAGE_NAME}/peer`;
 const DAEMON_ENTRY = `${PUBLIC_PACKAGE_NAME}/daemon`;
 const CONTRACTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/contracts`;
 const REALTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/transport-realtime`;
-const STATE_INSPECTOR_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/inspection/state-inspector`;
+const RUNTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime`;
 const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
 const smokeScript = `
@@ -44,7 +44,7 @@ const peer = await import('${PEER_ENTRY}');
 const daemon = await import('${DAEMON_ENTRY}');
 const contracts = await import('${CONTRACTS_ENTRY}');
 const runtimeEvents = await import('${REALTIME_ENTRY}');
-const stateInspector = await import('${STATE_INSPECTOR_ENTRY}');
+const runtime = await import('${RUNTIME_ENTRY}');
 
 const sdk = root.createGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
 if (!sdk?.operator || !sdk?.peer || !sdk?.realtime) throw new Error('sdk entrypoint missing expected surfaces');
@@ -54,7 +54,7 @@ if (typeof peer.createPeerSdk !== 'function') throw new Error('peer client expor
 if (typeof daemon.createDaemonControlRouteHandlers !== 'function') throw new Error('daemon route export missing');
 if (!contracts.OPERATOR_METHOD_IDS || !contracts.PEER_ENDPOINT_IDS) throw new Error('contracts export missing');
 if (typeof runtimeEvents.createRemoteRuntimeEvents !== 'function') throw new Error('runtime realtime export missing');
-if (typeof stateInspector.TimelineBuffer !== 'function') throw new Error('state inspector export missing');
+if (typeof runtime.TimelineBuffer !== 'function') throw new Error('runtime state inspector export missing');
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');
@@ -63,7 +63,7 @@ const nestedInternalRoot = join(packageRoot, 'node_modules', '@pellux');
 if (existsSync(nestedInternalRoot)) {
   const leaked = readdirSync(nestedInternalRoot).filter((name) => name.startsWith('goodvibes-'));
   if (leaked.length > 0) {
-    throw new Error('umbrella package leaked nested internal packages: ' + leaked.join(', '));
+    throw new Error('SDK package contains nested GoodVibes package installs: ' + leaked.join(', '));
   }
 }
 console.log('install smoke ok');
@@ -174,9 +174,7 @@ function buildRegistrySpecs() {
 function buildTarballSpecs() {
   const { tempRoot, publicStages } = stagePackages();
   const packDestination = createSdkTempDir('goodvibes-sdk-tarballs-');
-  const packResults = publicStages
-    .filter((stage) => stage.dir === PUBLIC_PACKAGE_DIR)
-    .map((stage) => packStage(stage.stageDir, packDestination));
+  const packResults = publicStages.map((stage) => packStage(stage.stageDir, packDestination));
   const tarballs = collectTarballs(packResults, packDestination);
   return { tempRoot, specs: tarballs };
 }

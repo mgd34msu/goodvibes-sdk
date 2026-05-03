@@ -17,6 +17,7 @@ describe('operator sdk', () => {
     const sdk = createOperatorSdk({
       baseUrl: 'http://127.0.0.1:3210',
       authToken: 'token-123',
+      validateResponses: false,
       fetch: async (input, init) => {
         calls.push({ url: String(input), init });
         return createJsonResponse({ ok: true });
@@ -41,6 +42,7 @@ describe('operator sdk', () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const sdk = createOperatorSdk({
       baseUrl: 'http://127.0.0.1:3210',
+      validateResponses: false,
       fetch: async (input, init) => {
         calls.push({ url: String(input), init });
         return createJsonResponse({ taskId: 'task-1' });

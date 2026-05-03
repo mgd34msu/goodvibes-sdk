@@ -1,3 +1,9 @@
+/*
+ ios-swift-quickstart.swift — Minimal URLSession control-plane and WebSocket calls.
+
+ Set GOODVIBES_TOKEN before running. Replace the base URL with your daemon or
+ companion gateway endpoint.
+ */
 import Foundation
 
 let baseUrl = URL(string: "https://goodvibes.example.com")!

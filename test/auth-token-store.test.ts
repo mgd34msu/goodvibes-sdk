@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { TokenStore } from '../packages/sdk/src/_internal/platform/auth/token-store.js';
+import { TokenStore } from '../packages/sdk/src/client-auth/token-store.js';
 
 function makeRawStore(initial: string | null = null) {
   let current = initial;

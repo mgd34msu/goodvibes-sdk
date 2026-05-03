@@ -1,12 +1,12 @@
 {
   "name": "goodvibes-sdk",
   "private": true,
-  "version": "0.28.22",
+  "version": "0.30.0",
   "type": "module",
   "packageManager": "bun@1.3.10",
   "engines": {
-    "bun": ">=1.3.10",
-    "node": ">=22.0.0"
+    "bun": "1.3.10",
+    "node": ">=20.0.0"
   },
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "license": "MIT",
@@ -29,19 +29,18 @@
     "packages/*"
   ],
   "scripts": {
-    "sync": "bun run sync:internal",
-    "sync:internal": "bun scripts/sync-sdk-internals.ts",
     "changelog:check": "bun scripts/check-changelog.ts",
-    "sync:check": "bun scripts/sync-check.ts",
+    "contracts:check": "bun scripts/check-contract-artifacts.ts",
     "sync:version": "bun scripts/sync-version-fallback.ts",
     "docs:generate": "bun scripts/generate-api-docs.ts",
     "docs:check": "bun scripts/generate-api-docs.ts --check && bun scripts/docs-completeness-check.ts",
     "refresh:contracts": "bun scripts/refresh-contract-artifacts.ts",
     "refresh:contracts:check": "bun scripts/refresh-contract-artifacts.ts --check",
-    "refresh:docs": "bun run refresh:contracts && bun run sync:internal --scope=contracts && bun run docs:generate",
+    "refresh:docs": "bun run refresh:contracts && bun run docs:generate",
     "prepare:sdk": "bun scripts/prepare-sdk-package.ts",
     "build": "bun scripts/build.ts",
-    "types:check": "bun x tsc --project tsconfig.type-tests.json",
+    "types:check": "node node_modules/typescript/bin/tsc --project tsconfig.type-tests.json",
+    "pretest": "bun run build",
     "test": "bun scripts/test.ts",
     "test:rn": "bun run build && bun scripts/test.ts test/rn-bundle-node-imports.test.ts",
     "test:workers": "bun run build && bun scripts/test.ts test/workers/workers.test.ts",
@@ -49,10 +48,12 @@
     "check:metadata": "bun scripts/package-metadata-check.ts",
     "pack:check": "bun scripts/pack-check.ts",
     "install:smoke": "bun scripts/install-smoke-check.ts",
+    "error:check": "bun scripts/error-contract-check.ts",
+    "test-skip:check": "bun scripts/no-skipped-tests.ts",
     "release:verify": "bun run validate && bun run release:dry-run && bun run install:smoke",
     "release:verify:published": "bun scripts/verify-published-packages.ts && bun scripts/install-smoke-check.ts --registry",
     "validate": "bun scripts/validate.ts",
-    "validate:strict": "bun run validate && bun run types:check && bun run sync:check",
+    "validate:strict": "bun run validate && bun run types:check && bun run contracts:check",
     "release:dry-run": "bun scripts/publish-packages.ts --dry-run",
     "release:publish": "bun scripts/publish-packages.ts",
     "version:check": "bun scripts/version-consistency-check.ts",
@@ -79,7 +80,6 @@
     "@pellux/goodvibes-peer-sdk": "workspace:*",
     "@pellux/goodvibes-sdk": "workspace:*",
     "@pellux/goodvibes-transport-core": "workspace:*",
-    "@pellux/goodvibes-transport-direct": "workspace:*",
     "@pellux/goodvibes-transport-http": "workspace:*",
     "@pellux/goodvibes-transport-realtime": "workspace:*",
     "zod": "^4.3.6"
@@ -97,7 +97,6 @@
     "msw": "^2.7.0",
     "publint": "0.3.18",
     "typescript": "^5.9.3",
-    "verdaccio": "^6.5.2",
     "wrangler": "4.83.0"
   },
   "overrides": {

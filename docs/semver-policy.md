@@ -12,7 +12,7 @@ The following changes require a major version bump:
 
 - **Removing a public export** from any subpath export entry (e.g. removing `createGoodVibesSdk` from `@pellux/goodvibes-sdk` or any equivalent factory from a named subpath)
 - **Changing a public export's type signature in a narrowing direction**: removing a property from a public interface or type, narrowing an accepted parameter type, making an optional field required, or removing a union member from a parameter type
-- **Renaming or changing the value of an `SDKErrorKind` union member** (e.g. renaming `'auth'` to `'authentication'`, or `'not-found'` to `'notFound'`). The full current union is: `'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'rate-limit' | 'server' | 'validation' | 'unknown'`
+- **Renaming or changing the value of an `SDKErrorKind` union member** (e.g. renaming `'auth'` to `'authentication'`, or `'not-found'` to `'notFound'`). The full current union is: `'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown'`
 - **Renaming an SDK factory function** (e.g. renaming `createGoodVibesSdk`, `createBrowserGoodVibesSdk`, `createWebGoodVibesSdk`, `createReactNativeGoodVibesSdk`, `createExpoGoodVibesSdk`, `createPeerSdk`, or `createGoodVibesAuthClient`)
 - **Changing the resolution target of a subpath export** in a way that breaks consumers (e.g. moving `./browser` to resolve to a different module without a redirect, or replacing `./web` with `./browser` in the exports map)
 - **Changing wire-format or transport defaults** in a way that breaks existing consumers without opt-in (e.g. reducing the default HTTP timeout from 30 s to 5 s, changing default retry counts)
@@ -31,7 +31,7 @@ The following changes require a minor version bump:
 - Adding a new subpath export entry (e.g. a new `./workers` entry)
 - Widening a return type in a direction that does not remove or narrow existing members (e.g. adding a new property to a returned object type)
 - Adding a new runtime to the supported runtime matrix
-- Bumping the minimum supported TypeScript version — see [TypeScript compatibility](#typescript-compatibility)
+- Bumping the minimum supported TypeScript version — see [TypeScript support](#typescript-support)
 
 ---
 
@@ -51,7 +51,7 @@ The following changes are patch-level:
 
 The following are explicitly out of scope and may change at any time without a major or minor bump:
 
-- **Internal modules under `_internal/`** — these are not part of the public surface and are subject to change without notice. Do not import from `_internal/` paths directly.
+- **Repository source file paths** — these are not part of the public surface and are subject to change without notice. Do not bypass the package export map.
 - **`dist/` internal file paths** — consume the SDK via the package exports map (e.g. `@pellux/goodvibes-sdk`, `@pellux/goodvibes-sdk/browser`), not by importing from `dist/` file paths directly.
 - **Error `.message` strings** — these are human-readable and may be improved across releases. Use `err.kind` (an `SDKErrorKind` value) and `err.code` for programmatic handling, not `err.message`.
 - **`GoodVibesSdkError` subclass identity** — do not use `instanceof ConfigurationError`, `instanceof ContractError`, etc. for control flow; use `err.kind` instead. Subclass structure is internal.
@@ -79,7 +79,7 @@ export function createBrowserGoodVibesSdk(/* ... */) { /* ... */ }
 
 ---
 
-## TypeScript compatibility
+## TypeScript support
 
 The minimum supported TypeScript version is **5.5**. This is the lowest version against which the SDK's type signatures are tested.
 

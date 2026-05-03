@@ -35,15 +35,15 @@ import {
   authenticateOperatorToken,
   OPERATOR_SESSION_COOKIE_NAME,
   buildOperatorSessionCookie,
-} from '../packages/sdk/src/_internal/platform/security/http-auth.js';
-import { UserAuthManager } from '../packages/sdk/src/_internal/platform/security/user-auth.js';
+} from '../packages/sdk/src/platform/security/http-auth.js';
+import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.js';
 import {
   createDaemonControlRouteHandlers,
 } from '../packages/daemon-sdk/dist/index.js';
-import { dispatchCompanionChatRoutes } from '../packages/sdk/src/_internal/platform/companion/companion-chat-routes.js';
-import type { CompanionChatRouteContext } from '../packages/sdk/src/_internal/platform/companion/companion-chat-route-types.js';
-import type { CompanionLLMProvider, CompanionChatEventPublisher, CompanionProviderChunk } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
+import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
+import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
+import type { CompanionLLMProvider, CompanionChatEventPublisher, CompanionProviderChunk } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -107,7 +107,7 @@ function makeCompanionRouteContext(manager: CompanionChatManager): CompanionChat
 
 /**
  * Build a minimal createDaemonControlRouteHandlers context wired to real
- * UserAuthManager and optional sharedToken — mirroring the production wiring.
+ * UserAuthManager and optional sharedToken — matching the production wiring.
  */
 function makeControlRouteHandlers(
   req: Request,
@@ -117,7 +117,7 @@ function makeControlRouteHandlers(
   const extractAuthToken = (request: Request): string => {
     const bearer = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim();
     if (bearer) return bearer;
-    // Parse session cookie manually (mirrors extractOperatorAuthToken in http-auth.ts)
+    // Parse session cookie manually (matches extractOperatorAuthToken in http-auth.ts)
     const cookieHeader = request.headers.get('cookie') ?? '';
     for (const segment of cookieHeader.split(';')) {
       const [rawName, ...valueParts] = segment.split('=');
@@ -193,7 +193,7 @@ afterEach(() => {
     try {
       rmSync(dir, { recursive: true, force: true });
     } catch (error) {
-      console.warn('Failed to remove session-cookie auth test directory', { dir, error });
+      void error;
     }
   }
 });
@@ -398,7 +398,7 @@ describe('companion-chat session creation via session-cookie auth', () => {
     // directly calling dispatchCompanionChatRoutes (companion routes trust the
     // outer auth gate, as documented in the route file header).
     // First verify the auth check itself passes with the session cookie:
-    const { authenticateOperatorRequest } = await import('../packages/sdk/src/_internal/platform/security/http-auth.js');
+    const { authenticateOperatorRequest } = await import('../packages/sdk/src/platform/security/http-auth.js');
     const companionReq = new Request('http://127.0.0.1/api/companion/chat/sessions', {
       method: 'POST',
       headers: {
@@ -439,7 +439,7 @@ describe('companion-chat session creation via session-cookie auth', () => {
     const userAuth = makeUserAuth(dir);
     const sharedToken = 'daemon-operator-shared-token';
 
-    const { authenticateOperatorRequest } = await import('../packages/sdk/src/_internal/platform/security/http-auth.js');
+    const { authenticateOperatorRequest } = await import('../packages/sdk/src/platform/security/http-auth.js');
     const req = new Request('http://127.0.0.1/api/companion/chat/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

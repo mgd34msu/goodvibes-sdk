@@ -1,7 +1,6 @@
 {
   "name": "@pellux/goodvibes-transport-realtime",
-  "private": true,
-  "version": "0.28.22",
+  "version": "0.30.0",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -46,7 +45,11 @@
   ],
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
+    "@pellux/goodvibes-errors": "workspace:*",
     "@pellux/goodvibes-transport-core": "workspace:*",
     "@pellux/goodvibes-transport-http": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -116,6 +116,8 @@ Cloudflare Worker bridge:
 ```ts
 import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
 
+// Reads GOODVIBES_DAEMON_URL, GOODVIBES_OPERATOR_TOKEN, and
+// GOODVIBES_WORKER_TOKEN from Worker environment bindings.
 export default createGoodVibesCloudflareWorker();
 ```
 
@@ -131,9 +133,9 @@ export default createGoodVibesCloudflareWorker();
 | `@pellux/goodvibes-sdk/contracts/node` | Filesystem helpers for contract JSON artifacts |
 | `@pellux/goodvibes-sdk/auth` | Auth client, token stores, OAuth helpers, mobile secure stores |
 | `@pellux/goodvibes-sdk/browser` | Browser client factory with browser defaults |
-| `@pellux/goodvibes-sdk/web` | Web alias of the browser client factory |
+| `@pellux/goodvibes-sdk/web` | Web UI client factory with browser runtime defaults |
 | `@pellux/goodvibes-sdk/react-native` | React Native client factory and mobile secure stores |
-| `@pellux/goodvibes-sdk/expo` | Expo alias of the React Native client factory with Expo token store exports |
+| `@pellux/goodvibes-sdk/expo` | Expo client factory with Expo token store exports |
 | `@pellux/goodvibes-sdk/workers` | Cloudflare Worker bridge for daemon batch endpoints |
 | `@pellux/goodvibes-sdk/platform` | Full platform hub for Bun/server embedders |
 | `@pellux/goodvibes-sdk/platform/node` | Node-like runtime boundary and capability metadata for server hosts |

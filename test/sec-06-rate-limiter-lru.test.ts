@@ -11,7 +11,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   CompanionChatRateLimiter,
   MAX_RATE_LIMITER_BUCKETS,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-rate-limiter.ts';
+} from '../packages/sdk/src/platform/companion/companion-chat-rate-limiter.ts';
 
 // Use very high limits so we don't hit the rate limit during the fill loop.
 const BIG_LIMIT = MAX_RATE_LIMITER_BUCKETS * 10;

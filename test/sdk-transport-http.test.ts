@@ -1,20 +1,19 @@
 /**
- * SDK compatibility-shim regression test for packages/sdk/src/_internal/transport-http/http.ts
+ * Transport HTTP regression tests for the canonical transport package.
  *
- * Ensures legacy SDK internal import paths still resolve to the canonical
- * transport-http package after source mirrors were removed.
+ * Ensures structured transport errors keep the shared SDK error taxonomy.
  */
 import { describe, expect, test } from 'bun:test';
-import { GoodVibesSdkError, HttpStatusError } from '../packages/sdk/src/_internal/errors/index.js';
-import { createHttpTransport } from '../packages/sdk/src/_internal/transport-http/http.js';
-import { createTransportError, createNetworkTransportError } from '../packages/sdk/src/_internal/transport-http/http-core.js';
-import { openServerSentEventStream } from '../packages/sdk/src/_internal/transport-http/sse-stream.js';
+import { GoodVibesSdkError, HttpStatusError } from '../packages/errors/src/index.js';
+import { createHttpTransport } from '../packages/transport-http/src/http.js';
+import { createTransportError, createNetworkTransportError } from '../packages/transport-http/src/http-core.js';
+import { openServerSentEventStream } from '../packages/transport-http/src/sse-stream.js';
 
 function createFetchStub(factory: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): typeof fetch {
   return factory as unknown as typeof fetch;
 }
 
-describe('sdk-compat: transport-http structured throws', () => {
+describe('transport-http structured throws', () => {
   test('createTransportError(404) returns HttpStatusError with kind not-found', () => {
     const err = createTransportError(404, 'http://example.com/api', 'GET', { error: 'not found' });
     expect(err).toBeInstanceOf(HttpStatusError);
@@ -53,7 +52,7 @@ describe('sdk-compat: transport-http structured throws', () => {
   });
 });
 
-describe('sdk-compat: transport-http', () => {
+describe('transport-http', () => {
   test('network error has category network with cause preserved', async () => {
     const originalError = new TypeError('fetch failed');
     const transport = createHttpTransport({

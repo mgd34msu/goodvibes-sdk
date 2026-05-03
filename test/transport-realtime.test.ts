@@ -508,8 +508,9 @@ describe('transport realtime', () => {
     for (let i = 1; i < expectedSchedule.length; i++) {
       expect(expectedSchedule[i]).toBeGreaterThanOrEqual(expectedSchedule[i - 1]!);
     }
-    // Attempt 1: computeBackoffDelay returns 0 (first retry, no delay yet per helper semantics).
-    expect(expectedSchedule[0]).toBe(0);
+    // Attempt 1 is the first retry and waits the base delay; attempt 0 is the
+    // initial no-delay try and is not part of the reconnect schedule.
+    expect(expectedSchedule[0]).toBe(500);
     // After several retries the delay reaches maxDelayMs.
     expect(expectedSchedule[expectedSchedule.length - 1]).toBe(5_000);
   });

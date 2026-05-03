@@ -13,7 +13,6 @@ export const packageDirs = [
   'packages/errors',
   'packages/daemon-sdk',
   'packages/transport-core',
-  'packages/transport-direct',
   'packages/transport-http',
   'packages/transport-realtime',
   'packages/operator-sdk',
@@ -21,21 +20,7 @@ export const packageDirs = [
   'packages/sdk',
 ];
 
-export const publicPackageDirs = [
-  'packages/sdk',
-];
-
-const INTERNAL_PACKAGE_NAMES = new Set([
-  '@pellux/goodvibes-contracts',
-  '@pellux/goodvibes-errors',
-  '@pellux/goodvibes-daemon-sdk',
-  '@pellux/goodvibes-transport-core',
-  '@pellux/goodvibes-transport-direct',
-  '@pellux/goodvibes-transport-http',
-  '@pellux/goodvibes-transport-realtime',
-  '@pellux/goodvibes-operator-sdk',
-  '@pellux/goodvibes-peer-sdk',
-]);
+export const publicPackageDirs = packageDirs;
 
 export function getRootPackage() {
   return JSON.parse(readFileSync(resolve(SDK_ROOT, 'package.json'), 'utf8'));
@@ -103,16 +88,6 @@ function normalizeDependencyGroup(group, rootVersion) {
   return next;
 }
 
-function stripInternalDependencies(group) {
-  if (!group || typeof group !== 'object') {
-    return group;
-  }
-  const next = Object.fromEntries(
-    Object.entries(group).filter(([name]) => !INTERNAL_PACKAGE_NAMES.has(name)),
-  );
-  return Object.keys(next).length > 0 ? next : undefined;
-}
-
 function addUniqueFiles(files, entries) {
   const next = Array.isArray(files) ? [...files] : [];
   for (const entry of entries) {
@@ -124,14 +99,21 @@ function addUniqueFiles(files, entries) {
 function addSdkSecurityMitigationManifestFields(manifest) {
   return {
     ...manifest,
-    dependencies: {
-      ...(manifest.dependencies ?? {}),
+    dependencies: omitPackageName(manifest.dependencies, 'bash-language-server'),
+    optionalDependencies: {
+      ...(manifest.optionalDependencies ?? {}),
       'bash-language-server': 'file:vendor/bash-language-server',
     },
     files: addUniqueFiles(manifest.files, [
       'vendor/bash-language-server',
     ]),
   };
+}
+
+function omitPackageName(group, name) {
+  if (!group || typeof group !== 'object') return group;
+  const next = Object.fromEntries(Object.entries(group).filter(([entry]) => entry !== name));
+  return Object.keys(next).length > 0 ? next : undefined;
 }
 
 function normalizeRepository(repository) {
@@ -181,12 +163,6 @@ export function stagePackages() {
       }
       if (dir === 'packages/sdk') {
         Object.assign(manifest, addSdkSecurityMitigationManifestFields(manifest));
-      }
-      if (publicPackageDirs.includes(dir)) {
-        manifest.dependencies = stripInternalDependencies(manifest.dependencies);
-        manifest.devDependencies = stripInternalDependencies(manifest.devDependencies);
-        manifest.peerDependencies = stripInternalDependencies(manifest.peerDependencies);
-        manifest.optionalDependencies = stripInternalDependencies(manifest.optionalDependencies);
       }
       writeFileSync(resolve(stageDir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
       stages.push({ dir, sourceDir, stageDir, manifest });

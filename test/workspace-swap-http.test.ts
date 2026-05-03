@@ -12,14 +12,14 @@ import { tmpdir } from 'node:os';
 import {
   createDaemonSystemRouteHandlers,
 } from '../packages/daemon-sdk/src/index.ts';
-import { WorkspaceSwapManager } from '../packages/sdk/src/_internal/platform/workspace/workspace-swap-manager.ts';
+import { WorkspaceSwapManager } from '../packages/sdk/src/platform/workspace/workspace-swap-manager.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function tempDir(suffix: string): string {
-  const d = join(tmpdir(), `gv-http-test-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const d = join(tmpdir(), `gv-http-test-${suffix}-${Date.now()}-${crypto.randomUUID()}`);
   mkdirSync(d, { recursive: true });
   return d;
 }

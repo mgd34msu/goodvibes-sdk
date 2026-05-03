@@ -15,11 +15,11 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { createCompanionProviderAdapter } from '../packages/sdk/src/_internal/platform/daemon/facade-composition.js';
-import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
-import type { ModelDefinition } from '../packages/sdk/src/_internal/platform/providers/registry-types.js';
-import type { LLMProvider, ChatRequest, ChatResponse } from '../packages/sdk/src/_internal/platform/providers/interface.js';
-import type { ToolDefinition } from '../packages/sdk/src/_internal/platform/types/tools.js';
+import { createCompanionProviderAdapter } from '../packages/sdk/src/platform/daemon/facade-composition.js';
+import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
+import type { ModelDefinition } from '../packages/sdk/src/platform/providers/registry-types.js';
+import type { LLMProvider, ChatRequest, ChatResponse } from '../packages/sdk/src/platform/providers/interface.js';
+import type { ToolDefinition } from '../packages/sdk/src/platform/types/tools.js';
 
 // ---------------------------------------------------------------------------
 // Stub helpers

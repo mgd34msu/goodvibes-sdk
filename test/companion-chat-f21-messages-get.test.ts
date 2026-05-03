@@ -8,9 +8,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { dispatchCompanionChatRoutes } from '../packages/sdk/src/_internal/platform/companion/companion-chat-routes.js';
-import type { CompanionChatRouteContext } from '../packages/sdk/src/_internal/platform/companion/companion-chat-route-types.js';
-import { GatewayMethodCatalog } from '../packages/sdk/src/_internal/platform/control-plane/method-catalog.js';
+import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
+import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
+import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
 
 const FAKE_SESSION = {
   id: 'sess-test',

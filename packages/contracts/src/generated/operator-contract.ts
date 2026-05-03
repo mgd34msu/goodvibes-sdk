@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.28.22"
+    "version": "0.30.0"
   },
   "auth": {
     "modes": [
@@ -59,9 +59,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
     "current": {
       "method": "GET",
       "path": "/api/control-plane/auth",
-      "aliasPaths": [
-        "/api/control-plane/whoami"
-      ],
       "responseSchema": {
         "type": "object",
         "properties": {
@@ -21689,12 +21686,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/control-plane/whoami"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "control.auth.login",
@@ -21949,12 +21941,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "path": {
                           "type": "string"
                         },
-                        "aliasPaths": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
                         "responseSchema": {
                           "type": "object",
                           "properties": {
@@ -22039,7 +22025,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "required": [
                         "method",
                         "path",
-                        "aliasPaths",
                         "responseSchema"
                       ],
                       "additionalProperties": false
@@ -22535,19 +22520,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "contractPath": {
                       "type": "string"
                     },
-                    "aliasPaths": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
                     "relationship": {
                       "type": "string"
                     }
                   },
                   "required": [
                     "contractPath",
-                    "aliasPaths",
                     "relationship"
                   ],
                   "additionalProperties": false
@@ -29055,6 +29033,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "nextRepairAttemptAt": {
                       "type": "number"
                     },
+                    "acceptedSourceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "ingestedSourceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "rejectedSourceUrls": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "promotedFactCount": {
+                      "type": "number"
+                    },
+                    "sourceAssessments": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {}
+                        ]
+                      }
+                    },
                     "trace": {
                       "type": "array",
                       "items": {
@@ -29272,6 +29295,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "nextRepairAttemptAt": {
                       "type": "number"
+                    },
+                    "acceptedSourceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "ingestedSourceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "rejectedSourceUrls": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "promotedFactCount": {
+                      "type": "number"
+                    },
+                    "sourceAssessments": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {}
+                        ]
+                      }
                     },
                     "trace": {
                       "type": "array",
@@ -29493,6 +29561,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "nextRepairAttemptAt": {
                     "type": "number"
+                  },
+                  "acceptedSourceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ingestedSourceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "rejectedSourceUrls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "promotedFactCount": {
+                    "type": "number"
+                  },
+                  "sourceAssessments": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {}
+                      ]
+                    }
                   },
                   "trace": {
                     "type": "array",
@@ -29882,7 +29995,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "homeassistant.homeGraph.reindex",
         "title": "Reindex Home Graph Sources",
-        "description": "Re-extract already-stored Home Graph artifacts with missing or weak extraction records.",
+        "description": "Re-extract already-stored Home Graph artifacts with missing or sparse extraction records.",
         "category": "knowledge",
         "source": "builtin",
         "access": "admin",
@@ -40332,6 +40445,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "nextRepairAttemptAt": {
                   "type": "number"
                 },
+                "acceptedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "ingestedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rejectedSourceUrls": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "promotedFactCount": {
+                  "type": "number"
+                },
+                "sourceAssessments": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
+                },
                 "trace": {
                   "type": "array",
                   "items": {
@@ -40525,6 +40683,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "nextRepairAttemptAt": {
                   "type": "number"
+                },
+                "acceptedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "ingestedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rejectedSourceUrls": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "promotedFactCount": {
+                  "type": "number"
+                },
+                "sourceAssessments": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {}
+                    ]
+                  }
                 },
                 "trace": {
                   "type": "array",
@@ -40737,6 +40940,51 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "nextRepairAttemptAt": {
                     "type": "number"
                   },
+                  "acceptedSourceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ingestedSourceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "rejectedSourceUrls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "promotedFactCount": {
+                    "type": "number"
+                  },
+                  "sourceAssessments": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {}
+                      ]
+                    }
+                  },
                   "trace": {
                     "type": "array",
                     "items": {
@@ -40822,7 +41070,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "knowledge.reindex",
         "title": "Reindex Structured Knowledge",
-        "description": "Rebuild derived knowledge relations and mirror reviewed memory into the structured knowledge store.",
+        "description": "Rebuild derived knowledge relations and sync reviewed memory into the structured knowledge store.",
         "category": "knowledge",
         "source": "builtin",
         "access": "admin",
@@ -49996,12 +50244,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/remote/device/contract"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "remote.pair.requests.approve",
@@ -57952,625 +58195,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "sessions.inputs.create",
-        "title": "Create Shared Session Input",
-        "description": "Create a shared-session input. Accepts an optional `intent` field (`submit` | `steer` | `follow-up`, default `submit`) that delegates to the equivalent `/messages`, `/steer`, or `/follow-up` handler.",
-        "category": "sessions",
-        "source": "builtin",
-        "access": "authenticated",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "scopes": [
-          "write:sessions"
-        ],
-        "http": {
-          "method": "POST",
-          "path": "/api/sessions/{sessionId}/inputs"
-        },
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "body": {
-              "type": "string"
-            },
-            "intent": {
-              "type": "string"
-            },
-            "surfaceKind": {
-              "type": "string"
-            },
-            "surfaceId": {
-              "type": "string"
-            },
-            "routing": {
-              "type": "object",
-              "properties": {
-                "providerId": {
-                  "type": "string"
-                },
-                "modelId": {
-                  "type": "string"
-                },
-                "providerSelection": {
-                  "type": "string",
-                  "enum": [
-                    "inherit-current",
-                    "concrete",
-                    "synthetic"
-                  ]
-                },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
-                  ]
-                },
-                "providerFailurePolicy": {
-                  "type": "string",
-                  "enum": [
-                    "ordered-fallbacks",
-                    "fail"
-                  ]
-                },
-                "fallbackModels": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "helperModel": {
-                  "type": "object",
-                  "properties": {
-                    "providerId": {
-                      "type": "string"
-                    },
-                    "modelId": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "providerId",
-                    "modelId"
-                  ],
-                  "additionalProperties": false
-                },
-                "executionIntent": {
-                  "type": "object",
-                  "properties": {
-                    "riskClass": {
-                      "type": "string",
-                      "enum": [
-                        "safe",
-                        "elevated",
-                        "dangerous"
-                      ]
-                    },
-                    "requiresApproval": {
-                      "type": "boolean"
-                    },
-                    "networkPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "inherit",
-                        "allow",
-                        "deny",
-                        "scoped"
-                      ]
-                    },
-                    "filesystemPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "inherit",
-                        "workspace-write",
-                        "read-only",
-                        "isolated"
-                      ]
-                    }
-                  },
-                  "additionalProperties": false
-                },
-                "tools": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "reasoningEffort": {
-                  "type": "string",
-                  "enum": [
-                    "instant",
-                    "low",
-                    "medium",
-                    "high"
-                  ]
-                }
-              },
-              "additionalProperties": false
-            },
-            "allowSpawnFallback": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "body"
-          ],
-          "additionalProperties": true
-        },
-        "outputSchema": {
-          "type": "object",
-          "properties": {
-            "session": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "title": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "active",
-                        "closed"
-                      ]
-                    },
-                    "createdAt": {
-                      "type": "number"
-                    },
-                    "updatedAt": {
-                      "type": "number"
-                    },
-                    "lastMessageAt": {
-                      "type": "number"
-                    },
-                    "closedAt": {
-                      "type": "number"
-                    },
-                    "messageCount": {
-                      "type": "number"
-                    },
-                    "pendingInputCount": {
-                      "type": "number"
-                    },
-                    "routeIds": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "surfaceKinds": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "participants": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "surfaceKind": {
-                            "type": "string"
-                          },
-                          "surfaceId": {
-                            "type": "string"
-                          },
-                          "externalId": {
-                            "type": "string"
-                          },
-                          "userId": {
-                            "type": "string"
-                          },
-                          "displayName": {
-                            "type": "string"
-                          },
-                          "routeId": {
-                            "type": "string"
-                          },
-                          "lastSeenAt": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "surfaceKind",
-                          "surfaceId",
-                          "lastSeenAt"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "activeAgentId": {
-                      "type": "string"
-                    },
-                    "lastAgentId": {
-                      "type": "string"
-                    },
-                    "lastError": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "boolean"
-                          },
-                          {
-                            "type": "null"
-                          },
-                          {
-                            "type": "object",
-                            "additionalProperties": {}
-                          },
-                          {
-                            "type": "array",
-                            "items": {}
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "title",
-                    "status",
-                    "createdAt",
-                    "updatedAt",
-                    "messageCount",
-                    "pendingInputCount",
-                    "routeIds",
-                    "surfaceKinds",
-                    "participants",
-                    "metadata"
-                  ],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "message": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "sessionId": {
-                  "type": "string"
-                },
-                "role": {
-                  "type": "string",
-                  "enum": [
-                    "user",
-                    "assistant",
-                    "system"
-                  ]
-                },
-                "body": {
-                  "type": "string"
-                },
-                "createdAt": {
-                  "type": "number"
-                },
-                "surfaceKind": {
-                  "type": "string"
-                },
-                "surfaceId": {
-                  "type": "string"
-                },
-                "routeId": {
-                  "type": "string"
-                },
-                "agentId": {
-                  "type": "string"
-                },
-                "userId": {
-                  "type": "string"
-                },
-                "displayName": {
-                  "type": "string"
-                },
-                "metadata": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": {}
-                      },
-                      {
-                        "type": "array",
-                        "items": {}
-                      }
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "id",
-                "sessionId",
-                "role",
-                "body",
-                "createdAt",
-                "metadata"
-              ],
-              "additionalProperties": false
-            },
-            "input": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "sessionId": {
-                  "type": "string"
-                },
-                "intent": {
-                  "type": "string",
-                  "enum": [
-                    "submit",
-                    "steer",
-                    "follow-up"
-                  ]
-                },
-                "state": {
-                  "type": "string",
-                  "enum": [
-                    "queued",
-                    "delivered",
-                    "spawned",
-                    "completed",
-                    "cancelled",
-                    "failed",
-                    "rejected"
-                  ]
-                },
-                "correlationId": {
-                  "type": "string"
-                },
-                "causationId": {
-                  "type": "string"
-                },
-                "body": {
-                  "type": "string"
-                },
-                "createdAt": {
-                  "type": "number"
-                },
-                "updatedAt": {
-                  "type": "number"
-                },
-                "routeId": {
-                  "type": "string"
-                },
-                "surfaceKind": {
-                  "type": "string"
-                },
-                "surfaceId": {
-                  "type": "string"
-                },
-                "externalId": {
-                  "type": "string"
-                },
-                "threadId": {
-                  "type": "string"
-                },
-                "userId": {
-                  "type": "string"
-                },
-                "displayName": {
-                  "type": "string"
-                },
-                "activeAgentId": {
-                  "type": "string"
-                },
-                "metadata": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": {}
-                      },
-                      {
-                        "type": "array",
-                        "items": {}
-                      }
-                    ]
-                  }
-                },
-                "routing": {
-                  "type": "object",
-                  "properties": {
-                    "providerId": {
-                      "type": "string"
-                    },
-                    "modelId": {
-                      "type": "string"
-                    },
-                    "providerSelection": {
-                      "type": "string",
-                      "enum": [
-                        "inherit-current",
-                        "concrete",
-                        "synthetic"
-                      ]
-                    },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
-                      ]
-                    },
-                    "providerFailurePolicy": {
-                      "type": "string",
-                      "enum": [
-                        "ordered-fallbacks",
-                        "fail"
-                      ]
-                    },
-                    "fallbackModels": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "helperModel": {
-                      "type": "object",
-                      "properties": {
-                        "providerId": {
-                          "type": "string"
-                        },
-                        "modelId": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "providerId",
-                        "modelId"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "executionIntent": {
-                      "type": "object",
-                      "properties": {
-                        "riskClass": {
-                          "type": "string",
-                          "enum": [
-                            "safe",
-                            "elevated",
-                            "dangerous"
-                          ]
-                        },
-                        "requiresApproval": {
-                          "type": "boolean"
-                        },
-                        "networkPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "inherit",
-                            "allow",
-                            "deny",
-                            "scoped"
-                          ]
-                        },
-                        "filesystemPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "inherit",
-                            "workspace-write",
-                            "read-only",
-                            "isolated"
-                          ]
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "tools": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "reasoningEffort": {
-                      "type": "string",
-                      "enum": [
-                        "instant",
-                        "low",
-                        "medium",
-                        "high"
-                      ]
-                    }
-                  },
-                  "additionalProperties": false
-                },
-                "error": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "sessionId",
-                "intent",
-                "state",
-                "correlationId",
-                "body",
-                "createdAt",
-                "updatedAt",
-                "metadata"
-              ],
-              "additionalProperties": false
-            },
-            "mode": {
-              "type": "string",
-              "enum": [
-                "spawn",
-                "continued-live",
-                "queued-follow-up",
-                "rejected"
-              ]
-            },
-            "agentId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "required": [
-            "session",
-            "message",
-            "input",
-            "mode",
-            "agentId"
-          ],
-          "additionalProperties": false
-        },
-        "invokable": true
-      },
-      {
         "id": "sessions.inputs.list",
         "title": "List Shared Session Inputs",
         "description": "Return explicit session inputs, including queued follow-ups and delivered steering requests.",
@@ -60995,7 +60619,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "string"
                     }
                   },
-                  "compatibilityNotes": {
+                  "operationalNotes": {
                     "type": "array",
                     "items": {
                       "type": "string"
@@ -61012,7 +60636,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "insecureWhen",
                   "enablementEffect",
                   "enablementRequirements",
-                  "compatibilityNotes"
+                  "operationalNotes"
                 ],
                 "additionalProperties": false
               }
@@ -62814,12 +62438,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/errors"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "telemetry.events.list",
@@ -63151,12 +62770,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/events"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "telemetry.metrics.get",
@@ -63467,12 +63081,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/metrics"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "telemetry.otlp.logs",
@@ -63583,12 +63192,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/otlp/v1/logs"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "telemetry.otlp.metrics",
@@ -63699,12 +63303,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/otlp/v1/metrics"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "telemetry.otlp.traces",
@@ -63815,12 +63414,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/otlp/v1/traces"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "telemetry.snapshot",
@@ -64948,12 +64542,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "telemetry.stream",
@@ -65128,9 +64717,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         },
         "invokable": false,
         "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/stream"
-          ],
           "responseKind": "sse",
           "stream": true,
           "wireEvent": "telemetry"
@@ -65411,12 +64997,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true,
-        "metadata": {
-          "aliasPaths": [
-            "/api/telemetry/traces"
-          ]
-        }
+        "invokable": true
       },
       {
         "id": "voice.providers.list",
@@ -69455,10 +69036,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 265,
-      "typedInputs": 265,
+      "methods": 264,
+      "typedInputs": 264,
       "genericInputs": 0,
-      "typedOutputs": 265,
+      "typedOutputs": 264,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -69469,9 +69050,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   },
   "peer": {
     "contractPath": "/api/remote/node-host/contract",
-    "aliasPaths": [
-      "/api/remote/device/contract"
-    ],
     "relationship": "paired device and node-host peers use a separate peer contract surface"
   }
 } as const;

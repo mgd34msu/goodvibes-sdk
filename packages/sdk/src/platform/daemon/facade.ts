@@ -1,0 +1,816 @@
+import { logger } from '../utils/logger.js';
+import { jsonErrorResponse } from './http/error-response.js';
+import { summarizeError } from '../utils/error-display.js';
+import { AgentManager } from '../tools/agent/index.js';
+import type { AgentRecord } from '../tools/agent/index.js';
+import type { ConfigManager } from '../config/manager.js';
+import type { ServiceRegistry } from '../config/service-registry.js';
+import type { UserAuthManager } from '../security/user-auth.js';
+import type {
+  AutomationDeliveryManager,
+  AutomationManager,
+} from '../automation/index.js';
+import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
+import type { GatewayMethodCatalog } from '../control-plane/index.js';
+import type {
+  BuiltinChannelRuntime,
+  ChannelReplyPipeline,
+  ChannelProviderRuntimeManager,
+  ChannelPluginRegistry,
+  ChannelPolicyManager,
+  RouteBindingManager,
+  SurfaceRegistry,
+  ChannelSurface,
+} from '../channels/index.js';
+import type { RuntimeEventBus } from '../runtime/events/index.js';
+import type { PlatformServiceManager } from './service-manager.js';
+import type { WatcherRegistry } from '../watchers/index.js';
+import { type DistributedPeerAuth } from '../runtime/remote/index.js';
+import type { KnowledgeGraphqlService, KnowledgeService } from '../knowledge/index.js';
+import type { IntegrationHelperService } from '../runtime/integration/helpers.js';
+import type { DaemonControlPlaneHelper, ControlPlaneWebSocketData } from './control-plane.js';
+import type { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
+import type { DaemonSurfaceActionHelper } from './surface-actions.js';
+import type { DaemonTransportEventsHelper } from './transport-events.js';
+import type { DaemonHttpRouter } from './http/router.js';
+import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
+import { isSurfaceDeliveryEnabled } from './surface-policy.js';
+import { AgentTaskAdapter } from '../runtime/tasks/adapters/agent-adapter.js';
+import {
+  configureDaemonSessionContinuation,
+  createDaemonFacadeCollaborators,
+  resolveDaemonFacadeRuntime,
+} from './facade-composition.js';
+import {
+  GlobalNetworkTransportInstaller,
+  resolveInboundTlsContext,
+  type ResolvedInboundTlsContext,
+} from '../runtime/network/index.js';
+import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
+import { isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
+import {
+  readAutomationReasoningEffort,
+  readAutomationWakeMode,
+  readExternalContentSource,
+  readStringList,
+} from './helpers.js';
+import type { DaemonConfig, DaemonDangerConfig, PendingSurfaceReply } from './types.js';
+import { requirePortAvailable } from './port-check.js';
+import { resolveHostBinding } from './host-resolver.js';
+import { createHostModeRestartWatcher } from './host-mode-watcher.js';
+
+interface UpgradeCapableServer {
+  upgrade(req: Request, options?: { data?: unknown }): boolean;
+}
+
+type JsonBody = Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
+// DaemonServer
+// ---------------------------------------------------------------------------
+
+/**
+ * DaemonServer — HTTP task server, disabled by default.
+ *
+ * Enable via: danger.daemon = true in config.
+ * All routes require Bearer token auth (set via enable()).
+ * POST /task    — submit a task; returns agentId.
+ * GET  /task/:id — returns agent status.
+ * GET  /status  — server health check.
+ */
+export class DaemonServer {
+  private enabled = false;
+  private server: ReturnType<typeof Bun.serve> | null = null;
+  private port: number;
+  private host: string;
+  private agentManager: AgentManager;
+  private readonly runtimeServices: RuntimeServices;
+  private readonly integrationHelpers: IntegrationHelperService;
+  private configManager: ConfigManager;
+  private authToken: string | null = null;
+  private userAuth: UserAuthManager;
+  private githubWebhookSecret: string | null;
+  private automationManager: AutomationManager;
+  private runtimeBus: RuntimeEventBus;
+  private readonly runtimeStore: RuntimeServices['runtimeStore'];
+  private readonly runtimeDispatch: RuntimeServices['runtimeDispatch'];
+  private readonly controlPlaneGateway: ControlPlaneGateway;
+  private readonly gatewayMethods: GatewayMethodCatalog;
+  private readonly sessionBroker: SharedSessionBroker;
+  private readonly approvalBroker: ApprovalBroker;
+  private readonly routeBindings: RouteBindingManager;
+  private readonly deliveryManager: AutomationDeliveryManager;
+  private readonly surfaceRegistry: SurfaceRegistry;
+  private readonly channelPolicy: ChannelPolicyManager;
+  private readonly channelPlugins: ChannelPluginRegistry;
+  private readonly channelReplyPipeline: ChannelReplyPipeline;
+  private readonly providerRuntime: ChannelProviderRuntimeManager;
+  private readonly builtinChannels: BuiltinChannelRuntime;
+  private readonly watcherRegistry: WatcherRegistry;
+  private readonly platformServiceManager: PlatformServiceManager;
+  private readonly distributedRuntime: RuntimeServices['distributedRuntime'];
+  private readonly voiceService: RuntimeServices['voiceService'];
+  private readonly webSearchService: RuntimeServices['webSearchService'];
+  private readonly knowledgeService: KnowledgeService;
+  private readonly knowledgeGraphqlService: KnowledgeGraphqlService;
+  private readonly mediaProviders: RuntimeServices['mediaProviders'];
+  private readonly multimodalService: RuntimeServices['multimodalService'];
+  private readonly artifactStore: RuntimeServices['artifactStore'];
+  private readonly serviceRegistry: ServiceRegistry;
+  private readonly serveFactory: typeof Bun.serve;
+  private readonly pendingSurfaceReplies = new Map<string, PendingSurfaceReply>();
+  private readonly controlPlaneHelper: DaemonControlPlaneHelper;
+  private readonly surfaceDeliveryHelper: DaemonSurfaceDeliveryHelper;
+  private readonly surfaceActionHelper: DaemonSurfaceActionHelper;
+  private readonly transportEventsHelper: DaemonTransportEventsHelper;
+  private readonly httpRouter: DaemonHttpRouter;
+  private replyPoller: ReturnType<typeof setInterval> | null = null;
+  private readonly companionChatManager: CompanionChatManager;
+  private agentTaskAdapter: import('../runtime/tasks/adapters/agent-adapter.js').AgentTaskAdapter | null = null;
+  private agentTaskAdapterUnsub: (() => void) | null = null;
+  private tlsState: ResolvedInboundTlsContext | null = null;
+  private approvalBrokerUnsubscribe: (() => void) | null = null;
+  /** Unsubscribe from controlPlane config key watchers; cleared on stop(). */
+  private _configWatchUnsub: (() => void) | null = null;
+  /** True while a config-driven restart is in progress — prevents re-entrancy. */
+  private _restarting = false;
+  /** Awaitable promise for the active restart cycle; null when idle. */
+  private _restartingPromise: Promise<void> | null = null;
+  /** True if a config change arrived while _restarting was set; triggers a second cycle. */
+  private _restartDirty = false;
+
+  constructor(private config: DaemonConfig = {}, _configManager?: ConfigManager) {
+    const resolved = resolveDaemonFacadeRuntime(config, _configManager);
+    this.configManager = resolved.configManager;
+    this.runtimeServices = resolved.runtimeServices;
+    this.integrationHelpers = resolved.integrationHelpers;
+    this.port = resolved.port;
+    this.host = resolved.host;
+    this.agentManager = resolved.agentManager;
+    this.userAuth = resolved.userAuth;
+    this.automationManager = resolved.automationManager;
+    this.runtimeBus = resolved.runtimeBus;
+    this.runtimeStore = resolved.runtimeStore;
+    this.runtimeDispatch = resolved.runtimeDispatch;
+    this.controlPlaneGateway = resolved.controlPlaneGateway;
+    this.gatewayMethods = resolved.gatewayMethods;
+    this.sessionBroker = resolved.sessionBroker;
+    this.approvalBroker = resolved.approvalBroker;
+    this.routeBindings = resolved.routeBindings;
+    this.deliveryManager = resolved.deliveryManager;
+    this.surfaceRegistry = resolved.surfaceRegistry;
+    this.channelPolicy = resolved.channelPolicy;
+    this.channelPlugins = resolved.channelPlugins;
+    this.watcherRegistry = resolved.watcherRegistry;
+    this.platformServiceManager = resolved.platformServiceManager;
+    this.distributedRuntime = resolved.distributedRuntime;
+    this.voiceService = resolved.voiceService;
+    this.webSearchService = resolved.webSearchService;
+    this.knowledgeService = resolved.knowledgeService;
+    this.knowledgeGraphqlService = resolved.knowledgeGraphqlService;
+    this.mediaProviders = resolved.mediaProviders;
+    this.multimodalService = resolved.multimodalService;
+    this.artifactStore = resolved.artifactStore;
+    this.serviceRegistry = resolved.serviceRegistry;
+    this.serveFactory = resolved.serveFactory;
+    this.githubWebhookSecret = resolved.githubWebhookSecret;
+    this.companionChatManager = resolved.companionChatManager;
+
+    const collaborators = createDaemonFacadeCollaborators({
+      runtime: resolved,
+      pendingSurfaceReplies: this.pendingSurfaceReplies,
+      authToken: () => this.authToken,
+      trustProxyEnabled: () => this.trustProxyEnabled(),
+      dispatchApiRoutes: (req) => this.dispatchApiRoutes(req),
+      parseJsonBody: (req) => this.parseJsonBody(req),
+      requireAuthenticatedSession: (req) => this.requireAuthenticatedSession(req),
+      trySpawnAgent: (input, logLabel, sessionId) => this.trySpawnAgent(input, logLabel, sessionId),
+      checkAuth: (req) => this.checkAuth(req),
+      extractAuthToken: (req) => this.extractAuthToken(req),
+      requireAdmin: (req) => this.requireAdmin(req),
+      requireRemotePeer: (req, scope) => this.requireRemotePeer(req, scope),
+      describeAuthenticatedPrincipal: (token) => this.describeAuthenticatedPrincipal(token),
+      invokeGatewayMethodCall: (input) => this.invokeGatewayMethodCall(input),
+      syncSpawnedAgentTask: (record, sessionId) => this.syncSpawnedAgentTask(record, sessionId),
+      syncFinishedAgentTask: (record) => this.syncFinishedAgentTask(record),
+      surfaceDeliveryEnabled: (surface) => this.surfaceDeliveryEnabled(surface),
+      signWebhookPayload: (body, secret) => this.signWebhookPayload(body, secret),
+      handleApprovalAction: (approvalId, action, req) => this.handleApprovalAction(approvalId, action, req),
+      tlsState: () => this.tlsState,
+      swapManager: this.config.swapManager ?? null,
+      // F16b: Resolve current provider/model for companion-chat session-create
+      // defaults. Delegates to the live ProviderRegistry so the resolver always
+      // reflects the currently active provider, not a snapshot captured at startup.
+      resolveDefaultProviderModel: () => {
+        try {
+          const current = resolved.runtimeServices.providerRegistry.getCurrentModel();
+          if (!current.provider || !current.id) return null;
+          return { provider: current.provider, model: current.id };
+        } catch {
+          return null;
+        }
+      },
+    });
+    this.channelReplyPipeline = collaborators.channelReplyPipeline;
+    this.controlPlaneHelper = collaborators.controlPlaneHelper;
+    this.surfaceDeliveryHelper = collaborators.surfaceDeliveryHelper;
+    this.surfaceActionHelper = collaborators.surfaceActionHelper;
+    this.transportEventsHelper = collaborators.transportEventsHelper;
+    this.httpRouter = collaborators.httpRouter;
+    this.providerRuntime = collaborators.providerRuntime;
+    this.builtinChannels = collaborators.builtinChannels;
+
+    // M1: Wire AgentTaskAdapter to the RuntimeEventBus so task records reach
+    // terminal states when their backing agent finishes.
+    this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore);
+    this.agentTaskAdapterUnsub = this.agentTaskAdapter.attachRuntimeBus(this.runtimeBus);
+    // M2: Mark any tasks that were 'running' at startup as aborted (daemon restart)
+    this.agentTaskAdapter.reconcileOnRestart();
+
+    configureDaemonSessionContinuation({
+      sessionBroker: this.sessionBroker,
+      trySpawnAgent: (input, logLabel, sessionId) => this.trySpawnAgent(input, logLabel, sessionId),
+      queueSurfaceReplyFromBinding: (binding, input) => this.surfaceDeliveryHelper.queueSurfaceReplyFromBinding(binding, input),
+    });
+
+    this.distributedRuntime.attachRuntime({
+      sessionBridge: this.sessionBroker,
+      approvalBridge: this.approvalBroker,
+      automationBridge: this.automationManager,
+      eventPublisher: (event, payload) => {
+        this.controlPlaneGateway.publishEvent(event, payload);
+      },
+    });
+  }
+
+  listRecentControlPlaneEvents(limit = 100): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[] {
+    return this.controlPlaneGateway.listRecentEvents(limit);
+  }
+
+  /**
+   * Enable the daemon. Requires danger.daemon = true in config.
+   * The provided token is used to authenticate all incoming requests.
+   * Returns true if enabled, false if the config forbids it.
+   */
+  enable(dangerConfig: DaemonDangerConfig, token?: string): boolean {
+    if (!dangerConfig.daemon) {
+      logger.info('DaemonServer.enable: danger.daemon is false — not enabling');
+      return false;
+    }
+    this.enabled = true;
+    this.authToken = token ?? null;
+    this.controlPlaneGateway.setServerState({ enabled: true, host: this.host, port: this.port });
+    return true;
+  }
+
+  /**
+   * Start the daemon. Refuses to start if not explicitly enabled.
+   */
+  async start(): Promise<void> {
+    if (!this.enabled) {
+      logger.info('Daemon mode is disabled. Enable via danger.daemon config.');
+      return;
+    }
+    if (this.authToken === null) {
+      logger.info('DaemonServer: starting with session-based authentication via UserAuth');
+    }
+    if (this.server !== null) {
+      logger.info('DaemonServer: already running');
+      return;
+    }
+
+    new GlobalNetworkTransportInstaller().install(this.configManager);
+    if (!this.approvalBrokerUnsubscribe) {
+      this.approvalBrokerUnsubscribe = this.approvalBroker.subscribe((approval) => {
+        void this.surfaceDeliveryHelper.notifyApprovalUpdate(approval).catch((error: unknown) => {
+          logger.warn('DaemonServer: approval notification failed', {
+            approvalId: approval.id,
+            error: summarizeError(error),
+          });
+        });
+      });
+    }
+    this.routeBindings.attachRuntime({
+      runtimeBus: this.runtimeBus,
+      runtimeStore: this.runtimeStore,
+    });
+    this.surfaceRegistry.attachRuntime(this.runtimeStore);
+    this.deliveryManager.attachRuntime({
+      runtimeBus: this.runtimeBus,
+      runtimeStore: this.runtimeStore,
+    });
+    this.automationManager.attachRuntime({
+      runtimeBus: this.runtimeBus,
+      runtimeStore: this.runtimeStore,
+      deliveryManager: this.deliveryManager,
+    });
+    this.controlPlaneGateway.attachRuntime({
+      runtimeBus: this.runtimeBus,
+      runtimeStore: this.runtimeStore,
+    });
+
+    const self = this;
+    // Skip real OS port check when a mock serveFactory is injected (test-only path).
+    if (this.serveFactory === Bun.serve) {
+      await requirePortAvailable(this.port, this.host, 'daemon');
+    }
+    this.transportEventsHelper.emitTransportInitializing();
+    try {
+      this.tlsState = resolveInboundTlsContext(this.configManager, 'controlPlane');
+      this.server = this.serveFactory({
+        port: this.port,
+        hostname: this.host,
+        ...(this.tlsState.tls ? { tls: this.tlsState.tls } : {}),
+        async fetch(req: Request, server: UpgradeCapableServer): Promise<Response | undefined> {
+          const upgrade = self.tryUpgradeControlPlaneWebSocket(req, server);
+          if (upgrade === 'upgraded') return;
+          if (upgrade) return upgrade;
+          return self.handleRequest(req);
+        },
+        websocket: {
+          open(ws) {
+            self.handleControlPlaneWebSocketOpen(ws as unknown as { data: ControlPlaneWebSocketData; send(message: string): void });
+          },
+          message(ws, message) {
+            void self.handleControlPlaneWebSocketMessage(
+              ws as unknown as { data: ControlPlaneWebSocketData; send(message: string): void },
+              message,
+            ).catch((error: unknown) => {
+              logger.warn('DaemonServer: control-plane websocket message failed', {
+                error: summarizeError(error),
+              });
+            });
+          },
+          close(ws) {
+            self.handleControlPlaneWebSocketClose(ws as unknown as { data: ControlPlaneWebSocketData });
+          },
+        },
+      });
+
+      await Promise.all([
+        this.sessionBroker.start(),
+        this.approvalBroker.start(),
+        this.channelPolicy.start(),
+        this.automationManager.start(),
+        this.distributedRuntime.start(),
+      ]);
+      await this.providerRuntime.startConfigured();
+      // C-2: Load persisted companion sessions from disk so sessions survive
+      // daemon restarts. Must run after providers are configured.
+      await this.companionChatManager.init();
+      if (this.replyPoller === null) {
+        this.replyPoller = setInterval(() => {
+          void this.pollPendingSurfaceReplies().catch((error: unknown) => {
+            logger.warn('DaemonServer: surface reply poll failed', { error: summarizeError(error) });
+          });
+        }, 2_000);
+        (this.replyPoller as unknown as { unref?: () => void }).unref?.();
+      }
+      this.surfaceRegistry.syncConfiguredSurfaces();
+      if (this.configManager.get('watchers.enabled')) {
+        this.watcherRegistry.registerPollingWatcher({
+          id: 'daemon-heartbeat',
+          label: 'Daemon heartbeat',
+          source: {
+            id: 'source:daemon-heartbeat',
+            kind: 'watcher',
+            label: 'Daemon heartbeat',
+            enabled: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            metadata: {},
+          },
+          intervalMs: Number(this.configManager.get('watchers.heartbeatIntervalMs') ?? 30_000),
+          run: () => new Date().toISOString(),
+        });
+        this.watcherRegistry.startWatcher('daemon-heartbeat');
+      }
+      this.controlPlaneGateway.setServerState({ enabled: true, host: this.host, port: this.port });
+      this._attachControlPlaneConfigWatcher();
+      this.transportEventsHelper.emitTransportConnected();
+      logger.info('DaemonServer started', {
+        port: this.port,
+        host: this.host,
+        tlsMode: this.tlsState.mode,
+        scheme: this.tlsState.scheme,
+        trustProxy: this.tlsState.trustProxy,
+      });
+    } catch (err) {
+      const message = summarizeError(err);
+      if (this.replyPoller !== null) {
+        clearInterval(this.replyPoller);
+        this.replyPoller = null;
+      }
+      this.pendingSurfaceReplies.clear();
+      this.automationManager.stop();
+      this.providerRuntime.stopAll();
+      this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-start-failed');
+      this.approvalBrokerUnsubscribe?.();
+      this.approvalBrokerUnsubscribe = null;
+      if (this.server !== null) {
+        this.server.stop(true);
+        this.server = null;
+      }
+      this.tlsState = null;
+      this.controlPlaneGateway.setServerState({ enabled: this.enabled, host: this.host, port: this.port });
+      this.transportEventsHelper.emitTransportTerminalFailure(message);
+      throw err;
+    }
+  }
+
+  /**
+   * Stop the daemon server.
+   *
+   * Services are stopped in reverse start order. Each service stop is raced
+   * against a 10-second timeout so a hung service cannot block the full
+   * shutdown sequence (C1 fix).
+   */
+  /**
+   * Wait for any in-progress config-driven restart to settle.
+   * Callers that change config mid-flight and need to know when the server
+   * has rebounded should await this before inspecting state.
+   */
+  async waitForRestart(): Promise<void> {
+    // Loop to handle dirty-flag chained restarts: each cycle may spawn another.
+    while (this._restartingPromise) await this._restartingPromise;
+  }
+
+  async stop(): Promise<void> {
+    if (this.server === null) return;
+
+    // Tear down config watcher only on intentional stop, not mid-restart.
+    // During a restart cycle (_restarting=true) the watcher must stay active so
+    // config changes that arrive between stop() and the subsequent start() can be
+    // captured by the dirty flag.
+    if (!this._restarting) {
+      this._configWatchUnsub?.();
+      this._configWatchUnsub = null;
+    }
+
+    // Synchronous pre-stop teardown
+    this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped');
+    if (this.replyPoller !== null) {
+      clearInterval(this.replyPoller);
+      this.replyPoller = null;
+    }
+    this.pendingSurfaceReplies.clear();
+    this.approvalBrokerUnsubscribe?.();
+    this.approvalBrokerUnsubscribe = null;
+    this.httpRouter.dispose();
+    this.companionChatManager.dispose();
+
+    // Stop services that expose async teardown. Note: sessionBroker, approvalBroker,
+    // channelPolicy, and distributedRuntime expose start() only — their lifecycle ends
+    // when the server socket closes. We stop what we can in reverse start order.
+    this.providerRuntime.stopAll();
+    this.automationManager.stop();
+    // M1+M3: tear down adapter bus subscription and sessionBroker GC interval
+    this.agentTaskAdapterUnsub?.();
+    this.agentTaskAdapterUnsub = null;
+    await this.sessionBroker.stop();
+
+    this.server.stop(true);
+    this.server = null;
+    this.tlsState = null;
+    this.controlPlaneGateway.setServerState({ enabled: this.enabled, host: this.host, port: this.port });
+    this.transportEventsHelper.emitTransportDisconnected('Daemon server stopped', false);
+    logger.info('DaemonServer stopped');
+  }
+
+  /**
+   * Subscribe to controlPlane binding keys and restart the server on change.
+   * Called once from start() after the server is up. Clears itself on stop().
+   */
+  private _attachControlPlaneConfigWatcher(): void {
+    if (this._configWatchUnsub) return; // idempotent
+
+    const restart = (): void => {
+      if (this._restarting) {
+        // A change arrived mid-restart — queue a second cycle via dirty flag.
+        // Check _restarting BEFORE isRunning: stop() runs synchronously inside the
+        // restart IIFE, so isRunning may be false even while a restart is in progress.
+        this._restartDirty = true;
+        return;
+      }
+      if (!this.isRunning) return;
+      this._restarting = true;
+      this._restartingPromise = (async () => {
+        try {
+          logger.info('DaemonServer: controlPlane binding changed, restarting daemon server…');
+          await this.stop();
+          // Re-resolve host/port from updated config
+          const newBinding = resolveHostBinding(
+            (this.configManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
+            String(this.configManager.get('controlPlane.host') ?? '127.0.0.1'),
+            Number(this.configManager.get('controlPlane.port') ?? 3421),
+            'controlPlane',
+          );
+          this.host = newBinding.host;
+          this.port = newBinding.port;
+          await this.start();
+        } catch (err) {
+          logger.error('DaemonServer: restart after config change failed', { error: summarizeError(err) });
+        } finally {
+          this._restarting = false;
+          // If a config change arrived while we were restarting, kick off a second
+          // cycle BEFORE nulling _restartingPromise so waitForRestart() chains correctly.
+          if (this._restartDirty) {
+            this._restartDirty = false;
+            restart(); // sets this._restartingPromise to the new cycle
+          } else {
+            this._restartingPromise = null;
+          }
+        }
+      })();
+    };
+
+    // getIsRunning must also return true while a restart cycle is in progress
+    // (_restarting=true) so that config changes arriving mid-restart reach the
+    // dirty-flag path inside `restart`. When the server is intentionally stopped
+    // (not mid-restart) isRunning and _restarting are both false.
+    const watcher = createHostModeRestartWatcher({
+      configManager: this.configManager,
+      keys: ['controlPlane.hostMode', 'controlPlane.host', 'controlPlane.port'],
+      onRestart: restart,
+      getIsRunning: () => this.isRunning || this._restarting,
+    });
+    this._configWatchUnsub = () => watcher.unsubscribe();
+  }
+
+  /**
+   * Returns true if the server is currently running.
+   */
+  get isRunning(): boolean {
+    return this.server !== null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Auth
+  // -------------------------------------------------------------------------
+
+  private extractAuthToken(req: Request): string {
+    return this.controlPlaneHelper.extractAuthToken(req);
+  }
+
+  private checkAuth(req: Request): boolean {
+    return this.controlPlaneHelper.checkAuth(req);
+  }
+
+  private requireAuthenticatedSession(req: Request): { username: string; roles: readonly string[] } | null {
+    return this.controlPlaneHelper.requireAuthenticatedSession(req);
+  }
+
+  private requireAdmin(req: Request): Response | null {
+    return this.controlPlaneHelper.requireAdmin(req);
+  }
+
+  private async requireRemotePeer(req: Request, scope?: string): Promise<DistributedPeerAuth | Response> {
+    return await this.controlPlaneHelper.requireRemotePeer(req, scope);
+  }
+
+  private describeAuthenticatedPrincipal(token: string): {
+    principalId: string;
+    principalKind: 'user' | 'bot' | 'service' | 'token';
+    admin: boolean;
+    scopes: readonly string[];
+  } | null {
+    return this.controlPlaneHelper.describeAuthenticatedPrincipal(token);
+  }
+
+  private getGrantedGatewayScopes(includeWrite: boolean): readonly string[] {
+    return this.controlPlaneHelper.getGrantedGatewayScopes(includeWrite);
+  }
+
+  private validateGatewayInvocation(
+    descriptor: import('../control-plane/index.js').GatewayMethodDescriptor,
+    context?: {
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
+      readonly scopes?: readonly string[];
+      readonly admin?: boolean;
+    },
+  ): { status: number; ok: false; body: Record<string, unknown> } | null {
+    return this.controlPlaneHelper.validateGatewayInvocation(descriptor, context);
+  }
+
+  private tryUpgradeControlPlaneWebSocket(
+    req: Request,
+    server: UpgradeCapableServer,
+  ): Response | 'upgraded' | null {
+    return this.controlPlaneHelper.tryUpgradeControlPlaneWebSocket(req, server);
+  }
+
+  private handleControlPlaneWebSocketOpen(ws: {
+    data: import('./control-plane.js').ControlPlaneWebSocketData;
+    send(message: string): void;
+  }): void {
+    this.controlPlaneHelper.handleControlPlaneWebSocketOpen(ws);
+  }
+
+  private async handleControlPlaneWebSocketMessage(
+    ws: {
+      data: import('./control-plane.js').ControlPlaneWebSocketData;
+      send(message: string): void;
+    },
+    message: string | Buffer | ArrayBuffer | Uint8Array,
+  ): Promise<void> {
+    await this.controlPlaneHelper.handleControlPlaneWebSocketMessage(ws, message);
+  }
+
+  private handleControlPlaneWebSocketClose(ws: {
+    data: import('./control-plane.js').ControlPlaneWebSocketData;
+  }): void {
+    this.controlPlaneHelper.handleControlPlaneWebSocketClose(ws);
+  }
+
+  private async invokeWebSocketControlPlaneCall(input: {
+    readonly authToken: string;
+    readonly method: string;
+    readonly path: string;
+    readonly query?: Record<string, unknown>;
+    readonly body?: unknown;
+    readonly context?: {
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
+      readonly admin?: boolean;
+      readonly scopes?: readonly string[];
+    };
+  }): Promise<{ status: number; ok: boolean; body: unknown }> {
+    return await this.controlPlaneHelper.invokeWebSocketControlPlaneCall(input);
+  }
+
+  private async invokeGatewayMethodCall(input: {
+    readonly authToken: string;
+    readonly methodId: string;
+    readonly query?: Record<string, unknown>;
+    readonly body?: unknown;
+    readonly context?: {
+      readonly principalId?: string;
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
+      readonly admin?: boolean;
+      readonly scopes?: readonly string[];
+      readonly clientKind?: string;
+    };
+  }): Promise<{ status: number; ok: boolean; body: unknown }> {
+    return await this.controlPlaneHelper.invokeGatewayMethodCall(input);
+  }
+
+  // -------------------------------------------------------------------------
+  // Request handling
+  // -------------------------------------------------------------------------
+
+  private async handleRequest(req: Request): Promise<Response> {
+    return await this.httpRouter.handleRequest(req);
+  }
+
+  private async dispatchApiRoutes(req: Request): Promise<Response | null> {
+    return await this.httpRouter.dispatchApiRoutes(req);
+  }
+
+  private async parseJsonBody(req: Request): Promise<JsonBody | Response> {
+    return await this.httpRouter.parseJsonBody(req);
+  }
+
+  private async parseOptionalJsonBody(req: Request): Promise<JsonBody | null | Response> {
+    return await this.httpRouter.parseOptionalJsonBody(req);
+  }
+
+  private parseJsonText(rawBody: string): JsonBody | Response {
+    return this.httpRouter.parseJsonText(rawBody);
+  }
+
+  private recordApiResponse(
+    req: Request,
+    path: string,
+    response: Response,
+    clientKind:
+      | 'web'
+      | 'slack'
+      | 'discord'
+      | 'ntfy'
+      | 'webhook'
+      | 'telegram'
+      | 'google-chat'
+      | 'signal'
+      | 'whatsapp'
+      | 'imessage'
+      | 'msteams'
+      | 'bluebubbles'
+      | 'mattermost'
+      | 'matrix'
+      | 'daemon' = 'web',
+  ): Response {
+    return this.httpRouter.recordApiResponse(req, path, response, clientKind);
+  }
+  private async handleApprovalAction(
+    approvalId: string,
+    action: 'claim' | 'approve' | 'deny' | 'cancel',
+    req: Request,
+  ): Promise<Response> {
+    const body = await this.parseOptionalJsonBody(req);
+    const payload = body instanceof Response || body === null ? {} as JsonBody : body;
+    const actor = this.requireAuthenticatedSession(req)?.username ?? (this.authToken ? 'shared-token' : 'operator');
+    const note = typeof payload.note === 'string' ? payload.note : undefined;
+    if (action === 'claim') {
+      const approval = await this.approvalBroker.claimApproval(approvalId, actor, 'web', note);
+      return approval
+        ? this.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
+        : this.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ error: 'Unknown approval' }, { status: 404 }));
+    }
+    if (action === 'cancel') {
+      const approval = await this.approvalBroker.cancelApproval(approvalId, actor, 'web', note);
+      return approval
+        ? this.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
+        : this.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ error: 'Unknown approval' }, { status: 404 }));
+    }
+    const approval = await this.approvalBroker.resolveApproval(approvalId, {
+      approved: action === 'approve',
+      remember: typeof payload.remember === 'boolean' ? payload.remember : false,
+      actor,
+      actorSurface: 'web',
+      note,
+    });
+    return approval
+      ? this.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
+      : this.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ error: 'Unknown approval' }, { status: 404 }));
+  }
+  private trySpawnAgent(input: Parameters<AgentManager['spawn']>[0], logLabel = 'DaemonServer', sessionId?: string): AgentRecord | Response {
+    try {
+      const spawnInput = Array.isArray((input as { tools?: readonly string[] }).tools)
+        ? {
+            ...input,
+            tools: [...((input as { tools?: readonly string[] }).tools ?? [])],
+          }
+        : input;
+      const record = this.agentManager.spawn(spawnInput);
+      this.syncSpawnedAgentTask(record, sessionId);
+      // M1: Register agent with AgentTaskAdapter so bus events can transition its task
+      if (this.agentTaskAdapter) {
+        this.agentTaskAdapter.wrapAgent(record.id, record.task, { sessionId: sessionId ?? 'daemon' });
+      }
+      return record;
+    } catch (err) {
+      const message = summarizeError(err);
+      logger.error(`${logLabel}: agent spawn failed`, { error: message });
+      // Capacity-reached is backpressure, not a server error — return 429 so
+      // clients can apply the Retry-After hint and SDK retry policy handles it.
+      const isCapacity = typeof message === 'string' && message.includes('capacity reached');
+      if (isCapacity) {
+        return Response.json(
+          {
+            code: 'CAPACITY_EXCEEDED',
+            error: message,
+            category: 'service',
+            source: 'runtime',
+            recoverable: true,
+            hint: 'Wait for the current agent to complete or raise the orchestration.maxActiveAgents configuration.',
+            status: 429,
+          },
+          {
+            status: 429,
+            headers: { 'Retry-After': '5' },
+          },
+        );
+      }
+      return jsonErrorResponse(err, { status: 500, fallbackMessage: 'Failed to spawn agent' });
+    }
+  }
+  private syncSpawnedAgentTask(record: AgentRecord, sessionId?: string): void {
+    this.runtimeDispatch?.syncRuntimeTask({
+      id: record.id,
+      kind: 'agent',
+      title: record.task.length > 80 ? `${record.task.slice(0, 77)}...` : record.task,
+      description: record.task,
+      status: record.status === 'pending' ? 'queued' : 'running',
+      owner: record.id,
+      cancellable: true,
+      childTaskIds: [],
+      queuedAt: record.startedAt,
+      startedAt: record.status === 'pending' ? undefined : record.startedAt,
+      correlationId: sessionId,
+    }, 'daemon.server.agent-spawn');
+  }
+  private syncFinishedAgentTask(record: AgentRecord): void {
+    const status = record.status === 'completed'
+      ? 'completed'
+      : record.status === 'failed'
+        ? 'failed'
+        : 'cancelled';
+    this.runtimeDispatch?.transitionRuntimeTask(record.id, status, {
+      endedAt: record.completedAt ?? Date.now(),
+      result: record.fullOutput ?? record.streamingContent,
+      error: record.error,
+    }, 'daemon.server.agent-finish');
+  }
+  private surfaceDeliveryEnabled(surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix'): boolean {
+    return isSurfaceFeatureGateEnabled(this.runtimeServices.featureFlags, surface)
+      && isSurfaceDeliveryEnabled(this.configManager, surface);
+  }
+  private async pollPendingSurfaceReplies(): Promise<void> {
+    await this.surfaceDeliveryHelper.pollPendingSurfaceReplies((record) => this.syncFinishedAgentTask(record));
+  }
+  private trustProxyEnabled(): boolean {
+    return this.tlsState?.trustProxy ?? Boolean(this.configManager.get('controlPlane.trustProxy'));
+  }
+  private signWebhookPayload(body: string, secret: string): string {
+    return this.surfaceDeliveryHelper.signWebhookPayload(body, secret);
+  }
+}

@@ -34,7 +34,7 @@ interface ConstraintFinding {
 }
 ```
 
-Both types are exported from `@pellux/goodvibes-sdk` (_internal only — not part of the public companion surface).
+Both types are exported from `@pellux/goodvibes-sdk` for full SDK users; they are not part of the public companion surface.
 
 ---
 

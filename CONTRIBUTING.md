@@ -24,10 +24,10 @@ Install:
 bun install
 ```
 
-Refresh the umbrella package internals:
+Refresh generated contract artifacts:
 
 ```bash
-bun run sync
+bun run refresh:contracts
 ```
 
 Portable SDK validation:
@@ -38,15 +38,23 @@ bun run validate
 
 ## CI Gates
 
-The following gates were added across 0.19.x releases and run on every PR:
+The current CI suite runs these gates on every PR:
 
-| Gate | Added | Command | Notes |
-|------|-------|---------|-------|
-| `mirror-drift` | 0.19.0 | `bun run sync:check` | Fails if any `_internal` mirror is stale vs its canonical source |
-| `changelog-check` | 0.19.1 | `bun run changelog:check` | Fails if the version bump lacks a matching `## [X.Y.Z]` section in `CHANGELOG.md` |
-| `throw-guard` | 0.19.3 | inline in CI | Fails if any raw `throw new Error(` / `throw Error(` variant appears in public surface source |
-| `platform-matrix (rn-bundle)` | 0.19.6 | `bun test test/rn-bundle-node-imports.test.ts` | Verifies no Node-only imports leak into the RN companion bundle |
-| `version-consistency` | 0.19.6 | `bun run version:check` | Verifies version field is consistent across all workspace `package.json` files |
+| Gate | Command | Notes |
+|------|---------|-------|
+| `validate` | `bun run validate` | Docs, examples, TypeScript, runtime compatibility, metadata, package, and install-smoke checks |
+| `contract-artifact-check` | `bun run contracts:check` | Fails if generated contract artifacts drift from the canonical contracts package |
+| `changelog-check` | `bun run changelog:check` | Fails if the version bump lacks a matching `## [X.Y.Z]` section in `CHANGELOG.md` |
+| `error-contract-check` | `bun run error:check` | Fails if the public error taxonomy, retry contract, or consumer docs drift |
+| `todo-check` | `bun run todo:check` | Fails if public source contains TODO/FIXME/XXX/HACK/STUB markers |
+| `platform-matrix` | `bun run test`, `bun run test:rn`, `bun run test:workers`, `bun run test:workers:wrangler` | Exercises Bun, React Native bundle, Workers, and Wrangler surfaces |
+| `examples-typecheck` | `bun --cwd examples run typecheck` | Keeps quickstarts aligned with the public SDK signatures |
+| `version-consistency` | `bun run version:check` | Verifies version field consistency across workspace packages |
+| `api-surface-check` | `bun run api:check` | Verifies the API Extractor snapshot matches the committed public surface baseline |
+| `types-resolution-check` | `attw --pack packages/sdk` | Verifies exported types resolve from the package surface |
+| `publint-check` | `bun run publint:check` | Verifies package metadata and published entry points |
+| `bundle-budget-check` | `bun run bundle:check` | Verifies every JavaScript export has an explicit gzip budget and stays within it |
+| `sbom-check` | `bun run sbom:generate` | Generates and validates the CycloneDX SBOM and blocks disallowed license families |
 
 See [`docs/release-and-publishing.md`](docs/release-and-publishing.md) for authoritative release-gate procedures and the publish checklist.
 

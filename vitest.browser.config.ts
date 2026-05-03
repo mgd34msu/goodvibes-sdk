@@ -5,7 +5,7 @@
  * @vitest/browser + Playwright. Tests import the built dist/browser.js bundle
  * via the @pellux/goodvibes-sdk/browser subpath alias.
  *
- * Pre-requisite: `bun run build` must have produced packages/sdk/dist/browser.js
+ * `globalSetup` asserts that `bun run build` produced packages/sdk/dist/browser.js
  * before this suite is launched.
  */
 import { defineConfig } from 'vitest/config';
@@ -25,6 +25,7 @@ export default defineConfig({
   test: {
     name: 'browser',
     include: ['test/browser/**/*.test.ts'],
+    globalSetup: ['test/browser/global-setup.ts'],
     setupFiles: ['test/browser/setup.ts'],
     browser: {
       enabled: true,

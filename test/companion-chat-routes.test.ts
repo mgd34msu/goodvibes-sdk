@@ -6,15 +6,15 @@
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
-import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import { dispatchCompanionChatRoutes } from '../packages/sdk/src/_internal/platform/companion/companion-chat-routes.js';
+import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
 import type {
   CompanionChatEventPublisher,
   CompanionChatManagerConfig,
   CompanionLLMProvider,
   CompanionProviderChunk,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import type { CompanionChatRouteContext } from '../packages/sdk/src/_internal/platform/companion/companion-chat-route-types.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
 
 // ---------------------------------------------------------------------------
 // Mock provider — returns deterministic chunks
@@ -139,18 +139,18 @@ describe('companion-chat-routes: create session', () => {
     expect(typeof body.createdAt).toBe('number');
   });
 
-  test('POST /api/companion/chat/sessions with no body creates session with defaults', async () => {
+  test('POST /api/companion/chat/sessions with no body rejects when no default resolver is configured', async () => {
     const req = new Request('http://localhost/api/companion/chat/sessions', { method: 'POST' });
     const ctx = makeContext(manager);
     const res = await dispatchCompanionChatRoutes(req, ctx);
-    expect(res!.status).toBe(201);
+    expect(res!.status).toBe(400);
     const body = await res!.json();
-    expect(typeof body.sessionId).toBe('string');
+    expect(body.code).toBe('NO_MODEL_CONFIGURED');
   });
 
   test('GET /api/companion/chat/sessions/:id returns session + empty messages', async () => {
     // Create session first
-    const createReq = makeRequest('POST', 'http://localhost/api/companion/chat/sessions', {});
+    const createReq = makeRequest('POST', 'http://localhost/api/companion/chat/sessions', { model: 'claude-sonnet' });
     const ctx = makeContext(manager);
     const createRes = await dispatchCompanionChatRoutes(createReq, ctx);
     const { sessionId } = await createRes!.json();
@@ -259,7 +259,7 @@ describe('companion-chat-routes: post message and events', () => {
     const ctx = makeContext(manager);
     // Create session
     const createRes = await dispatchCompanionChatRoutes(
-      makeRequest('POST', 'http://localhost/api/companion/chat/sessions', {}),
+      makeRequest('POST', 'http://localhost/api/companion/chat/sessions', { model: 'claude-sonnet' }),
       ctx,
     );
     const { sessionId } = await createRes!.json();

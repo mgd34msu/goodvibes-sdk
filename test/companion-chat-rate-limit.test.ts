@@ -11,16 +11,16 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
+import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import {
   CompanionChatRateLimiter,
   DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-rate-limiter.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-rate-limiter.js';
 import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import { GoodVibesSdkError } from '../packages/sdk/src/_internal/errors/index.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

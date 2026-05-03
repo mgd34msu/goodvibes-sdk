@@ -7,7 +7,7 @@
  *   1. Find a free port and spawn a local Verdaccio process
  *      (with npmjs uplink so transitive deps resolve from real npm)
  *   2. Wait for Verdaccio to be ready (HTTP health check)
- *   3. Stage packages and publish @pellux/goodvibes-sdk to local Verdaccio
+ *   3. Stage packages and publish the public GoodVibes packages to local Verdaccio
  *   4. Create a temporary scratch project in a tmp dir
  *   5. Install @pellux/goodvibes-sdk@<version> from local Verdaccio
  *      (transitive deps fetched transparently from npm via uplink)
@@ -112,18 +112,18 @@ async function startVerdaccio(): Promise<VerdaccioHandle> {
   ].join('\n');
   writeFileSync(configPath, configContent + '\n');
 
-  const verdaccioBin = resolve(SDK_ROOT, 'node_modules/.bin/verdaccio');
-  if (!existsSync(verdaccioBin)) {
-    throw new Error(
-      `verdaccio binary not found at ${verdaccioBin}.\n` +
-        `Run: bun add -d verdaccio@^6.5.2 && bun install`,
-    );
-  }
+  const localVerdaccioBin = resolve(SDK_ROOT, 'node_modules/.bin/verdaccio');
+  const configuredVerdaccioBin = process.env.VERDACCIO_BIN;
+  const hasLocalVerdaccio = existsSync(localVerdaccioBin);
+  const verdaccioCommand = configuredVerdaccioBin ?? (hasLocalVerdaccio ? localVerdaccioBin : 'npx');
+  const verdaccioArgs = configuredVerdaccioBin || hasLocalVerdaccio
+    ? ['--config', configPath, '--listen', `127.0.0.1:${port}`]
+    : ['--yes', 'verdaccio@^6.5.2', '--config', configPath, '--listen', `127.0.0.1:${port}`];
 
   const registryUrl = `http://127.0.0.1:${port}`;
   console.log(`[verdaccio] starting on ${registryUrl} ...`);
 
-  const proc = spawn(verdaccioBin, ['--config', configPath, '--listen', `127.0.0.1:${port}`], {
+  const proc = spawn(verdaccioCommand, verdaccioArgs, {
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: false,
   });
@@ -300,13 +300,13 @@ if (typeof reactNative.createReactNativeGoodVibesSdk !== 'function')
 if (typeof txRT.createRemoteRuntimeEvents !== 'function')
   throw new Error('transport-realtime: missing createRemoteRuntimeEvents');
 
-// Verify no internal @pellux packages leaked into the published tarball
+// Verify the SDK package does not accidentally bundle nested package installs.
 const packageRoot = dirname(req.resolve(PKG + '/package.json'));
 const nestedInternal = join(packageRoot, 'node_modules', '@pellux');
 if (existsSync(nestedInternal)) {
   const leaked = readdirSync(nestedInternal).filter((n) => n.startsWith('goodvibes-'));
   if (leaked.length > 0)
-    throw new Error('published package leaked internal deps: ' + leaked.join(', '));
+    throw new Error('published package contains nested GoodVibes deps: ' + leaked.join(', '));
 }
 
 console.log('[smoke] ALL ENTRY POINTS RESOLVED OK');

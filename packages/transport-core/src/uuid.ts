@@ -1,3 +1,5 @@
+import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
+
 export function createUuidV4(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -6,9 +8,12 @@ export function createUuidV4(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     crypto.getRandomValues(bytes);
   } else {
-    for (let i = 0; i < bytes.length; i += 1) {
-      bytes[i] = Math.floor(Math.random() * 256);
-    }
+    throw new GoodVibesSdkError('Secure random UUID generation is unavailable in this runtime.', {
+      category: 'config',
+      source: 'transport',
+      recoverable: false,
+      hint: 'Run GoodVibes in a runtime with crypto.randomUUID() or crypto.getRandomValues().',
+    });
   }
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;

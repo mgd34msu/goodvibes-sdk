@@ -10,31 +10,31 @@
 
 import fc from 'fast-check';
 
-import type { SessionEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/session.js';
-import type { TurnEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/turn.js';
-import type { AgentEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/agents.js';
-import type { WorkflowEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/workflows.js';
-import type { TaskEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/tasks.js';
-import type { ToolEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/tools.js';
-import type { ProviderEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/providers.js';
-import type { PluginEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/plugins.js';
-import type { McpEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/mcp.js';
-import type { TransportEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/transport.js';
-import type { CompactionEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/compaction.js';
-import type { UIEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/ui.js';
-import type { OpsEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/ops.js';
-import type { ForensicsEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/forensics.js';
-import type { SecurityEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/security.js';
-import type { AutomationEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/automation.js';
-import type { RouteEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/routes.js';
-import type { ControlPlaneEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/control-plane.js';
-import type { DeliveryEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/deliveries.js';
-import type { WatcherEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/watchers.js';
-import type { SurfaceEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/surfaces.js';
-import type { KnowledgeEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/knowledge.js';
-import type { CommunicationEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/communication.js';
-import type { PermissionEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/permissions.js';
-import type { OrchestrationEvent } from '../../../packages/sdk/src/_internal/platform/runtime/events/orchestration.js';
+import type { SessionEvent } from '../../../packages/sdk/src/events/session.js';
+import type { TurnEvent } from '../../../packages/sdk/src/events/turn.js';
+import type { AgentEvent } from '../../../packages/sdk/src/events/agents.js';
+import type { WorkflowEvent } from '../../../packages/sdk/src/events/workflows.js';
+import type { TaskEvent } from '../../../packages/sdk/src/events/tasks.js';
+import type { ToolEvent } from '../../../packages/sdk/src/events/tools.js';
+import type { ProviderEvent } from '../../../packages/sdk/src/events/providers.js';
+import type { PluginEvent } from '../../../packages/sdk/src/events/plugins.js';
+import type { McpEvent } from '../../../packages/sdk/src/events/mcp.js';
+import type { TransportEvent } from '../../../packages/sdk/src/events/transport.js';
+import type { CompactionEvent } from '../../../packages/sdk/src/events/compaction.js';
+import type { UIEvent } from '../../../packages/sdk/src/events/ui.js';
+import type { OpsEvent } from '../../../packages/sdk/src/events/ops.js';
+import type { ForensicsEvent } from '../../../packages/sdk/src/events/forensics.js';
+import type { SecurityEvent } from '../../../packages/sdk/src/events/security.js';
+import type { AutomationEvent } from '../../../packages/sdk/src/events/automation.js';
+import type { RouteEvent } from '../../../packages/sdk/src/events/routes.js';
+import type { ControlPlaneEvent } from '../../../packages/sdk/src/events/control-plane.js';
+import type { DeliveryEvent } from '../../../packages/sdk/src/events/deliveries.js';
+import type { WatcherEvent } from '../../../packages/sdk/src/events/watchers.js';
+import type { SurfaceEvent } from '../../../packages/sdk/src/events/surfaces.js';
+import type { KnowledgeEvent } from '../../../packages/sdk/src/events/knowledge.js';
+import type { CommunicationEvent } from '../../../packages/sdk/src/events/communication.js';
+import type { PermissionEvent } from '../../../packages/sdk/src/events/permissions.js';
+import type { OrchestrationEvent } from '../../../packages/sdk/src/events/orchestration.js';
 
 // ---------------------------------------------------------------------------
 // Recursive JSON-value arbitrary
@@ -399,7 +399,7 @@ export const FIXTURE_EVENTS: ReadonlyArray<{ type: string } & Record<string, unk
   { type: 'TURN_CANCEL', turnId: 't1', stopReason: 'cancelled' } satisfies TurnEvent,
   // providers
   { type: 'PROVIDERS_CHANGED', added: ['anthropic'], removed: [], updated: [] } satisfies ProviderEvent,
-  { type: 'PROVIDER_WARNING', message: 'model deprecated' } satisfies ProviderEvent,
+  { type: 'PROVIDER_WARNING', message: 'model retired' } satisfies ProviderEvent,
   { type: 'MODEL_FALLBACK', from: 'claude-4', to: 'claude-3', provider: 'anthropic' } satisfies ProviderEvent,
   // tools
   { type: 'TOOL_RECEIVED', callId: 'c1', turnId: 't1', tool: 'bash', args: { cmd: 'ls' } } satisfies ToolEvent,

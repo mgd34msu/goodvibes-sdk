@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { LspService } from '../packages/sdk/src/_internal/platform/intelligence/lsp/service.ts';
-import { createShellPathService } from '../packages/sdk/src/_internal/platform/runtime/shell-paths.ts';
+import { LspService } from '../packages/sdk/src/platform/intelligence/lsp/service.ts';
+import { createShellPathService } from '../packages/sdk/src/platform/runtime/shell-paths.ts';
 
 describe('bundled Bash LSP', () => {
   test('resolves and starts bash-language-server from the SDK package install', async () => {

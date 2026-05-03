@@ -5,7 +5,8 @@ import {
   normalizeStreamReconnectPolicy,
   type StreamReconnectPolicy,
 } from './reconnect.js';
-import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
+import { createHttpStatusError, HttpStatusError } from '@pellux/goodvibes-errors';
+import { isAbortError } from '@pellux/goodvibes-transport-core';
 import type { TransportJsonError } from './http-core.js';
 
 export interface ServerSentEventHandlers {
@@ -36,33 +37,37 @@ function readEventPayload(data: string): unknown {
   }
 }
 
-export function isAbortError(error: unknown): boolean {
-  return (
-    error instanceof DOMException && error.name === 'AbortError'
-  ) || (
-    typeof error === 'object'
-    && error !== null
-    && 'name' in error
-    && (error as { readonly name?: string }).name === 'AbortError'
-  );
-}
+export { isAbortError };
 
 function createStreamError(
   status: number,
   url: string,
   body: string,
-): GoodVibesSdkError & { readonly transport: TransportJsonError } {
+): HttpStatusError & { readonly transport: TransportJsonError } {
   const message = body.trim()
     ? `Unable to open SSE stream: ${status} ${body}`.trim()
     : `Unable to open SSE stream: ${status}`;
-  const error = new GoodVibesSdkError(message, {
-    category: 'network',
-    source: 'transport',
-    recoverable: status === 0 || status >= 500,
-    url,
-    method: 'GET',
-    ...(status > 0 ? { status } : {}),
-  });
+  const error = status > 0
+    ? status >= 500
+      ? new HttpStatusError(message, {
+          status,
+          category: 'network',
+          source: 'transport',
+          recoverable: true,
+          url,
+          method: 'GET',
+          body,
+        })
+      : createHttpStatusError(status, url, 'GET', body)
+    : new HttpStatusError(message, {
+        status: undefined,
+        category: 'network',
+        source: 'transport',
+        recoverable: true,
+        url,
+        method: 'GET',
+        body,
+      });
   const transportPayload: TransportJsonError = {
     status,
     body,
@@ -72,11 +77,13 @@ function createStreamError(
   return Object.assign(error, { transport: transportPayload });
 }
 
+export { openRawServerSentEventStream as openServerSentEventStream };
+
 function reportStreamError(error: unknown, handlers: ServerSentEventHandlers): void {
   handlers.onError?.(error);
 }
 
-export async function openServerSentEventStream(
+export async function openRawServerSentEventStream(
   fetchImpl: typeof fetch,
   url: string,
   handlers: ServerSentEventHandlers,
@@ -253,7 +260,11 @@ export async function openServerSentEventStream(
       }
     };
 
-    void loop();
+    void loop().catch((error) => {
+      if (!isAbortError(error)) {
+        reportStreamError(error, handlers);
+      }
+    });
   });
   await readyPromise;
 

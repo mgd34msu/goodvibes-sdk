@@ -74,8 +74,11 @@ try {
       case 'network':
         // transport failure — reconnect SSE/WS or retry
         break;
-      case 'server':
-        // daemon returned 5xx — log and degrade gracefully
+      case 'service':
+        // daemon or upstream service returned 5xx — log and degrade gracefully
+        break;
+      case 'protocol':
+        // SDK/client and daemon disagreed about the wire contract
         break;
       default:
         throw err;

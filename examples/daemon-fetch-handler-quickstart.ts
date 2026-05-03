@@ -1,11 +1,16 @@
+/**
+ * Compose a minimal fetch handler from daemon route-handler factories.
+ */
 import {
   createDaemonControlRouteHandlers,
   createDaemonTelemetryRouteHandlers,
+  jsonErrorResponse,
 } from '@pellux/goodvibes-sdk/daemon';
+import sdkPackage from '@pellux/goodvibes-sdk/package.json' with { type: 'json' };
 
 const controlHandlers = createDaemonControlRouteHandlers({
   authToken: null,
-  version: '0.28.22',
+  version: sdkPackage.version,
   sessionCookieName: 'goodvibes_session',
   controlPlaneGateway: {
     getSnapshot: () => ({ ok: true }),
@@ -15,7 +20,9 @@ const controlHandlers = createDaemonControlRouteHandlers({
     listRecentEvents: () => [],
     listSurfaceMessages: () => [],
     listClients: () => [],
-    createEventStream: () => new Response('not implemented', { status: 501 }),
+    createEventStream: () => new Response('event: ready\ndata: {"ok":true}\n\n', {
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    }),
   },
   extractAuthToken: () => '',
   resolveAuthenticatedPrincipal: () => null,
@@ -27,14 +34,22 @@ const controlHandlers = createDaemonControlRouteHandlers({
   getOperatorContract: () => ({ version: 1 }),
   inspectInboundTls: () => ({ mode: 'off' }),
   inspectOutboundTls: () => ({ mode: 'system' }),
-  invokeGatewayMethodCall: async () => ({ status: 501, ok: false, body: { error: 'not implemented' } }),
-  parseOptionalJsonBody: async () => null,
+  invokeGatewayMethodCall: async () => ({
+    status: 404,
+    ok: false,
+    body: { error: 'No gateway methods are registered in this quickstart' },
+  }),
+  parseOptionalJsonBody: async (request) => {
+    const text = await request.text();
+    return text.trim() ? JSON.parse(text) as Record<string, unknown> : null;
+  },
   requireAdmin: () => null,
   requireAuthenticatedSession: () => null,
 }, new Request('http://127.0.0.1/api/control-plane/status'));
 
 const telemetryHandlers = createDaemonTelemetryRouteHandlers({
   telemetryApi: null,
+  ingestSink: null,
   resolveAuthenticatedPrincipal: () => null,
 });
 
@@ -46,5 +61,8 @@ export async function handleRequest(request: Request): Promise<Response> {
   if (request.method === 'GET' && url.pathname === '/api/v1/telemetry') {
     return await telemetryHandlers.getTelemetrySnapshot(request);
   }
-  return Response.json({ error: 'Not found' }, { status: 404 });
+  return jsonErrorResponse(`Route not found: ${url.pathname}`, {
+    status: 404,
+    source: 'runtime',
+  });
 }

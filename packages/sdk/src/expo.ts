@@ -7,18 +7,7 @@ import {
 export interface ExpoGoodVibesSdkOptions extends ReactNativeGoodVibesSdkOptions {}
 
 /**
- * Alias for `createReactNativeGoodVibesSdk`. Use this entry-point when
- * importing from `@pellux/goodvibes-sdk/expo`.
- *
- * @example
- * // Example only: uses expo-secure-store; replace with your own storage.
- * import { createExpoGoodVibesSdk } from '@pellux/goodvibes-sdk/expo';
- * import * as SecureStore from 'expo-secure-store';
- *
- * const sdk = createExpoGoodVibesSdk({
- *   baseUrl: process.env.EXPO_PUBLIC_GV_URL!,
- *   authToken: await SecureStore.getItemAsync('gv-token'),
- * });
+ * Create a GoodVibes SDK instance from the Expo-specific entrypoint.
  */
 export { forSession } from './transport-realtime.js';
 
@@ -31,4 +20,4 @@ export {
   type ExpoSecureTokenStore,
   type ExpoSecureTokenStoreOptions,
   type ExpoSecureStoreAccessible,
-} from './_internal/platform/auth/expo-secure-token-store.js';
+} from './client-auth/expo-secure-token-store.js';

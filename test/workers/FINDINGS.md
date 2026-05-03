@@ -109,7 +109,7 @@ throw new ConfigurationError(
 **Status**: Available
 **Impact**: Positive
 
-Both are available in Workers without any polyfill. This means future token-crypto work (e.g. PKCE, HMAC request signing) will work without shims.
+Both are available in Workers without any polyfill. This means future token-crypto work (e.g. PKCE, HMAC request signing) will work without extra adapters.
 
 ---
 
@@ -140,7 +140,7 @@ All fetch primitives are native in Workers. The SDK's `transport-http` path uses
 
 ## Architecture Verdict
 
-`./web` is the correct Workers entry for Worker-hosted operator HTTP clients. The two transport-realtime paths (`viaSse`, `viaWebSocket`) are not Workers-compatible by design — they belong in the browser/RN client layer. Worker-hosted code should use `sdk.operator` (HTTP transport) for normal daemon interactions.
+`./web` is the correct Workers entry for Worker-hosted operator HTTP clients. The two transport-realtime paths (`viaSse`, `viaWebSocket`) are not Workers-ready by design; they belong in the browser/RN client layer. Worker-hosted code should use `sdk.operator` (HTTP transport) for normal daemon interactions.
 
 Use `./workers` only when deploying the GoodVibes Worker bridge for optional daemon batch route proxying, Cloudflare Queue tick/job-signal consumers, or scheduled `/api/batch/tick` calls.
 

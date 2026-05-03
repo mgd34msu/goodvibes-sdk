@@ -5,8 +5,9 @@ sbom.cdx.json
 .tmp/
 
 # Local GoodVibes daemon/session state and credentials. Keep project-local
-# experimentation state out of source control; durable docs and fixtures belong
-# in explicit repo paths instead.
+# experimentation state out of source control. Durable project vocabulary,
+# architecture decisions, patterns, and fixtures belong in explicit repo paths
+# such as docs/, test fixtures, or named JSON/Markdown artifacts.
 .goodvibes/
 
 # Verdaccio dry-run scratch dir

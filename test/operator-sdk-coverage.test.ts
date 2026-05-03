@@ -5,7 +5,7 @@
  * - client-core.ts line 63-65: splitArgs function
  * - client-core.ts lines 161-164: requireMethod throw when method not found
  * - client-core.ts lines 168-175: requireMethodRoute throw when no HTTP binding
- * - client-core.ts lines 192-346: listMethods, getMethod, invoke, stream + all shorthand methods
+ * - client-core.ts lines 192-346: listOperations, getOperation, invoke, stream + all shorthand methods
  * - client.ts line 57: validateResponses: false returns base client
  * - client.ts line 68: getSchemaRegistry
  * - client.ts lines 74-83: invoke with schema validation
@@ -35,31 +35,31 @@ function makeTransport(fetch: (input: string | URL | Request, init?: RequestInit
 // createOperatorRemoteClient — contract/manifest inspection
 // ---------------------------------------------------------------------------
 
-describe('createOperatorRemoteClient — listMethods / getMethod', () => {
-  test('listMethods returns all methods from contract', () => {
+describe('createOperatorRemoteClient — listOperations / getOperation', () => {
+  test('listOperations returns all methods from contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getOperatorContract();
     const client = createOperatorRemoteClient(transport, contract);
-    const methods = client.listMethods();
+    const methods = client.listOperations();
     expect(Array.isArray(methods)).toBe(true);
     expect(methods.length).toBeGreaterThan(0);
     expect(methods.some((m) => m.id === 'accounts.snapshot')).toBe(true);
   });
 
-  test('getMethod returns the matching method contract', () => {
+  test('getOperation returns the matching method contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getOperatorContract();
     const client = createOperatorRemoteClient(transport, contract);
-    const method = client.getMethod('accounts.snapshot');
+    const method = client.getOperation('accounts.snapshot');
     expect(method.id).toBe('accounts.snapshot');
   });
 
-  test('getMethod throws GoodVibesSdkError for unknown method id', () => {
+  test('getOperation throws GoodVibesSdkError for unknown method id', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getOperatorContract();
     const client = createOperatorRemoteClient(transport, contract);
-    expect(() => client.getMethod('does.not.exist')).toThrow(GoodVibesSdkError);
-    expect(() => client.getMethod('does.not.exist')).toThrow(/Unknown operator method/);
+    expect(() => client.getOperation('does.not.exist')).toThrow(GoodVibesSdkError);
+    expect(() => client.getOperation('does.not.exist')).toThrow(/Unknown operator method/);
   });
 
   test('transport and contract are exposed as properties', () => {
@@ -100,6 +100,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('sessions.get builds path from sessionId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -114,6 +115,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('sessions.messages.create builds path from sessionId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -128,6 +130,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('sessions.inputs.cancel builds path from sessionId + inputId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -143,6 +146,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('sessions.close builds path from sessionId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -157,6 +161,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('sessions.reopen builds path from sessionId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -171,6 +176,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('tasks.get builds path from taskId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -185,6 +191,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('tasks.cancel builds path from taskId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -199,6 +206,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('tasks.retry builds path from taskId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -213,6 +221,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('approvals.claim builds path from approvalId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -227,6 +236,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('approvals.approve builds path from approvalId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -241,6 +251,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('approvals.deny builds path from approvalId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -255,6 +266,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('approvals.cancel builds path from approvalId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -269,6 +281,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('providers.get builds path from providerId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -283,6 +296,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('providers.usage builds path from providerId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -297,6 +311,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
   test('control.methods.get builds path from methodId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
+      validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async (input, _init) => {
         calls.push(String(input));
@@ -335,13 +350,13 @@ describe('createOperatorSdk — validateResponses option', () => {
     expect(result).toMatchObject({ configuredCount: 0, issueCount: 0 });
   });
 
-  test('getMethod is accessible on OperatorSdk', () => {
+  test('getOperation is accessible on OperatorSdk', () => {
     const sdk = createOperatorSdk({
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async () => createJsonResponse({ ok: true }),
     });
-    expect(() => sdk.getMethod('accounts.snapshot')).not.toThrow();
-    const method = sdk.getMethod('accounts.snapshot');
+    expect(() => sdk.getOperation('accounts.snapshot')).not.toThrow();
+    const method = sdk.getOperation('accounts.snapshot');
     expect(method.id).toBe('accounts.snapshot');
   });
 });
@@ -356,7 +371,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
   function makeSrcClient(fetch: (input: string | URL | Request, init?: RequestInit) => Promise<Response>) {
     const transport = makeTransport(fetch);
     const contract = getOperatorContract();
-    return createOperatorRemoteClient(transport, contract);
+    return createOperatorRemoteClient(transport, contract, { validateResponses: false });
   }
 
   test('sessions.create invokes sessions.create route', async () => {
@@ -816,5 +831,4 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     expect(result).toBeDefined();
   });
 });
-
 

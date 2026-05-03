@@ -1,1 +1,867 @@
-export * from '../../_internal/platform/agents/wrfc-controller.js';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { AgentMessageBus } from './message-bus.js';
+import { type CompletionReport, type Constraint, type EngineerReport, type ReviewerReport } from './completion-report.js';
+import {
+  buildGateFailureTask,
+  buildFixTask,
+  buildReviewTask,
+  parseEngineerCompletionReport,
+  parseReviewerCompletionReport,
+} from './wrfc-reporting.js';
+import type { QualityGateResult, QueuedChain, WrfcChain, WrfcState } from './wrfc-types.js';
+import { WrfcWorkmap } from './wrfc-workmap.js';
+import { AgentWorktree } from './worktree.js';
+import { completePlanItemsForAgent } from './wrfc-plan-sync.js';
+import type { ConfigManager } from '../config/manager.js';
+import type { AgentRecord } from '../tools/agent/index.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
+import type { ExecutionPlanManager } from '../core/execution-plan.js';
+import type { AgentEvent, RuntimeEventBus } from '../runtime/events/index.js';
+import {
+  emitWorkflowChainFailed,
+  emitWorkflowFixAttempted,
+  emitWorkflowReviewCompleted,
+} from '../runtime/emitters/index.js';
+import {
+  getWrfcAutoCommit,
+  getWrfcMaxFixAttempts,
+  getWrfcScoreThreshold,
+  type AgentManagerLike,
+} from './wrfc-config.js';
+import {
+  buildEngineerConstraintAddendum,
+} from './wrfc-prompt-addenda.js';
+import {
+  completeWrfcOrchestrationNode,
+  createWrfcWorkflowContext,
+  emitWrfcAutoCommitted,
+  emitWrfcCascadeAbort,
+  emitWrfcChainCreated,
+  emitWrfcChainPassed,
+  emitWrfcConstraintsEnumerated,
+  emitWrfcGraphCreated,
+  emitWrfcStateChanged,
+  failWrfcOrchestrationNode,
+  startWrfcOrchestrationNode,
+} from './wrfc-runtime-events.js';
+import { runWrfcGateChecks } from './wrfc-gate-runtime.js';
+
+export { extractScoreFromText, extractPassedFromText, extractIssuesFromText } from './wrfc-reporting.js';
+
+const VALID_TRANSITIONS: Partial<Record<WrfcState, WrfcState[]>> = {
+  pending: ['engineering'],
+  engineering: ['reviewing', 'failed'],
+  reviewing: ['fixing', 'awaiting_gates', 'failed'],
+  fixing: ['reviewing', 'failed'],
+  awaiting_gates: ['gating', 'failed'],
+  gating: ['passed', 'failed', 'committing'],
+  committing: ['passed', 'failed'],
+};
+
+const MAX_ACTIVE_CHAINS = 6;
+const CHAIN_CLEANUP_DELAY_MS = 60_000;
+type WrfcWorktreeOps = Pick<AgentWorktree, 'merge' | 'cleanup'>;
+
+export class WrfcController {
+  private readonly chains = new Map<string, WrfcChain>();
+  private chainQueue: QueuedChain[] = [];
+  private unsubscribers: Array<() => void> = [];
+  private activeChainCount = 0;
+  private readonly pendingParentChainIds = new Map<string, string>();
+  /** Constraints to inherit when a gate-retry child chain is created via the pending path. */
+  private readonly pendingParentConstraints = new Map<string, Constraint[]>();
+  private readonly sessionId: string;
+  private readonly workmap: WrfcWorkmap;
+  private readonly projectRoot: string;
+  private runtimeBus: RuntimeEventBus;
+  private readonly messageBus: Pick<AgentMessageBus, 'registerAgent'>;
+  private planManager: Pick<ExecutionPlanManager, 'getActive' | 'updateItem'> | null = null;
+  private readonly agentManager: AgentManagerLike;
+  private readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
+  private readonly createWorktree: () => WrfcWorktreeOps;
+
+  constructor(
+    runtimeBus: RuntimeEventBus,
+    messageBus: Pick<AgentMessageBus, 'registerAgent'>,
+    deps: {
+      readonly agentManager: AgentManagerLike;
+      readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
+      readonly projectRoot: string;
+      readonly surfaceRoot?: string;
+      readonly createWorktree?: () => WrfcWorktreeOps;
+    },
+  ) {
+    this.runtimeBus = runtimeBus;
+    this.messageBus = messageBus;
+    this.agentManager = deps.agentManager;
+    this.configManager = deps.configManager;
+    this.projectRoot = deps.projectRoot;
+    this.createWorktree = deps.createWorktree ?? (() => new AgentWorktree(this.projectRoot));
+    this.sessionId = crypto.randomUUID().slice(0, 8);
+    this.workmap = new WrfcWorkmap(this.projectRoot, this.sessionId, { surfaceRoot: deps.surfaceRoot });
+    this.setupListeners();
+  }
+
+  createChain(engineerRecord: AgentRecord): WrfcChain {
+    logger.info('WrfcController.createChain: called', {
+      agentId: engineerRecord.id,
+      task: engineerRecord.task.slice(0, 60),
+      activeChainCount: this.activeChainCount,
+    });
+
+    const chain = this.createBaseChain(engineerRecord);
+    if (this.activeChainCount >= MAX_ACTIVE_CHAINS) {
+      this.chainQueue.push({ record: engineerRecord, queuedAt: Date.now() });
+      logger.debug('WrfcController.createChain: at cap, queued', {
+        chainId: chain.id,
+        agentId: engineerRecord.id,
+        activeCount: this.activeChainCount,
+        queueLength: this.chainQueue.length,
+      });
+      emitWrfcChainCreated(this.runtimeBus, this.sessionId, chain.id, chain.task);
+      return chain;
+    }
+
+    this.startEngineeringChain(chain, true);
+    logger.debug('WrfcController.createChain', { chainId: chain.id, agentId: engineerRecord.id });
+    return chain;
+  }
+
+  getSessionId(): string { return this.sessionId; }
+
+  getWorkmap(): WrfcWorkmap { return this.workmap; }
+
+  setPlanManager(planManager: Pick<ExecutionPlanManager, 'getActive' | 'updateItem'>): void {
+    this.planManager = planManager;
+  }
+
+  setRuntimeBus(runtimeBus: RuntimeEventBus): void {
+    for (const unsub of this.unsubscribers) unsub();
+    this.unsubscribers = [];
+    this.runtimeBus = runtimeBus;
+    this.setupListeners();
+  }
+
+  getChain(chainId: string): WrfcChain | null { return this.chains.get(chainId) ?? null; }
+
+  listChains(): WrfcChain[] { return Array.from(this.chains.values()); }
+
+  dispose(): void {
+    for (const unsub of this.unsubscribers) unsub();
+    this.unsubscribers = [];
+  }
+
+  private transition(chain: WrfcChain, to: WrfcState): void {
+    const allowed = VALID_TRANSITIONS[chain.state];
+    if (!allowed || !allowed.includes(to)) {
+      logger.error('WrfcController: illegal state transition', {
+        chainId: chain.id,
+        from: chain.state,
+        to,
+      });
+      throw new Error(`Illegal WRFC transition: ${chain.state} -> ${to} for chain ${chain.id}`);
+    }
+
+    const from = chain.state;
+    chain.state = to;
+    emitWrfcStateChanged(this.runtimeBus, this.sessionId, chain.id, from, to);
+    logger.debug('WrfcController.transition', { chainId: chain.id, from, to });
+  }
+
+  private setupListeners(): void {
+    const unsubComplete = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_COMPLETED' }>>(
+      'AGENT_COMPLETED',
+      ({ payload }) => {
+        this.onAgentComplete(payload.agentId).catch((error) => {
+          logger.error('WrfcController.onAgentComplete unhandled error', {
+            agentId: payload.agentId,
+            error: summarizeError(error),
+          });
+        });
+      },
+    );
+    const unsubError = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_FAILED' }>>(
+      'AGENT_FAILED',
+      ({ payload }) => {
+        this.onAgentFailed(payload.agentId, payload.error);
+      },
+    );
+    this.unsubscribers.push(unsubComplete, unsubError);
+  }
+
+  private async onAgentComplete(agentId: string): Promise<void> {
+    const chain = this.findChainByAgentId(agentId);
+    if (!chain) return;
+
+    const record = this.agentManager.getStatus(agentId);
+    const rawOutput = record?.fullOutput ?? '';
+
+    logger.debug('WrfcController.onAgentComplete', {
+      chainId: chain.id,
+      agentId,
+      state: chain.state,
+      outputLength: rawOutput.length,
+    });
+
+    if (chain.state === 'pending') {
+      chain.bufferedCompletion = { agentId, fullOutput: rawOutput };
+      logger.debug('WrfcController.onAgentComplete: chain pending, buffering completion', {
+        chainId: chain.id,
+        agentId,
+      });
+      return;
+    }
+
+    if (chain.state === 'engineering' || chain.state === 'fixing') {
+      const report = parseEngineerCompletionReport(rawOutput, record?.template);
+      this.handleEngineerCompletion(chain, agentId, report);
+    } else if (chain.state === 'reviewing') {
+      const review = parseReviewerCompletionReport(chain.id, rawOutput, getWrfcScoreThreshold(this.configManager));
+      chain.reviewerReport = review;
+      chain.reviewCycles += 1;
+      await this.processReview(chain, review);
+    }
+
+    if (this.planManager) {
+      completePlanItemsForAgent(agentId, this.planManager);
+    }
+
+    if (chain.state === 'gating' || chain.state === 'passed' || chain.state === 'committing') {
+      return;
+    }
+    await this.checkAndRunGatesForAll();
+  }
+
+  private onAgentFailed(agentId: string, errorMessage?: string): void {
+    const chain = this.findChainByAgentId(agentId);
+    if (!chain) return;
+    this.failChain(chain, errorMessage ?? `Agent ${agentId} failed`);
+  }
+
+  private startReview(chain: WrfcChain, report: CompletionReport): void {
+    this.transition(chain, 'reviewing');
+
+    // Prepend any synthetic issues from the controller (e.g. fixer constraint-continuity
+    // violations) to the review task body, then clear them so they fire only once.
+    let reviewTask = buildReviewTask(chain.id, report, getWrfcScoreThreshold(this.configManager), chain.constraints);
+    if (chain.syntheticIssues && chain.syntheticIssues.length > 0) {
+      const syntheticBlock = [
+        `## Synthetic issues from controller`,
+        ``,
+        ...chain.syntheticIssues.map((issue) => `- [${issue.severity.toUpperCase()}] ${issue.description}`),
+      ].join('\n');
+      reviewTask = syntheticBlock + '\n\n---\n\n' + reviewTask;
+      chain.syntheticIssues = [];
+    }
+
+    const reviewerRecord = this.spawnWrfcAgent(
+      chain,
+      'reviewer',
+      reviewTask,
+      true,
+    );
+
+    chain.reviewerAgentId = reviewerRecord.id;
+    chain.allAgentIds.push(reviewerRecord.id);
+    reviewerRecord.wrfcId = chain.id;
+    this.messageBus.registerAgent({
+      agentId: reviewerRecord.id,
+      role: 'reviewer',
+      wrfcId: chain.id,
+    });
+    chain.currentNodeId = startWrfcOrchestrationNode(
+      this.runtimeBus,
+      this.sessionId,
+      chain.id,
+      `review:${chain.reviewCycles + 1}`,
+      'reviewer',
+      'Reviewer assessment',
+      reviewerRecord.id,
+    );
+
+    logger.debug('WrfcController.startReview', {
+      chainId: chain.id,
+      reviewerAgentId: reviewerRecord.id,
+    });
+  }
+
+  private async processReview(chain: WrfcChain, review: ReviewerReport): Promise<void> {
+    const threshold = getWrfcScoreThreshold(this.configManager);
+
+    const allFindings = review.constraintFindings ?? [];
+    const unsatisfied = allFindings.filter((f) => !f.satisfied);
+    const constraintsSatisfied = allFindings.filter((f) => f.satisfied).length;
+    const constraintsTotal = allFindings.length;
+    const constraintFailure = unsatisfied.length > 0;
+    const passed = review.score >= threshold && !constraintFailure;
+
+    this.completeCurrentNode(chain, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
+
+    emitWorkflowReviewCompleted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
+      chainId: chain.id,
+      score: review.score,
+      passed,
+      ...(chain.constraints.length > 0
+        ? {
+            constraintsSatisfied,
+            constraintsTotal,
+            unsatisfiedConstraintIds: unsatisfied.map((f) => f.constraintId),
+          }
+        : {}),
+    });
+
+    this.workmap.append({
+      ts: new Date().toISOString(),
+      wrfcId: chain.id,
+      event: 'review_complete',
+      agentId: chain.reviewerAgentId,
+      score: review.score,
+      passed: review.score >= threshold,
+      issues: review.issues?.slice(0, 10).map((issue) => ({
+        severity: issue.severity,
+        description: issue.description,
+        file: issue.file,
+      })),
+    });
+
+    logger.debug('WrfcController.processReview', {
+      chainId: chain.id,
+      score: review.score,
+      threshold,
+      fixAttempts: chain.fixAttempts,
+      constraintFailure,
+      unsatisfiedCount: unsatisfied.length,
+    });
+
+    chain.reviewScores.push(review.score);
+    if (passed) {
+      this.transition(chain, 'awaiting_gates');
+      await this.checkAndRunGatesForAll();
+      return;
+    }
+
+    const scores = chain.reviewScores;
+    if (scores.length >= 3) {
+      const initial = scores[0];
+      const lastTwo = scores.slice(-2);
+      if (lastTwo[0] < initial && lastTwo[1] < initial) {
+        emitWrfcCascadeAbort(
+          this.runtimeBus,
+          this.sessionId,
+          chain.id,
+          `Score regression warning: initial ${initial}/10, last two ${lastTwo[0]}/10, ${lastTwo[1]}/10 — both below initial. Fix quality may be degrading.`,
+        );
+      }
+    }
+
+    const maxFixAttempts = getWrfcMaxFixAttempts(this.configManager);
+    if (chain.fixAttempts >= maxFixAttempts) {
+      this.failChain(
+        chain,
+        `Score ${review.score}/10 below threshold ${threshold}/10 after ${chain.fixAttempts} fix attempt${chain.fixAttempts !== 1 ? 's' : ''} — below threshold`,
+      );
+      return;
+    }
+
+    this.startFix(chain, review);
+  }
+
+  private startFix(chain: WrfcChain, review: ReviewerReport): void {
+    chain.fixAttempts += 1;
+    this.transition(chain, 'fixing');
+
+    const maxAttempts = getWrfcMaxFixAttempts(this.configManager);
+    emitWorkflowFixAttempted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
+      chainId: chain.id,
+      attempt: chain.fixAttempts,
+      maxAttempts,
+    });
+
+    const fixerRecord = this.spawnWrfcAgent(
+      chain,
+      'engineer',
+      buildFixTask(
+        chain.id,
+        review,
+        getWrfcScoreThreshold(this.configManager),
+        chain.fixAttempts,
+        chain.constraints,
+        review.constraintFindings ?? [],
+      ),
+      true,
+    );
+
+    chain.fixerAgentId = fixerRecord.id;
+    chain.allAgentIds.push(fixerRecord.id);
+    fixerRecord.wrfcId = chain.id;
+    this.messageBus.registerAgent({
+      agentId: fixerRecord.id,
+      role: 'fixer',
+      wrfcId: chain.id,
+    });
+    chain.currentNodeId = startWrfcOrchestrationNode(
+      this.runtimeBus,
+      this.sessionId,
+      chain.id,
+      `fix:${chain.fixAttempts}`,
+      'fixer',
+      `Fix attempt ${chain.fixAttempts}`,
+      fixerRecord.id,
+    );
+
+    this.workmap.append({
+      ts: new Date().toISOString(),
+      wrfcId: chain.id,
+      event: 'fix_started',
+      agentId: fixerRecord.id,
+      attempt: chain.fixAttempts,
+    });
+
+    logger.debug('WrfcController.startFix', {
+      chainId: chain.id,
+      fixerAgentId: fixerRecord.id,
+      attempt: chain.fixAttempts,
+    });
+  }
+
+  private async runGates(chain: WrfcChain): Promise<QualityGateResult[]> {
+    this.transition(chain, 'gating');
+    chain.currentNodeId = startWrfcOrchestrationNode(
+      this.runtimeBus,
+      this.sessionId,
+      chain.id,
+      `gate:${chain.reviewCycles}:${chain.fixAttempts}`,
+      'verifier',
+      'Quality gates',
+    );
+
+    return runWrfcGateChecks({
+      configManager: this.configManager,
+      projectRoot: this.projectRoot,
+      runtimeBus: this.runtimeBus,
+      sessionId: this.sessionId,
+      chainId: chain.id,
+      onResult: (results) => {
+        chain.gateResults = results.slice();
+      },
+    });
+  }
+
+  private async processGateResults(chain: WrfcChain, results: QualityGateResult[]): Promise<void> {
+    if (!chain.currentNodeId?.includes(':gate:')) {
+      chain.currentNodeId = startWrfcOrchestrationNode(
+        this.runtimeBus,
+        this.sessionId,
+        chain.id,
+        `gate:${chain.reviewCycles}:${chain.fixAttempts}`,
+        'verifier',
+        'Quality gates',
+      );
+    }
+
+    const allPassed = results.length === 0 || results.every((result) => result.passed);
+    const autoCommit = getWrfcAutoCommit(this.configManager);
+    for (const result of results) {
+      this.workmap.append({
+        ts: new Date().toISOString(),
+        wrfcId: chain.id,
+        event: 'gate_result',
+        gate: result.gate,
+        passed: result.passed,
+        gateOutput: result.output.slice(0, 200),
+      });
+    }
+    this.completeCurrentNode(
+      chain,
+      allPassed
+        ? 'All quality gates passed'
+        : `${results.filter((result) => !result.passed).length} quality gate(s) failed`,
+    );
+
+    if (allPassed) {
+      this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_passed' });
+      chain.gatesPassed = true;
+      if (autoCommit) {
+        await this.autoCommit(chain);
+      } else {
+        this.completeChainAsPassed(chain);
+      }
+      return;
+    }
+
+    const failedGates = results.filter((result) => !result.passed);
+    const fingerprint = failedGates.map((result) => `${result.gate}:${result.output.slice(0, 200)}`).join('|');
+    const maxGateRetries = getWrfcMaxFixAttempts(this.configManager);
+    chain.gateFailureFingerprint = fingerprint;
+    this.completeChainAsPassed(chain);
+
+    if (chain.gateRetryDepth >= maxGateRetries) {
+      logger.error('WrfcController.processGateResults: gate retry limit reached, manual intervention required', {
+        chainId: chain.id,
+        gateRetryDepth: chain.gateRetryDepth,
+        maxGateRetries,
+      });
+      emitWrfcCascadeAbort(
+        this.runtimeBus,
+        this.sessionId,
+        chain.id,
+        `Gate failures exceeded max retries (${chain.gateRetryDepth}/${maxGateRetries}). Manual intervention required.`,
+      );
+      return;
+    }
+
+    const followUpTask = buildGateFailureTask(chain.id, chain.task, failedGates);
+    const followUpRecord = this.spawnWrfcAgent(chain, 'engineer', followUpTask, false);
+    const followUpChain = this.findChainByAgentId(followUpRecord.id);
+    if (followUpChain) {
+      followUpChain.parentChainId = chain.id;
+      // Inherit constraints from the parent chain as source: 'inherited'.
+      // Phase 4 limitation: the child engineer's returned constraints are ignored
+      // (constraintsEnumerated starts true), so the child cannot ADD new constraints
+      // from a different prompt. The inherited list is treated as authoritative.
+      if (chain.constraints.length > 0) {
+        followUpChain.constraints = chain.constraints.map((c) => ({
+          id: c.id,
+          text: c.text,
+          source: 'inherited' as const,
+        }));
+        followUpChain.constraintsEnumerated = true;
+      }
+    } else {
+      this.pendingParentChainIds.set(followUpRecord.id, chain.id);
+      // Store parent constraints for inheritance when the child chain is registered later.
+      if (chain.constraints.length > 0) {
+        this.pendingParentConstraints.set(followUpRecord.id, chain.constraints.map((c) => ({
+          id: c.id,
+          text: c.text,
+          source: 'inherited' as const,
+        })));
+      }
+    }
+
+    logger.debug('WrfcController.processGateResults: gate failure — spawned follow-up agent', {
+      parentChainId: chain.id,
+      followUpAgentId: followUpRecord.id,
+    });
+  }
+
+  private scheduleChainCleanup(chain: WrfcChain): void {
+    const timer = setTimeout(() => {
+      if (chain.state === 'passed' || chain.state === 'failed') {
+        this.chains.delete(chain.id);
+      }
+    }, CHAIN_CLEANUP_DELAY_MS);
+    timer.unref?.();
+  }
+
+  private async checkAndRunGatesForAll(): Promise<void> {
+    const allChains = Array.from(this.chains.values()).filter(
+      (chain) => chain.state !== 'passed' && chain.state !== 'failed',
+    );
+    const activeWorkChains = allChains.filter((chain) => (
+      chain.state === 'pending'
+      || chain.state === 'engineering'
+      || chain.state === 'reviewing'
+      || chain.state === 'fixing'
+    ));
+
+    if (activeWorkChains.length > 0) {
+      logger.debug('WrfcController.checkAndRunGatesForAll: waiting for active chains', {
+        activeWork: activeWorkChains.length,
+        awaitingGates: allChains.filter((chain) => chain.state === 'awaiting_gates').length,
+      });
+      return;
+    }
+
+    const readyChains = allChains.filter((chain) => chain.state === 'awaiting_gates');
+    if (readyChains.length === 0) return;
+
+    logger.debug('WrfcController.checkAndRunGatesForAll: all chains ready, running gates', {
+      readyCount: readyChains.length,
+    });
+
+    const gateRunner = readyChains[0];
+    const results = await this.runGates(gateRunner);
+    for (const chain of readyChains) {
+      if (chain.id !== gateRunner.id) {
+        this.transition(chain, 'gating');
+        chain.gateResults = results;
+      }
+      await this.processGateResults(chain, results);
+    }
+  }
+
+  private async autoCommit(chain: WrfcChain): Promise<void> {
+    this.transition(chain, 'committing');
+
+    const agentId = chain.allAgentIds.length > 0
+      ? chain.allAgentIds[chain.allAgentIds.length - 1]
+      : (chain.fixerAgentId ?? chain.engineerAgentId);
+    if (!agentId) {
+      this.failChain(chain, 'autoCommit: no agent ID found on chain');
+      return;
+    }
+
+    if (!existsSync(join(this.projectRoot, '.git'))) {
+      logger.debug('WrfcController.autoCommit: not a git repo, skipping commit', { chainId: chain.id });
+      this.completeChainAsPassed(chain);
+      return;
+    }
+
+    const worktree = this.createWorktree();
+    try {
+      const merged = await worktree.merge(agentId);
+      emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id);
+      this.completeChainAsPassed(chain);
+      logger.debug('WrfcController.autoCommit: success', { chainId: chain.id, agentId, merged });
+    } catch (error) {
+      const reason = summarizeError(error);
+      logger.error('WrfcController.autoCommit: failed', { chainId: chain.id, error: reason });
+      this.failChain(chain, `autoCommit failed: ${reason}`);
+    } finally {
+      for (const id of chain.allAgentIds) {
+        worktree.cleanup(id).catch((error) => {
+          logger.debug('WrfcController.autoCommit: cleanup error (non-fatal)', {
+            agentId: id,
+            error: summarizeError(error),
+          });
+        });
+      }
+    }
+  }
+
+  private failChain(chain: WrfcChain, reason: string): void {
+    if (chain.state === 'pending') {
+      this.chainQueue = this.chainQueue.filter((queued) => queued.record.id !== chain.engineerAgentId);
+    }
+
+    const wasActive = chain.state !== 'passed' && chain.state !== 'failed' && chain.state !== 'pending';
+    this.failCurrentNode(chain, reason);
+    try {
+      this.transition(chain, 'failed');
+    } catch {
+      chain.state = 'failed';
+    }
+
+    if (wasActive) {
+      this.activeChainCount = Math.max(0, this.activeChainCount - 1);
+    }
+
+    chain.error = reason;
+    chain.completedAt = Date.now();
+    this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_failed', reason });
+    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason });
+
+    logger.error('WrfcController.failChain', { chainId: chain.id, reason });
+    this.scheduleChainCleanup(chain);
+    this.safeDequeueNext();
+  }
+
+  private async dequeueNext(): Promise<void> {
+    if (this.chainQueue.length === 0 || this.activeChainCount >= MAX_ACTIVE_CHAINS) return;
+
+    const queued = this.chainQueue.shift()!;
+    const chain = this.chains.get(queued.record.wrfcId ?? '');
+    if (!chain) {
+      logger.warn('WrfcController.dequeueNext: queued chain not found, discarding', {
+        agentId: queued.record.id,
+      });
+      return;
+    }
+
+    logger.debug('WrfcController.dequeueNext: starting queued chain', {
+      chainId: chain.id,
+      agentId: queued.record.id,
+      waitedMs: Date.now() - queued.queuedAt,
+    });
+    this.startEngineeringChain(chain, false);
+
+    if (!chain.bufferedCompletion) return;
+    const buffered = chain.bufferedCompletion;
+    chain.bufferedCompletion = undefined;
+    await this.onAgentComplete(buffered.agentId);
+  }
+
+  private findChainByAgentId(agentId: string): WrfcChain | null {
+    for (const chain of this.chains.values()) {
+      if (chain.allAgentIds.includes(agentId)) return chain;
+    }
+    return null;
+  }
+
+  private generateWrfcId(): string { return `wrfc-${crypto.randomUUID().slice(0, 8)}`; }
+
+  private completeCurrentNode(chain: WrfcChain, summary?: string): void {
+    if (!chain.currentNodeId) return;
+    completeWrfcOrchestrationNode(this.runtimeBus, this.sessionId, chain.id, chain.currentNodeId, summary);
+    chain.currentNodeId = undefined;
+  }
+
+  private failCurrentNode(chain: WrfcChain, error: string): void {
+    if (!chain.currentNodeId) return;
+    failWrfcOrchestrationNode(this.runtimeBus, this.sessionId, chain.id, chain.currentNodeId, error);
+    chain.currentNodeId = undefined;
+  }
+
+  private createBaseChain(engineerRecord: AgentRecord): WrfcChain {
+    // Inject the engineer constraint addendum before the runner reads the system prompt.
+    // createBaseChain is called synchronously inside manager.spawn() before
+    // executor.runAgent(record), so the field is visible to the runner.
+    engineerRecord.systemPromptAddendum = '\n\n---\n\n' + buildEngineerConstraintAddendum();
+
+    const chain: WrfcChain = {
+      id: this.generateWrfcId(),
+      state: 'pending',
+      task: engineerRecord.task,
+      engineerAgentId: engineerRecord.id,
+      allAgentIds: [engineerRecord.id],
+      fixAttempts: 0,
+      reviewCycles: 0,
+      gateRetryDepth: 0,
+      reviewScores: [],
+      constraints: [],
+      constraintsEnumerated: false,
+      createdAt: Date.now(),
+    };
+    this.chains.set(chain.id, chain);
+    emitWrfcGraphCreated(this.runtimeBus, this.sessionId, chain.id, `WRFC: ${engineerRecord.task}`);
+    engineerRecord.wrfcId = chain.id;
+    this.messageBus.registerAgent({
+      agentId: engineerRecord.id,
+      template: engineerRecord.template,
+      wrfcId: chain.id,
+    });
+    this.attachPendingParentChain(chain, engineerRecord.id);
+    return chain;
+  }
+
+  private attachPendingParentChain(chain: WrfcChain, agentId: string): void {
+    const pendingParentId = this.pendingParentChainIds.get(agentId);
+    if (!pendingParentId) return;
+    chain.parentChainId = pendingParentId;
+    const parent = this.chains.get(pendingParentId);
+    if (parent) {
+      chain.gateRetryDepth = parent.gateRetryDepth + (parent.gateFailureFingerprint ? 1 : 0);
+    }
+    this.pendingParentChainIds.delete(agentId);
+
+    // Inherit constraints from parent when they were queued via the pending path.
+    // Phase 4 limitation: constraintsEnumerated is set true so the child engineer's
+    // returned constraints are ignored — the inherited list is authoritative.
+    const inherited = this.pendingParentConstraints.get(agentId);
+    if (inherited && inherited.length > 0) {
+      chain.constraints = inherited;
+      chain.constraintsEnumerated = true;
+    }
+    this.pendingParentConstraints.delete(agentId);
+  }
+
+  private startEngineeringChain(chain: WrfcChain, emitCreated: boolean): void {
+    this.activeChainCount += 1;
+    this.transition(chain, 'engineering');
+    chain.currentNodeId = startWrfcOrchestrationNode(
+      this.runtimeBus,
+      this.sessionId,
+      chain.id,
+      `engineer:${chain.fixAttempts}`,
+      'engineer',
+      'Engineer implementation',
+      chain.engineerAgentId,
+    );
+    if (emitCreated) {
+      emitWrfcChainCreated(this.runtimeBus, this.sessionId, chain.id, chain.task);
+    }
+  }
+
+  private handleEngineerCompletion(chain: WrfcChain, agentId: string, report: CompletionReport): void {
+    this.completeCurrentNode(chain, report.summary);
+    if (chain.state === 'engineering') {
+      chain.engineerReport = report;
+      this.workmap.append({
+        ts: new Date().toISOString(),
+        wrfcId: chain.id,
+        event: 'engineer_complete',
+        agentId,
+        task: chain.task,
+      });
+    }
+
+    // Capture constraints from the engineer report and emit the enumeration event.
+    // Only emit once per chain — the initial engineer completion, not fixer re-runs.
+    //
+    // Note on narrowing: EngineerReport.archetype is the literal 'engineer', but
+    // GenericReport.archetype is a wide `string`. A bare `report.archetype === 'engineer'`
+    // check does NOT narrow away GenericReport under strict TS because 'engineer'
+    // is assignable to `string`. We use a type predicate to force the narrow.
+    const isEngineerReportShape = (r: CompletionReport): r is EngineerReport =>
+      r.archetype === 'engineer';
+
+    if (!chain.constraintsEnumerated) {
+      chain.constraints = isEngineerReportShape(report) ? (report.constraints ?? []) : [];
+      chain.constraintsEnumerated = true;
+      emitWrfcConstraintsEnumerated(this.runtimeBus, this.sessionId, chain.id, chain.constraints);
+    } else {
+      // Fixer continuity validation: verify the fixer returned the same constraint id-set.
+      // If it diverged, inject a synthetic critical issue for the next review pass.
+      const fixerConstraints: Constraint[] = isEngineerReportShape(report) ? (report.constraints ?? []) : [];
+      const expectedIds = new Set(chain.constraints.map((c) => c.id));
+      const actualIds = new Set(fixerConstraints.map((c) => c.id));
+      const missing = [...expectedIds].filter((id) => !actualIds.has(id));
+      const extra = [...actualIds].filter((id) => !expectedIds.has(id));
+      if (missing.length > 0 || extra.length > 0) {
+        const description = `Fixer regressed constraint continuity: missing=[${missing.join(',')}] extra=[${extra.join(',')}]`;
+        logger.warn('WrfcController: fixer constraint-continuity violation', {
+          chainId: chain.id,
+          missing,
+          extra,
+        });
+        chain.syntheticIssues ??= [];
+        chain.syntheticIssues.push({ severity: 'critical', description });
+      }
+      // The authoritative constraint list is NOT overwritten — chain.constraints remains the
+      // original enumeration from the initial engineer turn.
+    }
+
+    this.startReview(chain, report);
+  }
+
+  private spawnWrfcAgent(
+    chain: WrfcChain,
+    template: 'engineer' | 'reviewer',
+    task: string,
+    dangerouslyDisableWrfc: boolean,
+  ): AgentRecord {
+    const sourceAgent = [chain.fixerAgentId, chain.engineerAgentId]
+      .filter((value): value is string => typeof value === 'string')
+      .map((agentId) => this.agentManager.getStatus(agentId))
+      .find((record): record is AgentRecord => record != null) ?? null;
+    return this.agentManager.spawn({
+      mode: 'spawn',
+      task,
+      template,
+      ...(sourceAgent?.model ? { model: sourceAgent.model } : {}),
+      ...(sourceAgent?.provider ? { provider: sourceAgent.provider } : {}),
+      ...(sourceAgent?.fallbackModels?.length ? { fallbackModels: [...sourceAgent.fallbackModels] } : {}),
+      ...(sourceAgent?.routing ? { routing: sourceAgent.routing } : {}),
+      ...(sourceAgent?.reasoningEffort ? { reasoningEffort: sourceAgent.reasoningEffort } : {}),
+      ...(dangerouslyDisableWrfc ? { dangerously_disable_wrfc: true } : {}),
+    });
+  }
+
+  private completeChainAsPassed(chain: WrfcChain): void {
+    this.activeChainCount = Math.max(0, this.activeChainCount - 1);
+    this.transition(chain, 'passed');
+    chain.completedAt = Date.now();
+    emitWrfcChainPassed(this.runtimeBus, this.sessionId, chain.id);
+    this.scheduleChainCleanup(chain);
+    this.safeDequeueNext();
+  }
+
+  private safeDequeueNext(): void {
+    this.dequeueNext().catch((error) => {
+      logger.error('WrfcController.dequeueNext unhandled error', { error: summarizeError(error) });
+    });
+  }
+}

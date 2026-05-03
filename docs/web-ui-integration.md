@@ -4,7 +4,8 @@ This is the **companion surface** for web UI applications (browser runtime). See
 
 Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
 
-Use `@pellux/goodvibes-sdk/web` for web UI applications. The `/web` entry point is an alias for `/browser` — they expose the same companion surface.
+Use `@pellux/goodvibes-sdk/web` for web UI applications. It exposes the
+companion-safe browser runtime surface with web UI defaults.
 
 ```ts
 import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
@@ -57,8 +58,11 @@ try {
       case 'network':
         // transport failure — reconnect SSE/WS or retry
         break;
-      case 'server':
-        // daemon returned 5xx — log and degrade gracefully
+      case 'service':
+        // daemon or upstream service returned 5xx — log and degrade gracefully
+        break;
+      case 'protocol':
+        // SDK/client and daemon disagreed about the wire contract
         break;
       default:
         throw err;

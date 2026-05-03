@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { SessionManager } from '../packages/sdk/src/_internal/platform/auth/session-manager.js';
-import { TokenStore } from '../packages/sdk/src/_internal/platform/auth/token-store.js';
-import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
+import { SessionManager } from '../packages/sdk/src/client-auth/session-manager.js';
+import { TokenStore } from '../packages/sdk/src/client-auth/token-store.js';
+import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
 
 function makeRawStore(initial: string | null = null) {
   let current = initial;

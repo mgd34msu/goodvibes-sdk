@@ -8,16 +8,16 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { dispatchProviderRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
-import type { ProviderRouteContext } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
-import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.js';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
-import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
-import type { ModelDefinition } from '../packages/sdk/src/_internal/platform/providers/registry-types.js';
+import { dispatchProviderRoutes } from '../packages/sdk/src/platform/daemon/http/provider-routes.js';
+import type { ProviderRouteContext } from '../packages/sdk/src/platform/daemon/http/provider-routes.js';
+import { DaemonHttpRouter } from '../packages/sdk/src/platform/daemon/http/router.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import type { ModelDefinition } from '../packages/sdk/src/platform/providers/registry-types.js';
 
 // ---------------------------------------------------------------------------
-// Stubs (minimal — mirrors provider-routes.test.ts pattern)
+// Stubs (minimal — matches provider-routes.test.ts pattern)
 // ---------------------------------------------------------------------------
 
 function makeModel(provider: string, id: string): ModelDefinition {

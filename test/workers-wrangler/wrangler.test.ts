@@ -168,7 +168,7 @@ async function get(path: string): Promise<{ status: number; body: unknown }> {
 }
 
 // ---------------------------------------------------------------------------
-// Tests — mirror the Miniflare harness assertions
+// Tests — match the Miniflare harness assertions
 // ---------------------------------------------------------------------------
 
 describe('Workers wrangler: smoke', () => {
@@ -225,8 +225,8 @@ describe('Workers wrangler: transport-http round-trip', () => {
     expect(b.ok).toBe(true);
     expect(b.result).toBeNull();
 
-    const validKinds = ['auth', 'config', 'contract', 'network', 'not-found', 'rate-limit', 'server', 'validation', 'unknown'];
-    expect(b.kind).toBe('server');
+    const validKinds = ['auth', 'config', 'contract', 'network', 'not-found', 'protocol', 'rate-limit', 'service', 'internal', 'tool', 'validation', 'unknown'];
+    expect(b.kind).toBe('service');
     expect(validKinds).toContain(b.kind as string);
     expect(typeof b.ctor).toBe('string');
     expect((b.ctor as string).length).toBeGreaterThan(0);

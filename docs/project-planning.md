@@ -7,9 +7,9 @@ resume, or drive planning conversations.
 
 Source:
 
-- `packages/sdk/src/_internal/platform/knowledge/project-planning/`
-- `packages/sdk/src/_internal/platform/daemon/http/project-planning-routes.ts`
-- `packages/sdk/src/_internal/platform/control-plane/method-catalog-knowledge.ts`
+- `packages/sdk/src/platform/knowledge/project-planning/`
+- `packages/sdk/src/platform/daemon/http/project-planning-routes.ts`
+- `packages/sdk/src/platform/control-plane/method-catalog-knowledge.ts`
 
 ## Boundary
 

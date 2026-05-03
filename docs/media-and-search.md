@@ -5,11 +5,11 @@ features through the daemon control plane and SDK platform modules.
 
 Sources:
 
-- `packages/sdk/src/_internal/platform/artifacts/`
-- `packages/sdk/src/_internal/platform/media/`
-- `packages/sdk/src/_internal/platform/multimodal/`
-- `packages/sdk/src/_internal/platform/voice/`
-- `packages/sdk/src/_internal/platform/web-search/`
+- `packages/sdk/src/platform/artifacts/`
+- `packages/sdk/src/platform/media/`
+- `packages/sdk/src/platform/multimodal/`
+- `packages/sdk/src/platform/voice/`
+- `packages/sdk/src/platform/web-search/`
 
 ## Artifacts
 

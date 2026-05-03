@@ -1,3 +1,6 @@
+/**
+ * Create a React Native client with host-provided token storage.
+ */
 import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
 
 const sdk = createReactNativeGoodVibesSdk({
@@ -12,6 +15,7 @@ const unsubscribe = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (ev
   console.log('agent completed', event);
 });
 
-setTimeout(() => {
+const unsubscribeTimer = setTimeout(() => {
   unsubscribe();
 }, 60_000);
+unsubscribeTimer.unref?.();

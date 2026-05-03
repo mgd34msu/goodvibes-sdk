@@ -20,6 +20,60 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.30.0] - 2026-05-02
+
+### Breaking
+- The SDK source mirror system has been removed. Sibling packages such as
+  `@pellux/goodvibes-contracts`, `@pellux/goodvibes-transport-http`,
+  `@pellux/goodvibes-peer-sdk`, and `@pellux/goodvibes-operator-sdk` are now
+  the source of truth and `@pellux/goodvibes-sdk` re-exports them through
+  deliberate facade entrypoints.
+- Arbitrary `@pellux/goodvibes-sdk/platform/*` wildcard imports are no longer
+  public API. Use the explicit package exports documented for v0.30.0.
+
+### Added
+- `bun run contracts:check` replaces the old mirror-oriented `sync:check`
+  command and checks generated contract artifacts only. It does not check or
+  regenerate SDK mirror source because mirror source no longer exists.
+- v0.30.0 documentation now describes the facade package, source-of-truth
+  sub-packages, explicit exports, runtime surfaces, base knowledge refinement,
+  generated pages, and Home Graph as an extension.
+- CI now rejects ordinary skipped/todo tests and folds lint-style gates into
+  the validation path.
+
+### Fixed
+- Deleted the stale `packages/transport-direct` workspace artifacts; the public
+  SDK subpath now remains only as a facade over `transport-core`.
+- Home Graph generated-page refresh now batches graph writes, skips missing
+  extraction text explicitly, and indexes page source relationships before
+  rendering device passports.
+- WebSocket realtime errors now preserve close/error event fields and outbound
+  queue overflow uses a typed transport error.
+- Peer/operator clients share contract input merging, reject excess helper
+  arguments, expose disposal hooks, and derive available Zod response schemas
+  from contract schema exports.
+- The HTTP contract response validator now checks common JSON Schema `format`
+  constraints.
+- Retryable HTTP status codes now use the canonical
+  `@pellux/goodvibes-errors` list everywhere, so SDK platform helpers,
+  transport retry policy, and structured HTTP errors agree on 408, 429, 500,
+  502, 503, and 504.
+- CI no longer runs dead `_internal` mirror deletion guards. The old
+  `mirror-drift` job is replaced with a contract-artifact check that matches
+  the current source-of-truth architecture.
+- Large semantic and Home Graph route tests were split into focused files with
+  shared fixtures.
+
+### Migration
+- Remove any workflow or local command that calls `bun run sync:check`,
+  `scripts/sync-check.ts`, `scripts/sync-sdk-internals.ts`, or
+  `bun run sync --scope=...`; those tools were deleted or renamed with the
+  mirror system.
+- Replace old deep imports into SDK mirror or platform wildcard paths with
+  explicit v0.30.0 exports.
+
+---
+
 ## [0.28.22] - 2026-05-02
 
 ### Breaking

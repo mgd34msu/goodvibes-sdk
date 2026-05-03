@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 
 export type ArtifactUploadFieldMap = Record<string, unknown>;
 
@@ -42,6 +43,23 @@ interface UploadFileLike {
 const JSON_FIELD_NAMES = new Set(['metadata', 'target', 'options']);
 const MAX_MULTIPART_FIELD_BYTES = 1024 * 1024;
 const MAX_MULTIPART_BODY_OVERHEAD_BYTES = MAX_MULTIPART_FIELD_BYTES;
+
+function artifactUploadError(message: string, options: { readonly status?: number; readonly code?: string } = {}): GoodVibesSdkError {
+  return new GoodVibesSdkError(message, {
+    category: 'bad_request',
+    source: 'runtime',
+    operation: 'daemon.artifactUpload',
+    status: options.status,
+    code: options.code ?? 'ARTIFACT_UPLOAD_INVALID_REQUEST',
+  });
+}
+
+function artifactSizeError(maxBytes: number): GoodVibesSdkError {
+  return artifactUploadError(`Artifact exceeds the ${maxBytes}-byte limit.`, {
+    status: 413,
+    code: 'ARTIFACT_UPLOAD_TOO_LARGE',
+  });
+}
 
 export function isJsonContentType(contentType: string | null): boolean {
   const lower = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
@@ -89,7 +107,7 @@ function parseJsonField(value: string, fieldName: string): unknown {
     return JSON.parse(value) as unknown;
   } catch (error) {
     void error;
-    throw new Error(`Invalid JSON in multipart field ${fieldName}.`);
+    throw artifactUploadError(`Invalid JSON in multipart field ${fieldName}.`);
   }
 }
 
@@ -326,15 +344,15 @@ function parseMultipartPartHeaders(headerText: string): MultipartPartHeaders {
 
 async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promise<MultipartUploadSpool> {
   const boundary = multipartBoundary(req.headers.get('content-type') ?? '');
-  if (!boundary) throw new Error('Multipart upload is missing a boundary.');
-  if (!req.body) throw new Error('Multipart upload requires a request body.');
+  if (!boundary) throw artifactUploadError('Multipart upload is missing a boundary.');
+  if (!req.body) throw artifactUploadError('Multipart upload requires a request body.');
   const contentLength = readContentLength(req);
   if (
     typeof maxFileBytes === 'number'
     && typeof contentLength === 'number'
     && contentLength > maxFileBytes + MAX_MULTIPART_BODY_OVERHEAD_BYTES
   ) {
-    throw new Error(`Artifact exceeds the ${maxFileBytes}-byte limit.`);
+    throw artifactSizeError(maxFileBytes);
   }
 
   const tempDir = await mkdtemp(join(tmpdir(), 'goodvibes-upload-'));
@@ -359,7 +377,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
 
   const consumeBoundarySuffix = async (): Promise<BoundaryState> => {
     while (buffer.length < 2) {
-      if (!await readMore()) throw new Error('Unexpected end of multipart body.');
+      if (!await readMore()) throw artifactUploadError('Unexpected end of multipart body.');
     }
     if (buffer.subarray(0, 2).toString() === '--') {
       buffer = buffer.subarray(2);
@@ -369,7 +387,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
       buffer = buffer.subarray(2);
       return 'next';
     }
-    throw new Error('Invalid multipart boundary terminator.');
+    throw artifactUploadError('Invalid multipart boundary terminator.');
   };
 
   const consumeInitialBoundary = async (): Promise<BoundaryState> => {
@@ -379,7 +397,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
         buffer = buffer.subarray(index + firstBoundary.length);
         return consumeBoundarySuffix();
       }
-      if (!await readMore()) throw new Error('Invalid multipart upload.');
+      if (!await readMore()) throw artifactUploadError('Invalid multipart upload.');
       const readIndex = buffer.indexOf(firstBoundary);
       if (readIndex >= 0) {
         buffer = buffer.subarray(readIndex + firstBoundary.length);
@@ -399,8 +417,8 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
         buffer = buffer.subarray(index + headerSeparator.length);
         return parseMultipartPartHeaders(headerText);
       }
-      if (!await readMore()) throw new Error('Unexpected end of multipart headers.');
-      if (buffer.length > MAX_MULTIPART_FIELD_BYTES) throw new Error('Multipart part headers are too large.');
+      if (!await readMore()) throw artifactUploadError('Unexpected end of multipart headers.');
+      if (buffer.length > MAX_MULTIPART_FIELD_BYTES) throw artifactUploadError('Multipart part headers are too large.');
     }
   };
 
@@ -417,7 +435,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
         await onChunk(buffer.subarray(0, buffer.length - keepBytes));
         buffer = buffer.subarray(buffer.length - keepBytes);
       }
-      if (!await readMore()) throw new Error('Unexpected end of multipart part.');
+      if (!await readMore()) throw artifactUploadError('Unexpected end of multipart part.');
     }
   };
 
@@ -426,7 +444,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
     let fieldBytes = 0;
     const state = await readPart(async (chunk) => {
       fieldBytes += chunk.byteLength;
-      if (fieldBytes > MAX_MULTIPART_FIELD_BYTES) throw new Error(`Multipart field ${name} is too large.`);
+      if (fieldBytes > MAX_MULTIPART_FIELD_BYTES) throw artifactUploadError(`Multipart field ${name} is too large.`);
       chunks.push(chunk);
     });
     const parsed = parseUploadField(name, Buffer.concat(chunks).toString('utf8'));
@@ -440,7 +458,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
       const state = await readPart(async (chunk) => {
         sizeBytes += chunk.byteLength;
         if (typeof maxFileBytes === 'number' && sizeBytes > maxFileBytes) {
-          throw new Error(`Artifact exceeds the ${maxFileBytes}-byte limit.`);
+          throw artifactSizeError(maxFileBytes);
         }
         await handle.write(chunk);
       });
@@ -466,7 +484,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
         state = await readPart(async () => {});
       }
     }
-    if (!fileSeen) throw new Error('Multipart upload requires a file field.');
+    if (!fileSeen) throw artifactUploadError('Multipart upload requires a file field.');
     return {
       filePath,
       ...(filename ? { filename } : {}),
@@ -520,7 +538,7 @@ async function createArtifactFromStream(
   },
 ): Promise<unknown> {
   if (typeof input.maxBytes === 'number' && typeof input.sizeBytes === 'number' && input.sizeBytes > input.maxBytes) {
-    throw new Error(`Artifact exceeds the ${input.maxBytes}-byte limit.`);
+    throw artifactSizeError(input.maxBytes);
   }
   const base = {
     ...(readStringField(input.fields, 'kind') ? { kind: readStringField(input.fields, 'kind') } : {}),
@@ -591,7 +609,7 @@ async function bufferUploadStream(
     const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk);
     totalBytes += buffer.byteLength;
     if (typeof maxBytes === 'number' && totalBytes > maxBytes) {
-      throw new Error(`Artifact exceeds the ${maxBytes}-byte limit.`);
+      throw artifactSizeError(maxBytes);
     }
     chunks.push(buffer);
   }

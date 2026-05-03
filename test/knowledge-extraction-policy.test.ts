@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import {
   knowledgeExtractionNeedsRefresh,
-} from '../packages/sdk/src/_internal/platform/knowledge/extraction-policy.js';
-import type { KnowledgeExtractionRecord } from '../packages/sdk/src/_internal/platform/knowledge/types.js';
+} from '../packages/sdk/src/platform/knowledge/extraction-policy.js';
+import type { KnowledgeExtractionRecord } from '../packages/sdk/src/platform/knowledge/types.js';
 
 function extraction(overrides: Partial<KnowledgeExtractionRecord>): KnowledgeExtractionRecord {
   return {

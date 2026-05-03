@@ -3,7 +3,7 @@
  *
  * Generates a CycloneDX 1.x JSON SBOM for the SDK workspace.
  * Wraps @cyclonedx/cyclonedx-npm to ensure it uses the system npm binary
- * rather than Bun's npm shim (which reports version 1.x, below cyclonedx-npm's floor).
+ * rather than Bun's npm adapter (which reports version 1.x, below cyclonedx-npm's floor).
  *
  * Output: sbom.cdx.json in the workspace root.
  */

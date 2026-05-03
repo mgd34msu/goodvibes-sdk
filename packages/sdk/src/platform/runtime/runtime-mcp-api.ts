@@ -1,1 +1,5 @@
-export * from '../../_internal/platform/runtime/runtime-mcp-api.js';
+import { createMcpApi, type McpApi, type McpApiRegistry } from '../mcp/mcp-api.js';
+
+export function createRuntimeMcpApi(registry: McpApiRegistry): McpApi {
+  return createMcpApi(registry);
+}

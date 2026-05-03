@@ -1,1 +1,5 @@
-export * from '../../../_internal/platform/runtime/transports/peer-remote-client.js';
+export type {
+  PeerRemoteClient,
+  PeerRemoteClientInvokeOptions,
+} from '@pellux/goodvibes-peer-sdk';
+export { createPeerRemoteClient } from '@pellux/goodvibes-peer-sdk';

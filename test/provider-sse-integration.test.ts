@@ -17,9 +17,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { ControlPlaneGateway, DEFAULT_DOMAINS_TEST_EXPORT } from '../packages/sdk/src/_internal/platform/control-plane/gateway.js';
-import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import type { RuntimeEventDomain } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
+import { ControlPlaneGateway, DEFAULT_DOMAINS_TEST_EXPORT } from '../packages/sdk/src/platform/control-plane/gateway.js';
+import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.js';
+import type { RuntimeEventDomain } from '../packages/sdk/src/platform/runtime/events/index.js';
 
 // ---------------------------------------------------------------------------
 // C-2: DEFAULT_DOMAINS includes 'providers' (cheap sanity check)

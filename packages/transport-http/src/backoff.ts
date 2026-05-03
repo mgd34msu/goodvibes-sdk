@@ -24,12 +24,19 @@ export function normalizeBackoffPolicy(
   };
 }
 
+/**
+ * Return the retry delay for a one-based attempt number.
+ *
+ * Attempt `1` is the first retry and uses `baseDelayMs`; attempt `2` applies
+ * one backoff factor; attempt `0` or negative values return `0` so defensive
+ * callers do not schedule negative or NaN timers.
+ */
 export function computeBackoffDelay(
   attempt: number,
   policy: ResolvedBackoffPolicy,
 ): number {
-  if (attempt <= 1) return 0;
-  const exponent = Math.max(0, attempt - 2);
+  if (attempt <= 0) return 0;
+  const exponent = Math.max(0, attempt - 1);
   const delay = policy.baseDelayMs * (policy.backoffFactor ** exponent);
   return Math.min(policy.maxDelayMs, Math.max(0, Math.floor(delay)));
 }

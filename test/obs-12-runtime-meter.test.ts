@@ -9,55 +9,63 @@ import { describe, expect, test } from 'bun:test';
  */
 describe('obs-12 runtime meter', () => {
   test('platformMeter is exported from metrics module', async () => {
-    const { platformMeter } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { platformMeter } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     expect(platformMeter).toBeDefined();
   });
 
   test('httpRequestsTotal counter add() and value() work', async () => {
-    const { httpRequestsTotal } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { httpRequestsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = httpRequestsTotal.value({ status_class: '2xx' });
     httpRequestsTotal.add(1, { status_class: '2xx' });
     expect(httpRequestsTotal.value({ status_class: '2xx' })).toBe(before + 1);
   });
 
   test('llmRequestDurationMs histogram record() does not throw', async () => {
-    const { llmRequestDurationMs } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { llmRequestDurationMs } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     expect(() => llmRequestDurationMs.record(125, { provider: 'anthropic' })).not.toThrow();
   });
 
   test('sessionsActive gauge can be set and read', async () => {
-    const { sessionsActive } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { sessionsActive } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     sessionsActive.set(7);
     expect(sessionsActive.value()).toBe(7);
   });
 
   test('sseSubscribers gauge can be set and read', async () => {
-    const { sseSubscribers } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { sseSubscribers } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     sseSubscribers.set(2);
     expect(sseSubscribers.value()).toBe(2);
   });
 
   test('transportRetriesTotal counter increments correctly', async () => {
-    const { transportRetriesTotal } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { transportRetriesTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = transportRetriesTotal.value();
     transportRetriesTotal.add(1);
     expect(transportRetriesTotal.value()).toBe(before + 1);
   });
 
   test('snapshotMetrics returns expected shape', async () => {
-    const { snapshotMetrics } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { snapshotMetrics } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const snap = snapshotMetrics();
-    expect(snap).toHaveProperty('http');
-    expect(snap).toHaveProperty('llm');
-    expect(snap).toHaveProperty('auth');
-    expect(snap).toHaveProperty('sessions');
-    expect(snap).toHaveProperty('sse');
-    expect(snap).toHaveProperty('transport');
-    expect(snap).toHaveProperty('telemetry');
+    expect(snap).toHaveProperty('counters');
+    expect(snap).toHaveProperty('gauges');
+    expect(snap).toHaveProperty('histograms');
+
+    const counters = (snap as Record<string, unknown>)['counters'] as Record<string, unknown>;
+    expect(counters).toHaveProperty('http.requests.total');
+    expect(counters).toHaveProperty('llm.requests.total');
+    expect(counters).toHaveProperty('auth.success.total');
+    expect(counters).toHaveProperty('auth.failure.total');
+    expect(counters).toHaveProperty('transport.retries_total');
+
+    const gauges = (snap as Record<string, unknown>)['gauges'] as Record<string, unknown>;
+    expect(gauges).toHaveProperty('sessions.active');
+    expect(gauges).toHaveProperty('sse.subscribers');
+    expect(gauges).toHaveProperty('telemetry.buffer.fill');
   });
 
   test('snapshotMetrics includes histogram sub-keys', async () => {
-    const { snapshotMetrics } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { snapshotMetrics } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const snap = snapshotMetrics();
     expect(snap).toHaveProperty('histograms');
     const h = (snap as Record<string, unknown>)['histograms'] as Record<string, unknown>;
@@ -73,7 +81,7 @@ describe('obs-12 runtime meter', () => {
 
   // Integration: httpRequestsTotal is wired to real HTTP path (direct metric increment then verify endpoint)
   test('httpRequestsTotal increments are observable via snapshotMetrics', async () => {
-    const { httpRequestsTotal, snapshotMetrics } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { httpRequestsTotal, snapshotMetrics } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = httpRequestsTotal.value({ status_class: '2xx', method: 'GET' });
     httpRequestsTotal.add(1, { status_class: '2xx', method: 'GET' });
     const snap = snapshotMetrics();

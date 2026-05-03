@@ -1,7 +1,7 @@
 /**
  * Integration test — exercises auth functionality through the public
- * `GoodVibesAuthClient` facade to verify that the split does not break
- * any existing consumer behaviour.
+ * `GoodVibesAuthClient` facade to verify that public auth behavior flows
+ * through the client-auth implementation.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -11,8 +11,8 @@ import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
 } from '../packages/sdk/src/auth.js';
-import type { ControlPlaneAuthSnapshot } from '../packages/sdk/src/_internal/platform/control-plane/auth-snapshot.js';
-import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
+import type { ControlPlaneAuthSnapshot } from '../packages/sdk/src/client-auth/control-plane-auth-snapshot.js';
+import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
 
 function makeRawStore(initial: string | null = null) {
   let current = initial;
@@ -34,7 +34,7 @@ function makeOperator(token = 'facade-token') {
   } as unknown as OperatorSdk;
 }
 
-describe('auth facade — backward-compatible GoodVibesAuthClient', () => {
+describe('auth facade — GoodVibesAuthClient delegates to client-auth', () => {
   test('createGoodVibesAuthClient login persists token', async () => {
     const tokenStore = createMemoryTokenStore();
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore);

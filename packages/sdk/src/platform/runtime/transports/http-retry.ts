@@ -1,1 +1,9 @@
-export * from '../../../_internal/platform/runtime/transports/http-retry.js';
+export type { HttpRetryPolicy, ResolvedHttpRetryPolicy } from '@pellux/goodvibes-transport-http';
+export {
+  DEFAULT_HTTP_RETRY_POLICY,
+  getHttpRetryDelay,
+  isRetryableHttpStatus,
+  isRetryableNetworkError,
+  normalizeHttpRetryPolicy,
+  resolveHttpRetryPolicy,
+} from '@pellux/goodvibes-transport-http';

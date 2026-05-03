@@ -10,15 +10,15 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
-import { ProviderNotFoundError } from '../packages/sdk/src/_internal/platform/providers/provider-not-found-error.js';
-import type { LLMProvider } from '../packages/sdk/src/_internal/platform/providers/interface.js';
+import { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
+import { ProviderNotFoundError } from '../packages/sdk/src/platform/providers/provider-not-found-error.js';
+import type { LLMProvider } from '../packages/sdk/src/platform/providers/interface.js';
 import {
   getCatalogCachePath,
   getCatalogTmpPath,
   saveCatalogCache,
   type CatalogModel,
-} from '../packages/sdk/src/_internal/platform/providers/model-catalog.js';
+} from '../packages/sdk/src/platform/providers/model-catalog.js';
 
 // ---------------------------------------------------------------------------
 // Minimal stubs
@@ -120,30 +120,6 @@ describe('ProviderRegistry.has()', () => {
     expect(registry.has(customId)).toBe(false);
     registry.register(makeProvider(customId));
     expect(registry.has(customId)).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// get() — deprecated alias for require(), throwing semantics
-// ---------------------------------------------------------------------------
-
-describe('ProviderRegistry.get()', () => {
-  test('returns the provider instance for a registered provider', () => {
-    const registry = makeRegistry();
-    const provider = makeProvider('openrouter');
-    registry.register(provider);
-    expect(registry.get('openrouter')).toBe(provider);
-  });
-
-  test('throws ProviderNotFoundError for an unknown provider', () => {
-    const registry = makeRegistry();
-    expect(() => registry.get('missing')).toThrow(ProviderNotFoundError);
-  });
-
-  test('throws for multiple unknown providers', () => {
-    const registry = makeRegistry();
-    expect(() => registry.get('alpha')).toThrow(ProviderNotFoundError);
-    expect(() => registry.get('beta')).toThrow(ProviderNotFoundError);
   });
 });
 
