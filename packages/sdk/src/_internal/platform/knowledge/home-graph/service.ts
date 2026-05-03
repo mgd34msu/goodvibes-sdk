@@ -84,15 +84,21 @@ import type {
 } from './types.js';
 
 const MAX_DEVICE_PAGE_REPAIRS_PER_REFRESH = 16;
+const SYNC_SELF_IMPROVEMENT_MAX_RUN_MS = 120_000;
 
 export class HomeGraphService {
   private activeReindex: Promise<HomeGraphReindexResult> | null = null;
   private pendingSyncSelfImprove = new Set<string>();
+  private syncSelfImproveControllers = new Map<string, AbortController>();
   constructor(
     private readonly store: KnowledgeStore,
     private readonly artifactStore: ArtifactStore,
     private readonly options: { readonly semanticService?: KnowledgeSemanticService } = {},
   ) {}
+
+  dispose(): void {
+    this.cancelSyncSelfImprovement();
+  }
 
   async status(input: { readonly installationId?: string; readonly knowledgeSpaceId?: string } = {}): Promise<HomeGraphStatus> {
     return getHomeGraphStatus(this.store, input);
@@ -734,30 +740,50 @@ export class HomeGraphService {
   private scheduleSyncSelfImprovement(spaceId: string, installationId: string): void {
     if (!this.options.semanticService || this.pendingSyncSelfImprove.has(spaceId)) return;
     this.pendingSyncSelfImprove.add(spaceId);
+    const controller = new AbortController();
+    this.syncSelfImproveControllers.set(spaceId, controller);
     scheduleBackground(() => {
-      void this.runSyncSelfImprovementPump(spaceId, installationId).catch((error: unknown) => {
+      void this.runSyncSelfImprovementPump(spaceId, installationId, controller.signal).catch((error: unknown) => {
+        if (controller.signal.aborted) return;
         this.reportBackgroundError('homegraph-sync-self-improvement', error, { spaceId, installationId });
       }).finally(() => {
         this.pendingSyncSelfImprove.delete(spaceId);
+        this.syncSelfImproveControllers.delete(spaceId);
       });
-    }, 5_000);
+    }, 5_000, controller.signal);
   }
 
-  private async runSyncSelfImprovementPump(spaceId: string, installationId: string): Promise<void> {
+  private cancelSyncSelfImprovement(spaceId?: string): void {
+    const entries = spaceId
+      ? [...this.syncSelfImproveControllers.entries()].filter(([key]) => key === spaceId)
+      : [...this.syncSelfImproveControllers.entries()];
+    for (const [key, controller] of entries) {
+      controller.abort();
+      this.syncSelfImproveControllers.delete(key);
+      this.pendingSyncSelfImprove.delete(key);
+    }
+  }
+
+  private async runSyncSelfImprovementPump(spaceId: string, installationId: string, signal?: AbortSignal): Promise<void> {
+    const deadlineAt = Date.now() + SYNC_SELF_IMPROVEMENT_MAX_RUN_MS;
     for (let round = 0; round < 10; round += 1) {
+      if (signal?.aborted) return;
+      const remainingMs = Math.max(0, deadlineAt - Date.now());
+      if (remainingMs <= 0) return;
       const result = await this.options.semanticService?.selfImprove({
         knowledgeSpaceId: spaceId,
         reason: 'homegraph-sync',
         limit: round === 0 ? 24 : 12,
-        maxRunMs: round === 0 ? 45_000 : 30_000,
+        maxRunMs: Math.min(round === 0 ? 45_000 : 30_000, remainingMs),
         force: round > 0,
+        signal,
       });
       if (!result) return;
       if ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0) {
         await this.refreshDevicePagesForSourceIds(spaceId, installationId, result.acceptedSourceIds ?? []);
       }
       if (!shouldContinueSyncSelfImprovement(result)) return;
-      await sleep(round < 2 ? 5_000 : 15_000);
+      await sleep(Math.min(round < 2 ? 5_000 : 15_000, Math.max(0, deadlineAt - Date.now())), { signal });
     }
   }
 

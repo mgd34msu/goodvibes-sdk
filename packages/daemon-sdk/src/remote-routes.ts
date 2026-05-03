@@ -165,11 +165,98 @@ function boundedPositiveNumber(value: unknown, min: number, max: number): number
 }
 
 function validateRemoteJsonPayload(value: unknown, maxBytes: number, field: string): unknown | Response {
-  const encoded = new TextEncoder().encode(JSON.stringify(value ?? null));
-  if (encoded.byteLength <= maxBytes) return value;
+  const size = estimateJsonByteLengthWithinLimit(value ?? null, maxBytes);
+  if (size.kind === 'invalid') {
+    return Response.json({
+      error: `Remote ${field} must be JSON-serializable`,
+    }, { status: 400 });
+  }
+  if (size.byteLength <= maxBytes) return value;
   return Response.json({
     error: `Remote ${field} exceeds ${maxBytes} byte limit`,
   }, { status: 413 });
+}
+
+function estimateJsonByteLengthWithinLimit(
+  value: unknown,
+  maxBytes: number,
+  seen = new Set<object>(),
+): { readonly kind: 'ok'; readonly byteLength: number } | { readonly kind: 'invalid' } {
+  const byteLength = measureJsonByteLength(value, maxBytes, seen);
+  return byteLength === undefined ? { kind: 'invalid' } : { kind: 'ok', byteLength };
+}
+
+function measureJsonByteLength(value: unknown, maxBytes: number, seen: Set<object>): number | undefined {
+  const valueType = typeof value;
+  if (value === null) return 4;
+  if (valueType === 'string') return jsonStringByteLength(value, maxBytes);
+  if (valueType === 'number') return Number.isFinite(value) ? String(value).length : 4;
+  if (valueType === 'boolean') return value ? 4 : 5;
+  if (valueType === 'undefined' || valueType === 'function' || valueType === 'symbol') return 4;
+  if (valueType !== 'object') return undefined;
+  const objectValue = value as object;
+  if (seen.has(objectValue)) return undefined;
+  seen.add(objectValue);
+  try {
+    let total = 2;
+    if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index += 1) {
+        if (index > 0) total += 1;
+        if (total > maxBytes) return total;
+        const entrySize = measureJsonByteLength(value[index], maxBytes - total, seen);
+        if (entrySize === undefined) return undefined;
+        total += entrySize;
+        if (total > maxBytes) {
+          return total;
+        }
+      }
+      return total;
+    }
+    let count = 0;
+    for (const [key, entryValue] of Object.entries(value as Record<string, unknown>)) {
+      const entryType = typeof entryValue;
+      if (entryType === 'undefined' || entryType === 'function' || entryType === 'symbol') continue;
+      if (count > 0) total += 1;
+      total += jsonStringByteLength(key, maxBytes - total) + 1;
+      if (total > maxBytes) return total;
+      const entrySize = measureJsonByteLength(entryValue, maxBytes - total, seen);
+      if (entrySize === undefined) return undefined;
+      total += entrySize;
+      count += 1;
+      if (total > maxBytes) {
+        return total;
+      }
+    }
+    return total;
+  } finally {
+    seen.delete(objectValue);
+  }
+}
+
+function jsonStringByteLength(value: string, maxBytes = Number.POSITIVE_INFINITY): number {
+  let total = 2;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code === 0x22 || code === 0x5c || code === 0x08 || code === 0x0c || code === 0x0a || code === 0x0d || code === 0x09) {
+      total += 2;
+    } else if (code <= 0x1f) {
+      total += 6;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        total += 4;
+        index += 1;
+      } else {
+        total += 6;
+      }
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      total += 6;
+    } else {
+      total += code <= 0x7f ? 1 : code <= 0x7ff ? 2 : 3;
+    }
+    if (total > maxBytes) return total;
+  }
+  return total;
 }
 
 function readMetadataWithForwardedForAudit(req: Request, value: unknown): Record<string, unknown> {

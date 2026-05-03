@@ -8,6 +8,7 @@ import type {
   KnowledgeSourceRecord,
   KnowledgeSourceType,
 } from './types.js';
+import { logger } from '../utils/logger.js';
 
 export interface GeneratedKnowledgeProjectionInput {
   readonly store: KnowledgeStore;
@@ -58,16 +59,21 @@ export function isGeneratedKnowledgeSource(source: KnowledgeSourceRecord): boole
 export async function materializeGeneratedKnowledgeProjection(
   input: GeneratedKnowledgeProjectionInput,
 ): Promise<GeneratedKnowledgeProjectionResult> {
-  const generatedAt = Date.now();
+  const existing = input.store.getSource(input.sourceId);
+  const contentHash = stableHash(input.markdown, 40);
+  const existingMetadata = readRecord(existing?.metadata);
+  const existingGeneratedAt = typeof existingMetadata.generatedAt === 'number' ? existingMetadata.generatedAt : undefined;
+  const contentUnchanged = existingMetadata.generatedContentHash === contentHash;
+  const generatedAt = contentUnchanged && existingGeneratedAt !== undefined ? existingGeneratedAt : Date.now();
   const projectionMetadata = {
+    ...(input.metadata ?? {}),
     generatedKnowledgePage: true,
     generatedProjection: true,
     projectionKind: input.projectionKind,
     generatedAt,
+    generatedContentHash: contentHash,
     pageEditable: true,
-    ...(input.metadata ?? {}),
   };
-  const existing = input.store.getSource(input.sourceId);
   const reusedArtifact = await findReusableGeneratedArtifact(input.artifactStore, existing, input.markdown);
   const artifact = reusedArtifact ?? await input.artifactStore.create({
     kind: 'document',
@@ -78,6 +84,8 @@ export async function materializeGeneratedKnowledgeProjection(
     metadata: {
       ...projectionMetadata,
       ...(input.artifactMetadata ?? {}),
+      generatedAt,
+      generatedContentHash: contentHash,
     },
   });
   const source = await input.store.upsertSource({
@@ -91,12 +99,16 @@ export async function materializeGeneratedKnowledgeProjection(
     tags: uniqueStrings(input.tags ?? []),
     status: 'indexed',
     artifactId: artifact.id,
-    lastCrawledAt: generatedAt,
+    lastCrawledAt: contentUnchanged && typeof existing?.lastCrawledAt === 'number'
+      ? existing.lastCrawledAt
+      : generatedAt,
     metadata: {
       ...projectionMetadata,
       artifactId: artifact.id,
       filename: artifact.filename,
       ...(input.sourceMetadata ?? {}),
+      generatedAt,
+      generatedContentHash: contentHash,
     },
   });
   const linked = input.target
@@ -134,13 +146,23 @@ async function findReusableGeneratedArtifact(
     const { buffer } = await artifactStore.readContent(artifact.id);
     return buffer.toString('utf-8') === markdown ? artifact : undefined;
   } catch (error) {
-    void error;
+    logger.debug('Generated knowledge projection artifact reuse failed', {
+      sourceId: source.id,
+      artifactId: artifact.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return undefined;
   }
 }
 
 function stableHash(value: string, length = 24): string {
   return createHash('sha256').update(value).digest('hex').slice(0, length);
+}
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
 function uniqueStrings(values: Iterable<string | undefined | null>): string[] {
