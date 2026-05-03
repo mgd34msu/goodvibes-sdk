@@ -135,7 +135,15 @@ export default createGoodVibesCloudflareWorker();
 | `@pellux/goodvibes-sdk/react-native` | React Native client factory and mobile secure stores |
 | `@pellux/goodvibes-sdk/expo` | Expo alias of the React Native client factory with Expo token store exports |
 | `@pellux/goodvibes-sdk/workers` | Cloudflare Worker bridge for daemon batch endpoints |
-| `@pellux/goodvibes-sdk/platform/*` | Bun/full-surface platform modules for advanced embedders |
+| `@pellux/goodvibes-sdk/platform` | Full platform hub for Bun/server embedders |
+| `@pellux/goodvibes-sdk/platform/node` | Node-like runtime boundary and capability metadata for server hosts |
+| `@pellux/goodvibes-sdk/platform/runtime` | Runtime services, events, stores, diagnostics, and task surfaces |
+| `@pellux/goodvibes-sdk/platform/knowledge` | Base self-improving knowledge/wiki system |
+| `@pellux/goodvibes-sdk/platform/knowledge/home-graph` | Home Assistant Home Graph extension over the base knowledge system |
+
+The old `@pellux/goodvibes-sdk/platform/*` wildcard is not a public contract.
+Import only explicit subpaths listed in `package.json` and
+[`docs/public-surface.md`](./docs/public-surface.md).
 
 ## Current Documentation
 

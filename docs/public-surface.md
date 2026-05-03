@@ -140,7 +140,7 @@ Expo-specific SDK entry built on top of `react-native`.
 
 ## Platform surface (`./platform/...`)
 
-### Explicit platform entrypoints — `@pellux/goodvibes-sdk/platform/<subsystem>/<module>`
+### Explicit platform entrypoints — `@pellux/goodvibes-sdk/platform...`
 
 **Status:** beta
 
@@ -149,6 +149,12 @@ Granular platform modules exposed through explicit public subpaths. Each path re
 The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package no longer exports a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
 
 Stability contract: the module shape (exported names and their TypeScript signatures) is stable within a minor version. Pre-1.0 releases may still make breaking changes; current behavior is recorded in `CHANGELOG.md`.
+
+The root `@pellux/goodvibes-sdk/platform` entry is a full platform hub for
+Bun/server embedders. Runtime-boundary helpers live at
+`@pellux/goodvibes-sdk/platform/node`; the base knowledge system lives at
+`@pellux/goodvibes-sdk/platform/knowledge`; Home Assistant Home Graph extends
+that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 
 #### Subsystems included in the platform surface
 
@@ -175,6 +181,7 @@ Stability contract: the module shape (exported names and their TypeScript signat
 | `platform/mcp/*` | MCP client, registry, config | beta |
 | `platform/media/*` | Media provider registry | beta |
 | `platform/multimodal/*` | Multimodal input | beta |
+| `platform/node/*` | Node-like runtime boundary and capability metadata | beta |
 | `platform/pairing/*` | Companion token, QR, pairing index | beta |
 | `platform/permissions/*` | Permission analysis, policy, briefs | beta |
 | `platform/plugins/*` | Plugin manager, loader, API | beta |

@@ -23,14 +23,30 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 
 > `/browser` and `/web` are aliases — same bundle, two names for different mental models.
 
-## Advanced Bun Entry Points
+## Advanced Platform Entry Points
 
 | Entry point | Use it when |
 |---|---|
-| `@pellux/goodvibes-sdk/platform/pairing/index` | QR code generation, companion token management, and connection info formatting |
-| `@pellux/goodvibes-sdk/platform/daemon/port-check` | Port-in-use checking before binding a daemon HTTP server |
+| `@pellux/goodvibes-sdk/platform` | You are embedding or extending the full GoodVibes platform surface from a server/runtime host |
+| `@pellux/goodvibes-sdk/platform/node` | You need Node-like runtime capability checks or boundary metadata before loading full-platform modules |
+| `@pellux/goodvibes-sdk/platform/runtime` | You are wiring runtime services, events, diagnostics, tasks, stores, or host lifecycle behavior |
+| `@pellux/goodvibes-sdk/platform/knowledge` | You are using the base self-improving knowledge/wiki system directly |
+| `@pellux/goodvibes-sdk/platform/knowledge/home-graph` | You are extending the knowledge system for Home Assistant Home Graph behavior |
+| `@pellux/goodvibes-sdk/platform/providers` | You are working with provider registries, model catalogs, capabilities, or provider-specific runtime helpers |
+| `@pellux/goodvibes-sdk/platform/tools` | You are registering or executing runtime tools from a full platform host |
+| `@pellux/goodvibes-sdk/platform/pairing` | You need QR code generation, companion token management, and connection info formatting |
+| `@pellux/goodvibes-sdk/platform/daemon/port-check` | You need port-in-use checking before binding a daemon HTTP server |
 
-All `/platform/...` platform entrypoints require a Bun runtime.
+The platform surface is explicit. There is no public
+`@pellux/goodvibes-sdk/platform/*` wildcard export. Import only subpaths listed
+in `package.json` and [Public surface](./public-surface.md).
+
+Treat `platform/...` modules as full-platform/server-side unless a specific
+document marks the entry point as companion-safe. Today the full surface is
+Bun-oriented; `platform/node` documents and guards Node-like runtime boundaries
+without making the full platform a supported Node consumer surface. Do not
+import `_internal/**` paths from applications; those paths are implementation
+layout, not the consumer contract.
 
 ## Companion-Safe Entry Points
 
