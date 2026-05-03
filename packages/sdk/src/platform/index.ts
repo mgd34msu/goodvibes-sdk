@@ -10,6 +10,7 @@ export * as knowledge from './knowledge/index.js';
 export * as mcp from './mcp/index.js';
 export * as media from './media/index.js';
 export * as multimodal from './multimodal/index.js';
+export * as node from './node/index.js';
 export * as pairing from './pairing/index.js';
 export * as providers from './providers/index.js';
 export * as runtime from './runtime/index.js';
