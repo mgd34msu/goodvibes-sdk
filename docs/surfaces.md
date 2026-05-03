@@ -20,7 +20,7 @@ discovery, and Home Assistant REST-backed tools.
 Imported via the root entry (`@pellux/goodvibes-sdk`) and the following subpaths:
 - `./daemon`
 - `./operator`
-- `./platform/*`
+- explicit `./platform/...` entrypoints
 
 This surface makes direct use of Bun runtime APIs, including `Bun.spawn`, `Bun.file`, `Bun.Glob`, `Bun.which`, `Bun.CryptoHasher`, `Bun.Transpiler`, and `Bun.serve`. It cannot be imported or executed outside a Bun runtime. Attempting to use it in Hermes, a browser, or Node.js will fail at runtime.
 

@@ -30,7 +30,7 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 | `@pellux/goodvibes-sdk/platform/pairing/index` | QR code generation, companion token management, and connection info formatting |
 | `@pellux/goodvibes-sdk/platform/daemon/port-check` | Port-in-use checking before binding a daemon HTTP server |
 
-All `/platform/*` barrels require a Bun runtime.
+All `/platform/...` platform entrypoints require a Bun runtime.
 
 ## Companion-Safe Entry Points
 
