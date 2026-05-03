@@ -9,8 +9,8 @@ import { describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { TaskScheduler } from '../packages/sdk/src/_internal/platform/scheduler/scheduler.ts';
-import type { TaskRunRecord } from '../packages/sdk/src/_internal/platform/scheduler/scheduler.ts';
+import { TaskScheduler } from '../packages/sdk/src/platform/scheduler/scheduler.ts';
+import type { TaskRunRecord } from '../packages/sdk/src/platform/scheduler/scheduler.ts';
 
 function tempDir(suffix: string): string {
   const d = join(tmpdir(), `gv-perf03-${suffix}-${Date.now()}`);

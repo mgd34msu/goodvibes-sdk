@@ -109,6 +109,8 @@ Queues, DLQ, Worker secrets, queue consumer, and cron trigger.
 ```ts
 import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
 
+// Reads GOODVIBES_DAEMON_URL, GOODVIBES_OPERATOR_TOKEN, and
+// GOODVIBES_WORKER_TOKEN from Worker environment bindings.
 export default createGoodVibesCloudflareWorker();
 ```
 
@@ -210,7 +212,7 @@ See [Observability](./observability.md) for the `SDKObserver` interface and avai
 - `@pellux/goodvibes-sdk` — Bun full surface. Use this for TUI, daemon, and CLI apps.
 - `@pellux/goodvibes-sdk/daemon` — Bun server hosts embedding daemon routes.
 - `@pellux/goodvibes-sdk/react-native` — React Native (Hermes) companion apps.
-- `@pellux/goodvibes-sdk/expo` — Expo alias of `/react-native`.
+- `@pellux/goodvibes-sdk/expo` — Expo companion defaults and Expo secure token stores.
 - `@pellux/goodvibes-sdk/browser` or `/web` — browser and web apps.
 - `@pellux/goodvibes-sdk/operator` — operator/control-plane client only.
 - `@pellux/goodvibes-sdk/peer` — peer/distributed-runtime client only.

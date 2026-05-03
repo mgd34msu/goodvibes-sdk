@@ -1,8 +1,8 @@
 /**
- * Test: Error paths — server and network failures produce SDKError of the correct kind.
+ * Test: Error paths — service and network failures produce SDKError of the correct kind.
  *
  * Verifies that when the server returns:
- * 1. A 500 response with a non-JSON body — the SDK throws an SDKError with kind 'server'.
+ * 1. A 500 response with a non-JSON body — the SDK throws an SDKError with kind 'service'.
  * 2. A network-level failure (MSW emits a network error) — SDKError kind is exactly 'network'.
  * 3. A 401 response from the login endpoint — SDKError kind is exactly 'auth'.
  *
@@ -11,11 +11,11 @@
  *   control.auth.login → POST /login        (method-catalog-control-core.ts)
  *
  * SDKErrorKind values verified against packages/errors/src/index.ts:
- *   'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'rate-limit' | 'server' | 'validation' | 'unknown'
+ *   'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown'
  *
  * Error kind derivation:
  *   fetch() throws → createNetworkTransportError(category: 'network') → kind: 'network'
- *   status 500 → inferCategory(500) → 'service' → inferKind('service') → 'server'
+ *   status 500 → inferCategory(500) → 'service' → inferKind('service') → 'service'
  *   status 401 → inferCategory(401) → 'authentication' → inferKind('authentication') → 'auth'
  */
 import { describe, it, expect } from 'vitest';
@@ -30,11 +30,11 @@ function makeSdk() {
 }
 
 describe.skipIf(typeof window === 'undefined')('Error paths (browser)', () => {
-  it('500 response with non-JSON body surfaces as SDKError with kind server', async () => {
+  it('500 response with non-JSON body surfaces as SDKError with kind service', async () => {
     // readJsonBody returns the text string when JSON.parse fails (no throw on parse).
     // However, the 500 status triggers the !response.ok branch in requestJson(),
     // which calls createTransportError(500, ...) → createHttpStatusError →
-    // inferCategory(500) = 'service' → inferKind('service') = 'server'.
+    // inferCategory(500) = 'service' → inferKind('service') = 'service'.
     worker.use(
       http.get(`${BASE_URL}/api/accounts`, () =>
         new HttpResponse('Internal Server Error (plain text)', {
@@ -46,7 +46,7 @@ describe.skipIf(typeof window === 'undefined')('Error paths (browser)', () => {
 
     const sdk = makeSdk();
     await expect(sdk.operator.accounts.snapshot()).rejects.toMatchObject({
-      kind: 'server',
+      kind: 'service',
     });
   });
 

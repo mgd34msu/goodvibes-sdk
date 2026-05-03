@@ -11,13 +11,13 @@
 
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { randomUUID } from 'node:crypto';
-import { createDaemonRuntimeSessionRouteHandlers } from '../packages/sdk/src/_internal/daemon/runtime-session-routes.js';
-import type { DaemonRuntimeRouteContext } from '../packages/sdk/src/_internal/daemon/runtime-route-types.js';
-import type { ConversationMessageEnvelope } from '../packages/sdk/src/_internal/platform/control-plane/conversation-message.js';
+import { createDaemonRuntimeSessionRouteHandlers } from '../packages/daemon-sdk/src/runtime-session-routes.js';
+import type { DaemonRuntimeRouteContext } from '../packages/daemon-sdk/src/runtime-route-types.js';
+import type { ConversationMessageEnvelope } from '../packages/sdk/src/platform/control-plane/conversation-message.js';
 import type {
   CompanionChatTurnStartedEvent,
   CompanionChatTurnCompletedEvent,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-types.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -452,11 +452,11 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
     const sessions = new Map([[sessionId, { id: sessionId, status: 'active', messageCount: 0 }]]);
 
     // Wire publishConversationFollowup to call fakePublishEvent with { clientKind: 'tui' },
-    // mirroring exactly what router.ts does in production.
+    // matching router.ts in production.
     const ctx = makeContext({ sessions });
     (ctx as Record<string, unknown>).publishConversationFollowup = (
       sid: string,
-      envelope: Omit<import('../packages/sdk/src/_internal/platform/control-plane/conversation-message.js').ConversationMessageEnvelope, 'sessionId'>,
+      envelope: Omit<import('../packages/sdk/src/platform/control-plane/conversation-message.js').ConversationMessageEnvelope, 'sessionId'>,
     ) => {
       fakePublishEvent('conversation.followup.companion', { sessionId: sid, ...envelope }, { clientKind: 'tui' });
     };

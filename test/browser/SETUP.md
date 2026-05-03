@@ -248,14 +248,14 @@ Notes:
 Verified against `packages/errors/src/index.ts`:
 
 ```
-'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'rate-limit' | 'server' | 'validation' | 'unknown'
+'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown'
 ```
 
-Note: `'server-error'` is NOT a valid kind — use `'server'` for HTTP 5xx errors.
+Note: `'server-error'` and `'server'` are NOT valid kinds — use `'service'` for HTTP 5xx errors, `'protocol'` for contract/wire-shape mismatches, and `'internal'` for SDK/runtime defects.
 
 ### forSession() API
 
-Verified against the SDK transport-realtime compatibility shim:
+Verified against the canonical transport-realtime package:
 
 ```ts
 forSession<TDomain, TEvent>(

@@ -11,7 +11,7 @@
  * Coverage: ≥ 100 iterations per event kind (fast-check default is 100).
  *
  * Import strategy: leaf event source files are imported directly by relative path
- * so bun can resolve them as TypeScript without any package alias. This mirrors
+ * so bun can resolve them as TypeScript without any package import. This matches
  * the pattern used in runtime-event-discriminated-union.test.ts.
  *
  * Arbitraries and fixture data are shared via `./_shared/arbitraries.ts` for reuse

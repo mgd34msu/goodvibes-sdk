@@ -1,4 +1,4 @@
-import type { DaemonRuntimeSessionRouteHandlers } from './context.js';
+import type { DaemonRuntimeSessionRouteHandlers, DaemonRuntimeTaskRouteHandlers } from './context.js';
 import { randomUUID } from 'node:crypto';
 import type {
   AutomationSurfaceKind,
@@ -23,7 +23,7 @@ function readBoundedLimit(url: URL, key = 'limit'): number {
 
 export function createDaemonRuntimeSessionRouteHandlers(
   context: DaemonRuntimeRouteContext,
-): DaemonRuntimeSessionRouteHandlers {
+): DaemonRuntimeSessionRouteHandlers & DaemonRuntimeTaskRouteHandlers {
   return {
     createSharedSession: async (request) => handleCreateSharedSession(context, request),
     postTask: async (request) => handlePostTask(context, request),
@@ -33,7 +33,6 @@ export function createDaemonRuntimeSessionRouteHandlers(
     getSharedSessionMessages: async (sessionId, url) => handleGetSharedSessionMessages(context, sessionId, url),
     getSharedSessionInputs: async (sessionId, url) => handleGetSharedSessionInputs(context, sessionId, url),
     postSharedSessionMessage: (sessionId, request) => handlePostSharedSessionMessage(context, sessionId, request),
-    postSharedSessionInput: (sessionId, request) => handlePostSharedSessionInput(context, sessionId, request),
     postSharedSessionSteer: (sessionId, request) => handlePostSharedSessionSteer(context, sessionId, request),
     postSharedSessionFollowUp: (sessionId, request) => handlePostSharedSessionFollowUp(context, sessionId, request),
     cancelSharedSessionInput: (sessionId, inputId) => handleCancelSharedSessionInput(context, sessionId, inputId),
@@ -239,10 +238,7 @@ async function handleGetSharedSessionInputs(
 /**
  * Handle POST /api/sessions/:sessionId/messages.
  *
- * Accepts either `{body}`, `{message}`, or `{text}` in the request payload (F13 normalization,
- * in priority order). If multiple fields are present, `{body}` takes precedence over
- * `{message}`, which takes precedence over `{text}`.
- * Returns 400 when none of the accepted fields are present or all are empty.
+ * Accepts `{body}` in the request payload and returns 400 when it is absent or empty.
  */
 async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
@@ -341,68 +337,6 @@ async function handleGetSharedSessionEvents(
   return context.openSessionEventStream(req, sessionId);
 }
 
-/**
- * Handle POST /api/sessions/:sessionId/inputs — intent-dispatching input create endpoint.
- *
- * F20 restoration (SDK 0.21.36): prior to 0.21.35 this endpoint existed as the direct
- * input-create path. 0.21.35 removed it in favor of three intent-specific endpoints
- * (/messages, /steer, /follow-up). This handler restores `POST /inputs` as an intent
- * dispatcher so consumers that still hit the legacy path receive a working response.
- *
- * Body accepts an optional `intent` field:
- *   - 'submit' (default) — delegates to `/messages` semantics (submitMessage)
- *   - 'steer'             — delegates to `/steer` semantics (steerMessage)
- *   - 'follow-up'         — delegates to `/follow-up` semantics (followUpMessage)
- *
- * The remaining body fields (body/message/text, surfaceKind, surfaceId, routing,
- * allowSpawnFallback, etc.) match the delegated handler's expectations.
- */
-async function handlePostSharedSessionInput(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {
-  const body = await context.parseJsonBody(req);
-  if (body instanceof Response) return body;
-
-  // Defensive narrow: coerce non-string `intent` values (numbers, objects, arrays,
-  // missing) to the default 'submit'; only string-shaped values are accepted or rejected.
-  const rawIntent = body.intent;
-  const intent: string = typeof rawIntent === 'string' ? rawIntent : 'submit';
-  if (intent !== 'submit' && intent !== 'steer' && intent !== 'follow-up') {
-    return Response.json(
-      { error: `Invalid intent '${intent}'. Accepted: 'submit' | 'steer' | 'follow-up'`, code: 'INVALID_INTENT' },
-      { status: 400 },
-    );
-  }
-
-  const message = readSharedSessionMessageBody(body);
-  if (!message) {
-    return Response.json({ error: 'Missing shared session input body' }, { status: 400 });
-  }
-
-  const input = buildSharedSessionMessageInput(sessionId, body, message);
-
-  if (intent === 'steer') {
-    const submission = await context.sessionBroker.steerMessage({
-      ...input,
-      ...(body.allowSpawnFallback === true ? { allowSpawnFallback: true } : {}),
-    });
-    return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/inputs`, 'DaemonServer.handlePostSharedSessionInput.steer', {
-      context: `shared-session:${submission.session.id}`,
-    });
-  }
-
-  if (intent === 'follow-up') {
-    const submission = await context.sessionBroker.followUpMessage(input);
-    return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/inputs`, 'DaemonServer.handlePostSharedSessionInput.followUp', {
-      context: `shared-session:${submission.session.id}`,
-    });
-  }
-
-  // intent === 'submit' (default)
-  const submission = await context.sessionBroker.submitMessage(input);
-  return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/inputs`, 'DaemonServer.handlePostSharedSessionInput.submit', {
-    context: `shared-session:${submission.session.id}`,
-  });
-}
-
 async function handlePostSharedSessionSteer(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
@@ -461,21 +395,14 @@ function handleGetRuntimeTask(context: DaemonRuntimeRouteContext, taskId: string
 /**
  * Extract the message body from an incoming POST body.
  *
- * F13 normalization: accepts 'body', 'message', and 'text' field names in
- * priority order (newest to legacy). Returns empty string when none are present.
+ * F13 normalization: accepts the canonical 'body' field.
  * The caller must check for an empty result and return 400.
  *
  * @param body - Parsed JSON body from the request.
  * @returns Trimmed message string, or '' if none of the accepted fields are present.
  */
 export function readSharedSessionMessageBody(body: JsonBody): string {
-  return typeof body.body === 'string'
-    ? body.body.trim()
-    : typeof body.message === 'string'
-      ? body.message.trim()
-      : typeof body.text === 'string'
-        ? body.text.trim()
-        : '';
+  return typeof body.body === 'string' ? body.body.trim() : '';
 }
 
 function buildSharedSessionMessageInput(

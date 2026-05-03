@@ -19,13 +19,13 @@
  */
 
 import { describe, expect, test, mock } from 'bun:test';
-import { createHostModeRestartWatcher } from '../packages/sdk/src/_internal/platform/daemon/host-mode-watcher.js';
+import { createHostModeRestartWatcher } from '../packages/sdk/src/platform/daemon/host-mode-watcher.js';
 import { mkdtempSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
-import { HttpListener } from '../packages/sdk/src/_internal/platform/daemon/http-listener.js';
-import { UserAuthManager } from '../packages/sdk/src/_internal/platform/security/user-auth.js';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.js';
+import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,7 +80,7 @@ function makeHttpListener(cm: ConfigManager, serveMock: ReturnType<typeof makeSe
     configManager: cm,
     userAuth: makeUserAuth(),
     serveFactory: serveMock.factory,
-  } as unknown as Parameters<InstanceType<typeof import('../packages/sdk/src/_internal/platform/daemon/http-listener.js').HttpListener>['start']>[0] extends never ? never : ConstructorParameters<typeof import('../packages/sdk/src/_internal/platform/daemon/http-listener.js').HttpListener>[0]);
+  } as unknown as Parameters<InstanceType<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>['start']>[0] extends never ? never : ConstructorParameters<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>[0]);
 }
 
 async function startListener(listener: HttpListener) {

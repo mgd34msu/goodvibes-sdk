@@ -1,1 +1,5 @@
-export * from '../../_internal/platform/runtime/ui-read-models-observability-options.js';
+import type { ForensicsRegistry } from './forensics/index.js';
+
+export interface UiObservabilityReadModelOptions {
+  readonly forensicsRegistry?: ForensicsRegistry;
+}

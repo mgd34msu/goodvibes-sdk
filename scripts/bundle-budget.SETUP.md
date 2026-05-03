@@ -1,16 +1,14 @@
-# Optional CI Integration: `bundle-budget` Job
+# CI Integration: `bundle-budget-check` Job
 
-## Adding to CI
+## Current CI Gate
 
-The repo keeps `bun run bundle:check` available, but the current
-`.github/workflows/ci.yml` does not run it as a standalone gate. Add the
-following job to your GitHub Actions workflow (`.github/workflows/ci.yml` or
-equivalent) if bundle budgets should become required CI again.
-Do **not** run `bun run sync` — it is intentionally excluded from CI.
+The repo runs `bun run bundle:check` in the `bundle-budget-check` CI job. Keep
+this gate separate from contract artifact refresh; generated artifact drift
+belongs to the dedicated `contract-artifact-check` job.
 
 ```yaml
-  bundle-budget:
-    name: Bundle Size Budgets
+  bundle-budget-check:
+    name: Bundle size budgets
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -76,11 +74,11 @@ You do **not** need to add budget entries for these.
 
 ### Updating budgets
 
-After Zod lands (or any other dep that increases bundle size):
+After a legitimate dependency or implementation change increases bundle size:
 
 1. Run `bun run bundle:check` locally to see current actual sizes in the table.
 2. For any entry that changed, set `gzip_bytes` to `Math.ceil(actual * 1.2)`.
-3. Update the `_comment` date field to reflect the new measurement date.
+3. Keep `_comment` generic; do not add wave/date-specific rationale.
 4. Commit the updated `bundle-budgets.json`.
 
 ### Adding a new entry-point

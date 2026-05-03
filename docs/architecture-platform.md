@@ -1,14 +1,10 @@
 # Platform Layer Architecture
 
-> **Internal source map:** This document describes the internal source layout under `packages/sdk/src/_internal/platform/`. It is an orientation guide for contributors navigating the codebase — **not** a consumer import reference.
+> **Internal source map:** This document describes the internal source layout under `packages/sdk/src/platform/`. It is an orientation guide for contributors navigating the codebase — **not** a consumer import reference.
 >
 > Consumers access these modules via explicit `./platform/...` entrypoints as documented in [Public Surface Reference](./public-surface.md). See [Runtime Surfaces](./surfaces.md) for the distinction between the full surface (Bun) and companion surfaces (Hermes/browser/React Native).
 
-This document maps every top-level directory under `packages/sdk/src/_internal/platform/`. Each directory is a bounded subsystem with a single responsibility. Use this as an orientation guide when navigating the codebase.
-
-> **Note:** `packages/sdk/src/_internal/` also contains non-platform directories (`contracts/`, `transport-*/`) that are covered in [architecture.md](./architecture.md). This document focuses solely on the `platform/` subtree.
-
----
+This document maps every top-level directory under `packages/sdk/src/platform/`. Each directory is a bounded subsystem with a single responsibility. Use this as an orientation guide when navigating the codebase.
 
 ## Directory Map
 
@@ -63,7 +59,7 @@ This document maps every top-level directory under `packages/sdk/src/_internal/p
 
 ## Dependency Sketch
 
-The diagram below shows the major dependency directions. Arrows point from **consumer** to **dependency**. All dependencies are intra-`_internal/platform/` unless otherwise noted.
+The diagram below shows the major dependency directions. Arrows point from **consumer** to **dependency**. All dependencies are intra-`platform/` unless otherwise noted.
 
 ```
 core ──────────────────────────────────────────► providers
@@ -117,17 +113,16 @@ mcp ─────────────────────────�
 
 ## Package Facade Pattern
 
-The main SDK package is a facade over the monorepo packages. Implementation source for `contracts`, `errors`, `transport-*`, `daemon-sdk`, `operator-sdk`, and `peer-sdk` lives in those packages. SDK compatibility files under `_internal/` re-export the canonical packages instead of copying implementation source.
+The main SDK package is a facade over the monorepo packages. Implementation source for `contracts`, `errors`, `transport-*`, `daemon-sdk`, `operator-sdk`, and `peer-sdk` lives in those packages. SDK-owned runtime, platform, and knowledge implementation lives under `packages/sdk/src/platform`.
 
 ### How artifact sync works
 
-- `scripts/sync-sdk-internals.ts` no longer copies implementation source.
-- It only keeps SDK-embedded contract JSON artifacts in sync with `packages/contracts/artifacts`.
-- `bun run sync:check` checks the artifact copy without writing.
+- `scripts/prepare-sdk-package.ts` copies contract JSON artifacts from `packages/contracts/artifacts` into the SDK package dist.
+- `bun run contracts:check` checks that generated contract artifacts are current without writing.
 
 ### When sync drift matters
 
-Implementation drift is no longer possible because there is one implementation source. If behavior needs to change, edit the canonical package source. If generated contract JSON changes, run `bun run sync --scope=contracts`.
+Implementation drift is no longer possible because there is one implementation source. If behavior needs to change, edit the canonical package source. If generated contract JSON changes, run `bun run refresh:contracts`.
 
 ---
 

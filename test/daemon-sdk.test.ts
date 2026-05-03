@@ -9,12 +9,13 @@ import {
   jsonErrorResponse,
 } from '../packages/daemon-sdk/dist/index.js';
 import { GoodVibesSdkError } from '../packages/errors/dist/index.js';
+import sdkPackage from '../packages/sdk/package.json' with { type: 'json' };
 
 describe('daemon sdk', () => {
   test('builds control route handlers from injected host services', async () => {
     const handlers = createDaemonControlRouteHandlers({
       authToken: 'shared-token',
-      version: '0.28.22',
+      version: sdkPackage.version,
       sessionCookieName: 'goodvibes_session',
       controlPlaneGateway: {
         getSnapshot: () => ({ ok: true }),
@@ -55,7 +56,7 @@ describe('daemon sdk', () => {
     const statusResponse = await handlers.getStatus();
     expect(statusResponse.status).toBe(200);
     const status = await statusResponse.json() as { version: string };
-    expect(status.version).toBe('0.28.22');
+    expect(status.version).toBe(sdkPackage.version);
 
     const authResponse = await handlers.getCurrentAuth(new Request('http://127.0.0.1/api/control-plane/auth', {
       headers: {

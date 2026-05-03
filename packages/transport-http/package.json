@@ -1,7 +1,6 @@
 {
   "name": "@pellux/goodvibes-transport-http",
-  "private": true,
-  "version": "0.28.22",
+  "version": "0.30.0",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -84,5 +83,8 @@
     "@pellux/goodvibes-errors": "workspace:*",
     "@pellux/goodvibes-transport-core": "workspace:*",
     "zod": "^4.3.6"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

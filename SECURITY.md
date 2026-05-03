@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.28.x (latest pre-1.0 line) | :white_check_mark: |
-| < 0.28.0 | :x: |
+| 0.30.x (latest pre-1.0 line) | :white_check_mark: |
+| < 0.30.0 | :x: |
 
 Pre-1.0 policy: security fixes land in the latest published pre-1.0 line. Earlier minor lines are not patched; upgrade to the latest release to receive security updates.
 
@@ -37,8 +37,8 @@ by the published dependency graph itself.
 The `uuid` advisory `GHSA-w5hq-g745-h8pq` is also handled with a vendor patch
 because Verdaccio's current stable release still depends on `@cypress/request@3.0.10`,
 which depends on `uuid@^8.3.2`. The root workspace overrides that transitive
-dependency to `file:vendor/uuid-cjs`, a checked-in CommonJS compatibility shim
-that implements only the `v4` surface used by `@cypress/request`. The shim uses
+dependency to `file:vendor/uuid-cjs`, a checked-in CommonJS vendor adapter that
+implements only the `v4` surface used by `@cypress/request`. The adapter uses
 Node's crypto APIs and includes the same output-buffer bounds check shape used
 by the upstream `uuid@14` fix. This vendored package is dev/tooling scope only
 for the local Verdaccio registry dry-run and must not be treated as a general
@@ -66,7 +66,6 @@ not inherit dependency-package overrides:
 
 Report security issues privately via the main GoodVibes security channel:
 
-- **Email**: mgd34msu@gmail.com (subject: `[SECURITY] goodvibes-sdk <brief description>`)
 - **GitHub private vulnerability reporting**: Use the [Security tab](https://github.com/mgd34msu/goodvibes-sdk/security/advisories/new) on this repository
 
 Include:

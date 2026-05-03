@@ -9,8 +9,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.ts';
-import type { SessionEvent } from '../packages/sdk/src/_internal/platform/runtime/events/session.ts';
+import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.ts';
+import type { SessionEvent } from '../packages/sdk/src/events/session.js';
 
 function makeEnvelope() {
   const payload = { type: 'SESSION_CREATED', sessionId: 'sess-obs-14' } as SessionEvent;

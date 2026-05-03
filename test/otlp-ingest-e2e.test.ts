@@ -15,16 +15,16 @@
  *         → record appended to this.records
  *           → GET /api/v1/telemetry/events returns the record
  *
- * Pattern: mirrors test/provider-routes-secrets-skipped.test.ts DaemonHttpRouter
+ * Pattern: matches test/provider-routes-secrets-skipped.test.ts DaemonHttpRouter
  * section (lines 113-199).
  */
 
 import { describe, expect, test } from 'bun:test';
-import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.js';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import { createRuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
-import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
-import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
+import { DaemonHttpRouter } from '../packages/sdk/src/platform/daemon/http/router.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
+import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // ---------------------------------------------------------------------------
 // Stubs — identical pattern to provider-routes-secrets-skipped.test.ts

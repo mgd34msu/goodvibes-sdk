@@ -19,12 +19,12 @@
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import { AgentTaskAdapter } from '../packages/sdk/src/_internal/platform/runtime/tasks/adapters/agent-adapter.js';
-import { createRuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
-import type { RuntimeStore } from '../packages/sdk/src/_internal/platform/runtime/store/index.js';
-import { createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import type { AgentEvent } from '../packages/sdk/src/_internal/platform/runtime/events/agents.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import { AgentTaskAdapter } from '../packages/sdk/src/platform/runtime/tasks/adapters/agent-adapter.js';
+import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
+import type { RuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
+import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.js';
+import type { AgentEvent } from '../packages/sdk/src/events/agents.js';
 
 // ---------------------------------------------------------------------------
 // Real Zustand store for AgentTaskAdapter (required — createDomainDispatch uses store.setState)
@@ -125,12 +125,12 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
 // DR1: SharedSessionBroker — input record reconciliation via RuntimeEventBus
 // ---------------------------------------------------------------------------
 
-import type { SharedSessionRecord, SharedSessionMessage } from '../packages/sdk/src/_internal/platform/control-plane/session-types.js';
-import type { SharedSessionInputRecord } from '../packages/sdk/src/_internal/platform/control-plane/session-intents.js';
-import { SharedSessionBroker } from '../packages/sdk/src/_internal/platform/control-plane/session-broker.js';
-import type { SharedSessionStoreSnapshot, SharedSessionEventPublisher } from '../packages/sdk/src/_internal/platform/control-plane/session-broker-internals.js';
-import type { PersistentStore } from '../packages/sdk/src/_internal/platform/state/persistent-store.js';
-import type { RouteBindingManager } from '../packages/sdk/src/_internal/platform/channels/route-manager.js';
+import type { SharedSessionRecord, SharedSessionMessage } from '../packages/sdk/src/platform/control-plane/session-types.js';
+import type { SharedSessionInputRecord } from '../packages/sdk/src/platform/control-plane/session-intents.js';
+import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.js';
+import type { SharedSessionStoreSnapshot, SharedSessionEventPublisher } from '../packages/sdk/src/platform/control-plane/session-broker-helpers.js';
+import type { PersistentStore } from '../packages/sdk/src/platform/state/persistent-store.js';
+import type { RouteBindingManager } from '../packages/sdk/src/platform/channels/route-manager.js';
 
 /** Minimal in-memory PersistentStore stub (matches PersistentStore<T> API: load + persist) */
 function makePersistentStoreStub(): PersistentStore<SharedSessionStoreSnapshot> {
@@ -425,7 +425,7 @@ describe('M2: SharedSessionBroker.start() — startup reconciliation', () => {
       messageSender: { send: () => false },
     });
     const sess = await broker1.createSession({ title: 'Restart Test' });
-    // Inject 3 spawned inputs directly into broker internals
+    // Inject 3 spawned inputs directly into broker helper state.
     const inputs = (broker1 as unknown as { inputs: Map<string, SharedSessionInputRecord[]> }).inputs;
     inputs.set(sess.id, [
       { id: 'sin-1', sessionId: sess.id, state: 'spawned', intent: 'submit', createdAt: 1, updatedAt: 1, body: 'a', correlationId: 'c1', metadata: {}, routing: undefined },

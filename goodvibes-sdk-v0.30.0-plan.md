@@ -1,5 +1,13 @@
 # GoodVibes SDK v0.30.0 Refactor Plan
 
+Status: implemented and in release validation for v0.30.0. The source-mirror
+removal phases have been implemented: the SDK now re-exports sibling
+source-of-truth packages through facade entrypoints, `_internal` mirror source
+is gone, mirror-drift tooling was removed, and the stale
+`packages/transport-direct` workspace package directory was deleted. The public
+`@pellux/goodvibes-sdk/transport-direct` subpath remains as an SDK facade backed
+by `@pellux/goodvibes-transport-core`; it is not a separate workspace package.
+
 This plan is for the structural debt refactor leading toward `@pellux/goodvibes-sdk` v0.30.0.
 
 The current workspace state was checkpointed locally before this plan:
@@ -8,9 +16,8 @@ The current workspace state was checkpointed locally before this plan:
 
 Constraints:
 
-- Do not push.
-- Do not publish.
-- Do not notify or coordinate with other panes unless explicitly told.
+- Superseded release directive: after the implementation and review loops are
+  clean, push and publish v0.30.0 to GitHub and npm.
 - Keep the monorepo.
 - Keep the sub-packages.
 - Preserve all current capabilities.
@@ -36,7 +43,7 @@ GoodVibes SDK has outgrown the architecture that was acceptable for a smaller pa
 The major order is:
 
 1. Use the checkpoint commit as rollback point.
-2. Fix package mirror/source-of-truth architecture.
+2. Fix package source-of-truth architecture.
 3. Redesign SDK public exports and platform organization.
 4. Split oversized route/interface contracts.
 5. Deduplicate client plumbing.
@@ -72,7 +79,7 @@ Implementation rule:
 
 Problem:
 
-The SDK currently mirrors sibling package source into `packages/sdk/src/_internal/*`, including:
+The SDK currently carries copied sibling package source under `old SDK copied-source tree`, including:
 
 - `contracts`
 - `errors`
@@ -80,7 +87,7 @@ The SDK currently mirrors sibling package source into `packages/sdk/src/_interna
 - `operator`
 - `peer`
 - `transport-core`
-- `transport-direct`
+- `transport-direct` (historical copied package; the public SDK subpath remains as a facade)
 - `transport-http`
 - `transport-realtime`
 
@@ -113,23 +120,24 @@ export * from '@pellux/goodvibes-peer-sdk';
 not:
 
 ```ts
-export * from './_internal/peer/client';
+export * from '/goodvibes-peer-sdk';
 ```
 
 Work:
 
-- Inventory every `packages/sdk/src/_internal/{contracts,errors,daemon,operator,peer,transport-*}` import.
-- Replace mirrored implementation exports with facade modules that re-export real workspace packages.
-- Make `@pellux/goodvibes-sdk` depend on the sibling packages it re-exports.
-- Remove mirror sync for implementation source.
-- Keep only genuinely SDK-owned implementation under `packages/sdk/src/_internal/platform`.
-- Decide separately whether contract artifacts still need embedding or can be exposed through package dependencies.
-- Keep compatibility for current SDK subpath imports where possible.
-- Preserve the root workspace self-reference only if it remains necessary for the monorepo build/release workflow; otherwise remove it as part of the source-of-truth cleanup.
+- Completed: inventoried copied sibling-package source imports.
+- Completed: replaced copied implementation exports with facade modules that re-export real workspace packages.
+- Completed: made `@pellux/goodvibes-sdk` depend on the sibling packages it re-exports.
+- Completed: removed source-copy sync for implementation source.
+- Completed: kept genuinely SDK-owned implementation under `packages/sdk/src/platform`.
+- Completed: removed the copied-source tree and stale `packages/transport-direct` package directory.
+- Completed: kept contract artifacts available through the contracts package and SDK facade exports.
+- Completed: kept only intentional SDK subpath imports that fit the new public boundary.
+- Completed: preserved the root workspace self-reference only for the monorepo build/release workflow.
 
 Commit:
 
-- `refactor: remove sdk package source mirrors`
+- `refactor: remove sdk copied package source`
 
 ## 3. Redesign SDK Organization And Public Export Plumbing
 
@@ -178,7 +186,7 @@ Target exports:
 @pellux/goodvibes-sdk/operator
 @pellux/goodvibes-sdk/peer
 @pellux/goodvibes-sdk/transport-core
-@pellux/goodvibes-sdk/transport-direct
+@pellux/goodvibes-sdk/transport-direct   # facade over transport-core
 @pellux/goodvibes-sdk/transport-http
 @pellux/goodvibes-sdk/transport-realtime
 @pellux/goodvibes-sdk/browser
@@ -202,7 +210,7 @@ Work:
 - Inventory current docs/tests/examples and likely downstream imports that use `./platform/*`.
 - Design explicit stable platform entrypoints.
 - Add public barrel modules for intended stable entrypoints.
-- Keep compatibility aliases only where justified.
+- Remove old aliases and expose only deliberate entrypoints.
 - Remove `./platform/*`.
 - Document that arbitrary deep platform imports are not public API.
 - Remove reliance on broad API Extractor suppressions caused by accidental/deep internals where possible; document any remaining suppressions with a reason and owner.
@@ -237,7 +245,7 @@ Work:
 
 - Split route handler interfaces by domain.
 - Split route option/context types where they have the same problem.
-- Preserve aggregate compatibility type.
+- Keep an aggregate handler type only as the canonical domain composition type.
 - Keep route domain files close to their handlers and schema helpers.
 - Bound telemetry query inputs such as `since` and `until`; reject or clamp negative, fractional, non-finite, and unrealistically large values.
 - Remove or assert against duplicate route registrations such as duplicate `/api/remote` GET dispatch so route order cannot silently change behavior.
@@ -428,7 +436,7 @@ Product constraint:
 
 Problem:
 
-The SDK currently exposes and depends on many heavy/runtime-specific capabilities from a broad package surface. That makes lightweight/client-safe consumers inherit unrelated dependencies and risk importing incompatible implementation.
+The SDK currently exposes and depends on many heavy/runtime-specific capabilities from a broad package surface. That makes lightweight/client-safe consumers inherit unrelated dependencies and risk importing unsuitable implementation.
 
 "Node-only" here means code or dependencies that require server/runtime capabilities such as:
 
@@ -588,7 +596,7 @@ The work is not complete just because implementation compiles or one bug is fixe
 
 Review scope:
 
-- Source mirrors removed or justified.
+- Source copies removed.
 - Public exports are explicit.
 - No accidental deep platform API.
 - God interfaces decomposed.
@@ -623,7 +631,7 @@ The v0.30.0 architecture changes are large enough that the existing documentatio
 Goal:
 
 - Documentation should teach the v0.30.0 architecture directly.
-- It should not describe legacy package mirrors, accidental deep imports, or Home Graph as a separate knowledge system.
+- It should not describe copied package source, accidental deep imports, or Home Graph as a separate knowledge system.
 - It should make the package/sub-package relationship obvious.
 - It should make the base knowledge system and extension model obvious.
 - It should make runtime surfaces and pick-and-choose capability loading obvious.
@@ -687,7 +695,7 @@ Validation should include:
 - package metadata checks
 - sync/drift checks, if sync remains
 - export resolution checks
-- browser/RN/Workers compatibility checks where relevant
+- browser/RN/Workers runtime checks where relevant
 - package dry-run checks only when release preparation is explicitly allowed
 
 No push or publish occurs as part of this plan unless explicitly requested later.

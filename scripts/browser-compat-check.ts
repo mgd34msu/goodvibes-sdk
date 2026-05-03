@@ -37,4 +37,4 @@ for (const relativePath of runtimeNeutralEntries) {
   }
 }
 
-console.log('browser/runtime-neutral compatibility check passed');
+console.log('browser/runtime-neutral runtime-neutral support check passed');

@@ -6,10 +6,10 @@ lookup, route binding, and surface-specific tools.
 
 Sources:
 
-- `packages/sdk/src/_internal/platform/channels/`
-- `packages/sdk/src/_internal/platform/adapters/`
-- `packages/sdk/src/_internal/platform/daemon/http/channel-routes.ts`
-- `packages/sdk/src/_internal/platform/control-plane/method-catalog-channels.ts`
+- `packages/sdk/src/platform/channels/`
+- `packages/sdk/src/platform/adapters/`
+- `packages/sdk/src/platform/daemon/http/channel-routes.ts`
+- `packages/sdk/src/platform/control-plane/method-catalog-channels.ts`
 
 ## Supported Surfaces
 

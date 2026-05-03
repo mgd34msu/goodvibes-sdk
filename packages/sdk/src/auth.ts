@@ -1,10 +1,6 @@
 import { ConfigurationError } from '@pellux/goodvibes-errors';
 import type { SDKObserver } from './observer/index.js';
 import { invokeObserver } from './observer/index.js';
-import type {
-  OperatorMethodInput,
-  OperatorMethodOutput,
-} from '@pellux/goodvibes-contracts';
 import type { AuthTokenResolver } from '@pellux/goodvibes-transport-http';
 import type { OperatorSdk } from '@pellux/goodvibes-operator-sdk';
 import {
@@ -12,58 +8,35 @@ import {
   PermissionResolver,
   SessionManager,
   TokenStore,
-} from './_internal/platform/auth/index.js';
-import type { AutoRefreshOptions } from './_internal/platform/auth/index.js';
-import type { ControlPlaneAuthSnapshot } from './_internal/platform/control-plane/auth-snapshot.js';
+} from './client-auth/index.js';
+import type { AutoRefreshOptions } from './client-auth/index.js';
+import type { ControlPlaneAuthSnapshot } from './client-auth/control-plane-auth-snapshot.js';
+import type {
+  GoodVibesAuthLoginOptions,
+  GoodVibesCurrentAuth,
+  GoodVibesLoginInput,
+  GoodVibesLoginOutput,
+  GoodVibesTokenStore,
+} from './client-auth/types.js';
 
 // Re-export focused responsibility classes for consumers who prefer
 // narrower, single-concern APIs over the combined GoodVibesAuthClient facade.
-// NOTE: OAuthClient is intentionally NOT re-exported here. It depends on
-// node:crypto and is not safe in React Native / browser bundles.
-// OAuthClient was previously exposed via '@pellux/goodvibes-sdk/oauth' for Node consumers.
-// That subpath was removed in 0.19.6. OAuth flows should now be handled server-side
-// (e.g. by your operator/daemon process) with the client receiving an already-acquired
-// token via TokenStore.
-export { PermissionResolver, SessionManager, TokenStore } from './_internal/platform/auth/index.js';
-export type { OAuthStartState, OAuthTokenPayload } from './_internal/platform/auth/oauth-types.js';
-
-export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
-export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;
-export type GoodVibesLoginOutput = OperatorMethodOutput<'control.auth.login'>;
-
-/**
- * Token storage interface for the GoodVibes SDK.
- *
- * Implement all three core methods. The optional `getTokenEntry` / `setTokenEntry`
- * methods are used by auto-refresh to track token expiry without requiring
- * consumers to change their existing `GoodVibesTokenStore` implementations.
- */
-export interface GoodVibesTokenStore {
-  getToken(): Promise<string | null>;
-  setToken(token: string | null): Promise<void>;
-  clearToken(): Promise<void>;
-
-  /**
-   * Return the current token and its expiry timestamp (unix ms).
-   * Optional: when absent, auto-refresh falls back to `getToken()` with no
-   * expiry tracking (leeway-based pre-flight checks are disabled).
-   */
-  getTokenEntry?(): Promise<{ token: string | null; expiresAt?: number }>;
-
-  /**
-   * Persist a token alongside its expiry timestamp (unix ms).
-   * Optional: when absent, auto-refresh falls back to `setToken()`.
-   */
-  setTokenEntry?(token: string | null, expiresAt?: number): Promise<void>;
-}
+// OAuthClient is intentionally omitted from this client-safe surface because it
+// depends on Node runtime facilities. Daemon OAuth flows belong on the server
+// side; clients receive acquired tokens via TokenStore.
+export { PermissionResolver, SessionManager, TokenStore } from './client-auth/index.js';
+export type { OAuthStartState, OAuthTokenPayload } from './client-auth/oauth-types.js';
+export type {
+  GoodVibesAuthLoginOptions,
+  GoodVibesCurrentAuth,
+  GoodVibesLoginInput,
+  GoodVibesLoginOutput,
+  GoodVibesTokenStore,
+} from './client-auth/types.js';
 
 export interface BrowserTokenStoreOptions {
   readonly key?: string;
   readonly storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
-}
-
-export interface GoodVibesAuthLoginOptions {
-  readonly persistToken?: boolean;
 }
 
 /**
@@ -76,8 +49,7 @@ export interface GoodVibesAuthLoginOptions {
  * - `sdk.auth.sessionManager` — Login / session lifecycle (`SessionManager`)
  * - `sdk.auth.permissionResolver(snapshot)` — Role / scope checks (`PermissionResolver`)
  * - OAuth 2.0 flows: handle server-side (operator/daemon) and provide the acquired
- *   token to the client via TokenStore. The prior `@pellux/goodvibes-sdk/oauth` subpath
- *   was removed in 0.19.6.
+ *   token to the client via TokenStore.
  */
 export interface GoodVibesAuthClient {
   readonly writable: boolean;

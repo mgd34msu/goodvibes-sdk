@@ -5,7 +5,7 @@
     "moduleResolution": "NodeNext",
     "lib": [
       "ES2023",
-      "DOM"
+      "ESNext.Disposable"
     ],
     "strict": true,
     "declaration": true,
@@ -16,10 +16,6 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "types": [
-      "node",
-      "bun"
-    ]
+    "skipLibCheck": true
   }
 }

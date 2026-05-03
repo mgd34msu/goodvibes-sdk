@@ -21,36 +21,36 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
         oauthReady: z.ZodBoolean;
         pendingLogin: z.ZodBoolean;
         availableRoutes: z.ZodArray<z.ZodEnum<{
-            unconfigured: "unconfigured";
             "api-key": "api-key";
-            "service-oauth": "service-oauth";
             subscription: "subscription";
+            "service-oauth": "service-oauth";
+            unconfigured: "unconfigured";
         }>>;
         preferredRoute: z.ZodEnum<{
-            unconfigured: "unconfigured";
             "api-key": "api-key";
-            "service-oauth": "service-oauth";
             subscription: "subscription";
+            "service-oauth": "service-oauth";
+            unconfigured: "unconfigured";
         }>;
         activeRoute: z.ZodEnum<{
-            unconfigured: "unconfigured";
             "api-key": "api-key";
-            "service-oauth": "service-oauth";
             subscription: "subscription";
+            "service-oauth": "service-oauth";
+            unconfigured: "unconfigured";
         }>;
         activeRouteReason: z.ZodString;
         authFreshness: z.ZodEnum<{
-            healthy: "healthy";
-            pending: "pending";
-            unconfigured: "unconfigured";
-            expiring: "expiring";
             expired: "expired";
+            unconfigured: "unconfigured";
+            healthy: "healthy";
+            expiring: "expiring";
+            pending: "pending";
         }>;
         fallbackRoute: z.ZodOptional<z.ZodEnum<{
-            unconfigured: "unconfigured";
             "api-key": "api-key";
-            "service-oauth": "service-oauth";
             subscription: "subscription";
+            "service-oauth": "service-oauth";
+            unconfigured: "unconfigured";
         }>>;
         fallbackRisk: z.ZodOptional<z.ZodString>;
         expiresAt: z.ZodOptional<z.ZodNumber>;
@@ -64,18 +64,18 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
         recommendedActions: z.ZodArray<z.ZodString>;
         routeRecords: z.ZodArray<z.ZodObject<{
             route: z.ZodEnum<{
-                unconfigured: "unconfigured";
                 "api-key": "api-key";
-                "service-oauth": "service-oauth";
                 subscription: "subscription";
+                "service-oauth": "service-oauth";
+                unconfigured: "unconfigured";
             }>;
             usable: z.ZodBoolean;
             freshness: z.ZodEnum<{
-                healthy: "healthy";
-                pending: "pending";
-                unconfigured: "unconfigured";
-                expiring: "expiring";
                 expired: "expired";
+                unconfigured: "unconfigured";
+                healthy: "healthy";
+                expiring: "expiring";
+                pending: "pending";
             }>;
             detail: z.ZodString;
             issues: z.ZodArray<z.ZodString>;
@@ -137,6 +137,40 @@ export interface ApprovalBrokerLike {
 
 // @public (undocumented)
 export type ArtifactKind = string;
+
+// @public (undocumented)
+export interface ArtifactStoreUploadLike {
+    // (undocumented)
+    create(input: Record<string, unknown>): Promise<unknown>;
+    // (undocumented)
+    createFromStream?(input: {
+        readonly stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array | Buffer | string> | Iterable<Uint8Array | Buffer | string>;
+        readonly kind?: string;
+        readonly mimeType?: string;
+        readonly filename?: string;
+        readonly sourceUri?: string;
+        readonly sizeBytes?: number;
+        readonly retentionMs?: number;
+        readonly acquisitionMode?: string;
+        readonly fetchMode?: string;
+        readonly metadata?: Record<string, unknown>;
+    }): Promise<unknown>;
+    // (undocumented)
+    getMaxBytes?(): number;
+}
+
+// @public (undocumented)
+export type ArtifactUploadFieldMap = Record<string, unknown>;
+
+// @public (undocumented)
+export interface ArtifactUploadResult {
+    // (undocumented)
+    readonly artifact: unknown;
+    // (undocumented)
+    readonly artifactId: string;
+    // (undocumented)
+    readonly fields: ArtifactUploadFieldMap;
+}
 
 // @public (undocumented)
 export interface AuthenticatedPrincipal {
@@ -217,6 +251,16 @@ export interface BackoffPolicy {
     readonly maxAttempts?: number;
     // (undocumented)
     readonly maxDelayMs?: number;
+}
+
+// @public (undocumented)
+export interface BoundedIntegerOptions {
+    // (undocumented)
+    readonly fallback: number;
+    // (undocumented)
+    readonly max?: number;
+    // (undocumented)
+    readonly min?: number;
 }
 
 // @public (undocumented)
@@ -356,6 +400,9 @@ export interface ChannelPolicyServiceLike {
 // @public (undocumented)
 export type ChannelSurface = string;
 
+// @public
+export function clientInputRecord<TInput>(input: TInput | undefined): Record<string, unknown> | undefined;
+
 // @public (undocumented)
 export interface ClientTransport<TKind extends string, TOperator, TPeer> {
     // (undocumented)
@@ -373,11 +420,13 @@ export interface ClientTransport<TKind extends string, TOperator, TPeer> {
 // @public
 export function composeMiddleware(middleware: readonly TransportMiddleware[], innerFetch: (ctx: TransportContext) => Promise<Response>): (ctx: TransportContext) => Promise<void>;
 
-// @public (undocumented)
+// @public
 export function computeBackoffDelay(attempt: number, policy: ResolvedBackoffPolicy): number;
 
-// @public @deprecated
+// @public
 export class ConfigurationError extends GoodVibesSdkError {
+    // (undocumented)
+    static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
 
@@ -386,10 +435,10 @@ export type ConfiguredVia = z.infer<typeof ConfiguredViaSchema>;
 
 // @public (undocumented)
 export const ConfiguredViaSchema: z.ZodEnum<{
-    env: "env";
-    secrets: "secrets";
     anonymous: "anonymous";
     subscription: "subscription";
+    secrets: "secrets";
+    env: "env";
 }>;
 
 // @public (undocumented)
@@ -397,8 +446,10 @@ export interface ConsoleObserverOptions {
     readonly level?: 'debug' | 'info';
 }
 
-// @public @deprecated
+// @public
 export class ContractError extends GoodVibesSdkError {
+    // (undocumented)
+    static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
 
@@ -448,8 +499,8 @@ export const ControlAuthCurrentResponseSchema: z.ZodObject<{
     authenticated: z.ZodBoolean;
     authMode: z.ZodEnum<{
         session: "session";
-        invalid: "invalid";
         anonymous: "anonymous";
+        invalid: "invalid";
         "shared-token": "shared-token";
     }>;
     tokenPresent: z.ZodBoolean;
@@ -457,10 +508,10 @@ export const ControlAuthCurrentResponseSchema: z.ZodObject<{
     sessionCookiePresent: z.ZodBoolean;
     principalId: z.ZodNullable<z.ZodString>;
     principalKind: z.ZodNullable<z.ZodEnum<{
-        service: "service";
+        token: "token";
         user: "user";
         bot: "bot";
-        token: "token";
+        service: "service";
     }>>;
     admin: z.ZodBoolean;
     scopes: z.ZodArray<z.ZodString>;
@@ -488,6 +539,9 @@ export const ControlStatusResponseSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public (undocumented)
+export function createArtifactFromUploadRequest(artifactStore: ArtifactStoreUploadLike, req: Request): Promise<ArtifactUploadResult | Response>;
+
+// @public (undocumented)
 export function createBrowserGoodVibesSdk(options?: BrowserGoodVibesSdkOptions): GoodVibesSdk;
 
 // @public
@@ -500,43 +554,48 @@ export function createClientTransport<TKind extends string, TOperator, TPeer>(ki
 export function createConsoleObserver(options?: ConsoleObserverOptions): SDKObserver;
 
 // @public (undocumented)
-export function createDaemonChannelRouteHandlers(context: DaemonChannelRouteContext): Pick<DaemonApiRouteHandlers, 'getSurfaces' | 'getChannelAccounts' | 'getChannelSurfaceAccounts' | 'getChannelAccount' | 'getChannelSetupSchema' | 'getChannelDoctor' | 'getChannelRepairActions' | 'getChannelLifecycle' | 'postChannelLifecycleMigrate' | 'postChannelAccountAction' | 'getChannelCapabilities' | 'getChannelSurfaceCapabilities' | 'getChannelTools' | 'getChannelSurfaceTools' | 'getChannelAgentTools' | 'getChannelSurfaceAgentTools' | 'postChannelTool' | 'getChannelActions' | 'getChannelSurfaceActions' | 'postChannelAction' | 'postChannelResolveTarget' | 'postChannelAuthorize' | 'postChannelAllowlistResolve' | 'postChannelAllowlistEdit' | 'getChannelPolicies' | 'postChannelPolicy' | 'patchChannelPolicy' | 'getChannelPolicyAudit' | 'getChannelStatus' | 'getChannelDirectory'>;
+export function createDaemonChannelRouteHandlers(context: DaemonChannelRouteContext): DaemonChannelRouteHandlers;
 
 // Warning: (ae-forgotten-export) The symbol "ControlRouteContext" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function createDaemonControlRouteHandlers(context: ControlRouteContext, request: Request): Pick<DaemonApiRouteHandlers, 'getStatus' | 'getCurrentAuth' | 'getControlPlaneSnapshot' | 'getOperatorContract' | 'getControlPlaneWeb' | 'getControlPlaneRecentEvents' | 'getControlPlaneMessages' | 'getControlPlaneClients' | 'getGatewayMethods' | 'getGatewayEvents' | 'getGatewayMethod' | 'invokeGatewayMethod' | 'createControlPlaneEventStream'>;
+export function createDaemonControlRouteHandlers(context: ControlRouteContext, request: Request): DaemonControlRouteHandlers;
 
 // @public (undocumented)
-export function createDaemonIntegrationRouteHandlers(context: DaemonIntegrationRouteContext, request: Request): Pick<DaemonApiRouteHandlers, 'getReview' | 'getIntegrationSession' | 'getIntegrationTasks' | 'getIntegrationAutomation' | 'getIntegrationSessions' | 'getDeliveries' | 'getDelivery' | 'getRoutesSnapshot' | 'getRemote' | 'getHealth' | 'getAccounts' | 'getProviders' | 'getProvider' | 'getProviderUsage' | 'getSettings' | 'getContinuity' | 'getWorktrees' | 'getIntelligence' | 'getMemoryDoctor' | 'getMemoryVectorStats' | 'postMemoryVectorRebuild' | 'postMemoryEmbeddingDefault' | 'getLocalAuth' | 'postLocalAuthUser' | 'deleteLocalAuthUser' | 'postLocalAuthPassword' | 'deleteLocalAuthSession' | 'deleteBootstrapFile' | 'getPanels' | 'postPanelOpen' | 'getEvents'>;
+export function createDaemonIntegrationRouteHandlers(context: DaemonIntegrationRouteContext, request: Request): DaemonIntegrationRouteHandlers;
 
 // @public (undocumented)
-export function createDaemonKnowledgeRouteHandlers(context: DaemonKnowledgeRouteContext): Pick<DaemonApiRouteHandlers, 'getKnowledgeStatus' | 'getKnowledgeSources' | 'getKnowledgeNodes' | 'getKnowledgeIssues' | 'getKnowledgeItem' | 'getKnowledgeConnectors' | 'getKnowledgeConnector' | 'getKnowledgeConnectorDoctor' | 'getKnowledgeProjectionTargets' | 'getKnowledgeGraphqlSchema' | 'getKnowledgeExtractions' | 'getKnowledgeUsage' | 'getKnowledgeCandidates' | 'getKnowledgeCandidate' | 'getKnowledgeReports' | 'getKnowledgeReport' | 'getKnowledgeExtraction' | 'getKnowledgeSourceExtraction' | 'getKnowledgeJobs' | 'getKnowledgeJob' | 'getKnowledgeJobRuns' | 'getKnowledgeSchedules' | 'getKnowledgeSchedule' | 'postKnowledgeIngestUrl' | 'postKnowledgeIngestArtifact' | 'postKnowledgeImportBookmarks' | 'postKnowledgeImportUrls' | 'postKnowledgeIngestConnector' | 'postKnowledgeSearch' | 'postKnowledgePacket' | 'postKnowledgeDecideCandidate' | 'postKnowledgeRunJob' | 'postKnowledgeLint' | 'postKnowledgeReindex' | 'postKnowledgeSaveSchedule' | 'deleteKnowledgeSchedule' | 'postKnowledgeSetScheduleEnabled' | 'postKnowledgeRenderProjection' | 'postKnowledgeMaterializeProjection' | 'executeKnowledgeGraphql'>;
+export function createDaemonKnowledgeRefinementRouteHandlers(context: DaemonKnowledgeRouteContext): DaemonKnowledgeRefinementRouteHandlers;
 
 // @public (undocumented)
-export function createDaemonMediaRouteHandlers(context: DaemonMediaRouteContext): Pick<DaemonApiRouteHandlers, 'getVoiceStatus' | 'getVoiceProviders' | 'getVoiceVoices' | 'postVoiceTts' | 'postVoiceTtsStream' | 'postVoiceStt' | 'postVoiceRealtimeSession' | 'getWebSearchProviders' | 'postWebSearch' | 'getArtifacts' | 'postArtifact' | 'getArtifact' | 'getArtifactContent' | 'getMediaProviders' | 'postMediaAnalyze' | 'postMediaTransform' | 'postMediaGenerate' | 'getMultimodalStatus' | 'getMultimodalProviders' | 'postMultimodalAnalyze' | 'postMultimodalPacket' | 'postMultimodalWriteback'>;
+export function createDaemonKnowledgeRouteHandlers(context: DaemonKnowledgeRouteContext): DaemonKnowledgeRouteHandlers;
+
+// @public (undocumented)
+export function createDaemonMediaRouteHandlers(context: DaemonMediaRouteContext): DaemonMediaRouteHandlers;
 
 // Warning: (ae-forgotten-export) The symbol "DaemonRemoteRouteContext" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function createDaemonRemoteRouteHandlers(context: DaemonRemoteRouteContext): Pick<DaemonApiRouteHandlers, 'getRemotePairRequests' | 'approveRemotePairRequest' | 'rejectRemotePairRequest' | 'getRemotePeers' | 'rotateRemotePeerToken' | 'revokeRemotePeerToken' | 'disconnectRemotePeer' | 'getRemoteWork' | 'invokeRemotePeer' | 'cancelRemoteWork' | 'getRemoteNodeHostContract'>;
+export function createDaemonRemoteRouteHandlers(context: DaemonRemoteRouteContext): DaemonRemoteManagementRouteHandlers;
 
 // @public (undocumented)
-export function createDaemonRuntimeAutomationRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow' | 'getSchedulerCapacity'>;
+export function createDaemonRuntimeAutomationRouteHandlers(context: DaemonRuntimeRouteContext): DaemonRuntimeAutomationRouteHandlers;
 
 // @public (undocumented)
-export function createDaemonRuntimeRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'createSharedSession' | 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'postTask' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'getSharedSessionInputs' | 'postSharedSessionMessage' | 'postSharedSessionInput' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getSharedSessionEvents' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow' | 'getSchedulerCapacity' | 'getRuntimeMetrics'>;
+export function createDaemonRuntimeRouteHandlers(context: DaemonRuntimeRouteContext): DaemonRuntimeRouteHandlers;
+
+// Warning: (ae-forgotten-export) The symbol "DaemonRuntimeTaskRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export function createDaemonRuntimeSessionRouteHandlers(context: DaemonRuntimeRouteContext): DaemonRuntimeSessionRouteHandlers & DaemonRuntimeTaskRouteHandlers;
 
 // @public (undocumented)
-export function createDaemonRuntimeSessionRouteHandlers(context: DaemonRuntimeRouteContext): Pick<DaemonApiRouteHandlers, 'createSharedSession' | 'postTask' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'getSharedSessionInputs' | 'postSharedSessionMessage' | 'postSharedSessionInput' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus' | 'getSharedSessionEvents'>;
-
-// @public (undocumented)
-export function createDaemonSystemRouteHandlers(context: DaemonSystemRouteContext, request: Request): Pick<DaemonApiRouteHandlers, 'getWatchers' | 'postWatcher' | 'patchWatcher' | 'watcherAction' | 'deleteWatcher' | 'getServiceStatus' | 'installService' | 'startService' | 'stopService' | 'restartService' | 'uninstallService' | 'getRouteBindings' | 'postRouteBinding' | 'patchRouteBinding' | 'deleteRouteBinding' | 'getApprovals' | 'approvalAction' | 'getConfig' | 'postConfig'>;
+export function createDaemonSystemRouteHandlers(context: DaemonSystemRouteContext, request: Request): DaemonSystemRouteHandlers;
 
 // Warning: (ae-forgotten-export) The symbol "TelemetryRouteContext" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function createDaemonTelemetryRouteHandlers(context: TelemetryRouteContext): Pick<DaemonApiRouteHandlers, 'getTelemetrySnapshot' | 'getTelemetryEvents' | 'getTelemetryErrors' | 'getTelemetryTraces' | 'getTelemetryMetrics' | 'createTelemetryEventStream' | 'getTelemetryOtlpTraces' | 'getTelemetryOtlpLogs' | 'getTelemetryOtlpMetrics' | 'postTelemetryOtlpLogs' | 'postTelemetryOtlpTraces' | 'postTelemetryOtlpMetrics'>;
+export function createDaemonTelemetryRouteHandlers(context: TelemetryRouteContext): DaemonTelemetryRouteHandlers;
 
 // @public (undocumented)
 export function createDirectClientTransport<TOperator, TPeer>(operator: TOperator, peer: TPeer): DirectClientTransport<TOperator, TPeer>;
@@ -587,14 +646,18 @@ export function createMemoryTokenStore(initialToken?: string | null, initialExpi
 // @public
 export function createOpenTelemetryObserver(tracer: OtelTracer, meter: OtelMeter): SDKObserver;
 
+// Warning: (ae-forgotten-export) The symbol "OperatorRemoteClientOptions" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
-export function createOperatorRemoteClient(transport: HttpTransport, contract: OperatorContractManifest): OperatorRemoteClient;
+export function createOperatorRemoteClient(transport: HttpTransport, contract: OperatorContractManifest, clientOptions?: OperatorRemoteClientOptions): OperatorRemoteClient;
 
 // @public (undocumented)
 export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk;
 
+// Warning: (ae-forgotten-export) The symbol "PeerRemoteClientOptions" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
-export function createPeerRemoteClient(transport: HttpTransport, contract: PeerContractManifest): PeerRemoteClient;
+export function createPeerRemoteClient(transport: HttpTransport, contract: PeerContractManifest, clientOptions?: PeerRemoteClientOptions): PeerRemoteClient;
 
 // @public (undocumented)
 export function createPeerSdk(options: PeerSdkOptions): PeerSdk;
@@ -605,10 +668,10 @@ export function createReactNativeGoodVibesSdk(options: ReactNativeGoodVibesSdkOp
 // Warning: (ae-forgotten-export) The symbol "EventLike" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function createRemoteDomainEvents<TDomain extends string, TEvent extends EventLike = EventLike>(domains: readonly TDomain[], connect: DomainEventConnector<TDomain, TEvent>): DomainEvents<TDomain, TEvent>;
+export function createRemoteDomainEvents<TDomain extends string, TEvent extends EventLike = EventLike>(domains: readonly TDomain[], connect: DomainEventConnector<TDomain, TEvent>, options?: RemoteDomainEventsOptions<TDomain>): DomainEvents<TDomain, TEvent>;
 
 // @public (undocumented)
-export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(connect: DomainEventConnector<RuntimeEventDomain, TEvent>): RemoteRuntimeEvents<TEvent>;
+export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(connect: DomainEventConnector<RuntimeEventDomain, TEvent>, options?: RemoteRuntimeEventsOptions): RemoteRuntimeEvents<TEvent>;
 
 // Warning: (ae-forgotten-export) The symbol "EventLike_2" needs to be exported by the entry point index.d.ts
 //
@@ -620,6 +683,9 @@ export function createRuntimeEventFeeds<TDomain extends string, TEvent extends E
 
 // @public (undocumented)
 export function createTransportPaths(baseUrl: string): TransportPaths;
+
+// @public (undocumented)
+export function createUuidV4(): string;
 
 // @public (undocumented)
 export function createWebGoodVibesSdk(options?: WebGoodVibesSdkOptions): GoodVibesSdk;
@@ -639,29 +705,29 @@ export const CurrentModelResponseSchema: z.ZodObject<{
     }, z.core.$strip>>;
     configured: z.ZodBoolean;
     configuredVia: z.ZodOptional<z.ZodEnum<{
-        env: "env";
-        secrets: "secrets";
         anonymous: "anonymous";
         subscription: "subscription";
+        secrets: "secrets";
+        env: "env";
     }>>;
     routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
         route: z.ZodEnum<{
             none: "none";
-            "api-key": "api-key";
-            "secret-ref": "secret-ref";
-            "service-oauth": "service-oauth";
-            "subscription-oauth": "subscription-oauth";
             anonymous: "anonymous";
+            "api-key": "api-key";
+            "service-oauth": "service-oauth";
+            "secret-ref": "secret-ref";
+            "subscription-oauth": "subscription-oauth";
         }>;
         label: z.ZodString;
         configured: z.ZodBoolean;
         usable: z.ZodOptional<z.ZodBoolean>;
         freshness: z.ZodOptional<z.ZodEnum<{
-            healthy: "healthy";
-            pending: "pending";
-            unconfigured: "unconfigured";
-            expiring: "expiring";
             expired: "expired";
+            unconfigured: "unconfigured";
+            healthy: "healthy";
+            expiring: "expiring";
+            pending: "pending";
         }>>;
         detail: z.ZodOptional<z.ZodString>;
         envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -679,63 +745,34 @@ export type DaemonApiClientKind = 'web' | 'slack' | 'discord' | 'ntfy' | 'webhoo
 export type DaemonApiRouteExtension = (req: Request) => Promise<Response | null> | Response | null;
 
 // @public (undocumented)
-export interface DaemonApiRouteHandlers {
+export interface DaemonApiRouteHandlers extends DaemonRemoteDispatchRouteHandlers, DaemonOperatorRouteHandlers, DaemonAutomationRouteHandlers, DaemonSessionRouteHandlers, DaemonTaskRouteHandlers, DaemonRuntimeRouteHandlers {
+}
+
+// Warning: (ae-forgotten-export) The symbol "DaemonAutomationOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonDeliveryRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface DaemonAutomationRouteHandlers extends DaemonAutomationOverviewRouteHandlers, DaemonRuntimeAutomationRouteHandlers, DaemonDeliveryRouteHandlers {
+}
+
+// @public (undocumented)
+export interface DaemonChannelRouteContext {
     // (undocumented)
-    approvalAction(approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request): MaybeResponse;
+    readonly channelPlugins: ChannelPluginServiceLike;
     // (undocumented)
-    approveRemotePairRequest(requestId: string, req: Request): MaybeResponse;
+    readonly channelPolicy: ChannelPolicyServiceLike;
     // (undocumented)
-    automationRunAction(runId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
+    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
     // (undocumented)
-    cancelRemoteWork(workId: string, req: Request): MaybeResponse;
+    readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
     // (undocumented)
-    cancelSharedSessionInput(sessionId: string, inputId: string): MaybeResponse;
+    readonly requireAdmin: (req: Request) => Response | null;
     // (undocumented)
-    closeSharedSession(sessionId: string): MaybeResponse;
-    // (undocumented)
-    createControlPlaneEventStream(req: Request): MaybeResponse;
-    // (undocumented)
-    createSharedSession(req: Request): MaybeResponse;
-    // (undocumented)
-    createTelemetryEventStream(req: Request): MaybeResponse;
-    // (undocumented)
-    deleteAutomationJob(jobId: string): MaybeResponse;
-    // (undocumented)
-    deleteBootstrapFile(): MaybeResponse;
-    // (undocumented)
-    deleteKnowledgeSchedule(id: string, req: Request): MaybeResponse;
-    // (undocumented)
-    deleteLocalAuthSession(sessionId: string): MaybeResponse;
-    // (undocumented)
-    deleteLocalAuthUser(username: string): MaybeResponse;
-    // (undocumented)
-    deleteRouteBinding(bindingId: string): MaybeResponse;
-    // (undocumented)
-    deleteSchedule(scheduleId: string): MaybeResponse;
-    // (undocumented)
-    deleteWatcher(watcherId: string): MaybeResponse;
-    // (undocumented)
-    disconnectRemotePeer(peerId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    executeKnowledgeGraphql(req: Request): MaybeResponse;
-    // (undocumented)
-    getAccounts(): MaybeResponse;
-    // (undocumented)
-    getApprovals(): MaybeResponse;
-    // (undocumented)
-    getArtifact(artifactId: string): MaybeResponse;
-    // (undocumented)
-    getArtifactContent(artifactId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    getArtifacts(): MaybeResponse;
-    // (undocumented)
-    getAutomationHeartbeat(): MaybeResponse;
-    // (undocumented)
-    getAutomationJobs(): MaybeResponse;
-    // (undocumented)
-    getAutomationRun(runId: string): MaybeResponse;
-    // (undocumented)
-    getAutomationRuns(): MaybeResponse;
+    readonly surfaceRegistry: SurfaceRegistryLike;
+}
+
+// @public (undocumented)
+export interface DaemonChannelRouteHandlers {
     // (undocumented)
     getChannelAccount(surface: string, accountId: string): MaybeResponse;
     // (undocumented)
@@ -775,203 +812,9 @@ export interface DaemonApiRouteHandlers {
     // (undocumented)
     getChannelTools(): MaybeResponse;
     // (undocumented)
-    getConfig(): MaybeResponse;
-    // (undocumented)
-    getContinuity(): MaybeResponse;
-    // (undocumented)
-    getControlPlaneClients(): MaybeResponse;
-    // (undocumented)
-    getControlPlaneMessages(): MaybeResponse;
-    // (undocumented)
-    getControlPlaneRecentEvents(limit: number): MaybeResponse;
-    // (undocumented)
-    getControlPlaneSnapshot(): MaybeResponse;
-    // (undocumented)
-    getControlPlaneWeb(): MaybeResponse;
-    // (undocumented)
-    getCurrentAuth(req: Request): MaybeResponse;
-    // (undocumented)
-    getDeliveries(): MaybeResponse;
-    // (undocumented)
-    getDelivery(deliveryId: string): MaybeResponse;
-    // (undocumented)
-    getEvents(req: Request): MaybeResponse;
-    // (undocumented)
-    getGatewayEvents(url: URL): MaybeResponse;
-    // (undocumented)
-    getGatewayMethod(methodId: string): MaybeResponse;
-    // (undocumented)
-    getGatewayMethods(url: URL): MaybeResponse;
-    // (undocumented)
-    getHealth(): MaybeResponse;
-    // (undocumented)
-    getIntegrationAutomation(): MaybeResponse;
-    // (undocumented)
-    getIntegrationSession(): MaybeResponse;
-    // (undocumented)
-    getIntegrationSessions(): MaybeResponse;
-    // (undocumented)
-    getIntegrationTasks(): MaybeResponse;
-    // (undocumented)
-    getIntelligence(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeCandidate(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeCandidates(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeConnector(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeConnectorDoctor(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeConnectors(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeExtraction(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeExtractions(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeGraphqlSchema(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeIssues(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeItem(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeJob(jobId: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeJobRuns(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeJobs(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeNodes(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeProjectionTargets(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeReport(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeReports(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSchedule(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSchedules(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSourceExtraction(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSources(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeStatus(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeUsage(url: URL): MaybeResponse;
-    // (undocumented)
-    getLocalAuth(): MaybeResponse;
-    // (undocumented)
-    getMediaProviders(): MaybeResponse;
-    // (undocumented)
-    getMemoryDoctor(): MaybeResponse;
-    // (undocumented)
-    getMemoryVectorStats(): MaybeResponse;
-    // (undocumented)
-    getMultimodalProviders(): MaybeResponse;
-    // (undocumented)
-    getMultimodalStatus(): MaybeResponse;
-    // (undocumented)
-    getOperatorContract(): MaybeResponse;
-    // (undocumented)
-    getPanels(): MaybeResponse;
-    // (undocumented)
-    getProvider(providerId: string): MaybeResponse;
-    // (undocumented)
-    getProviders(): MaybeResponse;
-    // (undocumented)
-    getProviderUsage(providerId: string): MaybeResponse;
-    // (undocumented)
-    getRemote(): MaybeResponse;
-    // (undocumented)
-    getRemoteNodeHostContract(): MaybeResponse;
-    // (undocumented)
-    getRemotePairRequests(): MaybeResponse;
-    // (undocumented)
-    getRemotePeers(): MaybeResponse;
-    // (undocumented)
-    getRemoteWork(): MaybeResponse;
-    // (undocumented)
-    getReview(): MaybeResponse;
-    // (undocumented)
-    getRouteBindings(): MaybeResponse;
-    // (undocumented)
-    getRoutesSnapshot(): MaybeResponse;
-    // (undocumented)
-    getRuntimeMetrics(): MaybeResponse;
-    // (undocumented)
-    getRuntimeTask(taskId: string): MaybeResponse;
-    // (undocumented)
-    getSchedulerCapacity(): MaybeResponse;
-    // (undocumented)
-    getSchedules(): MaybeResponse;
-    // (undocumented)
-    getServiceStatus(): MaybeResponse;
-    // (undocumented)
-    getSettings(): MaybeResponse;
-    // (undocumented)
-    getSharedSession(sessionId: string): MaybeResponse;
-    // (undocumented)
-    getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getStatus(): MaybeResponse;
-    // (undocumented)
     getSurfaces(): MaybeResponse;
     // (undocumented)
-    getTaskStatus(agentId: string): MaybeResponse;
-    // (undocumented)
-    getTelemetryErrors(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryEvents(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryMetrics(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryOtlpLogs(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryOtlpMetrics(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryOtlpTraces(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetrySnapshot(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryTraces(req: Request): MaybeResponse;
-    // (undocumented)
-    getVoiceProviders(): MaybeResponse;
-    // (undocumented)
-    getVoiceStatus(): MaybeResponse;
-    // (undocumented)
-    getVoiceVoices(url: URL): MaybeResponse;
-    // (undocumented)
-    getWatchers(): MaybeResponse;
-    // (undocumented)
-    getWebSearchProviders(): MaybeResponse;
-    // (undocumented)
-    getWorktrees(): MaybeResponse;
-    // (undocumented)
-    installService(): MaybeResponse;
-    // (undocumented)
-    invokeGatewayMethod(methodId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    invokeRemotePeer(peerId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    patchAutomationJob(jobId: string, req: Request): MaybeResponse;
-    // (undocumented)
     patchChannelPolicy(surface: string, req: Request): MaybeResponse;
-    // (undocumented)
-    patchRouteBinding(bindingId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    patchWatcher(watcherId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postArtifact(req: Request): MaybeResponse;
-    // (undocumented)
-    postAutomationHeartbeat(req: Request): MaybeResponse;
-    // (undocumented)
-    postAutomationJob(req: Request): MaybeResponse;
     // (undocumented)
     postChannelAccountAction(surface: string, accountId: string | null, action: string, req: Request): MaybeResponse;
     // (undocumented)
@@ -990,136 +833,36 @@ export interface DaemonApiRouteHandlers {
     postChannelResolveTarget(surface: string, req: Request): MaybeResponse;
     // (undocumented)
     postChannelTool(surface: string, toolId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postConfig(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeDecideCandidate(id: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeImportBookmarks(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeImportUrls(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeIngestArtifact(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeIngestConnector(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeIngestUrl(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeLint(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeMaterializeProjection(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgePacket(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeReindex(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeRenderProjection(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeRunJob(jobId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeSaveSchedule(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeSearch(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeSetScheduleEnabled(id: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postLocalAuthPassword(username: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postLocalAuthUser(req: Request): MaybeResponse;
-    // (undocumented)
-    postMediaAnalyze(req: Request): MaybeResponse;
-    // (undocumented)
-    postMediaGenerate(req: Request): MaybeResponse;
-    // (undocumented)
-    postMediaTransform(req: Request): MaybeResponse;
-    // (undocumented)
-    postMemoryEmbeddingDefault(req: Request): MaybeResponse;
-    // (undocumented)
-    postMemoryVectorRebuild(req: Request): MaybeResponse;
-    // (undocumented)
-    postMultimodalAnalyze(req: Request): MaybeResponse;
-    // (undocumented)
-    postMultimodalPacket(req: Request): MaybeResponse;
-    // (undocumented)
-    postMultimodalWriteback(req: Request): MaybeResponse;
-    // (undocumented)
-    postPanelOpen(req: Request): MaybeResponse;
-    // (undocumented)
-    postRouteBinding(req: Request): MaybeResponse;
-    // (undocumented)
-    postSchedule(req: Request): MaybeResponse;
-    // (undocumented)
-    postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postSharedSessionInput(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postTask(req: Request): MaybeResponse;
-    // (undocumented)
-    postTelemetryOtlpLogs(req: Request): MaybeResponse;
-    // (undocumented)
-    postTelemetryOtlpMetrics(req: Request): MaybeResponse;
-    // (undocumented)
-    postTelemetryOtlpTraces(req: Request): MaybeResponse;
-    // (undocumented)
-    postVoiceRealtimeSession(req: Request): MaybeResponse;
-    // (undocumented)
-    postVoiceStt(req: Request): MaybeResponse;
-    // (undocumented)
-    postVoiceTts(req: Request): MaybeResponse;
-    // (undocumented)
-    postVoiceTtsStream(req: Request): MaybeResponse;
-    // (undocumented)
-    postWatcher(req: Request): MaybeResponse;
-    // (undocumented)
-    postWebSearch(req: Request): MaybeResponse;
-    // (undocumented)
-    rejectRemotePairRequest(requestId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    reopenSharedSession(sessionId: string): MaybeResponse;
-    // (undocumented)
-    restartService(): MaybeResponse;
-    // (undocumented)
-    revokeRemotePeerToken(peerId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    rotateRemotePeerToken(peerId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    runAutomationJobNow(jobId: string): MaybeResponse;
-    // (undocumented)
-    runScheduleNow(scheduleId: string): MaybeResponse;
-    // (undocumented)
-    runtimeTaskAction(taskId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
-    // (undocumented)
-    setAutomationJobEnabled(jobId: string, enabled: boolean): MaybeResponse;
-    // (undocumented)
-    setScheduleEnabled(scheduleId: string, enabled: boolean): MaybeResponse;
-    // (undocumented)
-    startService(): MaybeResponse;
-    // (undocumented)
-    stopService(): MaybeResponse;
-    // (undocumented)
-    uninstallService(): MaybeResponse;
-    // (undocumented)
-    watcherAction(watcherId: string, action: 'start' | 'stop' | 'run'): MaybeResponse;
 }
 
 // @public (undocumented)
-export interface DaemonChannelRouteContext {
+export interface DaemonControlRouteHandlers {
     // (undocumented)
-    readonly channelPlugins: ChannelPluginServiceLike;
+    createControlPlaneEventStream(req: Request): MaybeResponse;
     // (undocumented)
-    readonly channelPolicy: ChannelPolicyServiceLike;
+    getControlPlaneClients(): MaybeResponse;
     // (undocumented)
-    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
+    getControlPlaneMessages(): MaybeResponse;
     // (undocumented)
-    readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
+    getControlPlaneRecentEvents(limit: number): MaybeResponse;
     // (undocumented)
-    readonly requireAdmin: (req: Request) => Response | null;
+    getControlPlaneSnapshot(): MaybeResponse;
     // (undocumented)
-    readonly surfaceRegistry: SurfaceRegistryLike;
+    getControlPlaneWeb(): MaybeResponse;
+    // (undocumented)
+    getCurrentAuth(req: Request): MaybeResponse;
+    // (undocumented)
+    getGatewayEvents(url: URL): MaybeResponse;
+    // (undocumented)
+    getGatewayMethod(methodId: string): MaybeResponse;
+    // (undocumented)
+    getGatewayMethods(url: URL): MaybeResponse;
+    // (undocumented)
+    getOperatorContract(): MaybeResponse;
+    // (undocumented)
+    getStatus(): MaybeResponse;
+    // (undocumented)
+    invokeGatewayMethod(methodId: string, req: Request): MaybeResponse;
 }
 
 // @public (undocumented)
@@ -1167,8 +910,35 @@ export interface DaemonIntegrationRouteContext {
     readonly userAuth: UserAuthManagerLike;
 }
 
+// Warning: (ae-forgotten-export) The symbol "DaemonIntegrationOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonRouteSnapshotRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonRemoteOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonPlatformStatusRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonMemoryRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonLocalAuthAdminRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonPanelRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonEventLogRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface DaemonIntegrationRouteHandlers extends DaemonIntegrationOverviewRouteHandlers, DaemonDeliveryRouteHandlers, DaemonRouteSnapshotRouteHandlers, DaemonRemoteOverviewRouteHandlers, DaemonPlatformStatusRouteHandlers, DaemonMemoryRouteHandlers, DaemonLocalAuthAdminRouteHandlers, DaemonPanelRouteHandlers, DaemonEventLogRouteHandlers {
+}
+
+// @public (undocumented)
+export interface DaemonKnowledgeRefinementRouteHandlers {
+    // (undocumented)
+    getKnowledgeRefinementTask(taskId: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeRefinementTasks(url: URL): MaybeResponse;
+    // (undocumented)
+    postKnowledgeCancelRefinementTask(taskId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeRunRefinement(req: Request): MaybeResponse;
+}
+
 // @public (undocumented)
 export interface DaemonKnowledgeRouteContext {
+    // (undocumented)
+    readonly artifactStore: ArtifactStoreUploadLike;
     // (undocumented)
     readonly configManager: {
         get(key: string): unknown;
@@ -1198,6 +968,98 @@ export interface DaemonKnowledgeRouteContext {
 }
 
 // @public (undocumented)
+export interface DaemonKnowledgeRouteHandlers extends DaemonKnowledgeRefinementRouteHandlers {
+    // (undocumented)
+    deleteKnowledgeSchedule(id: string, req: Request): MaybeResponse;
+    // (undocumented)
+    executeKnowledgeGraphql(req: Request): MaybeResponse;
+    // (undocumented)
+    getKnowledgeCandidate(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeCandidates(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeConnector(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeConnectorDoctor(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeConnectors(): MaybeResponse;
+    // (undocumented)
+    getKnowledgeExtraction(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeExtractions(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeGraphqlSchema(): MaybeResponse;
+    // (undocumented)
+    getKnowledgeIssues(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeItem(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeJob(jobId: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeJobRuns(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeJobs(): MaybeResponse;
+    // (undocumented)
+    getKnowledgeMap(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeNodes(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeProjectionTargets(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeReport(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeReports(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeSchedule(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeSchedules(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeSourceExtraction(id: string): MaybeResponse;
+    // (undocumented)
+    getKnowledgeSources(url: URL): MaybeResponse;
+    // (undocumented)
+    getKnowledgeStatus(): MaybeResponse;
+    // (undocumented)
+    getKnowledgeUsage(url: URL): MaybeResponse;
+    // (undocumented)
+    postKnowledgeAsk(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeDecideCandidate(id: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeImportBookmarks(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeImportUrls(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeIngestArtifact(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeIngestConnector(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeIngestUrl(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeLint(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeMaterializeProjection(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgePacket(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeReindex(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeRenderProjection(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeReviewIssue(id: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeRunJob(jobId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeSaveSchedule(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeSearch(req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeSetScheduleEnabled(id: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postKnowledgeSyncBrowserHistory(req: Request): MaybeResponse;
+}
+
+// @public (undocumented)
 export interface DaemonMediaRouteContext {
     // Warning: (ae-forgotten-export) The symbol "ArtifactStoreLike" needs to be exported by the entry point index.d.ts
     //
@@ -1219,6 +1081,90 @@ export interface DaemonMediaRouteContext {
     readonly voiceService: VoiceServiceLike;
     // (undocumented)
     readonly webSearchService: WebSearchServiceLike;
+}
+
+// Warning: (ae-forgotten-export) The symbol "DaemonVoiceRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonWebSearchRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonArtifactRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonMediaProviderRouteHandlers" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "DaemonMultimodalRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface DaemonMediaRouteHandlers extends DaemonVoiceRouteHandlers, DaemonWebSearchRouteHandlers, DaemonArtifactRouteHandlers, DaemonMediaProviderRouteHandlers, DaemonMultimodalRouteHandlers {
+}
+
+// Warning: (ae-forgotten-export) The symbol "DaemonOperatorRuntimeRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface DaemonOperatorRouteHandlers extends DaemonControlRouteHandlers, DaemonTelemetryRouteHandlers, DaemonChannelRouteHandlers, DaemonIntegrationRouteHandlers, DaemonSystemRouteHandlers, DaemonRemoteManagementRouteHandlers, DaemonKnowledgeRouteHandlers, DaemonMediaRouteHandlers, DaemonOperatorRuntimeRouteHandlers {
+}
+
+// @public (undocumented)
+export interface DaemonRemoteDispatchRouteHandlers extends DaemonRemoteOverviewRouteHandlers, DaemonRemoteManagementRouteHandlers {
+}
+
+// @public (undocumented)
+export interface DaemonRemoteManagementRouteHandlers {
+    // (undocumented)
+    approveRemotePairRequest(requestId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    cancelRemoteWork(workId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    disconnectRemotePeer(peerId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    getRemoteNodeHostContract(): MaybeResponse;
+    // (undocumented)
+    getRemotePairRequests(): MaybeResponse;
+    // (undocumented)
+    getRemotePeers(): MaybeResponse;
+    // (undocumented)
+    getRemoteWork(): MaybeResponse;
+    // (undocumented)
+    invokeRemotePeer(peerId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    rejectRemotePairRequest(requestId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    revokeRemotePeerToken(peerId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    rotateRemotePeerToken(peerId: string, req: Request): MaybeResponse;
+}
+
+// @public (undocumented)
+export interface DaemonRuntimeAutomationRouteHandlers {
+    // (undocumented)
+    automationRunAction(runId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
+    // (undocumented)
+    deleteAutomationJob(jobId: string): MaybeResponse;
+    // (undocumented)
+    deleteSchedule(scheduleId: string): MaybeResponse;
+    // (undocumented)
+    getAutomationHeartbeat(): MaybeResponse;
+    // (undocumented)
+    getAutomationJobs(): MaybeResponse;
+    // (undocumented)
+    getAutomationRun(runId: string): MaybeResponse;
+    // (undocumented)
+    getAutomationRuns(): MaybeResponse;
+    // (undocumented)
+    getSchedulerCapacity(): MaybeResponse;
+    // (undocumented)
+    getSchedules(): MaybeResponse;
+    // (undocumented)
+    patchAutomationJob(jobId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postAutomationHeartbeat(req: Request): MaybeResponse;
+    // (undocumented)
+    postAutomationJob(req: Request): MaybeResponse;
+    // (undocumented)
+    postSchedule(req: Request): MaybeResponse;
+    // (undocumented)
+    runAutomationJobNow(jobId: string): MaybeResponse;
+    // (undocumented)
+    runScheduleNow(scheduleId: string): MaybeResponse;
+    // (undocumented)
+    setAutomationJobEnabled(jobId: string, enabled: boolean): MaybeResponse;
+    // (undocumented)
+    setScheduleEnabled(scheduleId: string, enabled: boolean): MaybeResponse;
 }
 
 // @public (undocumented)
@@ -1433,7 +1379,7 @@ export interface DaemonRuntimeRouteContext {
     // (undocumented)
     readonly snapshotMetrics: () => Record<string, unknown>;
     // (undocumented)
-    readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
+    readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
     // (undocumented)
     readonly syncFinishedAgentTask: (record: AgentRecordLike) => void;
     // (undocumented)
@@ -1447,7 +1393,49 @@ export interface DaemonRuntimeRouteContext {
         provider?: string;
         context?: string;
         executionIntent?: ExecutionIntent;
+        executionProtocol?: 'direct' | 'gather-plan-apply';
+        reviewMode?: 'none' | 'wrfc';
+        communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
+        dangerously_disable_wrfc?: boolean;
     }, logLabel: string, sessionId?: string) => AgentRecordLike | Response;
+}
+
+// Warning: (ae-forgotten-export) The symbol "DaemonRuntimeMetricsRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface DaemonRuntimeRouteHandlers extends DaemonRuntimeSessionRouteHandlers, DaemonRuntimeTaskRouteHandlers, DaemonRuntimeAutomationRouteHandlers, DaemonRuntimeMetricsRouteHandlers {
+}
+
+// @public (undocumented)
+export interface DaemonRuntimeSessionRouteHandlers {
+    // (undocumented)
+    cancelSharedSessionInput(sessionId: string, inputId: string): MaybeResponse;
+    // (undocumented)
+    closeSharedSession(sessionId: string): MaybeResponse;
+    // (undocumented)
+    createSharedSession(req: Request): MaybeResponse;
+    // (undocumented)
+    getSharedSession(sessionId: string): MaybeResponse;
+    // (undocumented)
+    getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
+    // (undocumented)
+    getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
+    // (undocumented)
+    postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    reopenSharedSession(sessionId: string): MaybeResponse;
+}
+
+// Warning: (ae-forgotten-export) The symbol "DaemonSessionOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface DaemonSessionRouteHandlers extends DaemonSessionOverviewRouteHandlers, DaemonRuntimeSessionRouteHandlers {
 }
 
 // @public (undocumented)
@@ -1499,6 +1487,82 @@ export interface DaemonSystemRouteContext {
 }
 
 // @public (undocumented)
+export interface DaemonSystemRouteHandlers {
+    // (undocumented)
+    approvalAction(approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request): MaybeResponse;
+    // (undocumented)
+    deleteRouteBinding(bindingId: string): MaybeResponse;
+    // (undocumented)
+    deleteWatcher(watcherId: string): MaybeResponse;
+    // (undocumented)
+    getApprovals(): MaybeResponse;
+    // (undocumented)
+    getConfig(): MaybeResponse;
+    // (undocumented)
+    getRouteBindings(): MaybeResponse;
+    // (undocumented)
+    getServiceStatus(): MaybeResponse;
+    // (undocumented)
+    getWatchers(): MaybeResponse;
+    // (undocumented)
+    installService(): MaybeResponse;
+    // (undocumented)
+    patchRouteBinding(bindingId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    patchWatcher(watcherId: string, req: Request): MaybeResponse;
+    // (undocumented)
+    postConfig(req: Request): MaybeResponse;
+    // (undocumented)
+    postRouteBinding(req: Request): MaybeResponse;
+    // (undocumented)
+    postWatcher(req: Request): MaybeResponse;
+    // (undocumented)
+    restartService(): MaybeResponse;
+    // (undocumented)
+    startService(): MaybeResponse;
+    // (undocumented)
+    stopService(): MaybeResponse;
+    // (undocumented)
+    uninstallService(): MaybeResponse;
+    // (undocumented)
+    watcherAction(watcherId: string, action: 'start' | 'stop' | 'run'): MaybeResponse;
+}
+
+// Warning: (ae-forgotten-export) The symbol "DaemonTaskOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface DaemonTaskRouteHandlers extends DaemonTaskOverviewRouteHandlers, DaemonRuntimeTaskRouteHandlers {
+}
+
+// @public (undocumented)
+export interface DaemonTelemetryRouteHandlers {
+    // (undocumented)
+    createTelemetryEventStream(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetryErrors(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetryEvents(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetryMetrics(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetryOtlpLogs(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetryOtlpMetrics(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetryOtlpTraces(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetrySnapshot(req: Request): MaybeResponse;
+    // (undocumented)
+    getTelemetryTraces(req: Request): MaybeResponse;
+    // (undocumented)
+    postTelemetryOtlpLogs(req: Request): MaybeResponse;
+    // (undocumented)
+    postTelemetryOtlpMetrics(req: Request): MaybeResponse;
+    // (undocumented)
+    postTelemetryOtlpTraces(req: Request): MaybeResponse;
+}
+
+// @public (undocumented)
 export const DEFAULT_HTTP_RETRY_POLICY: ResolvedHttpRetryPolicy;
 
 // @public (undocumented)
@@ -1508,25 +1572,28 @@ export const DEFAULT_STREAM_RECONNECT_POLICY: ResolvedStreamReconnectPolicy;
 export const DEFAULT_WS_MAX_ATTEMPTS = 10;
 
 // @public (undocumented)
+export function describeUnknownTransportError(error: unknown): string;
+
+// @public (undocumented)
 export type DirectClientTransport<TOperator, TPeer> = ClientTransport<'direct', TOperator, TPeer>;
 
 // @public (undocumented)
-export function dispatchAutomationRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getReview' | 'getIntegrationSession' | 'getIntegrationAutomation' | 'getAutomationJobs' | 'postAutomationJob' | 'getAutomationRuns' | 'getAutomationRun' | 'automationRunAction' | 'patchAutomationJob' | 'deleteAutomationJob' | 'setAutomationJobEnabled' | 'runAutomationJobNow' | 'getDeliveries' | 'getDelivery' | 'getSchedules' | 'postSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'runScheduleNow'>): Promise<Response | null>;
+export function dispatchAutomationRoutes(req: Request, handlers: DaemonAutomationRouteHandlers): Promise<Response | null>;
 
 // @public (undocumented)
 export function dispatchDaemonApiRoutes(req: Request, handlers: DaemonApiRouteHandlers, extensions?: readonly DaemonApiRouteExtension[]): Promise<Response | null>;
 
 // @public (undocumented)
-export function dispatchOperatorRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getStatus' | 'getCurrentAuth' | 'getControlPlaneSnapshot' | 'getOperatorContract' | 'getControlPlaneWeb' | 'getControlPlaneRecentEvents' | 'getControlPlaneMessages' | 'getControlPlaneClients' | 'getTelemetrySnapshot' | 'getTelemetryEvents' | 'getTelemetryErrors' | 'getTelemetryTraces' | 'getTelemetryMetrics' | 'createTelemetryEventStream' | 'getTelemetryOtlpTraces' | 'getTelemetryOtlpLogs' | 'getTelemetryOtlpMetrics' | 'postTelemetryOtlpLogs' | 'postTelemetryOtlpTraces' | 'postTelemetryOtlpMetrics' | 'getGatewayMethods' | 'getGatewayEvents' | 'getGatewayMethod' | 'invokeGatewayMethod' | 'createControlPlaneEventStream' | 'getRoutesSnapshot' | 'getSurfaces' | 'getChannelAccounts' | 'getChannelSurfaceAccounts' | 'getChannelAccount' | 'postChannelAccountAction' | 'getChannelSetupSchema' | 'getChannelDoctor' | 'getChannelRepairActions' | 'getChannelLifecycle' | 'postChannelLifecycleMigrate' | 'getChannelCapabilities' | 'getChannelSurfaceCapabilities' | 'getChannelTools' | 'getChannelSurfaceTools' | 'getChannelAgentTools' | 'getChannelSurfaceAgentTools' | 'postChannelTool' | 'getChannelActions' | 'getChannelSurfaceActions' | 'postChannelAction' | 'postChannelResolveTarget' | 'postChannelAuthorize' | 'postChannelAllowlistResolve' | 'postChannelAllowlistEdit' | 'getChannelPolicies' | 'postChannelPolicy' | 'patchChannelPolicy' | 'getChannelPolicyAudit' | 'getChannelStatus' | 'getChannelDirectory' | 'getWatchers' | 'postWatcher' | 'patchWatcher' | 'watcherAction' | 'deleteWatcher' | 'getServiceStatus' | 'installService' | 'startService' | 'stopService' | 'restartService' | 'uninstallService' | 'getRouteBindings' | 'postRouteBinding' | 'patchRouteBinding' | 'deleteRouteBinding' | 'getApprovals' | 'approvalAction' | 'getRemote' | 'getHealth' | 'getAccounts' | 'getProviders' | 'getProvider' | 'getProviderUsage' | 'getSettings' | 'getContinuity' | 'getWorktrees' | 'getIntelligence' | 'getLocalAuth' | 'postLocalAuthUser' | 'deleteLocalAuthUser' | 'postLocalAuthPassword' | 'deleteLocalAuthSession' | 'deleteBootstrapFile' | 'getPanels' | 'postPanelOpen' | 'getEvents' | 'getConfig' | 'postConfig' | 'getReview' | 'getIntegrationSession' | 'getIntegrationTasks' | 'getIntegrationAutomation' | 'getIntegrationSessions' | 'getAutomationHeartbeat' | 'postAutomationHeartbeat' | 'getMemoryDoctor' | 'getMemoryVectorStats' | 'postMemoryVectorRebuild' | 'postMemoryEmbeddingDefault' | 'getKnowledgeStatus' | 'getKnowledgeSources' | 'getKnowledgeNodes' | 'getKnowledgeIssues' | 'getKnowledgeItem' | 'getKnowledgeConnectors' | 'getKnowledgeConnector' | 'getKnowledgeConnectorDoctor' | 'getKnowledgeProjectionTargets' | 'getKnowledgeGraphqlSchema' | 'getKnowledgeExtractions' | 'getKnowledgeUsage' | 'getKnowledgeCandidates' | 'getKnowledgeCandidate' | 'getKnowledgeReports' | 'getKnowledgeReport' | 'getKnowledgeExtraction' | 'getKnowledgeSourceExtraction' | 'getKnowledgeJobs' | 'getKnowledgeJob' | 'getKnowledgeJobRuns' | 'getKnowledgeSchedules' | 'getKnowledgeSchedule' | 'postKnowledgeIngestUrl' | 'postKnowledgeIngestArtifact' | 'postKnowledgeImportBookmarks' | 'postKnowledgeImportUrls' | 'postKnowledgeIngestConnector' | 'postKnowledgeSearch' | 'postKnowledgePacket' | 'postKnowledgeDecideCandidate' | 'postKnowledgeRunJob' | 'postKnowledgeLint' | 'postKnowledgeReindex' | 'postKnowledgeSaveSchedule' | 'deleteKnowledgeSchedule' | 'postKnowledgeSetScheduleEnabled' | 'postKnowledgeRenderProjection' | 'postKnowledgeMaterializeProjection' | 'executeKnowledgeGraphql' | 'getVoiceStatus' | 'getVoiceProviders' | 'getVoiceVoices' | 'postVoiceTts' | 'postVoiceTtsStream' | 'postVoiceStt' | 'postVoiceRealtimeSession' | 'getWebSearchProviders' | 'postWebSearch' | 'getArtifacts' | 'postArtifact' | 'getArtifact' | 'getArtifactContent' | 'getMediaProviders' | 'postMediaAnalyze' | 'postMediaTransform' | 'postMediaGenerate' | 'getMultimodalStatus' | 'getMultimodalProviders' | 'postMultimodalAnalyze' | 'postMultimodalPacket' | 'postMultimodalWriteback' | 'getRemoteNodeHostContract' | 'getSchedulerCapacity' | 'getRuntimeMetrics'>): Promise<Response | null>;
+export function dispatchOperatorRoutes(req: Request, handlers: DaemonOperatorRouteHandlers): Promise<Response | null>;
 
 // @public (undocumented)
-export function dispatchRemoteRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getRemote' | 'getRemotePairRequests' | 'approveRemotePairRequest' | 'rejectRemotePairRequest' | 'getRemotePeers' | 'rotateRemotePeerToken' | 'revokeRemotePeerToken' | 'disconnectRemotePeer' | 'getRemoteWork' | 'invokeRemotePeer' | 'cancelRemoteWork'>): Promise<Response | null>;
+export function dispatchRemoteRoutes(req: Request, handlers: DaemonRemoteDispatchRouteHandlers): Promise<Response | null>;
 
 // @public (undocumented)
-export function dispatchSessionRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getIntegrationSessions' | 'createSharedSession' | 'getSharedSession' | 'closeSharedSession' | 'reopenSharedSession' | 'getSharedSessionMessages' | 'postSharedSessionMessage' | 'getSharedSessionInputs' | 'postSharedSessionInput' | 'postSharedSessionSteer' | 'postSharedSessionFollowUp' | 'cancelSharedSessionInput' | 'getSharedSessionEvents'>): Promise<Response | null>;
+export function dispatchSessionRoutes(req: Request, handlers: DaemonSessionRouteHandlers): Promise<Response | null>;
 
 // @public (undocumented)
-export function dispatchTaskRoutes(req: Request, handlers: Pick<DaemonApiRouteHandlers, 'getIntegrationTasks' | 'getRuntimeTask' | 'runtimeTaskAction' | 'getTaskStatus' | 'postTask'>): Promise<Response | null>;
+export function dispatchTaskRoutes(req: Request, handlers: DaemonTaskRouteHandlers): Promise<Response | null>;
 
 // @public (undocumented)
 export type DomainEventConnector<TDomain extends string, TEvent extends EventLike = EventLike> = (domain: TDomain, onEnvelope: (envelope: SerializedEventEnvelope<TEvent>) => void) => void | Promise<() => void>;
@@ -1590,6 +1657,9 @@ export interface ExpoGoodVibesSdkOptions extends ReactNativeGoodVibesSdkOptions 
 // @public (undocumented)
 export type FetchExtractMode = string;
 
+// @public (undocumented)
+export function firstJsonSchemaFailure(schema: Record<string, unknown>, value: unknown, path?: string, root?: Record<string, unknown>): JsonSchemaValidationFailure | undefined;
+
 // @public
 function forSession<TDomain extends string, TEvent extends EventLike = EventLike>(events: DomainEvents<TDomain, TEvent>, sessionId: string): DomainEvents<TDomain, TEvent>;
 export { forSession }
@@ -1598,8 +1668,8 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.25.10";
-    readonly operatorMethodCount: 223;
+    readonly productVersion: "0.30.0";
+    readonly operatorMethodCount: 264;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
 };
@@ -1715,10 +1785,13 @@ export interface GoodVibesCloudflareWorkerEnv {
 
 // @public (undocumented)
 export interface GoodVibesCloudflareWorkerOptions {
+    readonly allowUnauthenticated?: boolean;
     // (undocumented)
     readonly authToken?: string;
     // (undocumented)
     readonly daemonUrl?: string;
+    // (undocumented)
+    readonly maxRequestBodyBytes?: number;
     // (undocumented)
     readonly queueJobPayloads?: boolean;
     // (undocumented)
@@ -1763,11 +1836,15 @@ export interface GoodVibesSdk {
 
 // @public
 export class GoodVibesSdkError extends Error {
+    // (undocumented)
+    static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
     // (undocumented)
     readonly body?: unknown;
     // (undocumented)
     readonly category: ErrorCategory;
+    // (undocumented)
+    readonly cause?: unknown;
     // (undocumented)
     readonly code?: string;
     // (undocumented)
@@ -1797,6 +1874,8 @@ export class GoodVibesSdkError extends Error {
     // (undocumented)
     readonly status?: number;
     // (undocumented)
+    toJSON(): Record<string, unknown>;
+    // (undocumented)
     readonly url?: string;
 }
 
@@ -1806,6 +1885,8 @@ export interface GoodVibesSdkErrorOptions {
     readonly body?: unknown;
     // (undocumented)
     readonly category?: ErrorCategory;
+    // (undocumented)
+    readonly cause?: unknown;
     // (undocumented)
     readonly code?: string;
     // (undocumented)
@@ -1853,18 +1934,20 @@ export interface GoodVibesSdkOptions {
     readonly WebSocketImpl?: typeof WebSocket;
 }
 
-// @public
+// @public (undocumented)
 export interface GoodVibesTokenStore {
     // (undocumented)
     clearToken(): Promise<void>;
     // (undocumented)
     getToken(): Promise<string | null>;
+    // (undocumented)
     getTokenEntry?(): Promise<{
         token: string | null;
         expiresAt?: number;
     }>;
     // (undocumented)
     setToken(token: string | null): Promise<void>;
+    // (undocumented)
     setTokenEntry?(token: string | null, expiresAt?: number): Promise<void>;
 }
 
@@ -1913,8 +1996,10 @@ export interface HttpRetryPolicy extends BackoffPolicy {
     readonly retryOnStatuses?: readonly number[];
 }
 
-// @public @deprecated
+// @public
 export class HttpStatusError extends GoodVibesSdkError {
+    // (undocumented)
+    static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
 
@@ -1963,6 +2048,8 @@ export interface IntegrationHelperServiceLike {
     // (undocumented)
     getRuntimeStore(): IntegrationRuntimeStoreLike | null;
     // (undocumented)
+    getSecuritySettingsReport(): unknown;
+    // (undocumented)
     getSessionBrokerSnapshot(): unknown;
     // (undocumented)
     getSessionSnapshot(): unknown;
@@ -1986,6 +2073,15 @@ export function invokeObserver(fn: () => void): void;
 
 // @public
 export function invokeTransportObserver(fn: () => void): void;
+
+// @public (undocumented)
+export function isAbortError(error: unknown): boolean;
+
+// @public (undocumented)
+export function isArtifactUploadRequest(req: Request): boolean;
+
+// @public (undocumented)
+export function isJsonContentType(contentType: string | null): boolean;
 
 // @public (undocumented)
 export function isJsonRecord(value: unknown): value is JsonRecord;
@@ -2026,6 +2122,16 @@ export type JsonRecord = Record<string, unknown>;
 export type JsonSchema = Record<string, unknown>;
 
 // @public (undocumented)
+export interface JsonSchemaValidationFailure {
+    // (undocumented)
+    readonly expected: string;
+    // (undocumented)
+    readonly path: string;
+    // (undocumented)
+    readonly received: string;
+}
+
+// @public (undocumented)
 export type JsonValue = string | number | boolean | null | {
     readonly [key: string]: JsonValue;
 } | readonly JsonValue[];
@@ -2064,15 +2170,19 @@ export interface KnowledgeGraphqlServiceLike {
 export type KnowledgePacketDetail = string;
 
 // @public (undocumented)
-export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue';
+export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue' | 'dashboard' | 'rollup';
 
 // @public (undocumented)
 export interface KnowledgeServiceLike {
+    // (undocumented)
+    ask(input: Record<string, unknown>): Promise<unknown>;
     // (undocumented)
     buildPacket(task: string, writeScope: readonly string[], limit: number, options: {
         detail?: KnowledgePacketDetail;
         budgetLimit?: number;
     }): Promise<unknown> | unknown;
+    // (undocumented)
+    cancelRefinementTask(id: string): Promise<unknown | null>;
     // (undocumented)
     decideConsolidationCandidate(id: string, decision: 'accept' | 'reject' | 'supersede', input: Record<string, unknown>): Promise<unknown>;
     // (undocumented)
@@ -2091,6 +2201,8 @@ export interface KnowledgeServiceLike {
     getItem(id: string): unknown | null;
     // (undocumented)
     getJob(jobId: string): unknown | null;
+    // (undocumented)
+    getRefinementTask(id: string): unknown | null;
     // (undocumented)
     getSchedule(id: string): unknown | null;
     // (undocumented)
@@ -2132,6 +2244,8 @@ export interface KnowledgeServiceLike {
     // (undocumented)
     listProjectionTargets(limit: number): Promise<readonly unknown[]>;
     // (undocumented)
+    listRefinementTasks(limit: number, filter: Record<string, unknown>): readonly unknown[];
+    // (undocumented)
     listSchedules(limit: number): readonly unknown[];
     // (undocumented)
     listSources(limit: number): readonly unknown[];
@@ -2141,6 +2255,8 @@ export interface KnowledgeServiceLike {
         targetId?: string;
         usageKind?: KnowledgeUsageKind;
     }): readonly unknown[];
+    // (undocumented)
+    map(input: Record<string, unknown>): Promise<unknown>;
     // (undocumented)
     materializeProjection(input: {
         kind: KnowledgeProjectionTargetKind;
@@ -2157,7 +2273,11 @@ export interface KnowledgeServiceLike {
         limit?: number;
     }): Promise<unknown>;
     // (undocumented)
+    reviewIssue(input: Record<string, unknown>): Promise<unknown>;
+    // (undocumented)
     runJob(jobId: string, input: Record<string, unknown>): Promise<unknown>;
+    // (undocumented)
+    runRefinement(input: Record<string, unknown>): Promise<unknown>;
     // (undocumented)
     saveSchedule(input: {
         readonly id?: string;
@@ -2171,6 +2291,8 @@ export interface KnowledgeServiceLike {
     search(query: string, limit: number): readonly unknown[];
     // (undocumented)
     setScheduleEnabled(id: string, enabled: boolean): Promise<unknown | null>;
+    // (undocumented)
+    syncBrowserHistory(input: Record<string, unknown>): Promise<unknown>;
 }
 
 // @public (undocumented)
@@ -2189,30 +2311,30 @@ export const ListProvidersResponseSchema: z.ZodObject<{
         label: z.ZodString;
         configured: z.ZodBoolean;
         configuredVia: z.ZodOptional<z.ZodEnum<{
-            env: "env";
-            secrets: "secrets";
             anonymous: "anonymous";
             subscription: "subscription";
+            secrets: "secrets";
+            env: "env";
         }>>;
         envVars: z.ZodArray<z.ZodString>;
         routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
             route: z.ZodEnum<{
                 none: "none";
-                "api-key": "api-key";
-                "secret-ref": "secret-ref";
-                "service-oauth": "service-oauth";
-                "subscription-oauth": "subscription-oauth";
                 anonymous: "anonymous";
+                "api-key": "api-key";
+                "service-oauth": "service-oauth";
+                "secret-ref": "secret-ref";
+                "subscription-oauth": "subscription-oauth";
             }>;
             label: z.ZodString;
             configured: z.ZodBoolean;
             usable: z.ZodOptional<z.ZodBoolean>;
             freshness: z.ZodOptional<z.ZodEnum<{
-                healthy: "healthy";
-                pending: "pending";
-                unconfigured: "unconfigured";
-                expiring: "expiring";
                 expired: "expired";
+                unconfigured: "unconfigured";
+                healthy: "healthy";
+                expiring: "expiring";
+                pending: "pending";
             }>>;
             detail: z.ZodOptional<z.ZodString>;
             envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -2281,8 +2403,19 @@ export interface MemoryRegistryLike {
     vectorStats(): unknown;
 }
 
+// @public
+export function mergeClientInput<TInput>(fixed: Record<string, unknown>, input: TInput | undefined): Record<string, unknown>;
+
+// @public (undocumented)
+export function mergeHeaderRecord(...sources: Array<HeadersInit | undefined>): Record<string, string>;
+
 // @public (undocumented)
 export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers;
+
+// @public
+export type MethodArgs<TInput, TOptions> = [
+TInput
+] extends [undefined] ? [input?: undefined, options?: TOptions] : TInput extends object ? [RequiredKeys<TInput>] extends [never] ? [input?: TInput, options?: TOptions] : [input: TInput, options?: TOptions] : [input: TInput, options?: TOptions];
 
 // @public (undocumented)
 export function missingScopes(grantedScopes: readonly string[] | undefined, requiredScopes: readonly string[]): string[];
@@ -2352,7 +2485,7 @@ export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: s
 export const OPERATOR_CONTRACT: OperatorContractManifest;
 
 // @public (undocumented)
-export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.lifecycle.migrate", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "intelligence.snapshot", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.create", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
+export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.lifecycle.migrate", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
 
 // @public (undocumented)
 export interface OperatorContractManifest {
@@ -2368,7 +2501,6 @@ export interface OperatorContractManifest {
         readonly current: {
             readonly method: string;
             readonly path: string;
-            readonly aliasPaths: readonly string[];
             readonly responseSchema: JsonSchema;
         };
         readonly sessionCookie: {
@@ -2392,7 +2524,6 @@ export interface OperatorContractManifest {
     // (undocumented)
     readonly peer: {
         readonly contractPath: string;
-        readonly aliasPaths: readonly string[];
         readonly relationship: string;
     };
     // (undocumented)
@@ -3329,7 +3460,7 @@ export interface OperatorMethodInputMap {
         artifactId?: string;
         path?: string;
         uri?: string;
-        sourceType?: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+        sourceType?: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
         title?: string;
         sessionId?: string;
         tags?: readonly string[];
@@ -3357,12 +3488,29 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "knowledge.ingest.browserHistory": ({
+        limit?: number;
+        sinceMs?: number;
+        browsers?: readonly string[];
+        sourceKinds?: readonly string[];
+        homeOverride?: string;
+        sessionId?: string;
+        connectorId?: string;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue_2;
+            }) | boolean | null | number | readonly JsonValue_2[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "knowledge.ingest.connector": unknown;
     // (undocumented)
     "knowledge.ingest.url": ({
         url: string;
         title?: string;
-        sourceType?: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+        sourceType?: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
         sessionId?: string;
         tags?: readonly string[];
         folderPath?: string;
@@ -4078,6 +4226,8 @@ export interface OperatorMethodInputMap {
         scheduleId: string;
     };
     // (undocumented)
+    "security.settings": {};
+    // (undocumented)
     "services.install": {};
     // (undocumented)
     "services.restart": {};
@@ -4152,6 +4302,7 @@ export interface OperatorMethodInputMap {
         body: string;
         surfaceKind?: string;
         surfaceId?: string;
+        kind?: "message" | "task" | "followup";
         routing?: {
             providerId?: string;
             modelId?: string;
@@ -7511,7 +7662,6 @@ export interface OperatorMethodOutputMap {
                 current: {
                     method: string;
                     path: string;
-                    aliasPaths: readonly string[];
                     responseSchema: {
                         authenticated: boolean;
                         authMode: "anonymous" | "invalid" | "session" | "shared-token";
@@ -7621,7 +7771,6 @@ export interface OperatorMethodOutputMap {
             };
             peer: {
                 contractPath: string;
-                aliasPaths: readonly string[];
                 relationship: string;
             };
         };
@@ -8090,7 +8239,7 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             version?: string;
             description: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue_2;
@@ -8139,7 +8288,7 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             version?: string;
             description: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue_2;
@@ -8270,7 +8419,7 @@ export interface OperatorMethodOutputMap {
         source: ({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -8323,7 +8472,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -8350,13 +8499,56 @@ export interface OperatorMethodOutputMap {
         errors: readonly string[];
     };
     // (undocumented)
+    "knowledge.ingest.browserHistory": {
+        imported: number;
+        failed: number;
+        sources: readonly (({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue_2;
+                }) | boolean | null | number | readonly JsonValue_2[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        errors: readonly string[];
+        profiles: readonly (({
+            family: string;
+            browser: string;
+            profileName: string;
+            profilePath: string;
+            historyPath?: string;
+            bookmarksPath?: string;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    };
+    // (undocumented)
     "knowledge.ingest.connector": {
         imported: number;
         failed: number;
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -8387,7 +8579,7 @@ export interface OperatorMethodOutputMap {
         source: ({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -8440,7 +8632,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -8492,7 +8684,7 @@ export interface OperatorMethodOutputMap {
         source?: ({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -8575,7 +8767,7 @@ export interface OperatorMethodOutputMap {
         linkedSources?: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -8634,6 +8826,11 @@ export interface OperatorMethodOutputMap {
             completedAt?: number;
             error?: string;
             result: {} | {
+                imported: number;
+                failed: number;
+                profileCount: number;
+                errorCount: number;
+            } | {
                 issueCount: number;
             } | {
                 projections: readonly ({
@@ -8666,7 +8863,7 @@ export interface OperatorMethodOutputMap {
     "knowledge.job.get": {
         job: {
             id: string;
-            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex";
+            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex" | "sync-browser-history";
             title: string;
             description: string;
             defaultMode: "background" | "inline";
@@ -8689,6 +8886,11 @@ export interface OperatorMethodOutputMap {
             completedAt?: number;
             error?: string;
             result: {} | {
+                imported: number;
+                failed: number;
+                profileCount: number;
+                errorCount: number;
+            } | {
                 issueCount: number;
             } | {
                 projections: readonly ({
@@ -8721,7 +8923,7 @@ export interface OperatorMethodOutputMap {
     "knowledge.jobs.list": {
         jobs: readonly ({
             id: string;
-            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex";
+            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex" | "sync-browser-history";
             title: string;
             description: string;
             defaultMode: "background" | "inline";
@@ -9149,7 +9351,7 @@ export interface OperatorMethodOutputMap {
             source?: ({
                 id: string;
                 connectorId: string;
-                sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+                sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
                 title?: string;
                 sourceUri?: string;
                 canonicalUri?: string;
@@ -9232,7 +9434,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -9312,7 +9514,7 @@ export interface OperatorMethodOutputMap {
             roles: readonly string[];
         })[];
         sessions: readonly ({
-            token: string;
+            tokenFingerprint: string;
             username: string;
             expiresAt: number;
         })[];
@@ -11316,6 +11518,21 @@ export interface OperatorMethodOutputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "security.settings": {
+        settings: readonly ({
+            key: string;
+            type: "configuration" | "feature-flag";
+            defaultState: string;
+            currentState: string;
+            securityRelevant: boolean;
+            summary: string;
+            insecureWhen: string;
+            enablementEffect: string;
+            enablementRequirements: readonly string[];
+            operationalNotes: readonly string[];
+        })[];
+    };
+    // (undocumented)
     "services.install": ({
         platform: string;
         path: string;
@@ -12093,8 +12310,10 @@ export interface OperatorMethodOutputMap {
             });
         })[];
     };
+    // Warning: (ae-forgotten-export) The symbol "SharedSessionConversationRouteOutput" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    "sessions.messages.create": {
+    "sessions.messages.create": SharedSessionConversationRouteOutput | {
         session: null | {
             id: string;
             title: string;
@@ -13555,7 +13774,7 @@ export interface OperatorRemoteClient {
         };
     };
     // (undocumented)
-    getMethod(methodId: string): OperatorMethodContract;
+    getOperation(methodId: string): OperatorMethodContract;
     // Warning: (ae-forgotten-export) The symbol "KnownMethodArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -13563,7 +13782,7 @@ export interface OperatorRemoteClient {
     // (undocumented)
     invoke<T = unknown>(methodId: string, input?: Record<string, unknown>, options?: OperatorRemoteClientInvokeOptions): Promise<T>;
     // (undocumented)
-    listMethods(): readonly OperatorMethodContract[];
+    listOperations(): readonly OperatorMethodContract[];
     // (undocumented)
     readonly localAuth: {
         status(...args: KnownMethodArgs<'local_auth.status'>): Promise<OperatorMethodOutput<'local_auth.status'>>;
@@ -13645,9 +13864,13 @@ export interface OperatorSchemaCoverageContract {
 }
 
 // @public (undocumented)
-export type OperatorSdk = Omit<OperatorRemoteClient, 'getMethod'> & {
+export type OperatorSdk = Omit<OperatorRemoteClient, 'getOperation'> & {
     readonly transport: HttpTransport;
-    getMethod(methodId: OperatorMethodId): OperatorMethodContract;
+    getOperation(methodId: OperatorMethodId): OperatorMethodContract;
+    dispose(): void;
+    asyncDispose(): Promise<void>;
+    [Symbol.dispose](): void;
+    [Symbol.asyncDispose](): Promise<void>;
 };
 
 // @public (undocumented)
@@ -13660,8 +13883,6 @@ export type OperatorStreamMethodId = Extract<OperatorTypedMethodId, 'control.eve
 
 // @public (undocumented)
 export interface OperatorStreamOptions extends OperatorRemoteClientStreamOptions {
-    // (undocumented)
-    readonly handlers: ServerSentEventHandlers;
 }
 
 // @public (undocumented)
@@ -13753,29 +13974,29 @@ export const PatchCurrentModelResponseSchema: z.ZodObject<{
     }, z.core.$strip>>;
     configured: z.ZodBoolean;
     configuredVia: z.ZodOptional<z.ZodEnum<{
-        env: "env";
-        secrets: "secrets";
         anonymous: "anonymous";
         subscription: "subscription";
+        secrets: "secrets";
+        env: "env";
     }>>;
     routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
         route: z.ZodEnum<{
             none: "none";
-            "api-key": "api-key";
-            "secret-ref": "secret-ref";
-            "service-oauth": "service-oauth";
-            "subscription-oauth": "subscription-oauth";
             anonymous: "anonymous";
+            "api-key": "api-key";
+            "service-oauth": "service-oauth";
+            "secret-ref": "secret-ref";
+            "subscription-oauth": "subscription-oauth";
         }>;
         label: z.ZodString;
         configured: z.ZodBoolean;
         usable: z.ZodOptional<z.ZodBoolean>;
         freshness: z.ZodOptional<z.ZodEnum<{
-            healthy: "healthy";
-            pending: "pending";
-            unconfigured: "unconfigured";
-            expiring: "expiring";
             expired: "expired";
+            unconfigured: "unconfigured";
+            healthy: "healthy";
+            expiring: "expiring";
+            pending: "pending";
         }>>;
         detail: z.ZodOptional<z.ZodString>;
         envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -14416,7 +14637,7 @@ export interface PeerRemoteClient {
     // (undocumented)
     readonly contract: PeerContractManifest;
     // (undocumented)
-    getEndpoint(endpointId: string): PeerEndpointContract;
+    getOperation(endpointId: string): PeerEndpointContract;
     // Warning: (ae-forgotten-export) The symbol "KnownEndpointArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -14424,7 +14645,7 @@ export interface PeerRemoteClient {
     // (undocumented)
     invoke<T = unknown>(endpointId: string, input?: Record<string, unknown>, options?: PeerRemoteClientInvokeOptions): Promise<T>;
     // (undocumented)
-    listEndpoints(): readonly PeerEndpointContract[];
+    listOperations(): readonly PeerEndpointContract[];
     // (undocumented)
     readonly operator: {
         snapshot(...args: KnownEndpointArgs<'operator.snapshot'>): Promise<PeerEndpointOutput<'operator.snapshot'>>;
@@ -14452,13 +14673,18 @@ export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {
 }
 
 // @public (undocumented)
-export type PeerSdk = Omit<PeerRemoteClient, 'getEndpoint'> & {
+export type PeerSdk = Omit<PeerRemoteClient, 'getOperation'> & {
     readonly transport: HttpTransport;
-    getEndpoint(endpointId: PeerEndpointId): PeerEndpointContract;
+    getOperation(endpointId: PeerEndpointId): PeerEndpointContract;
+    dispose(): void;
+    asyncDispose(): Promise<void>;
+    [Symbol.dispose](): void;
+    [Symbol.asyncDispose](): Promise<void>;
 };
 
 // @public (undocumented)
 export interface PeerSdkOptions extends HttpTransportOptions {
+    readonly validateResponses?: boolean;
 }
 
 // @public (undocumented)
@@ -14501,30 +14727,30 @@ export const ProviderEntrySchema: z.ZodObject<{
     label: z.ZodString;
     configured: z.ZodBoolean;
     configuredVia: z.ZodOptional<z.ZodEnum<{
-        env: "env";
-        secrets: "secrets";
         anonymous: "anonymous";
         subscription: "subscription";
+        secrets: "secrets";
+        env: "env";
     }>>;
     envVars: z.ZodArray<z.ZodString>;
     routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
         route: z.ZodEnum<{
             none: "none";
-            "api-key": "api-key";
-            "secret-ref": "secret-ref";
-            "service-oauth": "service-oauth";
-            "subscription-oauth": "subscription-oauth";
             anonymous: "anonymous";
+            "api-key": "api-key";
+            "service-oauth": "service-oauth";
+            "secret-ref": "secret-ref";
+            "subscription-oauth": "subscription-oauth";
         }>;
         label: z.ZodString;
         configured: z.ZodBoolean;
         usable: z.ZodOptional<z.ZodBoolean>;
         freshness: z.ZodOptional<z.ZodEnum<{
-            healthy: "healthy";
-            pending: "pending";
-            unconfigured: "unconfigured";
-            expiring: "expiring";
             expired: "expired";
+            unconfigured: "unconfigured";
+            healthy: "healthy";
+            expiring: "expiring";
+            pending: "pending";
         }>>;
         detail: z.ZodOptional<z.ZodString>;
         envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -14610,6 +14836,12 @@ export interface ReactNativeGoodVibesSdkOptions extends GoodVibesSdkOptions {
 }
 
 // @public (undocumented)
+export function readBoundedInteger(raw: string | null, options: BoundedIntegerOptions): number;
+
+// @public (undocumented)
+export function readBoundedPositiveInteger(raw: string | null, fallback: number, max?: number): number;
+
+// @public (undocumented)
 export function readChannelConversationKind(value: unknown): ChannelConversationKind | null;
 
 // @public (undocumented)
@@ -14619,20 +14851,44 @@ export function readChannelLifecycleAction(value: unknown): ChannelLifecycleActi
 export function readJsonBody(response: Response): Promise<unknown>;
 
 // @public (undocumented)
+export function readOptionalBoundedInteger(raw: string | null, min: number, max: number): number | undefined;
+
+// @public (undocumented)
+export interface RemoteDomainEventsOptions<TDomain extends string = string> {
+    // (undocumented)
+    readonly onConnectionError?: (error: Error, domain: TDomain) => void;
+}
+
+// @public (undocumented)
 export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2> = DomainEvents<RuntimeEventDomain, TEvent>;
 
 // @public (undocumented)
+export interface RemoteRuntimeEventsOptions {
+    // (undocumented)
+    readonly observer?: TransportObserver;
+    // (undocumented)
+    readonly onError?: (error: Error, domain: RuntimeEventDomain) => void;
+}
+
+// Warning: (ae-internal-missing-underscore) The name "requestJson" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function requestJson<T>(fetchImpl: typeof fetch, url: string, init?: RequestInit): Promise<T>;
 
 // @public (undocumented)
 export function requireContractRoute<TRoute extends ContractRouteLike>(routes: readonly TRoute[], routeId: string, kind: string): TRoute;
+
+// @public (undocumented)
+export type RequiredKeys<T extends object> = {
+    [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
+}[keyof T];
 
 // Warning: (ae-forgotten-export) The symbol "AuthenticatedPrincipalResolver" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
 export function resolveAuthenticatedPrincipal(req: Request, resolver: AuthenticatedPrincipalResolver): AuthenticatedPrincipal | null;
 
-// @public (undocumented)
+// @public
 export function resolveAuthToken(authToken: string | null | undefined, getAuthToken?: AuthTokenResolver): Promise<string | null>;
 
 // @public (undocumented)
@@ -14687,7 +14943,7 @@ export function resolveHttpRetryPolicy(defaultPolicy?: HttpRetryPolicy, override
 export function resolvePrivateHostFetchOptions(requested: unknown, context: PrivateHostFetchConfig | ElevatedPrivateHostFetchConfig): {
     allowPrivateHosts: true;
     fetchMode: 'allow-private-hosts';
-} | {} | Response;
+} | Record<string, never> | Response;
 
 // @public (undocumented)
 export const RETRYABLE_STATUS_CODES: readonly number[];
@@ -14924,7 +15180,7 @@ export type RuntimeEventTypedDomain = keyof RuntimeDomainEventPayloadMap & strin
 export function scopeMatches(granted: string, required: string): boolean;
 
 // @public
-export type SDKErrorKind = 'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'rate-limit' | 'server' | 'validation' | 'unknown';
+export type SDKErrorKind = 'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown';
 
 // @public
 export interface SDKObserver extends TransportObserver {
@@ -14972,6 +15228,8 @@ export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord_2 = Runt
 // @public (undocumented)
 interface ServerSentEventHandlers {
     // (undocumented)
+    readonly onClose?: () => void;
+    // (undocumented)
     readonly onError?: (error: unknown) => void;
     // (undocumented)
     readonly onEvent?: (eventName: string, payload: unknown) => void;
@@ -14981,6 +15239,11 @@ interface ServerSentEventHandlers {
     readonly onReconnect?: (input: {
         readonly attempt: number;
         readonly delayMs: number;
+    }) => void;
+    // (undocumented)
+    readonly onTerminate?: (input: {
+        readonly error: unknown;
+        readonly reconnectAttempts: number;
     }) => void;
 }
 export { ServerSentEventHandlers as RawServerSentEventHandlers }
@@ -14992,6 +15255,9 @@ export interface ServerSentEventOptions extends Omit<RawServerSentEventOptions, 
 
 // @public (undocumented)
 export function sleepWithSignal(delayMs: number, signal?: AbortSignal): Promise<void>;
+
+// @public
+export function splitClientArgs<TInput, TOptions>(args: readonly unknown[]): readonly [TInput | undefined, TOptions | undefined];
 
 // @public (undocumented)
 export interface StreamReconnectPolicy extends BackoffPolicy {
@@ -15067,6 +15333,9 @@ export interface TransportContext {
     signal?: AbortSignal;
     url: string;
 }
+
+// @public (undocumented)
+export function transportErrorFromUnknown(error: unknown, context: string): Error;
 
 // @public (undocumented)
 export interface TransportJsonError {
@@ -15256,6 +15525,11 @@ export type WebSearchTimeRange = string;
 // @public (undocumented)
 export type WebSearchVerbosity = string;
 
+// @public
+export type WithoutKeys<TInput, TKeys extends PropertyKey> = [
+TInput
+] extends [undefined] ? undefined : TInput extends object ? Omit<TInput, Extract<keyof TInput, TKeys>> : TInput;
+
 // @public (undocumented)
 export interface WorkspaceSwapManagerLike {
     // (undocumented)
@@ -15279,20 +15553,20 @@ export interface WorkspaceSwapManagerLike {
 
 // Warnings were encountered during analysis:
 //
-// packages/sdk/src/_internal/contracts/generated/foundation-client-types.ts:442:562 - (ae-forgotten-export) The symbol "JsonValue_2" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/knowledge-route-types.ts:50:76 - (ae-forgotten-export) The symbol "KnowledgeUsageKind" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/knowledge-route-types.ts:54:15 - (ae-forgotten-export) The symbol "KnowledgeCandidateStatus" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:75:7 - (ae-forgotten-export) The symbol "AutomationSurfaceKind_2" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:84:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:89:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:170:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:174:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:175:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:201:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/runtime-route-types.ts:213:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/daemon/system-route-types.ts:111:5 - (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/operator/client-core.ts:91:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/_internal/peer/client-core.ts:82:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
+// packages/contracts/src/generated/foundation-client-types.ts:446:562 - (ae-forgotten-export) The symbol "JsonValue_2" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/knowledge-route-types.ts:53:76 - (ae-forgotten-export) The symbol "KnowledgeUsageKind" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/knowledge-route-types.ts:57:15 - (ae-forgotten-export) The symbol "KnowledgeCandidateStatus" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:74:7 - (ae-forgotten-export) The symbol "AutomationSurfaceKind_2" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:83:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:88:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:169:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:173:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:174:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:200:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:216:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/system-route-types.ts:110:5 - (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
+// packages/operator-sdk/src/client-core.ts:73:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
+// packages/peer-sdk/src/client-core.ts:64:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

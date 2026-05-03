@@ -59,12 +59,15 @@ export function getPeerContract(): PeerContractManifest {
   return PEER_CONTRACT;
 }
 
+const OPERATOR_METHODS_BY_ID = new Map(OPERATOR_CONTRACT.operator.methods.map((method) => [method.id, method]));
+const PEER_ENDPOINTS_BY_ID = new Map(PEER_CONTRACT.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+
 export function getOperatorMethod(methodId: string): OperatorMethodContract | undefined {
-  return getOperatorContract().operator.methods.find((method) => method.id === methodId);
+  return OPERATOR_METHODS_BY_ID.get(methodId);
 }
 
 export function getPeerEndpoint(endpointId: string): PeerEndpointContract | undefined {
-  return getPeerContract().endpoints.find((endpoint) => endpoint.id === endpointId);
+  return PEER_ENDPOINTS_BY_ID.get(endpointId);
 }
 
 export function listOperatorMethods(): readonly OperatorMethodContract[] {

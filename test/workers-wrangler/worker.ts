@@ -16,9 +16,9 @@
  */
 
 import type { ExportedHandler, ExecutionContext } from '@cloudflare/workers-types';
-// @ts-ignore — resolved by wrangler's esbuild pipeline, not tsc
+// @ts-expect-error resolved by wrangler's esbuild pipeline, not tsc
 import { createWebGoodVibesSdk } from '../../packages/sdk/dist/web.js';
-// @ts-ignore — resolved by wrangler's esbuild pipeline, not tsc
+// @ts-expect-error resolved by wrangler's esbuild pipeline, not tsc
 import * as SdkErrors from '../../packages/sdk/dist/errors.js';
 
 interface Env {}

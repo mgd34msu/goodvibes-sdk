@@ -2,7 +2,15 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "node",
+      "bun"
+    ]
   },
   "include": [
     "src/**/*.ts"
@@ -24,9 +32,6 @@
     },
     {
       "path": "../transport-core"
-    },
-    {
-      "path": "../transport-direct"
     },
     {
       "path": "../transport-http"

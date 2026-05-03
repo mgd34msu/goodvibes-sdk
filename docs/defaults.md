@@ -3,7 +3,7 @@
 This document records every timeout, retry, and backoff default in the SDK.
 All values are in milliseconds unless stated otherwise.
 
-## HTTP Transport (`packages/transport-http`)
+## HTTP Transport (`@pellux/goodvibes-sdk/transport-http`)
 
 | Path | Default | Notes |
 |------|---------|-------|
@@ -19,7 +19,7 @@ All values are in milliseconds unless stated otherwise.
 **Rationale:** Single-attempt default keeps latency predictable for interactive workloads. Callers
 increase `maxAttempts` for batch/background operations.
 
-## SSE Stream Reconnect (`packages/transport-http` — `reconnect.ts`)
+## SSE Stream Reconnect (`@pellux/goodvibes-sdk/transport-http` — `reconnect.ts`)
 
 | Path | Default | Notes |
 |------|---------|-------|
@@ -99,10 +99,10 @@ See [Home Assistant integration](./homeassistant-integration.md) for the Assist 
 
 | Config key | Default | Notes |
 |------|---------|-------|
-| `controlPlane.openaiCompatible.enabled` | `true` | Exposes authenticated `/v1/models` and `/v1/chat/completions` compatibility routes on the daemon. |
+| `controlPlane.openaiCompatible.enabled` | `true` | Exposes authenticated `/v1/models` and `/v1/chat/completions` OpenAI-style routes on the daemon. |
 | `controlPlane.openaiCompatible.pathPrefix` | `/v1` | Path prefix used by OpenAI-compatible clients as their base URL suffix. |
 
-See [Runtime orchestration](./runtime-orchestration.md#openai-compatible-ingress) for the compatibility contract and scope.
+See [Runtime orchestration](./runtime-orchestration.md#openai-compatible-ingress) for the contract and scope.
 
 ## Spoken Output / TTS
 
@@ -115,7 +115,7 @@ See [Runtime orchestration](./runtime-orchestration.md#openai-compatible-ingress
 
 See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming route and TUI integration contract.
 
-## WebSocket Reconnect (`packages/transport-realtime`)
+## WebSocket Reconnect (`@pellux/goodvibes-sdk/transport-realtime`)
 
 | Path | Default | Notes |
 |------|---------|-------|
@@ -126,7 +126,7 @@ See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming ro
 
 **Rationale:** Matches SSE for a symmetric schedule. Finite cap prevents infinite auth-failure loops.
 
-## Auth (`packages/sdk/src/auth.ts`)
+## Auth (`@pellux/goodvibes-sdk/auth`)
 
 | Path | Timeout | Max Retries | Notes |
 |------|---------|-------------|-------|
@@ -136,7 +136,7 @@ See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming ro
 **Rationale:** Auth calls go through the HTTP transport layer which applies `DEFAULT_HTTP_RETRY_POLICY`.
 There is no separate auth-specific timeout; callers should pass an `AbortSignal` for bounded waits.
 
-## Outbound Producer Queue (`packages/transport-realtime` — `runtime-events.ts`)
+## Outbound Producer Queue (`@pellux/goodvibes-sdk/transport-realtime` — `runtime-events.ts`)
 
 | Field | Value | Notes |
 |-------|-------|-------|

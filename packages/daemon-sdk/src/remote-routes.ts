@@ -78,7 +78,7 @@ export async function handleRemotePairRequest(
     clientMode: typeof body.clientMode === 'string' ? body.clientMode : undefined,
     capabilities: Array.isArray(body.capabilities) ? body.capabilities.filter((value): value is string => typeof value === 'string') : [],
     commands: Array.isArray(body.commands) ? body.commands.filter((value): value is string => typeof value === 'string') : [],
-    metadata: readMetadataWithForwardedForAudit(req, body.metadata),
+    metadata: readMetadataWithClientHintForwardedFor(req, body.metadata),
     requestedBy: 'remote',
     ttlMs: boundedPositiveNumber(body.ttlMs, 1_000, 86_400_000),
   });
@@ -97,7 +97,7 @@ export async function handleRemotePairVerify(
     return Response.json({ error: 'Missing requestId or challenge' }, { status: 400 });
   }
   const verified = await context.distributedRuntime.verifyPairRequest(requestId, challenge, {
-    metadata: readMetadataWithForwardedForAudit(req, body.metadata),
+    metadata: readMetadataWithClientHintForwardedFor(req, body.metadata),
   });
   return verified
     ? Response.json(verified)
@@ -117,7 +117,7 @@ export async function handleRemotePeerHeartbeat(
     commands: Array.isArray(body.commands) ? body.commands.filter((value): value is string => typeof value === 'string') : undefined,
     version: typeof body.version === 'string' ? body.version : undefined,
     clientMode: typeof body.clientMode === 'string' ? body.clientMode : undefined,
-    metadata: readMetadataWithForwardedForAudit(req, body.metadata),
+    metadata: readMetadataWithClientHintForwardedFor(req, body.metadata),
   });
   return Response.json({ peer });
 }
@@ -189,7 +189,7 @@ function estimateJsonByteLengthWithinLimit(
 function measureJsonByteLength(value: unknown, maxBytes: number, seen: Set<object>): number | undefined {
   const valueType = typeof value;
   if (value === null) return 4;
-  if (valueType === 'string') return jsonStringByteLength(value, maxBytes);
+  if (typeof value === 'string') return jsonStringByteLength(value, maxBytes);
   if (valueType === 'number') return Number.isFinite(value) ? String(value).length : 4;
   if (valueType === 'boolean') return value ? 4 : 5;
   if (valueType === 'undefined' || valueType === 'function' || valueType === 'symbol') return 4;
@@ -259,20 +259,22 @@ function jsonStringByteLength(value: string, maxBytes = Number.POSITIVE_INFINITY
   return total;
 }
 
-function readMetadataWithForwardedForAudit(req: Request, value: unknown): Record<string, unknown> {
+type ClientHintForwardedFor = string & { readonly __goodvibesClientHintForwardedFor: unique symbol };
+
+function readMetadataWithClientHintForwardedFor(req: Request, value: unknown): Record<string, unknown> {
   const metadata = typeof value === 'object' && value !== null && !Array.isArray(value)
     ? { ...(value as Record<string, unknown>) }
     : {};
-  const auditForwardedFor = readForwardedForAuditHint(req);
-  return auditForwardedFor ? { ...metadata, auditForwardedFor } : metadata;
+  const clientHintForwardedFor = readClientHintForwardedFor(req);
+  return clientHintForwardedFor ? { ...metadata, clientHintForwardedFor } : metadata;
 }
 
-function readForwardedForAuditHint(req: Request): string | undefined {
+function readClientHintForwardedFor(req: Request): ClientHintForwardedFor | undefined {
   // x-forwarded-for is caller-controlled unless the daemon is explicitly behind
-  // a trusted proxy. Preserve a small display/audit hint, but never use it for
-  // authorization decisions.
+  // a trusted proxy. Preserve a small display/audit hint under an explicit
+  // client-hint key, but never use it for authorization decisions.
   const value = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return value || undefined;
+  return value ? value as ClientHintForwardedFor : undefined;
 }
 
 function operatorActor(context: DaemonRemoteRouteContext, req: Request): string {

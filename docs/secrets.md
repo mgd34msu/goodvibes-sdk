@@ -3,7 +3,7 @@
 GoodVibes config values can point at secrets without embedding secret material
 directly in config files. The SDK-owned URI form is `goodvibes://`.
 
-Source: `packages/sdk/src/_internal/platform/config/secret-refs.ts`.
+Source: `packages/sdk/src/platform/config/secret-refs.ts`.
 
 ## Supported Sources
 

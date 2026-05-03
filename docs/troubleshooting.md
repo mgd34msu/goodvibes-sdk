@@ -54,7 +54,7 @@ If you are cross-origin:
 Run:
 
 ```bash
-bun run sync
+bun run refresh:contracts
 bun run validate
 ```
 

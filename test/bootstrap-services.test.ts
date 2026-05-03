@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   startHostServices,
   type HostServicesConfig,
-} from '../packages/sdk/src/_internal/platform/runtime/bootstrap-services.ts';
+} from '../packages/sdk/src/platform/runtime/bootstrap-services.ts';
 
 function config(values: Record<string, boolean | number | string>): HostServicesConfig {
   return {

@@ -1,1 +1,12 @@
-export * from '../../../_internal/platform/runtime/transports/contract-http-client.js';
+export type {
+  ContractInvokeOptions,
+  ContractRouteDefinition,
+  ContractRouteLike,
+  ContractStreamOptions,
+} from '@pellux/goodvibes-transport-http';
+export {
+  buildContractInput,
+  invokeContractRoute,
+  openContractRouteStream,
+  requireContractRoute,
+} from '@pellux/goodvibes-transport-http';

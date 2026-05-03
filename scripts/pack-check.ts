@@ -26,19 +26,34 @@ function assertNoWorkspaceRanges(manifest, label) {
 }
 
 function assertBundledBashLspMitigationManifest(manifest, label) {
-  if (manifest.dependencies?.['bash-language-server'] !== 'file:vendor/bash-language-server') {
+  if (manifest.optionalDependencies?.['bash-language-server'] !== 'file:vendor/bash-language-server') {
     throw new Error(`${label} must publish the vendored bash-language-server mitigation`);
+  }
+  if (manifest.dependencies?.['bash-language-server'] !== undefined) {
+    throw new Error(`${label} must not duplicate bash-language-server in dependencies`);
   }
 }
 
-const forbiddenSpecifiers = [
+function assertBundledBashLspPatchManifest(tarball) {
+  const manifest = JSON.parse(readPackedText(tarball, 'package/vendor/bash-language-server/package.json'));
+  if (manifest.dependencies?.editorconfig !== '3.0.2') {
+    throw new Error(`${tarball} vendored bash-language-server must pin editorconfig@3.0.2`);
+  }
+  if ('prepublishOnly' in (manifest.scripts ?? {})) {
+    throw new Error(`${tarball} vendored bash-language-server must not ship prepublishOnly`);
+  }
+  if (manifest.goodvibesPatch?.source !== 'bash-language-server@5.6.0') {
+    throw new Error(`${tarball} vendored bash-language-server is missing GoodVibes patch provenance`);
+  }
+}
+
+const sourceOfTruthSpecifiers = [
   '@pellux/goodvibes-contracts',
   '@pellux/goodvibes-daemon-sdk',
   '@pellux/goodvibes-errors',
   '@pellux/goodvibes-operator-sdk',
   '@pellux/goodvibes-peer-sdk',
   '@pellux/goodvibes-transport-core',
-  '@pellux/goodvibes-transport-direct',
   '@pellux/goodvibes-transport-http',
   '@pellux/goodvibes-transport-realtime',
 ];
@@ -63,15 +78,15 @@ function assertSecurityMitigationAssets(tarball, files) {
   }
 }
 
-function assertNoLeakedInternalImports(tarball, files) {
+function assertFacadeImportsAreDeclared(tarball, files, manifest) {
   const distFiles = files.filter(
     (file) => file.startsWith('package/dist/') && (file.endsWith('.js') || file.endsWith('.d.ts')),
   );
   for (const file of distFiles) {
     const content = readPackedText(tarball, file);
-    for (const specifier of forbiddenSpecifiers) {
-      if (content.includes(specifier)) {
-        throw new Error(`${tarball} still references internal workspace specifier ${specifier} in ${file}`);
+    for (const specifier of sourceOfTruthSpecifiers) {
+      if (content.includes(specifier) && manifest.dependencies?.[specifier] === undefined) {
+        throw new Error(`${tarball} references source package ${specifier} in ${file} but does not declare it as a dependency`);
       }
     }
   }
@@ -92,7 +107,8 @@ try {
     const files = listPackedFiles(resolve(tarball));
     assertFlatPackageLayout(tarball, files);
     assertSecurityMitigationAssets(tarball, files);
-    assertNoLeakedInternalImports(tarball, files);
+    assertBundledBashLspPatchManifest(resolve(tarball));
+    assertFacadeImportsAreDeclared(tarball, files, manifest);
   });
   console.log('pack check passed');
 } finally {

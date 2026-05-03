@@ -36,11 +36,36 @@ function appendHeaders(target: Headers, headers: HeadersInit | undefined): void 
   }
 }
 
+function appendHeaderRecord(target: Record<string, string>, headers: HeadersInit | undefined): void {
+  if (!headers) return;
+  if (headers instanceof Headers) {
+    headers.forEach((value, key) => {
+      target[key.toLowerCase()] = value;
+    });
+    return;
+  }
+  if (Array.isArray(headers)) {
+    for (const [key, value] of headers) {
+      target[key.toLowerCase()] = value;
+    }
+    return;
+  }
+  for (const [key, value] of Object.entries(headers)) {
+    if (value !== undefined) target[key.toLowerCase()] = value;
+  }
+}
+
 export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   const headers = new Headers();
   for (const source of sources) {
     appendHeaders(headers, source);
   }
+  return headers;
+}
+
+export function mergeHeaderRecord(...sources: Array<HeadersInit | undefined>): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const source of sources) appendHeaderRecord(headers, source);
   return headers;
 }
 
@@ -67,6 +92,13 @@ export function normalizeAuthToken(input: AuthTokenInput): AuthTokenResolver {
   return async () => input.token;
 }
 
+/**
+ * Resolve the token for an outbound transport request.
+ *
+ * This helper is intentionally transport-facing: it does not read process
+ * environment variables, config files, or global SDK state. Higher layers are
+ * responsible for choosing a token source and passing it here explicitly.
+ */
 export async function resolveAuthToken(
   authToken: string | null | undefined,
   getAuthToken?: AuthTokenResolver,

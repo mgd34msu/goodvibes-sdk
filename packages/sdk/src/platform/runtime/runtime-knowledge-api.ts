@@ -1,1 +1,14 @@
-export * from '../../_internal/platform/runtime/runtime-knowledge-api.js';
+import { createKnowledgeApi, type CreateKnowledgeApiOptions, type KnowledgeApi } from '../knowledge/knowledge-api.js';
+import type { RuntimeServices } from './services.js';
+
+export interface RuntimeKnowledgeApiServices
+  extends Pick<RuntimeServices, 'knowledgeService' | 'memoryRegistry'> {}
+
+export function createRuntimeKnowledgeApi(
+  runtimeServices: RuntimeKnowledgeApiServices,
+): KnowledgeApi {
+  const options: CreateKnowledgeApiOptions = {
+    memoryRegistry: runtimeServices.memoryRegistry,
+  };
+  return createKnowledgeApi(runtimeServices.knowledgeService, options);
+}

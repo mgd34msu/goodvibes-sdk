@@ -23,7 +23,7 @@ try {
       await delay(err.retryAfterMs ?? 1000);
       break;
     case 'network':
-    case 'server':
+    case 'service':
       if (err.recoverable) {
         // Retry with backoff
       }
@@ -32,6 +32,9 @@ try {
       // Fix SDK initialization options — do not retry
       break;
     case 'contract':
+    case 'protocol':
+    case 'internal':
+    case 'tool':
     case 'validation':
     case 'not-found':
     case 'unknown':

@@ -11,7 +11,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   createSha256Hash,
   randomBytesBase64url,
-} from '../packages/sdk/src/_internal/platform/runtime/auth/crypto-adapter.js';
+} from '../packages/sdk/src/platform/runtime/auth/crypto-adapter.js';
 
 // Bun provides globalThis.crypto (Web Crypto API), so the Web adapter works
 // in the test environment without any mocking.

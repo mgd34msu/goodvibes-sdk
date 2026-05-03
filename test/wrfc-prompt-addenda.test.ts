@@ -14,7 +14,7 @@ import {
   buildEngineerConstraintAddendum,
   buildReviewerConstraintAddendum,
   buildFixerConstraintAddendum,
-} from '../packages/sdk/src/_internal/platform/agents/wrfc-prompt-addenda.js';
+} from '../packages/sdk/src/platform/agents/wrfc-prompt-addenda.js';
 
 describe('buildEngineerConstraintAddendum', () => {
   test('contains non-build / unconstrained language', () => {

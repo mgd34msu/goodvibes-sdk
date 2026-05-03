@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { OAuthClient } from '../packages/sdk/src/_internal/platform/auth/oauth-client.js';
-import type { OAuthProviderConfig } from '../packages/sdk/src/_internal/platform/config/subscriptions.js';
+import { OAuthClient } from '../packages/sdk/src/platform/runtime/auth/oauth-client.js';
+import type { OAuthProviderConfig } from '../packages/sdk/src/platform/config/subscriptions.js';
 
 const BASE_CONFIG: OAuthProviderConfig = {
   clientId: 'test-client-id',

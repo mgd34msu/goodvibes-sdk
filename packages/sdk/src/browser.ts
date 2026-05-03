@@ -33,9 +33,6 @@ function resolveBrowserBaseUrl(baseUrl?: string): string {
  * - Relies on the native browser `fetch` and `WebSocket` globals; pass
  *   `options.fetch` / `options.WebSocketImpl` to override.
  *
- * `createWebGoodVibesSdk` is an alias for this function — use whichever name
- * reads more naturally in your project.
- *
  * @example
  * // Example only: baseUrl defaults to location.origin in a real browser app.
  * import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';

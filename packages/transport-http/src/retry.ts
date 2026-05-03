@@ -1,3 +1,4 @@
+import { RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors';
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
 export interface PerMethodRetryPolicy {
@@ -28,7 +29,7 @@ export const DEFAULT_HTTP_RETRY_POLICY: ResolvedHttpRetryPolicy = {
   baseDelayMs: 250,
   maxDelayMs: 2_000,
   backoffFactor: 2,
-  retryOnStatuses: [408, 429, 500, 502, 503, 504],
+  retryOnStatuses: RETRYABLE_STATUS_CODES,
   retryOnMethods: ['GET', 'HEAD', 'OPTIONS'],
   retryOnNetworkError: true,
   perMethodPolicy: {},

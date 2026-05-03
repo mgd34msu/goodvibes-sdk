@@ -7,9 +7,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { run as runHttpHook } from '../packages/sdk/src/_internal/platform/hooks/runners/http.ts';
-import type { HookDefinition, HookEvent } from '../packages/sdk/src/_internal/platform/hooks/types.ts';
-import { WebhookNotifier } from '../packages/sdk/src/_internal/platform/integrations/webhooks.ts';
+import { run as runHttpHook } from '../packages/sdk/src/platform/hooks/runners/http.ts';
+import type { HookDefinition, HookEvent } from '../packages/sdk/src/platform/hooks/types.ts';
+import { WebhookNotifier } from '../packages/sdk/src/platform/integrations/webhooks.ts';
 
 const MOCK_EVENT: HookEvent = {
   path: 'Post:tool:test' as HookEvent['path'],

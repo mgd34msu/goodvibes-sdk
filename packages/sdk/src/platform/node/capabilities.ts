@@ -37,9 +37,7 @@ export const GOODVIBES_CLIENT_SAFE_ENTRYPOINTS = [
 
 export const GOODVIBES_NODE_RUNTIME_ENTRYPOINTS = [
   '@pellux/goodvibes-sdk/platform',
-  '@pellux/goodvibes-sdk/platform/index',
   '@pellux/goodvibes-sdk/platform/node',
-  '@pellux/goodvibes-sdk/platform/node/index',
   '@pellux/goodvibes-sdk/platform/runtime',
   '@pellux/goodvibes-sdk/platform/knowledge',
   '@pellux/goodvibes-sdk/platform/providers',
@@ -73,10 +71,8 @@ export const GOODVIBES_RUNTIME_CAPABILITIES: readonly GoodVibesRuntimeCapability
     description: 'Runtime stores, diagnostics, transports, bootstrap helpers, and local host services.',
     entrypoints: [
       '@pellux/goodvibes-sdk/platform',
-      '@pellux/goodvibes-sdk/platform/index',
       '@pellux/goodvibes-sdk/platform/runtime',
       '@pellux/goodvibes-sdk/platform/node',
-      '@pellux/goodvibes-sdk/platform/node/index',
     ],
     surfaces: ['node-runtime', 'node-platform'],
     requirements: ['node-like', 'filesystem', 'local-database'],
@@ -87,10 +83,8 @@ export const GOODVIBES_RUNTIME_CAPABILITIES: readonly GoodVibesRuntimeCapability
     description: 'Knowledge spaces, ingestion, extraction, graph storage, semantic enrichment, generated pages, and extensions.',
     entrypoints: [
       '@pellux/goodvibes-sdk/platform',
-      '@pellux/goodvibes-sdk/platform/index',
       '@pellux/goodvibes-sdk/platform/knowledge',
       '@pellux/goodvibes-sdk/platform/node',
-      '@pellux/goodvibes-sdk/platform/node/index',
     ],
     surfaces: ['node-runtime', 'node-platform'],
     requirements: ['node-like', 'filesystem', 'local-database'],
@@ -108,12 +102,10 @@ export const GOODVIBES_RUNTIME_CAPABILITIES: readonly GoodVibesRuntimeCapability
     description: 'LLM, voice, multimodal, provider registry, and provider auth integrations.',
     entrypoints: [
       '@pellux/goodvibes-sdk/platform',
-      '@pellux/goodvibes-sdk/platform/index',
       '@pellux/goodvibes-sdk/platform/providers',
       '@pellux/goodvibes-sdk/platform/voice',
       '@pellux/goodvibes-sdk/platform/multimodal',
       '@pellux/goodvibes-sdk/platform/node',
-      '@pellux/goodvibes-sdk/platform/node/index',
     ],
     surfaces: ['node-runtime', 'node-platform'],
     requirements: ['node-like', 'provider-sdk'],
@@ -130,12 +122,10 @@ export const GOODVIBES_RUNTIME_CAPABILITIES: readonly GoodVibesRuntimeCapability
     description: 'Filesystem, shell, git, AST, language-server, and workflow tools used by daemon/TUI runtimes.',
     entrypoints: [
       '@pellux/goodvibes-sdk/platform',
-      '@pellux/goodvibes-sdk/platform/index',
       '@pellux/goodvibes-sdk/platform/tools',
       '@pellux/goodvibes-sdk/platform/intelligence',
       '@pellux/goodvibes-sdk/platform/git',
       '@pellux/goodvibes-sdk/platform/node',
-      '@pellux/goodvibes-sdk/platform/node/index',
     ],
     surfaces: ['node-runtime', 'node-platform'],
     requirements: ['node-like', 'filesystem', 'child-process', 'native-module'],

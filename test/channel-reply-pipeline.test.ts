@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test';
-import { ChannelPluginRegistry } from '../packages/sdk/src/_internal/platform/channels/plugin-registry.js';
-import { ChannelReplyPipeline } from '../packages/sdk/src/_internal/platform/channels/reply-pipeline.js';
-import { DaemonSurfaceDeliveryHelper } from '../packages/sdk/src/_internal/platform/daemon/surface-delivery.js';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import { emitAgentCompleted, emitAgentSpawning } from '../packages/sdk/src/_internal/platform/runtime/emitters/agents.js';
+import { ChannelPluginRegistry } from '../packages/sdk/src/platform/channels/plugin-registry.js';
+import { ChannelReplyPipeline } from '../packages/sdk/src/platform/channels/reply-pipeline.js';
+import { DaemonSurfaceDeliveryHelper } from '../packages/sdk/src/platform/daemon/surface-delivery.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import { emitAgentCompleted, emitAgentSpawning } from '../packages/sdk/src/platform/runtime/emitters/agents.js';
 import {
   emitWorkflowChainCreated,
   emitWorkflowChainPassed,
   emitWorkflowReviewCompleted,
-} from '../packages/sdk/src/_internal/platform/runtime/emitters/workflows.js';
+} from '../packages/sdk/src/platform/runtime/emitters/workflows.js';
 
 describe('ChannelReplyPipeline', () => {
   test('routes child-agent completion status to the parent ntfy reply target', async () => {

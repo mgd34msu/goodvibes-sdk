@@ -37,6 +37,7 @@ import {
   createJsonInit,
   createJsonRequestInit,
   generateIdempotencyKey,
+  inferTransportHint,
   readJsonBody,
   requestJson,
   type HttpJsonRequestOptions,
@@ -116,25 +117,6 @@ function isTransportError(error: unknown): error is TransportFailure {
   );
 }
 
-function inferTransportHint(
-  status: number,
-  url: string,
-  retryAfterMs?: number,
-): string | undefined {
-  if (status === 0) return `Transport could not reach ${url}. Verify the baseUrl is reachable.`;
-  if (status === 401) return 'Check your authentication token or credentials.';
-  if (status === 403) return 'Valid credentials but insufficient permissions for this operation.';
-  if (status === 404) return 'The requested resource was not found.';
-  if (status === 408) return 'The request timed out. Consider retrying.';
-  if (status === 429) {
-    return retryAfterMs !== undefined
-      ? `Rate limit exceeded. Retry after ${retryAfterMs}ms.`
-      : 'Rate limit exceeded. Back off and retry.';
-  }
-  if (status >= 500) return 'Remote server error. The service may be temporarily unavailable.';
-  return undefined;
-}
-
 export function normalizeTransportError(error: unknown): Error {
   // Fast path: already a structured SDK error — return directly, no re-wrapping needed.
   // Covers HttpStatusError (subclass) and GoodVibesSdkError (e.g. SSE stream errors) alike.
@@ -190,7 +172,13 @@ export function normalizeTransportError(error: unknown): Error {
       return new ContractError(error.message);
     }
   }
-  return error instanceof Error ? error : new Error(String(error));
+  return error instanceof Error
+    ? error
+    : new GoodVibesSdkError(`Transport operation failed with a non-Error value: ${String(error)}`, {
+        category: 'network',
+        source: 'transport',
+        recoverable: true,
+      });
 }
 
 export function createHttpTransport(options: HttpTransportOptions): HttpTransport {

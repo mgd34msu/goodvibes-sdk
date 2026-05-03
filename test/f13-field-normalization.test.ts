@@ -10,8 +10,8 @@
  * changes to the preference order.
  */
 import { describe, expect, test } from 'bun:test';
-import { readCompanionChatMessageBody } from '../packages/sdk/src/_internal/platform/companion/companion-chat-routes.js';
-import { readSharedSessionMessageBody } from '../packages/sdk/src/_internal/daemon/runtime-session-routes.js';
+import { readCompanionChatMessageBody } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
+import { readSharedSessionMessageBody } from '../packages/daemon-sdk/src/runtime-session-routes.js';
 
 // ---------------------------------------------------------------------------
 // Companion-chat normalization: body > content > ''
@@ -49,13 +49,13 @@ describe('F13: companion-chat field normalization', () => {
     expect(readCompanionChatMessageBody({ body: '  padded  ' })).toBe('  padded  ');
   });
 
-  test('ignores legacy message field (not in companion-chat normalization)', () => {
-    expect(readCompanionChatMessageBody({ message: 'legacy' })).toBe('');
+  test('ignores message field (not in companion-chat normalization)', () => {
+    expect(readCompanionChatMessageBody({ message: 'ignored' })).toBe('');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Shared-session normalization: body > message > text > ''
+// Shared-session normalization: body > ''
 // ---------------------------------------------------------------------------
 
 describe('F13: shared-session field normalization', () => {
@@ -67,20 +67,20 @@ describe('F13: shared-session field normalization', () => {
     expect(readSharedSessionMessageBody({ body: '  padded  ' })).toBe('padded');
   });
 
-  test('falls back to message field (legacy)', () => {
-    expect(readSharedSessionMessageBody({ message: 'from message' })).toBe('from message');
+  test('ignores message field', () => {
+    expect(readSharedSessionMessageBody({ message: 'from message' })).toBe('');
   });
 
-  test('falls back to text field (legacy)', () => {
-    expect(readSharedSessionMessageBody({ text: 'from text' })).toBe('from text');
+  test('ignores text field', () => {
+    expect(readSharedSessionMessageBody({ text: 'from text' })).toBe('');
   });
 
   test('prefers body over message and text', () => {
     expect(readSharedSessionMessageBody({ body: 'body', message: 'msg', text: 'txt' })).toBe('body');
   });
 
-  test('prefers message over text when body absent', () => {
-    expect(readSharedSessionMessageBody({ message: 'msg', text: 'txt' })).toBe('msg');
+  test('returns empty when body absent even if message and text are present', () => {
+    expect(readSharedSessionMessageBody({ message: 'msg', text: 'txt' })).toBe('');
   });
 
   test('returns empty string when all fields absent', () => {

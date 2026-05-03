@@ -1,1 +1,8 @@
-export * from '../../../_internal/platform/daemon/http/remote-routes.js';
+export {
+  createDaemonRemoteRouteHandlers,
+  handleRemotePairRequest,
+  handleRemotePairVerify,
+  handleRemotePeerHeartbeat,
+  handleRemotePeerWorkComplete,
+  handleRemotePeerWorkPull,
+} from '@pellux/goodvibes-daemon-sdk';

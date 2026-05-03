@@ -85,7 +85,6 @@ function renderOperatorReference() {
   lines.push('');
   lines.push(`- Login route: ${stringify(`${operatorContract.auth.login.method} ${operatorContract.auth.login.path}`)}`);
   lines.push(`- Current-auth route: ${stringify(`${operatorContract.auth.current.method} ${operatorContract.auth.current.path}`)}`);
-  lines.push(`- Current-auth aliases: ${list(operatorContract.auth.current.aliasPaths)}`);
   lines.push(`- Session cookie: ${stringify(operatorContract.auth.sessionCookie.name)} (${operatorContract.auth.sessionCookie.sameSite}, path ${operatorContract.auth.sessionCookie.path})`);
   lines.push(`- Bearer header: ${stringify(operatorContract.auth.bearer.header)}`);
   lines.push('');

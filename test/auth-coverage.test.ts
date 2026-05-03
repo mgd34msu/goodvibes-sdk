@@ -15,8 +15,8 @@ import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
 } from '../packages/sdk/src/auth.js';
-import { ConfigurationError } from '../packages/sdk/src/_internal/errors/index.js';
-import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
+import { ConfigurationError } from '../packages/errors/src/index.js';
+import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
 import type { SDKObserver, AuthTransitionInfo } from '../packages/sdk/src/observer/index.js';
 
 function makeStorage(initial: Record<string, string> = {}): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {

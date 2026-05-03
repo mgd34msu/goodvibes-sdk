@@ -11,8 +11,8 @@ import { describe, expect, test } from 'bun:test';
 import {
   ControlPlaneGateway,
   DEFAULT_DOMAINS_TEST_EXPORT,
-} from '../packages/sdk/src/_internal/platform/control-plane/gateway.js';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
+} from '../packages/sdk/src/platform/control-plane/gateway.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 
 // ---------------------------------------------------------------------------
 // Helper

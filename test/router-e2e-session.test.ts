@@ -17,20 +17,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { dispatchSessionRoutes } from '../packages/sdk/src/_internal/daemon/sessions.js';
-import type { DaemonApiRouteHandlers } from '../packages/sdk/src/_internal/daemon/context.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeRequest(method: string, url: string, body?: unknown): Request {
-  return new Request(url, {
-    method,
-    headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
+import { dispatchSessionRoutes } from '../packages/daemon-sdk/src/sessions.js';
+import type { DaemonApiRouteHandlers } from '../packages/daemon-sdk/src/context.js';
+import { makeRequest } from './_helpers/router-requests.js';
 
 function makeSession(id = 'sess-1') {
   return {

@@ -1,3 +1,6 @@
+/**
+ * Create an Expo client and load current GoodVibes auth state.
+ */
 import { useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { createExpoGoodVibesSdk } from '@pellux/goodvibes-sdk/expo';

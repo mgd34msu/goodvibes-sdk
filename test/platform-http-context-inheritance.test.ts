@@ -17,7 +17,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { DaemonRuntimeRouteContext as CanonicalContext } from '../packages/daemon-sdk/src/runtime-route-types.js';
-import type { DaemonRuntimeRouteContext as PlatformHttpContext } from '../packages/sdk/src/_internal/platform/daemon/http/runtime-route-types.js';
+import type { DaemonRuntimeRouteContext as PlatformHttpContext } from '../packages/sdk/src/platform/daemon/http/runtime-route-types.js';
 
 // ---------------------------------------------------------------------------
 // Type-level assertions
@@ -118,7 +118,7 @@ describe('ARCH-01 — platform-HTTP DaemonRuntimeRouteContext inherits canonical
     // If DaemonRuntimeRouteHandlerMap were re-declared as a local Pick<>,
     // a new handler added to the canonical would not be required here.
     // By importing from the canonical file, this is enforced automatically.
-    const mod = await import('../packages/sdk/src/_internal/platform/daemon/http/runtime-route-types.js');
+    const mod = await import('../packages/sdk/src/platform/daemon/http/runtime-route-types.js');
     // The module should export JsonBody and DaemonRuntimeRouteHandlerMap (type-only)
     // At runtime we can only verify the module loaded without error.
     expect(mod).toBeDefined();

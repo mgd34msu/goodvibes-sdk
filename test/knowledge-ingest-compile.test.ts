@@ -2,10 +2,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
-import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
-import { compileKnowledgeSource } from '../packages/sdk/src/_internal/platform/knowledge/ingest.js';
-import type { KnowledgeIngestContext } from '../packages/sdk/src/_internal/platform/knowledge/ingest-context.js';
-import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
+import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
+import { compileKnowledgeSource } from '../packages/sdk/src/platform/knowledge/ingest.js';
+import type { KnowledgeIngestContext } from '../packages/sdk/src/platform/knowledge/ingest-context.js';
+import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
 
@@ -60,6 +60,73 @@ describe('knowledge ingest compilation', () => {
     const topicNodes = store.listNodes(50).filter((node) => node.kind === 'topic' && (node.title === 'Features' || node.title === 'devices'));
     expect(topicNodes.map((node) => node.title)).toContain('Features');
     expect(topicNodes.filter((node) => node.title === 'devices')).toHaveLength(1);
+  });
+
+  test('skips missing artifact ids and malformed canonical urls without creating placeholder edges', async () => {
+    const { store, context } = createContext();
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'url',
+      title: 'Malformed Source',
+      sourceUri: 'not a valid url',
+      canonicalUri: 'not a valid url',
+      tags: [],
+      status: 'indexed',
+    });
+    const extraction = await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'text',
+      format: 'text',
+      sections: [],
+      links: [],
+      structure: {},
+    });
+
+    await compileKnowledgeSource(context, source, extraction);
+
+    expect(store.listEdges().some((edge) => edge.relation === 'snapshotted_as')).toBe(false);
+    expect(store.listEdges().some((edge) => edge.relation === 'belongs_to_domain')).toBe(false);
+  });
+
+  test('dedupes empty sections and outbound links during compilation', async () => {
+    const { store, context } = createContext();
+    const linked = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'url',
+      title: 'Linked Reference',
+      canonicalUri: 'https://docs.example.com/linked',
+      tags: [],
+      status: 'indexed',
+    });
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'url',
+      title: 'Device Manual',
+      canonicalUri: 'https://docs.example.com/source',
+      tags: [],
+      status: 'indexed',
+    });
+    const extraction = await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'html',
+      format: 'html',
+      sections: ['', '  ', 'Features', 'Features', 'features'],
+      links: [
+        'https://docs.example.com/linked?utm_source=noise',
+        'https://docs.example.com/linked',
+        'not a url',
+      ],
+      structure: { searchText: { malformed: true } },
+    });
+
+    await compileKnowledgeSource(context, source, extraction);
+
+    const edges = store.listEdges();
+    const sectionNodes = store.listNodes(50).filter((node) => node.kind === 'topic' && node.title === 'Features');
+    const outboundLinks = edges.filter((edge) => edge.fromId === source.id && edge.toId === linked.id && edge.relation === 'links_to_source');
+    expect(sectionNodes).toHaveLength(1);
+    expect(outboundLinks).toHaveLength(1);
+    expect(store.listNodes(50).some((node) => node.kind === 'topic' && node.slug === 'item')).toBe(false);
   });
 });
 

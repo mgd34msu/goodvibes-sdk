@@ -10,7 +10,7 @@
  */
 
 // NIT-1: print() is native in the Hermes CLI but absent in JSI-embedded Hermes
-// (React Native). This shim makes the runner portable to both environments.
+// (React Native). This adapter makes the runner portable to both environments.
 var print = typeof globalThis.print === 'function' ? globalThis.print : console.log;
 
 // Imports are hoisted by the bundler; place them at the top before any code
@@ -112,7 +112,7 @@ function expect(actual) {
 
 // ---------------------------------------------------------------------------
 // Engine feature detection -- probes for Hermes quirks
-// Each probe documents a known Hermes compatibility concern.
+// Each probe documents a known Hermes runtime support concern.
 // ---------------------------------------------------------------------------
 
 describe('Hermes engine feature parity', function () {
@@ -153,7 +153,7 @@ describe('Hermes engine feature parity', function () {
   test('Array.prototype.at is available', function () {
     // Added in Hermes 0.11+ / RN 0.74. Absent in older Hermes.
     // SDK USAGE: Array.prototype.at() is used in
-    // packages/sdk/src/_internal/platform/runtime/forensics/registry.ts (lines 73, 119) for last-element access.
+    // packages/sdk/src/platform/runtime/forensics/registry.ts (lines 73, 119) for last-element access.
     var arr = [1, 2, 3];
     if (typeof arr.at !== 'function') {
       throw new Error('Array.prototype.at is not available -- Hermes version too old or polyfill missing');
@@ -163,8 +163,8 @@ describe('Hermes engine feature parity', function () {
 
   test('structuredClone is available', function () {
     // Added in Hermes bundled with RN 0.73+.
-    // SDK USAGE: structuredClone is used pervasively in packages/sdk/src/_internal/platform/config/manager.ts,
-    // packages/sdk/src/_internal/platform/core/conversation-utils.ts, packages/sdk/src/_internal/platform/runtime/settings/control-plane.ts,
+    // SDK USAGE: structuredClone is used pervasively in packages/sdk/src/platform/config/manager.ts,
+    // packages/sdk/src/platform/core/conversation-utils.ts, packages/sdk/src/platform/runtime/settings/control-plane.ts,
     // and several other SDK modules for deep-cloning state snapshots.
     if (typeof structuredClone !== 'function') {
       throw new Error('structuredClone is not available -- Hermes version too old or polyfill missing');

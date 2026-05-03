@@ -40,8 +40,7 @@ References:
 ### Feature Flag
 
 `homeassistant-surface` gates the Home Assistant surface. It is disabled by
-default and can also be enabled by the `omnichannel-surface-adapters`
-compatibility alias.
+default and must be enabled explicitly by hosts that expose Home Assistant.
 
 ### Config Keys
 
@@ -264,14 +263,14 @@ facts are preferred over weaker secondary deterministic fragments during Ask
 and page generation.
 Provider-backed semantic calls are bounded by SDK timeouts and abort signals,
 and broad reindex uses a small LLM budget before continuing deterministically,
-so Home Assistant panels should not add host-side shims to avoid hung provider
+so Home Assistant panels should not add host-side wrappers to avoid hung provider
 requests. If a source was previously enriched deterministically because no LLM
 was available or the LLM budget was exhausted, the SDK can upgrade that source
 during a later ask/reindex and supersede the old deterministic semantic
 facts/pages instead of returning both old and new interpretations.
 Repair tasks that are blocked until a retry window include top-level
 `nextRepairAttemptAt` in addition to trace/metadata details, so Home Assistant
-panels can show retry timing without understanding SDK trace internals.
+panels can show retry timing without parsing SDK trace details.
 Current text, HTML, JSON, CSV/TSV, XML, YAML, DOCX, XLSX, PPTX, and PDF
 extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
@@ -587,7 +586,7 @@ Home Assistant ids to the daemon. The daemon owns source provenance,
 confidence/review state, materialized room/device/packet markdown, exports, and
 namespace-filtered search.
 
-Home Graph operator methods mirror the HTTP routes:
+Home Graph operator methods match the HTTP routes:
 
 - `homeassistant.homeGraph.syncHomeGraph`
 - `homeassistant.homeGraph.ingestHomeGraphUrl`

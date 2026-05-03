@@ -27,11 +27,6 @@ export async function dispatchSessionRoutes(
 
   const sharedSessionInputsMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/inputs$/);
   if (sharedSessionInputsMatch && method === 'GET') return handlers.getSharedSessionInputs(sharedSessionInputsMatch[1], url);
-  // F20 restoration (SDK 0.21.36): `POST /api/sessions/:id/inputs` is an intent-dispatching
-  // alias that accepts an optional `intent` field in the body ('submit' | 'steer' | 'follow-up'),
-  // defaulting to 'submit'. Restored for API surface parity after 0.21.35 removed the direct
-  // input-create endpoint in favor of `POST /messages` / `POST /steer` / `POST /follow-up`.
-  if (sharedSessionInputsMatch && method === 'POST') return handlers.postSharedSessionInput(sharedSessionInputsMatch[1], req);
 
   const sharedSessionSteerMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/steer$/);
   if (sharedSessionSteerMatch && method === 'POST') return handlers.postSharedSessionSteer(sharedSessionSteerMatch[1], req);

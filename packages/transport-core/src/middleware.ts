@@ -1,3 +1,5 @@
+import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
+
 /**
  * Transport middleware (Koa-style) for the HTTP transport layer.
  *
@@ -85,17 +87,29 @@ export function composeMiddleware(
   innerFetch: (ctx: TransportContext) => Promise<Response>,
 ): (ctx: TransportContext) => Promise<void> {
   if (middleware.length > MAX_MIDDLEWARE_DEPTH) {
-    throw new Error(`Transport middleware chain exceeds the maximum depth of ${MAX_MIDDLEWARE_DEPTH}.`);
+    throw new GoodVibesSdkError(`Transport middleware chain exceeds the maximum depth of ${MAX_MIDDLEWARE_DEPTH}.`, {
+      category: 'config',
+      source: 'transport',
+      recoverable: false,
+    });
   }
   return async (ctx: TransportContext): Promise<void> => {
     let index = -1;
 
     const dispatch = async (i: number): Promise<void> => {
       if (i > MAX_MIDDLEWARE_DEPTH) {
-        throw new Error(`Transport middleware recursion exceeded the maximum depth of ${MAX_MIDDLEWARE_DEPTH}.`);
+        throw new GoodVibesSdkError(`Transport middleware recursion exceeded the maximum depth of ${MAX_MIDDLEWARE_DEPTH}.`, {
+          category: 'internal',
+          source: 'transport',
+          recoverable: false,
+        });
       }
       if (i <= index) {
-        throw new Error('next() called multiple times in transport middleware');
+        throw new GoodVibesSdkError('next() called multiple times in transport middleware', {
+          category: 'protocol',
+          source: 'transport',
+          recoverable: false,
+        });
       }
       index = i;
 

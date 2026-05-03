@@ -10,8 +10,8 @@ function readSource(relativePath: string): string {
 
 describe('lazy native imports', () => {
   test('startup-sensitive tool modules do not import @ast-grep/napi at module top level', () => {
-    const structural = readSource('packages/sdk/src/_internal/platform/tools/find/structural.ts');
-    const editMatch = readSource('packages/sdk/src/_internal/platform/tools/edit/match.ts');
+    const structural = readSource('packages/sdk/src/platform/tools/find/structural.ts');
+    const editMatch = readSource('packages/sdk/src/platform/tools/edit/match.ts');
 
     expect(structural).not.toContain("import * as astGrep from '@ast-grep/napi'");
     expect(editMatch).not.toContain("import * as astGrep from '@ast-grep/napi'");

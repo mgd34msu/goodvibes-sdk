@@ -1,6 +1,6 @@
 import { ConfigurationError, ContractError, GoodVibesSdkError, HttpStatusError, createHttpStatusError } from '@pellux/goodvibes-errors';
 import { sleepWithSignal } from './backoff.js';
-import { mergeHeaders, normalizeAuthToken, resolveAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';
+import { mergeHeaderRecord, normalizeAuthToken, resolveAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';
 import {
   applyPerMethodPolicy,
   getHttpRetryDelay,
@@ -16,6 +16,7 @@ import {
   createUuidV4,
   injectTraceparentAsync,
   invokeTransportObserver,
+  transportErrorFromUnknown,
   type TransportContext,
   type TransportMiddleware,
   type TransportObserver,
@@ -113,39 +114,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function applyHeaderSource(
-  target: Record<string, string>,
-  source: HeadersInit | undefined,
-): void {
-  if (!source) return;
-  if (source instanceof Headers) {
-    source.forEach((value, key) => {
-      target[key] = value;
-    });
-    return;
-  }
-  if (Array.isArray(source)) {
-    for (const [key, value] of source) {
-      target[key] = value;
-    }
-    return;
-  }
-  for (const [key, value] of Object.entries(source)) {
-    if (value !== undefined) {
-      target[key] = value;
-    }
-  }
-}
-
-function mergeHeaderRecord(...sources: Array<HeadersInit | undefined>): Record<string, string> {
-  const merged: Record<string, string> = {};
-  for (const source of sources) {
-    applyHeaderSource(merged, source);
-  }
-  return merged;
-}
-
-function inferTransportHint(
+export function inferTransportHint(
   status: number,
   url: string,
   retryAfterMs?: number,
@@ -162,20 +131,6 @@ function inferTransportHint(
   }
   if (status >= 500) return 'Remote server error. The service may be temporarily unavailable.';
   return undefined;
-}
-
-function errorFromUnknown(error: unknown, context: string): Error {
-  if (error instanceof Error) return error;
-  if (typeof error === 'object' && error !== null) {
-    const record = error as Record<string, unknown>;
-    const fields = [
-      typeof record.name === 'string' ? `name=${record.name}` : undefined,
-      typeof record.type === 'string' ? `type=${record.type}` : undefined,
-      typeof record.message === 'string' ? `message=${record.message}` : undefined,
-    ].filter(Boolean);
-    return new Error(`${context}: ${fields.length > 0 ? fields.join(' ') : Object.prototype.toString.call(error)}`);
-  }
-  return new Error(`${context}: ${String(error)}`);
 }
 
 export function createTransportError(
@@ -245,6 +200,9 @@ function addQueryValue(url: URL, key: string, value: unknown): void {
     return;
   }
   if (typeof value === 'object') {
+    // Contract query parameters are primitive or repeated primitive values.
+    // Object values are preserved as JSON strings so callers do not silently
+    // lose structured filters when a route explicitly accepts them.
     url.searchParams.append(key, JSON.stringify(value));
     return;
   }
@@ -261,11 +219,14 @@ function splitContractInput(path: string, input: Record<string, unknown> = {}): 
   readonly remaining: Record<string, unknown>;
 } {
   const remaining = { ...input };
-  const interpolatedPath = path.replace(/\{([^}]+)\}/g, (_match, key) => {
+  const interpolatedPath = path.replace(/\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g, (_match, key: string) => {
     const value = toStringValue(remaining[key], key);
     delete remaining[key];
     return encodeURIComponent(value);
   });
+  if (/[{}]/.test(interpolatedPath)) {
+    throw new ContractError(`Malformed contract path "${path}". Path parameters must use "{name}" with identifier-like names.`);
+  }
   return { interpolatedPath, remaining };
 }
 
@@ -329,6 +290,11 @@ export async function readJsonBody(response: Response): Promise<unknown> {
   }
 }
 
+/**
+ * @internal Low-level one-shot helper retained for legacy internal callers.
+ * Public code should use `createHttpTransport(...).requestJson()` so auth,
+ * middleware, retry policy, idempotency keys, and observers are applied.
+ */
 export async function requestJson<T>(
   fetchImpl: typeof fetch,
   url: string,
@@ -361,13 +327,12 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
   // Persistent middleware chain — mutated via use().
   const middlewareChain: TransportMiddleware[] = [...(options.middleware ?? [])];
 
-  const requestJsonForTransport = async <T>(pathOrUrl: string, requestOptions: HttpJsonRequestOptions = {}, legacyMethodId?: string): Promise<T> => {
+  const requestJsonForTransport = async <T>(pathOrUrl: string, requestOptions: HttpJsonRequestOptions = {}): Promise<T> => {
     const url = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
       ? pathOrUrl
       : buildUrl(baseUrl, pathOrUrl);
     const method = requestOptions.method ?? (requestOptions.body === undefined ? 'GET' : 'POST');
-    // Resolve methodId: options.methodId takes precedence over legacy 3rd-arg for backward compat.
-    const methodId = requestOptions.methodId ?? legacyMethodId;
+    const methodId = requestOptions.methodId;
     // Resolve idempotent flag from request options (set by contract-client from contract.idempotent).
     const contractIdempotent = requestOptions.idempotent === true;
     // Apply per-method retry policy override if a methodId is provided.
@@ -444,36 +409,22 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         return new Response(JSON.stringify(body), { status: response.status });
       };
 
-      // Track middleware errors for wrapping — set when an error escapes the middleware chain.
-      let middlewareErrorInfo: { name: string } | null = null;
-
-      // Instrument innerFetch to detect when errors originate from middleware (not the real fetch).
-      // We use a flag that middleware can set before rethrowing.
-      const instrumentedInnerFetch = async (c: TransportContext): Promise<Response> => {
-        return innerFetch(c);
-      };
-
       try {
         if (middlewareChain.length > 0) {
           // Middleware path — compose chain around innerFetch.
-          // Wrap each middleware to track which one threw.
-          const instrumentedChain = middlewareChain.map((mw, i) => {
-            const mwName = mw.name || String(i);
-            const wrapper = async (c: TransportContext, next: () => Promise<void>): Promise<void> => {
-              try {
-                await mw(c, next);
-              } catch (err) {
-                // Tag the error as coming from this middleware.
-                middlewareErrorInfo = { name: mwName };
-                throw err;
-              }
-            };
-            return wrapper;
-          });
-          const composed = composeMiddleware(instrumentedChain, instrumentedInnerFetch);
+          const composed = composeMiddleware(middlewareChain, innerFetch);
           await composed(ctx);
           if (ctx.error) throw ctx.error;
-          const result = ctx.response ? await ctx.response.json() as T : undefined as unknown as T;
+          if (!ctx.response) {
+            throw new GoodVibesSdkError('HTTP middleware chain completed without producing a response.', {
+              category: 'protocol',
+              source: 'transport',
+              recoverable: false,
+              url,
+              method,
+            });
+          }
+          const result = await ctx.response.json() as T;
           invokeTransportObserver(() => observer?.onTransportActivity?.({
             direction: 'recv',
             url,
@@ -498,11 +449,10 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         // Wrap middleware errors as SDKError{kind:'unknown'} with middleware identity in cause.
         // ALL errors originating from the middleware chain are wrapped — including HttpStatusError.
         const wrappedError = (() => {
-          if (middlewareErrorInfo !== null) {
+          if (ctx.middlewareError) {
             // Error came from within the middleware chain — wrap regardless of error type.
-            const msg = errorFromUnknown(error, 'transport middleware error').message;
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const middlewareName = (middlewareErrorInfo as { name: string }).name;
+            const msg = transportErrorFromUnknown(error, 'transport middleware error').message;
+            const middlewareName = ctx.activeMiddlewareName ?? 'unknown';
             const wrapped = new GoodVibesSdkError(`Transport middleware error: ${msg}`, {
               category: 'unknown',
               source: 'transport',
@@ -515,7 +465,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           return error;
         })();
         // Notify observer of the transport error before deciding to retry or rethrow.
-        invokeTransportObserver(() => observer?.onError?.(errorFromUnknown(wrappedError, 'HTTP transport error')));
+        invokeTransportObserver(() => observer?.onError?.(transportErrorFromUnknown(wrappedError, 'HTTP transport error')));
         const status = typeof wrappedError === 'object' && wrappedError !== null && 'transport' in wrappedError
           ? (wrappedError as { readonly transport?: { readonly status?: unknown } }).transport?.status
           : undefined;

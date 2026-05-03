@@ -1,11 +1,8 @@
 /**
  * create-release-tag.ts
  *
- * Creates a signed git tag for the current SDK version.
+ * Creates an annotated git tag for the current SDK version.
  * Usage: bun scripts/create-release-tag.ts [--push]
- *
- * The tag is signed with your local GPG key. You must have a GPG key configured
- * in git (git config user.signingkey) before running this script.
  *
  * See docs/release-and-publishing.md for the full release workflow.
  */
@@ -48,14 +45,13 @@ try {
   // ignore
 }
 
-console.log(`[release:tag] Creating signed tag ${tag} for v${version} …`);
+console.log(`[release:tag] Creating annotated tag ${tag} for v${version} …`);
 
 try {
-  run('git', ['tag', '-s', tag, '-m', `release ${version}`]);
-  console.log(`[release:tag] Tag ${tag} created and signed successfully.`);
+  run('git', ['tag', '-a', tag, '-m', `release ${version}`]);
+  console.log(`[release:tag] Tag ${tag} created successfully.`);
 } catch (e) {
-  console.error(`[release:tag] ERROR: Failed to create signed tag. Ensure GPG key is configured:`);
-  console.error(`  git config user.signingkey <your-key-id>`);
+  console.error(`[release:tag] ERROR: Failed to create tag ${tag}.`);
   process.exit(1);
 }
 

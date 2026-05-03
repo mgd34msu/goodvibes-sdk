@@ -2,16 +2,16 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdirSync } from 'node:fs';
-import { createStateTool } from '../packages/sdk/src/_internal/platform/tools/state/index.ts';
-import { KVState } from '../packages/sdk/src/_internal/platform/state/kv-state.ts';
-import { ProjectIndex } from '../packages/sdk/src/_internal/platform/state/project-index.ts';
+import { createStateTool } from '../packages/sdk/src/platform/tools/state/index.ts';
+import { KVState } from '../packages/sdk/src/platform/state/kv-state.ts';
+import { ProjectIndex } from '../packages/sdk/src/platform/state/project-index.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function tempDir(): string {
-  const d = join(tmpdir(), `gv-state-keys-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const d = join(tmpdir(), `gv-state-keys-${Date.now()}-${crypto.randomUUID()}`);
   mkdirSync(d, { recursive: true });
   return d;
 }

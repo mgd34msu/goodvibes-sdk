@@ -19,7 +19,7 @@ Each streaming chunk may carry a partial tool name or a partial argument string.
 When the stream signals that a tool call is complete, the accumulated argument string is parsed. All provider adapters use a shared helper pattern:
 
 ```ts
-// from packages/sdk/src/_internal/platform/providers/tool-formats.ts
+// from packages/sdk/src/platform/providers/tool-formats.ts
 function parseJson(raw: string): Record<string, unknown> {
   try {
     return JSON.parse(raw) as Record<string, unknown>;

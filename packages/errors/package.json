@@ -1,7 +1,6 @@
 {
   "name": "@pellux/goodvibes-errors",
-  "private": true,
-  "version": "0.28.22",
+  "version": "0.30.0",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -39,5 +38,8 @@
     "errors",
     "telemetry",
     "transport"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

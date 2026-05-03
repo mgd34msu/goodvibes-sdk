@@ -17,7 +17,7 @@ import type {
   OtelMeter,
   OtelSpan,
 } from '../packages/sdk/src/observer/index.js';
-import { GoodVibesSdkError } from '../packages/sdk/src/_internal/errors/index.js';
+import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 
 // ---------------------------------------------------------------------------
 // createConsoleObserver — debug level exercises all callbacks

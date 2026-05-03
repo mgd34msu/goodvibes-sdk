@@ -6,12 +6,12 @@ import { describe, expect, test } from 'bun:test';
  */
 describe('obs-24 bearer redaction', () => {
   test('redactSensitiveData is exported from redaction utils', async () => {
-    const mod = await import('../packages/sdk/src/_internal/platform/utils/redaction.js');
+    const mod = await import('../packages/sdk/src/platform/utils/redaction.js');
     expect(typeof mod.redactSensitiveData).toBe('function');
   });
 
   test('redactSensitiveData removes Bearer tokens', async () => {
-    const { redactSensitiveData } = await import('../packages/sdk/src/_internal/platform/utils/redaction.js');
+    const { redactSensitiveData } = await import('../packages/sdk/src/platform/utils/redaction.js');
     const input = 'Authorization: Bearer sk-ant-abc123def456';
     const result = redactSensitiveData(input);
     expect(result).not.toContain('sk-ant-abc123def456');
@@ -19,14 +19,14 @@ describe('obs-24 bearer redaction', () => {
   });
 
   test('redactSensitiveData is case-insensitive for Bearer prefix', async () => {
-    const { redactSensitiveData } = await import('../packages/sdk/src/_internal/platform/utils/redaction.js');
+    const { redactSensitiveData } = await import('../packages/sdk/src/platform/utils/redaction.js');
     const input = 'auth header: bearer MYTOKEN12345';
     const result = redactSensitiveData(input);
     expect(result).not.toContain('MYTOKEN12345');
   });
 
   test('normalizeError redacts Bearer tokens in error message (OBS-24 wiring)', async () => {
-    const { normalizeError } = await import('../packages/sdk/src/_internal/platform/utils/error-display.js');
+    const { normalizeError } = await import('../packages/sdk/src/platform/utils/error-display.js');
     const err = new Error('HTTP 401: Authorization: Bearer sk-secret-key-99 is not valid');
     const result = normalizeError(err);
     expect(result.message).not.toContain('sk-secret-key-99');
@@ -34,14 +34,14 @@ describe('obs-24 bearer redaction', () => {
   });
 
   test('summarizeError redacts tokens for safe logging', async () => {
-    const { summarizeError } = await import('../packages/sdk/src/_internal/platform/utils/error-display.js');
+    const { summarizeError } = await import('../packages/sdk/src/platform/utils/error-display.js');
     const err = new Error('Auth failed: Bearer token123abc is expired');
     const result = summarizeError(err);
     expect(result).not.toContain('token123abc');
   });
 
   test('redactSensitiveData preserves non-sensitive content', async () => {
-    const { redactSensitiveData } = await import('../packages/sdk/src/_internal/platform/utils/redaction.js');
+    const { redactSensitiveData } = await import('../packages/sdk/src/platform/utils/redaction.js');
     const input = 'Connection refused to localhost:3000';
     const result = redactSensitiveData(input);
     expect(result).toBe(input);

@@ -4,7 +4,7 @@ The knowledge system is a persistent, structured memory layer for GoodVibes
 agents and clients. The SQLite store is the source of truth; markdown/wiki
 output is a projection generated from structured records.
 
-Source: `packages/sdk/src/_internal/platform/knowledge/`.
+Source: `packages/sdk/src/platform/knowledge/`.
 
 ## Data Model
 
@@ -87,7 +87,7 @@ summary/excerpt/section fields so large manuals, PDFs, website snapshots, and
 office documents remain searchable without turning every query into an
 unbounded full-document scan. Home Graph also repairs older artifact-backed
 sources in place: when ask finds a relevant source with missing, stale, or
-legacy placeholder extraction text, it re-extracts the stored artifact once and
+stale placeholder extraction text, it re-extracts the stored artifact once and
 saves the improved extraction record for later queries. The general knowledge
 reindex path also re-extracts stored artifacts whose extraction is missing,
 placeholder-only, or from the old placeholder PDF extractor, so existing
@@ -574,7 +574,7 @@ of the base structured knowledge graph. The response includes:
 
 - `nodes`: source, node, and optional issue records with stable x/y positions
 - `edges`: filtered to the rendered node set
-- edge aliases: `source`, `target`, `sourceTitle`, and `targetTitle` mirror
+- edge aliases: `source`, `target`, `sourceTitle`, and `targetTitle` match
   `fromId`, `toId`, and endpoint titles for graph UI libraries
 - `svg`: an embeddable static SVG rendering
 - counts, dimensions, and generation metadata

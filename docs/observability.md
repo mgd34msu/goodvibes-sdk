@@ -577,7 +577,7 @@ const forensics = diag.forensics.getAll();
 
 ## SDKObserver — Pluggable Telemetry Hooks
 
-The `SDKObserver` interface lets you attach custom telemetry without reaching into `_internal/`. All methods are optional; the SDK works identically whether an observer is provided or not.
+The `SDKObserver` interface lets you attach custom telemetry through the public SDK surface. All methods are optional; the SDK works identically whether an observer is provided or not.
 
 ### Interface
 
@@ -659,7 +659,7 @@ Output example:
 
 ### OpenTelemetry adapter
 
-`createOpenTelemetryObserver` accepts a pre-configured OTel `Tracer` and `Meter`. There is no hard dependency on `@opentelemetry/*` — the adapter accepts structurally-compatible interfaces so consumers bring their own.
+`createOpenTelemetryObserver` accepts a pre-configured OTel `Tracer` and `Meter`. There is no hard dependency on `@opentelemetry/*` — the adapter accepts structurally matching interfaces so consumers bring their own.
 
 ```ts
 import { trace, metrics } from '@opentelemetry/api';

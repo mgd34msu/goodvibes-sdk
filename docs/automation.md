@@ -5,11 +5,11 @@ deliveries, and watcher services for daemon-hosted work.
 
 Sources:
 
-- `packages/sdk/src/_internal/platform/automation/`
-- `packages/sdk/src/_internal/platform/watchers/`
-- `packages/sdk/src/_internal/platform/channels/`
-- `packages/sdk/src/_internal/platform/control-plane/method-catalog-control-automation.ts`
-- `packages/sdk/src/_internal/platform/control-plane/method-catalog-channels.ts`
+- `packages/sdk/src/platform/automation/`
+- `packages/sdk/src/platform/watchers/`
+- `packages/sdk/src/platform/channels/`
+- `packages/sdk/src/platform/control-plane/method-catalog-control-automation.ts`
+- `packages/sdk/src/platform/control-plane/method-catalog-channels.ts`
 
 ## Automation Domain
 

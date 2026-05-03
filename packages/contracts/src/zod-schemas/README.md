@@ -20,7 +20,7 @@ The following surfaces are deferred pending type stabilization:
 
 - `sessions.create` / `sessions.get` / `sessions.list` — session output shapes vary by surface configuration; will be added post-1.0 once session shape is locked.
 - `control.snapshot` — large nested shape with many optional fields; correctness requires generated schema tooling.
-- `control.contract` — mirrors the contract manifest itself; circular definition risk; deferred to Wave 8.
+- `control.contract` — describes the contract manifest itself; circular definition risk; deferred to Wave 8.
 - All `automation.*`, `knowledge.*`, `channels.*` outputs — plugin-generated shapes that may diverge from typed contracts; deferred to Wave 8 schema coverage pass.
 
 ## Import Path

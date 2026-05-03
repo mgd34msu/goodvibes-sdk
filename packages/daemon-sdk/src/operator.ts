@@ -10,7 +10,7 @@ export async function dispatchOperatorRoutes(
   const method = req.method;
 
   if (pathname === '/status' && method === 'GET') return handlers.getStatus();
-  if ((pathname === '/api/control-plane/auth' || pathname === '/api/control-plane/whoami') && method === 'GET') return handlers.getCurrentAuth(req);
+  if (pathname === '/api/control-plane/auth' && method === 'GET') return handlers.getCurrentAuth(req);
   if (pathname === '/api/control-plane' && method === 'GET') return handlers.getControlPlaneSnapshot();
   if (pathname === '/api/control-plane/contract' && method === 'GET') return handlers.getOperatorContract();
   if (pathname === '/api/control-plane/web' && method === 'GET') return handlers.getControlPlaneWeb();
@@ -20,19 +20,18 @@ export async function dispatchOperatorRoutes(
   }
   if (pathname === '/api/control-plane/messages' && method === 'GET') return handlers.getControlPlaneMessages();
   if (pathname === '/api/control-plane/clients' && method === 'GET') return handlers.getControlPlaneClients();
-  if ((pathname === '/api/telemetry' || pathname === '/api/v1/telemetry') && method === 'GET') return handlers.getTelemetrySnapshot(req);
-  if ((pathname === '/api/telemetry/events' || pathname === '/api/v1/telemetry/events') && method === 'GET') return handlers.getTelemetryEvents(req);
-  if ((pathname === '/api/telemetry/errors' || pathname === '/api/v1/telemetry/errors') && method === 'GET') return handlers.getTelemetryErrors(req);
-  if ((pathname === '/api/telemetry/traces' || pathname === '/api/v1/telemetry/traces') && method === 'GET') return handlers.getTelemetryTraces(req);
-  if ((pathname === '/api/telemetry/metrics' || pathname === '/api/v1/telemetry/metrics') && method === 'GET') return handlers.getTelemetryMetrics(req);
-  if ((pathname === '/api/telemetry/stream' || pathname === '/api/v1/telemetry/stream') && method === 'GET') return handlers.createTelemetryEventStream(req);
-  if ((pathname === '/api/telemetry/otlp/v1/traces' || pathname === '/api/v1/telemetry/otlp/v1/traces') && method === 'GET') return handlers.getTelemetryOtlpTraces(req);
-  if ((pathname === '/api/telemetry/otlp/v1/logs' || pathname === '/api/v1/telemetry/otlp/v1/logs') && method === 'GET') return handlers.getTelemetryOtlpLogs(req);
-  if ((pathname === '/api/telemetry/otlp/v1/metrics' || pathname === '/api/v1/telemetry/otlp/v1/metrics') && method === 'GET') return handlers.getTelemetryOtlpMetrics(req);
-  // OTLP ingest receivers — POST /api/v1/telemetry/otlp/v1/{logs,traces,metrics}
-  if ((pathname === '/api/telemetry/otlp/v1/logs' || pathname === '/api/v1/telemetry/otlp/v1/logs') && method === 'POST') return handlers.postTelemetryOtlpLogs(req);
-  if ((pathname === '/api/telemetry/otlp/v1/traces' || pathname === '/api/v1/telemetry/otlp/v1/traces') && method === 'POST') return handlers.postTelemetryOtlpTraces(req);
-  if ((pathname === '/api/telemetry/otlp/v1/metrics' || pathname === '/api/v1/telemetry/otlp/v1/metrics') && method === 'POST') return handlers.postTelemetryOtlpMetrics(req);
+  if (pathname === '/api/v1/telemetry' && method === 'GET') return handlers.getTelemetrySnapshot(req);
+  if (pathname === '/api/v1/telemetry/events' && method === 'GET') return handlers.getTelemetryEvents(req);
+  if (pathname === '/api/v1/telemetry/errors' && method === 'GET') return handlers.getTelemetryErrors(req);
+  if (pathname === '/api/v1/telemetry/traces' && method === 'GET') return handlers.getTelemetryTraces(req);
+  if (pathname === '/api/v1/telemetry/metrics' && method === 'GET') return handlers.getTelemetryMetrics(req);
+  if (pathname === '/api/v1/telemetry/stream' && method === 'GET') return handlers.createTelemetryEventStream(req);
+  if (pathname === '/api/v1/telemetry/otlp/v1/traces' && method === 'GET') return handlers.getTelemetryOtlpTraces(req);
+  if (pathname === '/api/v1/telemetry/otlp/v1/logs' && method === 'GET') return handlers.getTelemetryOtlpLogs(req);
+  if (pathname === '/api/v1/telemetry/otlp/v1/metrics' && method === 'GET') return handlers.getTelemetryOtlpMetrics(req);
+  if (pathname === '/api/v1/telemetry/otlp/v1/logs' && method === 'POST') return handlers.postTelemetryOtlpLogs(req);
+  if (pathname === '/api/v1/telemetry/otlp/v1/traces' && method === 'POST') return handlers.postTelemetryOtlpTraces(req);
+  if (pathname === '/api/v1/telemetry/otlp/v1/metrics' && method === 'POST') return handlers.postTelemetryOtlpMetrics(req);
   if (pathname === '/api/control-plane/methods' && method === 'GET') return handlers.getGatewayMethods(url);
   const gatewayMethodInvokeMatch = pathname.match(/^\/api\/control-plane\/methods\/([^/]+)\/invoke$/);
   if (gatewayMethodInvokeMatch && method === 'POST') return handlers.invokeGatewayMethod(decodeURIComponent(gatewayMethodInvokeMatch[1]), req);
@@ -171,7 +170,7 @@ export async function dispatchOperatorRoutes(
     return handlers.approvalAction(approvalActionMatch[1], approvalActionMatch[2] as 'claim' | 'approve' | 'deny' | 'cancel', req);
   }
 
-  if ((pathname === '/api/remote/node-host/contract' || pathname === '/api/remote/device/contract') && method === 'GET') {
+  if (pathname === '/api/remote/node-host/contract' && method === 'GET') {
     return handlers.getRemoteNodeHostContract();
   }
   if (pathname === '/api/health' && method === 'GET') return handlers.getHealth();

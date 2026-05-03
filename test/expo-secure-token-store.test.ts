@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { createExpoSecureTokenStore } from '../packages/sdk/src/_internal/platform/auth/expo-secure-token-store.js';
+import { createExpoSecureTokenStore } from '../packages/sdk/src/client-auth/expo-secure-token-store.js';
 
 // ---------------------------------------------------------------------------
 // Mock expo-secure-store (in-memory)

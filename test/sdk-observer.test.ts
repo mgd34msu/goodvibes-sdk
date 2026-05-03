@@ -19,7 +19,7 @@ import {
   type AuthTransitionInfo,
   type TransportActivityInfo,
 } from '../packages/sdk/src/observer/index.js';
-import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
+import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
 
 function makeRawStore(initial: string | null = null) {
   let current = initial;
@@ -114,7 +114,6 @@ describe('SDKObserver — auth wire-up', () => {
   });
 
   test('createGoodVibesAuthClient works identically when observer is undefined', async () => {
-    // Backward compatibility: 3-arg call still works, no observer
     const auth = createGoodVibesAuthClient(
       makeOperator(),
       makeRawStore(),

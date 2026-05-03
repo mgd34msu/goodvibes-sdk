@@ -4,11 +4,12 @@ import {
   homeGraphPageSourceWeight,
   isUsefulHomeGraphPageSource,
   isUsefulHomeGraphPageSourceCandidate,
-} from '../packages/sdk/src/_internal/platform/knowledge/home-graph/page-quality.js';
-import type { KnowledgeSourceRecord } from '../packages/sdk/src/_internal/platform/knowledge/types.js';
+} from '../packages/sdk/src/platform/knowledge/home-graph/page-quality.js';
+import type { KnowledgeSourceRecord } from '../packages/sdk/src/platform/knowledge/types.js';
+
+const FIXED_TEST_EPOCH_MS = Date.UTC(2026, 0, 1);
 
 function source(overrides: Partial<KnowledgeSourceRecord>): KnowledgeSourceRecord {
-  const now = Date.now();
   return {
     id: 'source-test',
     connectorId: 'test',
@@ -17,8 +18,8 @@ function source(overrides: Partial<KnowledgeSourceRecord>): KnowledgeSourceRecor
     tags: [],
     status: 'indexed',
     metadata: {},
-    createdAt: now,
-    updatedAt: now,
+    createdAt: FIXED_TEST_EPOCH_MS,
+    updatedAt: FIXED_TEST_EPOCH_MS,
     ...overrides,
   };
 }
@@ -69,7 +70,8 @@ describe('Home Graph page source quality', () => {
       metadata: {},
     });
 
-    expect(homeGraphPageSourceWeight(official)).toBeGreaterThan(homeGraphPageSourceWeight(generic));
+    expect(homeGraphPageSourceWeight(official)).toBe(0.98);
+    expect(homeGraphPageSourceWeight(generic)).toBe(0.25);
     expect([generic, official].sort(compareHomeGraphPageSources).map((item) => item.id)).toEqual(['official', 'generic']);
     expect(isUsefulHomeGraphPageSourceCandidate(official)).toBe(true);
   });
@@ -91,7 +93,8 @@ describe('Home Graph page source quality', () => {
       metadata: {},
     });
 
-    expect(homeGraphPageSourceWeight(officialUrlOnly)).toBeGreaterThan(homeGraphPageSourceWeight(generic));
+    expect(homeGraphPageSourceWeight(officialUrlOnly)).toBe(0.98);
+    expect(homeGraphPageSourceWeight(generic)).toBe(0.25);
     expect(isUsefulHomeGraphPageSourceCandidate(officialUrlOnly)).toBe(true);
   });
 

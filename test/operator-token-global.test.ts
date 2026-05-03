@@ -22,21 +22,21 @@ import {
   resolveOperatorTokenPath,
   writeOperatorTokenFile,
   readOperatorTokenFile,
-} from '../packages/sdk/src/_internal/platform/workspace/daemon-home.ts';
+} from '../packages/sdk/src/platform/workspace/daemon-home.ts';
 import {
   getOrCreateCompanionToken,
-} from '../packages/sdk/src/_internal/platform/pairing/companion-token.ts';
-import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.ts';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.ts';
-import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.ts';
-import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.ts';
+} from '../packages/sdk/src/platform/pairing/companion-token.ts';
+import { DaemonHttpRouter } from '../packages/sdk/src/platform/daemon/http/router.ts';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.ts';
+import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.ts';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function tempDir(suffix: string): string {
-  const d = join(tmpdir(), `gv-op-tok-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const d = join(tmpdir(), `gv-op-tok-${suffix}-${Date.now()}-${crypto.randomUUID()}`);
   mkdirSync(d, { recursive: true });
   return d;
 }
@@ -124,7 +124,7 @@ describe('F3 — global-only operator token: existing token is returned', () => 
     const stored = { token: 'gv_stored_abc123', peerId: 'peer1', createdAt: 1000000 };
     writeOperatorTokenFile(daemonHome, JSON.stringify(stored, null, 2));
 
-    const result = getOrCreateCompanionToken('tui', { daemonHomeDir: daemonHome });
+    const result = getOrCreateCompanionToken({ daemonHomeDir: daemonHome });
     expect(result.token).toBe('gv_stored_abc123');
     expect(result.peerId).toBe('peer1');
 
@@ -136,7 +136,7 @@ describe('F3 — global-only operator token: existing token is returned', () => 
     const tokenPath = resolveOperatorTokenPath(daemonHome);
     expect(existsSync(tokenPath)).toBe(false);
 
-    const result = getOrCreateCompanionToken('tui', { daemonHomeDir: daemonHome });
+    const result = getOrCreateCompanionToken({ daemonHomeDir: daemonHome });
     expect(typeof result.token).toBe('string');
     expect(result.token.startsWith('gv_')).toBe(true);
     expect(typeof result.peerId).toBe('string');
@@ -163,7 +163,7 @@ describe('F3 — global-only: workspace-scoped token path is never read', () => 
     writeFileSync(join(fakeWorkspaceDotGv, 'operator-tokens.json'), JSON.stringify(wsToken));
 
     // companion-token.ts with a fresh daemonHome has no token yet — should create a new one
-    const result = getOrCreateCompanionToken('tui', { daemonHomeDir: daemonHome });
+    const result = getOrCreateCompanionToken({ daemonHomeDir: daemonHome });
 
     // Must NOT return the workspace-scoped token
     expect(result.token).not.toBe('gv_workspace_should_not_be_used');
@@ -190,7 +190,7 @@ describe('F3 — writeOperatorTokenFile: mode 0600', () => {
   });
 
   test('file written by getOrCreateCompanionToken has mode 0600', () => {
-    getOrCreateCompanionToken('tui', { daemonHomeDir: daemonHome });
+    getOrCreateCompanionToken({ daemonHomeDir: daemonHome });
     const tokenPath = resolveOperatorTokenPath(daemonHome);
     const mode = statSync(tokenPath).mode & 0o777;
     expect(mode).toBe(0o600);

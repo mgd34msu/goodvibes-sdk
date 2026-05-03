@@ -1,7 +1,7 @@
 import { ContractError, GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { ZodType } from 'zod/v4';
 import type { HttpTransport } from './http.js';
-import { openServerSentEventStream, type ServerSentEventHandlers } from './sse-stream.js';
+import { openRawServerSentEventStream, type ServerSentEventHandlers } from './sse-stream.js';
 
 export interface ContractRouteDefinition {
   readonly method: string;
@@ -76,7 +76,7 @@ export async function invokeContractRoute<T = unknown>(
       const expected = issue ? (issue as { readonly expected?: string }).expected ?? issue.code : 'unknown';
       const received = issue ? (issue as { readonly received?: string }).received ?? 'unknown' : 'unknown';
       throw new ContractError(
-        `Response validation failed for "${route.method} ${route.path}": field "${fieldPath}" expected ${expected} but received ${received}. Ensure the server is running a compatible version of the GoodVibes daemon.`,
+        `Response validation failed for "${route.method} ${route.path}": field "${fieldPath}" expected ${expected} but received ${received}. Ensure the server is running the matching GoodVibes contract version.`,
         { source: 'contract' },
       );
     }
@@ -92,7 +92,7 @@ export async function openContractRouteStream(
   options: ContractStreamOptions,
 ): Promise<() => void> {
   const resolved = transport.resolveContractRequest(route.method, route.path, input);
-  return await openServerSentEventStream(
+  return await openRawServerSentEventStream(
     transport.fetchImpl,
     resolved.url,
     options.handlers,

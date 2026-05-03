@@ -1,244 +1,61 @@
 export type MaybeResponse = Response | Promise<Response>;
 
-export interface DaemonRemoteDispatchRouteHandlers {
+export interface DaemonRemoteDispatchRouteHandlers
+  extends DaemonRemoteOverviewRouteHandlers,
+    DaemonRemoteManagementRouteHandlers {}
+
+export interface DaemonRemoteOverviewRouteHandlers {
   getRemote(): MaybeResponse;
-  getRemotePairRequests(): MaybeResponse;
-  approveRemotePairRequest(requestId: string, req: Request): MaybeResponse;
-  rejectRemotePairRequest(requestId: string, req: Request): MaybeResponse;
-  getRemotePeers(): MaybeResponse;
-  rotateRemotePeerToken(peerId: string, req: Request): MaybeResponse;
-  revokeRemotePeerToken(peerId: string, req: Request): MaybeResponse;
-  disconnectRemotePeer(peerId: string, req: Request): MaybeResponse;
-  getRemoteWork(): MaybeResponse;
-  invokeRemotePeer(peerId: string, req: Request): MaybeResponse;
-  cancelRemoteWork(workId: string, req: Request): MaybeResponse;
 }
 
-export interface DaemonOperatorRouteHandlers {
-  getStatus(): MaybeResponse;
-  getCurrentAuth(req: Request): MaybeResponse;
-  getControlPlaneSnapshot(): MaybeResponse;
-  getOperatorContract(): MaybeResponse;
-  getControlPlaneWeb(): MaybeResponse;
-  getControlPlaneRecentEvents(limit: number): MaybeResponse;
-  getControlPlaneMessages(): MaybeResponse;
-  getControlPlaneClients(): MaybeResponse;
-  getTelemetrySnapshot(req: Request): MaybeResponse;
-  getTelemetryEvents(req: Request): MaybeResponse;
-  getTelemetryErrors(req: Request): MaybeResponse;
-  getTelemetryTraces(req: Request): MaybeResponse;
-  getTelemetryMetrics(req: Request): MaybeResponse;
-  createTelemetryEventStream(req: Request): MaybeResponse;
-  getTelemetryOtlpTraces(req: Request): MaybeResponse;
-  getTelemetryOtlpLogs(req: Request): MaybeResponse;
-  getTelemetryOtlpMetrics(req: Request): MaybeResponse;
-  postTelemetryOtlpLogs(req: Request): MaybeResponse;
-  postTelemetryOtlpTraces(req: Request): MaybeResponse;
-  postTelemetryOtlpMetrics(req: Request): MaybeResponse;
-  getGatewayMethods(url: URL): MaybeResponse;
-  getGatewayEvents(url: URL): MaybeResponse;
-  getGatewayMethod(methodId: string): MaybeResponse;
-  invokeGatewayMethod(methodId: string, req: Request): MaybeResponse;
-  createControlPlaneEventStream(req: Request): MaybeResponse;
-  getRoutesSnapshot(): MaybeResponse;
-  getSurfaces(): MaybeResponse;
-  getChannelAccounts(): MaybeResponse;
-  getChannelSurfaceAccounts(surface: string): MaybeResponse;
-  getChannelAccount(surface: string, accountId: string): MaybeResponse;
-  postChannelAccountAction(surface: string, accountId: string | null, action: string, req: Request): MaybeResponse;
-  getChannelSetupSchema(surface: string, url: URL): MaybeResponse;
-  getChannelDoctor(surface: string, url: URL): MaybeResponse;
-  getChannelRepairActions(surface: string, url: URL): MaybeResponse;
-  getChannelLifecycle(surface: string, url: URL): MaybeResponse;
-  postChannelLifecycleMigrate(surface: string, req: Request): MaybeResponse;
-  getChannelCapabilities(): MaybeResponse;
-  getChannelSurfaceCapabilities(surface: string): MaybeResponse;
-  getChannelTools(): MaybeResponse;
-  getChannelSurfaceTools(surface: string): MaybeResponse;
-  getChannelAgentTools(): MaybeResponse;
-  getChannelSurfaceAgentTools(surface: string): MaybeResponse;
-  postChannelTool(surface: string, toolId: string, req: Request): MaybeResponse;
-  getChannelActions(): MaybeResponse;
-  getChannelSurfaceActions(surface: string): MaybeResponse;
-  postChannelAction(surface: string, actionId: string, req: Request): MaybeResponse;
-  postChannelResolveTarget(surface: string, req: Request): MaybeResponse;
-  postChannelAuthorize(surface: string, req: Request): MaybeResponse;
-  postChannelAllowlistResolve(surface: string, req: Request): MaybeResponse;
-  postChannelAllowlistEdit(surface: string, req: Request): MaybeResponse;
-  getChannelPolicies(): MaybeResponse;
-  postChannelPolicy(surface: string, req: Request): MaybeResponse;
-  patchChannelPolicy(surface: string, req: Request): MaybeResponse;
-  getChannelPolicyAudit(limit: number): MaybeResponse;
-  getChannelStatus(): MaybeResponse;
-  getChannelDirectory(surface: string, url: URL): MaybeResponse;
-  getWatchers(): MaybeResponse;
-  postWatcher(req: Request): MaybeResponse;
-  patchWatcher(watcherId: string, req: Request): MaybeResponse;
-  watcherAction(watcherId: string, action: 'start' | 'stop' | 'run'): MaybeResponse;
-  deleteWatcher(watcherId: string): MaybeResponse;
-  getServiceStatus(): MaybeResponse;
-  installService(): MaybeResponse;
-  startService(): MaybeResponse;
-  stopService(): MaybeResponse;
-  restartService(): MaybeResponse;
-  uninstallService(): MaybeResponse;
-  getRouteBindings(): MaybeResponse;
-  postRouteBinding(req: Request): MaybeResponse;
-  patchRouteBinding(bindingId: string, req: Request): MaybeResponse;
-  deleteRouteBinding(bindingId: string): MaybeResponse;
-  getApprovals(): MaybeResponse;
-  approvalAction(approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request): MaybeResponse;
-  getHealth(): MaybeResponse;
-  getAccounts(): MaybeResponse;
-  getProviders(): MaybeResponse;
-  getProvider(providerId: string): MaybeResponse;
-  getProviderUsage(providerId: string): MaybeResponse;
-  getSettings(): MaybeResponse;
-  getSecuritySettings(): MaybeResponse;
-  getContinuity(): MaybeResponse;
-  getWorktrees(): MaybeResponse;
-  getIntelligence(): MaybeResponse;
-  getLocalAuth(): MaybeResponse;
-  postLocalAuthUser(req: Request): MaybeResponse;
-  deleteLocalAuthUser(username: string): MaybeResponse;
-  postLocalAuthPassword(username: string, req: Request): MaybeResponse;
-  deleteLocalAuthSession(sessionId: string): MaybeResponse;
-  deleteBootstrapFile(): MaybeResponse;
-  getPanels(): MaybeResponse;
-  postPanelOpen(req: Request): MaybeResponse;
-  getEvents(req: Request): MaybeResponse;
-  getConfig(): MaybeResponse;
-  postConfig(req: Request): MaybeResponse;
-  getReview(): MaybeResponse;
-  getIntegrationSession(): MaybeResponse;
-  getIntegrationTasks(): MaybeResponse;
-  getIntegrationAutomation(): MaybeResponse;
-  getIntegrationSessions(): MaybeResponse;
+export interface DaemonOperatorRouteHandlers
+  extends DaemonControlRouteHandlers,
+    DaemonTelemetryRouteHandlers,
+    DaemonChannelRouteHandlers,
+    DaemonIntegrationRouteHandlers,
+    DaemonSystemRouteHandlers,
+    DaemonRemoteManagementRouteHandlers,
+    DaemonKnowledgeRouteHandlers,
+    DaemonMediaRouteHandlers,
+    DaemonOperatorRuntimeRouteHandlers {}
+
+export interface DaemonOperatorRuntimeRouteHandlers {
   getAutomationHeartbeat(): MaybeResponse;
   postAutomationHeartbeat(req: Request): MaybeResponse;
-  getMemoryDoctor(): MaybeResponse;
-  getMemoryVectorStats(): MaybeResponse;
-  postMemoryVectorRebuild(req: Request): MaybeResponse;
-  postMemoryEmbeddingDefault(req: Request): MaybeResponse;
-  getKnowledgeStatus(): MaybeResponse;
-  getKnowledgeSources(url: URL): MaybeResponse;
-  getKnowledgeNodes(url: URL): MaybeResponse;
-  getKnowledgeIssues(url: URL): MaybeResponse;
-  getKnowledgeItem(id: string): MaybeResponse;
-  getKnowledgeConnectors(): MaybeResponse;
-  getKnowledgeConnector(id: string): MaybeResponse;
-  getKnowledgeConnectorDoctor(id: string): MaybeResponse;
-  getKnowledgeProjectionTargets(url: URL): MaybeResponse;
-  getKnowledgeMap(url: URL): MaybeResponse;
-  getKnowledgeGraphqlSchema(): MaybeResponse;
-  getKnowledgeExtractions(url: URL): MaybeResponse;
-  getKnowledgeUsage(url: URL): MaybeResponse;
-  getKnowledgeCandidates(url: URL): MaybeResponse;
-  getKnowledgeCandidate(id: string): MaybeResponse;
-  getKnowledgeReports(url: URL): MaybeResponse;
-  getKnowledgeReport(id: string): MaybeResponse;
-  getKnowledgeExtraction(id: string): MaybeResponse;
-  getKnowledgeSourceExtraction(id: string): MaybeResponse;
-  getKnowledgeJobs(): MaybeResponse;
-  getKnowledgeJob(jobId: string): MaybeResponse;
-  getKnowledgeJobRuns(url: URL): MaybeResponse;
-  getKnowledgeRefinementTasks(url: URL): MaybeResponse;
-  getKnowledgeRefinementTask(taskId: string): MaybeResponse;
-  postKnowledgeRunRefinement(req: Request): MaybeResponse;
-  postKnowledgeCancelRefinementTask(taskId: string, req: Request): MaybeResponse;
-  getKnowledgeSchedules(url: URL): MaybeResponse;
-  getKnowledgeSchedule(id: string): MaybeResponse;
-  postKnowledgeIngestUrl(req: Request): MaybeResponse;
-  postKnowledgeIngestArtifact(req: Request): MaybeResponse;
-  postKnowledgeSyncBrowserHistory(req: Request): MaybeResponse;
-  postKnowledgeImportBookmarks(req: Request): MaybeResponse;
-  postKnowledgeImportUrls(req: Request): MaybeResponse;
-  postKnowledgeIngestConnector(req: Request): MaybeResponse;
-  postKnowledgeSearch(req: Request): MaybeResponse;
-  postKnowledgeAsk(req: Request): MaybeResponse;
-  postKnowledgePacket(req: Request): MaybeResponse;
-  postKnowledgeReviewIssue(id: string, req: Request): MaybeResponse;
-  postKnowledgeDecideCandidate(id: string, req: Request): MaybeResponse;
-  postKnowledgeRunJob(jobId: string, req: Request): MaybeResponse;
-  postKnowledgeLint(req: Request): MaybeResponse;
-  postKnowledgeReindex(req: Request): MaybeResponse;
-  postKnowledgeSaveSchedule(req: Request): MaybeResponse;
-  deleteKnowledgeSchedule(id: string, req: Request): MaybeResponse;
-  postKnowledgeSetScheduleEnabled(id: string, req: Request): MaybeResponse;
-  postKnowledgeRenderProjection(req: Request): MaybeResponse;
-  postKnowledgeMaterializeProjection(req: Request): MaybeResponse;
-  executeKnowledgeGraphql(req: Request): MaybeResponse;
-  getVoiceStatus(): MaybeResponse;
-  getVoiceProviders(): MaybeResponse;
-  getVoiceVoices(url: URL): MaybeResponse;
-  postVoiceTts(req: Request): MaybeResponse;
-  postVoiceTtsStream(req: Request): MaybeResponse;
-  postVoiceStt(req: Request): MaybeResponse;
-  postVoiceRealtimeSession(req: Request): MaybeResponse;
-  getWebSearchProviders(): MaybeResponse;
-  postWebSearch(req: Request): MaybeResponse;
-  getArtifacts(): MaybeResponse;
-  postArtifact(req: Request): MaybeResponse;
-  getArtifact(artifactId: string): MaybeResponse;
-  getArtifactContent(artifactId: string, req: Request): MaybeResponse;
-  getMediaProviders(): MaybeResponse;
-  postMediaAnalyze(req: Request): MaybeResponse;
-  postMediaTransform(req: Request): MaybeResponse;
-  postMediaGenerate(req: Request): MaybeResponse;
-  getMultimodalStatus(): MaybeResponse;
-  getMultimodalProviders(): MaybeResponse;
-  postMultimodalAnalyze(req: Request): MaybeResponse;
-  postMultimodalPacket(req: Request): MaybeResponse;
-  postMultimodalWriteback(req: Request): MaybeResponse;
-  getRemoteNodeHostContract(): MaybeResponse;
   getSchedulerCapacity(): MaybeResponse;
   getRuntimeMetrics(): MaybeResponse;
 }
 
-export interface DaemonAutomationRouteHandlers {
+export interface DaemonAutomationRouteHandlers
+  extends DaemonAutomationOverviewRouteHandlers,
+    DaemonRuntimeAutomationRouteHandlers,
+    DaemonDeliveryRouteHandlers {}
+
+export interface DaemonAutomationOverviewRouteHandlers {
   getReview(): MaybeResponse;
   getIntegrationSession(): MaybeResponse;
   getIntegrationAutomation(): MaybeResponse;
-  getAutomationJobs(): MaybeResponse;
-  postAutomationJob(req: Request): MaybeResponse;
-  getAutomationRuns(): MaybeResponse;
-  getAutomationRun(runId: string): MaybeResponse;
-  automationRunAction(runId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
-  patchAutomationJob(jobId: string, req: Request): MaybeResponse;
-  deleteAutomationJob(jobId: string): MaybeResponse;
-  setAutomationJobEnabled(jobId: string, enabled: boolean): MaybeResponse;
-  runAutomationJobNow(jobId: string): MaybeResponse;
+}
+
+export interface DaemonDeliveryRouteHandlers {
   getDeliveries(): MaybeResponse;
   getDelivery(deliveryId: string): MaybeResponse;
-  getSchedules(): MaybeResponse;
-  postSchedule(req: Request): MaybeResponse;
-  deleteSchedule(scheduleId: string): MaybeResponse;
-  setScheduleEnabled(scheduleId: string, enabled: boolean): MaybeResponse;
-  runScheduleNow(scheduleId: string): MaybeResponse;
 }
 
-export interface DaemonSessionRouteHandlers {
+export interface DaemonSessionRouteHandlers
+  extends DaemonSessionOverviewRouteHandlers,
+    DaemonRuntimeSessionRouteHandlers {}
+
+export interface DaemonSessionOverviewRouteHandlers {
   getIntegrationSessions(): MaybeResponse;
-  createSharedSession(req: Request): MaybeResponse;
-  getSharedSession(sessionId: string): MaybeResponse;
-  closeSharedSession(sessionId: string): MaybeResponse;
-  reopenSharedSession(sessionId: string): MaybeResponse;
-  getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
-  postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
-  getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
-  postSharedSessionInput(sessionId: string, req: Request): MaybeResponse;
-  postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
-  postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
-  cancelSharedSessionInput(sessionId: string, inputId: string): MaybeResponse;
-  getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
 }
 
-export interface DaemonTaskRouteHandlers {
+export interface DaemonTaskRouteHandlers
+  extends DaemonTaskOverviewRouteHandlers,
+    DaemonRuntimeTaskRouteHandlers {}
+
+export interface DaemonTaskOverviewRouteHandlers {
   getIntegrationTasks(): MaybeResponse;
-  getRuntimeTask(taskId: string): MaybeResponse;
-  runtimeTaskAction(taskId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
-  getTaskStatus(agentId: string): MaybeResponse;
-  postTask(req: Request): MaybeResponse;
 }
 
 export interface DaemonControlRouteHandlers {
@@ -305,16 +122,30 @@ export interface DaemonChannelRouteHandlers {
   getChannelDirectory(surface: string, url: URL): MaybeResponse;
 }
 
-export interface DaemonIntegrationRouteHandlers {
+export interface DaemonIntegrationRouteHandlers
+  extends DaemonIntegrationOverviewRouteHandlers,
+    DaemonDeliveryRouteHandlers,
+    DaemonRouteSnapshotRouteHandlers,
+    DaemonRemoteOverviewRouteHandlers,
+    DaemonPlatformStatusRouteHandlers,
+    DaemonMemoryRouteHandlers,
+    DaemonLocalAuthAdminRouteHandlers,
+    DaemonPanelRouteHandlers,
+    DaemonEventLogRouteHandlers {}
+
+export interface DaemonIntegrationOverviewRouteHandlers {
   getReview(): MaybeResponse;
   getIntegrationSession(): MaybeResponse;
   getIntegrationTasks(): MaybeResponse;
   getIntegrationAutomation(): MaybeResponse;
   getIntegrationSessions(): MaybeResponse;
-  getDeliveries(): MaybeResponse;
-  getDelivery(deliveryId: string): MaybeResponse;
+}
+
+export interface DaemonRouteSnapshotRouteHandlers {
   getRoutesSnapshot(): MaybeResponse;
-  getRemote(): MaybeResponse;
+}
+
+export interface DaemonPlatformStatusRouteHandlers {
   getHealth(): MaybeResponse;
   getAccounts(): MaybeResponse;
   getProviders(): MaybeResponse;
@@ -325,18 +156,30 @@ export interface DaemonIntegrationRouteHandlers {
   getContinuity(): MaybeResponse;
   getWorktrees(): MaybeResponse;
   getIntelligence(): MaybeResponse;
+}
+
+export interface DaemonMemoryRouteHandlers {
   getMemoryDoctor(): MaybeResponse;
   getMemoryVectorStats(): MaybeResponse;
   postMemoryVectorRebuild(req: Request): MaybeResponse;
   postMemoryEmbeddingDefault(req: Request): MaybeResponse;
+}
+
+export interface DaemonLocalAuthAdminRouteHandlers {
   getLocalAuth(): MaybeResponse;
   postLocalAuthUser(req: Request): MaybeResponse;
   deleteLocalAuthUser(username: string): MaybeResponse;
   postLocalAuthPassword(username: string, req: Request): MaybeResponse;
   deleteLocalAuthSession(sessionId: string): MaybeResponse;
   deleteBootstrapFile(): MaybeResponse;
+}
+
+export interface DaemonPanelRouteHandlers {
   getPanels(): MaybeResponse;
   postPanelOpen(req: Request): MaybeResponse;
+}
+
+export interface DaemonEventLogRouteHandlers {
   getEvents(req: Request): MaybeResponse;
 }
 
@@ -376,7 +219,7 @@ export interface DaemonRemoteManagementRouteHandlers {
   getRemoteNodeHostContract(): MaybeResponse;
 }
 
-export interface DaemonKnowledgeRouteHandlers {
+export interface DaemonKnowledgeRouteHandlers extends DaemonKnowledgeRefinementRouteHandlers {
   getKnowledgeStatus(): MaybeResponse;
   getKnowledgeSources(url: URL): MaybeResponse;
   getKnowledgeNodes(url: URL): MaybeResponse;
@@ -399,10 +242,6 @@ export interface DaemonKnowledgeRouteHandlers {
   getKnowledgeJobs(): MaybeResponse;
   getKnowledgeJob(jobId: string): MaybeResponse;
   getKnowledgeJobRuns(url: URL): MaybeResponse;
-  getKnowledgeRefinementTasks(url: URL): MaybeResponse;
-  getKnowledgeRefinementTask(taskId: string): MaybeResponse;
-  postKnowledgeRunRefinement(req: Request): MaybeResponse;
-  postKnowledgeCancelRefinementTask(taskId: string, req: Request): MaybeResponse;
   getKnowledgeSchedules(url: URL): MaybeResponse;
   getKnowledgeSchedule(id: string): MaybeResponse;
   postKnowledgeIngestUrl(req: Request): MaybeResponse;
@@ -434,7 +273,14 @@ export interface DaemonKnowledgeRefinementRouteHandlers {
   postKnowledgeCancelRefinementTask(taskId: string, req: Request): MaybeResponse;
 }
 
-export interface DaemonMediaRouteHandlers {
+export interface DaemonMediaRouteHandlers
+  extends DaemonVoiceRouteHandlers,
+    DaemonWebSearchRouteHandlers,
+    DaemonArtifactRouteHandlers,
+    DaemonMediaProviderRouteHandlers,
+    DaemonMultimodalRouteHandlers {}
+
+export interface DaemonVoiceRouteHandlers {
   getVoiceStatus(): MaybeResponse;
   getVoiceProviders(): MaybeResponse;
   getVoiceVoices(url: URL): MaybeResponse;
@@ -442,16 +288,28 @@ export interface DaemonMediaRouteHandlers {
   postVoiceTtsStream(req: Request): MaybeResponse;
   postVoiceStt(req: Request): MaybeResponse;
   postVoiceRealtimeSession(req: Request): MaybeResponse;
+}
+
+export interface DaemonWebSearchRouteHandlers {
   getWebSearchProviders(): MaybeResponse;
   postWebSearch(req: Request): MaybeResponse;
+}
+
+export interface DaemonArtifactRouteHandlers {
   getArtifacts(): MaybeResponse;
   postArtifact(req: Request): MaybeResponse;
   getArtifact(artifactId: string): MaybeResponse;
   getArtifactContent(artifactId: string, req: Request): MaybeResponse;
+}
+
+export interface DaemonMediaProviderRouteHandlers {
   getMediaProviders(): MaybeResponse;
   postMediaAnalyze(req: Request): MaybeResponse;
   postMediaTransform(req: Request): MaybeResponse;
   postMediaGenerate(req: Request): MaybeResponse;
+}
+
+export interface DaemonMultimodalRouteHandlers {
   getMultimodalStatus(): MaybeResponse;
   getMultimodalProviders(): MaybeResponse;
   postMultimodalAnalyze(req: Request): MaybeResponse;
@@ -461,21 +319,23 @@ export interface DaemonMediaRouteHandlers {
 
 export interface DaemonRuntimeSessionRouteHandlers {
   createSharedSession(req: Request): MaybeResponse;
-  postTask(req: Request): MaybeResponse;
   getSharedSession(sessionId: string): MaybeResponse;
   closeSharedSession(sessionId: string): MaybeResponse;
   reopenSharedSession(sessionId: string): MaybeResponse;
   getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
   getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
   postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
-  postSharedSessionInput(sessionId: string, req: Request): MaybeResponse;
   postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
   postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
   cancelSharedSessionInput(sessionId: string, inputId: string): MaybeResponse;
+  getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
+}
+
+export interface DaemonRuntimeTaskRouteHandlers {
+  postTask(req: Request): MaybeResponse;
   getRuntimeTask(taskId: string): MaybeResponse;
   runtimeTaskAction(taskId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
   getTaskStatus(agentId: string): MaybeResponse;
-  getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
 }
 
 export interface DaemonRuntimeAutomationRouteHandlers {
@@ -498,40 +358,13 @@ export interface DaemonRuntimeAutomationRouteHandlers {
   getSchedulerCapacity(): MaybeResponse;
 }
 
-export interface DaemonRuntimeRouteHandlers {
-  createSharedSession(req: Request): MaybeResponse;
-  getAutomationJobs(): MaybeResponse;
-  postAutomationJob(req: Request): MaybeResponse;
-  getAutomationRuns(): MaybeResponse;
-  getAutomationRun(runId: string): MaybeResponse;
-  getAutomationHeartbeat(): MaybeResponse;
-  postAutomationHeartbeat(req: Request): MaybeResponse;
-  automationRunAction(runId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
-  patchAutomationJob(jobId: string, req: Request): MaybeResponse;
-  deleteAutomationJob(jobId: string): MaybeResponse;
-  setAutomationJobEnabled(jobId: string, enabled: boolean): MaybeResponse;
-  runAutomationJobNow(jobId: string): MaybeResponse;
-  postTask(req: Request): MaybeResponse;
-  getSharedSession(sessionId: string): MaybeResponse;
-  closeSharedSession(sessionId: string): MaybeResponse;
-  reopenSharedSession(sessionId: string): MaybeResponse;
-  getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
-  getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
-  postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
-  postSharedSessionInput(sessionId: string, req: Request): MaybeResponse;
-  postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
-  postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
-  cancelSharedSessionInput(sessionId: string, inputId: string): MaybeResponse;
-  getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
-  getRuntimeTask(taskId: string): MaybeResponse;
-  runtimeTaskAction(taskId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
-  getTaskStatus(agentId: string): MaybeResponse;
-  getSchedules(): MaybeResponse;
-  postSchedule(req: Request): MaybeResponse;
-  deleteSchedule(scheduleId: string): MaybeResponse;
-  setScheduleEnabled(scheduleId: string, enabled: boolean): MaybeResponse;
-  runScheduleNow(scheduleId: string): MaybeResponse;
-  getSchedulerCapacity(): MaybeResponse;
+export interface DaemonRuntimeRouteHandlers
+  extends DaemonRuntimeSessionRouteHandlers,
+    DaemonRuntimeTaskRouteHandlers,
+    DaemonRuntimeAutomationRouteHandlers,
+    DaemonRuntimeMetricsRouteHandlers {}
+
+export interface DaemonRuntimeMetricsRouteHandlers {
   getRuntimeMetrics(): MaybeResponse;
 }
 
@@ -541,15 +374,4 @@ export interface DaemonApiRouteHandlers
     DaemonAutomationRouteHandlers,
     DaemonSessionRouteHandlers,
     DaemonTaskRouteHandlers,
-    DaemonControlRouteHandlers,
-    DaemonTelemetryRouteHandlers,
-    DaemonChannelRouteHandlers,
-    DaemonIntegrationRouteHandlers,
-    DaemonSystemRouteHandlers,
-    DaemonRemoteManagementRouteHandlers,
-    DaemonKnowledgeRouteHandlers,
-    DaemonKnowledgeRefinementRouteHandlers,
-    DaemonMediaRouteHandlers,
-    DaemonRuntimeSessionRouteHandlers,
-    DaemonRuntimeAutomationRouteHandlers,
     DaemonRuntimeRouteHandlers {}

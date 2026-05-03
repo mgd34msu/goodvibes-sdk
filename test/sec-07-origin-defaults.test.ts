@@ -21,9 +21,9 @@ import { describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { UserAuthManager } from '../packages/sdk/src/_internal/platform/security/user-auth.js';
-import { HttpListener } from '../packages/sdk/src/_internal/platform/daemon/http-listener.js';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
+import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.js';
+import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.js';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 function tempDir(suffix: string): string {
   const d = join(tmpdir(), `gv-sec07-${suffix}-${Date.now()}`);

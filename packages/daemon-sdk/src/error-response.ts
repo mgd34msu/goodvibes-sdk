@@ -38,7 +38,7 @@ const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: DaemonErrorCate
     message: (provider) => `Cannot connect to ${provider ?? 'the provider'}. Check whether the service is reachable.`,
   },
   {
-    pattern: /ETIMEDOUT|ECONNABORTED|timed?[\s_-]?out/i,
+    pattern: /ETIMEDOUT|ECONNABORTED/i,
     category: DaemonErrorCategory.TIMEOUT,
     message: () => 'Connection timed out before the request completed.',
   },
@@ -95,8 +95,7 @@ function readMessage(error: unknown, fallbackMessage?: string): string {
   return fallbackMessage ?? 'Unexpected error';
 }
 
-function inferCategory(message: string, status?: number): DaemonErrorCategory {
-  const msg = message.toLowerCase();
+function inferCategory(status?: number, code?: string): DaemonErrorCategory {
   if (status === 401) return DaemonErrorCategory.AUTHENTICATION;
   if (status === 402) return DaemonErrorCategory.BILLING;
   if (status === 403) return DaemonErrorCategory.AUTHORIZATION;
@@ -106,6 +105,20 @@ function inferCategory(message: string, status?: number): DaemonErrorCategory {
   if (status === 400) return DaemonErrorCategory.BAD_REQUEST;
   if (status !== undefined && status >= 500) return DaemonErrorCategory.SERVICE;
 
+  const normalizedCode = code?.toUpperCase();
+  if (normalizedCode === 'ECONNREFUSED'
+    || normalizedCode === 'ENOTFOUND'
+    || normalizedCode === 'EAI_AGAIN'
+    || normalizedCode === 'EHOSTUNREACH'
+    || normalizedCode === 'ECONNRESET') {
+    return DaemonErrorCategory.NETWORK;
+  }
+  if (normalizedCode === 'ETIMEDOUT' || normalizedCode === 'ECONNABORTED') return DaemonErrorCategory.TIMEOUT;
+  return DaemonErrorCategory.UNKNOWN;
+}
+
+function inferCategoryFromMessage(message: string): DaemonErrorCategory {
+  const msg = message.toLowerCase();
   if (/api[_\s-]?key|auth|token|credential|jwt|unauthoriz/.test(msg)) return DaemonErrorCategory.AUTHENTICATION;
   if (/forbidden|access denied|permission denied|not allowed/.test(msg)) return DaemonErrorCategory.AUTHORIZATION;
   if (/billing|payment required|credits?|quota|depleted|insufficient balance/.test(msg)) return DaemonErrorCategory.BILLING;
@@ -137,7 +150,7 @@ function inferHint(category: DaemonErrorCategory, status?: number): string | und
     case 'not_found':
       return 'Check model id, provider selection, and API path.';
     case 'protocol':
-      return 'Check upstream compatibility, streaming mode, and transport stability.';
+      return 'Check upstream protocol support, streaming mode, and transport stability.';
     case 'service':
       return status === 503
         ? 'The provider is temporarily unavailable. Retry shortly or switch providers if the issue persists.'
@@ -209,7 +222,11 @@ export function buildErrorResponseBody(
     const phase = error.phase;
     const requestId = error.requestId;
     const network = getNetworkErrorMessage(message, provider);
-    const category = normalizeCategory(error.category) ?? network?.category ?? inferCategory(message, status);
+    const inferred = inferCategory(status, error.code ?? providerCode);
+    const messageCategory = inferred === DaemonErrorCategory.UNKNOWN
+      ? inferCategoryFromMessage(message)
+      : inferred;
+    const category = normalizeCategory(error.category) ?? network?.category ?? messageCategory;
     const hint = (error instanceof GoodVibesSdkError ? error.hint : error.hint ?? error.guidance) ?? inferHint(category, status);
     const summary = buildSummary(network?.summary ?? message, {
       requestId,
@@ -235,7 +252,11 @@ export function buildErrorResponseBody(
   }
   const message = readMessage(error, options.fallbackMessage);
   const network = getNetworkErrorMessage(message);
-  const category = network?.category ?? inferCategory(message, options.status);
+  const inferred = inferCategory(options.status);
+  const messageCategory = inferred === DaemonErrorCategory.UNKNOWN
+    ? inferCategoryFromMessage(message)
+    : inferred;
+  const category = network?.category ?? messageCategory;
   const hint = inferHint(category, options.status);
   return {
     error: network?.summary ?? message,

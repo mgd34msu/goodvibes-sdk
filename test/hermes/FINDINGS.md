@@ -9,7 +9,7 @@ Date: 2026-04-17
 |----|----------|--------|-------------|
 | F1 | BLOCKER | Open | No publicly available standalone Hermes binary supports async/await |
 | F2 | Finding | Documented | SDK uses private class fields (#field) — downlevel required for pre-0.12 Hermes CLI |
-| F3 | Finding | Documented | SDK's error taxonomy (class inheritance) requires es2015+ — pre-ES2015 Hermes CLI incompatible |
+| F3 | Finding | Documented | SDK's error taxonomy (class inheritance) requires es2015+ — pre-ES2015 Hermes CLI unsupported |
 | F4 | Advisory | Open | Several ES2021 APIs (structuredClone, Array.at, Object.hasOwn) absent in bare Hermes CLI |
 
 ---
@@ -18,9 +18,8 @@ Date: 2026-04-17
 
 **Severity**: Blocker (prevents full VM execution of the SDK bundle)
 
-**Affected feature**: All of `packages/sdk/src/_internal/platform/auth/` and
-`packages/sdk/src/_internal/transport-http/` compatibility shims resolve to
-`@pellux/goodvibes-transport-http`, whose modules use `async/await`
+**Affected feature**: SDK auth and `@pellux/goodvibes-transport-http`
+modules use `async/await`
 pervasively for token resolution and HTTP fetch wrapping.
 
 **Root cause**:
@@ -48,7 +47,7 @@ test/hermes/dist/hermes-test-bundle.js:57954:14: error: async functions are unsu
              ^~~~~~~~~~~~~~~~~~
 ```
 
-The offending code resolves through `packages/sdk/dist/_internal/transport-http/index.js`:
+The offending code resolves through the HTTP transport bundle:
 ```js
 // normalizeAuthToken - transport-http internal
 function normalizeAuthToken(input) {
@@ -94,10 +93,10 @@ tooling gap in the test harness setup.
 **Severity**: Finding (downlevel tooling handles this; not a runtime bug)
 
 **Affected files**:
-- `packages/sdk/dist/_internal/platform/auth/permission-resolver.js`
-- `packages/sdk/dist/_internal/platform/auth/token-store.js`
-- `packages/sdk/dist/_internal/platform/auth/session-manager.js`
-- `packages/sdk/dist/_internal/platform/auth/oauth-client.js`
+- `packages/sdk/dist/client-auth/permission-resolver.js`
+- `packages/sdk/dist/client-auth/token-store.js`
+- `packages/sdk/dist/client-auth/session-manager.js`
+- `packages/sdk/dist/platform/runtime/auth/oauth-client.js`
 - (7 more files)
 
 **Root cause**: The SDK's TypeScript `tsconfig.base.json` targets `ES2023`, which

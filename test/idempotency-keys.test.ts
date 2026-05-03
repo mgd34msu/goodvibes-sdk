@@ -236,12 +236,6 @@ describe('perMethodPolicy override', () => {
         },
       },
     });
-    // Pass methodId via the internal overload (test via requestJson with methodId)
-    // We test this by calling the internal requestJsonForTransport with methodId
-    // which is accessible via requestJson with the third param in the implementation.
-    // Since requestJson doesn't expose methodId externally, we verify via perMethodPolicy:
-    // The transport with perMethodPolicy set up will allow retry for that methodId.
-    // For this test, we verify the policy itself resolves correctly.
     const { applyPerMethodPolicy, normalizeHttpRetryPolicy } = await import('../packages/transport-http/src/retry.js');
     const base = normalizeHttpRetryPolicy({
       maxAttempts: 1,

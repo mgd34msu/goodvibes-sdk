@@ -5,7 +5,7 @@ WRFC chains, and remote surfaces. Tools are registered through
 `registerAllTools()` and guarded by config permissions plus feature-flagged
 contract checks.
 
-Source: `packages/sdk/src/_internal/platform/tools/`.
+Source: `packages/sdk/src/platform/tools/`.
 
 ## Built-In Tools
 

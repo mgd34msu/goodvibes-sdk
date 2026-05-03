@@ -11,7 +11,7 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runSecurity, runDeadCode } from '../packages/sdk/src/_internal/platform/tools/analyze/scan-modes.js';
+import { runSecurity, runDeadCode } from '../packages/sdk/src/platform/tools/analyze/scan-modes.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

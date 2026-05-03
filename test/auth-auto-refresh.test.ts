@@ -7,20 +7,31 @@
  * no `.catch(() => {})`.
  */
 
-import { describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
   type GoodVibesTokenStore,
 } from '../packages/sdk/src/auth.js';
 import type { AutoRefreshOptions } from '../packages/sdk/src/auth.js';
-import { GoodVibesSdkError } from '../packages/sdk/src/_internal/errors/index.js';
+import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 import type { SDKObserver } from '../packages/sdk/src/observer/index.js';
-import type { OperatorSdk } from '../packages/sdk/src/_internal/operator/index.js';
+import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const TEST_NOW_MS = 1_800_000_000_000;
+const originalDateNow = Date.now;
+
+beforeEach(() => {
+  Date.now = () => TEST_NOW_MS;
+});
+
+afterEach(() => {
+  Date.now = originalDateNow;
+});
 
 /** Build a 401 HTTP-status-error matching the SDK's expected shape. */
 function make401Error(): GoodVibesSdkError {
@@ -160,7 +171,7 @@ describe('in-flight queuing: concurrent refreshes collapse to one', () => {
     // We inject a custom refresh function via a workaround:
     // create the coordinator directly to verify the queue behaviour.
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     let refreshResolve: () => void;
@@ -202,7 +213,7 @@ describe('reactive 401 retry: retry succeeds after refresh', () => {
     let attempt = 0;
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -236,7 +247,7 @@ describe('reactive 401 terminal: double 401 throws auth error', () => {
     const store = createMemoryTokenStore('stale-token');
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -279,7 +290,7 @@ describe('reactive 401 terminal: double 401 throws auth error', () => {
     };
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -314,7 +325,7 @@ describe('opt-out: autoRefresh:false disables refresh and bubbles 401', () => {
     const store = createMemoryTokenStore('token');
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     let refreshCalled = false;
@@ -350,7 +361,7 @@ describe('opt-out: autoRefresh:false disables refresh and bubbles 401', () => {
     const store = createMemoryTokenStore('expiring', Date.now() + 5_000);
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     let refreshCalled = false;
@@ -414,7 +425,7 @@ describe('observer: onAuthTransition emitted on successful refresh', () => {
     };
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -455,7 +466,7 @@ describe('observer: onAuthTransition emitted on successful refresh', () => {
     };
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -533,7 +544,7 @@ describe('consumer refresh callback: pre-flight leeway trigger', () => {
     let refreshCallCount = 0;
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -556,7 +567,7 @@ describe('consumer refresh callback: pre-flight leeway trigger', () => {
     const store = createMemoryTokenStore('old-token', Date.now() + 5_000);
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -583,7 +594,7 @@ describe('consumer refresh callback: reactive 401 path', () => {
     let attempt = 0;
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -612,7 +623,7 @@ describe('consumer refresh callback: reactive 401 path', () => {
     let attempt = 0;
 
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const coordinator = new AutoRefreshCoordinator({
@@ -643,7 +654,7 @@ describe('consumer refresh callback: reactive 401 path', () => {
 describe('is401Error: broadened error shapes', () => {
   it('detects 401 on error.response.status', async () => {
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const store = createMemoryTokenStore('tok');
@@ -668,7 +679,7 @@ describe('is401Error: broadened error shapes', () => {
 
   it('detects 401 on error.cause.response.status', async () => {
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const store = createMemoryTokenStore('tok');
@@ -693,7 +704,7 @@ describe('is401Error: broadened error shapes', () => {
 
   it('does not falsely detect 401 on non-401 response.status', async () => {
     const { AutoRefreshCoordinator } = await import(
-      '../packages/sdk/src/_internal/platform/auth/auto-refresh.js'
+      '../packages/sdk/src/client-auth/auto-refresh.js'
     );
 
     const store = createMemoryTokenStore('tok');

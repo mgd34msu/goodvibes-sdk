@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { createAndroidKeystoreTokenStore } from '../packages/sdk/src/_internal/platform/auth/android-keystore-token-store.js';
+import { createAndroidKeystoreTokenStore } from '../packages/sdk/src/client-auth/android-keystore-token-store.js';
 
 // ---------------------------------------------------------------------------
 // Mock react-native-keychain (in-memory, covers Android path)

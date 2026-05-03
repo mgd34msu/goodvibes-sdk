@@ -4,8 +4,8 @@
  * Router-level E2E tests for the telemetry route family.
  * Exercises createDaemonTelemetryRouteHandlers, which is then composed
  * with dispatchOperatorRoutes (the production wiring) to test:
- *   GET /api/telemetry          (getTelemetrySnapshot)
- *   GET /api/telemetry/events   (getTelemetryEvents)
+ *   GET /api/v1/telemetry          (getTelemetrySnapshot)
+ *   GET /api/v1/telemetry/events   (getTelemetryEvents)
  *   GET /api/v1/telemetry       (alias path)
  *
  * Two key scenarios:
@@ -14,18 +14,11 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { createDaemonTelemetryRouteHandlers } from '../packages/sdk/src/_internal/daemon/telemetry-routes.js';
-import { dispatchOperatorRoutes } from '../packages/sdk/src/_internal/daemon/operator.js';
-import type { DaemonApiRouteHandlers } from '../packages/sdk/src/_internal/daemon/context.js';
+import { createDaemonTelemetryRouteHandlers } from '../packages/daemon-sdk/src/telemetry-routes.js';
+import { dispatchOperatorRoutes } from '../packages/daemon-sdk/src/operator.js';
+import type { DaemonApiRouteHandlers } from '../packages/daemon-sdk/src/context.js';
 import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeRequest(method: string, url: string): Request {
-  return new Request(url, { method });
-}
+import { makeRequest } from './_helpers/router-requests.js';
 
 interface TelemetryApiStubSnapshot {
   generatedAt: number;
@@ -116,19 +109,8 @@ function makeTelemetryHandlers(
 // describe: telemetry routes — happy paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
+describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
   test('returns 200 with snapshot shape when telemetryApi is present', async () => {
-    const handlers = makeTelemetryHandlers({ telemetryApiPresent: true });
-    const req = makeRequest('GET', 'http://localhost/api/telemetry');
-    const res = await dispatchOperatorRoutes(req, handlers);
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(200);
-    const body = await res!.json() as Record<string, unknown>;
-    expect(typeof body.generatedAt).toBe('number');
-    expect(body.view).toBeDefined();
-  });
-
-  test('GET /api/v1/telemetry alias returns same 200 shape', async () => {
     const handlers = makeTelemetryHandlers({ telemetryApiPresent: true });
     const req = makeRequest('GET', 'http://localhost/api/v1/telemetry');
     const res = await dispatchOperatorRoutes(req, handlers);
@@ -138,9 +120,9 @@ describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
     expect(typeof body.generatedAt).toBe('number');
   });
 
-  test('GET /api/telemetry/events returns event page', async () => {
+  test('GET /api/v1/telemetry/events returns event page', async () => {
     const handlers = makeTelemetryHandlers({ telemetryApiPresent: true });
-    const req = makeRequest('GET', 'http://localhost/api/telemetry/events');
+    const req = makeRequest('GET', 'http://localhost/api/v1/telemetry/events');
     const res = await dispatchOperatorRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
@@ -149,7 +131,7 @@ describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
     expect(Array.isArray(body.items)).toBe(true);
   });
 
-  test('GET /api/telemetry/events bounds since, until, and limit filters', async () => {
+  test('GET /api/v1/telemetry/events bounds since, until, and limit filters', async () => {
     let capturedFilter: Record<string, unknown> | null = null;
     const api = {
       ...makeTelemetryApi(),
@@ -173,7 +155,7 @@ describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
       getControlPlaneRecentEvents: (_limit) => Response.json({ events: [] }),
       ...telemetryHandlers,
     });
-    const req = makeRequest('GET', 'http://localhost/api/telemetry/events?limit=999999&since=-12.8&until=410244480000000');
+    const req = makeRequest('GET', 'http://localhost/api/v1/telemetry/events?limit=999999&since=-12.8&until=410244480000000');
     const res = await dispatchOperatorRoutes(req, handlers);
 
     expect(res?.status).toBe(200);
@@ -183,7 +165,7 @@ describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
     expect(capturedFilter.until).toBe(Date.UTC(2100, 0, 1));
   });
 
-  test('GET /api/telemetry/events omits non-finite timestamp filters', async () => {
+  test('GET /api/v1/telemetry/events omits non-finite timestamp filters', async () => {
     let capturedFilter: Record<string, unknown> | null = null;
     const api = {
       ...makeTelemetryApi(),
@@ -207,7 +189,7 @@ describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
       getControlPlaneRecentEvents: (_limit) => Response.json({ events: [] }),
       ...telemetryHandlers,
     });
-    const req = makeRequest('GET', 'http://localhost/api/telemetry/events?since=Infinity&until=not-a-date');
+    const req = makeRequest('GET', 'http://localhost/api/v1/telemetry/events?since=Infinity&until=not-a-date');
     const res = await dispatchOperatorRoutes(req, handlers);
 
     expect(res?.status).toBe(200);
@@ -224,7 +206,7 @@ describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
 describe('router-e2e telemetry — failure paths (telemetryApi null)', () => {
   test('returns 503 when telemetryApi is null', async () => {
     const handlers = makeTelemetryHandlers({ telemetryApiPresent: false });
-    const req = makeRequest('GET', 'http://localhost/api/telemetry');
+    const req = makeRequest('GET', 'http://localhost/api/v1/telemetry');
     const res = await dispatchOperatorRoutes(req, handlers);
     expect(res).not.toBeNull();
     // The unavailable() helper returns 503
@@ -233,9 +215,9 @@ describe('router-e2e telemetry — failure paths (telemetryApi null)', () => {
     expect(body.error).toBeDefined();
   });
 
-  test('GET /api/telemetry/events returns 503 when telemetryApi is null', async () => {
+  test('GET /api/v1/telemetry/events returns 503 when telemetryApi is null', async () => {
     const handlers = makeTelemetryHandlers({ telemetryApiPresent: false });
-    const req = makeRequest('GET', 'http://localhost/api/telemetry/events');
+    const req = makeRequest('GET', 'http://localhost/api/v1/telemetry/events');
     const res = await dispatchOperatorRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(503);

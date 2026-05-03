@@ -9,17 +9,17 @@ describe('obs-18 retry events', () => {
   test('TRANSPORT_RETRY_SCHEDULED is a valid TransportEvent type', async () => {
     // TypeScript validates the discriminated union at compile time.
     // At runtime we verify the emitter functions are exported.
-    const mod = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const mod = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     expect(typeof mod.emitTransportRetryScheduled).toBe('function');
   });
 
   test('TRANSPORT_RETRY_EXECUTED emitter is exported', async () => {
-    const { emitTransportRetryExecuted } = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const { emitTransportRetryExecuted } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     expect(typeof emitTransportRetryExecuted).toBe('function');
   });
 
   test('emitTransportRetryScheduled emits on the transport channel', async () => {
-    const { emitTransportRetryScheduled } = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const { emitTransportRetryScheduled } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     const { EventEmitter } = await import('node:events');
     const bus = new EventEmitter() as Parameters<typeof emitTransportRetryScheduled>[0];
     const events: unknown[] = [];
@@ -38,7 +38,7 @@ describe('obs-18 retry events', () => {
   });
 
   test('emitTransportRetryExecuted emits on the transport channel', async () => {
-    const { emitTransportRetryExecuted } = await import('../packages/sdk/src/_internal/platform/runtime/emitters/transport.js');
+    const { emitTransportRetryExecuted } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
     const { EventEmitter } = await import('node:events');
     const bus = new EventEmitter() as Parameters<typeof emitTransportRetryExecuted>[0];
     const events: unknown[] = [];

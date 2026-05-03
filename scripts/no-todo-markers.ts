@@ -8,7 +8,6 @@
 //   bun scripts/no-todo-markers.ts
 //
 // Exempt paths (never flagged):
-//   - _internal/
 //   - vendor/ (nested)
 //   - generated/ (nested)
 //   - *.test.ts and *.spec.ts files
@@ -37,7 +36,6 @@ const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs',
  * A file is skipped if ANY predicate returns true.
  */
 const EXEMPT: Array<(rel: string) => boolean> = [
-  (rel) => rel.includes('/_internal/') || rel.startsWith('_internal/'),
   (rel) => rel.includes('/vendor/')    || rel.startsWith('vendor/'),
   (rel) => rel.includes('/generated/') || rel.startsWith('generated/'),
   (rel) => /\.(test|spec)\.(ts|tsx|mts|cts|js|mjs|cjs)$/.test(rel),
@@ -137,6 +135,6 @@ for (const f of findings) {
 }
 console.error(
   'Markers are forbidden in published source.\n' +
-  'Move work-in-progress notes to _internal/, *.test.ts, or a tracking doc.\n',
+  'Move work-in-progress notes to *.test.ts or a tracking doc.\n',
 );
 process.exit(1);

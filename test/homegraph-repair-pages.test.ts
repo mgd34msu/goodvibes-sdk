@@ -3,16 +3,16 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { deflateSync } from 'node:zlib';
 import { afterEach, describe, expect, test } from 'bun:test';
-import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
+import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
 import {
   HomeGraphService,
   homeAssistantKnowledgeSpaceId,
-} from '../packages/sdk/src/_internal/platform/knowledge/index.js';
-import { extractKnowledgeArtifact } from '../packages/sdk/src/_internal/platform/knowledge/extractors.js';
-import { refreshDevicePagesForHomeGraphAsk } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/ask-page-refresh.js';
-import { HOME_GRAPH_PAGE_POLICY_VERSION } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/generated-pages.js';
-import type { HomeGraphAskResult } from '../packages/sdk/src/_internal/platform/knowledge/home-graph/types.js';
-import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
+} from '../packages/sdk/src/platform/knowledge/index.js';
+import { extractKnowledgeArtifact } from '../packages/sdk/src/platform/knowledge/extractors.js';
+import { refreshDevicePagesForHomeGraphAsk } from '../packages/sdk/src/platform/knowledge/home-graph/ask-page-refresh.js';
+import { HOME_GRAPH_PAGE_POLICY_VERSION } from '../packages/sdk/src/platform/knowledge/home-graph/generated-pages.js';
+import type { HomeGraphAskResult } from '../packages/sdk/src/platform/knowledge/home-graph/types.js';
+import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
 
@@ -611,7 +611,7 @@ describe('Home Graph repair and generated pages', () => {
     expect(listedPage?.markdown).toContain('LG 86NANO90UNA official specifications');
     expect(listedPage?.markdown).toContain('LG 86NANO90UNA secondary specifications');
     expect(store.getSource(secondarySource.id)?.status).toBe('indexed');
-    expect(store.getSource(responseOnlyMarketplaceSourceId)).toBeUndefined();
+    expect(store.getSource(responseOnlyMarketplaceSourceId)).toBeNull();
     expect(listedPage?.markdown).not.toContain('Amazon affiliate');
     expect(listedPage?.markdown).not.toContain('Pending LG candidate source');
     expect(listedPage?.markdown).not.toContain('Pending stale official candidate');

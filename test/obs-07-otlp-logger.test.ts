@@ -6,19 +6,19 @@ import { describe, expect, test } from 'bun:test';
  */
 describe('obs-07 otlp logger', () => {
   test('buildOtlpLogDocumentFromRecords returns empty resourceLogs for empty array', async () => {
-    const { buildOtlpLogDocumentFromRecords } = await import('../packages/sdk/src/_internal/platform/runtime/telemetry/api-helpers.js');
+    const { buildOtlpLogDocumentFromRecords } = await import('../packages/sdk/src/platform/runtime/telemetry/api-helpers.js');
     const doc = buildOtlpLogDocumentFromRecords([]);
     expect(doc).toEqual({ resourceLogs: [] });
   });
 
   test('buildOtlpTraceDocumentFromSpans returns empty resourceSpans for empty array', async () => {
-    const { buildOtlpTraceDocumentFromSpans } = await import('../packages/sdk/src/_internal/platform/runtime/telemetry/api-helpers.js');
+    const { buildOtlpTraceDocumentFromSpans } = await import('../packages/sdk/src/platform/runtime/telemetry/api-helpers.js');
     const doc = buildOtlpTraceDocumentFromSpans([]);
     expect(doc).toEqual({ resourceSpans: [] });
   });
 
   test('buildOtlpMetricDocumentFromState returns resourceMetrics array', async () => {
-    const { buildOtlpMetricDocumentFromState } = await import('../packages/sdk/src/_internal/platform/runtime/telemetry/api-helpers.js');
+    const { buildOtlpMetricDocumentFromState } = await import('../packages/sdk/src/platform/runtime/telemetry/api-helpers.js');
     // Minimal state/aggregates stub
     const state = {
       session: { startedAt: Date.now() },

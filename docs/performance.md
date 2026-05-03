@@ -260,9 +260,7 @@ The SDK defines two categories of performance budgets: **bundle size budgets** a
 
 **Bundle size budgets** are defined per entry point via `bundle-budgets.json` at
 the repo root. Each entry has a gzip ceiling (measured actual × 1.2 headroom).
-The current CI workflow does not run this as a standalone gate; run the local
-check before releases or add the workflow step back before treating it as
-required CI:
+The CI `bundle-budget-check` job runs the same command used locally:
 
 ```bash
 bun run bundle:check  # prints actual vs. budget for every entry point

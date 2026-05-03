@@ -1,1 +1,15 @@
-export * from '../../../_internal/platform/daemon/http/knowledge-route-types.js';
+export type {
+  AuthenticatedPrincipalLike,
+  AutomationScheduleDefinition,
+  DaemonKnowledgeRouteContext,
+  KnowledgeGraphqlAccessLike,
+  KnowledgeGraphqlResultLike,
+  KnowledgeGraphqlServiceLike,
+  KnowledgePacketDetail,
+  KnowledgeProjectionTargetKind,
+  KnowledgeServiceLike,
+} from '@pellux/goodvibes-daemon-sdk';
+
+export type KnowledgeUsageKind = string;
+export type KnowledgeCandidateStatus = string;
+export type KnowledgeSourceType = string;

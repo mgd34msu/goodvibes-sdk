@@ -60,7 +60,7 @@
   },
   "./transport-direct": {
     "gzip_bytes": 112,
-    "rationale": "direct (in-process) transport re-export shim; measured 93 B gzip * 1.2"
+    "rationale": "SDK direct-transport facade backed by transport-core; measured 93 B gzip * 1.2"
   },
   "./transport-http": {
     "gzip_bytes": 86,
@@ -73,5 +73,161 @@
   "./web": {
     "gzip_bytes": 440,
     "rationale": "Workers-compat companion surface; measured 366 B gzip * 1.2"
+  },
+  "./client-auth": {
+    "gzip_bytes": 196,
+    "rationale": "v0.30.0 public entry facade; measured 163 B gzip * 1.2"
+  },
+  "./events": {
+    "gzip_bytes": 374,
+    "rationale": "v0.30.0 public entry facade; measured 311 B gzip * 1.2"
+  },
+  "./observer": {
+    "gzip_bytes": 2188,
+    "rationale": "v0.30.0 public entry facade; measured 1823 B gzip * 1.2"
+  },
+  "./platform": {
+    "gzip_bytes": 323,
+    "rationale": "v0.30.0 public entry facade; measured 269 B gzip * 1.2"
+  },
+  "./platform/acp": {
+    "gzip_bytes": 71,
+    "rationale": "v0.30.0 public entry facade; measured 59 B gzip * 1.2"
+  },
+  "./platform/adapters": {
+    "gzip_bytes": 390,
+    "rationale": "v0.30.0 public entry facade; measured 325 B gzip * 1.2"
+  },
+  "./platform/artifacts": {
+    "gzip_bytes": 186,
+    "rationale": "v0.30.0 public entry facade; measured 155 B gzip * 1.2"
+  },
+  "./platform/automation": {
+    "gzip_bytes": 383,
+    "rationale": "v0.30.0 public entry facade; measured 319 B gzip * 1.2"
+  },
+  "./platform/batch": {
+    "gzip_bytes": 100,
+    "rationale": "v0.30.0 public entry facade; measured 83 B gzip * 1.2"
+  },
+  "./platform/channels": {
+    "gzip_bytes": 309,
+    "rationale": "v0.30.0 public entry facade; measured 257 B gzip * 1.2"
+  },
+  "./platform/cloudflare": {
+    "gzip_bytes": 201,
+    "rationale": "v0.30.0 public entry facade; measured 167 B gzip * 1.2"
+  },
+  "./platform/companion": {
+    "gzip_bytes": 190,
+    "rationale": "v0.30.0 public entry facade; measured 158 B gzip * 1.2"
+  },
+  "./platform/config": {
+    "gzip_bytes": 676,
+    "rationale": "v0.30.0 public entry facade; measured 563 B gzip * 1.2"
+  },
+  "./platform/control-plane": {
+    "gzip_bytes": 171,
+    "rationale": "v0.30.0 public entry facade; measured 142 B gzip * 1.2"
+  },
+  "./platform/daemon": {
+    "gzip_bytes": 182,
+    "rationale": "v0.30.0 public entry facade; measured 151 B gzip * 1.2"
+  },
+  "./platform/discovery": {
+    "gzip_bytes": 149,
+    "rationale": "v0.30.0 public entry facade; measured 124 B gzip * 1.2"
+  },
+  "./platform/git": {
+    "gzip_bytes": 71,
+    "rationale": "v0.30.0 public entry facade; measured 59 B gzip * 1.2"
+  },
+  "./platform/hooks": {
+    "gzip_bytes": 308,
+    "rationale": "v0.30.0 public entry facade; measured 256 B gzip * 1.2"
+  },
+  "./platform/integrations": {
+    "gzip_bytes": 459,
+    "rationale": "v0.30.0 public entry facade; measured 382 B gzip * 1.2"
+  },
+  "./platform/intelligence": {
+    "gzip_bytes": 419,
+    "rationale": "v0.30.0 public entry facade; measured 349 B gzip * 1.2"
+  },
+  "./platform/knowledge": {
+    "gzip_bytes": 1174,
+    "rationale": "v0.30.0 public entry facade; measured 978 B gzip * 1.2"
+  },
+  "./platform/knowledge/extensions": {
+    "gzip_bytes": 38,
+    "rationale": "v0.30.0 public entry facade; measured 31 B gzip * 1.2"
+  },
+  "./platform/knowledge/home-graph": {
+    "gzip_bytes": 171,
+    "rationale": "v0.30.0 public entry facade; measured 142 B gzip * 1.2"
+  },
+  "./platform/knowledge/project-planning": {
+    "gzip_bytes": 230,
+    "rationale": "v0.30.0 public entry facade; measured 191 B gzip * 1.2"
+  },
+  "./platform/mcp": {
+    "gzip_bytes": 128,
+    "rationale": "v0.30.0 public entry facade; measured 106 B gzip * 1.2"
+  },
+  "./platform/media": {
+    "gzip_bytes": 126,
+    "rationale": "v0.30.0 public entry facade; measured 105 B gzip * 1.2"
+  },
+  "./platform/multimodal": {
+    "gzip_bytes": 80,
+    "rationale": "v0.30.0 public entry facade; measured 66 B gzip * 1.2"
+  },
+  "./platform/node": {
+    "gzip_bytes": 342,
+    "rationale": "v0.30.0 public entry facade; measured 285 B gzip * 1.2"
+  },
+  "./platform/node/runtime-boundary": {
+    "gzip_bytes": 696,
+    "rationale": "v0.30.0 public entry facade; measured 580 B gzip * 1.2"
+  },
+  "./platform/pairing": {
+    "gzip_bytes": 209,
+    "rationale": "v0.30.0 public entry facade; measured 174 B gzip * 1.2"
+  },
+  "./platform/providers": {
+    "gzip_bytes": 124,
+    "rationale": "v0.30.0 public entry facade; measured 103 B gzip * 1.2"
+  },
+  "./platform/runtime": {
+    "gzip_bytes": 1509,
+    "rationale": "v0.30.0 public entry facade; measured 1257 B gzip * 1.2"
+  },
+  "./platform/security": {
+    "gzip_bytes": 202,
+    "rationale": "v0.30.0 public entry facade; measured 168 B gzip * 1.2"
+  },
+  "./platform/state": {
+    "gzip_bytes": 518,
+    "rationale": "v0.30.0 public entry facade; measured 431 B gzip * 1.2"
+  },
+  "./platform/tools": {
+    "gzip_bytes": 2158,
+    "rationale": "v0.30.0 public entry facade; measured 1798 B gzip * 1.2"
+  },
+  "./platform/voice": {
+    "gzip_bytes": 142,
+    "rationale": "v0.30.0 public entry facade; measured 118 B gzip * 1.2"
+  },
+  "./platform/watchers": {
+    "gzip_bytes": 159,
+    "rationale": "v0.30.0 public entry facade; measured 132 B gzip * 1.2"
+  },
+  "./platform/web-search": {
+    "gzip_bytes": 237,
+    "rationale": "v0.30.0 public entry facade; measured 197 B gzip * 1.2"
+  },
+  "./workers": {
+    "gzip_bytes": 2752,
+    "rationale": "v0.30.0 public entry facade; measured 2293 B gzip * 1.2"
   }
 }

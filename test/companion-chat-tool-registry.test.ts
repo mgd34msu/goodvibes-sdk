@@ -14,15 +14,15 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
+import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionLLMProvider,
   CompanionChatEventPublisher,
   CompanionProviderChunk,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import { ToolRegistry } from '../packages/sdk/src/_internal/platform/tools/registry.js';
-import type { ToolResult } from '../packages/sdk/src/_internal/platform/types/tools.js';
-import type { ProviderMessage } from '../packages/sdk/src/_internal/platform/providers/interface.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import { ToolRegistry } from '../packages/sdk/src/platform/tools/registry.js';
+import type { ToolResult } from '../packages/sdk/src/platform/types/tools.js';
+import type { ProviderMessage } from '../packages/sdk/src/platform/providers/interface.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

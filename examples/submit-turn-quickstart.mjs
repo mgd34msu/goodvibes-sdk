@@ -40,7 +40,8 @@ const turnDone = new Promise((resolve) => {
   });
 
   // Resolve and clean up on any terminal event (completed / error / cancelled).
-  const finish = (label, detail = '') => { unsubDelta(); process.stdout.write('\n'); console.log(`[turn] ${label}${detail}`); resolve(); };
+  /** @param {string} label @param {string} [detail] */
+  const finish = (label, detail = '') => { unsubDelta(); process.stdout.write('\n'); console.log(`[turn] ${label}${detail}`); resolve(undefined); };
   sessionEvents.turn.onEnvelope('TURN_COMPLETED', (e) => { finish('completed', ` (${e.payload.stopReason})`); });
   sessionEvents.turn.onEnvelope('TURN_ERROR',     (e) => { finish('error', `: ${e.payload.error}`); });
   sessionEvents.turn.onEnvelope('TURN_CANCEL',    () => { finish('cancelled'); });
@@ -55,5 +56,8 @@ const msg = await sdk.operator.sessions.messages.create(sessionId, {
 console.log(`[message] submitted to session: ${sessionId}`);
 
 // 5. Wait for the turn to finish (or time out after 60 s), then exit cleanly.
-const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Turn timeout after 60s')), 60_000));
+const timeout = new Promise((_, reject) => {
+  const timer = setTimeout(() => reject(new Error('Turn timeout after 60s')), 60_000);
+  timer.unref?.();
+});
 await Promise.race([turnDone, timeout]);

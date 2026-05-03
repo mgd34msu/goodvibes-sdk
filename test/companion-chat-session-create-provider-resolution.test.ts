@@ -5,19 +5,19 @@
  *
  * Happy path: callback returns {provider, model} → session created with those values
  * Failure path: callback returns null → HTTP 400 NO_MODEL_CONFIGURED, no session row
- * Legacy path: callback absent → session created with null provider/model (backward compat)
+ * Missing resolver path: callback absent and no explicit provider/model → HTTP 400
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
-import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import { dispatchCompanionChatRoutes } from '../packages/sdk/src/_internal/platform/companion/companion-chat-routes.js';
+import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
 import type {
   CompanionChatEventPublisher,
   CompanionChatManagerConfig,
   CompanionLLMProvider,
   CompanionProviderChunk,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
-import type { CompanionChatRouteContext } from '../packages/sdk/src/_internal/platform/companion/companion-chat-route-types.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -178,24 +178,38 @@ describe('F16b — companion-chat session-create: resolver returns null → 400'
 });
 
 // ---------------------------------------------------------------------------
-// Legacy path: callback absent → session created with null provider/model
+// Missing resolver path: callback absent and no explicit provider/model → HTTP 400
 // ---------------------------------------------------------------------------
 
-describe('F16b — companion-chat session-create: legacy (no resolver) backward compat', () => {
-  test('no resolver → session created even when body has no provider/model', async () => {
+describe('F16b — companion-chat session-create: missing resolver', () => {
+  test('no resolver and no body provider/model → 400 NO_MODEL_CONFIGURED', async () => {
     const manager = makeManager();
     const ctx = makeContext(manager); // no resolver injected
     const res = await dispatchCompanionChatRoutes(makePostRequest({}), ctx);
-    expect(res!.status).toBe(201);
+    expect(res!.status).toBe(400);
     const body = await res!.json() as Record<string, unknown>;
-    expect(typeof body['sessionId']).toBe('string');
+    expect(body['code']).toBe('NO_MODEL_CONFIGURED');
   });
 
-  test('no resolver → session created from empty POST (no body)', async () => {
+  test('no resolver and empty POST body → 400 NO_MODEL_CONFIGURED', async () => {
     const manager = makeManager();
     const ctx = makeContext(manager);
     const req = new Request('http://localhost/api/companion/chat/sessions', { method: 'POST' });
     const res = await dispatchCompanionChatRoutes(req, ctx);
+    expect(res!.status).toBe(400);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(body['code']).toBe('NO_MODEL_CONFIGURED');
+  });
+
+  test('no resolver but explicit provider/model → 201 session created', async () => {
+    const manager = makeManager();
+    const ctx = makeContext(manager);
+    const res = await dispatchCompanionChatRoutes(
+      makePostRequest({ provider: 'inception', model: 'mercury-2' }),
+      ctx,
+    );
     expect(res!.status).toBe(201);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(typeof body['sessionId']).toBe('string');
   });
 });

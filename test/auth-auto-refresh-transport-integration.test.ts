@@ -9,18 +9,29 @@
  * no `.catch(() => {})`, no `test.skip`, no `test.todo`.
  */
 
-import { describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import {
   createGoodVibesSdk,
 } from '../packages/sdk/src/client.js';
 import {
   createMemoryTokenStore,
 } from '../packages/sdk/src/auth.js';
-import { GoodVibesSdkError } from '../packages/sdk/src/_internal/errors/index.js';
+import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const TEST_NOW_MS = 1_800_000_000_000;
+const originalDateNow = Date.now;
+
+beforeEach(() => {
+  Date.now = () => TEST_NOW_MS;
+});
+
+afterEach(() => {
+  Date.now = originalDateNow;
+});
 
 /** Minimal valid accounts.snapshot response that passes Zod validation. */
 function makeSnapshotResponse(): object {

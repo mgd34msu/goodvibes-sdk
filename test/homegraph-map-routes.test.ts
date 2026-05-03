@@ -2,10 +2,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
-import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
-import { HomeGraphRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/home-graph-routes.js';
-import { HomeGraphService } from '../packages/sdk/src/_internal/platform/knowledge/index.js';
-import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
+import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
+import { HomeGraphRoutes } from '../packages/sdk/src/platform/daemon/http/home-graph-routes.js';
+import { HomeGraphService } from '../packages/sdk/src/platform/knowledge/index.js';
+import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
 

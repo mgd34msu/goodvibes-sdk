@@ -7,11 +7,11 @@
  * - Escalation: score repeatedly below threshold → WORKFLOW_CHAIN_FAILED after maxFixAttempts
  */
 import { describe, expect, test, beforeEach } from 'bun:test';
-import { WrfcController } from '../packages/sdk/src/_internal/platform/agents/wrfc-controller.js';
-import { RuntimeEventBus } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import { createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/event-envelope.js';
-import type { AgentRecord } from '../packages/sdk/src/_internal/platform/tools/agent/manager.js';
-import type { AgentManagerLike } from '../packages/sdk/src/_internal/platform/agents/wrfc-config.js';
+import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
+import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
+import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

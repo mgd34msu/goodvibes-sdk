@@ -7,12 +7,12 @@ import { describe, expect, test } from 'bun:test';
  */
 describe('obs-04 llm instrumentation', () => {
   test('instrumentedLlmCall is exported from llm-observability', async () => {
-    const mod = await import('../packages/sdk/src/_internal/platform/runtime/llm-observability.js');
+    const mod = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
     expect(typeof mod.instrumentedLlmCall).toBe('function');
   });
 
   test('instrumentedLlmCall returns InstrumentedLlmResult with result and durationMs', async () => {
-    const { instrumentedLlmCall } = await import('../packages/sdk/src/_internal/platform/runtime/llm-observability.js');
+    const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
     const wrapped = await instrumentedLlmCall(async () => ({ answer: 42 }));
     expect(wrapped.result).toEqual({ answer: 42 });
     expect(typeof wrapped.durationMs).toBe('number');
@@ -21,7 +21,7 @@ describe('obs-04 llm instrumentation', () => {
   });
 
   test('instrumentedLlmCall tracks retries when fn throws then succeeds', async () => {
-    const { instrumentedLlmCall } = await import('../packages/sdk/src/_internal/platform/runtime/llm-observability.js');
+    const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
     let calls = 0;
     const wrapped = await instrumentedLlmCall(async () => {
       calls++;
@@ -33,15 +33,15 @@ describe('obs-04 llm instrumentation', () => {
   });
 
   test('instrumentedLlmCall propagates error after exhausting retries', async () => {
-    const { instrumentedLlmCall } = await import('../packages/sdk/src/_internal/platform/runtime/llm-observability.js');
+    const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
     const promise = instrumentedLlmCall(async () => { throw new Error('fatal'); }, { maxRetries: 0 });
     await expect(promise).rejects.toThrow('fatal');
   });
 
   // Integration: verify platformMeter instruments are incremented on success
   test('instrumentedLlmCall records llmRequestsTotal on success', async () => {
-    const { instrumentedLlmCall } = await import('../packages/sdk/src/_internal/platform/runtime/llm-observability.js');
-    const { llmRequestsTotal } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
+    const { llmRequestsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = llmRequestsTotal.value({ provider: 'test-provider', model: 'test-model', status: 'success' });
     await instrumentedLlmCall(async () => ({ content: 'hello' }), { provider: 'test-provider', model: 'test-model' });
     const after = llmRequestsTotal.value({ provider: 'test-provider', model: 'test-model', status: 'success' });
@@ -50,8 +50,8 @@ describe('obs-04 llm instrumentation', () => {
 
   // Integration: verify llmRequestDurationMs histogram receives a recording
   test('instrumentedLlmCall records llmRequestDurationMs on success', async () => {
-    const { instrumentedLlmCall } = await import('../packages/sdk/src/_internal/platform/runtime/llm-observability.js');
-    const { llmRequestDurationMs } = await import('../packages/sdk/src/_internal/platform/runtime/metrics.js');
+    const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
+    const { llmRequestDurationMs } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const snapBefore = llmRequestDurationMs.snapshot({ provider: 'duration-test', model: 'duration-model' });
     await instrumentedLlmCall(async () => 'done', { provider: 'duration-test', model: 'duration-model' });
     const snapAfter = llmRequestDurationMs.snapshot({ provider: 'duration-test', model: 'duration-model' });
@@ -60,7 +60,7 @@ describe('obs-04 llm instrumentation', () => {
 
   // Integration: onStarted callback is invoked at entry
   test('instrumentedLlmCall calls onStarted before fn executes', async () => {
-    const { instrumentedLlmCall } = await import('../packages/sdk/src/_internal/platform/runtime/llm-observability.js');
+    const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
     const order: string[] = [];
     await instrumentedLlmCall(async () => { order.push('fn'); return 42; }, {
       onStarted: () => { order.push('started'); },

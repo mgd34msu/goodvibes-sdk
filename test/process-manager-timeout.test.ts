@@ -7,7 +7,7 @@
  * c) spawn returns a process_id and pid
  */
 import { describe, expect, test } from 'bun:test';
-import { ProcessManager } from '../packages/sdk/src/_internal/platform/tools/shared/process-manager.js';
+import { ProcessManager } from '../packages/sdk/src/platform/tools/shared/process-manager.js';
 
 describe('ProcessManager.spawn', () => {
   test('returns process_id and pid', async () => {

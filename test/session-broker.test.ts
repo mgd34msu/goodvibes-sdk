@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { SharedSessionBroker } from '../packages/sdk/src/_internal/platform/control-plane/session-broker.ts';
-import { PersistentStore } from '../packages/sdk/src/_internal/platform/state/persistent-store.ts';
-import { RouteBindingManager } from '../packages/sdk/src/_internal/platform/channels/index.ts';
+import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
+import { PersistentStore } from '../packages/sdk/src/platform/state/persistent-store.ts';
+import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
 
 // ---------------------------------------------------------------------------
 // Minimal stubs for broker construction

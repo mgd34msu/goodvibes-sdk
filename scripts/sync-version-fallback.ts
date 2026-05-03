@@ -6,7 +6,7 @@ const rootPackage = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const version = rootPackage.version;
 
 const targets = [
-  join(root, 'packages', 'sdk', 'src', '_internal', 'platform', 'version.ts'),
+  join(root, 'packages', 'sdk', 'src', 'platform', 'version.ts'),
 ];
 
 for (const target of targets) {

@@ -1,1 +1,1 @@
-export * from '../../_internal/platform/daemon/server.js';
+export { DaemonServer } from './facade.js';

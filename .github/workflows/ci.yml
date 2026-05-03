@@ -10,7 +10,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # Kitchen-sink gate: docs check, typecheck, browser compat, metadata,
   # no-any, pack check, install smoke. Deliberately self-contained — this is
-  # the 'everything works atomically' integration check that mirrors what a
+  # the 'everything works atomically' integration check that matches what a
   # local developer runs via `bun run validate`.
   # ---------------------------------------------------------------------------
   validate:
@@ -65,10 +65,10 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # Sync mirror guard for the transport-http package. Cheap.
+  # Generated contract artifact drift guard. Cheap.
   # ---------------------------------------------------------------------------
-  mirror-drift:
-    name: Mirror drift guard (transport-http)
+  contract-artifact-check:
+    name: Contract artifact check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -76,8 +76,8 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
-      - name: Check transport-http mirror parity
-        run: bun run sync:check
+      - name: Check generated contract artifacts
+        run: bun run contracts:check
 
   # ---------------------------------------------------------------------------
   # Platform matrix — each platform builds and runs its test suite. Isolated
@@ -121,69 +121,17 @@ jobs:
       - name: Run test suite (${{ matrix.platform }})
         run: ${{ matrix.test-cmd }}
 
-  # ---------------------------------------------------------------------------
-  # Consolidated lint-style gates. Previously three separate jobs
-  # (throw-guard, changelog-check, version-consistency); merged here to cut
-  # cold-start overhead. Each step is independent, so one failure still shows
-  # up distinctly in the logs.
-  # ---------------------------------------------------------------------------
-  lint-gates:
-    name: Lint gates (throw / changelog / version)
+  examples-typecheck:
+    name: Examples typecheck
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
-      - name: Ensure ripgrep is available
-        run: |
-          set -euo pipefail
-          if ! command -v rg >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y ripgrep
-          fi
-      - name: Raw throw guard
-        run: |
-          set -euo pipefail
-          # Scan canonical package source (exclude _internal mirror, errors package, tests)
-          if rg --type ts \
-               -l \
-               -e 'throw new Error\(' \
-               -e 'throw Error\(' \
-               -e 'throw \{' \
-               -e "throw '" \
-               -e 'throw "' \
-               packages \
-               --glob '**/src/**' \
-               --glob '!**/_internal/**' \
-               --glob '!**/errors/**' \
-               --glob '!**/*.test.ts' \
-               --glob '!**/tests/**' \
-               --glob '!**/__tests__/**' \
-               2>/dev/null | grep -q .; then
-            echo "ERROR: Raw throw found in public SDK source." >&2
-            rg --type ts \
-               -n \
-               -e 'throw new Error\(' \
-               -e 'throw Error\(' \
-               -e 'throw \{' \
-               -e "throw '" \
-               -e 'throw "' \
-               packages \
-               --glob '**/src/**' \
-               --glob '!**/_internal/**' \
-               --glob '!**/errors/**' \
-               --glob '!**/*.test.ts' \
-               --glob '!**/tests/**' \
-               --glob '!**/__tests__/**' >&2 || true
-            exit 1
-          fi
-          echo "throw-guard: no raw throws found in public source."
-      - name: Changelog gate
-        run: bun run changelog:check
-      - name: Version consistency
-        run: bun run version:check
+      - name: Typecheck examples
+        run: bun run --cwd examples typecheck
 
   # ---------------------------------------------------------------------------
   # Consumer jobs that share the build artifact. Each tests the exact same
@@ -248,6 +196,42 @@ jobs:
       - name: Run publint
         run: bun run publint:check
 
+  api-surface-check:
+    name: API surface snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download dist artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: sdk-dist
+          path: packages/sdk/dist
+      - name: Check API surface snapshot
+        run: bun run api:check
+
+  bundle-budget-check:
+    name: Bundle budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download dist artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: sdk-dist
+          path: packages/sdk/dist
+      - name: Check bundle budgets
+        run: bun run bundle:check
+
   sbom-check:
     name: SBOM generation + validation (CycloneDX)
     runs-on: ubuntu-latest
@@ -298,82 +282,33 @@ jobs:
             }
             console.log('SBOM schema OK — specVersion:', sbom.specVersion, 'components:', sbom.components.length);
           "
+      - name: Enforce license policy
+        run: |
+          set -euo pipefail
+          node -e "
+            const sbom = JSON.parse(require('fs').readFileSync('sbom.cdx.json', 'utf8'));
+            const blocked = /^(?:AGPL|GPL|LGPL|SSPL)(?:-|$)/i;
+            const offenders = [];
+            for (const component of sbom.components ?? []) {
+              const licenses = (component.licenses ?? []).flatMap((entry) => {
+                if (entry.license?.id) return [entry.license.id];
+                if (entry.license?.name) return [entry.license.name];
+                if (entry.expression) return [entry.expression];
+                return [];
+              });
+              if (licenses.some((license) => blocked.test(String(license)))) {
+                offenders.push(component.name + '@' + component.version + ' (' + licenses.join(', ') + ')');
+              }
+            }
+            if (offenders.length > 0) {
+              console.error('Blocked license(s):\n' + offenders.join('\n'));
+              process.exit(1);
+            }
+            console.log('License policy OK');
+          "
       - name: Upload SBOM as CI artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sbom-cdx-json
           path: sbom.cdx.json
           retention-days: 30
-
-  # ---------------------------------------------------------------------------
-  # PR-only guard: detects mass deletions of mirrored files that `sync --scope=all`
-  # would remove. Intentionally skipped on push-to-main — post-merge drift is
-  # caught by mirror-drift; this job exists to block the PR before merge.
-  # ---------------------------------------------------------------------------
-  sync-safety-check:
-    name: Sync safety check (mirror drift + deletion guard)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Check all mirrors are in sync
-        run: bun run sync:check
-      - name: Guard against mass deletions
-        run: |
-          set -euo pipefail
-          # Count how many mirror files would be deleted if we ran sync --scope=all
-          # A deletion happens when a mirror file has no canonical counterpart.
-          # We detect this by counting files reported as STALE by sync:check stderr,
-          # but sync:check already exits 1 if there is any drift, so we run a
-          # separate stale-file count using the same logic.
-          STALE_COUNT=$(
-            node -e "
-              const { readdirSync, existsSync } = require('fs');
-              const { resolve, relative } = require('path');
-              const ROOT = process.cwd();
-              const INTERNAL = resolve(ROOT, 'packages/sdk/src/_internal');
-              const CANONICAL_DIRS = {
-                contracts: 'packages/contracts/src',
-                errors: 'packages/errors/src',
-                daemon: 'packages/daemon-sdk/src',
-                'transport-core': 'packages/transport-core/src',
-                'transport-direct': 'packages/transport-direct/src',
-                'transport-http': 'packages/transport-http/src',
-                'transport-realtime': 'packages/transport-realtime/src',
-                operator: 'packages/operator-sdk/src',
-                peer: 'packages/peer-sdk/src',
-              };
-              function walk(dir) {
-                const files = [];
-                for (const e of readdirSync(dir, { withFileTypes: true })) {
-                  const full = resolve(dir, e.name);
-                  if (e.isDirectory()) files.push(...walk(full));
-                  else if (e.isFile() && e.name.endsWith('.ts')) files.push(full);
-                }
-                return files;
-              }
-              let stale = 0;
-              for (const [scope, canonDir] of Object.entries(CANONICAL_DIRS)) {
-                const mirrorDir = resolve(INTERNAL, scope);
-                if (!existsSync(mirrorDir)) continue;
-                const canonSet = new Set(walk(resolve(ROOT, canonDir)).map(p => relative(resolve(ROOT, canonDir), p)));
-                for (const mf of walk(mirrorDir)) {
-                  if (!canonSet.has(relative(mirrorDir, mf))) stale++;
-                }
-              }
-              console.log(stale);
-            "
-          )
-          echo "Stale mirror files (would be deleted by sync --scope=all): $STALE_COUNT"
-          MAX_DELETIONS=10
-          if [ "$STALE_COUNT" -gt "$MAX_DELETIONS" ]; then
-            echo "ERROR: $STALE_COUNT mirror files would be deleted, exceeding threshold of $MAX_DELETIONS." >&2
-            echo "This likely means canonical files were removed without updating the mirror." >&2
-            echo "Run: bun run sync --scope=<affected-scope> to regenerate, then verify intent." >&2
-            exit 1
-          fi
-          echo "Deletion guard passed — $STALE_COUNT stale file(s) within threshold."

@@ -4,9 +4,12 @@ export type { RuntimeEventFeed, RuntimeEventFeeds, EnvelopeSubscriber } from './
 export { createRuntimeEventFeed, createRuntimeEventFeeds } from './event-feeds.js';
 export type { ClientTransport } from './client-transport.js';
 export { createClientTransport } from './client-transport.js';
+export type { DirectClientTransport } from './direct.js';
+export { createDirectClientTransport } from './direct.js';
 export type { TransportObserver, TransportActivityInfo } from './observer.js';
 export { invokeTransportObserver } from './observer.js';
 export type { TransportContext, TransportMiddleware } from './middleware.js';
 export { composeMiddleware } from './middleware.js';
 export { injectTraceparent, injectTraceparentAsync } from './otel.js';
 export { createUuidV4 } from './uuid.js';
+export { describeUnknownTransportError, isAbortError, transportErrorFromUnknown } from './errors.js';

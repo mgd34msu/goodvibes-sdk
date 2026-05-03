@@ -2,12 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
-import { ArtifactStore } from '../packages/sdk/src/_internal/platform/artifacts/index.js';
+import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
 import {
   HomeGraphService,
   homeAssistantKnowledgeSpaceId,
-} from '../packages/sdk/src/_internal/platform/knowledge/index.js';
-import { KnowledgeStore } from '../packages/sdk/src/_internal/platform/knowledge/store.js';
+} from '../packages/sdk/src/platform/knowledge/index.js';
+import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 
 const tmpRoots: string[] = [];
 
@@ -159,5 +159,5 @@ function homeGraphMetadata(spaceId: string, installationId: string): Record<stri
 }
 
 function manualPreface(): string {
-  return Array.from({ length: 120 }, (_, index) => `Model compatibility line ${index + 1}`).join('\n');
+  return Array.from({ length: 120 }, (_, index) => `Model support line ${index + 1}`).join('\n');
 }

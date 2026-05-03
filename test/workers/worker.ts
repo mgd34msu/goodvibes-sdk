@@ -18,9 +18,9 @@
 
 import type { ExportedHandler, ExecutionContext } from '@cloudflare/workers-types';
 // Static imports resolved via Miniflare modulesRoot -> packages/sdk/dist
-// @ts-ignore — resolved by esbuild at bundle time, not tsc
+// @ts-expect-error resolved by esbuild at bundle time, not tsc
 import { createWebGoodVibesSdk } from './web.js';
-// @ts-ignore — resolved by esbuild at bundle time, not tsc
+// @ts-expect-error resolved by esbuild at bundle time, not tsc
 import * as SdkErrors from './errors.js';
 
 interface Env {}
@@ -156,7 +156,7 @@ async function handleTransportSuccess(): Promise<Response> {
  * /transport-error — HTTP transport with 5xx response (error path).
  *
  * Mock returns a 500 to verify the SDK's error taxonomy surfaces
- * a typed 'server' error kind rather than a raw runtime crash.
+ * a typed 'service' error kind rather than a raw runtime crash.
  */
 async function handleTransportError(): Promise<Response> {
   // Mock fetch that always returns a 5xx to trigger typed error
@@ -234,7 +234,7 @@ function handleErrors(): Response {
  *
  * Workers concern: crypto.subtle IS available (no polyfill needed).
  * crypto.randomUUID IS available. This verifies future token-crypto paths
- * will work without shims.
+ * will work without extra adapters.
  */
 async function handleCrypto(): Promise<Response> {
   const uuid = crypto.randomUUID();

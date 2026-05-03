@@ -1,4 +1,5 @@
 import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';
+import { ConfigurationError, GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import {
   normalizeAuthToken,
   type AuthTokenResolver,
@@ -8,7 +9,13 @@ import {
   getStreamReconnectDelay,
 } from '@pellux/goodvibes-transport-http';
 import { buildUrl, normalizeBaseUrl } from '@pellux/goodvibes-transport-http';
-import { injectTraceparentAsync, invokeTransportObserver, type TransportObserver } from '@pellux/goodvibes-transport-core';
+import {
+  describeUnknownTransportError,
+  injectTraceparentAsync,
+  invokeTransportObserver,
+  transportErrorFromUnknown,
+  type TransportObserver,
+} from '@pellux/goodvibes-transport-core';
 import {
   createRemoteDomainEvents,
   type DomainEventConnector,
@@ -65,7 +72,7 @@ export interface RuntimeEventConnectorOptions {
   /**
    * Called once the WebSocket connector is set up, providing an `emitLocal`
    * function the caller can use to send messages over this connection.
-   * Primarily for test/shim use cases that need to inject outbound frames.
+   * Primarily for tests and local harnesses that need to inject outbound frames.
    */
   readonly onEmitter?: (emitLocal: (data: string) => void) => void;
 }
@@ -78,18 +85,26 @@ export const DEFAULT_WS_MAX_ATTEMPTS = 10;
 /** Maximum number of messages that may be queued in the outbound queue before the oldest entry is dropped. */
 const MAX_OUTBOUND_QUEUE = 1024;
 
-function errorFromUnknown(error: unknown, context: string): Error {
-  if (error instanceof Error) return error;
-  if (typeof error === 'object' && error !== null) {
-    const record = error as Record<string, unknown>;
-    const fields = [
-      typeof record.name === 'string' ? `name=${record.name}` : undefined,
-      typeof record.type === 'string' ? `type=${record.type}` : undefined,
-      typeof record.message === 'string' ? `message=${record.message}` : undefined,
-    ].filter(Boolean);
-    return new Error(`${context}: ${fields.length > 0 ? fields.join(' ') : Object.prototype.toString.call(error)}`);
+function getSocketOpenState(WebSocketImpl: typeof WebSocket): number {
+  return typeof WebSocketImpl.OPEN === 'number' ? WebSocketImpl.OPEN : 1;
+}
+
+function isSocketOpen(socket: WebSocket, WebSocketImpl: typeof WebSocket): boolean {
+  return socket.readyState === getSocketOpenState(WebSocketImpl);
+}
+
+export class WebSocketTransportError extends GoodVibesSdkError {
+  constructor(message: string, options: { readonly cause?: unknown; readonly hint?: string } = {}) {
+    super(message, {
+      code: 'WEBSOCKET_TRANSPORT_ERROR',
+      category: 'network',
+      source: 'transport',
+      recoverable: true,
+      hint: options.hint,
+      cause: options.cause,
+    });
+    this.name = 'WebSocketTransportError';
   }
-  return new Error(`${context}: ${String(error)}`);
 }
 
 export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
@@ -128,7 +143,10 @@ export function buildWebSocketUrl(
   } else if (url.protocol === 'https:') {
     url.protocol = 'wss:';
   } else if (url.protocol !== 'ws:' && url.protocol !== 'wss:') {
-    throw new Error(`Unsupported WebSocket base URL protocol: ${url.protocol}`);
+    throw new ConfigurationError(`Unsupported WebSocket base URL protocol: ${url.protocol}`, {
+      source: 'transport',
+      hint: 'Runtime event WebSocket clients require http, https, ws, or wss base URLs.',
+    });
   }
   assertWebSocketAuthTransportIsSafe(url);
   url.searchParams.set('clientKind', 'web');
@@ -146,7 +164,10 @@ function assertWebSocketAuthTransportIsSafe(url: URL): void {
     || host === '::1'
     || host.startsWith('127.');
   if (!isLoopback) {
-    throw new Error('Refusing to send GoodVibes WebSocket authentication over insecure ws:// transport. Use https:// or wss://.');
+    throw new ConfigurationError('Refusing to send GoodVibes WebSocket authentication over insecure ws:// transport. Use https:// or wss://.', {
+      source: 'transport',
+      hint: 'Use https:// or wss:// for non-loopback WebSocket runtime event connections.',
+    });
   }
 }
 
@@ -182,7 +203,7 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
           });
         },
         onError: (err) => {
-          const streamError = errorFromUnknown(err, 'SSE runtime event stream error');
+          const streamError = transportErrorFromUnknown(err, 'SSE runtime event stream error');
           invokeTransportObserver(() => observer?.onError?.(streamError));
           handleError?.(streamError);
         },
@@ -192,7 +213,7 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
         headers: Object.keys(sseHeaders).length > 0 ? sseHeaders : undefined,
       });
     } catch (error) {
-      const connectionError = errorFromUnknown(error, 'SSE runtime event connection failed');
+      const connectionError = transportErrorFromUnknown(error, 'SSE runtime event connection failed');
       invokeTransportObserver(() => observer?.onError?.(connectionError));
       handleError?.(connectionError);
       throw connectionError;
@@ -243,7 +264,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
      * @param data - Serialised message string to send.
      */
     const emitLocal = (data: string): void => {
-      if (socket && socket.readyState === WebSocketImpl.OPEN) {
+      if (socket && isSocketOpen(socket, WebSocketImpl)) {
         socket.send(data);
         return;
       }
@@ -253,15 +274,18 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         droppedOutboundCount += 1;
         if (!queueOverflowNotified) {
           queueOverflowNotified = true;
-          options.onError?.(new Error(
+          options.onError?.(new WebSocketTransportError(
             `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE}). Dropping oldest messages until the socket reconnects.`,
+            {
+              hint: 'Wait for the runtime event WebSocket to reconnect before sending more local frames.',
+            },
           ));
         }
       }
       outboundQueue.push(data);
     };
 
-    // Notify caller of the emitter handle (for test/shim use cases).
+    // Notify caller of the emitter handle for tests and local frame injection.
     options.onEmitter?.(emitLocal);
 
     const closeSocket = () => {
@@ -283,14 +307,21 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       const delayMs = getStreamReconnectDelay(nextAttempt, reconnectPolicy);
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        void connect();
+        void connect().catch((error) => {
+          const connectionError = transportErrorFromUnknown(error, 'WebSocket runtime event reconnect failed');
+          invokeTransportObserver(() => observer?.onError?.(connectionError));
+          options.onError?.(connectionError);
+          scheduleReconnect();
+        });
       }, delayMs);
       reconnectTimer.unref?.();
     };
 
     const flushOutboundQueue = (ws: WebSocket) => {
       while (outboundQueue.length > 0) {
-        ws.send(outboundQueue.shift()!);
+        const data = outboundQueue.shift();
+        if (data === undefined) break;
+        ws.send(data);
       }
     };
 
@@ -301,14 +332,14 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         : socket;
       try {
         const authToken = (await normalizeAuthToken(token ?? undefined)()) ?? null;
-        if (!authToken || !openedSocket || stopped || socket !== openedSocket || openedSocket.readyState !== WebSocketImpl.OPEN) return;
+        if (!authToken || !openedSocket || stopped || socket !== openedSocket) return;
         // Notify observer of outbound WS connection.
         invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
         // Send auth frame first, then drain any messages buffered during resolution.
         // Inject traceparent into the auth frame for W3C Trace Context propagation over WebSocket.
         const wsTraceHeaders: Record<string, string> = {};
         await injectTraceparentAsync(wsTraceHeaders);
-        if (stopped || socket !== openedSocket || openedSocket.readyState !== WebSocketImpl.OPEN) return;
+        if (stopped || socket !== openedSocket) return;
         openedSocket.send(JSON.stringify({
           type: 'auth',
           token: authToken,
@@ -318,7 +349,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         }));
         flushOutboundQueue(openedSocket);
       } catch (error) {
-        const sendError = errorFromUnknown(error, 'WebSocket send failed');
+        const sendError = transportErrorFromUnknown(error, 'WebSocket send failed');
         invokeTransportObserver(() => observer?.onError?.(sendError));
         options.onError?.(sendError);
         closeSocket();
@@ -346,20 +377,30 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           });
         }
       } catch (error) {
-        const malformed = new Error(`Malformed WebSocket runtime event frame: ${errorFromUnknown(error, 'parse error').message}`);
+        const malformed = new GoodVibesSdkError(`Malformed WebSocket runtime event frame: ${transportErrorFromUnknown(error, 'parse error').message}`, {
+          category: 'protocol',
+          source: 'transport',
+          recoverable: true,
+          cause: error,
+        });
         invokeTransportObserver(() => observer?.onError?.(malformed));
         options.onError?.(malformed);
       }
     };
 
-    const onClose = () => {
+    const onClose = (event: CloseEvent) => {
       hasReceivedMessage = false;
+      if (!stopped && event.code !== 1000 && event.code !== 1005) {
+        const closeError = webSocketCloseError(event);
+        invokeTransportObserver(() => observer?.onError?.(closeError));
+        options.onError?.(closeError);
+      }
       closeSocket();
       scheduleReconnect();
     };
 
     const onError = (event: Event) => {
-      const streamError = errorFromUnknown(event, 'WebSocket runtime event stream error');
+      const streamError = webSocketEventError(event);
       invokeTransportObserver(() => observer?.onError?.(streamError));
       options.onError?.(streamError);
     };
@@ -378,7 +419,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     try {
       await connect();
     } catch (error) {
-      const connectionError = errorFromUnknown(error, 'WebSocket runtime event connection failed');
+      const connectionError = transportErrorFromUnknown(error, 'WebSocket runtime event connection failed');
       invokeTransportObserver(() => observer?.onError?.(connectionError));
       options.onError?.(connectionError);
       throw connectionError;
@@ -391,4 +432,34 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       closeSocket();
     };
   };
+}
+
+function webSocketCloseError(event: CloseEvent): Error {
+  const reason = typeof event.reason === 'string' ? event.reason.trim() : '';
+  const code = typeof event.code === 'number' ? event.code : 1005;
+  const wasClean = typeof event.wasClean === 'boolean' ? event.wasClean : false;
+  const detail = [
+    `code=${code}`,
+    reason ? `reason=${reason}` : undefined,
+    `wasClean=${wasClean}`,
+  ].filter(Boolean).join(' ');
+  return new WebSocketTransportError(`WebSocket runtime event stream closed unexpectedly: ${detail}`, {
+    cause: event,
+  });
+}
+
+function webSocketEventError(event: Event): Error {
+  const candidate = event as ErrorEvent;
+  if (candidate.error) {
+    return transportErrorFromUnknown(candidate.error, 'WebSocket runtime event stream error');
+  }
+  const eventMessage = typeof candidate.message === 'string' && candidate.message.trim().length > 0
+    ? candidate.message.trim()
+    : undefined;
+  return new WebSocketTransportError(
+    eventMessage
+      ? `WebSocket runtime event stream error: ${eventMessage}`
+      : `WebSocket runtime event stream error: ${describeUnknownTransportError(event)}`,
+    { cause: event },
+  );
 }

@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { createDaemonMediaRouteHandlers } from '../packages/daemon-sdk/src/media-routes.js';
-import { DEFAULT_CONFIG, CONFIG_SCHEMA } from '../packages/sdk/src/_internal/platform/config/schema.js';
-import { VoiceProviderRegistry } from '../packages/sdk/src/_internal/platform/voice/provider-registry.js';
-import { VoiceService } from '../packages/sdk/src/_internal/platform/voice/service.js';
-import { createElevenLabsProvider } from '../packages/sdk/src/_internal/platform/voice/providers/elevenlabs.js';
-import type { VoiceAudioChunk, VoiceSynthesisStreamResult } from '../packages/sdk/src/_internal/platform/voice/types.js';
+import { DEFAULT_CONFIG, CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.js';
+import { VoiceProviderRegistry } from '../packages/sdk/src/platform/voice/provider-registry.js';
+import { VoiceService } from '../packages/sdk/src/platform/voice/service.js';
+import { createElevenLabsProvider } from '../packages/sdk/src/platform/voice/providers/elevenlabs.js';
+import type { VoiceAudioChunk, VoiceSynthesisStreamResult } from '../packages/sdk/src/platform/voice/types.js';
 
 async function collectBytes(chunks: AsyncIterable<{ readonly data: Uint8Array }>): Promise<number[]> {
   const bytes: number[] = [];

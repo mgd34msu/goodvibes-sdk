@@ -4,21 +4,21 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   resolveDaemonHomeDir,
-  runDaemonHomeMigration,
+  ensureDaemonHome,
   readDaemonSetting,
   writeDaemonSetting,
   resolveOperatorTokenPath,
   writeOperatorTokenFile,
   readOperatorTokenFile,
-} from '../packages/sdk/src/_internal/platform/workspace/daemon-home.ts';
-import { WorkspaceSwapManager } from '../packages/sdk/src/_internal/platform/workspace/workspace-swap-manager.ts';
+} from '../packages/sdk/src/platform/workspace/daemon-home.ts';
+import { WorkspaceSwapManager } from '../packages/sdk/src/platform/workspace/workspace-swap-manager.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function tempDir(suffix: string): string {
-  const d = join(tmpdir(), `gv-test-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const d = join(tmpdir(), `gv-test-${suffix}-${Date.now()}-${crypto.randomUUID()}`);
   mkdirSync(d, { recursive: true });
   return d;
 }
@@ -58,10 +58,10 @@ describe('resolveDaemonHomeDir', () => {
 });
 
 // ---------------------------------------------------------------------------
-// runDaemonHomeMigration
+// ensureDaemonHome
 // ---------------------------------------------------------------------------
 
-describe('runDaemonHomeMigration', () => {
+describe('ensureDaemonHome', () => {
   let baseDir: string;
   let daemonHome: string;
 
@@ -75,7 +75,7 @@ describe('runDaemonHomeMigration', () => {
   });
 
   test('freshInstall=true when daemon home does not exist yet', () => {
-    const result = runDaemonHomeMigration(daemonHome, { env: {} });
+    const result = ensureDaemonHome(daemonHome);
     expect(result.freshInstall).toBe(true);
     expect(result.daemonHomeDir).toBe(daemonHome);
     expect(existsSync(daemonHome)).toBe(true);
@@ -83,33 +83,30 @@ describe('runDaemonHomeMigration', () => {
 
   test('freshInstall=false when daemon home already exists', () => {
     mkdirSync(daemonHome, { recursive: true });
-    const result = runDaemonHomeMigration(daemonHome, { env: {} });
+    const result = ensureDaemonHome(daemonHome);
     expect(result.freshInstall).toBe(false);
   });
 
-  test('creates daemon home directory during migration', () => {
+  test('creates daemon home directory when absent', () => {
     expect(existsSync(daemonHome)).toBe(false);
-    runDaemonHomeMigration(daemonHome, { env: {} });
+    ensureDaemonHome(daemonHome);
     expect(existsSync(daemonHome)).toBe(true);
   });
 
-  test('does NOT copy workspace-scoped operator-tokens.json during migration', () => {
-    // Workspace-scoped operator-tokens.json must NOT be migrated (removed in 0.21.28).
-    // Place a token file in a fake workspace .goodvibes/ — migration must ignore it.
+  test('does not import workspace-scoped operator-tokens.json', () => {
     const fakeWorkspace = join(baseDir, 'workspace');
     mkdirSync(join(fakeWorkspace, '.goodvibes'), { recursive: true });
     writeFileSync(join(fakeWorkspace, '.goodvibes', 'operator-tokens.json'), JSON.stringify({ tokens: ['tok1'] }));
 
-    runDaemonHomeMigration(daemonHome, { env: {} });
+    ensureDaemonHome(daemonHome);
 
-    // Token must NOT appear at the global path
     const dest = join(daemonHome, 'operator-tokens.json');
     expect(existsSync(dest)).toBe(false);
   });
 
-  test('skips migration when source files do not exist (no error)', () => {
-    // No old files anywhere; should not throw
-    expect(() => runDaemonHomeMigration(daemonHome, { env: {} })).not.toThrow();
+  test('creates an empty daemon home without external source files', () => {
+    expect(() => ensureDaemonHome(daemonHome)).not.toThrow();
+    expect(existsSync(daemonHome)).toBe(true);
   });
 });
 
@@ -327,7 +324,7 @@ describe('WorkspaceSwapManager: path traversal', () => {
 // W-8 additional test cases
 // ---------------------------------------------------------------------------
 
-describe('runDaemonHomeMigration: no workspace-scoped token migration', () => {
+describe('ensureDaemonHome: workspace-scoped token files are ignored', () => {
   let baseDir: string;
   let daemonHome: string;
 
@@ -338,16 +335,13 @@ describe('runDaemonHomeMigration: no workspace-scoped token migration', () => {
 
   afterEach(() => cleanup(baseDir));
 
-  test('does not migrate even valid workspace-scoped operator-tokens.json', () => {
-    // In 0.21.28+, workspace-scoped tokens are NOT migrated.
-    // Even if a valid JSON file is present at <cwd>/.goodvibes/operator-tokens.json,
-    // migration must not copy it.
+  test('does not import even valid workspace-scoped operator-tokens.json', () => {
     const oldTokenDir = join(baseDir, '.goodvibes');
     mkdirSync(oldTokenDir, { recursive: true });
     const tokenContent = JSON.stringify({ token: 'gv_x', peerId: 'p', createdAt: 0 });
     writeFileSync(join(oldTokenDir, 'operator-tokens.json'), tokenContent);
 
-    runDaemonHomeMigration(daemonHome, { env: {} });
+    ensureDaemonHome(daemonHome);
 
     const dest = join(daemonHome, 'operator-tokens.json');
     expect(existsSync(dest)).toBe(false);
@@ -373,7 +367,7 @@ describe('WorkspaceSwapManager: edge cases', () => {
         emittedEvents.push({ domain, type: envelope.type });
       },
       on: () => () => {},
-    } as unknown as import('../packages/sdk/src/_internal/platform/runtime/events/index.ts').RuntimeEventBus;
+    } as unknown as import('../packages/sdk/src/platform/runtime/events/index.ts').RuntimeEventBus;
 
     return new WorkspaceSwapManager(baseDir, {
       runtimeBus: mockBus,
@@ -460,7 +454,7 @@ describe('WorkspaceSwapManager: edge cases', () => {
         }
       },
       on: () => () => {},
-    } as unknown as import('../packages/sdk/src/_internal/platform/runtime/events/index.ts').RuntimeEventBus;
+    } as unknown as import('../packages/sdk/src/platform/runtime/events/index.ts').RuntimeEventBus;
 
     const mgr = new WorkspaceSwapManager(baseDir, {
       runtimeBus: mockBus,

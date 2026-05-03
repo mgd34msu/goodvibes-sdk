@@ -33,8 +33,10 @@ export type SDKErrorKind =
   | 'contract'
   | 'network'
   | 'not-found'
+  | 'protocol'
   | 'rate-limit'
-  | 'server'
+  | 'service'
+  | 'internal'
   | 'tool'
   | 'validation'
   | 'unknown';
@@ -58,9 +60,11 @@ function inferKind(category: ErrorCategory): SDKErrorKind {
     case 'rate_limit':
       return 'rate-limit';
     case 'protocol':
-    case 'service':
+      return 'protocol';
     case 'internal':
-      return 'server';
+      return 'internal';
+    case 'service':
+      return 'service';
     case 'bad_request':
       return 'validation';
     case 'tool':
@@ -123,6 +127,8 @@ const ERROR_CATEGORIES = new Set<ErrorCategory>([
   'tool',
   'unknown',
 ]);
+
+const GOODVIBES_SDK_ERROR_BRAND = Symbol.for('pellux.goodvibes.sdk.error');
 
 function readErrorCategory(value: unknown): ErrorCategory | undefined {
   return typeof value === 'string' && ERROR_CATEGORIES.has(value as ErrorCategory)
@@ -191,12 +197,35 @@ export class GoodVibesSdkError extends Error {
   public readonly retryAfterMs?: number;
   public override readonly cause?: unknown;
 
+  static override [Symbol.hasInstance](value: unknown): boolean {
+    if (this !== GoodVibesSdkError) {
+      return typeof value === 'object'
+        && value !== null
+        && this.prototype.isPrototypeOf(value);
+    }
+    if (typeof value !== 'object' || value === null) return false;
+    const record = value as Record<PropertyKey, unknown>;
+    return record[GOODVIBES_SDK_ERROR_BRAND] === true
+      || (
+        value instanceof Error
+        && typeof record.kind === 'string'
+        && typeof record.category === 'string'
+        && typeof record.source === 'string'
+        && typeof record.recoverable === 'boolean'
+      );
+  }
+
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     const category = options.category
       ?? inferCategoryFromCause(options.cause)
       ?? inferCategory(options.status);
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = this.constructor.name;
+    Object.defineProperty(this, GOODVIBES_SDK_ERROR_BRAND, {
+      value: true,
+      enumerable: false,
+      configurable: false,
+    });
     this.code = options.code;
     this.category = category;
     this.kind = inferKind(this.category);
@@ -265,9 +294,6 @@ function omitUndefined(record: Record<string, unknown>): Record<string, unknown>
  * Always non-recoverable (`recoverable: false`).
  * Category: `'config'`. Kind: `'config'`.
  *
- * @deprecated Use `error.kind === 'config'` instead of `instanceof ConfigurationError`.
- * This class is preserved for backward compatibility and still throws normally.
- *
  * @example
  * import { ConfigurationError } from '@pellux/goodvibes-sdk';
  *
@@ -280,6 +306,17 @@ function omitUndefined(record: Record<string, unknown>): Record<string, unknown>
  * }
  */
 export class ConfigurationError extends GoodVibesSdkError {
+  static override [Symbol.hasInstance](value: unknown): boolean {
+    if (this !== ConfigurationError) {
+      return typeof value === 'object'
+        && value !== null
+        && this.prototype.isPrototypeOf(value);
+    }
+    return typeof value === 'object'
+      && value !== null
+      && (value as Record<PropertyKey, unknown>).code === 'SDK_CONFIGURATION_ERROR';
+  }
+
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     super(message, {
       ...options,
@@ -298,9 +335,6 @@ export class ConfigurationError extends GoodVibesSdkError {
  * Always non-recoverable (`recoverable: false`).
  * Category: `'contract'`. Kind: `'contract'`.
  *
- * @deprecated Use `error.kind === 'contract'` instead of `instanceof ContractError`.
- * This class is preserved for backward compatibility and still throws normally.
- *
  * @example
  * import { ContractError } from '@pellux/goodvibes-sdk';
  *
@@ -314,6 +348,17 @@ export class ConfigurationError extends GoodVibesSdkError {
  * }
  */
 export class ContractError extends GoodVibesSdkError {
+  static override [Symbol.hasInstance](value: unknown): boolean {
+    if (this !== ContractError) {
+      return typeof value === 'object'
+        && value !== null
+        && this.prototype.isPrototypeOf(value);
+    }
+    return typeof value === 'object'
+      && value !== null
+      && (value as Record<PropertyKey, unknown>).code === 'SDK_CONTRACT_ERROR';
+  }
+
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     super(message, {
       ...options,
@@ -336,10 +381,6 @@ export class ContractError extends GoodVibesSdkError {
  * Use `recoverable` to decide whether to retry, and `retryAfterMs` for
  * the backoff hint on rate-limit responses.
  *
- * @deprecated Use `error.kind` instead of `instanceof HttpStatusError`.
- * For example: `error.kind === 'rate-limit'`, `error.kind === 'auth'`, `error.kind === 'server'`.
- * This class is preserved for backward compatibility and still throws normally.
- *
  * @example
  * import { HttpStatusError } from '@pellux/goodvibes-sdk';
  *
@@ -356,6 +397,17 @@ export class ContractError extends GoodVibesSdkError {
  * }
  */
 export class HttpStatusError extends GoodVibesSdkError {
+  static override [Symbol.hasInstance](value: unknown): boolean {
+    if (this !== HttpStatusError) {
+      return typeof value === 'object'
+        && value !== null
+        && this.prototype.isPrototypeOf(value);
+    }
+    if (typeof value !== 'object' || value === null) return false;
+    const record = value as Record<PropertyKey, unknown>;
+    return record.code === 'SDK_HTTP_STATUS_ERROR';
+  }
+
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     super(message, {
       ...options,

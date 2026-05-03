@@ -8,8 +8,8 @@
  * which caused a 500 on /api/settings and cascaded through 9 TUI test files.
  */
 import { describe, expect, test } from 'bun:test';
-import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/_internal/platform/config/schema.js';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
+import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.js';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import { tmpdir } from 'os';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
@@ -38,7 +38,7 @@ describe('DEFAULT_CONFIG runtime section', () => {
 
 describe('ConfigManager resolves all runtime.* schema keys', () => {
   function makeConfigManager(): ConfigManager {
-    const configDir = join(tmpdir(), `gv-test-runtime-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const configDir = join(tmpdir(), `gv-test-runtime-${Date.now()}-${crypto.randomUUID()}`);
     mkdirSync(configDir, { recursive: true });
     return new ConfigManager({ configDir });
   }
@@ -72,7 +72,7 @@ describe('ConfigManager resolves all runtime.* schema keys', () => {
 
 describe('ConfigManager resolves all CONFIG_SCHEMA keys without throwing', () => {
   test('iterating all schema keys via get() never throws', () => {
-    const configDir = join(tmpdir(), `gv-test-allkeys-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const configDir = join(tmpdir(), `gv-test-allkeys-${Date.now()}-${crypto.randomUUID()}`);
     mkdirSync(configDir, { recursive: true });
     const manager = new ConfigManager({ configDir });
 

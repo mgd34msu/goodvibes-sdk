@@ -10,13 +10,13 @@
  * 2. A 401 response produces an SDKError with kind 'auth'.
  * 3. A 404 response produces an SDKError with kind 'not-found'.
  * 4. A 429 response produces an SDKError with kind 'rate-limit'.
- * 5. A 500 response produces an SDKError with kind 'server'.
+ * 5. A 500 response produces an SDKError with kind 'service'.
  *
  * Route verified against method-catalog-runtime.ts:
  *   accounts.snapshot → GET /api/accounts
  *
  * SDKErrorKind verified against packages/errors/src/index.ts:
- *   'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'rate-limit' | 'server' | 'validation' | 'unknown'
+ *   'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown'
  */
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -96,8 +96,8 @@ describe.skipIf(typeof window === 'undefined')('HTTP transport round-trip in bro
     });
   });
 
-  it('surfaces a 500 as an SDKError with kind server', async () => {
-    // inferCategory(500) → 'service' → inferKind('service') → 'server'
+  it('surfaces a 500 as an SDKError with kind service', async () => {
+    // inferCategory(500) → 'service' → inferKind('service') → 'service'
     worker.use(
       http.get(`${BASE_URL}/api/accounts`, () =>
         HttpResponse.json(
@@ -109,7 +109,7 @@ describe.skipIf(typeof window === 'undefined')('HTTP transport round-trip in bro
 
     const sdk = makeSdk();
     await expect(sdk.operator.accounts.snapshot()).rejects.toMatchObject({
-      kind: 'server',
+      kind: 'service',
     });
   });
 });

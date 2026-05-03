@@ -1,7 +1,6 @@
 {
   "name": "@pellux/goodvibes-transport-core",
-  "private": true,
-  "version": "0.28.22",
+  "version": "0.30.0",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -48,6 +47,9 @@
     "dist"
   ],
   "sideEffects": false,
+  "dependencies": {
+    "@pellux/goodvibes-errors": "workspace:*"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -63,5 +65,8 @@
     "transport",
     "events",
     "client"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

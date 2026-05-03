@@ -23,16 +23,16 @@
  *   bun run scripts/refresh-contract-artifacts.ts --check   # exit 1 if any artifact drifted
  *
  * After a successful refresh, run `bun run docs:generate` to refresh
- * docs/reference-*.md from the new artifacts, then `bun run sync:internal`
- * to propagate the contracts package into _internal/contracts.
+ * docs/reference-*.md from the new artifacts. SDK package preparation copies
+ * the checked-in contract package artifacts into the published SDK dist.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { GatewayMethodCatalog } from '../packages/sdk/src/_internal/platform/control-plane/method-catalog.ts';
-import { buildOperatorContract } from '../packages/sdk/src/_internal/platform/control-plane/operator-contract.ts';
+import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.ts';
+import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.ts';
 import { PEER_CONTRACT } from '../packages/contracts/src/generated/peer-contract.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

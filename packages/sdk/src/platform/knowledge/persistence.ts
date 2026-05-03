@@ -1,1 +1,41 @@
-export * from '../../_internal/platform/knowledge/persistence.js';
+export {
+  createSchema as createKnowledgeSchema,
+  getKnowledgeSchemaStatements,
+  nowMs as knowledgeNowMs,
+  parseJsonValue as parseKnowledgeJsonValue,
+  renderKnowledgeSchemaSql,
+  resolveKnowledgeDbPathFromControlPlaneDir,
+  stableText as stabilizeKnowledgeText,
+  uniq as uniqKnowledgeValues,
+} from './store-schema.js';
+export { loadKnowledgeStoreSnapshot } from './store-load.js';
+export type { KnowledgeStoreSnapshot } from './store-load.js';
+export {
+  edgesForKnowledgeStore,
+  getKnowledgeConsolidationCandidate,
+  getKnowledgeConsolidationCandidateBySubject,
+  getKnowledgeConsolidationReport,
+  getKnowledgeExtraction,
+  getKnowledgeExtractionBySourceId,
+  getKnowledgeItem,
+  getKnowledgeIssue,
+  getKnowledgeJobRun,
+  getKnowledgeNode,
+  getKnowledgeNodeByKindAndSlug,
+  getKnowledgeSchedule,
+  getKnowledgeSource,
+  getKnowledgeSourceByCanonicalUri,
+  getKnowledgeStoreStatus,
+  getKnowledgeUsageRecord,
+  listKnowledgeConsolidationCandidates,
+  listKnowledgeConsolidationReports,
+  listKnowledgeEdges,
+  listKnowledgeExtractions,
+  listKnowledgeIssues,
+  listKnowledgeJobRuns,
+  listKnowledgeNodes,
+  listKnowledgeSchedules,
+  listKnowledgeSources,
+  listKnowledgeUsageRecords,
+} from './store-read.js';
+export type { KnowledgeStoreReadView } from './store-read.js';

@@ -6,7 +6,7 @@ the TUI own the deployment profile: which flags to enable, disable, or kill for 
 given surface.
 
 The registry lives in
-`packages/sdk/src/_internal/platform/runtime/feature-flags/flags.ts`.
+`packages/sdk/src/platform/runtime/feature-flags/flags.ts`.
 
 ## Ownership Model
 
@@ -81,16 +81,9 @@ constructor's explicit options and does not apply config-backed host policy.
 | `adaptive-execution-planner` | disabled | yes | ready | Orchestrator decision emission and `/plan` runtime exposure are both gated by the flag. |
 | `provider-optimizer` | disabled | yes | ready | Runtime service follows flag transitions; agent routing consumes optimizer decisions when the optimizer is active and not in manual mode. |
 | `integration-delivery-slo` | disabled | yes | ready | Delivery queues derive SLO enforcement from the flag unless a host explicitly overrides queue config. |
-| `automation-runtime` | disabled | no | ready | Compatibility alias for `automation-domain`; prefer the domain flag in new host config. |
-| `gateway-control-plane` | disabled | no | ready | Compatibility alias for `control-plane-gateway`; prefer the domain flag in new host config. |
-| `omnichannel-route-binding` | disabled | no | ready | Compatibility alias for `route-binding`; prefer the domain flag in new host config. |
-| `omnichannel-surface-adapters` | disabled | no | ready | Compatibility alias that enables all non-TUI channel surface gates; prefer surface-specific flags. |
-| `embedded-web-control-ui` | disabled | no | ready | Compatibility alias for `web-surface`; prefer the domain flag in new host config. |
-| `managed-watcher-services` | disabled | no | ready | Compatibility alias for `watcher-framework`; prefer the domain flag in new host config. |
-| `service-installation` | disabled | no | ready | Compatibility alias for `service-management`; prefer the domain flag in new host config. |
 | `adaptive-notification-suppression` | disabled | yes | ready | Safe to expose as a host UX toggle; suppresses noisy operational notifications. |
 | `token-scope-rotation-audit` | disabled | yes | ready | Audits always report findings, but managed-mode token blocking only happens when this flag is enabled. |
-| `tool-contract-verification` | enabled | yes | ready | Built-in tool registration now passes through contract verification by default; hosts can explicitly disable it for compatibility with custom tool registries. |
+| `tool-contract-verification` | enabled | yes | ready | Built-in tool registration now passes through contract verification by default; hosts can explicitly disable it for custom tool registry alignment. |
 | `automation-domain` | disabled | yes | ready | AutomationManager read/mutation/scheduling APIs are gated; disabled SDK services expose empty reads and fail closed on mutations. |
 | `control-plane-gateway` | disabled | yes | ready | ControlPlaneGateway snapshots, live streams, Web UI, and websocket clients are gated. |
 | `route-binding` | disabled | yes | ready | Runtime route binding manager is gated by the flag; durable writes fail closed when disabled. |
@@ -168,7 +161,6 @@ side effects are expected:
    command and user-facing denial-output fixtures.
 3. Tighten `tool-contract-verification` metadata over time by adding explicit
    categories and idempotency declarations to side-effecting tools.
-4. Keep compatibility aliases documented only while they remain active source
    behavior.
 5. Keep new feature flags out of the table until they have either a tested
    runtime gate or a clear `registry-only` classification.

@@ -12,9 +12,9 @@
  */
 
 import { describe, expect, test, beforeEach, afterEach, spyOn, type Mock } from 'bun:test';
-import { RuntimeEventBus, MAX_LISTENERS } from '../packages/sdk/src/_internal/platform/runtime/events/index.ts';
-import { logger } from '../packages/sdk/src/_internal/platform/utils/logger.ts';
-import type { SessionEvent } from '../packages/sdk/src/_internal/platform/runtime/events/session.ts';
+import { RuntimeEventBus, MAX_LISTENERS } from '../packages/sdk/src/platform/runtime/events/index.ts';
+import { logger } from '../packages/sdk/src/platform/utils/logger.ts';
+import type { SessionEvent } from '../packages/sdk/src/events/session.js';
 
 /** No-op listener factory — each call returns a distinct function reference. */
 function makeListener(): () => void {

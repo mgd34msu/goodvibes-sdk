@@ -8,7 +8,7 @@
  * 4. retry.on filter respected
  */
 import { describe, expect, test } from 'bun:test';
-import { isRetryableExecResult } from '../packages/sdk/src/_internal/platform/tools/exec/runtime.js';
+import { isRetryableExecResult } from '../packages/sdk/src/platform/tools/exec/runtime.js';
 
 function makeResult(overrides: Partial<{
   success: boolean;

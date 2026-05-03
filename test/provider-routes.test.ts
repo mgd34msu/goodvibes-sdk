@@ -9,14 +9,14 @@
  */
 
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
-import { dispatchProviderRoutes } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
-import type { ProviderRouteContext } from '../packages/sdk/src/_internal/platform/daemon/http/provider-routes.js';
-import { DaemonHttpRouter } from '../packages/sdk/src/_internal/platform/daemon/http/router.js';
-import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/_internal/platform/runtime/events/index.js';
-import type { ProviderRegistry } from '../packages/sdk/src/_internal/platform/providers/registry.js';
-import type { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.js';
-import type { ProviderRuntimeMetadata } from '../packages/sdk/src/_internal/platform/providers/interface.js';
-import type { ModelDefinition } from '../packages/sdk/src/_internal/platform/providers/registry-types.js';
+import { dispatchProviderRoutes } from '../packages/sdk/src/platform/daemon/http/provider-routes.js';
+import type { ProviderRouteContext } from '../packages/sdk/src/platform/daemon/http/provider-routes.js';
+import { DaemonHttpRouter } from '../packages/sdk/src/platform/daemon/http/router.js';
+import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.js';
+import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import type { ProviderRuntimeMetadata } from '../packages/sdk/src/platform/providers/interface.js';
+import type { ModelDefinition } from '../packages/sdk/src/platform/providers/registry-types.js';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -514,7 +514,7 @@ describe('PATCH /api/providers/current — discovered anonymous provider', () =>
 describe('createCompanionProviderAdapter: isConfigured guard', () => {
   test('yields clean error when provider.isConfigured() returns false', async () => {
     const { createCompanionProviderAdapter } = await import(
-      '../packages/sdk/src/_internal/platform/daemon/facade-composition.js'
+      '../packages/sdk/src/platform/daemon/facade-composition.js'
     );
 
     const unconfiguredProvider = {
@@ -544,7 +544,7 @@ describe('createCompanionProviderAdapter: isConfigured guard', () => {
 
   test('proceeds normally when provider.isConfigured() returns true', async () => {
     const { createCompanionProviderAdapter } = await import(
-      '../packages/sdk/src/_internal/platform/daemon/facade-composition.js'
+      '../packages/sdk/src/platform/daemon/facade-composition.js'
     );
 
     const configuredProvider = {

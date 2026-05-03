@@ -1,1 +1,5 @@
-export * from '../../_internal/platform/runtime/runtime-hook-api.js';
+import { createHookApi, type HookApi } from '../hooks/hook-api.js';
+
+export function createRuntimeHookApi(options: Parameters<typeof createHookApi>[0]): HookApi {
+  return createHookApi(options);
+}

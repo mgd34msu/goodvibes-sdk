@@ -1,1 +1,1 @@
-export * from '../../../_internal/platform/daemon/http/media-routes.js';
+export { createDaemonMediaRouteHandlers } from '@pellux/goodvibes-daemon-sdk';

@@ -1,1 +1,20 @@
-export * from '../../../_internal/platform/daemon/http/integration-route-types.js';
+import type { JsonRecord } from './route-helpers.js';
+
+export type {
+  ChannelAccountRegistryLike,
+  DaemonIntegrationRouteContext,
+  IntegrationHelperServiceLike,
+  MemoryEmbeddingRegistryLike,
+  MemoryRegistryLike,
+  ProviderRuntimeSnapshotServiceLike,
+  UserAuthManagerLike,
+} from '@pellux/goodvibes-daemon-sdk';
+export type { DaemonRuntimeEventDomain as RuntimeEventDomain } from '@pellux/goodvibes-daemon-sdk';
+
+export interface IntegrationRuntimeStoreLike {
+  getState(): {
+    readonly deliveries: {
+      readonly deliveryAttempts: Map<string, unknown>;
+    };
+  };
+}

@@ -5,12 +5,12 @@ import type {
   CloudflareDurableObjectNamespaceLike,
   CloudflareProvisionStep,
   CloudflareWorkerScriptLike,
-} from '../packages/sdk/src/_internal/platform/cloudflare/types.js';
+} from '../packages/sdk/src/platform/cloudflare/types.js';
 import {
   configureWorkerSchedule,
   configureWorkerSubdomain,
   uploadWorker,
-} from '../packages/sdk/src/_internal/platform/cloudflare/worker-settings.js';
+} from '../packages/sdk/src/platform/cloudflare/worker-settings.js';
 
 describe('Cloudflare Worker settings provisioning', () => {
   test('reads and reuses an account workers.dev subdomain before trying to configure it', async () => {

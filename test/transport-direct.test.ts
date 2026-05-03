@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createDirectClientTransport } from '../packages/transport-direct/dist/index.js';
+import { createDirectClientTransport } from '../packages/transport-core/dist/index.js';
 
 describe('transport direct', () => {
   test('creates a direct client transport shell', () => {

@@ -16,7 +16,7 @@ test/hermes/
   dist/                     # Generated: hermes-test-bundle.js (gitignored)
   bin/                      # Generated: hermes binary (gitignored)
   SETUP.md                  # This file
-  FINDINGS.md               # Hermes compatibility findings
+  FINDINGS.md               # Hermes runtime findings
 ```
 
 ## Critical Context: Hermes Binary Availability
@@ -65,7 +65,7 @@ node_modules/hermes-engine/linux64-bin/hermesc \
 ```
 
 If hermesc exits 0, the bundle compiles to Hermes bytecode cleanly.
-If it fails, there is a Hermes syntax-level incompatibility.
+If it fails, there is a Hermes syntax-level runtime issue.
 
 **CURRENT STATUS**: `hermesc@0.11.0` rejects `class extends` (ES2015 class inheritance)
 and `async/await`. The SDK requires both. See `FINDINGS.md` for the fix path.
@@ -172,7 +172,7 @@ binary before the test command:
 ## Hermes Version Target
 
 This harness targets **Hermes 0.12.0** (shipped in RN 0.71–0.73) as the minimum
-compatible version, with the goal of validating against RN 0.76+ (Hermes 0.13+).
+supported version, with the goal of validating against RN 0.76+ (Hermes 0.13+).
 
 Key ES feature support by Hermes version:
 

@@ -1,1 +1,4 @@
-export * from '../../../_internal/platform/tools/edit/index.js';
+import { createEditTool } from './core.js';
+import type { EditToolOptions } from './core.js';
+
+export { createEditTool, type EditToolOptions };

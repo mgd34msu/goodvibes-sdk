@@ -14,11 +14,11 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CompanionChatManager } from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
+import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
-} from '../packages/sdk/src/_internal/platform/companion/companion-chat-manager.js';
+} from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

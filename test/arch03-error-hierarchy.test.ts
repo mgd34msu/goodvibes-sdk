@@ -11,18 +11,18 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { GoodVibesSdkError } from '../packages/sdk/src/_internal/errors/index.js';
+import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 import {
   AppError,
-} from '../packages/sdk/src/_internal/platform/types/errors.js';
-import { ProviderNotFoundError } from '../packages/sdk/src/_internal/platform/providers/provider-not-found-error.js';
-import { OpsIllegalActionError, OpsTargetNotFoundError } from '../packages/sdk/src/_internal/platform/runtime/ops/control-plane.js';
-import { TaskTransitionError, TaskNotFoundError, TaskNotCancellableError } from '../packages/sdk/src/_internal/platform/runtime/tasks/manager.js';
-import { VersionMismatchError } from '../packages/sdk/src/_internal/platform/runtime/remote/transport-contract.js';
-import { DivergenceGateError } from '../packages/sdk/src/_internal/platform/runtime/permissions/divergence-dashboard.js';
-import { SimulationEnforcementError } from '../packages/sdk/src/_internal/platform/runtime/permissions/simulation.js';
-import { PolicySignatureError } from '../packages/sdk/src/_internal/platform/runtime/permissions/policy-loader.js';
-import { DeliveryError } from '../packages/sdk/src/_internal/platform/integrations/delivery.js';
+} from '../packages/sdk/src/platform/types/errors.js';
+import { ProviderNotFoundError } from '../packages/sdk/src/platform/providers/provider-not-found-error.js';
+import { OpsIllegalActionError, OpsTargetNotFoundError } from '../packages/sdk/src/platform/runtime/ops/control-plane.js';
+import { TaskTransitionError, TaskNotFoundError, TaskNotCancellableError } from '../packages/sdk/src/platform/runtime/tasks/manager.js';
+import { VersionMismatchError } from '../packages/sdk/src/platform/runtime/remote/transport-contract.js';
+import { DivergenceGateError } from '../packages/sdk/src/platform/runtime/permissions/divergence-dashboard.js';
+import { SimulationEnforcementError } from '../packages/sdk/src/platform/runtime/permissions/simulation.js';
+import { PolicySignatureError } from '../packages/sdk/src/platform/runtime/permissions/policy-loader.js';
+import { DeliveryError } from '../packages/sdk/src/platform/integrations/delivery.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

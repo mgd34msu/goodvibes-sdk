@@ -7,7 +7,7 @@ const ROOT = resolve(import.meta.dir, '..');
 test('SDK baked version fallback stays aligned with the root package version', () => {
   const rootPackage = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'));
   const versionSource = readFileSync(
-    resolve(ROOT, 'packages', 'sdk', 'src', '_internal', 'platform', 'version.ts'),
+    resolve(ROOT, 'packages', 'sdk', 'src', 'platform', 'version.ts'),
     'utf8',
   );
   const match = versionSource.match(/let version = '([^']+)'/);

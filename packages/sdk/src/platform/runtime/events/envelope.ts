@@ -1,1 +1,5 @@
-export * from '../../../_internal/platform/runtime/events/envelope.js';
+export type {
+  EventEnvelope as RuntimeEventEnvelope,
+  EventEnvelopeContext as EnvelopeContext,
+} from '../event-envelope.js';
+export { createEventEnvelope } from '../event-envelope.js';

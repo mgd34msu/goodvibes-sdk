@@ -1,1 +1,2 @@
-export * from '../../_internal/platform/agents/message-bus.js';
+export type { AgentMessage, MessageCallback } from './message-bus-core.js';
+export { AgentMessageBus } from './message-bus-core.js';

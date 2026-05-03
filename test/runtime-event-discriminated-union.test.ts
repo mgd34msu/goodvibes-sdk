@@ -14,14 +14,14 @@
 import { describe, expect, test } from 'bun:test';
 
 // Leaf event files with no package-alias imports: resolved directly by bun.
-import type { AgentEvent } from '../packages/sdk/src/_internal/platform/runtime/events/agents.js';
-import type { SessionEvent } from '../packages/sdk/src/_internal/platform/runtime/events/session.js';
+import type { AgentEvent } from '../packages/sdk/src/events/agents.js';
+import type { SessionEvent } from '../packages/sdk/src/events/session.js';
 
 // TurnEvent imports PartialToolCall from providers/interface — both relative, bun handles it.
-import type { TurnEvent } from '../packages/sdk/src/_internal/platform/runtime/events/turn.js';
+import type { TurnEvent } from '../packages/sdk/src/events/turn.js';
 
 // WorkflowEvent imports WrfcState from agents/wrfc-types — relative, bun handles it.
-import type { WorkflowEvent } from '../packages/sdk/src/_internal/platform/runtime/events/workflows.js';
+import type { WorkflowEvent } from '../packages/sdk/src/events/workflows.js';
 
 // ---------------------------------------------------------------------------
 // Type-level: compile-time narrowing assertions.

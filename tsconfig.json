@@ -1,4 +1,8 @@
 {
+  "compilerOptions": {
+    "composite": true,
+    "incremental": true
+  },
   "files": [],
   "references": [
     {
@@ -12,9 +16,6 @@
     },
     {
       "path": "./packages/transport-core"
-    },
-    {
-      "path": "./packages/transport-direct"
     },
     {
       "path": "./packages/transport-http"

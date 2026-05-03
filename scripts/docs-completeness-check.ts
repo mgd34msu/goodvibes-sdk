@@ -32,7 +32,6 @@ const requiredDocs = [
   'docs/companion-app-patterns.md',
   'docs/error-handling.md',
   'docs/troubleshooting.md',
-  'docs/compatibility.md',
   'docs/release-and-publishing.md',
   'docs/testing-and-validation.md',
   'docs/reference-operator.md',

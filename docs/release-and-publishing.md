@@ -34,7 +34,7 @@ bun run types:check
 bun run docs:generate
 bun run docs:check
 bun run refresh:contracts:check
-bun run sync:check
+bun run contracts:check
 bun run changelog:check
 ```
 
@@ -53,7 +53,6 @@ types:
 
 ```bash
 bun run refresh:contracts
-bun run sync:internal --scope=daemon,contracts
 ```
 
 ## Changelog Gate
@@ -99,21 +98,16 @@ Check them without writing:
 bun run docs:check
 ```
 
-## Contract Artifact Sync
+## Contract Artifact Check
 
-The SDK package embeds generated contract JSON artifacts for compatibility
-subpaths. Update the contracts package artifacts first, then run:
-
-```bash
-bun run sync:internal --scope=contracts
-bun run sync:check
-```
-
-Use scoped sync when the change is intentionally narrow:
+The SDK package embeds generated contract JSON artifacts for published
+contract subpaths. Update the contracts package artifacts first, then run:
 
 ```bash
-bun run sync:internal --scope=daemon,contracts
+bun run contracts:check
 ```
+
+`contracts:check` verifies generated contract artifacts without writing.
 
 ## Publishing
 
@@ -127,9 +121,9 @@ git tag vX.Y.Z
 git push origin main --tags
 ```
 
-CI must pass before npm publishing. The publish workflow stages package
-manifests before packing so the umbrella package publishes as a self-contained
-SDK artifact.
+CI must pass before npm publishing. The publish workflow stages every public
+workspace package, resolves workspace ranges to the release version, and
+publishes source-of-truth packages before the main SDK facade.
 
 ## GitHub Release
 
@@ -147,7 +141,7 @@ notes and attach generated artifacts when the workflow produces them.
 
 The npm publish path should use provenance when available in CI. Local manual
 publishing should be reserved for recovery situations and should still run the
-same validation, changelog, version, docs, contract, and sync gates.
+same validation, changelog, version, docs, and contract-artifact gates.
 
 ## SBOM
 

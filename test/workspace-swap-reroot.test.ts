@@ -12,17 +12,17 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { WorkspaceSwapManager } from '../packages/sdk/src/_internal/platform/workspace/workspace-swap-manager.ts';
-import { MemoryStore } from '../packages/sdk/src/_internal/platform/state/memory-store.ts';
-import { MemoryEmbeddingProviderRegistry } from '../packages/sdk/src/_internal/platform/state/memory-embeddings.ts';
-import { ConfigManager } from '../packages/sdk/src/_internal/platform/config/manager.ts';
+import { WorkspaceSwapManager } from '../packages/sdk/src/platform/workspace/workspace-swap-manager.ts';
+import { MemoryStore } from '../packages/sdk/src/platform/state/memory-store.ts';
+import { MemoryEmbeddingProviderRegistry } from '../packages/sdk/src/platform/state/memory-embeddings.ts';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function tempDir(suffix: string): string {
-  const d = join(tmpdir(), `gv-reroot-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const d = join(tmpdir(), `gv-reroot-${suffix}-${Date.now()}-${crypto.randomUUID()}`);
   mkdirSync(d, { recursive: true });
   return d;
 }
@@ -155,9 +155,9 @@ describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
   }
 
   test('real services: reroot closes store at A, reopens at B, data isolated on disk', async () => {
-    const daemonHome = join(tmpdir(), `gv-reroot-dh-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    const workspace1 = join(tmpdir(), `gv-reroot-ws1-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    const workspace2 = join(tmpdir(), `gv-reroot-ws2-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const daemonHome = join(tmpdir(), `gv-reroot-dh-${Date.now()}-${crypto.randomUUID()}`);
+    const workspace1 = join(tmpdir(), `gv-reroot-ws1-${Date.now()}-${crypto.randomUUID()}`);
+    const workspace2 = join(tmpdir(), `gv-reroot-ws2-${Date.now()}-${crypto.randomUUID()}`);
 
     mkdirSync(join(workspace1, '.goodvibes', 'memory'), { recursive: true });
     mkdirSync(join(workspace2, '.goodvibes', 'memory'), { recursive: true });

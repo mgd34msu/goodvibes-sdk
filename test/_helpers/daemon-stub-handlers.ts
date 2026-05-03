@@ -1,48 +1,64 @@
 /**
- * daemon-stub-handlers.ts
+ * Shared router-test stubs for daemon route handlers.
  *
- * Shared helper for router-e2e tests.
- * Exports makeDefaultDaemonHandlerStub() which returns a full no-op
- * implementation of DaemonApiRouteHandlers. Tests import this and spread
- * targeted overrides, eliminating the ~190-line inline stubs that were
- * previously duplicated across control and telemetry test files.
+ * The public helper composes small domain builders so route tests can override
+ * only the domain under test without reading one giant default object.
  */
 
-import type { DaemonApiRouteHandlers } from '../../packages/sdk/src/_internal/daemon/context.js';
+import type { DaemonApiRouteHandlers } from '../../packages/daemon-sdk/src/context.js';
 
-export function makeDefaultDaemonHandlerStub(
-  overrides: Partial<DaemonApiRouteHandlers> = {},
-): DaemonApiRouteHandlers {
-  const noop = () => { throw new Error('unexpected handler call'); };
+type HandlerStubs = Partial<DaemonApiRouteHandlers>;
 
-  const defaults: Partial<DaemonApiRouteHandlers> = {
-    getStatus: () =>
-      Response.json({ ok: true, version: '0.0.0-test', uptime: 0 }),
+function unexpectedHandler(): never {
+  throw new Error('unexpected handler call');
+}
 
-    getCurrentAuth: () =>
-      Response.json({ authenticated: false }),
+function controlPlaneStubs(): HandlerStubs {
+  return {
+    getStatus: () => Response.json({ ok: true, version: '0.0.0-test', uptime: 0 }),
+    getCurrentAuth: () => Response.json({ authenticated: false }),
+    getControlPlaneSnapshot: () => Response.json({
+      totals: { clients: 0, activeClients: 0, surfaceMessages: 0, recentEvents: 0, requests: 0, errors: 0 },
+      server: { port: 9000, enabled: true, host: '127.0.0.1' },
+    }),
+    getOperatorContract: () => Response.json({ methods: [], version: '0.0.0-test' }),
+    getControlPlaneRecentEvents: (limit: number) => Response.json({ events: [], limit }),
+    getControlPlaneMessages: () => Response.json({ messages: [] }),
+    getControlPlaneClients: () => Response.json({ clients: [] }),
+    getControlPlaneWeb: () => new Response('<html>control</html>', { headers: { 'content-type': 'text/html' } }),
+    getGatewayMethods: () => Response.json({ methods: [] }),
+    getGatewayEvents: () => Response.json({ events: [] }),
+    getGatewayMethod: () => Response.json(null),
+    invokeGatewayMethod: () => Response.json({ ok: false }),
+    createControlPlaneEventStream: () => new Response('', { status: 200 }),
+    getRoutesSnapshot: () => Response.json({ routes: [] }),
+    getSurfaces: () => Response.json({ surfaces: [] }),
+    getHealth: () => Response.json({ healthy: true }),
+    getAccounts: () => Response.json({ accounts: [] }),
+    getProviders: () => Response.json({ providers: [] }),
+    getProvider: () => Response.json(null),
+    getProviderUsage: () => Response.json(null),
+    getSettings: () => Response.json({ settings: {} }),
+    getContinuity: () => Response.json({ continuity: {} }),
+    getWorktrees: () => Response.json({ worktrees: [] }),
+    getIntelligence: () => Response.json({ intelligence: {} }),
+    getLocalAuth: () => Response.json({ users: [] }),
+    postLocalAuthUser: () => Response.json({ ok: true }),
+    deleteLocalAuthUser: () => Response.json({ ok: true }),
+    postLocalAuthPassword: () => Response.json({ ok: true }),
+    deleteLocalAuthSession: () => Response.json({ ok: true }),
+    deleteBootstrapFile: () => Response.json({ ok: true }),
+    getPanels: () => Response.json({ panels: [] }),
+    postPanelOpen: () => Response.json({ ok: true }),
+    getEvents: () => Response.json({ events: [] }),
+    getConfig: () => Response.json({ config: {} }),
+    postConfig: () => Response.json({ ok: true }),
+    getReview: () => Response.json({ review: {} }),
+  };
+}
 
-    getControlPlaneSnapshot: () =>
-      Response.json({
-        totals: { clients: 0, activeClients: 0, surfaceMessages: 0, recentEvents: 0, requests: 0, errors: 0 },
-        server: { port: 9000, enabled: true, host: '127.0.0.1' },
-      }),
-
-    getOperatorContract: () =>
-      Response.json({ methods: [], version: '0.0.0-test' }),
-
-    getControlPlaneRecentEvents: (limit: number) =>
-      Response.json({ events: [], limit }),
-
-    getControlPlaneMessages: () =>
-      Response.json({ messages: [] }),
-
-    getControlPlaneClients: () =>
-      Response.json({ clients: [] }),
-
-    getControlPlaneWeb: () =>
-      new Response('<html>control</html>', { headers: { 'content-type': 'text/html' } }),
-
+function telemetryStubs(): HandlerStubs {
+  return {
     getTelemetrySnapshot: () => Response.json({ events: [], version: 1 }),
     getTelemetryEvents: () => Response.json({ items: [] }),
     getTelemetryErrors: () => Response.json({ items: [] }),
@@ -55,18 +71,15 @@ export function makeDefaultDaemonHandlerStub(
     postTelemetryOtlpLogs: () => Response.json({ partialSuccess: {} }),
     postTelemetryOtlpTraces: () => Response.json({ partialSuccess: {} }),
     postTelemetryOtlpMetrics: () => Response.json({ partialSuccess: {} }),
+  };
+}
 
-    getGatewayMethods: () => Response.json({ methods: [] }),
-    getGatewayEvents: () => Response.json({ events: [] }),
-    getGatewayMethod: () => Response.json(null),
-    invokeGatewayMethod: () => Response.json({ ok: false }),
-    createControlPlaneEventStream: () => new Response('', { status: 200 }),
-    getRoutesSnapshot: () => Response.json({ routes: [] }),
-    getSurfaces: () => Response.json({ surfaces: [] }),
+function channelAndAutomationStubs(): HandlerStubs {
+  return {
     getChannelAccounts: () => Response.json({ accounts: [] }),
     getChannelSurfaceAccounts: () => Response.json({ accounts: [] }),
     getChannelAccount: () => Response.json(null),
-    postChannelAccountAction: noop as never,
+    postChannelAccountAction: unexpectedHandler as never,
     getChannelSetupSchema: () => Response.json({}),
     getChannelDoctor: () => Response.json({ issues: [] }),
     getChannelRepairActions: () => Response.json({ actions: [] }),
@@ -109,6 +122,17 @@ export function makeDefaultDaemonHandlerStub(
     deleteRouteBinding: () => Response.json({ ok: true }),
     getApprovals: () => Response.json({ approvals: [] }),
     approvalAction: () => Response.json({ ok: true }),
+    getIntegrationSession: () => Response.json({}),
+    getIntegrationTasks: () => Response.json({ tasks: [] }),
+    getIntegrationAutomation: () => Response.json({}),
+    getIntegrationSessions: () => Response.json({ sessions: [] }),
+    getAutomationHeartbeat: () => Response.json({}),
+    postAutomationHeartbeat: () => Response.json({ ok: true }),
+  };
+}
+
+function remoteAndRuntimeStubs(): HandlerStubs {
+  return {
     getRemote: () => Response.json({ peers: [] }),
     getRemotePairRequests: () => Response.json({ requests: [] }),
     approveRemotePairRequest: () => Response.json({ ok: true }),
@@ -120,33 +144,18 @@ export function makeDefaultDaemonHandlerStub(
     getRemoteWork: () => Response.json({ work: [] }),
     invokeRemotePeer: () => Response.json({ ok: true }),
     cancelRemoteWork: () => Response.json({ ok: true }),
-    getHealth: () => Response.json({ healthy: true }),
-    getAccounts: () => Response.json({ accounts: [] }),
-    getProviders: () => Response.json({ providers: [] }),
-    getProvider: () => Response.json(null),
-    getProviderUsage: () => Response.json(null),
-    getSettings: () => Response.json({ settings: {} }),
-    getContinuity: () => Response.json({ continuity: {} }),
-    getWorktrees: () => Response.json({ worktrees: [] }),
-    getIntelligence: () => Response.json({ intelligence: {} }),
-    getLocalAuth: () => Response.json({ users: [] }),
-    postLocalAuthUser: () => Response.json({ ok: true }),
-    deleteLocalAuthUser: () => Response.json({ ok: true }),
-    postLocalAuthPassword: () => Response.json({ ok: true }),
-    deleteLocalAuthSession: () => Response.json({ ok: true }),
-    deleteBootstrapFile: () => Response.json({ ok: true }),
-    getPanels: () => Response.json({ panels: [] }),
-    postPanelOpen: () => Response.json({ ok: true }),
-    getEvents: () => Response.json({ events: [] }),
-    getConfig: () => Response.json({ config: {} }),
-    postConfig: () => Response.json({ ok: true }),
-    getReview: () => Response.json({ review: {} }),
-    getIntegrationSession: () => Response.json({}),
-    getIntegrationTasks: () => Response.json({ tasks: [] }),
-    getIntegrationAutomation: () => Response.json({}),
-    getIntegrationSessions: () => Response.json({ sessions: [] }),
-    getAutomationHeartbeat: () => Response.json({}),
-    postAutomationHeartbeat: () => Response.json({ ok: true }),
+    getRemoteNodeHostContract: () => Response.json({}),
+    getSchedulerCapacity: () => Response.json({ capacity: 0 }),
+    getRuntimeMetrics: () => Response.json({ metrics: {} }),
+    getRuntimeTask: () => Response.json(null),
+    runtimeTaskAction: () => Response.json({ ok: true }),
+    getTaskStatus: () => Response.json({ status: 'pending' }),
+    postTask: async () => Response.json({ taskId: 'task-stub' }),
+  };
+}
+
+function knowledgeStubs(): HandlerStubs {
+  return {
     getMemoryDoctor: () => Response.json({}),
     getMemoryVectorStats: () => Response.json({}),
     postMemoryVectorRebuild: () => Response.json({ ok: true }),
@@ -191,6 +200,11 @@ export function makeDefaultDaemonHandlerStub(
     postKnowledgeRenderProjection: () => Response.json({ ok: true }),
     postKnowledgeMaterializeProjection: () => Response.json({ ok: true }),
     executeKnowledgeGraphql: () => Response.json({ data: null }),
+  };
+}
+
+function mediaAndArtifactStubs(): HandlerStubs {
+  return {
     getVoiceStatus: () => Response.json({}),
     getVoiceProviders: () => Response.json({ providers: [] }),
     getVoiceVoices: () => Response.json({ voices: [] }),
@@ -213,13 +227,19 @@ export function makeDefaultDaemonHandlerStub(
     postMultimodalAnalyze: () => Response.json({}),
     postMultimodalPacket: () => Response.json({}),
     postMultimodalWriteback: () => Response.json({ ok: true }),
-    getRemoteNodeHostContract: () => Response.json({}),
-    getSchedulerCapacity: () => Response.json({ capacity: 0 }),
-    getRuntimeMetrics: () => Response.json({ metrics: {} }),
-    getRuntimeTask: () => Response.json(null),
-    runtimeTaskAction: () => Response.json({ ok: true }),
-    getTaskStatus: () => Response.json({ status: 'pending' }),
-    postTask: async () => Response.json({ taskId: 'task-stub' }),
+  };
+}
+
+export function makeDefaultDaemonHandlerStub(
+  overrides: Partial<DaemonApiRouteHandlers> = {},
+): DaemonApiRouteHandlers {
+  const defaults: HandlerStubs = {
+    ...controlPlaneStubs(),
+    ...telemetryStubs(),
+    ...channelAndAutomationStubs(),
+    ...remoteAndRuntimeStubs(),
+    ...knowledgeStubs(),
+    ...mediaAndArtifactStubs(),
   };
 
   return { ...defaults, ...overrides } as DaemonApiRouteHandlers;

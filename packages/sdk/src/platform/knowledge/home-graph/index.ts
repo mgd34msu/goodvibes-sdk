@@ -1,1 +1,40 @@
-export * from '../../../_internal/platform/knowledge/home-graph/index.js';
+export { HomeGraphService } from './service.js';
+export { HOME_GRAPH_KNOWLEDGE_EXTENSION } from './extension.js';
+export {
+  HOME_GRAPH_NODE_KINDS,
+  HOME_GRAPH_RELATIONS,
+} from './types.js';
+export type {
+  HomeGraphAskInput,
+  HomeGraphAskResult,
+  HomeGraphDevicePassportResult,
+  HomeGraphExport,
+  HomeGraphGeneratedPagesSummary,
+  HomeGraphIngestArtifactInput,
+  HomeGraphIngestNoteInput,
+  HomeGraphIngestResult,
+  HomeGraphIngestUrlInput,
+  HomeGraphKnowledgeTarget,
+  HomeGraphLinkInput,
+  HomeGraphLinkResult,
+  HomeGraphMapEdge,
+  HomeGraphMapHaFilterInput,
+  HomeGraphMapInput,
+  HomeGraphMapNode,
+  HomeGraphMapResult,
+  HomeGraphNodeKind,
+  HomeGraphObjectInput,
+  HomeGraphObjectKind,
+  HomeGraphPageAutomationOptions,
+  HomeGraphPageListResult,
+  HomeGraphProjectionInput,
+  HomeGraphProjectionResult,
+  HomeGraphReindexResult,
+  HomeGraphRelation,
+  HomeGraphResetInput,
+  HomeGraphResetResult,
+  HomeGraphReviewInput,
+  HomeGraphSnapshotInput,
+  HomeGraphStatus,
+  HomeGraphSyncResult,
+} from './types.js';

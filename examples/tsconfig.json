@@ -3,6 +3,7 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
+    "composite": false,
     "jsx": "react-jsx",
     "noEmit": true
   },

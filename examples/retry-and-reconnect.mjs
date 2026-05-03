@@ -1,3 +1,6 @@
+/**
+ * Configure HTTP retry and realtime reconnect policies.
+ */
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
@@ -31,6 +34,7 @@ const stop = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (event) => {
   console.log('agent completed', event);
 });
 
-setTimeout(() => {
+const stopTimer = setTimeout(() => {
   stop();
 }, 30_000);
+stopTimer.unref?.();

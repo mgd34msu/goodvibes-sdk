@@ -4,7 +4,7 @@ import {
   isSecretRefInput,
   normalizeSecretRef,
   resolveSecretRef,
-} from '../packages/sdk/src/_internal/platform/config/secret-refs.js';
+} from '../packages/sdk/src/platform/config/secret-refs.js';
 
 describe('GoodVibes SecretRef URI syntax', () => {
   test('parses env and local GoodVibes secret refs', () => {
