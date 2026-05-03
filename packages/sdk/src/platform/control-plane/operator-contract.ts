@@ -66,6 +66,7 @@ export const OPERATOR_CONTRACT_SCHEMA = objectSchema({
     current: objectSchema({
       method: STRING_SCHEMA,
       path: STRING_SCHEMA,
+      aliasPaths: arraySchema(STRING_SCHEMA),
       responseSchema: CONTROL_AUTH_CURRENT_RESPONSE_SCHEMA,
     }, ['method', 'path', 'responseSchema']),
     sessionCookie: objectSchema({
@@ -194,6 +195,13 @@ export function buildOperatorContract(catalog: GatewayMethodCatalog): OperatorCo
     product: {
       ...contract.product,
       version: VERSION,
+    },
+    auth: {
+      ...contract.auth,
+      current: {
+        ...contract.auth.current,
+        aliasPaths: ['/api/control-plane/whoami'],
+      },
     },
     operator: {
       ...contract.operator,

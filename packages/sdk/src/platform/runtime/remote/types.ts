@@ -412,8 +412,13 @@ export type VersionNegotiationResult =
         | 'major_version_mismatch'
         | 'peer_version_too_old'
         | 'peer_version_unsupported';
+      readonly incompatibilityCode:
+        | 'major_version_mismatch'
+        | 'peer_version_too_old'
+        | 'peer_version_unsupported';
       /** Human-readable explanation for operator diagnostics. */
       readonly unsupportedReason: string;
+      readonly incompatibilityReason: string;
       /** The local version that was offered. */
       readonly offeredVersion: ProtocolVersion;
       /** The peer version that was received. */

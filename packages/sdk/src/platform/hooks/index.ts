@@ -33,6 +33,9 @@ export {
   getHookPointContract,
   parseHookPath,
 } from './contracts.js';
+export { matchesEventPath, matchesMatcher } from './matcher.js';
+export { safeEvaluate } from './chain-engine.js';
+export { run } from './runner.js';
 
 import { HookActivityTracker } from './activity.js';
 import { HookDispatcher } from './dispatcher.js';

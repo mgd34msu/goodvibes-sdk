@@ -155,6 +155,7 @@ export interface ProviderApiRegistry {
   getCostFromCatalog(modelId: string): { input: number; output: number };
   getCatalogModelDefinitions(): readonly MinimalModelDefinition[];
   has(id: string): boolean;
+  get?(id: string): LLMProvider | undefined;
   require(id: string): LLMProvider;
   tryGet(name: string): LLMProvider | undefined;
   getCurrentModel(): ModelDefinition;

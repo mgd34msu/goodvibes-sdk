@@ -57,7 +57,10 @@ export interface HelperUsage {
 
 export interface HelperModelDeps {
   readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
-  readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'> & {
+    readonly get?: ProviderRegistry['get'];
+    readonly require?: ProviderRegistry['require'];
+  };
 }
 
 /**
@@ -71,6 +74,15 @@ export interface HelperModelDeps {
  */
 export class HelperRouter {
   constructor(private readonly deps: HelperModelDeps) {}
+
+  private requireProvider(providerId: string): LLMProvider {
+    if (this.deps.providerRegistry.require) {
+      return this.deps.providerRegistry.require(providerId);
+    }
+    const provider = this.deps.providerRegistry.get?.(providerId);
+    if (!provider) throw new Error(`Unknown provider: ${providerId}`);
+    return provider;
+  }
 
   /**
    * Resolve the best helper for the given task.
@@ -92,7 +104,7 @@ export class HelperRouter {
           const perProvider = providers[currentProviderName];
           if (perProvider.provider && perProvider.model) {
             try {
-              const provider = this.deps.providerRegistry.require(perProvider.provider);
+              const provider = this.requireProvider(perProvider.provider);
               return { provider, modelId: perProvider.model, isHelper: true };
             } catch {
               logger.debug(`HelperRouter: per-provider helper ${perProvider.provider} not found, falling through`);
@@ -106,7 +118,7 @@ export class HelperRouter {
       const globalModel = this.deps.configManager.get('helper.globalModel') as string;
       if (globalProvider && globalModel) {
         try {
-          const provider = this.deps.providerRegistry.require(globalProvider);
+          const provider = this.requireProvider(globalProvider);
           return { provider, modelId: globalModel, isHelper: true };
         } catch {
           logger.debug(`HelperRouter: global helper ${globalProvider} not found, falling through`);
@@ -118,7 +130,7 @@ export class HelperRouter {
       const toolModel = this.deps.configManager.get('tools.llmModel') as string;
       if (toolProvider && toolModel) {
         try {
-          const provider = this.deps.providerRegistry.require(toolProvider);
+          const provider = this.requireProvider(toolProvider);
           return { provider, modelId: toolModel, isHelper: true };
         } catch {
           logger.debug(`HelperRouter: tool LLM ${toolProvider} not found, falling through`);

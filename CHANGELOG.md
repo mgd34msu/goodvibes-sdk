@@ -20,6 +20,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.30.3] - 2026-05-03
+
+### Breaking
+- none
+
+### Added
+- Expanded public seams used by TUI tests and examples without restoring old
+  private/deep import paths: ACP connections, adapter helpers, automation
+  legacy-scheduler migration, hook runner helpers, runtime lifecycle helpers,
+  transport helpers, provider classes, runtime snapshots, media understanding
+  providers, and built-in tool factories are now exported from their platform
+  seams.
+- Added `AutomationService.seedFromLegacyScheduler()` so service-level
+  migration tests and hosts can seed the new automation stores from legacy
+  scheduler snapshots through the automation API.
+- Added a runtime lifecycle facade that routes plugin, MCP, task, and
+  compaction transition helpers through the aggregate `platform/runtime` seam
+  while keeping the subsystem-specific modules typed for direct consumers.
+
+### Fixed
+- Restored package-export-valid access for TUI test and example imports that
+  still depended on SDK-owned symbols after the v0.30 public seam cleanup.
+- `buildOperatorContract()` now includes the current-auth alias path metadata
+  advertised by the daemon, and the shared contract type/schema accepts it.
+- Transport diagnostics expose the legacy `incompatibility*` aliases alongside
+  the current `unsupported*` fields so existing diagnostics tests can read the
+  same structured protocol failure data.
+
+### Migration
+- Continue using `@pellux/goodvibes-sdk/platform/*` public seams. The release
+  adds missing public exports only; it does not reintroduce private source-path
+  compatibility.
+
+---
+
 ## [0.30.2] - 2026-05-03
 
 ### Breaking

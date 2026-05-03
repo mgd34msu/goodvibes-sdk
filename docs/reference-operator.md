@@ -22029,6 +22029,12 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                 "path": {
                   "type": "string"
                 },
+                "aliasPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "responseSchema": {
                   "type": "object",
                   "properties": {

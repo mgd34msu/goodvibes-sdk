@@ -9,7 +9,7 @@ import { AGENT_TEMPLATES, AgentManager } from './manager.js';
 import { evaluateOrchestrationSpawn } from '../../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { toRecord } from '../../utils/record-coerce.js';
-export type { AgentRecord } from './manager.js';
+export type { AgentExecutor, AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 
 // ---------------------------------------------------------------------------

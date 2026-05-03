@@ -418,8 +418,13 @@ export interface TransportNegotiationEntry {
     | 'major_version_mismatch'
     | 'peer_version_too_old'
     | 'peer_version_unsupported';
+  readonly incompatibilityCode?:
+    | 'major_version_mismatch'
+    | 'peer_version_too_old'
+    | 'peer_version_unsupported';
   /** Human-readable unsupported explanation. */
   readonly unsupportedReason?: string;
+  readonly incompatibilityReason?: string;
   /** Epoch ms when the negotiation completed. */
   readonly negotiatedAt: number;
 }

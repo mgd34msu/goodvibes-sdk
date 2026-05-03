@@ -9,7 +9,7 @@
 export { ConfigManager } from './manager.js';
 export type { DeepReadonly } from './manager.js';
 export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, PermissionMode, PermissionAction, PermissionsToolConfig, NotificationsConfig } from './schema.js';
-export { DEFAULT_CONFIG, CONFIG_KEYS, CONFIG_SCHEMA } from './schema.js';
+export { DEFAULT_CONFIG, CONFIG_KEYS, CONFIG_SCHEMA, isValidConfigKey } from './schema.js';
 export type { PersistedFlagState } from './schema-types.js';
 export { ConfigError } from '../types/errors.js';
 

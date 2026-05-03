@@ -24,9 +24,15 @@ export { detectLanguage, getGrammarPackage, getSupportedLanguages } from './tree
 // Import graph
 export { ImportGraph } from './import-graph.js';
 export type { DependentsMap, ImportsMap } from './import-graph.js';
+export {
+  extractRelativeSpecifiersForTest,
+  resolveSpecifierForTest,
+} from './import-graph.js';
 
 // LSP
 export { LspService } from './lsp/service.js';
+export { LspClient, parseCapabilities, hasCapability } from './lsp/index.js';
+export type { LspCapabilities } from './lsp/index.js';
 export type { LspServerConfig } from './lsp/service.js';
 export type {
   Position,

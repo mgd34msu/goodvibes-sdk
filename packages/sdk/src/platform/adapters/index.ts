@@ -1,4 +1,9 @@
 export * from './types.js';
+export {
+  readBearerOrHeaderToken,
+  readTextBodyWithinLimit,
+  verifySha256HmacSignature,
+} from './helpers.js';
 export { handleSlackSurfacePayload, handleSlackSurfaceWebhook } from './slack/index.js';
 export { handleDiscordGatewayDispatchPayload, handleDiscordInteractionPayload, handleDiscordSurfaceWebhook } from './discord/index.js';
 export { handleNtfySurfacePayload, handleNtfySurfaceWebhook } from './ntfy/index.js';

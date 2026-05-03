@@ -35,6 +35,7 @@ export type { UIEvent, UIEventType } from '../../../events/ui.js';
 export type { OpsEvent, OpsEventType } from '../../../events/ops.js';
 export type { OpsInterventionReason } from '../../../events/ops.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from '../../../events/domain-map.js';
+export { registeredEventTypes, validateEvent } from '../../../events/contracts.js';
 export type { AnyRuntimeEvent, RuntimeEventPayload, RuntimeEventDomain, DomainEventMap, RuntimeEventRecord } from '../../../events/domain-map.js';
 export type { AutomationEvent, AutomationEventType, AutomationScheduleKind, AutomationExecutionMode, AutomationRunOutcome } from '../../../events/automation.js';
 export { AUTOMATION_SCHEDULE_KINDS, AUTOMATION_RUN_OUTCOMES } from '../../../events/automation.js';

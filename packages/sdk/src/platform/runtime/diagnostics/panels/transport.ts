@@ -147,7 +147,9 @@ export class TransportPanel {
       offeredVersion: offeredVersionLabel,
       peerVersion: peerVersionLabel,
       unsupportedCode,
+      incompatibilityCode: unsupportedCode,
       unsupportedReason,
+      incompatibilityReason: unsupportedReason,
       negotiatedAt: Date.now(),
     };
     this._append(connectionId, entry);
@@ -236,6 +238,7 @@ export class TransportPanel {
     successfulNegotiations: number;
     downgradedConnections: number;
     unsupportedFailures: number;
+    incompatibilityFailures: number;
   } {
     let successfulNegotiations = 0;
     let downgradedConnections = 0;
@@ -257,7 +260,33 @@ export class TransportPanel {
       successfulNegotiations,
       downgradedConnections,
       unsupportedFailures,
+      incompatibilityFailures: unsupportedFailures,
     };
+  }
+
+  public recordIncompatibility(
+    connectionId: string,
+    endpoint: string,
+    incompatibilityCode:
+      | 'major_version_mismatch'
+      | 'peer_version_too_old'
+      | 'peer_version_unsupported',
+    incompatibilityReason: string,
+    offeredVersionLabel: string,
+    peerVersionLabel: string,
+  ): void {
+    this.recordUnsupported(
+      connectionId,
+      endpoint,
+      incompatibilityCode,
+      incompatibilityReason,
+      offeredVersionLabel,
+      peerVersionLabel,
+    );
+  }
+
+  public getIncompatibilityFailures(): TransportNegotiationEntry[] {
+    return this.getUnsupportedFailures();
   }
 
   /**
@@ -319,7 +348,9 @@ export class TransportPanel {
       offeredVersion: offeredVersionLabel,
       peerVersion: peerVersionLabel,
       unsupportedCode: result.unsupportedCode,
+      incompatibilityCode: result.unsupportedCode,
       unsupportedReason: result.unsupportedReason,
+      incompatibilityReason: result.unsupportedReason,
       negotiatedAt: Date.now(),
     };
   }

@@ -26,7 +26,7 @@ export type {
   PluginLifecycleState,
 } from './types.js';
 
-export { ALL_CAPABILITIES, MAX_TRANSITION_HISTORY } from './types.js';
+export { ALL_CAPABILITIES, HIGH_RISK_CAPABILITIES, MAX_TRANSITION_HISTORY } from './types.js';
 
 export {
   VALID_TRANSITIONS,
