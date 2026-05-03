@@ -53,6 +53,12 @@ import {
   createGoodVibesSettingsTool,
 } from './goodvibes-runtime/index.js';
 
+export { ToolRegistry } from './registry.js';
+export { ProcessManager } from './shared/process-manager.js';
+export type { BackgroundProcess, BgCommandResult, SpawnOptions } from './shared/process-manager.js';
+export { AGENT_TEMPLATES, AgentManager } from './agent/index.js';
+export type { AgentRecord } from './agent/index.js';
+
 type ToolContractFeatureFlags = Pick<FeatureFlagManager, 'isEnabled'>;
 
 export function registerToolWithContractGate(

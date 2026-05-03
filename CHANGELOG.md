@@ -20,6 +20,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.30.1] - 2026-05-03
+
+### Breaking
+- none
+
+### Added
+- Added deliberate public SDK seams for daemon host runtimes that need to
+  compose GoodVibes platform services without importing private source paths:
+  `platform/agents`, `platform/bookmarks`, `platform/core`,
+  `platform/export`, `platform/permissions`, `platform/plugins`,
+  `platform/profiles`, `platform/scheduler`, `platform/sessions`,
+  `platform/templates`, `platform/types`, `platform/utils`,
+  `platform/workflow`, and `platform/workspace`.
+- Added public runtime subpaths for event bus, feature flags, network helpers,
+  runtime store, store domains, and store reducer helpers.
+- Added public config subpaths and aggregate exports for secrets, secret
+  references, service registry, provider subscriptions, helper model,
+  OpenAI Codex auth, and tool LLM support.
+
+### Fixed
+- `platform/tools` now exports the SDK-owned `ToolRegistry`, `ProcessManager`,
+  and `AgentManager` classes required by daemon/TUI runtime composition.
+- `platform/providers` now exports `ProviderRegistry`, so host runtimes can
+  wire provider catalog, routing, and model state through the public provider
+  seam.
+- The top-level `platform` namespace now includes all exported platform
+  domains instead of omitting several public subpackages.
+
+### Migration
+- Replace old private deep imports such as `config/manager`,
+  `runtime/feature-flags`, `runtime/network`, `utils/logger`, and
+  `daemon/server/http-listener` with the corresponding `platform/*` public
+  seams.
+
+---
+
 ## [0.30.0] - 2026-05-02
 
 ### Breaking

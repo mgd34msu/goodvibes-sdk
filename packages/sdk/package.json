@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git"
@@ -52,6 +52,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./package.json": "./package.json",
     "./auth": {
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.js"
@@ -102,7 +103,6 @@
       "types": "./dist/operator.d.ts",
       "import": "./dist/operator.js"
     },
-    "./package.json": "./package.json",
     "./peer": {
       "types": "./dist/peer.d.ts",
       "import": "./dist/peer.js"
@@ -119,6 +119,10 @@
       "types": "./dist/platform/adapters/index.d.ts",
       "import": "./dist/platform/adapters/index.js"
     },
+    "./platform/agents": {
+      "types": "./dist/platform/agents/index.d.ts",
+      "import": "./dist/platform/agents/index.js"
+    },
     "./platform/artifacts": {
       "types": "./dist/platform/artifacts/index.d.ts",
       "import": "./dist/platform/artifacts/index.js"
@@ -130,6 +134,10 @@
     "./platform/batch": {
       "types": "./dist/platform/batch/index.d.ts",
       "import": "./dist/platform/batch/index.js"
+    },
+    "./platform/bookmarks": {
+      "types": "./dist/platform/bookmarks/index.d.ts",
+      "import": "./dist/platform/bookmarks/index.js"
     },
     "./platform/channels": {
       "types": "./dist/platform/channels/index.d.ts",
@@ -147,9 +155,49 @@
       "types": "./dist/platform/config/index.d.ts",
       "import": "./dist/platform/config/index.js"
     },
+    "./platform/config/helper-model": {
+      "types": "./dist/platform/config/helper-model.d.ts",
+      "import": "./dist/platform/config/helper-model.js"
+    },
+    "./platform/config/openai-codex-auth": {
+      "types": "./dist/platform/config/openai-codex-auth.d.ts",
+      "import": "./dist/platform/config/openai-codex-auth.js"
+    },
+    "./platform/config/secret-refs": {
+      "types": "./dist/platform/config/secret-refs.d.ts",
+      "import": "./dist/platform/config/secret-refs.js"
+    },
+    "./platform/config/secrets": {
+      "types": "./dist/platform/config/secrets.d.ts",
+      "import": "./dist/platform/config/secrets.js"
+    },
+    "./platform/config/service-registry": {
+      "types": "./dist/platform/config/service-registry.d.ts",
+      "import": "./dist/platform/config/service-registry.js"
+    },
+    "./platform/config/subscription-auth": {
+      "types": "./dist/platform/config/subscription-auth.d.ts",
+      "import": "./dist/platform/config/subscription-auth.js"
+    },
+    "./platform/config/subscription-providers": {
+      "types": "./dist/platform/config/subscription-providers.d.ts",
+      "import": "./dist/platform/config/subscription-providers.js"
+    },
+    "./platform/config/subscriptions": {
+      "types": "./dist/platform/config/subscriptions.d.ts",
+      "import": "./dist/platform/config/subscriptions.js"
+    },
+    "./platform/config/tool-llm": {
+      "types": "./dist/platform/config/tool-llm.d.ts",
+      "import": "./dist/platform/config/tool-llm.js"
+    },
     "./platform/control-plane": {
       "types": "./dist/platform/control-plane/index.d.ts",
       "import": "./dist/platform/control-plane/index.js"
+    },
+    "./platform/core": {
+      "types": "./dist/platform/core/index.d.ts",
+      "import": "./dist/platform/core/index.js"
     },
     "./platform/daemon": {
       "types": "./dist/platform/daemon/index.d.ts",
@@ -158,6 +206,10 @@
     "./platform/discovery": {
       "types": "./dist/platform/discovery/index.d.ts",
       "import": "./dist/platform/discovery/index.js"
+    },
+    "./platform/export": {
+      "types": "./dist/platform/export/index.d.ts",
+      "import": "./dist/platform/export/index.js"
     },
     "./platform/git": {
       "types": "./dist/platform/git/index.d.ts",
@@ -215,6 +267,18 @@
       "types": "./dist/platform/pairing/index.d.ts",
       "import": "./dist/platform/pairing/index.js"
     },
+    "./platform/permissions": {
+      "types": "./dist/platform/permissions/index.d.ts",
+      "import": "./dist/platform/permissions/index.js"
+    },
+    "./platform/plugins": {
+      "types": "./dist/platform/plugins/index.d.ts",
+      "import": "./dist/platform/plugins/index.js"
+    },
+    "./platform/profiles": {
+      "types": "./dist/platform/profiles/index.d.ts",
+      "import": "./dist/platform/profiles/index.js"
+    },
     "./platform/providers": {
       "types": "./dist/platform/providers/index.d.ts",
       "import": "./dist/platform/providers/index.js"
@@ -223,17 +287,61 @@
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
     },
+    "./platform/runtime/events": {
+      "types": "./dist/platform/runtime/events/index.d.ts",
+      "import": "./dist/platform/runtime/events/index.js"
+    },
+    "./platform/runtime/feature-flags": {
+      "types": "./dist/platform/runtime/feature-flags/index.d.ts",
+      "import": "./dist/platform/runtime/feature-flags/index.js"
+    },
+    "./platform/runtime/network": {
+      "types": "./dist/platform/runtime/network/index.d.ts",
+      "import": "./dist/platform/runtime/network/index.js"
+    },
+    "./platform/runtime/store": {
+      "types": "./dist/platform/runtime/store/index.d.ts",
+      "import": "./dist/platform/runtime/store/index.js"
+    },
+    "./platform/runtime/store/domains": {
+      "types": "./dist/platform/runtime/store/domains/index.d.ts",
+      "import": "./dist/platform/runtime/store/domains/index.js"
+    },
+    "./platform/runtime/store/helpers": {
+      "types": "./dist/platform/runtime/store/helpers/index.d.ts",
+      "import": "./dist/platform/runtime/store/helpers/index.js"
+    },
+    "./platform/scheduler": {
+      "types": "./dist/platform/scheduler/index.d.ts",
+      "import": "./dist/platform/scheduler/index.js"
+    },
     "./platform/security": {
       "types": "./dist/platform/security/index.d.ts",
       "import": "./dist/platform/security/index.js"
+    },
+    "./platform/sessions": {
+      "types": "./dist/platform/sessions/index.d.ts",
+      "import": "./dist/platform/sessions/index.js"
     },
     "./platform/state": {
       "types": "./dist/platform/state/index.d.ts",
       "import": "./dist/platform/state/index.js"
     },
+    "./platform/templates": {
+      "types": "./dist/platform/templates/index.d.ts",
+      "import": "./dist/platform/templates/index.js"
+    },
     "./platform/tools": {
       "types": "./dist/platform/tools/index.d.ts",
       "import": "./dist/platform/tools/index.js"
+    },
+    "./platform/types": {
+      "types": "./dist/platform/types/index.d.ts",
+      "import": "./dist/platform/types/index.js"
+    },
+    "./platform/utils": {
+      "types": "./dist/platform/utils/index.d.ts",
+      "import": "./dist/platform/utils/index.js"
     },
     "./platform/voice": {
       "types": "./dist/platform/voice/index.d.ts",
@@ -246,6 +354,14 @@
     "./platform/web-search": {
       "types": "./dist/platform/web-search/index.d.ts",
       "import": "./dist/platform/web-search/index.js"
+    },
+    "./platform/workflow": {
+      "types": "./dist/platform/workflow/index.d.ts",
+      "import": "./dist/platform/workflow/index.js"
+    },
+    "./platform/workspace": {
+      "types": "./dist/platform/workspace/index.d.ts",
+      "import": "./dist/platform/workspace/index.js"
     },
     "./react-native": {
       "types": "./dist/react-native.d.ts",

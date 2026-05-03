@@ -46,3 +46,4 @@ export type {
 } from './registry-types.js';
 export type { ProviderRuntimeSnapshot, ProviderUsageSnapshot } from './runtime-snapshot.js';
 export { ProviderNotFoundError } from './provider-not-found-error.js';
+export { ProviderRegistry } from './registry.js';

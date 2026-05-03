@@ -22,6 +22,10 @@
     "gzip_bytes": 1197,
     "rationale": "companion browser surface with localStorage token store; measured 997 B gzip * 1.2"
   },
+  "./client-auth": {
+    "gzip_bytes": 196,
+    "rationale": "v0.30.0 public entry facade; measured 163 B gzip * 1.2"
+  },
   "./contracts": {
     "gzip_bytes": 82,
     "rationale": "contract re-export shim; measured 68 B gzip * 1.2"
@@ -38,9 +42,17 @@
     "gzip_bytes": 78,
     "rationale": "error taxonomy re-export shim; measured 65 B gzip * 1.2"
   },
+  "./events": {
+    "gzip_bytes": 374,
+    "rationale": "v0.30.0 public entry facade; measured 311 B gzip * 1.2"
+  },
   "./expo": {
     "gzip_bytes": 476,
     "rationale": "Expo with SecureStore helper; measured 396 B gzip * 1.2"
+  },
+  "./observer": {
+    "gzip_bytes": 2188,
+    "rationale": "v0.30.0 public entry facade; measured 1823 B gzip * 1.2"
   },
   "./operator": {
     "gzip_bytes": 81,
@@ -50,45 +62,9 @@
     "gzip_bytes": 76,
     "rationale": "peer SDK client re-export shim; measured 63 B gzip * 1.2"
   },
-  "./react-native": {
-    "gzip_bytes": 1287,
-    "rationale": "RN/Hermes companion surface; measured 1072 B gzip * 1.2"
-  },
-  "./transport-core": {
-    "gzip_bytes": 86,
-    "rationale": "shared transport types + observer re-export shim; measured 71 B gzip * 1.2"
-  },
-  "./transport-direct": {
-    "gzip_bytes": 112,
-    "rationale": "SDK direct-transport facade backed by transport-core; measured 93 B gzip * 1.2"
-  },
-  "./transport-http": {
-    "gzip_bytes": 86,
-    "rationale": "HTTP client primitives re-export shim; measured 71 B gzip * 1.2"
-  },
-  "./transport-realtime": {
-    "gzip_bytes": 90,
-    "rationale": "SSE + WebSocket connectors re-export shim; measured 75 B gzip * 1.2"
-  },
-  "./web": {
-    "gzip_bytes": 440,
-    "rationale": "Workers-compat companion surface; measured 366 B gzip * 1.2"
-  },
-  "./client-auth": {
-    "gzip_bytes": 196,
-    "rationale": "v0.30.0 public entry facade; measured 163 B gzip * 1.2"
-  },
-  "./events": {
-    "gzip_bytes": 374,
-    "rationale": "v0.30.0 public entry facade; measured 311 B gzip * 1.2"
-  },
-  "./observer": {
-    "gzip_bytes": 2188,
-    "rationale": "v0.30.0 public entry facade; measured 1823 B gzip * 1.2"
-  },
   "./platform": {
-    "gzip_bytes": 323,
-    "rationale": "v0.30.0 public entry facade; measured 269 B gzip * 1.2"
+    "gzip_bytes": 537,
+    "rationale": "v0.30.1 expanded platform namespace facade; measured 447 B gzip * 1.2"
   },
   "./platform/acp": {
     "gzip_bytes": 71,
@@ -97,6 +73,10 @@
   "./platform/adapters": {
     "gzip_bytes": 390,
     "rationale": "v0.30.0 public entry facade; measured 325 B gzip * 1.2"
+  },
+  "./platform/agents": {
+    "gzip_bytes": 240,
+    "rationale": "v0.30.1 public platform seam; measured 200 B gzip * 1.2"
   },
   "./platform/artifacts": {
     "gzip_bytes": 186,
@@ -109,6 +89,10 @@
   "./platform/batch": {
     "gzip_bytes": 100,
     "rationale": "v0.30.0 public entry facade; measured 83 B gzip * 1.2"
+  },
+  "./platform/bookmarks": {
+    "gzip_bytes": 60,
+    "rationale": "v0.30.1 public platform seam; measured 50 B gzip * 1.2"
   },
   "./platform/channels": {
     "gzip_bytes": 309,
@@ -123,12 +107,52 @@
     "rationale": "v0.30.0 public entry facade; measured 158 B gzip * 1.2"
   },
   "./platform/config": {
-    "gzip_bytes": 676,
-    "rationale": "v0.30.0 public entry facade; measured 563 B gzip * 1.2"
+    "gzip_bytes": 936,
+    "rationale": "v0.30.1 expanded config facade with secrets, services, subscriptions, helper model, and tool LLM; measured 780 B gzip * 1.2"
+  },
+  "./platform/config/helper-model": {
+    "gzip_bytes": 2444,
+    "rationale": "v0.30.1 public config seam; measured 2036 B gzip * 1.2"
+  },
+  "./platform/config/openai-codex-auth": {
+    "gzip_bytes": 948,
+    "rationale": "v0.30.1 public config seam; measured 790 B gzip * 1.2"
+  },
+  "./platform/config/secret-refs": {
+    "gzip_bytes": 6177,
+    "rationale": "v0.30.1 public config seam; measured 5147 B gzip * 1.2"
+  },
+  "./platform/config/secrets": {
+    "gzip_bytes": 4628,
+    "rationale": "v0.30.1 public config seam; measured 3856 B gzip * 1.2"
+  },
+  "./platform/config/service-registry": {
+    "gzip_bytes": 2808,
+    "rationale": "v0.30.1 public config seam; measured 2340 B gzip * 1.2"
+  },
+  "./platform/config/subscription-auth": {
+    "gzip_bytes": 554,
+    "rationale": "v0.30.1 public config seam; measured 461 B gzip * 1.2"
+  },
+  "./platform/config/subscription-providers": {
+    "gzip_bytes": 1280,
+    "rationale": "v0.30.1 public config seam; measured 1066 B gzip * 1.2"
+  },
+  "./platform/config/subscriptions": {
+    "gzip_bytes": 2066,
+    "rationale": "v0.30.1 public config seam; measured 1721 B gzip * 1.2"
+  },
+  "./platform/config/tool-llm": {
+    "gzip_bytes": 1450,
+    "rationale": "v0.30.1 public config seam; measured 1208 B gzip * 1.2"
   },
   "./platform/control-plane": {
     "gzip_bytes": 171,
     "rationale": "v0.30.0 public entry facade; measured 142 B gzip * 1.2"
+  },
+  "./platform/core": {
+    "gzip_bytes": 342,
+    "rationale": "v0.30.1 public platform seam; measured 285 B gzip * 1.2"
   },
   "./platform/daemon": {
     "gzip_bytes": 182,
@@ -137,6 +161,10 @@
   "./platform/discovery": {
     "gzip_bytes": 149,
     "rationale": "v0.30.0 public entry facade; measured 124 B gzip * 1.2"
+  },
+  "./platform/export": {
+    "gzip_bytes": 80,
+    "rationale": "v0.30.1 public platform seam; measured 66 B gzip * 1.2"
   },
   "./platform/git": {
     "gzip_bytes": 71,
@@ -194,6 +222,18 @@
     "gzip_bytes": 209,
     "rationale": "v0.30.0 public entry facade; measured 174 B gzip * 1.2"
   },
+  "./platform/permissions": {
+    "gzip_bytes": 129,
+    "rationale": "v0.30.1 public platform seam; measured 107 B gzip * 1.2"
+  },
+  "./platform/plugins": {
+    "gzip_bytes": 77,
+    "rationale": "v0.30.1 public platform seam; measured 64 B gzip * 1.2"
+  },
+  "./platform/profiles": {
+    "gzip_bytes": 72,
+    "rationale": "v0.30.1 public platform seam; measured 60 B gzip * 1.2"
+  },
   "./platform/providers": {
     "gzip_bytes": 124,
     "rationale": "v0.30.0 public entry facade; measured 103 B gzip * 1.2"
@@ -202,17 +242,61 @@
     "gzip_bytes": 1509,
     "rationale": "v0.30.0 public entry facade; measured 1257 B gzip * 1.2"
   },
+  "./platform/runtime/events": {
+    "gzip_bytes": 3376,
+    "rationale": "v0.30.1 public runtime seam; measured 2813 B gzip * 1.2"
+  },
+  "./platform/runtime/feature-flags": {
+    "gzip_bytes": 486,
+    "rationale": "v0.30.1 public runtime seam; measured 405 B gzip * 1.2"
+  },
+  "./platform/runtime/network": {
+    "gzip_bytes": 318,
+    "rationale": "v0.30.1 public runtime seam; measured 265 B gzip * 1.2"
+  },
+  "./platform/runtime/store": {
+    "gzip_bytes": 1371,
+    "rationale": "v0.30.1 public runtime seam; measured 1142 B gzip * 1.2"
+  },
+  "./platform/runtime/store/domains": {
+    "gzip_bytes": 509,
+    "rationale": "v0.30.1 public runtime seam; measured 424 B gzip * 1.2"
+  },
+  "./platform/runtime/store/helpers": {
+    "gzip_bytes": 113,
+    "rationale": "v0.30.1 public runtime seam; measured 94 B gzip * 1.2"
+  },
+  "./platform/scheduler": {
+    "gzip_bytes": 63,
+    "rationale": "v0.30.1 public platform seam; measured 52 B gzip * 1.2"
+  },
   "./platform/security": {
     "gzip_bytes": 202,
     "rationale": "v0.30.0 public entry facade; measured 168 B gzip * 1.2"
+  },
+  "./platform/sessions": {
+    "gzip_bytes": 106,
+    "rationale": "v0.30.1 public platform seam; measured 88 B gzip * 1.2"
   },
   "./platform/state": {
     "gzip_bytes": 518,
     "rationale": "v0.30.0 public entry facade; measured 431 B gzip * 1.2"
   },
+  "./platform/templates": {
+    "gzip_bytes": 60,
+    "rationale": "v0.30.1 public platform seam; measured 50 B gzip * 1.2"
+  },
   "./platform/tools": {
     "gzip_bytes": 2158,
     "rationale": "v0.30.0 public entry facade; measured 1798 B gzip * 1.2"
+  },
+  "./platform/types": {
+    "gzip_bytes": 132,
+    "rationale": "v0.30.1 public platform seam; measured 110 B gzip * 1.2"
+  },
+  "./platform/utils": {
+    "gzip_bytes": 273,
+    "rationale": "v0.30.1 public platform seam; measured 227 B gzip * 1.2"
   },
   "./platform/voice": {
     "gzip_bytes": 142,
@@ -225,6 +309,38 @@
   "./platform/web-search": {
     "gzip_bytes": 237,
     "rationale": "v0.30.0 public entry facade; measured 197 B gzip * 1.2"
+  },
+  "./platform/workflow": {
+    "gzip_bytes": 71,
+    "rationale": "v0.30.1 public platform seam; measured 59 B gzip * 1.2"
+  },
+  "./platform/workspace": {
+    "gzip_bytes": 98,
+    "rationale": "v0.30.1 public platform seam; measured 81 B gzip * 1.2"
+  },
+  "./react-native": {
+    "gzip_bytes": 1287,
+    "rationale": "RN/Hermes companion surface; measured 1072 B gzip * 1.2"
+  },
+  "./transport-core": {
+    "gzip_bytes": 86,
+    "rationale": "shared transport types + observer re-export shim; measured 71 B gzip * 1.2"
+  },
+  "./transport-direct": {
+    "gzip_bytes": 112,
+    "rationale": "SDK direct-transport facade backed by transport-core; measured 93 B gzip * 1.2"
+  },
+  "./transport-http": {
+    "gzip_bytes": 86,
+    "rationale": "HTTP client primitives re-export shim; measured 71 B gzip * 1.2"
+  },
+  "./transport-realtime": {
+    "gzip_bytes": 90,
+    "rationale": "SSE + WebSocket connectors re-export shim; measured 75 B gzip * 1.2"
+  },
+  "./web": {
+    "gzip_bytes": 440,
+    "rationale": "Workers-compat companion surface; measured 366 B gzip * 1.2"
   },
   "./workers": {
     "gzip_bytes": 2752,
