@@ -57,7 +57,7 @@ console.log(`[sbom:generate] Generating SBOM → ${OUTPUT_FILE}`);
 
 try {
   execFileSync(
-    process.execPath, // node binary (not bun)
+    'node',
     [
       cyclonedxBin,
       '--ignore-npm-errors',
