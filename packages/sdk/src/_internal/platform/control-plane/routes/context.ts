@@ -1,1 +1,1 @@
-export type { MaybeResponse, DaemonApiRouteHandlers } from '../../../daemon.js';
+export type { MaybeResponse, DaemonApiRouteHandlers, DaemonRuntimeRouteHandlers } from '../../../daemon.js';

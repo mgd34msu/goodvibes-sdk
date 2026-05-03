@@ -1,8 +1,9 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonTelemetryRouteHandlers } from './context.js';
 import { buildMissingScopeBody, type AuthenticatedPrincipal } from './http-policy.js';
 import { decodeOtlpProtobuf } from './otlp-protobuf.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import { DaemonErrorCategory } from '@pellux/goodvibes-errors';
+import { readBoundedPositiveInteger, readOptionalBoundedInteger } from './route-helpers.js';
 
 type TelemetrySeverity = 'debug' | 'info' | 'warn' | 'error';
 type TelemetryViewMode = 'safe' | 'raw';
@@ -70,16 +71,15 @@ interface TelemetryRouteContext {
   readonly ingestSink: TelemetryIngestSink | null;
 }
 
-function parseNumber(value: string | null): number | undefined {
-  if (value === null || value.trim().length === 0) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
+const MAX_TELEMETRY_TIMESTAMP_MS = Date.UTC(2100, 0, 1);
 
 function parseLimit(value: string | null): number | undefined {
-  const parsed = parseNumber(value);
-  if (parsed === undefined) return undefined;
-  return Math.min(1_000, Math.max(1, Math.floor(parsed)));
+  if (value === null || value.trim().length === 0) return undefined;
+  return readBoundedPositiveInteger(value, 100, 1_000);
+}
+
+function parseTimestampMillis(value: string | null): number | undefined {
+  return readOptionalBoundedInteger(value, 0, MAX_TELEMETRY_TIMESTAMP_MS);
 }
 
 function parseCsv<T extends string>(value: string | null): readonly T[] | undefined {
@@ -103,8 +103,8 @@ function parseView(value: string | null): TelemetryViewMode | undefined {
 
 function buildFilter(url: URL): TelemetryFilter {
   const limit = parseLimit(url.searchParams.get('limit'));
-  const since = parseNumber(url.searchParams.get('since'));
-  const until = parseNumber(url.searchParams.get('until'));
+  const since = parseTimestampMillis(url.searchParams.get('since'));
+  const until = parseTimestampMillis(url.searchParams.get('until'));
   const domains = parseCsv<RuntimeEventDomain>(url.searchParams.get('domains'));
   const eventTypes = parseCsv<string>(url.searchParams.get('types'));
   const severity = parseSeverity(url.searchParams.get('severity'));
@@ -299,21 +299,7 @@ function authenticateTelemetryRequest(
 
 export function createDaemonTelemetryRouteHandlers(
   context: TelemetryRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getTelemetrySnapshot'
-  | 'getTelemetryEvents'
-  | 'getTelemetryErrors'
-  | 'getTelemetryTraces'
-  | 'getTelemetryMetrics'
-  | 'createTelemetryEventStream'
-  | 'getTelemetryOtlpTraces'
-  | 'getTelemetryOtlpLogs'
-  | 'getTelemetryOtlpMetrics'
-  | 'postTelemetryOtlpLogs'
-  | 'postTelemetryOtlpTraces'
-  | 'postTelemetryOtlpMetrics'
-> {
+): DaemonTelemetryRouteHandlers {
   return {
     getTelemetrySnapshot: (req) => {
       if (!context.telemetryApi) return unavailable();

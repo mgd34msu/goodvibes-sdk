@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonRemoteManagementRouteHandlers } from './context.js';
 import { jsonErrorResponse } from './error-response.js';
 import { serializableJsonResponse } from './route-helpers.js';
 
@@ -41,20 +41,7 @@ interface DaemonRemoteRouteContext {
 
 export function createDaemonRemoteRouteHandlers(
   context: DaemonRemoteRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getRemotePairRequests'
-  | 'approveRemotePairRequest'
-  | 'rejectRemotePairRequest'
-  | 'getRemotePeers'
-  | 'rotateRemotePeerToken'
-  | 'revokeRemotePeerToken'
-  | 'disconnectRemotePeer'
-  | 'getRemoteWork'
-  | 'invokeRemotePeer'
-  | 'cancelRemoteWork'
-  | 'getRemoteNodeHostContract'
-> {
+): DaemonRemoteManagementRouteHandlers {
   return {
     getRemotePairRequests: () => Response.json({ requests: context.distributedRuntime.listPairRequests() }),
     approveRemotePairRequest: async (requestId, request) => handleApproveRemotePairRequest(context, requestId, request),
@@ -91,9 +78,8 @@ export async function handleRemotePairRequest(
     clientMode: typeof body.clientMode === 'string' ? body.clientMode : undefined,
     capabilities: Array.isArray(body.capabilities) ? body.capabilities.filter((value): value is string => typeof value === 'string') : [],
     commands: Array.isArray(body.commands) ? body.commands.filter((value): value is string => typeof value === 'string') : [],
-    metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
+    metadata: readMetadataWithForwardedForAudit(req, body.metadata),
     requestedBy: 'remote',
-    remoteAddress: readForwardedForForDisplay(req),
     ttlMs: boundedPositiveNumber(body.ttlMs, 1_000, 86_400_000),
   });
   return Response.json(created, { status: 201 });
@@ -111,8 +97,7 @@ export async function handleRemotePairVerify(
     return Response.json({ error: 'Missing requestId or challenge' }, { status: 400 });
   }
   const verified = await context.distributedRuntime.verifyPairRequest(requestId, challenge, {
-    remoteAddress: readForwardedForForDisplay(req),
-    metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
+    metadata: readMetadataWithForwardedForAudit(req, body.metadata),
   });
   return verified
     ? Response.json(verified)
@@ -128,12 +113,11 @@ export async function handleRemotePeerHeartbeat(
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const peer = await context.distributedRuntime.heartbeatPeer(auth, {
-    remoteAddress: readForwardedForForDisplay(req),
     capabilities: Array.isArray(body.capabilities) ? body.capabilities.filter((value): value is string => typeof value === 'string') : undefined,
     commands: Array.isArray(body.commands) ? body.commands.filter((value): value is string => typeof value === 'string') : undefined,
     version: typeof body.version === 'string' ? body.version : undefined,
     clientMode: typeof body.clientMode === 'string' ? body.clientMode : undefined,
-    metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
+    metadata: readMetadataWithForwardedForAudit(req, body.metadata),
   });
   return Response.json({ peer });
 }
@@ -188,7 +172,15 @@ function validateRemoteJsonPayload(value: unknown, maxBytes: number, field: stri
   }, { status: 413 });
 }
 
-function readForwardedForForDisplay(req: Request): string | undefined {
+function readMetadataWithForwardedForAudit(req: Request, value: unknown): Record<string, unknown> {
+  const metadata = typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+  const auditForwardedFor = readForwardedForAuditHint(req);
+  return auditForwardedFor ? { ...metadata, auditForwardedFor } : metadata;
+}
+
+function readForwardedForAuditHint(req: Request): string | undefined {
   // x-forwarded-for is caller-controlled unless the daemon is explicitly behind
   // a trusted proxy. Preserve a small display/audit hint, but never use it for
   // authorization decisions.

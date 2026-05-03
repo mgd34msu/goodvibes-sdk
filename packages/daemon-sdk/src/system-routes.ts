@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonSystemRouteHandlers } from './context.js';
 import type { JsonRecord } from './route-helpers.js';
 import { jsonErrorResponse } from './error-response.js';
 import type {
@@ -14,28 +14,7 @@ import type {
 export function createDaemonSystemRouteHandlers(
   context: DaemonSystemRouteContext,
   request: Request,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getWatchers'
-  | 'postWatcher'
-  | 'patchWatcher'
-  | 'watcherAction'
-  | 'deleteWatcher'
-  | 'getServiceStatus'
-  | 'installService'
-  | 'startService'
-  | 'stopService'
-  | 'restartService'
-  | 'uninstallService'
-  | 'getRouteBindings'
-  | 'postRouteBinding'
-  | 'patchRouteBinding'
-  | 'deleteRouteBinding'
-  | 'getApprovals'
-  | 'approvalAction'
-  | 'getConfig'
-  | 'postConfig'
-> {
+): DaemonSystemRouteHandlers {
   return {
     getWatchers: () => Response.json({ watchers: context.watcherRegistry.list() }),
     postWatcher: (req) => {

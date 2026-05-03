@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonRuntimeRouteHandlers } from './context.js';
 import { createDaemonRuntimeAutomationRouteHandlers } from './runtime-automation-routes.js';
 import { createDaemonRuntimeSessionRouteHandlers } from './runtime-session-routes.js';
 import type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
@@ -7,43 +7,7 @@ export type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
 
 export function createDaemonRuntimeRouteHandlers(
   context: DaemonRuntimeRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'createSharedSession'
-  | 'getAutomationJobs'
-  | 'postAutomationJob'
-  | 'getAutomationRuns'
-  | 'getAutomationRun'
-  | 'getAutomationHeartbeat'
-  | 'postAutomationHeartbeat'
-  | 'automationRunAction'
-  | 'patchAutomationJob'
-  | 'deleteAutomationJob'
-  | 'setAutomationJobEnabled'
-  | 'runAutomationJobNow'
-  | 'postTask'
-  | 'getSharedSession'
-  | 'closeSharedSession'
-  | 'reopenSharedSession'
-  | 'getSharedSessionMessages'
-  | 'getSharedSessionInputs'
-  | 'postSharedSessionMessage'
-  | 'postSharedSessionInput'
-  | 'postSharedSessionSteer'
-  | 'postSharedSessionFollowUp'
-  | 'cancelSharedSessionInput'
-  | 'getSharedSessionEvents'
-  | 'getRuntimeTask'
-  | 'runtimeTaskAction'
-  | 'getTaskStatus'
-  | 'getSchedules'
-  | 'postSchedule'
-  | 'deleteSchedule'
-  | 'setScheduleEnabled'
-  | 'runScheduleNow'
-  | 'getSchedulerCapacity'
-  | 'getRuntimeMetrics'
-> {
+): DaemonRuntimeRouteHandlers {
   return {
     ...createDaemonRuntimeSessionRouteHandlers(context),
     ...createDaemonRuntimeAutomationRouteHandlers(context),

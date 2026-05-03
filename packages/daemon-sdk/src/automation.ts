@@ -1,29 +1,8 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonAutomationRouteHandlers } from './context.js';
 
 export async function dispatchAutomationRoutes(
   req: Request,
-  handlers: Pick<
-    DaemonApiRouteHandlers,
-    | 'getReview'
-    | 'getIntegrationSession'
-    | 'getIntegrationAutomation'
-    | 'getAutomationJobs'
-    | 'postAutomationJob'
-    | 'getAutomationRuns'
-    | 'getAutomationRun'
-    | 'automationRunAction'
-    | 'patchAutomationJob'
-    | 'deleteAutomationJob'
-    | 'setAutomationJobEnabled'
-    | 'runAutomationJobNow'
-    | 'getDeliveries'
-    | 'getDelivery'
-    | 'getSchedules'
-    | 'postSchedule'
-    | 'deleteSchedule'
-    | 'setScheduleEnabled'
-    | 'runScheduleNow'
-  >,
+  handlers: DaemonAutomationRouteHandlers,
 ): Promise<Response | null> {
   const url = new URL(req.url);
   const { pathname } = url;

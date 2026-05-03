@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonRuntimeRouteHandlers } from './context.js';
 
 /**
  * Stable envelope shape for conversation-message-related events published
@@ -236,40 +236,4 @@ export interface DaemonRuntimeRouteContext {
   readonly openSessionEventStream: (req: Request, sessionId: string) => Response;
 }
 
-export type DaemonRuntimeRouteHandlerMap = Pick<
-  DaemonApiRouteHandlers,
-  | 'createSharedSession'
-  | 'getAutomationJobs'
-  | 'postAutomationJob'
-  | 'getAutomationRuns'
-  | 'getAutomationRun'
-  | 'getAutomationHeartbeat'
-  | 'postAutomationHeartbeat'
-  | 'automationRunAction'
-  | 'patchAutomationJob'
-  | 'deleteAutomationJob'
-  | 'setAutomationJobEnabled'
-  | 'runAutomationJobNow'
-  | 'postTask'
-  | 'getSharedSession'
-  | 'closeSharedSession'
-  | 'reopenSharedSession'
-  | 'getSharedSessionMessages'
-  | 'getSharedSessionInputs'
-  | 'postSharedSessionMessage'
-  | 'postSharedSessionInput'
-  | 'postSharedSessionSteer'
-  | 'postSharedSessionFollowUp'
-  | 'cancelSharedSessionInput'
-  | 'getRuntimeTask'
-  | 'runtimeTaskAction'
-  | 'getTaskStatus'
-  | 'getSharedSessionEvents'
-  | 'getSchedules'
-  | 'postSchedule'
-  | 'deleteSchedule'
-  | 'setScheduleEnabled'
-  | 'runScheduleNow'
-  | 'getSchedulerCapacity'
-  | 'getRuntimeMetrics'
->;
+export type DaemonRuntimeRouteHandlerMap = DaemonRuntimeRouteHandlers;

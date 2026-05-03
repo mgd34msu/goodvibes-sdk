@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonRuntimeSessionRouteHandlers } from './context.js';
 import { randomUUID } from 'node:crypto';
 import type {
   AutomationSurfaceKind,
@@ -7,6 +7,7 @@ import type {
   JsonBody,
   SharedSessionRoutingIntent,
 } from './runtime-route-types.js';
+import { readBoundedPositiveInteger } from './route-helpers.js';
 
 type SharedSessionSubmission = Awaited<ReturnType<DaemonRuntimeRouteContext['sessionBroker']['submitMessage']>>;
 type SharedSessionSteerSubmission = Awaited<ReturnType<DaemonRuntimeRouteContext['sessionBroker']['steerMessage']>>;
@@ -17,34 +18,12 @@ const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 500;
 
 function readBoundedLimit(url: URL, key = 'limit'): number {
-  const raw = url.searchParams.get(key);
-  if (raw === null) return DEFAULT_LIST_LIMIT;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return DEFAULT_LIST_LIMIT;
-  return Math.min(MAX_LIST_LIMIT, Math.max(1, Math.floor(parsed)));
+  return readBoundedPositiveInteger(url.searchParams.get(key), DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT);
 }
 
 export function createDaemonRuntimeSessionRouteHandlers(
   context: DaemonRuntimeRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'createSharedSession'
-  | 'postTask'
-  | 'getSharedSession'
-  | 'closeSharedSession'
-  | 'reopenSharedSession'
-  | 'getSharedSessionMessages'
-  | 'getSharedSessionInputs'
-  | 'postSharedSessionMessage'
-  | 'postSharedSessionInput'
-  | 'postSharedSessionSteer'
-  | 'postSharedSessionFollowUp'
-  | 'cancelSharedSessionInput'
-  | 'getRuntimeTask'
-  | 'runtimeTaskAction'
-  | 'getTaskStatus'
-  | 'getSharedSessionEvents'
-> {
+): DaemonRuntimeSessionRouteHandlers {
   return {
     createSharedSession: async (request) => handleCreateSharedSession(context, request),
     postTask: async (request) => handlePostTask(context, request),

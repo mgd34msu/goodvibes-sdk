@@ -1,45 +1,11 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonIntegrationRouteHandlers } from './context.js';
 import { jsonErrorResponse } from './error-response.js';
 import type { DaemonIntegrationRouteContext, IntegrationHelperServiceLike, RuntimeEventDomain } from './integration-route-types.js';
 
 export function createDaemonIntegrationRouteHandlers(
   context: DaemonIntegrationRouteContext,
   request: Request,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getReview'
-  | 'getIntegrationSession'
-  | 'getIntegrationTasks'
-  | 'getIntegrationAutomation'
-  | 'getIntegrationSessions'
-  | 'getDeliveries'
-  | 'getDelivery'
-  | 'getRoutesSnapshot'
-  | 'getRemote'
-  | 'getHealth'
-  | 'getAccounts'
-  | 'getProviders'
-  | 'getProvider'
-  | 'getProviderUsage'
-  | 'getSettings'
-  | 'getSecuritySettings'
-  | 'getContinuity'
-  | 'getWorktrees'
-  | 'getIntelligence'
-  | 'getMemoryDoctor'
-  | 'getMemoryVectorStats'
-  | 'postMemoryVectorRebuild'
-  | 'postMemoryEmbeddingDefault'
-  | 'getLocalAuth'
-  | 'postLocalAuthUser'
-  | 'deleteLocalAuthUser'
-  | 'postLocalAuthPassword'
-  | 'deleteLocalAuthSession'
-  | 'deleteBootstrapFile'
-  | 'getPanels'
-  | 'postPanelOpen'
-  | 'getEvents'
-> {
+): DaemonIntegrationRouteHandlers {
   return {
     getReview: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.buildReview())),
     getIntegrationSession: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getSessionSnapshot())),

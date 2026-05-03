@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonMediaRouteHandlers } from './context.js';
 import { resolvePrivateHostFetchOptions } from './http-policy.js';
 import { jsonErrorResponse } from './error-response.js';
 import { DaemonErrorCategory } from '@pellux/goodvibes-errors';
@@ -44,31 +44,7 @@ function isProviderNotConfiguredError(error: unknown): boolean {
 
 export function createDaemonMediaRouteHandlers(
   context: DaemonMediaRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getVoiceStatus'
-  | 'getVoiceProviders'
-  | 'getVoiceVoices'
-  | 'postVoiceTts'
-  | 'postVoiceTtsStream'
-  | 'postVoiceStt'
-  | 'postVoiceRealtimeSession'
-  | 'getWebSearchProviders'
-  | 'postWebSearch'
-  | 'getArtifacts'
-  | 'postArtifact'
-  | 'getArtifact'
-  | 'getArtifactContent'
-  | 'getMediaProviders'
-  | 'postMediaAnalyze'
-  | 'postMediaTransform'
-  | 'postMediaGenerate'
-  | 'getMultimodalStatus'
-  | 'getMultimodalProviders'
-  | 'postMultimodalAnalyze'
-  | 'postMultimodalPacket'
-  | 'postMultimodalWriteback'
-> {
+): DaemonMediaRouteHandlers {
   return {
     getVoiceStatus: async () => Response.json(await context.voiceService.getStatus(Boolean(context.configManager.get('ui.voiceEnabled')))),
     getVoiceProviders: async () => Response.json({

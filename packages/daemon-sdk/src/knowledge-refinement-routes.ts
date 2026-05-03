@@ -1,15 +1,10 @@
-import type { DaemonApiRouteHandlers } from './context.js';
+import type { DaemonKnowledgeRefinementRouteHandlers } from './context.js';
 import type { DaemonKnowledgeRouteContext } from './knowledge-route-types.js';
+import { readBoundedPositiveInteger } from './route-helpers.js';
 
 export function createDaemonKnowledgeRefinementRouteHandlers(
   context: DaemonKnowledgeRouteContext,
-): Pick<
-  DaemonApiRouteHandlers,
-  | 'getKnowledgeRefinementTasks'
-  | 'getKnowledgeRefinementTask'
-  | 'postKnowledgeRunRefinement'
-  | 'postKnowledgeCancelRefinementTask'
-> {
+): DaemonKnowledgeRefinementRouteHandlers {
   return {
     getKnowledgeRefinementTasks: (url) => Response.json({
       tasks: context.knowledgeService.listRefinementTasks(readLimit(url, 100), readRefinementTaskFilter(url)),
@@ -27,13 +22,6 @@ export function createDaemonKnowledgeRefinementRouteHandlers(
 
 function readLimit(url: URL, fallback: number): number {
   return readBoundedPositiveInteger(url.searchParams.get('limit'), fallback, 1_000);
-}
-
-function readBoundedPositiveInteger(raw: string | null, fallback: number, max: number): number {
-  if (raw === null || raw.trim() === '') return fallback;
-  const value = Number(raw);
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(max, Math.max(1, Math.floor(value)));
 }
 
 function readRefinementTaskFilter(url: URL): Record<string, unknown> {

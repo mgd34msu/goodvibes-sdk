@@ -1,4 +1,4 @@
-import type { DaemonApiRouteHandlers } from '../../control-plane/routes/context.js';
+import type { DaemonRuntimeRouteHandlers } from '../../control-plane/routes/context.js';
 import type { DaemonRuntimeRouteContext as SdkDaemonRuntimeRouteContext, JsonBody } from '../../../daemon.js';
 import type { ExecutionIntent } from '../../runtime/execution-intents.js';
 // NOTE (ARCH-01 audit follow-up): Local Like-view types below (AgentRecordLike,
@@ -213,38 +213,4 @@ export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteCon
 
 export type { JsonBody };
 
-export type DaemonRuntimeRouteHandlerMap = Pick<
-  DaemonApiRouteHandlers,
-  | 'createSharedSession'
-  | 'getAutomationJobs'
-  | 'postAutomationJob'
-  | 'getAutomationRuns'
-  | 'getAutomationRun'
-  | 'getAutomationHeartbeat'
-  | 'postAutomationHeartbeat'
-  | 'automationRunAction'
-  | 'patchAutomationJob'
-  | 'deleteAutomationJob'
-  | 'setAutomationJobEnabled'
-  | 'runAutomationJobNow'
-  | 'postTask'
-  | 'getSharedSession'
-  | 'closeSharedSession'
-  | 'reopenSharedSession'
-  | 'getSharedSessionMessages'
-  | 'getSharedSessionInputs'
-  | 'postSharedSessionMessage'
-  | 'postSharedSessionInput'
-  | 'postSharedSessionSteer'
-  | 'postSharedSessionFollowUp'
-  | 'cancelSharedSessionInput'
-  | 'getRuntimeTask'
-  | 'runtimeTaskAction'
-  | 'getTaskStatus'
-  | 'getSchedules'
-  | 'postSchedule'
-  | 'deleteSchedule'
-  | 'setScheduleEnabled'
-  | 'runScheduleNow'
-  | 'getSchedulerCapacity'
->;
+export type DaemonRuntimeRouteHandlerMap = DaemonRuntimeRouteHandlers;
