@@ -4,11 +4,10 @@ import type { ArtifactDescriptor, ArtifactRecord } from '../artifacts/types.js';
 import { guessMimeType } from '../artifacts/types.js';
 import { extractReadableHtml } from './html-readability.js';
 import { extractPdf } from './pdf-extractor.js';
+import { KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS } from './extraction-policy.js';
 import type { KnowledgeExtractionFormat } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
-
-const MAX_STRUCTURE_SEARCH_TEXT_CHARS = 128 * 1024;
 
 export interface KnowledgeExtractionResult {
   readonly extractorId: string;
@@ -58,9 +57,9 @@ function cleanText(value: string): string {
 function searchTextPayload(value: string): string | undefined {
   const cleaned = cleanText(value);
   if (!cleaned) return undefined;
-  return cleaned.length <= MAX_STRUCTURE_SEARCH_TEXT_CHARS
+  return cleaned.length <= KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS
     ? cleaned
-    : cleaned.slice(0, MAX_STRUCTURE_SEARCH_TEXT_CHARS);
+    : cleaned.slice(0, KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS);
 }
 
 function searchTextStructure(value: string): { readonly searchText?: string } {

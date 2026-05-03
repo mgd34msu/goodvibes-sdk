@@ -12,6 +12,11 @@ const USEFUL_PAGE_FACT_KINDS = new Set([
   'troubleshooting',
 ]);
 
+export interface KnowledgePageFactQualityOptions {
+  readonly allowedFactKinds?: ReadonlySet<string>;
+  readonly rejectRemoteAccessoryDetails?: boolean;
+}
+
 export function isSemanticAnswerLinkedObject(node: KnowledgeNodeRecord): boolean {
   if (node.status === 'stale') return false;
   const semanticKind = readString(node.metadata.semanticKind);
@@ -228,14 +233,18 @@ export function hasConcreteFeatureSignal(text: string): boolean {
   return /\b(hdmi|usb|hdr|hdr10|dolby|vision|earc|arc|bluetooth|wi-?fi|wireless lan|ethernet|voice|remote|game|filmmaker|airplay|chromecast|resolution|4k|8k|refresh|ports?|speakers?|audio|display|screen|apps?|streaming|matter|energy monitoring|scheduling|sensor|battery|z-?wave|zigbee|thread|motion|temperature|humidity|camera|recording|lock|garage|local control|api|automation|atsc|ntsc|qam|tuner|broadcast|rs-?232c|external control)\b/.test(text.toLowerCase());
 }
 
-export function isUsefulHomeGraphPageFact(fact: KnowledgeNodeRecord): boolean {
+export function isUsefulKnowledgePageFact(
+  fact: KnowledgeNodeRecord,
+  options: KnowledgePageFactQualityOptions = {},
+): boolean {
   if (fact.status === 'stale') return false;
   if (fact.metadata.semanticKind !== 'fact') return false;
   const kind = readString(fact.metadata.factKind) ?? 'note';
-  if (!USEFUL_PAGE_FACT_KINDS.has(kind)) return false;
+  if (!(options.allowedFactKinds ?? USEFUL_PAGE_FACT_KINDS).has(kind)) return false;
   const text = semanticFactText(fact);
   if (isLowValueFeatureOrSpecText(text)) return false;
-  if (/\bremote(?: control)?\b/.test(text)
+  if (options.rejectRemoteAccessoryDetails === true
+    && /\bremote(?: control)?\b/.test(text)
     && /\b(accessor(y|ies)|battery|batteries|button|environment|infrared|mr20ga|point|pointer|remote sensor|sap|sensor|shake|voice recognition)\b/.test(text)) {
     return false;
   }

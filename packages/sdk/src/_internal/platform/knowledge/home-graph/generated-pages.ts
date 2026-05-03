@@ -36,10 +36,9 @@ import {
   renderPacketPage,
   renderRoomPage,
 } from './rendering.js';
-import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
 import { deriveRepairProfileFacts } from '../semantic/repair-profile.js';
 import { semanticHash, semanticSlug } from '../semantic/utils.js';
-import { compareHomeGraphPageSources, isUsefulHomeGraphPageSource } from './page-quality.js';
+import { compareHomeGraphPageSources, isUsefulHomeGraphPageFact, isUsefulHomeGraphPageSource } from './page-quality.js';
 import type {
   HomeGraphDevicePassportResult,
   HomeGraphGeneratedPagesSummary,

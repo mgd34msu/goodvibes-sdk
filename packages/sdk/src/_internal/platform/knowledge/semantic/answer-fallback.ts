@@ -12,12 +12,34 @@ export interface FallbackAnswer {
   readonly synthesized: boolean;
 }
 
+export interface AnswerFallbackPolicy {
+  readonly renderInsufficientFacts?: (input: {
+    readonly query: string;
+    readonly sourceTitles: readonly string[];
+  }) => FallbackAnswer;
+  readonly renderNoMatch?: (query: string) => FallbackAnswer;
+}
+
+const DEFAULT_ANSWER_FALLBACK_POLICY: Required<AnswerFallbackPolicy> = {
+  renderInsufficientFacts: ({ query, sourceTitles }) => ({
+    synthesized: false,
+    text: `I found matching sources (${joinFactPhrases(sourceTitles)}), but they have not produced enough source-backed facts to answer "${query}" yet.`,
+  }),
+  renderNoMatch: (query) => ({
+    synthesized: false,
+    text: `No knowledge matched "${query}".`,
+  }),
+};
+
 export function renderFallbackAnswer(
   query: string,
   mode: string,
   evidence: readonly AnswerFallbackEvidence[],
   facts: readonly KnowledgeNodeRecord[],
+  policy: AnswerFallbackPolicy = DEFAULT_ANSWER_FALLBACK_POLICY,
 ): FallbackAnswer {
+  const renderInsufficientFacts = policy.renderInsufficientFacts ?? DEFAULT_ANSWER_FALLBACK_POLICY.renderInsufficientFacts;
+  const renderNoMatch = policy.renderNoMatch ?? DEFAULT_ANSWER_FALLBACK_POLICY.renderNoMatch;
   const factLimit = mode === 'detailed' ? 12 : mode === 'concise' ? 3 : 8;
   const factPhrases = facts.slice(0, factLimit).map(renderFactPhrase).filter(Boolean);
   const profile = renderFeatureProfile(query, facts, evidence);
@@ -38,15 +60,9 @@ export function renderFallbackAnswer(
     .map((item) => normalizeWhitespace(item.title))
     .filter(Boolean);
   if (sourceTitles.length > 0) {
-    return {
-      synthesized: false,
-      text: `I found matching sources (${joinFactPhrases(sourceTitles)}), but they have not produced enough source-backed facts to answer "${query}" yet.`,
-    };
+    return renderInsufficientFacts({ query, sourceTitles });
   }
-  return {
-    synthesized: false,
-    text: `No knowledge matched "${query}".`,
-  };
+  return renderNoMatch(query);
 }
 
 function renderFactPhrase(fact: KnowledgeNodeRecord): string {

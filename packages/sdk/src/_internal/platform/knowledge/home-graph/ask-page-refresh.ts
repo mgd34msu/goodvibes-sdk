@@ -2,7 +2,6 @@ import type { ArtifactStore } from '../../artifacts/index.js';
 import { logger } from '../../utils/logger.js';
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
-import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
 import {
   buildHomeGraphMetadata,
   isGeneratedPageSource,
@@ -16,6 +15,7 @@ import { refreshHomeGraphDevicePassport } from './generated-pages.js';
 import {
   compareHomeGraphPageSources,
   homeGraphPageSourceWeight,
+  isUsefulHomeGraphPageFact,
   isUsefulHomeGraphPageSource,
   isUsefulHomeGraphPageSourceCandidate,
 } from './page-quality.js';

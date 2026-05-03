@@ -1,4 +1,5 @@
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
+import { isGeneratedKnowledgeSource } from '../generated-projections.js';
 import { readRecord, readString } from './utils.js';
 
 export interface AnswerSourceRankingEvidence {
@@ -26,7 +27,7 @@ export function rankAnswerSources(
     }
   }
   const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : []));
-  const realSources = sources.filter((source) => source.metadata.homeGraphGeneratedPage !== true);
+  const realSources = sources.filter((source) => !isGeneratedKnowledgeSource(source));
   return (realSources.length > 0 ? realSources : sources)
     .sort((left, right) => (
       sourceAnswerQuality(right, evidenceScoreBySource, factCountBySource, promotedFactCountBySource)
@@ -49,7 +50,7 @@ function sourceAnswerQuality(
     + Math.min(90, (promotedFactCountBySource.get(source.id) ?? 0) * 18)
     + rank * 4
     + (source.status === 'indexed' ? 12 : source.status === 'pending' ? 2 : 0)
-    - (source.metadata.homeGraphGeneratedPage === true ? 90 : 0);
+    - (isGeneratedKnowledgeSource(source) ? 90 : 0);
 }
 
 export function sourceAuthorityBoostForAnswer(source: KnowledgeSourceRecord): number {

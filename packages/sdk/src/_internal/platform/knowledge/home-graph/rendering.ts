@@ -9,11 +9,8 @@ import { renderKnowledgeMap } from '../map.js';
 import { countFacet, normalizeStringArray, readString } from '../map-filters.js';
 import { edgeIsActive, isGeneratedPageSource, uniqueStrings } from './helpers.js';
 import type { HomeGraphMapHaFilterInput, HomeGraphMapInput, HomeGraphMapResult } from './types.js';
-import {
-  isLowValueFeatureOrSpecText,
-  isUsefulHomeGraphPageFact,
-} from '../semantic/fact-quality.js';
-import { isUsefulHomeGraphPageSource } from './page-quality.js';
+import { isLowValueFeatureOrSpecText } from '../semantic/fact-quality.js';
+import { isUsefulHomeGraphPageFact, isUsefulHomeGraphPageSource } from './page-quality.js';
 
 export interface HomeGraphRenderState {
   readonly spaceId: string;

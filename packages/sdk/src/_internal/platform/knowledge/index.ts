@@ -1,6 +1,20 @@
 export { KnowledgeConnectorRegistry, createDefaultKnowledgeConnectorRegistry } from './connectors.js';
 export { extractKnowledgeArtifact } from './extractors.js';
 export {
+  KNOWLEDGE_BINARY_EXTENDED_RATIO_THRESHOLD,
+  KNOWLEDGE_BINARY_PUNCTUATION_RATIO_THRESHOLD,
+  KNOWLEDGE_BINARY_SAMPLE_CHARS,
+  KNOWLEDGE_BINARY_USEFUL_RATIO_THRESHOLD,
+  KNOWLEDGE_BINARY_WHITESPACE_RATIO_THRESHOLD,
+  KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS,
+  KNOWLEDGE_MIN_BINARY_SAMPLE_CHARS,
+  hasUsefulKnowledgeExtractionText,
+  knowledgeExtractionNeedsRefresh,
+  looksBinaryLikeText,
+  looksLikeRawPdfPayload,
+  readKnowledgeSearchText,
+} from './extraction-policy.js';
+export {
   collectBrowserKnowledge,
   discoverBrowserKnowledgeProfiles,
   ingestBrowserKnowledge,
@@ -39,6 +53,23 @@ export type {
 export { renderKnowledgeMap } from './map.js';
 export type { KnowledgeMapRenderOptions, KnowledgeMapRenderState } from './map.js';
 export {
+  compareKnowledgePageSources,
+  isUsefulKnowledgePageSource,
+  isUsefulKnowledgePageSourceCandidate,
+  knowledgePageSourceWeight,
+} from './source-quality.js';
+export type { KnowledgePageSourceQualityPolicy } from './source-quality.js';
+export type {
+  KnowledgeExtensionDefinition,
+  KnowledgeFacetProvider,
+  KnowledgeFacetProviderInput,
+  KnowledgeObjectProfilePolicy,
+  KnowledgePageTemplate,
+  KnowledgePageTemplateInput,
+  KnowledgeRelationshipResolver,
+  KnowledgeRelationshipResolverInput,
+} from './extensions.js';
+export {
   KnowledgeSemanticService,
   createWebKnowledgeGapRepairer,
   createProviderBackedKnowledgeSemanticLlm,
@@ -63,7 +94,7 @@ export type {
   KnowledgeSemanticServiceOptions,
   WebGapRepairOptions,
 } from './semantic/index.js';
-export { HomeGraphService, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS } from './home-graph/index.js';
+export { HomeGraphService, HOME_GRAPH_KNOWLEDGE_EXTENSION, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS } from './home-graph/index.js';
 export {
   ProjectPlanningService,
   evaluateProjectPlanningReadiness,
