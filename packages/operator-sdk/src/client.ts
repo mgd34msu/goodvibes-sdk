@@ -2,7 +2,7 @@ import type {
   OperatorMethodContract,
   OperatorMethodId,
 } from '@pellux/goodvibes-contracts';
-import { getOperatorContract } from '@pellux/goodvibes-contracts';
+import { getOperatorContract, OPERATOR_METHOD_IDS } from '@pellux/goodvibes-contracts';
 import * as ContractZodSchemas from '@pellux/goodvibes-contracts';
 import {
   createHttpTransport,
@@ -57,34 +57,54 @@ function isZodSchema(value: unknown): value is ZodType {
 }
 
 /**
- * Auto-derives a method-ID → ZodType registry from the contracts namespace by
- * scanning all exported names that end with `ResponseSchema` and are valid Zod
- * schemas. New response schemas added to the contracts package are picked up
- * automatically without requiring manual updates here.
+ * Derives a candidate export name from a contract method id.
+ * e.g. "local_auth.status" → "LocalAuthStatusResponseSchema"
+ *      "control.auth.login" → "ControlAuthLoginResponseSchema"
  */
-function buildSchemaRegistry(schemas: Record<string, unknown>): Partial<Record<string, ZodType>> {
+function methodIdToSchemaName(methodId: string): string {
+  const pascal = methodId
+    .split('.')
+    .flatMap((segment) => segment.split('_'))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+  return `${pascal}ResponseSchema`;
+}
+
+/**
+ * Builds a method-ID → ZodType registry driven by the authoritative contract
+ * method-id list. Each method id is transformed to its expected PascalCase
+ * export name; schemas whose names don't match any contract method are silently
+ * dropped. This handles snake_case namespace segments (e.g. `local_auth.status`)
+ * correctly, which a naive PascalCase→dot transform cannot.
+ */
+export function buildSchemaRegistry(
+  methodIds: readonly string[],
+  schemas: Record<string, unknown>,
+): Partial<Record<string, ZodType>> {
+  // Build a reverse map: candidateExportName → methodId
+  const candidateMap = new Map<string, string>();
+  for (const methodId of methodIds) {
+    candidateMap.set(methodIdToSchemaName(methodId), methodId);
+  }
   const registry: Partial<Record<string, ZodType>> = {};
   for (const [key, value] of Object.entries(schemas)) {
-    if (!key.endsWith('ResponseSchema')) continue;
+    const methodId = candidateMap.get(key);
+    if (methodId === undefined) continue;
     if (!isZodSchema(value)) continue;
-    // Derive the method ID from the export name by converting PascalCase segments
-    // to dot-separated lowercase method-ID form.
-    // e.g. "ControlAuthLoginResponseSchema" → "control.auth.login"
-    const methodId = key
-      .replace(/ResponseSchema$/, '')
-      .replace(/([A-Z])/g, (c, i) => (i === 0 ? '' : '.') + c.toLowerCase())
-      .replace(/^\./, '');
     registry[methodId] = value;
   }
   return registry;
 }
+
+/** @internal Exposed for unit testing only. */
+export const __internal__ = { buildSchemaRegistry, methodIdToSchemaName };
 
 export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk {
   const validateResponses = options.validateResponses !== false;
   const transport = createHttpTransport(options);
   const contract = getOperatorContract();
   const schemaRegistry = validateResponses
-    ? buildSchemaRegistry(ContractZodSchemas)
+    ? buildSchemaRegistry(OPERATOR_METHOD_IDS, ContractZodSchemas)
     : {};
   const remote = createOperatorRemoteClient(transport, contract, {
     validateResponses,
