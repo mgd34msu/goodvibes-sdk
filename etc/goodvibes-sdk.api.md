@@ -1668,7 +1668,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.30.2";
+    readonly productVersion: "0.30.3";
     readonly operatorMethodCount: 264;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -2501,6 +2501,7 @@ export interface OperatorContractManifest {
         readonly current: {
             readonly method: string;
             readonly path: string;
+            readonly aliasPaths?: readonly string[];
             readonly responseSchema: JsonSchema;
         };
         readonly sessionCookie: {

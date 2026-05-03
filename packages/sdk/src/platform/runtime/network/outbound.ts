@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { getCACertificates } from 'node:tls';
+import { rootCertificates } from 'node:tls';
+import * as tls from 'node:tls';
 import { logger } from '../../utils/logger.js';
 import { isLocalHostname, readPemEntriesFromDirectory, resolvePathFromGoodVibesRoot } from './shared.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -102,7 +103,10 @@ function loadCustomCaEntries(configManager: OutboundTlsConfigReader): {
 }
 
 function getBundledCaEntries(): readonly string[] {
-  return getCACertificates('bundled');
+  const getCaCertificates = (tls as typeof tls & {
+    getCACertificates?: (type?: 'default' | 'bundled' | 'system' | 'extra') => string[];
+  }).getCACertificates;
+  return getCaCertificates ? getCaCertificates('bundled') : rootCertificates;
 }
 
 export function inspectOutboundTls(configManager: OutboundTlsConfigReader): OutboundTlsSnapshot {
