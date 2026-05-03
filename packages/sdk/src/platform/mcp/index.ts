@@ -1,5 +1,6 @@
 export { McpRegistry } from './registry.js';
 export type { RegisteredTool } from './registry.js';
+export { McpClient } from './client.js';
 export { createMcpApi } from './mcp-api.js';
 export type {
   McpApi,

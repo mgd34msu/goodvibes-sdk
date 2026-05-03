@@ -4,6 +4,7 @@ export {
 
 export type {
   CreateAutomationJobInput,
+  SpawnAutomationTaskInput,
   UpdateAutomationJobInput,
   AutomationHeartbeatResult,
   AutomationHeartbeatWake,

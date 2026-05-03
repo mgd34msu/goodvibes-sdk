@@ -52,7 +52,7 @@ export type SchemaFreshness = 'fresh' | 'stale' | 'unknown' | 'fetch_failed' | '
  * - `unsupported`      — schema version is unsupported with the runtime
  * - `operator_flagged`  — manually flagged by an operator for review
  */
-export type QuarantineReason = 'stale_threshold' | 'unsupported' | 'operator_flagged';
+export type QuarantineReason = 'stale_threshold' | 'unsupported' | 'operator_flagged' | 'incompatible';
 
 /** Quarantine record attached to a schema when it enters the quarantined state. */
 export interface QuarantineRecord {

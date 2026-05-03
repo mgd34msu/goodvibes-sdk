@@ -57,8 +57,25 @@ export { ToolRegistry } from './registry.js';
 export { ProcessManager } from './shared/process-manager.js';
 export type { BackgroundProcess, BgCommandResult, SpawnOptions } from './shared/process-manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './agent/index.js';
-export type { AgentRecord } from './agent/index.js';
-export { OverflowHandler } from './shared/overflow.js';
+export type { AgentExecutor, AgentRecord } from './agent/index.js';
+export {
+  AutoHealer,
+} from './shared/auto-heal.js';
+export {
+  appendSchemaFingerprint,
+  computeSchemaFingerprint,
+  computeSchemaFingerprintSync,
+  getSchemaShapeId,
+  SCHEMA_SHAPE_IDS,
+} from './shared/schema-fingerprint.js';
+export type { SchemaFingerprintMeta } from './shared/schema-fingerprint.js';
+export { OverflowHandler, createSpillBackend } from './shared/overflow.js';
+export {
+  DiagnosticsBackend,
+  FileBackend,
+  LedgerBackend,
+  overflowCleanup,
+} from './shared/overflow.js';
 export type {
   OverflowHandlerConfig,
   OverflowOptions,
@@ -69,20 +86,51 @@ export type {
   SpillEntry,
 } from './shared/overflow.js';
 export {
+  WORKFLOW_DEFINITIONS,
+  TriggerManager,
+  WorkflowManager,
   ScheduleManager,
   createWorkflowServices,
+  createWorkflowTool,
+  parseInterval,
 } from './workflow/index.js';
-export type { WorkflowServices } from './workflow/index.js';
+export type { TriggerDefinition, WorkflowServices } from './workflow/index.js';
 export { loadSkillByTrigger } from './registry-tool/skill-loader.js';
 export type { SkillLoaderRoots } from './registry-tool/skill-loader.js';
 export { ReadTool } from './read/index.js';
 export { createWriteTool } from './write/index.js';
 export { createEditTool } from './edit/index.js';
+export type { EditToolOptions } from './edit/index.js';
 export { createFindTool } from './find/index.js';
 export { createExecTool } from './exec/index.js';
+export { formatDenialResponse, guardExecCommand } from './exec/ast-guard.js';
 export { createAnalyzeTool } from './analyze/index.js';
 export { InspectTool } from './inspect/index.js';
+export { createAgentTool } from './agent/index.js';
 export { createChannelTool } from './channel/index.js';
+export { registerChannelAgentTools } from './channel/agent-tools.js';
+export { controlTool } from './control/index.js';
+export { createFetchTool } from './fetch/index.js';
+export { applySanitizer, resolveSanitizeMode } from './fetch/sanitizer.js';
+export type { SanitizeMode } from './fetch/sanitizer.js';
+export {
+  TRUST_TIER_EVENTS,
+  classifyHostTrustTier,
+  extractHostname,
+} from './fetch/trust-tiers.js';
+export type { TrustTierConfig } from './fetch/trust-tiers.js';
+export { repairToolCall } from './auto-repair.js';
+export { createMcpTool } from './mcp/index.js';
+export { createPacketTool } from './packet/index.js';
+export { createQueryTool } from './query/index.js';
+export { createRegistryTool } from './registry-tool/index.js';
+export { createRemoteTool } from './remote-trigger/index.js';
+export { createReplTool } from './repl/index.js';
+export { createStateTool } from './state/index.js';
+export { createTaskTool } from './task/index.js';
+export { createTeamTool } from './team/index.js';
+export { createWebSearchTool } from './web-search/index.js';
+export { createWorklistTool } from './worklist/index.js';
 
 type ToolContractFeatureFlags = Pick<FeatureFlagManager, 'isEnabled'>;
 

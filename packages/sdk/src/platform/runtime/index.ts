@@ -26,9 +26,10 @@ export * from './tasks/index.js';
 export * from './ui/index.js';
 export * from './tools/index.js';
 export { AcpTaskAdapter } from './tasks/adapters/index.js';
-export { OpsControlPlane } from './ops/control-plane.js';
+export { OpsControlPlane, OpsIllegalActionError, OpsTargetNotFoundError } from './ops/control-plane.js';
 export { ComponentHealthMonitor as PanelHealthMonitor } from './perf/index.js';
 export { ToolContractVerifier } from './tools/contract-verifier.js';
+export type { ContractVerifierOptions } from './tools/contract-verifier.js';
 export {
   buildAuthInspectionSnapshot,
   inspectProviderAuth,
@@ -50,6 +51,7 @@ export {
   McpSchemaFreshnessTracker,
   buildMcpAttackPathReview,
   createMcpLifecycleManager,
+  DEFAULT_RECONNECT_CONFIG,
 } from './mcp/index.js';
 export type {
   McpAttackPathFinding,
@@ -80,12 +82,15 @@ export type {
 } from './mcp/index.js';
 export {
   DivergenceDashboard,
+  DivergenceGateError,
   LayeredPolicyEvaluator,
+  PermissionSimulator,
   PolicyRegistry,
   PolicyRuntimeState,
   buildDefaultPolicySimulationScenarios,
   buildPermissionRuleSuggestions,
   buildPolicyPreflightReview,
+  createPermissionEvaluator,
   createPermissionSimulator,
   createUnsignedBundle,
   lintPolicyConfig,
@@ -118,11 +123,28 @@ export type { ComponentConfig as PanelConfig } from './diagnostics/types.js';
 export { DEFAULT_COMPONENT_CONFIG as DEFAULT_PANEL_CONFIG } from './diagnostics/types.js';
 
 export type { EmitterContext } from './emitters/index.js';
+export {
+  emitAutomationJobCreated,
+  emitControlPlaneClientConnected,
+  emitDeliveryQueued,
+  emitRouteBindingCreated,
+  emitSurfaceEnabled,
+  emitTokenBlocked,
+  emitUiRenderRequest,
+  emitWatcherStarted,
+} from './emitters/index.js';
 
 export { RuntimeHealthAggregator } from './health/aggregator.js';
 export { CascadeEngine } from './health/cascade-engine.js';
 export { CASCADE_RULES } from './health/cascade-rules.js';
-export { createHealthSystem } from './health/index.js';
+export {
+  ALL_CASCADE_RULE_IDS,
+  CASCADE_PLAYBOOK_MAP,
+  CascadeTimer,
+  createCascadeAppliedEvent,
+  createHealthSystem,
+  deriveCascadeSeverity,
+} from './health/index.js';
 export type {
   HealthStatus,
   HealthDomain as RuntimeHealthDomain,
@@ -136,7 +158,11 @@ export type {
 } from './health/types.js';
 
 export { NotificationRouter, createNotificationRouter } from './notifications/index.js';
-export type { Notification, NotificationLevel, NotificationTarget, DomainVerbosity, RoutingDecision } from './notifications/types.js';
+export type { Notification, NotificationLevel, NotificationTag, NotificationTarget, DomainVerbosity, RoutingDecision } from './notifications/types.js';
+export {
+  applyModeContextPolicy,
+  BurstPolicy,
+} from './notifications/policies/index.js';
 
 export { ModelPickerDataProvider, createModelPickerData } from './ui/model-picker/index.js';
 export type { ModelPickerDataProviderOptions } from './ui/model-picker/index.js';
@@ -189,6 +215,7 @@ export { createRuntimeHookApi } from './runtime-hook-api.js';
 export { createRuntimeMcpApi } from './runtime-mcp-api.js';
 export { createRuntimeOpsApi } from './runtime-ops-api.js';
 export type { OpsApi } from './ops-api.js';
+export * from './ui-service-queries.js';
 
 export {
   scheduleBackgroundMcpDiscovery,
@@ -304,6 +331,8 @@ export { createRuntimeDirectTransport } from './transports/direct.js';
 export type { DirectTransport } from './transports/direct.js';
 export { createDirectClientTransport } from './transports/direct-client.js';
 export type { DirectClientTransport } from './transports/direct-client.js';
+export { createHttpTransport } from './transports/daemon-http-client.js';
+export type { HttpTransport, HttpTransportOptions, HttpTransportSnapshot } from './transports/http-types.js';
 export { createClientTransport } from './transports/client-transport.js';
 export type { ClientTransport } from './transports/client-transport.js';
 export { buildUrl, createTransportPaths, normalizeBaseUrl } from './transports/transport-paths.js';
@@ -316,6 +345,8 @@ export {
   readJsonBody,
   requestJson,
 } from './transports/http-json-transport.js';
+export { createRealtimeTransport } from './transports/realtime.js';
+export type { RealtimeTransport, RealtimeTransportOptions, RealtimeTransportSnapshot } from './transports/realtime.js';
 export type {
   HttpJsonRequestOptions,
   HttpJsonTransport,
@@ -369,3 +400,123 @@ export type {
 } from './transports/remote-events.js';
 
 export * from './network/index.js';
+
+export {
+  ALL_CAPABILITIES,
+  ALL_CAPABILITIES as PLUGIN_CAPABILITIES,
+  HIGH_RISK_CAPABILITIES,
+  PluginLifecycleManager,
+  PluginQuarantineEngine,
+  PluginTrustStore,
+  SAFE_CAPABILITIES,
+  filterCapabilitiesByTrust,
+  hasCapability,
+  isHighRiskCapability,
+  isOperational as isPluginOperational,
+  isReloadable as isPluginReloadable,
+  isTerminal as isPluginTerminal,
+  resolveCapabilityManifest,
+  validateManifestV2,
+  validatePluginSignature,
+} from './plugins/index.js';
+export type {
+  PluginCapability,
+  PluginCapabilityManifest,
+  PluginManifestV2,
+  PluginTrustTier,
+} from './plugins/index.js';
+export {
+  LOW_QUALITY_THRESHOLD,
+  computeQualityScore,
+  createCompactionManager,
+  describeScore,
+  escalateStrategy,
+  isTerminal as isTerminalCompactionState,
+  reachableFrom as reachableFromCompactionState,
+} from './compaction/index.js';
+export type {
+  CompactionQualityScore,
+  CompactionStrategy,
+  StrategyInput,
+  StrategyOutput,
+} from './compaction/index.js';
+export {
+  compactionFailurePlaybook,
+  exportRecoveryPlaybook,
+  permissionDeadlockPlaybook,
+  pluginDegradationPlaybook,
+  reconnectFailurePlaybook,
+  sessionUnrecoverablePlaybook,
+  stuckTurnPlaybook,
+} from './ops/playbooks/index.js';
+export {
+  createSessionUnrecoverablePlaybook,
+} from './ops/playbooks/session-unrecoverable.js';
+export {
+  createStuckTurnPlaybook,
+} from './ops/playbooks/stuck-turn.js';
+export {
+  buildDenialExplanation,
+  canonicalize,
+  classifyCommand,
+  classifySegment,
+  collectCommandNodes,
+  evaluateCommandAST,
+  evaluateSegmentNode,
+  higherPriority,
+  parseAST,
+  parseCommandAST,
+  tokenize,
+} from './permissions/normalization/index.js';
+export type {
+  CommandClassification,
+  CommandNode,
+  CommandSegment,
+  CommandToken,
+  PipeNode,
+  SequenceNode,
+  SubshellNode,
+} from './permissions/normalization/index.js';
+export {
+  PolicySignatureError,
+  canonicalise,
+  runSafetyChecks,
+  signBundle,
+  verifyBundle,
+} from './permissions/index.js';
+export {
+  MAX_INPUT_LENGTH,
+  MAX_TOKEN_COUNT,
+} from './permissions/normalization/tokenizer.js';
+export type {
+  BundleProvenance,
+  DecisionReason,
+  DivergenceReport,
+  EnforceGateResult,
+  SignedPolicyBundle,
+} from './permissions/index.js';
+export {
+  evaluateOrchestrationSpawn,
+} from './orchestration/spawn-policy.js';
+export type {
+  DistributedRuntimeSnapshotStore,
+} from './remote/index.js';
+export {
+  TelemetryApiService,
+} from './telemetry/index.js';
+export type {
+  LedgerEntry,
+} from './telemetry/exporters/local-ledger.js';
+export {
+  TRANSPORT_PROTOCOL_SUPPORT_MATRIX as TRANSPORT_COMPATIBILITY_MATRIX,
+} from './remote/index.js';
+
+export {
+  applyTransition,
+  canTransition,
+  isOperational,
+  isReloadable,
+  isTerminal,
+  reachableFrom,
+} from './lifecycle-facade.js';
+export type { RuntimeTransitionResult } from './lifecycle-facade.js';

@@ -3,7 +3,7 @@
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.30.2"
+    "version": "0.30.3"
   },
   "auth": {
     "modes": [
@@ -136,7 +136,10 @@
           "roles"
         ],
         "additionalProperties": false
-      }
+      },
+      "aliasPaths": [
+        "/api/control-plane/whoami"
+      ]
     },
     "sessionCookie": {
       "name": "goodvibes_session",
@@ -21938,6 +21941,12 @@
                         },
                         "path": {
                           "type": "string"
+                        },
+                        "aliasPaths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "responseSchema": {
                           "type": "object",

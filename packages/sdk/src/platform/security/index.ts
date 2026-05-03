@@ -2,6 +2,13 @@ export { SpawnTokenManager } from './spawn-tokens.js';
 export type { SpawnToken, OrchestrationPolicyConfig } from './spawn-tokens.js';
 export { UserAuthManager } from './user-auth.js';
 export type { AuthUser, AuthSession, LocalAuthSnapshot } from './user-auth.js';
+export {
+  OPERATOR_SESSION_COOKIE_NAME,
+  authenticateOperatorRequest,
+  authenticateOperatorToken,
+  extractOperatorAuthToken,
+  isOperatorAdmin,
+} from './http-auth.js';
 export { ApiTokenAuditor } from './token-audit.js';
 export type {
   ApiTokenMetadata,

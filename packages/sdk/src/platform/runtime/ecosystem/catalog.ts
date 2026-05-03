@@ -33,6 +33,15 @@ export interface EcosystemCatalogEntry {
     readonly platforms?: readonly string[];
     readonly requiresSandbox?: boolean;
   };
+  readonly compatibility?: {
+    readonly minAppVersion?: string;
+    readonly maxAppVersion?: string;
+    readonly platforms?: readonly string[];
+    readonly requiresSandbox?: boolean;
+    readonly appVersion?: string;
+    readonly status?: 'supported' | 'warning';
+    readonly reasons?: readonly string[];
+  };
 }
 
 export interface EcosystemCatalogFile {

@@ -51,6 +51,7 @@ export {
   MemoryEmbeddingProviderRegistry,
   normalizeMemoryEmbeddingVector,
 } from './memory-embeddings.js';
+export { createBuiltinMemoryEmbeddingProviders } from './memory-embedding-http.js';
 export type {
   MemoryEmbeddingDoctorReport,
   MemoryEmbeddingProvider,

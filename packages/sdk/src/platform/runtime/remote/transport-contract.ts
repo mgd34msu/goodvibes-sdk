@@ -193,6 +193,10 @@ export function negotiateProtocolVersion(
       unsupportedReason:
         `Major version mismatch: local=${localVersion.label} peer=${peerVersion.label}. ` +
         `Peers on different major versions cannot interoperate.`,
+      incompatibilityCode: 'major_version_mismatch',
+      incompatibilityReason:
+        `Major version mismatch: local=${localVersion.label} peer=${peerVersion.label}. ` +
+        `Peers on different major versions cannot interoperate.`,
       offeredVersion: localVersion,
       peerVersion,
     };
@@ -223,6 +227,11 @@ export function negotiateProtocolVersion(
         `Peer version ${peerVersion.label} is below the minimum supported minor ` +
         `version ${localVersion.major}.${minMinor}.x for local ${localVersion.label}. ` +
         `Upgrade the peer to proceed.`,
+      incompatibilityCode: 'peer_version_too_old',
+      incompatibilityReason:
+        `Peer version ${peerVersion.label} is below the minimum supported minor ` +
+        `version ${localVersion.major}.${minMinor}.x for local ${localVersion.label}. ` +
+        `Upgrade the peer to proceed.`,
       offeredVersion: localVersion,
       peerVersion,
     };
@@ -234,6 +243,11 @@ export function negotiateProtocolVersion(
       proceed: false,
       unsupportedCode: 'peer_version_unsupported',
       unsupportedReason:
+        `Peer version ${peerVersion.label} exceeds the maximum supported minor ` +
+        `version ${localVersion.major}.${maxMinor}.x for local ${localVersion.label}. ` +
+        `Upgrade the local build to connect to this peer.`,
+      incompatibilityCode: 'peer_version_unsupported',
+      incompatibilityReason:
         `Peer version ${peerVersion.label} exceeds the maximum supported minor ` +
         `version ${localVersion.major}.${maxMinor}.x for local ${localVersion.label}. ` +
         `Upgrade the local build to connect to this peer.`,

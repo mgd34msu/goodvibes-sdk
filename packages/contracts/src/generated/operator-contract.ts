@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.30.2"
+    "version": "0.30.3"
   },
   "auth": {
     "modes": [
@@ -138,7 +138,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "roles"
         ],
         "additionalProperties": false
-      }
+      },
+      "aliasPaths": [
+        "/api/control-plane/whoami"
+      ]
     },
     "sessionCookie": {
       "name": "goodvibes_session",
@@ -21940,6 +21943,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         },
                         "path": {
                           "type": "string"
+                        },
+                        "aliasPaths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "responseSchema": {
                           "type": "object",

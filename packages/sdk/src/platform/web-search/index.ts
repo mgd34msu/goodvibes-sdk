@@ -1,4 +1,7 @@
 export type {
+  SearchProviderContext,
+} from './providers/shared.js';
+export type {
   WebSearchEvidence,
   WebSearchInstantAnswer,
   WebSearchProvider,

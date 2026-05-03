@@ -180,6 +180,7 @@ export type {
   DistributedPeerRecord,
   DistributedPendingWork,
   DistributedRuntimeAuditRecord,
+  DistributedRuntimeSnapshotStore,
   DistributedPeerAuth,
   DistributedNodeHostContract,
 } from './distributed-runtime.js';
