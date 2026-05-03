@@ -148,6 +148,73 @@ describe('router-e2e telemetry — GET /api/telemetry (happy path)', () => {
     expect(body).toHaveProperty('items');
     expect(Array.isArray(body.items)).toBe(true);
   });
+
+  test('GET /api/telemetry/events bounds since, until, and limit filters', async () => {
+    let capturedFilter: Record<string, unknown> | null = null;
+    const api = {
+      ...makeTelemetryApi(),
+      listEventPage: (filter: unknown) => {
+        capturedFilter = filter as Record<string, unknown>;
+        return { items: [], cursor: null };
+      },
+    };
+    const telemetryHandlers = createDaemonTelemetryRouteHandlers({
+      telemetryApi: api as never,
+      resolveAuthenticatedPrincipal: () => ({
+        principalId: 'test-principal',
+        principalKind: 'token' as const,
+        admin: false,
+        scopes: ['read:telemetry'] as readonly string[],
+      }),
+      ingestSink: api as never,
+    });
+    const handlers = makeDefaultDaemonHandlerStub({
+      getControlPlaneWeb: () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+      getControlPlaneRecentEvents: (_limit) => Response.json({ events: [] }),
+      ...telemetryHandlers,
+    });
+    const req = makeRequest('GET', 'http://localhost/api/telemetry/events?limit=999999&since=-12.8&until=410244480000000');
+    const res = await dispatchOperatorRoutes(req, handlers);
+
+    expect(res?.status).toBe(200);
+    if (!capturedFilter) throw new Error('Telemetry filter was not captured');
+    expect(capturedFilter.limit).toBe(1000);
+    expect(capturedFilter.since).toBe(0);
+    expect(capturedFilter.until).toBe(Date.UTC(2100, 0, 1));
+  });
+
+  test('GET /api/telemetry/events omits non-finite timestamp filters', async () => {
+    let capturedFilter: Record<string, unknown> | null = null;
+    const api = {
+      ...makeTelemetryApi(),
+      listEventPage: (filter: unknown) => {
+        capturedFilter = filter as Record<string, unknown>;
+        return { items: [], cursor: null };
+      },
+    };
+    const telemetryHandlers = createDaemonTelemetryRouteHandlers({
+      telemetryApi: api as never,
+      resolveAuthenticatedPrincipal: () => ({
+        principalId: 'test-principal',
+        principalKind: 'token' as const,
+        admin: false,
+        scopes: ['read:telemetry'] as readonly string[],
+      }),
+      ingestSink: api as never,
+    });
+    const handlers = makeDefaultDaemonHandlerStub({
+      getControlPlaneWeb: () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+      getControlPlaneRecentEvents: (_limit) => Response.json({ events: [] }),
+      ...telemetryHandlers,
+    });
+    const req = makeRequest('GET', 'http://localhost/api/telemetry/events?since=Infinity&until=not-a-date');
+    const res = await dispatchOperatorRoutes(req, handlers);
+
+    expect(res?.status).toBe(200);
+    if (!capturedFilter) throw new Error('Telemetry filter was not captured');
+    expect(capturedFilter).not.toHaveProperty('since');
+    expect(capturedFilter).not.toHaveProperty('until');
+  });
 });
 
 // ---------------------------------------------------------------------------

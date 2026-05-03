@@ -46,4 +46,29 @@ describe('obs-16 error cause chain', () => {
     expect(typeof result.source).toBe('string');
     expect(typeof result.recoverable).toBe('boolean');
   });
+
+  test('GoodVibesSdkError infers a better category from nested causes without an HTTP status', async () => {
+    const { GoodVibesSdkError } = await import('../packages/errors/src/index.js');
+    const wrapped = new GoodVibesSdkError('middleware wrapper', {
+      cause: {
+        originalError: {
+          category: 'rate_limit',
+          message: 'provider throttled the request',
+        },
+      },
+    });
+
+    expect(wrapped.category).toBe('rate_limit');
+    expect(wrapped.kind).toBe('rate-limit');
+  });
+
+  test('GoodVibesSdkError cause category inference is cycle-safe', async () => {
+    const { GoodVibesSdkError } = await import('../packages/errors/src/index.js');
+    const loop: Record<string, unknown> = {};
+    loop.cause = loop;
+    const wrapped = new GoodVibesSdkError('cyclic wrapper', { cause: loop });
+
+    expect(wrapped.category).toBe('unknown');
+    expect(wrapped.kind).toBe('unknown');
+  });
 });
