@@ -1,5 +1,6 @@
 import type {
   KnowledgeNodeRecord,
+  KnowledgeRefinementSourceAssessment,
   KnowledgeSearchResult,
   KnowledgeSourceRecord,
 } from '../types.js';
@@ -175,17 +176,7 @@ export interface KnowledgeSemanticGapRepairResult {
   readonly acceptedSourceIds?: readonly string[];
   readonly ingestedSourceIds: readonly string[];
   readonly skippedUrls: readonly string[];
-  readonly sourceAssessments?: readonly {
-    readonly url: string;
-    readonly title?: string;
-    readonly domain?: string;
-    readonly rank?: number;
-    readonly accepted?: boolean;
-    readonly confidence: number;
-    readonly reasons: readonly string[];
-    readonly trustReason?: string;
-    readonly rejectionReason?: string;
-  }[];
+  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[];
   readonly reason?: string;
 }
 

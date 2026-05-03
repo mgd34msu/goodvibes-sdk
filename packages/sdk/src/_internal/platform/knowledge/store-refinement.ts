@@ -23,6 +23,20 @@ export async function upsertKnowledgeRefinementTask(
   const nextRepairAttemptAt = readNumber(input.nextRepairAttemptAt)
     ?? readNumber(input.metadata?.nextRepairAttemptAt)
     ?? existing?.nextRepairAttemptAt;
+  const inputAcceptedSourceIds = input.acceptedSourceIds ?? [];
+  const inputIngestedSourceIds = input.ingestedSourceIds ?? [];
+  const inputRejectedSourceUrls = input.rejectedSourceUrls ?? [];
+  const inputSourceAssessments = input.sourceAssessments ?? [];
+  const metadata = {
+    ...(existing?.metadata ?? {}),
+    ...(input.metadata ?? {}),
+    ...(inputAcceptedSourceIds.length > 0 ? { acceptedSourceIds: [...inputAcceptedSourceIds] } : {}),
+    ...(inputIngestedSourceIds.length > 0 ? { ingestedSourceIds: [...inputIngestedSourceIds] } : {}),
+    ...(inputRejectedSourceUrls.length > 0 ? { rejectedSourceUrls: [...inputRejectedSourceUrls] } : {}),
+    ...(typeof input.promotedFactCount === 'number' ? { promotedFactCount: input.promotedFactCount } : {}),
+    ...(inputSourceAssessments.length > 0 ? { sourceAssessments: [...inputSourceAssessments] } : {}),
+    ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
+  };
   const replacementTrace = input.trace ? [...input.trace] : existing?.trace ?? [];
   const trace = [...replacementTrace, ...(input.appendTrace ?? [])].slice(-80);
   const record: KnowledgeRefinementTaskRecord = {
@@ -44,12 +58,9 @@ export async function upsertKnowledgeRefinementTask(
     attemptCount: Math.max(0, Math.trunc(input.attemptCount ?? existing?.attemptCount ?? 0)),
     ...(_blockedReason !== null ? { blockedReason: _blockedReason } : existing?.blockedReason && input.state === existing.state ? { blockedReason: existing.blockedReason } : {}),
     ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
+    ...taskSourceFields(metadata),
     trace,
-    metadata: {
-      ...(existing?.metadata ?? {}),
-      ...(input.metadata ?? {}),
-      ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
-    },
+    metadata,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
@@ -84,6 +95,38 @@ export async function upsertKnowledgeRefinementTask(
   return record;
 }
 
+function taskSourceFields(metadata: Record<string, unknown>): Pick<KnowledgeRefinementTaskRecord, 'acceptedSourceIds' | 'ingestedSourceIds' | 'rejectedSourceUrls' | 'promotedFactCount' | 'sourceAssessments'> {
+  const acceptedSourceIds = readStringArray(metadata.acceptedSourceIds);
+  const ingestedSourceIds = readStringArray(metadata.ingestedSourceIds);
+  const rejectedSourceUrls = readStringArray(metadata.rejectedSourceUrls);
+  const promotedFactCount = readNumber(metadata.promotedFactCount);
+  const sourceAssessments = readSourceAssessments(metadata.sourceAssessments);
+  return {
+    ...(acceptedSourceIds.length > 0 ? { acceptedSourceIds } : {}),
+    ...(ingestedSourceIds.length > 0 ? { ingestedSourceIds } : {}),
+    ...(rejectedSourceUrls.length > 0 ? { rejectedSourceUrls } : {}),
+    ...(typeof promotedFactCount === 'number' ? { promotedFactCount } : {}),
+    ...(sourceAssessments.length > 0 ? { sourceAssessments } : {}),
+  };
+}
+
 function readNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+}
+
+function readSourceAssessments(value: unknown): NonNullable<KnowledgeRefinementTaskRecord['sourceAssessments']> {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is NonNullable<KnowledgeRefinementTaskRecord['sourceAssessments']>[number] => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+    const record = entry as Record<string, unknown>;
+    return typeof record.url === 'string'
+      && typeof record.accepted === 'boolean'
+      && typeof record.confidence === 'number'
+      && Array.isArray(record.reasons);
+  });
 }

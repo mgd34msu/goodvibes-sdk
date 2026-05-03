@@ -424,6 +424,11 @@ export function mapRefinementTaskRow(columns: string[], values: unknown[]): Know
   const nextRepairAttemptAt = typeof metadata.nextRepairAttemptAt === 'number' && Number.isFinite(metadata.nextRepairAttemptAt)
     ? metadata.nextRepairAttemptAt
     : undefined;
+  const acceptedSourceIds = readStringArray(metadata.acceptedSourceIds);
+  const ingestedSourceIds = readStringArray(metadata.ingestedSourceIds);
+  const rejectedSourceUrls = readStringArray(metadata.rejectedSourceUrls);
+  const promotedFactCount = readFiniteNumber(metadata.promotedFactCount);
+  const sourceAssessments = readSourceAssessments(metadata.sourceAssessments);
   return {
     id: String(row.id),
     spaceId: String(row.space_id),
@@ -440,11 +445,37 @@ export function mapRefinementTaskRow(columns: string[], values: unknown[]): Know
     attemptCount: Number(row.attempt_count),
     ...(stableText(row.blocked_reason as string | undefined) ? { blockedReason: String(row.blocked_reason) } : {}),
     ...(typeof nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt } : {}),
+    ...(acceptedSourceIds.length > 0 ? { acceptedSourceIds } : {}),
+    ...(ingestedSourceIds.length > 0 ? { ingestedSourceIds } : {}),
+    ...(rejectedSourceUrls.length > 0 ? { rejectedSourceUrls } : {}),
+    ...(typeof promotedFactCount === 'number' ? { promotedFactCount } : {}),
+    ...(sourceAssessments.length > 0 ? { sourceAssessments } : {}),
     trace: parseJsonValue<KnowledgeRefinementTaskRecord['trace']>(row.trace, []),
     metadata,
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),
   };
+}
+
+function readFiniteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+}
+
+function readSourceAssessments(value: unknown): KnowledgeRefinementTaskRecord['sourceAssessments'] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is NonNullable<KnowledgeRefinementTaskRecord['sourceAssessments']>[number] => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+    const record = entry as Record<string, unknown>;
+    return typeof record.url === 'string'
+      && typeof record.accepted === 'boolean'
+      && typeof record.confidence === 'number'
+      && Array.isArray(record.reasons);
+  });
 }
 
 export function mapUsageRow(columns: string[], values: unknown[]): KnowledgeUsageRecord {

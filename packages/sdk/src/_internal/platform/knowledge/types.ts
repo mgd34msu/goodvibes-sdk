@@ -238,6 +238,19 @@ export interface KnowledgeRefinementTraceEntry {
   readonly data?: Record<string, unknown>;
 }
 
+export interface KnowledgeRefinementSourceAssessment {
+  readonly url: string;
+  readonly title?: string;
+  readonly domain?: string;
+  readonly rank?: number;
+  readonly query?: string;
+  readonly accepted: boolean;
+  readonly confidence: number;
+  readonly reasons: readonly string[];
+  readonly trustReason?: string;
+  readonly rejectionReason?: string;
+}
+
 export interface KnowledgeRefinementTaskRecord {
   readonly id: string;
   readonly spaceId: string;
@@ -254,6 +267,11 @@ export interface KnowledgeRefinementTaskRecord {
   readonly attemptCount: number;
   readonly blockedReason?: string;
   readonly nextRepairAttemptAt?: number;
+  readonly acceptedSourceIds?: readonly string[];
+  readonly ingestedSourceIds?: readonly string[];
+  readonly rejectedSourceUrls?: readonly string[];
+  readonly promotedFactCount?: number;
+  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[];
   readonly trace: readonly KnowledgeRefinementTraceEntry[];
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
@@ -423,6 +441,11 @@ export interface KnowledgeRefinementTaskUpsertInput {
   readonly attemptCount?: number;
   readonly blockedReason?: string;
   readonly nextRepairAttemptAt?: number;
+  readonly acceptedSourceIds?: readonly string[];
+  readonly ingestedSourceIds?: readonly string[];
+  readonly rejectedSourceUrls?: readonly string[];
+  readonly promotedFactCount?: number;
+  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[];
   readonly trace?: readonly KnowledgeRefinementTraceEntry[];
   readonly appendTrace?: readonly KnowledgeRefinementTraceEntry[];
   readonly metadata?: Record<string, unknown>;

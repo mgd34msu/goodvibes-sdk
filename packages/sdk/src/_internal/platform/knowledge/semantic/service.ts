@@ -128,13 +128,14 @@ export class KnowledgeSemanticService {
       maxRunMs: input.maxRunMs,
       deferRepair: Boolean(this.options.gapRepairer),
     });
+    const backgroundRepairLimit = Math.max(1, this.options.backgroundRepairLimit ?? 8);
     this.runSelfImprovementInBackground({
       knowledgeSpaceId: input.knowledgeSpaceId,
       sourceIds: input.sourceIds,
       force: true,
       reason: 'reindex',
-      limit: Math.min(Math.max(1, input.limit ?? this.options.backgroundRepairLimit ?? 3), this.options.backgroundRepairLimit ?? 3),
-      maxRunMs: 15_000,
+      limit: Math.min(Math.max(1, input.limit ?? backgroundRepairLimit), backgroundRepairLimit),
+      maxRunMs: 30_000,
     }, this.options.backgroundRepairDelayMs ?? 2_000);
     return { scanned: sources.length, enriched, skipped, failed, errors, selfImprovement };
   }
