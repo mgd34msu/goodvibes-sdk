@@ -744,12 +744,12 @@ export class HomeGraphService {
   }
 
   private async runSyncSelfImprovementPump(spaceId: string, installationId: string): Promise<void> {
-    for (let round = 0; round < 8; round += 1) {
+    for (let round = 0; round < 10; round += 1) {
       const result = await this.options.semanticService?.selfImprove({
         knowledgeSpaceId: spaceId,
         reason: 'homegraph-sync',
-        limit: round === 0 ? 12 : 8,
-        maxRunMs: round === 0 ? 25_000 : 18_000,
+        limit: round === 0 ? 24 : 12,
+        maxRunMs: round === 0 ? 45_000 : 30_000,
         force: round > 0,
       });
       if (!result) return;
@@ -757,7 +757,7 @@ export class HomeGraphService {
         await this.refreshDevicePagesForSourceIds(spaceId, installationId, result.acceptedSourceIds ?? []);
       }
       if (!shouldContinueSyncSelfImprovement(result)) return;
-      await sleep(10_000);
+      await sleep(round < 2 ? 5_000 : 15_000);
     }
   }
 

@@ -54,7 +54,7 @@ export async function runKnowledgeSemanticSelfImprovement(
   if (context.gapRepairer) {
     await recoverNoRepairerTasks(context.store, spaceId);
   }
-  const createdGaps = await discoverIntrinsicGaps(context.store, spaceId, sourceIdFilter);
+  const createdGaps = gapIdFilter ? 0 : await discoverIntrinsicGaps(context.store, spaceId, sourceIdFilter);
   const candidates = collectCandidateGaps(context.store, spaceId, sourceIdFilter, gapIdFilter);
   const requestedLimit = Math.max(1, input.limit ?? DEFAULT_REFINEMENT_LIMIT);
   const cappedLimit = Math.min(requestedLimit, MAX_REFINEMENT_LIMIT);
@@ -211,6 +211,8 @@ export async function runKnowledgeSemanticSelfImprovement(
         status: evidenceSufficient ? 'repaired' : gapAcceptedSourceIds.length ? 'deferred' : 'searched_no_sources',
         reason: result?.reason,
         query: result?.query,
+        acceptedSourceIds: gapAcceptedSourceIds,
+        promotedFactCount: gapPromotedFactCount,
       });
       if (evidenceSufficient) {
         closedGaps += 1;
@@ -236,13 +238,14 @@ export async function runKnowledgeSemanticSelfImprovement(
       errors.push({ gapId: gap.id, error: error instanceof Error ? error.message : String(error) });
       const reason = error instanceof Error ? error.message : String(error);
       const budgetError = isBudgetError(reason);
-      await markGapRepairAttempt(context.store, gap, spaceId, {
-        status: budgetError ? 'deferred' : 'failed',
-        reason,
-      });
       if (budgetError) {
         blockedGaps += 1;
         nextRepairAttemptAt = Date.now() + RETRY_DELAY_MS;
+        await markGapRepairAttempt(context.store, gap, spaceId, {
+          status: 'deferred',
+          reason,
+          nextRepairAttemptAt,
+        });
         await updateRefinementTask(context.store, task, 'blocked', 'Repair was deferred after exhausting the current run budget.', {
           retryable: true,
           nextRepairAttemptAt,
@@ -250,6 +253,10 @@ export async function runKnowledgeSemanticSelfImprovement(
         });
       } else {
         await updateRefinementTask(context.store, task, 'failed', reason);
+        await markGapRepairAttempt(context.store, gap, spaceId, {
+          status: 'failed',
+          reason,
+        });
       }
     } finally {
       context.activeGapRepairs.delete(repairKey);
@@ -348,7 +355,13 @@ async function upsertIntrinsicFeatureGap(
   if (createdIds.has(id)) return false;
   createdIds.add(id);
   const existing = store.getNode(id);
-  if (existing?.status === 'active' && readString(existing.metadata.repairStatus) === 'repaired') return false;
+  const subjectIds = new Set([subject.id]);
+  const existingRepaired = existing
+    ? existing.status === 'active'
+      && readString(existing.metadata.repairStatus) === 'repaired'
+      && facts.filter((fact) => isUsableSelfImprovementFact(fact, subjectIds)).length >= repairTargetFactCount(existing)
+    : false;
+  if (existingRepaired) return false;
   const title = `What are the complete features and specifications for ${subjectTitle(subject)}?`;
   const primarySource = sources[0];
   const gap = await store.upsertNode({
@@ -367,6 +380,9 @@ async function upsertIntrinsicFeatureGap(
       sourceIds: sources.map((source) => source.id),
       linkedObjectIds: [subject.id],
       repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
+      ...((readStringArray(existing?.metadata.acceptedSourceIds).length > 0) ? { acceptedSourceIds: readStringArray(existing?.metadata.acceptedSourceIds) } : {}),
+      ...(typeof existing?.metadata.promotedFactCount === 'number' ? { promotedFactCount: existing.metadata.promotedFactCount } : {}),
+      ...(typeof existing?.metadata.nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt: existing.metadata.nextRepairAttemptAt } : {}),
       createdBy: 'semantic-self-improvement',
     }),
   });
@@ -481,8 +497,9 @@ function classifyGap(
 ): { readonly action: 'repair' | 'skip' | 'suppress'; readonly reason?: string; readonly status?: string; readonly markAttempt?: boolean } {
   const status = readString(context.gap.metadata.repairStatus);
   const nextAttemptAt = readNumber(context.gap.metadata.nextRepairAttemptAt);
-  if (!force && status === 'repaired') return { action: 'skip', reason: 'Gap already has linked repair sources.', status: 'repaired' };
-  if (!force && nextAttemptAt && nextAttemptAt > Date.now()) return { action: 'skip', reason: 'Gap repair retry window has not elapsed.', status: 'retry_wait', markAttempt: true };
+  const repairedWithFacts = status === 'repaired' && hasRepairFactEvidence(context);
+  if (!force && repairedWithFacts) return { action: 'skip', reason: 'Gap already has promoted repair facts.', status: 'repaired' };
+  if (!force && status !== 'repaired' && nextAttemptAt && nextAttemptAt > Date.now()) return { action: 'skip', reason: 'Gap repair retry window has not elapsed.', status: 'retry_wait', markAttempt: true };
   if (!force && hasRepairEdge(context) && hasRepairFactEvidence(context)) return { action: 'skip', reason: 'Gap already has promoted repair facts.', status: 'already_repaired' };
   if (isNotApplicableGap(context)) return { action: 'suppress', reason: 'The gap is not applicable to the linked subject.' };
   if (!hasConcreteSubject(context)) {
@@ -513,9 +530,19 @@ function hasRepairFactEvidence(context: GapContext): boolean {
 function isNotApplicableGap(context: GapContext): boolean {
   const text = `${context.gap.title} ${context.gap.summary ?? ''}`.toLowerCase();
   if (text.includes('battery')) {
-    return context.linkedObjects.some((node) => node.metadata.batteryPowered === false || readString(node.metadata.batteryType) === 'none');
+    return context.linkedObjects.length > 0
+      && !/\b(remote|controller|accessory|handset)\b/.test(text)
+      && context.linkedObjects.every((node) => !batteryCanBeIntrinsicToSubject(node));
   }
   return false;
+}
+
+function batteryCanBeIntrinsicToSubject(node: KnowledgeNodeRecord): boolean {
+  if (node.metadata.batteryPowered === true) return true;
+  const batteryType = readString(node.metadata.batteryType);
+  if (batteryType && batteryType !== 'none') return true;
+  const text = `${node.kind} ${node.title} ${node.summary ?? ''} ${node.aliases.join(' ')} ${JSON.stringify(node.metadata)}`.toLowerCase();
+  return /\b(battery|button|keypad|leak sensor|motion sensor|contact sensor|door sensor|window sensor|remote|lock|thermostat|phone|watch|handheld|portable|ble beacon|ibeacon|tag)\b/.test(text);
 }
 
 function hasConcreteSubject(context: GapContext): boolean {
@@ -552,8 +579,20 @@ async function markGapRepairAttempt(
   store: KnowledgeStore,
   gap: KnowledgeNodeRecord,
   spaceId: string,
-  details: { readonly status: string; readonly reason?: string; readonly query?: string },
+  details: {
+    readonly status: string;
+    readonly reason?: string;
+    readonly query?: string;
+    readonly acceptedSourceIds?: readonly string[];
+    readonly promotedFactCount?: number;
+    readonly nextRepairAttemptAt?: number;
+  },
 ): Promise<void> {
+  const nextRepairAttemptAt = details.nextRepairAttemptAt ?? (
+    details.status === 'searched_no_sources' || details.status === 'failed' || details.status === 'deferred'
+      ? Date.now() + RETRY_DELAY_MS
+      : undefined
+  );
   await store.upsertNode({
     id: gap.id,
     kind: gap.kind,
@@ -569,10 +608,10 @@ async function markGapRepairAttempt(
       repairStatus: details.status,
       ...(details.reason ? { repairReason: details.reason } : {}),
       ...(details.query ? { repairQuery: details.query } : {}),
+      ...((details.acceptedSourceIds?.length ?? 0) > 0 ? { acceptedSourceIds: details.acceptedSourceIds } : {}),
+      ...(typeof details.promotedFactCount === 'number' ? { promotedFactCount: details.promotedFactCount } : {}),
       lastRepairAttemptAt: Date.now(),
-      nextRepairAttemptAt: details.status === 'searched_no_sources' || details.status === 'failed' || details.status === 'deferred'
-        ? Date.now() + RETRY_DELAY_MS
-        : undefined,
+      nextRepairAttemptAt,
       knowledgeSpaceId: spaceId,
     },
   });

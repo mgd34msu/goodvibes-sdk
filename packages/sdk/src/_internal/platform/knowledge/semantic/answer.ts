@@ -737,6 +737,9 @@ async function persistAnswerGap(
       sourceIds: sources.map((source) => source.id),
       linkedObjectIds: linkedObjects.map((node) => node.id),
       repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
+      ...((readStringArray(existing?.metadata.acceptedSourceIds).length > 0) ? { acceptedSourceIds: readStringArray(existing?.metadata.acceptedSourceIds) } : {}),
+      ...(typeof existing?.metadata.promotedFactCount === 'number' ? { promotedFactCount: existing.metadata.promotedFactCount } : {}),
+      ...(typeof existing?.metadata.nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt: existing.metadata.nextRepairAttemptAt } : {}),
       visibility: 'refinement',
       displayRole: 'knowledge-gap',
     }),
@@ -809,7 +812,9 @@ async function persistAnswerGaps(
 
 function isRepairedAnswerGap(node: KnowledgeNodeRecord): boolean {
   const repairStatus = readString(node.metadata.repairStatus);
-  return node.status === 'stale' || repairStatus === 'repaired' || repairStatus === 'not_applicable';
+  return node.status === 'stale'
+    || repairStatus === 'not_applicable'
+    || (repairStatus === 'repaired' && typeof node.metadata.promotedFactCount === 'number' && node.metadata.promotedFactCount > 0);
 }
 
 async function resolveAnswerGapIssues(store: KnowledgeStore, spaceId: string, nodeId: string): Promise<void> {
