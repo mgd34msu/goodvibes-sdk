@@ -41,6 +41,19 @@ export {
 } from './spaces.js';
 export type { KnowledgeSpaceId } from './spaces.js';
 export {
+  buildGeneratedKnowledgePageGraph,
+  listGeneratedKnowledgePages,
+} from './generated-pages.js';
+export type {
+  GeneratedKnowledgePageEntry,
+  GeneratedKnowledgePageGraph,
+  GeneratedKnowledgePageGraphNeighbor,
+  GeneratedKnowledgePageGraphNode,
+  GeneratedKnowledgePageListOptions,
+  GeneratedKnowledgePageListResult,
+  GeneratedKnowledgeRelatedPage,
+} from './generated-pages.js';
+export {
   generatedKnowledgeCanonicalUri,
   generatedKnowledgeSourceId,
   isGeneratedKnowledgeSource,
