@@ -1,4 +1,5 @@
 export { HomeGraphService } from './service.js';
+export { HOME_GRAPH_KNOWLEDGE_EXTENSION } from './extension.js';
 export {
   HOME_GRAPH_NODE_KINDS,
   HOME_GRAPH_RELATIONS,

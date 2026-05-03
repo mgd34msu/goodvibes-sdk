@@ -6,6 +6,7 @@ import {
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
 import { extractKnowledgeArtifact } from './extractors.js';
+import { knowledgeExtractionNeedsRefresh } from './extraction-policy.js';
 import {
   canonicalizeUri,
   extractTaggedValues,
@@ -116,7 +117,7 @@ function readKnowledgeSpaceId(metadata: Record<string, unknown>): string | undef
 
 export async function recompileKnowledgeSource(context: KnowledgeIngestContext, source: KnowledgeSourceRecord): Promise<void> {
   const extraction = source.id ? context.store.getExtractionBySourceId(source.id) : null;
-  if (source.artifactId && extractionNeedsRefresh(extraction)) {
+  if (source.artifactId && knowledgeExtractionNeedsRefresh(extraction)) {
     const content = await context.artifactStore.readContent(source.artifactId);
     const extracted = await extractKnowledgeArtifact(content.record, content.buffer);
     await context.store.upsertExtraction({
@@ -137,64 +138,6 @@ export async function recompileKnowledgeSource(context: KnowledgeIngestContext, 
   await compileKnowledgeSource(context, context.store.getSource(source.id) ?? source, context.store.getExtractionBySourceId(source.id));
 }
 
-function extractionNeedsRefresh(extraction: KnowledgeExtractionRecord | null): boolean {
-  if (!extraction) return true;
-  if (extraction.format === 'pdf' && extraction.extractorId === 'pdf') return true;
-  const searchText = readSearchText(extraction.structure) ?? readSearchText(extraction.metadata);
-  if (searchText) return false;
-  if (hasUsefulText(extraction.excerpt) || hasUsefulText(extraction.summary) || extraction.sections.some(hasUsefulText)) return false;
-  return true;
-}
-
-function readSearchText(record: Record<string, unknown>): string | undefined {
-  const value = record.searchText ?? record.text ?? record.content;
-  return typeof value === 'string' && hasUsefulText(value) ? value : undefined;
-}
-
-function hasUsefulText(value: string | undefined): boolean {
-  if (!value?.trim()) return false;
-  const normalized = value.toLowerCase();
-  return !normalized.includes('pdf extraction produced limited text')
-    && !normalized.includes('no readable text streams')
-    && !normalized.includes('no specialized extractor matched')
-    && !normalized.includes('has no specialized in-core extractor')
-    && !looksLikeRawPdfPayload(value)
-    && !looksBinaryLike(value);
-}
-
-function looksLikeRawPdfPayload(value: string): boolean {
-  const lower = value.toLowerCase();
-  return lower.includes('%pdf')
-    || /\b\d+\s+\d+\s+obj\b/.test(lower)
-    || (lower.includes(' endobj') && lower.includes(' stream'))
-    || (lower.includes('/filter') && lower.includes('/flatedecode'));
-}
-
-function looksBinaryLike(value: string): boolean {
-  const sample = value.slice(0, 4_096);
-  if (sample.length < 120) return false;
-  let control = 0;
-  let extended = 0;
-  let letters = 0;
-  let whitespace = 0;
-  let punctuation = 0;
-  for (const char of sample) {
-    const code = char.charCodeAt(0);
-    if ((code < 32 && char !== '\n' && char !== '\r' && char !== '\t') || code === 65533) control += 1;
-    if (code > 126) extended += 1;
-    if (/[a-z0-9]/i.test(char)) letters += 1;
-    if (/\s/.test(char)) whitespace += 1;
-    if (/[^a-z0-9\s]/i.test(char)) punctuation += 1;
-  }
-  const length = sample.length;
-  const extendedRatio = extended / length;
-  const usefulRatio = (letters + whitespace) / length;
-  const punctuationRatio = punctuation / length;
-  return control > 0
-    || (extendedRatio > 0.18 && usefulRatio < 0.78)
-    || (punctuationRatio > 0.42 && whitespace / length < 0.08);
-}
-
 export async function compileKnowledgeSource(
   context: KnowledgeIngestContext,
   source: KnowledgeSourceRecord,
@@ -202,7 +145,23 @@ export async function compileKnowledgeSource(
 ): Promise<void> {
   const initialNodeCount = context.store.status().nodeCount;
   const initialEdgeCount = context.store.status().edgeCount;
+  await context.store.batch(async () => {
+    await compileKnowledgeSourceRecords(context, source, extraction);
+  });
 
+  const finalStatus = context.store.status();
+  context.emitIfReady((bus, ctx) => emitKnowledgeCompileCompleted(bus, ctx, {
+    sourceId: source.id,
+    nodeCount: Math.max(0, finalStatus.nodeCount - initialNodeCount),
+    edgeCount: Math.max(0, finalStatus.edgeCount - initialEdgeCount),
+  }), source.sessionId);
+}
+
+async function compileKnowledgeSourceRecords(
+  context: KnowledgeIngestContext,
+  source: KnowledgeSourceRecord,
+  extraction?: KnowledgeExtractionRecord | null,
+): Promise<void> {
   if (source.artifactId) {
     await context.store.upsertEdge({
       fromKind: 'source',
@@ -345,13 +304,6 @@ export async function compileKnowledgeSource(
       relation: 'ingested_during',
     });
   }
-
-  const finalStatus = context.store.status();
-  context.emitIfReady((bus, ctx) => emitKnowledgeCompileCompleted(bus, ctx, {
-    sourceId: source.id,
-    nodeCount: Math.max(0, finalStatus.nodeCount - initialNodeCount),
-    edgeCount: Math.max(0, finalStatus.edgeCount - initialEdgeCount),
-  }), source.sessionId);
 }
 
 export async function compileKnowledgeStructuredEntityHints(

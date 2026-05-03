@@ -1,9 +1,12 @@
 import { inflateSync } from 'node:zlib';
 import type { KnowledgeExtractionResult } from './extractors.js';
+import {
+  KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS,
+  looksBinaryLikeText,
+  looksLikeRawPdfPayload,
+} from './extraction-policy.js';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
-
-const MAX_STRUCTURE_SEARCH_TEXT_CHARS = 128 * 1024;
 
 function cleanText(value: string): string {
   return value
@@ -18,10 +21,10 @@ function cleanText(value: string): string {
 
 function searchTextPayload(value: string): string | undefined {
   const cleaned = cleanText(value);
-  if (!cleaned || looksBinaryLike(cleaned) || looksLikeRawPdfPayload(cleaned)) return undefined;
-  return cleaned.length <= MAX_STRUCTURE_SEARCH_TEXT_CHARS
+  if (!cleaned || looksBinaryLikeText(cleaned) || looksLikeRawPdfPayload(cleaned)) return undefined;
+  return cleaned.length <= KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS
     ? cleaned
-    : cleaned.slice(0, MAX_STRUCTURE_SEARCH_TEXT_CHARS);
+    : cleaned.slice(0, KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS);
 }
 
 function estimateTokens(...chunks: Array<string | undefined | null>): number {
@@ -40,7 +43,7 @@ function firstNonEmptyLine(value: string): string | undefined {
 
 function summarizeText(text: string, maxLength = 320): string | undefined {
   const cleaned = cleanText(text);
-  if (!cleaned || looksBinaryLike(cleaned) || looksLikeRawPdfPayload(cleaned)) return undefined;
+  if (!cleaned || looksBinaryLikeText(cleaned) || looksLikeRawPdfPayload(cleaned)) return undefined;
   if (cleaned.length <= maxLength) return cleaned;
   const sentence = cleaned.match(/^(.{0,320}?[.!?])(?:\s|$)/)?.[1]?.trim();
   return sentence && sentence.length >= 40 ? sentence : `${cleaned.slice(0, maxLength - 1).trim()}...`;
@@ -48,7 +51,7 @@ function summarizeText(text: string, maxLength = 320): string | undefined {
 
 function excerptText(text: string, maxLength = 480): string | undefined {
   const cleaned = cleanText(text);
-  if (!cleaned || looksBinaryLike(cleaned) || looksLikeRawPdfPayload(cleaned)) return undefined;
+  if (!cleaned || looksBinaryLikeText(cleaned) || looksLikeRawPdfPayload(cleaned)) return undefined;
   return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength - 1).trim()}...`;
 }
 
@@ -308,7 +311,7 @@ function decodeUtf16Be(bytes: Buffer): string {
 
 function isReadablePdfText(value: string): boolean {
   const text = cleanText(value);
-  if (text.length < 2 || looksLikeRawPdfPayload(text) || looksBinaryLike(text)) return false;
+  if (text.length < 2 || looksLikeRawPdfPayload(text) || looksBinaryLikeText(text)) return false;
   const sample = text.slice(0, 512);
   let lettersOrDigits = 0;
   let whitespace = 0;
@@ -317,37 +320,4 @@ function isReadablePdfText(value: string): boolean {
     if (/\s/.test(char)) whitespace += 1;
   }
   return (lettersOrDigits + whitespace) / sample.length >= 0.55;
-}
-
-function looksLikeRawPdfPayload(value: string): boolean {
-  const lower = value.toLowerCase();
-  return lower.includes('%pdf')
-    || /\b\d+\s+\d+\s+obj\b/.test(lower)
-    || (lower.includes(' endobj') && lower.includes(' stream'))
-    || (lower.includes('/filter') && lower.includes('/flatedecode'));
-}
-
-function looksBinaryLike(value: string): boolean {
-  const sample = value.slice(0, 4_096);
-  if (sample.length < 120) return false;
-  let control = 0;
-  let extended = 0;
-  let letters = 0;
-  let whitespace = 0;
-  let punctuation = 0;
-  for (const char of sample) {
-    const code = char.charCodeAt(0);
-    if ((code < 32 && char !== '\n' && char !== '\r' && char !== '\t') || code === 65533) control += 1;
-    if (code > 126) extended += 1;
-    if (/[a-z0-9]/i.test(char)) letters += 1;
-    if (/\s/.test(char)) whitespace += 1;
-    if (/[^a-z0-9\s]/i.test(char)) punctuation += 1;
-  }
-  const length = sample.length;
-  const extendedRatio = extended / length;
-  const usefulRatio = (letters + whitespace) / length;
-  const punctuationRatio = punctuation / length;
-  return control > 0
-    || (extendedRatio > 0.18 && usefulRatio < 0.78)
-    || (punctuationRatio > 0.42 && whitespace / length < 0.08);
 }

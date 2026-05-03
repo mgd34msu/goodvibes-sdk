@@ -40,7 +40,7 @@ import {
 } from './state.js';
 import { answerHomeGraphQuery } from './ask.js';
 import type { KnowledgeSemanticService } from '../semantic/index.js';
-import { isUsefulHomeGraphPageFact } from '../semantic/fact-quality.js';
+import { isUsefulHomeGraphPageFact } from './page-quality.js';
 import {
   autoLinkHomeGraphSource,
   autoLinkHomeGraphSources,

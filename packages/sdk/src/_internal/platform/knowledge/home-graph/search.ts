@@ -5,6 +5,7 @@ import type {
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
 } from '../types.js';
+import { knowledgeExtractionNeedsRefresh } from '../extraction-policy.js';
 import { belongsToSpace, edgeIsActive, isGeneratedPageSource, readRecord } from './helpers.js';
 import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
 import { buildSourceLinkIndex } from './source-links.js';
@@ -506,8 +507,8 @@ function isPendingDocumentationCandidate(
 }
 
 export function homeGraphExtractionNeedsRepair(extraction: KnowledgeExtractionRecord | null | undefined): boolean {
+  if (knowledgeExtractionNeedsRefresh(extraction ?? null)) return true;
   if (!extraction) return true;
-  if (extraction.format === 'pdf' && extraction.extractorId === 'pdf') return true;
   const searchText = readSearchText(extraction);
   if (searchText && searchText.trim().length > 0) return false;
   if ((extraction.excerpt?.trim() && !isLowInformationExtractionText(extraction.excerpt))
