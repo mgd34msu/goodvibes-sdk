@@ -6,6 +6,10 @@
 **Miniflare version**: 4.20260415.0 (latest)
 **Entry tested**: `./web` (`dist/web.js`)
 
+**Maintained status:** This file is retained as the Workers runtime design
+record for the current `test:workers` and `test:workers:wrangler` gates. Update
+it when the Worker bridge entrypoint or Miniflare/workerd assumptions change.
+
 ---
 
 ## Entry Point Decision

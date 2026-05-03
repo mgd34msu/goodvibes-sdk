@@ -37,7 +37,6 @@ export async function dispatchOperatorRoutes(
     | 'getChannelDoctor'
     | 'getChannelRepairActions'
     | 'getChannelLifecycle'
-    | 'postChannelLifecycleMigrate'
     | 'getChannelCapabilities'
     | 'getChannelSurfaceCapabilities'
     | 'getChannelTools'
@@ -246,10 +245,6 @@ export async function dispatchOperatorRoutes(
   const channelRepairActionsMatch = pathname.match(/^\/api\/channels\/repair-actions\/([^/]+)$/);
   if (channelRepairActionsMatch && method === 'GET') {
     return handlers.getChannelRepairActions(decodeURIComponent(channelRepairActionsMatch[1]), url);
-  }
-  const channelLifecycleMigrateMatch = pathname.match(/^\/api\/channels\/lifecycle\/([^/]+)\/migrate$/);
-  if (channelLifecycleMigrateMatch && method === 'POST') {
-    return handlers.postChannelLifecycleMigrate(decodeURIComponent(channelLifecycleMigrateMatch[1]), req);
   }
   const channelLifecycleMatch = pathname.match(/^\/api\/channels\/lifecycle\/([^/]+)$/);
   if (channelLifecycleMatch && method === 'GET') {

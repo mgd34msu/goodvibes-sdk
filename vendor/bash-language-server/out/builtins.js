@@ -68,4 +68,3 @@ const SET = new Set(exports.LIST);
 function isBuiltin(word) {
     return SET.has(word);
 }
-//# sourceMappingURL=builtins.js.map

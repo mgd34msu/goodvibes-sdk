@@ -37,6 +37,7 @@ const controlHandlers = createDaemonControlRouteHandlers({
   invokeGatewayMethodCall: async () => ({
     status: 404,
     ok: false,
+    // Gateway method response shape, not a GoodVibesSdkError envelope.
     body: { error: 'No gateway methods are registered in this quickstart' },
   }),
   parseOptionalJsonBody: async (request) => {

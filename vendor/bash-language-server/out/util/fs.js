@@ -70,4 +70,3 @@ function getFilePaths(_a) {
         return files;
     });
 }
-//# sourceMappingURL=fs.js.map

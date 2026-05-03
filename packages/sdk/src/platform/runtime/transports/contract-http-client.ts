@@ -5,7 +5,6 @@ export type {
   ContractStreamOptions,
 } from '@pellux/goodvibes-transport-http';
 export {
-  buildContractInput,
   invokeContractRoute,
   openContractRouteStream,
   requireContractRoute,

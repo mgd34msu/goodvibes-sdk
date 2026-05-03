@@ -55,6 +55,14 @@ function appendHeaderRecord(target: Record<string, string>, headers: HeadersInit
   }
 }
 
+/**
+ * Merge header inputs into a `Headers` instance.
+ *
+ * Use this when a streaming/browser API expects mutable `Headers`, such as
+ * EventSource-style setup or abort-aware fetch helpers. For ordinary JSON HTTP
+ * requests, prefer `mergeHeaderRecord` so callers receive a plain object that is
+ * cheap to serialize, inspect, and pass through middleware.
+ */
 export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   const headers = new Headers();
   for (const source of sources) {
@@ -63,6 +71,14 @@ export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Header
   return headers;
 }
 
+/**
+ * Merge header inputs into a lower-case plain record.
+ *
+ * Preferred for normal HTTP transport requests because the result is a stable
+ * `Record<string, string>` for middleware, trace injection, and JSON request
+ * construction. Use `mergeHeaders` only when a consumer specifically needs a
+ * platform `Headers` object.
+ */
 export function mergeHeaderRecord(...sources: Array<HeadersInit | undefined>): Record<string, string> {
   const headers: Record<string, string> = {};
   for (const source of sources) appendHeaderRecord(headers, source);

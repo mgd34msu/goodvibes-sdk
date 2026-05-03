@@ -18,9 +18,10 @@ Reason:
   fixed `10.2.5` line.
 
 The runtime Bash LSP code is otherwise unchanged from the upstream npm package.
-The committed `out/` directory is intentionally retained from the upstream
-published package so GoodVibes can pack and run the Bash language server without
-executing the vendored package's build or publish lifecycle scripts during SDK
-installation.
+The committed `out/` JavaScript directory is intentionally retained from the
+upstream published package so GoodVibes can pack and run the Bash language
+server without executing the vendored package's build or publish lifecycle
+scripts during SDK installation. Source map files are omitted from the vendor
+copy because they are not loaded by the runtime language server.
 Remove this vendor package when upstream `bash-language-server` publishes a
 release that depends on a fixed `editorconfig`/`minimatch` chain.

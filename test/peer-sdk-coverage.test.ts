@@ -33,7 +33,7 @@ describe('createPeerRemoteClient — listOperations / getOperation', () => {
     const client = createPeerRemoteClient(transport, contract, { validateResponses: false });
     const endpoints = client.listOperations();
     expect(Array.isArray(endpoints)).toBe(true);
-    expect(endpoints.length).toBeGreaterThan(0);
+    expect(endpoints).toHaveLength(contract.peer.endpoints.length);
     expect(endpoints.some((e) => e.id === 'pair.request')).toBe(true);
   });
 

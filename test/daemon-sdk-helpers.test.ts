@@ -483,8 +483,7 @@ describe('error-response — jsonErrorResponse', () => {
 describe('error-response — summarizeErrorForRecord', () => {
   test('returns the error field from buildErrorResponseBody', () => {
     const summary = summarizeErrorForRecord(new Error('network down'));
-    expect(typeof summary).toBe('string');
-    expect(summary.length).toBeGreaterThan(0);
+    expect(summary).toBe('network down');
   });
 
   test('passes options through to buildErrorResponseBody', () => {
@@ -492,5 +491,4 @@ describe('error-response — summarizeErrorForRecord', () => {
     expect(summary).toBe('my fallback');
   });
 });
-
 

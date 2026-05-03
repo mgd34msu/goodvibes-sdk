@@ -26,7 +26,6 @@ import {
   getBuiltinDoctorReport,
   getBuiltinLifecycleState,
   listBuiltinRepairActions,
-  migrateBuiltinLifecycle,
   resolveBuiltinAllowlist,
 } from './builtin/contracts.js';
 import {
@@ -163,10 +162,6 @@ export class BuiltinChannelRuntime {
       const accountId = typeof input?.accountId === 'string' ? input.accountId : undefined;
       return this.getLifecycleState(surface, accountId);
     }
-    if (actionId === 'migrate-lifecycle') {
-      const accountId = typeof input?.accountId === 'string' ? input.accountId : undefined;
-      return this.migrateLifecycle(surface, accountId, input);
-    }
     if (actionId === 'list-directory') {
       const scope = readDirectoryScope(input?.scope);
       return this.deps.channelPlugins.queryDirectory(surface, {
@@ -269,7 +264,6 @@ export class BuiltinChannelRuntime {
     | 'doctor'
     | 'listRepairActions'
     | 'getLifecycleState'
-    | 'migrateLifecycle'
     | 'resolveAllowlist'
     | 'editAllowlist'
   > {
@@ -290,14 +284,6 @@ export class BuiltinChannelRuntime {
 
   private async getLifecycleState(surface: ChannelSurface, accountId?: string) {
     return getBuiltinLifecycleState(this.contractContext(), surface, accountId);
-  }
-
-  private async migrateLifecycle(
-    surface: ChannelSurface,
-    accountId?: string,
-    input?: Record<string, unknown>,
-  ) {
-    return migrateBuiltinLifecycle(this.contractContext(), surface, accountId, input);
   }
 
   private async resolveAllowlist(surface: ChannelSurface, input: Parameters<typeof resolveBuiltinAllowlist>[2]) {

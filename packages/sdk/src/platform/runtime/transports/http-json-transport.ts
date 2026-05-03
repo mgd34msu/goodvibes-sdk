@@ -4,7 +4,7 @@ import {
   createJsonInit,
   createJsonRequestInit,
   readJsonBody,
-  requestJson,
+  requestJsonRaw,
   type HttpJsonRequestOptions,
   type HttpRetryPolicy,
   type HttpTransport,
@@ -29,7 +29,7 @@ export {
   createJsonInit,
   createJsonRequestInit,
   readJsonBody,
-  requestJson,
+  requestJsonRaw,
 };
 
 export type HttpJsonTransportOptions = HttpTransportOptions;

@@ -1,7 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
-sbom.cdx.json
+sbom.cdx.json*
 .tmp/
 
 # Local GoodVibes daemon/session state and credentials. Keep project-local

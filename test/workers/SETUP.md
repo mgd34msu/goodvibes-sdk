@@ -6,6 +6,9 @@ This directory contains the Wave 4 Cloudflare Workers real-runtime test harness 
 
 **Result: `./web` entry is sufficient for normal Worker-hosted operator HTTP clients. `./workers` now exists separately for the optional GoodVibes Worker bridge.**
 
+**Maintained status:** This setup guide is retained with the Workers runtime
+tests. Keep it aligned with `package.json` scripts and CI matrix changes.
+
 `dist/web.js` has zero `node:` imports and zero `Bun.*` API calls. It runs under Workers without adaptation.
 
 ---

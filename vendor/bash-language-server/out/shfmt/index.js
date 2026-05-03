@@ -148,4 +148,3 @@ class Formatter {
     }
 }
 exports.Formatter = Formatter;
-//# sourceMappingURL=index.js.map

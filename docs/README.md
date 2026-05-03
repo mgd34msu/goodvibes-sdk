@@ -10,8 +10,8 @@ release-history source.
 - [Getting started](./getting-started.md)
 - [Packages and entry points](./packages.md)
 - [Public exports](./exports.md)
-- [Runtime surface architecture](./runtime-surfaces.md)
-- [Runtime surfaces](./surfaces.md)
+- [Runtime surface architecture](./runtime-surfaces.md) — capability and runtime boundary model.
+- [Published surface matrix](./surfaces.md) — package export entrypoints and supported import surfaces.
 - [Public surface reference](./public-surface.md)
 
 ## Client Integration
@@ -55,7 +55,6 @@ release-history source.
 
 ## Surfaces and Automation
 
-- [Channel surfaces](./surfaces.md)
 - [Channel surface details](./channel-surfaces.md)
 - [Home Assistant integration](./homeassistant-integration.md)
 - [Daemon batch processing and Cloudflare](./daemon-batch-processing.md)

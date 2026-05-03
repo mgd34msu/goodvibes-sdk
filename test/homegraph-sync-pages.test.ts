@@ -61,7 +61,7 @@ describe('Home Graph sync and generated pages', () => {
     expect(projectionKinds).toContain('room-page');
     expect(browse.nodes.some((node) => node.kind === 'ha_device_passport')).toBe(true);
     expect(map.nodeCount).toBeGreaterThanOrEqual(5);
-    expect(map.edgeCount).toBeGreaterThan(0);
+    expect(map.edgeCount).toBeGreaterThanOrEqual(4);
     expect(map.svg).toContain('<svg');
     expect(map.svg).toContain('Front Door Sensor');
     expect(answer.results).toHaveLength(0);

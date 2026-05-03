@@ -191,7 +191,7 @@ describe('F7 E2E — DaemonHttpRouter: OTLP logs ingest → observable on GET /e
       const ingested = (items as Array<Record<string, unknown>>).filter(
         (r) => r['source'] === 'otlp-ingest' && r['type'] === 'OTLP_LOG_INGEST',
       );
-      expect(ingested.length).toBeGreaterThan(0);
+      expect(ingested).toHaveLength(1);
     } finally {
       dispose();
     }
@@ -243,7 +243,7 @@ describe('F7 E2E — DaemonHttpRouter: OTLP traces ingest → observable on GET 
       const getBody = await getRes!.json() as Record<string, unknown>;
       const items = (getBody['items'] ?? getBody['events']) as Array<Record<string, unknown>>;
       const ingested = items.filter((r) => r['type'] === 'OTLP_TRACE_INGEST');
-      expect(ingested.length).toBeGreaterThan(0);
+      expect(ingested).toHaveLength(1);
     } finally {
       dispose();
     }
@@ -292,7 +292,7 @@ describe('F7 E2E — DaemonHttpRouter: OTLP metrics ingest → observable on GET
       const getBody = await getRes!.json() as Record<string, unknown>;
       const items = (getBody['items'] ?? getBody['events']) as Array<Record<string, unknown>>;
       const ingested = items.filter((r) => r['type'] === 'OTLP_METRICS_INGEST');
-      expect(ingested.length).toBeGreaterThan(0);
+      expect(ingested).toHaveLength(1);
     } finally {
       dispose();
     }
@@ -360,7 +360,7 @@ describe('F7 E2E — Sentinel gating: empty payloads do not emit events', () => 
       const getBody = await getRes!.json() as Record<string, unknown>;
       const items = (getBody['items'] ?? getBody['events'] ?? []) as Array<Record<string, unknown>>;
       const sentinels = items.filter((r) => r['type'] === 'OTLP_TRACE_INGEST');
-      expect(sentinels.length).toBeGreaterThan(0);
+      expect(sentinels).toHaveLength(1);
     } finally {
       dispose();
     }
@@ -407,7 +407,7 @@ describe('F7 E2E — Sentinel gating: empty payloads do not emit events', () => 
       const getBody = await getRes!.json() as Record<string, unknown>;
       const items = (getBody['items'] ?? getBody['events'] ?? []) as Array<Record<string, unknown>>;
       const sentinels = items.filter((r) => r['type'] === 'OTLP_METRICS_INGEST');
-      expect(sentinels.length).toBeGreaterThan(0);
+      expect(sentinels).toHaveLength(1);
     } finally {
       dispose();
     }

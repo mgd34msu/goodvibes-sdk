@@ -228,8 +228,7 @@ describe('Workers wrangler: transport-http round-trip', () => {
     const validKinds = ['auth', 'config', 'contract', 'network', 'not-found', 'protocol', 'rate-limit', 'service', 'internal', 'tool', 'validation', 'unknown'];
     expect(b.kind).toBe('service');
     expect(validKinds).toContain(b.kind as string);
-    expect(typeof b.ctor).toBe('string');
-    expect((b.ctor as string).length).toBeGreaterThan(0);
+    expect(b.ctor).toBe('GoodVibesSdkError');
   }, 10_000);
 });
 
@@ -243,7 +242,6 @@ describe('Workers wrangler: error taxonomy', () => {
     expect(b.sdkErrorWorks).toBe(true);
 
     const names = b.errorClassNames as string[];
-    expect(names.length).toBeGreaterThan(0);
     expect(names).toContain('GoodVibesSdkError');
   }, 10_000);
 });

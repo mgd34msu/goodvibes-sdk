@@ -100,7 +100,7 @@ describe('Home Graph repair and generated pages', () => {
     expect(reindex.reparsed).toBe(1);
     expect(reindex.changedSourceCount).toBeGreaterThanOrEqual(1);
     expect(reindex.forcedSourceCount).toBe(0);
-    expect(reindex.skippedGeneratedPageArtifactCount).toBeGreaterThan(0);
+    expect(reindex.skippedGeneratedPageArtifactCount).toBe(2);
     expect(reindex.refreshedGeneratedPageCount).toBeGreaterThanOrEqual(1);
     expect(reindex.generatedPagePolicyVersion).toBe(HOME_GRAPH_PAGE_POLICY_VERSION);
     expect(reindex.linked?.[0]?.node.title).toBe('LG webOS Smart TV');

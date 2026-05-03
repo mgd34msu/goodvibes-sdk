@@ -52,6 +52,7 @@ describe('startHostServices daemon lifecycle', () => {
       baseConfig(),
       runtimeBus,
       hookDispatcher,
+      runtimeServices,
       {
         sharedDaemonToken: 'shared-token',
         probeDaemonPortInUse: async () => true,
@@ -66,7 +67,6 @@ describe('startHostServices daemon lifecycle', () => {
           return createFakeService([]);
         },
       },
-      runtimeServices,
     );
 
     expect(createDaemonCalled).toBe(false);
@@ -87,6 +87,7 @@ describe('startHostServices daemon lifecycle', () => {
       baseConfig(),
       runtimeBus,
       hookDispatcher,
+      runtimeServices,
       {
         probeDaemonPortInUse: async () => true,
         probeDaemonIdentity: async () => ({
@@ -94,7 +95,6 @@ describe('startHostServices daemon lifecycle', () => {
           reason: 'Identity probe returned HTTP 404',
         }),
       },
-      runtimeServices,
     );
 
     expect(handle.daemonServer).toBeNull();
@@ -108,11 +108,11 @@ describe('startHostServices daemon lifecycle', () => {
       baseConfig(),
       runtimeBus,
       hookDispatcher,
+      runtimeServices,
       {
         probeDaemonPortInUse: async () => false,
         createDaemonServer: () => createFakeService(events),
       },
-      runtimeServices,
     );
 
     expect(events).toEqual(['enable', 'start']);
@@ -130,10 +130,10 @@ describe('startHostServices daemon lifecycle', () => {
       }),
       runtimeBus,
       hookDispatcher,
+      runtimeServices,
       {
         probeHttpListenerPortInUse: async () => true,
       },
-      runtimeServices,
     );
 
     expect(handle.httpListener).toBeNull();
@@ -143,5 +143,42 @@ describe('startHostServices daemon lifecycle', () => {
       port: 3451,
       baseUrl: 'http://127.0.0.1:3451',
     });
+  });
+
+  test('stops an enabled daemon service after a bind conflict during start', async () => {
+    const events: string[] = [];
+    const service = createFakeService(events);
+    service.start = async () => {
+      events.push('start');
+      throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
+    };
+    const handle = await startHostServices(
+      baseConfig(),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        probeDaemonPortInUse: async () => false,
+        probeDaemonIdentity: async () => ({ kind: 'unknown' as const, reason: 'port occupied' }),
+        createDaemonServer: () => service,
+      },
+    );
+
+    expect(events).toEqual(['enable', 'start', 'stop']);
+    expect(handle.daemonServer).toBeNull();
+    expect(handle.daemonStatus.mode).toBe('blocked');
+  });
+
+  test('rejects invalid host service ports before starting services', async () => {
+    await expect(startHostServices(
+      baseConfig({ 'controlPlane.port': { nested: true } as never }),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        probeDaemonPortInUse: async () => false,
+        createDaemonServer: () => createFakeService([]),
+      },
+    )).rejects.toThrow('Expected controlPlane.port to be an integer TCP port');
   });
 });

@@ -43,10 +43,8 @@ describe('OAuthClient', () => {
     test('returns state and verifier for the callback phase', async () => {
       const client = new OAuthClient(BASE_CONFIG);
       const result = await client.beginAuthorization();
-      expect(typeof result.state).toBe('string');
-      expect(result.state.length).toBeGreaterThan(0);
-      expect(typeof result.verifier).toBe('string');
-      expect(result.verifier.length).toBeGreaterThan(0);
+      expect(result.state).toHaveLength(32);
+      expect(result.verifier).toHaveLength(43);
     });
 
     test('accepts explicit state and verifier overrides', async () => {

@@ -1,3 +1,5 @@
+import { ContractError } from '@pellux/goodvibes-errors';
+
 export type RequiredKeys<T extends object> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
 }[keyof T];
@@ -206,6 +208,8 @@ function valueMatchesJsonType(value: unknown, type: string): boolean {
 function stringMatchesJsonSchemaFormat(value: string, format: string): boolean {
   switch (format) {
     case 'date-time':
+      // JSON Schema date-time requires a full date/time separator; Date.parse
+      // alone accepts date-only strings in some runtimes.
       return !Number.isNaN(Date.parse(value)) && /\dT\d/.test(value);
     case 'date':
       return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`));
@@ -273,4 +277,3 @@ function typeOfJsonValue(value: unknown): string {
   if (Array.isArray(value)) return 'array';
   return typeof value;
 }
-import { ContractError } from '@pellux/goodvibes-errors';

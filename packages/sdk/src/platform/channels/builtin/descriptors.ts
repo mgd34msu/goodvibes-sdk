@@ -195,21 +195,7 @@ export function listBuiltinOperatorActions(surface: ChannelSurface): ChannelOper
       id: 'lifecycle-state',
       surface,
       label: 'Get lifecycle state',
-      description: 'Return lifecycle migration posture for this surface.',
-      dangerous: false,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          accountId: { type: 'string' },
-        },
-      },
-      metadata: {},
-    },
-    {
-      id: 'migrate-lifecycle',
-      surface,
-      label: 'Apply lifecycle migration',
-      description: 'Apply lifecycle migrations for this surface.',
+      description: 'Return lifecycle posture for this surface.',
       dangerous: false,
       inputSchema: {
         type: 'object',
@@ -425,7 +411,7 @@ export function listBuiltinTools(surface: ChannelSurface): ChannelToolDescriptor
       id: `${surface}:lifecycle`,
       surface,
       name: `${surface}_lifecycle`,
-      description: `Return lifecycle migration posture for the ${surface} surface.`,
+      description: `Return lifecycle posture for the ${surface} surface.`,
       actionIds: ['lifecycle-state'],
       inputSchema: {
         type: 'object',

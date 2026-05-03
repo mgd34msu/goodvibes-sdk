@@ -76,10 +76,6 @@ export async function dispatchOperatorRoutes(
   if (channelRepairActionsMatch && method === 'GET') {
     return handlers.getChannelRepairActions(decodeURIComponent(channelRepairActionsMatch[1]), url);
   }
-  const channelLifecycleMigrateMatch = pathname.match(/^\/api\/channels\/lifecycle\/([^/]+)\/migrate$/);
-  if (channelLifecycleMigrateMatch && method === 'POST') {
-    return handlers.postChannelLifecycleMigrate(decodeURIComponent(channelLifecycleMigrateMatch[1]), req);
-  }
   const channelLifecycleMatch = pathname.match(/^\/api\/channels\/lifecycle\/([^/]+)$/);
   if (channelLifecycleMatch && method === 'GET') {
     return handlers.getChannelLifecycle(decodeURIComponent(channelLifecycleMatch[1]), url);

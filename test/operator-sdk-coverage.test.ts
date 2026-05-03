@@ -42,7 +42,7 @@ describe('createOperatorRemoteClient — listOperations / getOperation', () => {
     const client = createOperatorRemoteClient(transport, contract);
     const methods = client.listOperations();
     expect(Array.isArray(methods)).toBe(true);
-    expect(methods.length).toBeGreaterThan(0);
+    expect(methods).toHaveLength(contract.operator.methods.length);
     expect(methods.some((m) => m.id === 'accounts.snapshot')).toBe(true);
   });
 
@@ -831,4 +831,3 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     expect(result).toBeDefined();
   });
 });
-

@@ -42,7 +42,7 @@ The current CI suite runs these gates on every PR:
 
 | Gate | Command | Notes |
 |------|---------|-------|
-| `validate` | `bun run validate` | Docs, examples, TypeScript, runtime compatibility, metadata, package, and install-smoke checks |
+| `validate` | `bun run validate` | Docs, examples, TypeScript, runtime environment, metadata, package, and install-smoke checks |
 | `contract-artifact-check` | `bun run contracts:check` | Fails if generated contract artifacts drift from the canonical contracts package |
 | `changelog-check` | `bun run changelog:check` | Fails if the version bump lacks a matching `## [X.Y.Z]` section in `CHANGELOG.md` |
 | `error-contract-check` | `bun run error:check` | Fails if the public error taxonomy, retry contract, or consumer docs drift |
@@ -65,3 +65,11 @@ Before opening or merging changes:
 - keep package README files accurate
 - keep the umbrella package self-contained
 - run `bun run validate`
+
+## Conduct and Sign-off
+
+Contributors are expected to keep technical discussion focused on the work,
+respect project maintainers and users, and avoid personal attacks. Commits must
+be authored by the person submitting the change. Add a `Signed-off-by:` trailer
+when a downstream project or employer requires DCO-style tracking; the SDK does
+not reject unsigned commits by default.

@@ -5,8 +5,6 @@ import type { AutomationJob } from './jobs.js';
 import type { AutomationRouteBinding } from './routes.js';
 import type { AutomationRun } from './runs.js';
 import type { AutomationSourceRecord } from './sources.js';
-import type { LegacySchedulerMigrationResult, LegacySchedulerSnapshot } from './legacy-scheduler.js';
-import { migrateLegacySchedules } from './legacy-scheduler.js';
 import { AutomationJobStore } from './store/jobs.js';
 import { AutomationRouteStore } from './store/routes.js';
 import { AutomationRunStore } from './store/runs.js';
@@ -88,33 +86,6 @@ export class AutomationService {
     for (const source of sourceSnapshot.sources) this.sources.set(source.id, source);
 
     this.loaded = true;
-  }
-
-  async seedFromLegacyScheduler(snapshot: LegacySchedulerSnapshot): Promise<LegacySchedulerMigrationResult> {
-    await this.load();
-    if (this.jobs.size > 0 || this.runs.size > 0) {
-      return { jobs: [], runs: [] };
-    }
-
-    const migrated = migrateLegacySchedules(snapshot);
-    for (const job of migrated.jobs) {
-      this.jobs.set(job.id, job);
-      if (job.source) this.sources.set(job.source.id, job.source);
-    }
-    for (const run of migrated.runs) {
-      this.runs.set(run.id, run);
-      this.sources.set(run.triggeredBy.id, run.triggeredBy);
-      if (run.route) this.routes.set(run.route.id, run.route);
-    }
-
-    await Promise.all([
-      this.saveJobs(),
-      this.saveRuns(),
-      this.saveRoutes(),
-      this.saveSources(),
-    ]);
-
-    return migrated;
   }
 
   listJobs(): AutomationJob[] {

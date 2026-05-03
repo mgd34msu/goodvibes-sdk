@@ -52,11 +52,6 @@ export function buildChannelRouteContext(input: {
         surface as Parameters<ChannelPluginRegistry['getLifecycleState']>[0],
         accountId,
       ),
-      migrateLifecycle: (surface, accountId, body) => input.channelPlugins.migrateLifecycle(
-        surface as Parameters<ChannelPluginRegistry['migrateLifecycle']>[0],
-        accountId,
-        body as Parameters<ChannelPluginRegistry['migrateLifecycle']>[2],
-      ),
       runAccountAction: (surface, action, accountId, body) => input.channelPlugins.runAccountAction(
         surface as Parameters<ChannelPluginRegistry['runAccountAction']>[0],
         action as Parameters<ChannelPluginRegistry['runAccountAction']>[1],

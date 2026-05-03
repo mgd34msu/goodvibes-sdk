@@ -14,15 +14,16 @@ describe('obs-05 tool result summary', () => {
     const { toToolResultSummary } = await import('../packages/sdk/src/platform/runtime/emitters/index.js');
     const summary = toToolResultSummary({ success: false, error: 'Tool timed out' });
     expect(summary.kind).toBe('error');
-    expect(summary.byteSize).toBeGreaterThan(0);
+    expect(summary.byteSize).toBe('Tool timed out'.length);
     expect(summary.preview).toContain('Tool timed out');
   });
 
   test('toToolResultSummary returns json kind when output is valid JSON', async () => {
     const { toToolResultSummary } = await import('../packages/sdk/src/platform/runtime/emitters/index.js');
-    const summary = toToolResultSummary({ success: true, output: JSON.stringify({ files: ['a.ts'] }) });
+    const output = JSON.stringify({ files: ['a.ts'] });
+    const summary = toToolResultSummary({ success: true, output });
     expect(summary.kind).toBe('json');
-    expect(summary.byteSize).toBeGreaterThan(0);
+    expect(summary.byteSize).toBe(output.length);
   });
 
   test('toToolResultSummary returns text kind when output is plain text', async () => {

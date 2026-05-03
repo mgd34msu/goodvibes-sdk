@@ -30,17 +30,6 @@ export interface ContractStreamOptions extends ContractInvokeOptions {
   readonly handlers: ServerSentEventHandlers;
 }
 
-export function buildContractInput(
-  primaryKey: string,
-  primaryValue: string,
-  input?: Record<string, unknown>,
-): Record<string, unknown> {
-  return {
-    [primaryKey]: primaryValue,
-    ...(input ?? {}),
-  };
-}
-
 export function requireContractRoute<TRoute extends ContractRouteLike>(
   routes: readonly TRoute[],
   routeId: string,

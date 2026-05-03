@@ -186,7 +186,7 @@ describe('companion-chat daemon wire: route reachability', () => {
     expect(res!.status).toBe(201);
     const body = await res!.json();
     expect(typeof body.sessionId).toBe('string');
-    expect(body.sessionId.length).toBeGreaterThan(0);
+    expect(body.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
   test('POST /api/companion/chat/sessions with empty body rejects without a default resolver', async () => {
@@ -278,7 +278,7 @@ describe('companion-chat daemon wire: DaemonHttpRouter.dispatchApiRoutes integra
     expect(res!.status).toBe(201);
     const body = await res!.json();
     expect(typeof body.sessionId).toBe('string');
-    expect(body.sessionId.length).toBeGreaterThan(0);
+    expect(body.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
   test('dispatchApiRoutes returns null for companion path when companionChatManager is absent', async () => {

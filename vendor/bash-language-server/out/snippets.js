@@ -668,4 +668,3 @@ function markdownBlock(text, language) {
     const tripleQoute = '```';
     return [tripleQoute + language, text, tripleQoute].join('\n');
 }
-//# sourceMappingURL=snippets.js.map

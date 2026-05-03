@@ -8,7 +8,7 @@ import type { TelemetryFilter, TelemetryRecord } from '../telemetry/api.js';
 import type { UiControlPlaneSnapshot } from '../ui-read-models.js';
 import type { TransportPaths } from './transport-paths.js';
 import { buildUrl } from './transport-paths.js';
-import { createJsonInit, requestJson } from './http-json-transport.js';
+import { createJsonInit, requestJsonRaw } from './http-json-transport.js';
 import { openServerSentEventStream } from './sse-stream.js';
 import type {
   HttpSessionEnsureInput,
@@ -71,13 +71,13 @@ export async function readControlPlaneSnapshot(
   const approvalsUrl = new URL(paths.approvalsUrl);
   approvalsUrl.searchParams.set('limit', '6');
   const [gatewaySnapshot, approvals, sessions] = await Promise.all([
-    requestJson<Record<string, unknown>>(fetchImpl, paths.controlPlaneUrl, createJsonRequestInit(token)),
-    requestJson<readonly SharedApprovalRecord[] | { approvals?: SharedApprovalRecord[] }>(
+    requestJsonRaw<Record<string, unknown>>(fetchImpl, paths.controlPlaneUrl, createJsonRequestInit(token)),
+    requestJsonRaw<readonly SharedApprovalRecord[] | { approvals?: SharedApprovalRecord[] }>(
       fetchImpl,
       approvalsUrl.toString(),
       createJsonRequestInit(token),
     ),
-    requestJson<readonly SharedSessionRecord[] | { sessions?: SharedSessionRecord[] } | { session?: SharedSessionRecord[] }>(
+    requestJsonRaw<readonly SharedSessionRecord[] | { sessions?: SharedSessionRecord[] } | { session?: SharedSessionRecord[] }>(
       fetchImpl,
       paths.sessionsUrl,
       createJsonRequestInit(token),

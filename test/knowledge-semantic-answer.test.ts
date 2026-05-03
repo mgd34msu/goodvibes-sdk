@@ -77,7 +77,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     const enriched = await semantic.enrichSource(source.id);
     const answer = await semantic.answer({ query: 'controller features', includeSources: true });
 
-    expect(enriched?.facts.length).toBeGreaterThan(0);
+    expect(enriched?.facts.map((fact) => fact.title)).toContain('controller includes local control mode');
     expect(enriched?.wikiPage?.kind).toBe('wiki_page');
     expect(answer.answer.synthesized).toBe(true);
     expect(answer.answer.text.trim().startsWith('-')).toBe(false);
@@ -364,9 +364,9 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
 
     expect(answer.spaceId).toBe('homeassistant');
     expect(answer.answer.refinement?.status).toBe('active');
-    expect(answer.answer.refinementTaskIds?.length).toBeGreaterThan(0);
     const concreteTasks = store.listRefinementTasks(10, { spaceId: concreteSpaceId });
     expect(concreteTasks).toHaveLength(1);
+    expect(answer.answer.refinementTaskIds).toEqual([concreteTasks[0]!.id]);
     const gap = store.getNode(concreteTasks[0]!.gapId);
     expect(gap?.metadata.knowledgeSpaceId).toBe(concreteSpaceId);
     expect(answer.answer.refinementTaskIds).toContain(concreteTasks[0]!.id);
@@ -480,7 +480,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     const tvNode = store.listNodes(100).find((node) => node.title === 'LG webOS Smart TV');
 
     expect(answer.answer.text).toContain('NanoCell 4K');
-    expect(answer.answer.refinementTaskIds?.length).toBeGreaterThan(0);
+    expect(answer.answer.refinementTaskIds).toHaveLength(1);
     await waitFor(() => store.listEdges().some((edge) => edge.relation === 'repairs_gap'), 500);
     const repaired = await service.ask({
       installationId: 'house',
@@ -580,11 +580,11 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     expect(answer.answer.gaps).toHaveLength(0);
     expect(answer.answer.sources[0]?.id).toBe(officialSourceId);
     expect(answer.answer.linkedObjects.map((node) => node.title)).toEqual(['LG webOS Smart TV']);
-    expect(answer.answer.facts.length).toBeGreaterThan(0);
+    expect(answer.answer.facts.map((fact) => fact.title)).toContain('Display and picture specifications');
     expect(answer.answer.facts.every((fact) => fact.linkedObjectIds?.length === 1)).toBe(true);
     expect(answer.answer.refinement?.status).toBe('repaired');
     expect(answer.answer.refinement?.acceptedSourceIds).toContain(officialSourceId);
-    expect(answer.answer.refinement?.promotedFactCount).toBeGreaterThan(0);
+    expect(answer.answer.refinement?.promotedFactCount).toBe(answer.answer.facts.length);
     expect(answer.answer.refinement?.pageRefreshRequested).toBe(true);
     expect(answer.answer.refinement?.pageRefreshed).toBe(true);
     expect(answer.answer.text).toContain('Dolby Vision');

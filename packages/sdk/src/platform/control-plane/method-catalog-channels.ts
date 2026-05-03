@@ -100,25 +100,11 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'channels.lifecycle.get',
     title: 'Get Channel Lifecycle State',
-    description: 'Return lifecycle migration posture for a channel surface.',
+    description: 'Return lifecycle version posture for a channel surface.',
     category: 'channels',
     scopes: ['read:channels'],
     http: { method: 'GET', path: '/api/channels/lifecycle/{surface}' },
     inputSchema: objectSchema({ surface: STRING_SCHEMA }, ['surface']),
-    outputSchema: CHANNEL_LIFECYCLE_STATE_SCHEMA,
-  }),
-  methodDescriptor({
-    id: 'channels.lifecycle.migrate',
-    title: 'Migrate Channel Lifecycle',
-    description: 'Apply lifecycle migrations for a channel surface.',
-    category: 'channels',
-    scopes: ['write:channels'],
-    access: 'admin',
-    http: { method: 'POST', path: '/api/channels/lifecycle/{surface}/migrate' },
-    inputSchema: bodyEnvelopeSchema({
-      accountId: STRING_SCHEMA,
-      metadata: METADATA_SCHEMA,
-    }),
     outputSchema: CHANNEL_LIFECYCLE_STATE_SCHEMA,
   }),
   methodDescriptor({

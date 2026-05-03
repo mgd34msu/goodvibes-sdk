@@ -23,12 +23,12 @@ describe('DEFAULT_CONFIG runtime section', () => {
     expect('runtime' in DEFAULT_CONFIG).toBe(true);
   });
 
-  test('DEFAULT_CONFIG.runtime.companionChatLimiter.perSessionLimit is a positive number', () => {
+  test('DEFAULT_CONFIG.runtime.companionChatLimiter.perSessionLimit uses the documented default', () => {
     const config = DEFAULT_CONFIG as Record<string, unknown>;
     const runtime = config['runtime'] as Record<string, unknown>;
     const limiter = runtime['companionChatLimiter'] as Record<string, unknown>;
     expect(typeof limiter['perSessionLimit']).toBe('number');
-    expect((limiter['perSessionLimit'] as number) > 0).toBe(true);
+    expect(limiter['perSessionLimit']).toBe(10);
   });
 });
 
@@ -48,7 +48,10 @@ describe('ConfigManager resolves all runtime.* schema keys', () => {
     .filter((key) => key.startsWith('runtime.'));
 
   test('at least one runtime.* key exists in CONFIG_SCHEMA', () => {
-    expect(runtimeKeys.length).toBeGreaterThan(0);
+    expect(runtimeKeys).toEqual([
+      'runtime.companionChatLimiter.perSessionLimit',
+      'runtime.eventBus.maxListeners',
+    ]);
   });
 
   for (const key of runtimeKeys) {

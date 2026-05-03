@@ -85,7 +85,11 @@ describe('I1: session-scoped event isolation', () => {
 
     // All A events should carry clientId A
     const aEvents = eventsForClient(publisher.events, clientIdA);
-    expect(aEvents.length).toBeGreaterThan(0);
+    expect(aEvents.map((event) => event.event)).toEqual([
+      'companion.chat.message',
+      'companion.chat.delta',
+      'companion.chat.done',
+    ]);
 
     // None of session A’s events should carry session B’s clientId
     const wrongClientEvents = publisher.events.filter(
@@ -227,7 +231,7 @@ describe('I3: conversation history isolation', () => {
     const msgsB = manager.getMessages(sessionB.id);
 
     // A has messages, B has none (no message posted to B)
-    expect(msgsA.length).toBeGreaterThan(0);
+    expect(msgsA.map((message) => message.role)).toEqual(['user', 'assistant']);
     expect(msgsB).toHaveLength(0);
 
     // A's messages all belong to session A

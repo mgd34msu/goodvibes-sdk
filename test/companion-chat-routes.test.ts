@@ -135,7 +135,7 @@ describe('companion-chat-routes: create session', () => {
     expect(res!.status).toBe(201);
     const body = await res!.json();
     expect(typeof body.sessionId).toBe('string');
-    expect(body.sessionId.length).toBeGreaterThan(0);
+    expect(body.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(typeof body.createdAt).toBe('number');
   });
 

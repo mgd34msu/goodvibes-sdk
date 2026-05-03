@@ -100,9 +100,8 @@ Abstract transport interfaces, base classes, and shared transport types.
 
 **Status:** stable
 
-In-process direct transport (zero-latency, same-process communication). This is
-an SDK facade subpath backed by `@pellux/goodvibes-transport-core`, not a
-separate workspace package.
+In-process direct transport (zero-latency, same-process communication). See
+[Transports](./transports.md) for the canonical facade description.
 
 ### `./transport-http` — `@pellux/goodvibes-sdk/transport-http`
 

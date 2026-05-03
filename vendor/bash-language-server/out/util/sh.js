@@ -129,4 +129,3 @@ function memorize(func) {
     return returnFunc;
 }
 exports.getShellDocumentation = memorize(getShellDocumentationWithoutCache);
-//# sourceMappingURL=sh.js.map

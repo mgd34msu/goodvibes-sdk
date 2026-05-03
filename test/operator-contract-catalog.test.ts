@@ -5,8 +5,8 @@
  * the catalog but immediately discarded it, always returning the static
  * pre-baked artifact regardless of what was registered. This meant
  * plugin-registered methods/events were never reflected in the contract,
- * and TUI tests had to loosen assertions from toHaveLength(catalog.listEvents().length)
- * to toBeGreaterThan(0).
+ * and TUI tests had to loosen assertions from exact catalog counts to generic
+ * non-empty checks.
  */
 import { describe, expect, test } from 'bun:test';
 import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.js';
@@ -119,15 +119,13 @@ describe('buildOperatorContract preserves static contract fields', () => {
   test('product.id is preserved from static contract', () => {
     const catalog = makeMinimalCatalog({ methods: 1, events: 1 });
     const contract = buildOperatorContract(catalog);
-    expect(typeof contract.product.id).toBe('string');
-    expect(contract.product.id.length).toBeGreaterThan(0);
+    expect(contract.product.id).toBe('goodvibes');
   });
 
   test('auth modes are preserved from static contract', () => {
     const catalog = makeMinimalCatalog({ methods: 0, events: 0 });
     const contract = buildOperatorContract(catalog);
-    expect(Array.isArray(contract.auth.modes)).toBe(true);
-    expect(contract.auth.modes.length).toBeGreaterThan(0);
+    expect(contract.auth.modes).toEqual(['shared-bearer', 'session-login']);
   });
 
   test('version is set to current SDK VERSION string', () => {

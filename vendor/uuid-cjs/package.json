@@ -1,8 +1,7 @@
 {
   "name": "uuid",
   "version": "0.0.0-goodvibes.0",
-  "description": "GoodVibes vendored CommonJS uuid v4 compatibility shim for Verdaccio @cypress/request.",
-  "private": true,
+  "description": "GoodVibes vendored CommonJS uuid v4 adapter for Verdaccio @cypress/request.",
   "main": "index.js",
   "type": "commonjs",
   "license": "MIT"

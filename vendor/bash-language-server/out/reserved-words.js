@@ -30,4 +30,3 @@ const SET = new Set(exports.LIST);
 function isReservedWord(word) {
     return SET.has(word);
 }
-//# sourceMappingURL=reserved-words.js.map

@@ -15,6 +15,11 @@ export interface PeerSdkOptions extends HttpTransportOptions {
   readonly validateResponses?: boolean;
 }
 
+/**
+ * Public invocation options intentionally wrap the remote-client options so
+ * peer-sdk can add peer-specific fields without changing the generic remote
+ * client contract.
+ */
 export interface PeerInvokeOptions extends PeerRemoteClientInvokeOptions {}
 
 export type PeerSdk =

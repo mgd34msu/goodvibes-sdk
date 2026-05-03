@@ -5,7 +5,7 @@
  *
  * RL1: (N+1)-th message in 1 minute throws GoodVibesSdkError{kind:'rate-limit'} (per-session).
  * RL2: Per-client limit is enforced across sessions.
- * RL3: Error includes retryAfterMs > 0.
+ * RL3: Error includes retryAfterMs inside the configured window.
  * RL4: Rate limiter can be disabled via `rateLimiter: false`.
  * RL5: Different sessions share client-level limit.
  */
@@ -170,11 +170,11 @@ describe('RL2: per-client rate limit — enforced across messages', () => {
 });
 
 // ---------------------------------------------------------------------------
-// RL3: Error includes retryAfterMs > 0
+// RL3: Error includes retryAfterMs inside the rate-limit window
 // ---------------------------------------------------------------------------
 
-describe('RL3: rate-limit error includes retryAfterMs > 0', () => {
-  test('retryAfterMs is a positive number on session limit breach', async () => {
+describe('RL3: rate-limit error includes retryAfterMs inside the rate-limit window', () => {
+  test('retryAfterMs is bounded by the configured window on session limit breach', async () => {
     const manager = makeManager({ perSessionLimit: 1, perClientLimit: 100 });
     const session = manager.createSession();
 
@@ -187,7 +187,8 @@ describe('RL3: rate-limit error includes retryAfterMs > 0', () => {
       expect(err).toBeInstanceOf(GoodVibesSdkError);
       const sdkErr = err as GoodVibesSdkError;
       expect(sdkErr.retryAfterMs).toBeDefined();
-      expect(sdkErr.retryAfterMs!).toBeGreaterThan(0);
+      expect(sdkErr.retryAfterMs).toBeGreaterThanOrEqual(59_000);
+      expect(sdkErr.retryAfterMs).toBeLessThanOrEqual(60_001);
     }
 
     manager.dispose();

@@ -9,4 +9,3 @@ var CompletionItemDataType;
     CompletionItemDataType[CompletionItemDataType["Symbol"] = 3] = "Symbol";
     CompletionItemDataType[CompletionItemDataType["Snippet"] = 4] = "Snippet";
 })(CompletionItemDataType || (exports.CompletionItemDataType = CompletionItemDataType = {}));
-//# sourceMappingURL=types.js.map

@@ -54,20 +54,6 @@ export function createDaemonChannelRouteHandlers(
         ? Response.json(state)
         : Response.json({ error: 'Unknown channel lifecycle surface' }, { status: 404 });
     },
-    postChannelLifecycleMigrate: async (surface, req) => {
-      const admin = context.requireAdmin(req);
-      if (admin) return admin;
-      const body = await context.parseOptionalJsonBody(req);
-      if (body instanceof Response) return body;
-      const state = await context.channelPlugins.migrateLifecycle(
-        surface as ChannelSurface,
-        typeof body?.accountId === 'string' ? body.accountId : undefined,
-        body ?? undefined,
-      );
-      return state
-        ? Response.json(state)
-        : Response.json({ error: 'Unknown channel lifecycle surface' }, { status: 404 });
-    },
     postChannelAccountAction: async (surface, accountId, action, req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;

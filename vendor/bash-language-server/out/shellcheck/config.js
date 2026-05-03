@@ -14,4 +14,3 @@ exports.LEVEL_TO_SEVERITY = {
     info: LSP.DiagnosticSeverity.Information,
     style: LSP.DiagnosticSeverity.Hint,
 };
-//# sourceMappingURL=config.js.map

@@ -186,7 +186,7 @@ describe('L5: GC closes active sessions after idleActiveMs', () => {
     await manager.postMessage(session.id, 'Hello');
     await new Promise((r) => setTimeout(r, 50));
 
-    expect(manager.getMessages(session.id).length).toBeGreaterThan(0);
+    expect(manager.getMessages(session.id).map((message) => message.role)).toEqual(['user', 'assistant']);
 
     // Age the session
     const internalSessions = (manager as unknown as { sessions: Map<string, { lastActivityAt: number }> }).sessions;

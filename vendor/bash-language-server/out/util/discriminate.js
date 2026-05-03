@@ -4,4 +4,3 @@ exports.discriminate = discriminate;
 function discriminate(discriminantKey, discriminantValue) {
     return (obj) => obj[discriminantKey] === discriminantValue;
 }
-//# sourceMappingURL=discriminate.js.map

@@ -11,6 +11,8 @@ bun --cwd examples run typecheck
 Most examples read `GOODVIBES_BASE_URL` and `GOODVIBES_TOKEN` from the
 environment. Keep example tokens local and never commit real credentials,
 tokens, cookies, or screenshots containing them.
+See the repository [security policy](../SECURITY.md) before adapting examples
+that handle credentials, pairing tokens, or daemon URLs.
 
 ## Quickstarts
 

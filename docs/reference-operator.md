@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `264`
+- Methods: `263`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -2906,8 +2906,7 @@ Return automation jobs queued for the next heartbeat.
               "catch_up",
               "webhook",
               "surface",
-              "watcher",
-              "migration"
+              "watcher"
             ]
           },
           "dueRun": {
@@ -3027,8 +3026,7 @@ Process automation jobs queued for the next heartbeat.
                   "hook",
                   "webhook",
                   "surface",
-                  "watcher",
-                  "migration"
+                  "watcher"
                 ]
               },
               "label": {
@@ -3969,8 +3967,7 @@ Process automation jobs queued for the next heartbeat.
               "catch_up",
               "webhook",
               "surface",
-              "watcher",
-              "migration"
+              "watcher"
             ]
           },
           "dueRun": {
@@ -5312,8 +5309,7 @@ Create a durable automation job.
             "hook",
             "webhook",
             "surface",
-            "watcher",
-            "migration"
+            "watcher"
           ]
         },
         "label": {
@@ -6287,8 +6283,7 @@ Return automation jobs and recent runs.
                   "hook",
                   "webhook",
                   "surface",
-                  "watcher",
-                  "migration"
+                  "watcher"
                 ]
               },
               "label": {
@@ -7578,8 +7573,7 @@ Patch a durable automation job.
             "hook",
             "webhook",
             "surface",
-            "watcher",
-            "migration"
+            "watcher"
           ]
         },
         "label": {
@@ -7986,8 +7980,7 @@ Cancel an active automation run.
                 "hook",
                 "webhook",
                 "surface",
-                "watcher",
-                "migration"
+                "watcher"
               ]
             },
             "label": {
@@ -8982,8 +8975,7 @@ Return a single automation run record.
                 "hook",
                 "webhook",
                 "surface",
-                "watcher",
-                "migration"
+                "watcher"
               ]
             },
             "label": {
@@ -10071,8 +10063,7 @@ Return automation run history.
                   "hook",
                   "webhook",
                   "surface",
-                  "watcher",
-                  "migration"
+                  "watcher"
                 ]
               },
               "label": {
@@ -11068,8 +11059,7 @@ Retry a completed or failed automation run.
                 "hook",
                 "webhook",
                 "surface",
-                "watcher",
-                "migration"
+                "watcher"
               ]
             },
             "label": {
@@ -12986,8 +12976,7 @@ Create a schedule record.
             "hook",
             "webhook",
             "surface",
-            "watcher",
-            "migration"
+            "watcher"
           ]
         },
         "label": {
@@ -13961,8 +13950,7 @@ Return schedule records.
                   "hook",
                   "webhook",
                   "surface",
-                  "watcher",
-                  "migration"
+                  "watcher"
                 ]
               },
               "label": {
@@ -14170,8 +14158,7 @@ Return schedule records.
                   "hook",
                   "webhook",
                   "surface",
-                  "watcher",
-                  "migration"
+                  "watcher"
                 ]
               },
               "label": {
@@ -18308,7 +18295,7 @@ Return doctor checks and repair posture for a channel surface.
 
 #### `channels.lifecycle.get`
 
-Return lifecycle migration posture for a channel surface.
+Return lifecycle version posture for a channel surface.
 
 - Title: `Get Channel Lifecycle State`
 - Source: `builtin`
@@ -18355,68 +18342,6 @@ Return lifecycle migration posture for a channel surface.
     "targetVersion": {
       "type": "number"
     },
-    "migrations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "fromVersion": {
-            "type": "number"
-          },
-          "toVersion": {
-            "type": "number"
-          },
-          "action": {
-            "type": "string"
-          },
-          "applied": {
-            "type": "boolean"
-          },
-          "detail": {
-            "type": "string"
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "object",
-                  "additionalProperties": {}
-                },
-                {
-                  "type": "array",
-                  "items": {}
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "id",
-          "fromVersion",
-          "toVersion",
-          "action",
-          "applied",
-          "detail"
-        ],
-        "additionalProperties": false
-      }
-    },
     "metadata": {
       "type": "object",
       "additionalProperties": {
@@ -18449,181 +18374,6 @@ Return lifecycle migration posture for a channel surface.
     "surface",
     "currentVersion",
     "targetVersion",
-    "migrations",
-    "metadata"
-  ],
-  "additionalProperties": false
-}
-```
-
-#### `channels.lifecycle.migrate`
-
-Apply lifecycle migrations for a channel surface.
-
-- Title: `Migrate Channel Lifecycle`
-- Source: `builtin`
-- Access: `admin`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/channels/lifecycle/{surface}/migrate`
-- Scopes: `write:channels`
-- Emits events: none
-- Dangerous: `no`
-- Invokable: `yes`
-
-##### Input schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "accountId": {
-      "type": "string"
-    },
-    "metadata": {
-      "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
-          }
-        ]
-      }
-    }
-  },
-  "additionalProperties": true
-}
-```
-
-##### Output schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "surface": {
-      "type": "string"
-    },
-    "accountId": {
-      "type": "string"
-    },
-    "currentVersion": {
-      "type": "number"
-    },
-    "targetVersion": {
-      "type": "number"
-    },
-    "migrations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "fromVersion": {
-            "type": "number"
-          },
-          "toVersion": {
-            "type": "number"
-          },
-          "action": {
-            "type": "string"
-          },
-          "applied": {
-            "type": "boolean"
-          },
-          "detail": {
-            "type": "string"
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "object",
-                  "additionalProperties": {}
-                },
-                {
-                  "type": "array",
-                  "items": {}
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "id",
-          "fromVersion",
-          "toVersion",
-          "action",
-          "applied",
-          "detail"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "metadata": {
-      "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
-          }
-        ]
-      }
-    }
-  },
-  "required": [
-    "surface",
-    "currentVersion",
-    "targetVersion",
-    "migrations",
     "metadata"
   ],
   "additionalProperties": false

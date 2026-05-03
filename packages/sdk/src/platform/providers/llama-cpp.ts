@@ -119,7 +119,9 @@ export class LlamaCppProvider implements LLMProvider {
       auth: {
         mode: this.apiKey ? 'api-key' : 'anonymous',
         configured: true,
-        detail: this.apiKey ? 'llama.cpp compat path has an API key configured.' : 'llama.cpp compat path is running without an API key.',
+        detail: this.apiKey
+          ? 'llama.cpp OpenAI-compatible endpoint has an API key configured.'
+          : 'llama.cpp OpenAI-compatible endpoint is running without an API key.',
         routes: authRoutes,
       },
       models: {
@@ -131,7 +133,7 @@ export class LlamaCppProvider implements LLMProvider {
         toolCalling: true,
         parallelTools: true,
         promptCaching: false,
-        notes: ['llama.cpp uses a non-streaming recovery path for tool turns and delegates embeddings to the fallback compat provider.'],
+        notes: ['llama.cpp uses a non-streaming recovery path for tool turns and delegates embeddings to the configured embedding provider.'],
       },
       policy: {
         local: true,

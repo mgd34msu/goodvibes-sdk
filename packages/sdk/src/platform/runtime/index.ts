@@ -220,9 +220,9 @@ export * from './ui-service-queries.js';
 export {
   scheduleBackgroundMcpDiscovery,
   startBackgroundProviderDiscovery,
-  startBackgroundProviderDiscovery as startBackgroundProviderRegistration,
 } from './bootstrap-background.js';
 export type {
+  BackgroundRuntimeTaskHandle,
   BackgroundMcpDiscoveryOptions,
   BackgroundProviderDiscoveryOptions,
   HostSystemMessageSink,
@@ -230,22 +230,17 @@ export type {
 } from './bootstrap-background.js';
 export {
   loadRuntimeSystemPrompt,
-  loadRuntimeSystemPrompt as loadBootstrapSystemPrompt,
   restoreRuntimeModel,
-  restoreRuntimeModel as restoreSavedModel,
   synchronizeConfiguredServices,
-  synchronizeConfiguredServices as syncConfiguredServices,
 } from './bootstrap-helpers.js';
 export type { RuntimeModelSelectionState } from './bootstrap-helpers.js';
 export { registerBootstrapRuntimeEvents, registerHostRuntimeEvents } from './bootstrap-runtime-events.js';
 export type { BootstrapRuntimeEventBridgeOptions, HostRuntimeEventBridgeOptions, HostRuntimeMessageRouter } from './bootstrap-runtime-events.js';
 export { startHostServices } from './bootstrap-services.js';
-export { startHostServices as startExternalServices } from './bootstrap-services.js';
 export type {
   HostServiceMode,
   HostServicesConfig,
   HostServicesHandle,
-  HostServicesHandle as ExternalServicesHandle,
   HostServiceStatus,
 } from './bootstrap-services.js';
 export { registerBootstrapHookBridge } from './bootstrap-hook-bridge.js';
@@ -343,7 +338,7 @@ export {
   createJsonInit,
   createJsonRequestInit,
   readJsonBody,
-  requestJson,
+  requestJsonRaw,
 } from './transports/http-json-transport.js';
 export { createRealtimeTransport } from './transports/realtime.js';
 export type { RealtimeTransport, RealtimeTransportOptions, RealtimeTransportSnapshot } from './transports/realtime.js';
@@ -357,7 +352,6 @@ export type {
   TransportJsonError,
 } from './transports/http-json-transport.js';
 export {
-  buildContractInput,
   invokeContractRoute,
   openContractRouteStream,
   requireContractRoute,

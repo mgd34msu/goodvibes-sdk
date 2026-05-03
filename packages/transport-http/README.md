@@ -15,9 +15,9 @@ Exports include:
 Use this surface when you need lower-level HTTP/SSE control or when you are building a custom GoodVibes client on top of the synced contracts.
 
 ```ts
-import { createJsonRequestInit, requestJson } from '@pellux/goodvibes-sdk/transport-http';
+import { createJsonRequestInit, requestJsonRaw } from '@pellux/goodvibes-sdk/transport-http';
 
-const body = await requestJson(
+const body = await requestJsonRaw(
   fetch,
   'http://127.0.0.1:3210/api/control-plane/auth',
   createJsonRequestInit(process.env.GOODVIBES_TOKEN ?? null),

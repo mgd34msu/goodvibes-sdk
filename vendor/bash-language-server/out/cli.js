@@ -71,4 +71,3 @@ function listen() {
 if (require.main === module) {
     runCli();
 }
-//# sourceMappingURL=cli.js.map

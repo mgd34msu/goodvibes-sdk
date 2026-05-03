@@ -275,8 +275,7 @@ describe('auth-flow-e2e: session-cookie-only mode', () => {
     const loginBody = await loginRes.json() as { token: string; authenticated: boolean };
     expect(loginBody.authenticated).toBe(true);
     const sessionToken = loginBody.token;
-    expect(typeof sessionToken).toBe('string');
-    expect(sessionToken.length).toBeGreaterThan(0);
+    expect(sessionToken).toMatch(/^[A-Za-z0-9_-]+$/);
 
     // Step 2: authenticate to createGoodVibesAuthClient using the session token
     // Thread the cookie manually (Bun fetch has no cookie jar across origins)

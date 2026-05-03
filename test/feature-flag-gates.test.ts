@@ -435,7 +435,11 @@ describe('feature flag safe-default gates', () => {
     expect(fetchSetting).toBeDefined();
     expect(fetchSetting?.currentState).toBe('disabled');
     expect(fetchSetting?.insecureWhen).toMatch(/SSRF-risk hosts/i);
-    expect(fetchSetting?.enablementRequirements.length).toBeGreaterThan(0);
+    expect(fetchSetting?.enablementRequirements).toEqual([
+      'Enable featureFlags.fetch-sanitization in SDK/TUI configuration.',
+      'Add trusted_hosts only for hosts whose raw content is safe to expose to the model.',
+      'Keep sanitize_mode at safe-text or strict unless the target host is explicitly trusted.',
+    ]);
   });
 
   test('shell-ast-normalization denies command substitution that baseline allows', async () => {

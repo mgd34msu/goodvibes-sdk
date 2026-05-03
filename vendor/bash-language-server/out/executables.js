@@ -83,4 +83,3 @@ function isExecutableFile(stats) {
     const isExecutable = !!(1 & parseInt((stats.mode & parseInt('777', 8)).toString(8)[0]));
     return stats.isFile() && isExecutable;
 }
-//# sourceMappingURL=executables.js.map

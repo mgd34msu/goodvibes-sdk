@@ -57,8 +57,8 @@ describe('runSecurity — security mode', () => {
 
     const secrets = result.secrets as { findings: Array<{ file: string; line: number; pattern: string; match: string }>; count: number };
     expect(secrets).toBeDefined();
-    expect(secrets.count).toBeGreaterThan(0);
-    expect(secrets.findings.length).toBeGreaterThan(0);
+    expect(secrets.count).toBe(1);
+    expect(secrets.findings).toHaveLength(1);
     // The finding should point to the fixture file
     expect(secrets.findings[0].file).toContain('config.ts');
     // Should identify the token_assignment pattern
@@ -123,7 +123,7 @@ describe('runDeadCode — dead_code mode', () => {
     expect(Array.isArray(deadExports)).toBe(true);
     const deadNames = deadExports.map((e) => e.name);
     expect(deadNames).toContain('orphanedHelper');
-    expect(result.total_exports as number).toBeGreaterThan(0);
+    expect(result.total_exports).toBe(2);
   });
 
   test('does NOT flag an exported function that is referenced in another file', async () => {

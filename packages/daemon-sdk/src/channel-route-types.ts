@@ -51,11 +51,6 @@ export interface ChannelPluginServiceLike {
   doctor(surface: ChannelSurface, accountId?: string): Promise<unknown | null>;
   listRepairActions(surface: ChannelSurface, accountId?: string): Promise<readonly unknown[]>;
   getLifecycleState(surface: ChannelSurface, accountId?: string): Promise<unknown | null>;
-  migrateLifecycle(
-    surface: ChannelSurface,
-    accountId?: string,
-    input?: JsonRecord | null,
-  ): Promise<unknown | null>;
   runAccountAction(
     surface: ChannelSurface,
     action: ChannelLifecycleAction,

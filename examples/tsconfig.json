@@ -12,8 +12,8 @@
     ],
     "noEmit": true,
     "types": [
-      "bun",
-      "node"
+      "node",
+      "bun"
     ]
   },
   "include": [

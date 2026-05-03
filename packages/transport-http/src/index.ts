@@ -5,7 +5,6 @@ export type {
   ContractStreamOptions,
 } from './contract-client.js';
 export {
-  buildContractInput,
   invokeContractRoute,
   openContractRouteStream,
   requireContractRoute,
@@ -28,7 +27,7 @@ export {
   createJsonRequestInit,
   normalizeTransportError,
   readJsonBody,
-  requestJson,
+  requestJsonRaw,
 } from './http.js';
 export type { TransportContext, TransportMiddleware } from './http-core.js';
 export { generateIdempotencyKey } from './http-core.js';

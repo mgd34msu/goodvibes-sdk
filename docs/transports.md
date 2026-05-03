@@ -6,7 +6,8 @@ facade.
 - `transport-core`: shared direct transport primitives, event/error helpers,
   UUID fallback, and common transport utilities.
 - `transport-direct`: SDK facade name for in-process direct transport backed by
-  `transport-core`.
+  `transport-core`. It is a package export subpath only; there is no separate
+  `packages/transport-direct` workspace package.
 - `transport-http`: HTTP JSON transport, retry policy, auth header resolution,
   idempotency keys, and JSON Schema response validation helpers.
 - `transport-realtime`: WebSocket and realtime runtime event transport.

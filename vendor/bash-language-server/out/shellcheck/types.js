@@ -32,4 +32,3 @@ exports.ShellCheckResultSchema = zod_1.z.object({
             .nullable(),
     })),
 });
-//# sourceMappingURL=types.js.map

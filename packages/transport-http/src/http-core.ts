@@ -1,6 +1,6 @@
 import { ConfigurationError, ContractError, GoodVibesSdkError, HttpStatusError, createHttpStatusError } from '@pellux/goodvibes-errors';
 import { sleepWithSignal } from './backoff.js';
-import { mergeHeaderRecord, normalizeAuthToken, resolveAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';
+import { mergeHeaderRecord, normalizeAuthToken, resolveHeaders, type AuthTokenResolver, type HeaderResolver } from './auth.js';
 import {
   applyPerMethodPolicy,
   getHttpRetryDelay,
@@ -291,11 +291,13 @@ export async function readJsonBody(response: Response): Promise<unknown> {
 }
 
 /**
- * @internal Low-level one-shot helper retained for legacy internal callers.
- * Public code should use `createHttpTransport(...).requestJson()` so auth,
- * middleware, retry policy, idempotency keys, and observers are applied.
+ * Low-level one-shot JSON request helper.
+ *
+ * This deliberately bypasses transport auth, middleware, retry policy,
+ * idempotency keys, and observers. Prefer
+ * `createHttpTransport(...).requestJson()` for normal application code.
  */
-export async function requestJson<T>(
+export async function requestJsonRaw<T>(
   fetchImpl: typeof fetch,
   url: string,
   init: RequestInit = {},

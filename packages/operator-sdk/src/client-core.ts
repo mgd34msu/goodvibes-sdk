@@ -206,11 +206,15 @@ export function createOperatorRemoteClient(
     ...args: KnownStreamArgs<TMethodId>
   ): Promise<() => void> {
     const [input, options] = splitClientArgs<OperatorMethodInput<TMethodId>, OperatorRemoteClientStreamOptions>(args);
+    // Streams may be opened without handlers when the caller wants the raw
+    // cancel function only; provide the empty handler map explicitly so
+    // openContractRouteStream never has to infer a missing options object.
+    const streamOptions = options ?? { handlers: {} };
     return openContractRouteStream(
       transport,
       requireMethodRoute(contract, methodId),
       clientInputRecord(input),
-      options ?? { handlers: {} },
+      streamOptions,
     );
   }
 

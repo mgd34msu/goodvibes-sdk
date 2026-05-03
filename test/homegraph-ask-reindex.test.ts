@@ -513,7 +513,6 @@ describe('Home Graph ask, source repair, and reindex', () => {
     expect(map.nodes.some((node) => node.title === 'Living Room TV')).toBe(true);
     expect(topLevelMap.nodeCount).toBe(map.nodeCount);
     expect(topLevelMap.edgeCount).toBe(map.edgeCount);
-    expect(map.edgeCount).toBeGreaterThan(0);
     expect(map.edges.some((edge) => edge.relation === 'belongs_to_device' || edge.relation === 'located_in')).toBe(true);
     expect(map.edges.every((edge) => typeof edge.source === 'string' && typeof edge.target === 'string')).toBe(true);
     expect(map.edges.some((edge) => typeof edge.sourceTitle === 'string' && typeof edge.targetTitle === 'string')).toBe(true);

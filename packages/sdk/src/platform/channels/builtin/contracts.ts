@@ -1,4 +1,3 @@
-import type { SurfacesConfig } from '../../config/schema.js';
 import { ChannelPolicyManager } from '../policy-manager.js';
 import type {
   ChannelAccountRecord,
@@ -11,7 +10,6 @@ import type {
   ChannelDoctorCheck,
   ChannelDoctorReport,
   ChannelDoctorStatus,
-  ChannelLifecycleMigrationRecord,
   ChannelLifecycleState,
   ChannelRenderPolicy,
   ChannelRepairAction,
@@ -47,7 +45,6 @@ export function buildBuiltinContractHooks(
   | 'doctor'
   | 'listRepairActions'
   | 'getLifecycleState'
-  | 'migrateLifecycle'
   | 'resolveAllowlist'
   | 'editAllowlist'
 > {
@@ -58,7 +55,6 @@ export function buildBuiltinContractHooks(
     doctor: (accountId) => getBuiltinDoctorReport(context, surface, accountId),
     listRepairActions: (accountId) => listBuiltinRepairActions(context, surface, accountId),
     getLifecycleState: (accountId) => getBuiltinLifecycleState(context, surface, accountId),
-    migrateLifecycle: (accountId, input) => migrateBuiltinLifecycle(context, surface, accountId, input),
     resolveAllowlist: (input) => resolveBuiltinAllowlist(context, surface, input),
     editAllowlist: (input) => editBuiltinAllowlist(context, surface, input),
   };
@@ -86,16 +82,6 @@ export async function listBuiltinRepairActions(
       : undefined,
     metadata: { actionId: action.id, available: action.available },
   }));
-  const lifecycle = await getBuiltinLifecycleState(context, surface, accountId);
-  if (lifecycle.currentVersion < lifecycle.targetVersion) {
-    actions.push({
-      id: 'migrate-lifecycle',
-      label: 'Apply lifecycle migration',
-      description: `Advance ${surfaceLabelForBuiltin(surface)} setup metadata to version ${lifecycle.targetVersion}.`,
-      dangerous: false,
-      metadata: { fromVersion: lifecycle.currentVersion, toVersion: lifecycle.targetVersion },
-    });
-  }
   return actions;
 }
 
@@ -148,7 +134,6 @@ export async function getBuiltinDoctorReport(
     lifecycle.currentVersion >= lifecycle.targetVersion
       ? `Setup metadata is at version ${lifecycle.currentVersion}.`
       : `Setup metadata is at version ${lifecycle.currentVersion}; target is ${lifecycle.targetVersion}.`,
-    lifecycle.currentVersion >= lifecycle.targetVersion ? undefined : 'migrate-lifecycle',
   );
 
   const surfaces = context.deps.configManager.getCategory('surfaces');
@@ -223,56 +208,13 @@ export async function getBuiltinLifecycleState(
   accountId?: string,
 ): Promise<ChannelLifecycleState> {
   const currentVersion = getConfiguredSetupVersion(context, surface);
-  const migrations: ChannelLifecycleMigrationRecord[] = currentVersion >= CHANNEL_SETUP_VERSION
-    ? [{
-        id: `${surface}:lifecycle:${currentVersion}`,
-        fromVersion: currentVersion,
-        toVersion: CHANNEL_SETUP_VERSION,
-        action: 'noop',
-        applied: true,
-        detail: 'Setup metadata is current.',
-        metadata: {},
-      }]
-    : [{
-        id: `${surface}:lifecycle:${currentVersion}->${CHANNEL_SETUP_VERSION}`,
-        fromVersion: currentVersion,
-        toVersion: CHANNEL_SETUP_VERSION,
-        action: 'migrate',
-        applied: false,
-        detail: 'Setup metadata needs to be upgraded to the current schema version.',
-        metadata: {},
-      }];
   return {
     surface,
     ...(accountId ? { accountId } : {}),
     currentVersion,
     targetVersion: CHANNEL_SETUP_VERSION,
-    migrations,
     metadata: {},
   };
-}
-
-export async function migrateBuiltinLifecycle(
-  context: BuiltinContractContext,
-  surface: ChannelSurface,
-  accountId?: string,
-  _input?: Record<string, unknown>,
-): Promise<ChannelLifecycleState> {
-  if (surface === 'tui' || surface === 'web') {
-    return getBuiltinLifecycleState(context, surface, accountId);
-  }
-  const section = configSectionForSurface(surface);
-  const surfaces = context.deps.configManager.getCategory('surfaces');
-  const current = surfaces[section];
-  const normalized = surface === 'telegram'
-    ? { ...surfaces.telegram, mode: surfaces.telegram.mode || 'webhook', setupVersion: CHANNEL_SETUP_VERSION }
-    : surface === 'whatsapp'
-      ? { ...surfaces.whatsapp, provider: surfaces.whatsapp.provider || 'meta-cloud', setupVersion: CHANNEL_SETUP_VERSION }
-      : { ...current, setupVersion: CHANNEL_SETUP_VERSION };
-  context.deps.configManager.mergeCategory('surfaces', {
-    [section]: normalized,
-  } as Partial<SurfacesConfig>);
-  return getBuiltinLifecycleState(context, surface, accountId);
 }
 
 export async function resolveBuiltinAllowlist(

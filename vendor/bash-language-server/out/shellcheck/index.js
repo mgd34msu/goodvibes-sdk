@@ -226,4 +226,3 @@ class CodeActionProvider {
 function guessShellDialect({ documentText, uri }) {
     return uri.endsWith('.zsh') ? 'zsh' : (0, shebang_1.analyzeShebang)(documentText).shellDialect;
 }
-//# sourceMappingURL=index.js.map
