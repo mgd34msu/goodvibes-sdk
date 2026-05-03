@@ -4,7 +4,7 @@ export type {
   OperatorSdkOptions,
   OperatorStreamOptions,
 } from './client.js';
-export { createOperatorSdk } from './client.js';
+export { createOperatorSdk, __internal__ } from './client.js';
 export {
   createOperatorRemoteClient,
 } from './client-core.js';
