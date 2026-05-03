@@ -52,28 +52,29 @@ export type OperatorSdk =
     [Symbol.asyncDispose](): Promise<void>;
   };
 
-type ZodSchemaExports = Record<string, unknown>;
-
-const OPERATOR_RESPONSE_SCHEMA_EXPORTS: Partial<Record<OperatorMethodId, string>> = {
-  'accounts.snapshot': 'AccountsSnapshotResponseSchema',
-  'control.auth.current': 'ControlAuthCurrentResponseSchema',
-  'control.auth.login': 'ControlAuthLoginResponseSchema',
-  'control.status': 'ControlStatusResponseSchema',
-  'local_auth.status': 'LocalAuthStatusResponseSchema',
-};
-
 function isZodSchema(value: unknown): value is ZodType {
   return Boolean(value && typeof value === 'object' && 'safeParse' in value && typeof (value as { readonly safeParse?: unknown }).safeParse === 'function');
 }
 
-function buildSchemaRegistry(methodIds: readonly string[], schemas: ZodSchemaExports): Partial<Record<string, ZodType>> {
+/**
+ * Auto-derives a method-ID → ZodType registry from the contracts namespace by
+ * scanning all exported names that end with `ResponseSchema` and are valid Zod
+ * schemas. New response schemas added to the contracts package are picked up
+ * automatically without requiring manual updates here.
+ */
+function buildSchemaRegistry(schemas: Record<string, unknown>): Partial<Record<string, ZodType>> {
   const registry: Partial<Record<string, ZodType>> = {};
-  for (const methodId of methodIds) {
-    const exportName = OPERATOR_RESPONSE_SCHEMA_EXPORTS[methodId as OperatorMethodId];
-    if (!exportName) continue;
-    const schema = schemas[exportName];
-    if (!isZodSchema(schema)) continue;
-    registry[methodId] = schema;
+  for (const [key, value] of Object.entries(schemas)) {
+    if (!key.endsWith('ResponseSchema')) continue;
+    if (!isZodSchema(value)) continue;
+    // Derive the method ID from the export name by converting PascalCase segments
+    // to dot-separated lowercase method-ID form.
+    // e.g. "ControlAuthLoginResponseSchema" → "control.auth.login"
+    const methodId = key
+      .replace(/ResponseSchema$/, '')
+      .replace(/([A-Z])/g, (c, i) => (i === 0 ? '' : '.') + c.toLowerCase())
+      .replace(/^\./, '');
+    registry[methodId] = value;
   }
   return registry;
 }
@@ -83,7 +84,7 @@ export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk {
   const transport = createHttpTransport(options);
   const contract = getOperatorContract();
   const schemaRegistry = validateResponses
-    ? buildSchemaRegistry(contract.operator.methods.map((method) => method.id), ContractZodSchemas)
+    ? buildSchemaRegistry(ContractZodSchemas)
     : {};
   const remote = createOperatorRemoteClient(transport, contract, {
     validateResponses,
