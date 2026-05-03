@@ -10,13 +10,23 @@ const SDK_ROOT = resolve(__dirname, '..');
 const args = process.argv.slice(2);
 
 function defaultTestArgs(): readonly string[] {
-  return [
-    ...readdirSync(resolve(SDK_ROOT, 'test'))
-      .filter((entry) => entry.endsWith('.test.ts'))
-      .sort()
-      .map((entry) => `test/${entry}`),
-    'test/integration',
-  ];
+  const testRoot = resolve(SDK_ROOT, 'test');
+  const rootTestFiles = readdirSync(testRoot)
+    .filter((entry) => entry.endsWith('.test.ts'))
+    .sort()
+    .map((entry) => `test/${entry}`);
+  // Include integration subdirectory only if it exists and contains test files.
+  const integrationDir = resolve(testRoot, 'integration');
+  let integrationArgs: string[] = [];
+  try {
+    const entries = readdirSync(integrationDir, { withFileTypes: true });
+    if (entries.some((e) => e.isFile() && /\.test\.(ts|tsx|mjs)$/.test(e.name))) {
+      integrationArgs = ['test/integration'];
+    }
+  } catch {
+    // integration directory does not exist — skip silently
+  }
+  return [...rootTestFiles, ...integrationArgs];
 }
 
 function resolveTestArgs(): readonly string[] {

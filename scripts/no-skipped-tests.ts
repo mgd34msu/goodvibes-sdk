@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, extname, relative, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const testRoot = resolve(repoRoot, 'test');
-const testExtensions = new Set(['.ts', '.tsx', '.js', '.mjs']);
+const testFilePattern = /\.test\.(ts|tsx|mjs)$/;
 const forbidden = /\b(?:describe|test|it)\.(?:skip|todo)\s*\(/;
 
 function* walk(dir: string): Generator<string> {
@@ -15,7 +15,7 @@ function* walk(dir: string): Generator<string> {
       yield* walk(abs);
       continue;
     }
-    if (entry.isFile() && testExtensions.has(extname(entry.name))) yield abs;
+    if (entry.isFile() && testFilePattern.test(entry.name)) yield abs;
   }
 }
 

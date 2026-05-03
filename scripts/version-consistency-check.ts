@@ -23,8 +23,18 @@ const DEFAULT_WORKSPACE_PACKAGES = [
   'packages/transport-realtime',
 ];
 
+function parseWorkspacePackagesJson(raw: string): string[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed) || !parsed.every((p) => typeof p === 'string')) {
+    throw new Error(
+      `WORKSPACE_PACKAGES_JSON must be a JSON array of strings, got: ${raw.slice(0, 200)}`,
+    );
+  }
+  return parsed as string[];
+}
+
 const WORKSPACE_PACKAGES: string[] = process.env.WORKSPACE_PACKAGES_JSON
-  ? (JSON.parse(process.env.WORKSPACE_PACKAGES_JSON) as string[])
+  ? parseWorkspacePackagesJson(process.env.WORKSPACE_PACKAGES_JSON)
   : DEFAULT_WORKSPACE_PACKAGES;
 
 function readVersion(pkgPath: string): string {

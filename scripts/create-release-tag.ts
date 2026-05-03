@@ -9,9 +9,11 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const SDK_ROOT = new URL('..', import.meta.url).pathname;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SDK_ROOT = resolve(__dirname, '..');
 const sdkPkg = JSON.parse(readFileSync(resolve(SDK_ROOT, 'packages/sdk/package.json'), 'utf8'));
 const version: string = sdkPkg.version;
 const tag = `v${version}`;
@@ -30,7 +32,7 @@ try {
     process.exit(1);
   }
 } catch (e) {
-  console.error(`[release:tag] ERROR: Could not read git status.`);
+  console.error(`[release:tag] ERROR: Could not read git status. (${e instanceof Error ? e.message : String(e)})`);
   process.exit(1);
 }
 
@@ -51,7 +53,7 @@ try {
   run('git', ['tag', '-a', tag, '-m', `release ${version}`]);
   console.log(`[release:tag] Tag ${tag} created successfully.`);
 } catch (e) {
-  console.error(`[release:tag] ERROR: Failed to create tag ${tag}.`);
+  console.error(`[release:tag] ERROR: Failed to create tag ${tag}. (${e instanceof Error ? e.message : String(e)})`);
   process.exit(1);
 }
 

@@ -11,6 +11,12 @@ const version = process.argv[2] || getRootVersion();
 const registry = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 const MAX_ATTEMPTS = Number.parseInt(process.env.GOODVIBES_VERIFY_ATTEMPTS || '48', 10);
 const RETRY_DELAY_MS = Number.parseInt(process.env.GOODVIBES_VERIFY_DELAY_MS || '5000', 10);
+if (!Number.isInteger(MAX_ATTEMPTS) || MAX_ATTEMPTS <= 0) {
+  throw new Error(`GOODVIBES_VERIFY_ATTEMPTS must be a positive integer, got: ${process.env.GOODVIBES_VERIFY_ATTEMPTS}`);
+}
+if (!Number.isInteger(RETRY_DELAY_MS) || RETRY_DELAY_MS <= 0) {
+  throw new Error(`GOODVIBES_VERIFY_DELAY_MS must be a positive integer, got: ${process.env.GOODVIBES_VERIFY_DELAY_MS}`);
+}
 
 function packageNameForDir(dir: string): string {
   const pkg = readPackage(dir);

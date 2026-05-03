@@ -31,6 +31,8 @@ export type PeerSdk =
     getOperation(endpointId: PeerEndpointId): PeerEndpointContract;
     dispose(): void;
     asyncDispose(): Promise<void>;
+    [Symbol.dispose](): void;
+    [Symbol.asyncDispose](): Promise<void>;
   };
 
 export function createPeerSdk(options: PeerSdkOptions): PeerSdk {
@@ -49,6 +51,12 @@ export function createPeerSdk(options: PeerSdkOptions): PeerSdk {
     },
     async asyncDispose(): Promise<void> {
       this.dispose();
+    },
+    [Symbol.dispose](): void {
+      this.dispose();
+    },
+    async [Symbol.asyncDispose](): Promise<void> {
+      return this.asyncDispose();
     },
   };
 }

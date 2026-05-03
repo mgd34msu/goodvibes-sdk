@@ -48,6 +48,8 @@ export type OperatorSdk =
     getOperation(methodId: OperatorMethodId): OperatorMethodContract;
     dispose(): void;
     asyncDispose(): Promise<void>;
+    [Symbol.dispose](): void;
+    [Symbol.asyncDispose](): Promise<void>;
   };
 
 type ZodSchemaExports = Record<string, unknown>;
@@ -100,6 +102,12 @@ export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk {
     },
     async asyncDispose(): Promise<void> {
       this.dispose();
+    },
+    [Symbol.dispose](): void {
+      this.dispose();
+    },
+    async [Symbol.asyncDispose](): Promise<void> {
+      return this.asyncDispose();
     },
   };
 }
