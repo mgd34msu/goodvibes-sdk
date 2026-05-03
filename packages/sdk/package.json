@@ -886,6 +886,22 @@
       "types": "./dist/platform/multimodal/types.d.ts",
       "import": "./dist/platform/multimodal/types.js"
     },
+    "./platform/node": {
+      "types": "./dist/platform/node/index.d.ts",
+      "import": "./dist/platform/node/index.js"
+    },
+    "./platform/node/capabilities": {
+      "types": "./dist/platform/node/capabilities.d.ts",
+      "import": "./dist/platform/node/capabilities.js"
+    },
+    "./platform/node/index": {
+      "types": "./dist/platform/node/index.d.ts",
+      "import": "./dist/platform/node/index.js"
+    },
+    "./platform/node/runtime-boundary": {
+      "types": "./dist/platform/node/runtime-boundary.d.ts",
+      "import": "./dist/platform/node/runtime-boundary.js"
+    },
     "./platform/pairing": {
       "types": "./dist/platform/pairing/index.d.ts",
       "import": "./dist/platform/pairing/index.js"
