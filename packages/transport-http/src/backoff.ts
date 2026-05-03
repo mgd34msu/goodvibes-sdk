@@ -53,7 +53,7 @@ export async function sleepWithSignal(
     const timer = setTimeout(() => {
       cleanup();
       resolve();
-    }, delayMs);
+    }, delayMs) as ReturnType<typeof setTimeout> & { unref?: () => void };
     timer.unref?.();
     const onAbort = () => {
       clearTimeout(timer);

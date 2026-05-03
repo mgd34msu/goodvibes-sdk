@@ -5,7 +5,16 @@
     "checkJs": true,
     "composite": false,
     "jsx": "react-jsx",
-    "noEmit": true
+    "lib": [
+      "ES2023",
+      "ESNext.Disposable",
+      "DOM"
+    ],
+    "noEmit": true,
+    "types": [
+      "bun",
+      "node"
+    ]
   },
   "include": [
     "*.mjs",

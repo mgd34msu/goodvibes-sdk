@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ github.ref }}
       - name: Verify git tag matches package.json version
@@ -58,7 +58,7 @@ jobs:
     if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped')
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
       - name: Setup Bun
@@ -66,7 +66,7 @@ jobs:
         with:
           bun-version: "1.3.10"
       - name: Setup Node
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: "22"
       - name: Install dependencies
@@ -74,7 +74,7 @@ jobs:
       - name: Generate SBOM (CycloneDX JSON)
         run: bun run sbom:generate
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sbom-cdx-json
           path: sbom.cdx.json
@@ -90,7 +90,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
       - name: Setup Bun
@@ -98,7 +98,7 @@ jobs:
         with:
           bun-version: "1.3.10"
       - name: Setup Node
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
@@ -133,7 +133,7 @@ jobs:
       GOODVIBES_PUBLISH_REGISTRY: https://npm.pkg.github.com
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
       - name: Setup Bun
@@ -141,7 +141,7 @@ jobs:
         with:
           bun-version: "1.3.10"
       - name: Setup Node
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           registry-url: "https://npm.pkg.github.com"
@@ -176,11 +176,11 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
       - name: Download SBOM artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: sbom-cdx-json
           path: /tmp/release-artifacts
