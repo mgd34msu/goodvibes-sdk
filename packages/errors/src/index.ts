@@ -105,6 +105,49 @@ function inferCategory(status?: number): ErrorCategory {
   return 'unknown';
 }
 
+const ERROR_CATEGORIES = new Set<ErrorCategory>([
+  'authentication',
+  'authorization',
+  'bad_request',
+  'billing',
+  'config',
+  'contract',
+  'internal',
+  'network',
+  'not_found',
+  'permission',
+  'protocol',
+  'rate_limit',
+  'service',
+  'timeout',
+  'tool',
+  'unknown',
+]);
+
+function readErrorCategory(value: unknown): ErrorCategory | undefined {
+  return typeof value === 'string' && ERROR_CATEGORIES.has(value as ErrorCategory)
+    ? value as ErrorCategory
+    : undefined;
+}
+
+function inferCategoryFromCause(cause: unknown, seen = new Set<object>()): ErrorCategory | undefined {
+  if (!cause || typeof cause !== 'object') return undefined;
+  const objectCause = cause as object;
+  if (seen.has(objectCause)) return undefined;
+  seen.add(objectCause);
+  const record = cause as {
+    readonly category?: unknown;
+    readonly cause?: unknown;
+    readonly originalError?: unknown;
+    readonly error?: unknown;
+  };
+  const category = readErrorCategory(record.category);
+  if (category && category !== 'unknown') return category;
+  return inferCategoryFromCause(record.cause, seen)
+    ?? inferCategoryFromCause(record.originalError, seen)
+    ?? inferCategoryFromCause(record.error, seen);
+}
+
 /**
  * Base error class for all errors thrown by the GoodVibes SDK.
  *
@@ -149,10 +192,13 @@ export class GoodVibesSdkError extends Error {
   public override readonly cause?: unknown;
 
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
+    const category = options.category
+      ?? inferCategoryFromCause(options.cause)
+      ?? inferCategory(options.status);
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = this.constructor.name;
     this.code = options.code;
-    this.category = options.category ?? inferCategory(options.status);
+    this.category = category;
     this.kind = inferKind(this.category);
     this.source = options.source ?? 'unknown';
     this.recoverable = options.recoverable ?? (options.status !== undefined && RETRYABLE_STATUS_CODES.includes(options.status));

@@ -215,8 +215,16 @@ export async function refreshHomeGraphDevicePassport(
   const scopedNodeIds = new Set([device.id, ...entities.map((node) => node.id)]);
   const issues = filterDevicePassportIssues(issuesForScope(state.issues, state.edges, scopedNodeIds, sources), sources);
   const missingFields = missingDevicePassportFields(device, sources);
+  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts });
+  const pageContentHash = semanticHash(markdown);
+  const passportId = homeGraphNodeId(spaceId, 'ha_device_passport', input.deviceId);
+  const existingPassport = store.getNode(passportId);
+  const existingPassportMetadata = readRecord(existingPassport?.metadata);
+  const previousRefreshedAt = typeof existingPassportMetadata.refreshedAt === 'number'
+    ? existingPassportMetadata.refreshedAt
+    : undefined;
   const passport = await store.upsertNode({
-    id: homeGraphNodeId(spaceId, 'ha_device_passport', input.deviceId),
+    id: passportId,
     kind: 'ha_device_passport',
     slug: `${device.slug}-passport`,
     title: `${device.title} passport`,
@@ -227,7 +235,10 @@ export async function refreshHomeGraphDevicePassport(
       homeAssistant: { installationId, objectKind: 'device_passport', objectId: input.deviceId },
       deviceId: input.deviceId,
       missingFields,
-      refreshedAt: Date.now(),
+      pageContentHash,
+      refreshedAt: existingPassportMetadata.pageContentHash === pageContentHash && previousRefreshedAt !== undefined
+        ? previousRefreshedAt
+        : Date.now(),
     }),
   });
   await store.upsertEdge({
@@ -238,7 +249,6 @@ export async function refreshHomeGraphDevicePassport(
     relation: 'source_for',
     metadata: buildHomeGraphMetadata(spaceId, installationId),
   });
-  const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts });
   const generated = await materializeGeneratedMarkdown({
     store,
     artifactStore,
@@ -360,7 +370,13 @@ async function materializeGeneratedMarkdown(input: HomeGraphPageContext & {
   readonly linked?: KnowledgeEdgeRecord;
   readonly artifactCreated: boolean;
 }> {
-  const generatedAt = Date.now();
+  const contentHash = semanticHash(input.markdown);
+  const existingSource = input.store.getSource(homeGraphSourceId(input.spaceId, 'generated-page', input.canonicalValue));
+  const existingMetadata = readRecord(existingSource?.metadata);
+  const existingGeneratedAt = typeof existingMetadata.generatedAt === 'number' ? existingMetadata.generatedAt : undefined;
+  const generatedAt = existingMetadata.generatedContentHash === contentHash && existingGeneratedAt !== undefined
+    ? existingGeneratedAt
+    : Date.now();
   const regeneration = readRecord(input.metadata).automation === 'snapshot-sync' ? 'automatic' : 'manual';
   const metadata = {
     ...(input.metadata ?? {}),
@@ -368,6 +384,7 @@ async function materializeGeneratedMarkdown(input: HomeGraphPageContext & {
     homeGraphGeneratedPage: true,
     projectionKind: input.projectionKind,
     generatedAt,
+    generatedContentHash: contentHash,
     pagePolicyVersion: HOME_GRAPH_PAGE_POLICY_VERSION,
     pageEditable: true,
     regeneration,
