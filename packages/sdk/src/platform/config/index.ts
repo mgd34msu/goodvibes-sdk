@@ -9,7 +9,8 @@
 export { ConfigManager } from './manager.js';
 export type { DeepReadonly } from './manager.js';
 export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, PermissionMode, PermissionAction, PermissionsToolConfig, NotificationsConfig } from './schema.js';
-export { DEFAULT_CONFIG, CONFIG_SCHEMA } from './schema.js';
+export { DEFAULT_CONFIG, CONFIG_KEYS, CONFIG_SCHEMA } from './schema.js';
+export type { PersistedFlagState } from './schema-types.js';
 export { ConfigError } from '../types/errors.js';
 
 import { readFileSync } from 'fs';
@@ -54,6 +55,8 @@ export function getConfiguredSystemPrompt(configManager: Pick<ConfigManager, 'ge
 }
 
 export { getConfiguredApiKeys, resolveApiKeys } from './api-keys.js';
+export { createOAuthLocalListener } from './oauth-local-listener.js';
+export type { OAuthLocalListener, OAuthLocalListenerConfig } from './oauth-local-listener.js';
 export { HelperModel, HelperRouter } from './helper-model.js';
 export type {
   HelperChatOptions,

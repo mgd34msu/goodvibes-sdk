@@ -56,6 +56,11 @@ export interface EcosystemInstallReceipt {
     readonly status: 'supported' | 'warning';
     readonly reasons: readonly string[];
   };
+  readonly compatibility: {
+    readonly appVersion: string;
+    readonly status: 'supported' | 'warning';
+    readonly reasons: readonly string[];
+  };
 }
 
 export interface EcosystemCatalogBundle {
@@ -357,6 +362,10 @@ export function reviewEcosystemCatalogEntry(
     status: 'supported' | 'warning';
     reasons: readonly string[];
   };
+  compatibility: {
+    status: 'supported' | 'warning';
+    reasons: readonly string[];
+  };
 } {
   const { cwd, homeDir } = options;
   const sourcePath = entry.source.startsWith('/') || entry.source.startsWith('.')
@@ -382,6 +391,11 @@ export function reviewEcosystemCatalogEntry(
     reasons.push('requires sandbox-backed execution support');
   }
 
+  const fit = {
+    status: reasons.length > 0 ? 'warning' as const : 'supported' as const,
+    reasons,
+  };
+
   return {
     entry,
     sourcePath,
@@ -389,10 +403,8 @@ export function reviewEcosystemCatalogEntry(
     sourceKind,
     riskLevel: entry.trustNotes || sourceKind === 'remote' ? 'medium' : 'low',
     recommendedScope: entry.kind === 'plugin' ? 'project' : 'user',
-    runtimeFit: {
-      status: reasons.length > 0 ? 'warning' : 'supported',
-      reasons,
-    },
+    runtimeFit: fit,
+    compatibility: fit,
   };
 }
 
@@ -433,6 +445,11 @@ export function installEcosystemCatalogEntry(
     fingerprint: hashPath(targetPath),
     provenanceSummary: entry.provenance ?? entry.source,
     runtimeFit: {
+      appVersion: VERSION,
+      status: review.runtimeFit.status,
+      reasons: review.runtimeFit.reasons,
+    },
+    compatibility: {
       appVersion: VERSION,
       status: review.runtimeFit.status,
       reasons: review.runtimeFit.reasons,

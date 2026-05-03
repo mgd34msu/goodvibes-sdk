@@ -32,11 +32,16 @@ export type {
   ComponentHealthState,
   ComponentThrottleStatus,
   ComponentHealthStatus,
+  PanelResourceContract,
+  PanelHealthState,
+  PanelThrottleStatus,
+  PanelHealthStatus,
 } from './component-contracts.js';
 export {
   CATEGORY_CONTRACTS,
   buildContract,
   createInitialComponentHealthState,
+  createInitialPanelHealthState,
 } from './component-contracts.js';
 export { ComponentHealthMonitor } from './component-health-monitor.js';
 

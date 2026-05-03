@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, unlinkSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { logger } from '../utils/logger.js';
 
 export interface CompanionPairingResult {
@@ -25,6 +25,23 @@ export interface CompanionTokenRecord {
   readonly createdAt: number;
 }
 
+export interface CompanionTokenOptions {
+  readonly daemonHomeDir: string;
+  readonly regenerate?: boolean;
+}
+
+export interface PruneStaleOperatorTokensOptions {
+  readonly daemonHomeDir: string;
+  readonly candidatePaths?: readonly string[];
+}
+
+export interface PruneStaleOperatorTokensResult {
+  readonly canonicalPath: string;
+  readonly prunedPaths: readonly string[];
+  readonly failedPaths: readonly string[];
+  readonly skippedPaths: readonly string[];
+}
+
 const TOKEN_PREFIX = 'gv_';
 
 function generateTokenValue(): string {
@@ -47,13 +64,35 @@ function resolveSharedTokenPath(daemonHomeDir: string): string {
   return join(daemonHomeDir, 'operator-tokens.json');
 }
 
+function normalizeCompanionTokenOptions(
+  first: CompanionTokenOptions | string,
+  second?: CompanionTokenOptions,
+): CompanionTokenOptions {
+  if (typeof first === 'string') {
+    if (!second) {
+      throw new Error('getOrCreateCompanionToken(surface, options) requires options.daemonHomeDir');
+    }
+    return second;
+  }
+  return first;
+}
+
 /**
  * Load the stored companion token, or generate and persist a new one.
  * Token is always written to <daemonHomeDir>/operator-tokens.json at mode 0600.
  */
 export function getOrCreateCompanionToken(
-  options: { daemonHomeDir: string; regenerate?: boolean },
+  options: CompanionTokenOptions,
+): CompanionPairingResult;
+export function getOrCreateCompanionToken(
+  surface: string,
+  options: CompanionTokenOptions,
+): CompanionPairingResult;
+export function getOrCreateCompanionToken(
+  first: CompanionTokenOptions | string,
+  second?: CompanionTokenOptions,
 ): CompanionPairingResult {
+  const options = normalizeCompanionTokenOptions(first, second);
   const tokenPath = resolveSharedTokenPath(options.daemonHomeDir);
 
   if (!options.regenerate && existsSync(tokenPath)) {
@@ -95,9 +134,47 @@ export function getOrCreateCompanionToken(
  * Written to <daemonHomeDir>/operator-tokens.json at mode 0600.
  */
 export function regenerateCompanionToken(
-  options: { daemonHomeDir: string },
+  options: CompanionTokenOptions,
 ): CompanionPairingResult {
   return getOrCreateCompanionToken({ ...options, regenerate: true });
+}
+
+export function pruneStaleOperatorTokens(
+  options: PruneStaleOperatorTokensOptions,
+): PruneStaleOperatorTokensResult {
+  const canonicalPath = resolve(resolveSharedTokenPath(options.daemonHomeDir));
+  const prunedPaths: string[] = [];
+  const failedPaths: string[] = [];
+  const skippedPaths: string[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of options.candidatePaths ?? []) {
+    if (!candidate || typeof candidate !== 'string') continue;
+    const candidatePath = resolve(candidate);
+    if (seen.has(candidatePath)) continue;
+    seen.add(candidatePath);
+    if (candidatePath === canonicalPath) {
+      skippedPaths.push(candidatePath);
+      continue;
+    }
+    if (!existsSync(candidatePath)) {
+      skippedPaths.push(candidatePath);
+      continue;
+    }
+    try {
+      unlinkSync(candidatePath);
+      prunedPaths.push(candidatePath);
+    } catch {
+      failedPaths.push(candidatePath);
+    }
+  }
+
+  return {
+    canonicalPath,
+    prunedPaths,
+    failedPaths,
+    skippedPaths,
+  };
 }
 
 /**

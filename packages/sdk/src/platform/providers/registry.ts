@@ -343,6 +343,10 @@ export class ProviderRegistry {
     return undefined;
   }
 
+  get(name: string): LLMProvider | undefined {
+    return this.tryGet(name);
+  }
+
   /**
    * Retrieve the directly-registered provider without subscription route aliasing.
    * Throws if no provider with that name (or its catalog alias) is registered.

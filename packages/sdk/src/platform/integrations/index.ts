@@ -34,6 +34,8 @@ export type {
   HomeAssistantStateRecord,
 } from './homeassistant.js';
 export { Notifier } from './notifier.js';
+export { WebhookNotifier } from './webhooks.js';
+export type { WebhookNotifierOptions } from './webhooks.js';
 export { GitHubIntegration } from './github.js';
 export type { GitHubWebhookEvent } from './github.js';
 export { DeliveryQueue, DeliveryError, classifyDeliveryError, snapshotQueueStatus } from './delivery.js';

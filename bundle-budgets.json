@@ -67,8 +67,8 @@
     "rationale": "v0.30.1 expanded platform namespace facade; measured 447 B gzip * 1.2"
   },
   "./platform/acp": {
-    "gzip_bytes": 71,
-    "rationale": "v0.30.0 public entry facade; measured 59 B gzip * 1.2"
+    "gzip_bytes": 104,
+    "rationale": "v0.30.2 public ACP seam with default agent command helper; measured 86 B gzip * 1.2"
   },
   "./platform/adapters": {
     "gzip_bytes": 390,
@@ -235,12 +235,12 @@
     "rationale": "v0.30.1 public platform seam; measured 60 B gzip * 1.2"
   },
   "./platform/providers": {
-    "gzip_bytes": 124,
-    "rationale": "v0.30.0 public entry facade; measured 103 B gzip * 1.2"
+    "gzip_bytes": 467,
+    "rationale": "v0.30.2 expanded provider seam for TUI host provider registry, model limits, benchmarks, tiers, favorites, and optimizer APIs; measured 389 B gzip * 1.2"
   },
   "./platform/runtime": {
-    "gzip_bytes": 1509,
-    "rationale": "v0.30.0 public entry facade; measured 1257 B gzip * 1.2"
+    "gzip_bytes": 2608,
+    "rationale": "v0.30.2 expanded runtime seam for TUI host shell, session, diagnostics, provider-account, worktree, sandbox, permission, UI read-model, and lifecycle APIs; measured 2173 B gzip * 1.2"
   },
   "./platform/runtime/events": {
     "gzip_bytes": 3376,

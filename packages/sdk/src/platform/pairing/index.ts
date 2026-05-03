@@ -16,6 +16,8 @@ export {
   regenerateCompanionToken,
   buildCompanionConnectionInfo,
   encodeConnectionPayload,
+  pruneStaleOperatorTokens,
 } from './companion-token.js';
+export type { PruneStaleOperatorTokensOptions, PruneStaleOperatorTokensResult } from './companion-token.js';
 
 export { formatConnectionBlock } from './connection-info.js';

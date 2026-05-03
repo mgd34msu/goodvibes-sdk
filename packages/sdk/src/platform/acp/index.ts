@@ -4,4 +4,4 @@ export type {
   SubagentTask,
   SubagentStatus,
 } from './protocol.js';
-export { AcpManager } from './manager.js';
+export { AcpManager, getDefaultAcpAgentCommand } from './manager.js';
