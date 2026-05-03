@@ -13,7 +13,8 @@ import {
 import { buildUrl, createTransportPaths, type TransportPaths } from './paths.js';
 import {
   composeMiddleware,
-  injectTraceparent,
+  createUuidV4,
+  injectTraceparentAsync,
   invokeTransportObserver,
   type TransportContext,
   type TransportMiddleware,
@@ -39,23 +40,7 @@ export type JsonObject = { readonly [key: string]: JsonValue };
  * Falls back to a manual RFC 4122 v4 implementation otherwise.
  */
 export function generateIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback: manual RFC 4122 v4
-  const bytes = new Uint8Array(16);
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < 16; i++) {
-      bytes[i] = Math.floor(Math.random() * 256);
-    }
-  }
-  // Set version (4) and variant bits (RFC 4122)
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  return createUuidV4();
 }
 
 /** Methods that are safe to send idempotency keys for (all non-GET requests). */
@@ -177,6 +162,20 @@ function inferTransportHint(
   }
   if (status >= 500) return 'Remote server error. The service may be temporarily unavailable.';
   return undefined;
+}
+
+function errorFromUnknown(error: unknown, context: string): Error {
+  if (error instanceof Error) return error;
+  if (typeof error === 'object' && error !== null) {
+    const record = error as Record<string, unknown>;
+    const fields = [
+      typeof record.name === 'string' ? `name=${record.name}` : undefined,
+      typeof record.type === 'string' ? `type=${record.type}` : undefined,
+      typeof record.message === 'string' ? `message=${record.message}` : undefined,
+    ].filter(Boolean);
+    return new Error(`${context}: ${fields.length > 0 ? fields.join(' ') : Object.prototype.toString.call(error)}`);
+  }
+  return new Error(`${context}: ${String(error)}`);
 }
 
 export function createTransportError(
@@ -398,8 +397,9 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         mergedHeaders['Content-Type'] = 'application/json';
       }
 
-      // Inject W3C traceparent if OTel is active.
-      injectTraceparent(mergedHeaders);
+      // Inject W3C traceparent if OTel is active. This path is async so pure
+      // ESM OpenTelemetry providers can be loaded before the request is sent.
+      await injectTraceparentAsync(mergedHeaders);
 
       // Inject idempotency key for mutating methods.
       if (idempotencyKey && !hasHeader(mergedHeaders, 'Idempotency-Key')) {
@@ -500,7 +500,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         const wrappedError = (() => {
           if (middlewareErrorInfo !== null) {
             // Error came from within the middleware chain — wrap regardless of error type.
-            const msg = error instanceof Error ? error.message : String(error);
+            const msg = errorFromUnknown(error, 'transport middleware error').message;
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const middlewareName = (middlewareErrorInfo as { name: string }).name;
             const wrapped = new GoodVibesSdkError(`Transport middleware error: ${msg}`, {
@@ -515,7 +515,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           return error;
         })();
         // Notify observer of the transport error before deciding to retry or rethrow.
-        invokeTransportObserver(() => observer?.onError?.(wrappedError instanceof Error ? wrappedError : new Error(String(wrappedError))));
+        invokeTransportObserver(() => observer?.onError?.(errorFromUnknown(wrappedError, 'HTTP transport error')));
         const status = typeof wrappedError === 'object' && wrappedError !== null && 'transport' in wrappedError
           ? (wrappedError as { readonly transport?: { readonly status?: unknown } }).transport?.status
           : undefined;

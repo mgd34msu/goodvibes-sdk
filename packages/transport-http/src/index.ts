@@ -10,6 +10,8 @@ export {
   openContractRouteStream,
   requireContractRoute,
 } from './contract-client.js';
+export type { MethodArgs, RequiredKeys, WithoutKeys } from './client-plumbing.js';
+export { splitClientArgs } from './client-plumbing.js';
 export type {
   HttpJsonRequestOptions,
   HttpTransport,

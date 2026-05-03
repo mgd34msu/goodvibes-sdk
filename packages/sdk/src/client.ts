@@ -457,6 +457,10 @@ export function createGoodVibesSdk(
             onError: options.realtime?.onError,
             observer,
           }),
+          {
+            observer,
+            onError: (error) => options.realtime?.onError?.(error),
+          },
         );
       },
       viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<RuntimeEventRecord> {
@@ -471,6 +475,10 @@ export function createGoodVibesSdk(
               observer,
             },
           ),
+          {
+            observer,
+            onError: (error) => options.realtime?.onError?.(error),
+          },
         );
       },
     },

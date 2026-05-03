@@ -13,6 +13,7 @@ import {
   createRemoteDomainEvents,
   type DomainEventConnector,
   type DomainEvents,
+  type RemoteDomainEventsOptions,
   type SerializedEventEnvelope,
 } from './domain-events.js';
 
@@ -23,6 +24,11 @@ export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = Runtim
 
 export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord> =
   DomainEvents<RuntimeEventDomain, TEvent>;
+
+export interface RemoteRuntimeEventsOptions {
+  readonly onError?: (error: Error, domain: RuntimeEventDomain) => void;
+  readonly observer?: TransportObserver;
+}
 
 /**
  * Returns a filtered view of a {@link RemoteRuntimeEvents} object where every
@@ -72,12 +78,34 @@ export const DEFAULT_WS_MAX_ATTEMPTS = 10;
 /** Maximum number of messages that may be queued in the outbound queue before the oldest entry is dropped. */
 const MAX_OUTBOUND_QUEUE = 1024;
 
+function errorFromUnknown(error: unknown, context: string): Error {
+  if (error instanceof Error) return error;
+  if (typeof error === 'object' && error !== null) {
+    const record = error as Record<string, unknown>;
+    const fields = [
+      typeof record.name === 'string' ? `name=${record.name}` : undefined,
+      typeof record.type === 'string' ? `type=${record.type}` : undefined,
+      typeof record.message === 'string' ? `message=${record.message}` : undefined,
+    ].filter(Boolean);
+    return new Error(`${context}: ${fields.length > 0 ? fields.join(' ') : Object.prototype.toString.call(error)}`);
+  }
+  return new Error(`${context}: ${String(error)}`);
+}
+
 export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
   connect: DomainEventConnector<RuntimeEventDomain, TEvent>,
+  options: RemoteRuntimeEventsOptions = {},
 ): RemoteRuntimeEvents<TEvent> {
+  const domainOptions: RemoteDomainEventsOptions<RuntimeEventDomain> = {
+    onConnectionError: (error, domain) => {
+      invokeTransportObserver(() => options.observer?.onError?.(error));
+      options.onError?.(error, domain);
+    },
+  };
   return createRemoteDomainEvents(
     RUNTIME_EVENT_DOMAINS,
     connect,
+    domainOptions,
   );
 }
 
@@ -138,29 +166,37 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
     await injectTraceparentAsync(sseHeaders);
     // Notify observer of outbound SSE connection attempt.
     invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'sse' }));
-    return await openServerSentEventStream(fetchImpl, url, {
-      onEvent: (eventName, payload) => {
-        if (eventName !== domain) return;
-        if (!payload || typeof payload !== 'object') return;
-        const envelope = payload as SerializedRuntimeEnvelope<TEvent>;
-        onEnvelope(envelope);
-        // Notify observer of inbound event.
-        invokeTransportObserver(() => {
-          observer?.onTransportActivity?.({ direction: 'recv', url, kind: 'sse' });
-          if (envelope.payload) {
-            (observer as { onEvent?: (e: unknown) => void } | undefined)?.onEvent?.(envelope.payload);
-          }
-        });
-      },
-      onError: (err) => {
-        invokeTransportObserver(() => observer?.onError?.(err instanceof Error ? err : new Error(String(err))));
-        handleError?.(err);
-      },
-    }, {
-      reconnect: options.reconnect,
-      getAuthToken,
-      headers: Object.keys(sseHeaders).length > 0 ? sseHeaders : undefined,
-    });
+    try {
+      return await openServerSentEventStream(fetchImpl, url, {
+        onEvent: (eventName, payload) => {
+          if (eventName !== domain) return;
+          if (!payload || typeof payload !== 'object') return;
+          const envelope = payload as SerializedRuntimeEnvelope<TEvent>;
+          onEnvelope(envelope);
+          // Notify observer of inbound event.
+          invokeTransportObserver(() => {
+            observer?.onTransportActivity?.({ direction: 'recv', url, kind: 'sse' });
+            if (envelope.payload) {
+              (observer as { onEvent?: (e: unknown) => void } | undefined)?.onEvent?.(envelope.payload);
+            }
+          });
+        },
+        onError: (err) => {
+          const streamError = errorFromUnknown(err, 'SSE runtime event stream error');
+          invokeTransportObserver(() => observer?.onError?.(streamError));
+          handleError?.(streamError);
+        },
+      }, {
+        reconnect: options.reconnect,
+        getAuthToken,
+        headers: Object.keys(sseHeaders).length > 0 ? sseHeaders : undefined,
+      });
+    } catch (error) {
+      const connectionError = errorFromUnknown(error, 'SSE runtime event connection failed');
+      invokeTransportObserver(() => observer?.onError?.(connectionError));
+      handleError?.(connectionError);
+      throw connectionError;
+    }
   };
 }
 
@@ -282,7 +318,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         }));
         flushOutboundQueue(openedSocket);
       } catch (error) {
-        const sendError = error instanceof Error ? error : new Error(String(error));
+        const sendError = errorFromUnknown(error, 'WebSocket send failed');
         invokeTransportObserver(() => observer?.onError?.(sendError));
         options.onError?.(sendError);
         closeSocket();
@@ -310,7 +346,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           });
         }
       } catch (error) {
-        const malformed = new Error(`Malformed WebSocket runtime event frame: ${error instanceof Error ? error.message : String(error)}`);
+        const malformed = new Error(`Malformed WebSocket runtime event frame: ${errorFromUnknown(error, 'parse error').message}`);
         invokeTransportObserver(() => observer?.onError?.(malformed));
         options.onError?.(malformed);
       }
@@ -323,8 +359,9 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     };
 
     const onError = (event: Event) => {
-      invokeTransportObserver(() => observer?.onError?.(event instanceof Error ? event : new Error(String(event))));
-      options.onError?.(event);
+      const streamError = errorFromUnknown(event, 'WebSocket runtime event stream error');
+      invokeTransportObserver(() => observer?.onError?.(streamError));
+      options.onError?.(streamError);
     };
 
     const connect = async () => {
@@ -338,7 +375,14 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       nextSocket.addEventListener('error', onError);
     };
 
-    await connect();
+    try {
+      await connect();
+    } catch (error) {
+      const connectionError = errorFromUnknown(error, 'WebSocket runtime event connection failed');
+      invokeTransportObserver(() => observer?.onError?.(connectionError));
+      options.onError?.(connectionError);
+      throw connectionError;
+    }
     return () => {
       stopped = true;
       if (reconnectTimer) {

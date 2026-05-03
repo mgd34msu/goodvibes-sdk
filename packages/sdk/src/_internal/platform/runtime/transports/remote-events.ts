@@ -1,8 +1,10 @@
 export type {
   DomainEventConnector,
   DomainEvents as RemoteDomainEvents,
+  RemoteDomainEventsOptions,
   SerializedEventEnvelope as SerializedRuntimeEnvelope,
   RemoteRuntimeEvents,
+  RemoteRuntimeEventsOptions,
   RuntimeEventConnectorOptions,
 } from '@pellux/goodvibes-sdk/transport-realtime';
 export {

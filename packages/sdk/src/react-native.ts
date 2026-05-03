@@ -100,6 +100,9 @@ export function createReactNativeGoodVibesSdk(
               onError: options.realtime?.onError,
             },
           ),
+          {
+            onError: (error) => options.realtime?.onError?.(error),
+          },
         );
       },
       viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<RuntimeEventRecord> {
@@ -113,6 +116,9 @@ export function createReactNativeGoodVibesSdk(
               onError: options.realtime?.onError,
             },
           ),
+          {
+            onError: (error) => options.realtime?.onError?.(error),
+          },
         );
       },
     },

@@ -38,6 +38,10 @@
       "types": "./dist/otel.d.ts",
       "import": "./dist/otel.js"
     },
+    "./uuid": {
+      "types": "./dist/uuid.d.ts",
+      "import": "./dist/uuid.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

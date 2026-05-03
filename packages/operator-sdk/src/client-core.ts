@@ -16,8 +16,10 @@ import {
   type ContractRouteLike,
   type ContractInvokeOptions,
   type ContractStreamOptions,
+  splitClientArgs,
+  type MethodArgs,
+  type WithoutKeys,
 } from '@pellux/goodvibes-transport-http';
-
 
 export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions {}
 
@@ -26,26 +28,6 @@ export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions
 export interface OperatorRemoteClientOptions {
   readonly getResponseSchema?: (methodId: string) => ContractInvokeOptions['responseSchema'];
 }
-
-type RequiredKeys<T extends object> = {
-  [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
-}[keyof T];
-
-type MethodArgs<TInput, TOptions> =
-  [TInput] extends [undefined]
-    ? [input?: undefined, options?: TOptions]
-    : TInput extends object
-      ? [RequiredKeys<TInput>] extends [never]
-        ? [input?: TInput, options?: TOptions]
-        : [input: TInput, options?: TOptions]
-      : [input: TInput, options?: TOptions];
-
-type WithoutKeys<TInput, TKeys extends PropertyKey> =
-  [TInput] extends [undefined]
-    ? undefined
-    : TInput extends object
-      ? Omit<TInput, Extract<keyof TInput, TKeys>>
-      : TInput;
 
 type KnownMethodArgs<TMethodId extends OperatorTypedMethodId> = MethodArgs<
   OperatorMethodInput<TMethodId>,
@@ -64,12 +46,6 @@ type KnownStreamArgs<TMethodId extends OperatorStreamMethodId> = MethodArgs<
   OperatorMethodInput<TMethodId>,
   OperatorRemoteClientStreamOptions
 >;
-
-function splitArgs<TInput, TOptions>(
-  args: readonly [TInput?, TOptions?],
-): readonly [TInput | undefined, TOptions | undefined] {
-  return args as readonly [TInput | undefined, TOptions | undefined];
-}
 
 export interface OperatorRemoteClient {
   readonly transport: HttpTransport;
@@ -217,7 +193,7 @@ export function createOperatorRemoteClient(
     methodId: TMethodId,
     ...args: KnownStreamArgs<TMethodId>
   ): Promise<() => void> {
-    const [input, options] = splitArgs(args as readonly [OperatorMethodInput<TMethodId>?, OperatorRemoteClientStreamOptions?]);
+    const [input, options] = splitClientArgs(args as readonly [OperatorMethodInput<TMethodId>?, OperatorRemoteClientStreamOptions?]);
     return openContractRouteStream(
       transport,
       requireMethodRoute(contract, methodId),
@@ -240,23 +216,23 @@ export function createOperatorRemoteClient(
     sessions: {
       create: (...args) => invokeTyped('sessions.create', ...args),
       get: (sessionId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.get'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.get'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('sessions.get', buildContractInput('sessionId', sessionId, input as Record<string, unknown> | undefined), options);
       },
       list: (...args) => invokeTyped('sessions.list', ...args),
       messages: {
         create: (sessionId, ...args) => {
-          const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.messages.create'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
+          const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.messages.create'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
           return invokeTyped('sessions.messages.create', buildContractInput('sessionId', sessionId, input as Record<string, unknown> | undefined), options);
         },
         list: (sessionId, ...args) => {
-          const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.messages.list'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
+          const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.messages.list'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
           return invokeTyped('sessions.messages.list', buildContractInput('sessionId', sessionId, input as Record<string, unknown> | undefined), options);
         },
       },
       inputs: {
         cancel: (sessionId, inputId, ...args) => {
-          const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.inputs.cancel'>, 'sessionId' | 'inputId'>?, OperatorRemoteClientInvokeOptions?]);
+          const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.inputs.cancel'>, 'sessionId' | 'inputId'>?, OperatorRemoteClientInvokeOptions?]);
           return invokeTyped('sessions.inputs.cancel', {
             sessionId,
             inputId,
@@ -267,14 +243,14 @@ export function createOperatorRemoteClient(
       followUp: (...args) => invokeTyped('sessions.followUp', ...args),
       steer: (...args) => invokeTyped('sessions.steer', ...args),
       close: (sessionId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.close'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.close'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('sessions.close', {
           sessionId,
           ...(input as Record<string, unknown> | undefined ?? {}),
         }, options);
       },
       reopen: (sessionId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.reopen'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'sessions.reopen'>, 'sessionId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('sessions.reopen', {
           sessionId,
           ...(input as Record<string, unknown> | undefined ?? {}),
@@ -284,7 +260,7 @@ export function createOperatorRemoteClient(
     tasks: {
       create: (...args) => invokeTyped('tasks.create', ...args),
       get: (taskId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'tasks.get'>, 'taskId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'tasks.get'>, 'taskId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('tasks.get', {
           taskId,
           ...(input as Record<string, unknown> | undefined ?? {}),
@@ -293,14 +269,14 @@ export function createOperatorRemoteClient(
       list: (...args) => invokeTyped('tasks.list', ...args),
       status: (...args) => invokeTyped('tasks.status', ...args),
       cancel: (taskId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'tasks.cancel'>, 'taskId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'tasks.cancel'>, 'taskId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('tasks.cancel', {
           taskId,
           ...(input as Record<string, unknown> | undefined ?? {}),
         }, options);
       },
       retry: (taskId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'tasks.retry'>, 'taskId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'tasks.retry'>, 'taskId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('tasks.retry', {
           taskId,
           ...(input as Record<string, unknown> | undefined ?? {}),
@@ -310,33 +286,33 @@ export function createOperatorRemoteClient(
     approvals: {
       list: (...args) => invokeTyped('approvals.list', ...args),
       claim: (approvalId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.claim'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.claim'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('approvals.claim', buildContractInput('approvalId', approvalId, input as Record<string, unknown> | undefined), options);
       },
       approve: (approvalId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.approve'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.approve'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('approvals.approve', buildContractInput('approvalId', approvalId, input as Record<string, unknown> | undefined), options);
       },
       deny: (approvalId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.deny'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.deny'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('approvals.deny', buildContractInput('approvalId', approvalId, input as Record<string, unknown> | undefined), options);
       },
       cancel: (approvalId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.cancel'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'approvals.cancel'>, 'approvalId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('approvals.cancel', buildContractInput('approvalId', approvalId, input as Record<string, unknown> | undefined), options);
       },
     },
     providers: {
       list: (...args) => invokeTyped('providers.list', ...args),
       get: (providerId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'providers.get'>, 'providerId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'providers.get'>, 'providerId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('providers.get', {
           providerId,
           ...(input as Record<string, unknown> | undefined ?? {}),
         }, options);
       },
       usage: (providerId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'providers.usage.get'>, 'providerId'>?, OperatorRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'providers.usage.get'>, 'providerId'>?, OperatorRemoteClientInvokeOptions?]);
         return invokeTyped('providers.usage.get', {
           providerId,
           ...(input as Record<string, unknown> | undefined ?? {}),
@@ -356,7 +332,7 @@ export function createOperatorRemoteClient(
       methods: {
         list: (...args) => invokeTyped('control.methods.list', ...args),
         get: (methodId, ...args) => {
-          const [input, options] = splitArgs(args as readonly [WithoutKeys<OperatorMethodInput<'control.methods.get'>, 'methodId'>?, OperatorRemoteClientInvokeOptions?]);
+          const [input, options] = splitClientArgs(args as readonly [WithoutKeys<OperatorMethodInput<'control.methods.get'>, 'methodId'>?, OperatorRemoteClientInvokeOptions?]);
           return invokeTyped('control.methods.get', {
             methodId,
             ...(input as Record<string, unknown> | undefined ?? {}),

@@ -193,8 +193,10 @@ export {
 } from './transports/remote-events.js';
 export type {
   DomainEventConnector,
+  RemoteDomainEventsOptions,
   RemoteDomainEvents,
   RemoteRuntimeEvents,
+  RemoteRuntimeEventsOptions,
   SerializedRuntimeEnvelope,
 } from './transports/remote-events.js';
 

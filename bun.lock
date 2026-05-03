@@ -139,6 +139,7 @@
       "version": "0.28.22",
       "dependencies": {
         "@pellux/goodvibes-errors": "workspace:*",
+        "@pellux/goodvibes-transport-core": "workspace:*",
         "zod": "^4.3.6",
       },
     },

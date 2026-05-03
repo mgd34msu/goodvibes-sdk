@@ -26,6 +26,10 @@
       "types": "./dist/contract-client.d.ts",
       "import": "./dist/contract-client.js"
     },
+    "./client-plumbing": {
+      "types": "./dist/client-plumbing.d.ts",
+      "import": "./dist/client-plumbing.js"
+    },
     "./http-core": {
       "types": "./dist/http-core.d.ts",
       "import": "./dist/http-core.js"
@@ -78,6 +82,7 @@
   ],
   "dependencies": {
     "@pellux/goodvibes-errors": "workspace:*",
+    "@pellux/goodvibes-transport-core": "workspace:*",
     "zod": "^4.3.6"
   }
 }
