@@ -19,6 +19,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { dispatchDaemonApiRoutes } from '../packages/sdk/src/_internal/daemon/api-router.js';
 import { dispatchRemoteRoutes } from '../packages/sdk/src/_internal/daemon/remote.js';
 import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js';
 
@@ -174,5 +175,18 @@ describe('router-e2e remote — failure paths', () => {
     const req = makeRequest('POST', 'http://localhost/api/remote');
     const res = await dispatchRemoteRoutes(req, handlers);
     expect(res).toBeNull();
+  });
+
+  test('does not shadow the operator-owned remote contract route', async () => {
+    const handlers = makeDefaultDaemonHandlerStub({
+      getRemoteNodeHostContract: () => Response.json({ contract: { kind: 'node-host' } }),
+    });
+    const req = makeRequest('GET', 'http://localhost/api/remote/node-host/contract');
+    const remoteOnly = await dispatchRemoteRoutes(req, handlers);
+    const composed = await dispatchDaemonApiRoutes(req, handlers);
+
+    expect(remoteOnly).toBeNull();
+    expect(composed?.status).toBe(200);
+    expect(await composed!.json()).toEqual({ contract: { kind: 'node-host' } });
   });
 });
