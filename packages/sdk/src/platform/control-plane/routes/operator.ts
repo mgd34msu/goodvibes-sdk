@@ -312,22 +312,22 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/watchers' && method === 'POST') return handlers.postWatcher(req);
   const watcherUpdateMatch = pathname.match(/^\/api\/watchers\/([^/]+)$/);
   if (watcherUpdateMatch && method === 'PATCH') return handlers.patchWatcher(watcherUpdateMatch[1], req);
-  if (watcherUpdateMatch && method === 'DELETE') return handlers.deleteWatcher(watcherUpdateMatch[1]);
+  if (watcherUpdateMatch && method === 'DELETE') return handlers.deleteWatcher(watcherUpdateMatch[1], req);
   const watcherActionMatch = pathname.match(/^\/api\/watchers\/([^/]+)\/(start|stop|run)$/);
-  if (watcherActionMatch && method === 'POST') return handlers.watcherAction(watcherActionMatch[1], watcherActionMatch[2] as 'start' | 'stop' | 'run');
+  if (watcherActionMatch && method === 'POST') return handlers.watcherAction(watcherActionMatch[1], watcherActionMatch[2] as 'start' | 'stop' | 'run', req);
 
   if (pathname === '/api/service/status' && method === 'GET') return handlers.getServiceStatus();
-  if (pathname === '/api/service/install' && method === 'POST') return handlers.installService();
-  if (pathname === '/api/service/start' && method === 'POST') return handlers.startService();
-  if (pathname === '/api/service/stop' && method === 'POST') return handlers.stopService();
-  if (pathname === '/api/service/restart' && method === 'POST') return handlers.restartService();
-  if (pathname === '/api/service/uninstall' && method === 'POST') return handlers.uninstallService();
+  if (pathname === '/api/service/install' && method === 'POST') return handlers.installService(req);
+  if (pathname === '/api/service/start' && method === 'POST') return handlers.startService(req);
+  if (pathname === '/api/service/stop' && method === 'POST') return handlers.stopService(req);
+  if (pathname === '/api/service/restart' && method === 'POST') return handlers.restartService(req);
+  if (pathname === '/api/service/uninstall' && method === 'POST') return handlers.uninstallService(req);
 
   if (pathname === '/api/routes/bindings' && method === 'GET') return handlers.getRouteBindings();
   if (pathname === '/api/routes/bindings' && method === 'POST') return handlers.postRouteBinding(req);
   const routeBindingMatch = pathname.match(/^\/api\/routes\/bindings\/([^/]+)$/);
   if (routeBindingMatch && method === 'PATCH') return handlers.patchRouteBinding(routeBindingMatch[1], req);
-  if (routeBindingMatch && method === 'DELETE') return handlers.deleteRouteBinding(routeBindingMatch[1]);
+  if (routeBindingMatch && method === 'DELETE') return handlers.deleteRouteBinding(routeBindingMatch[1], req);
 
   if (pathname === '/api/approvals' && method === 'GET') return handlers.getApprovals();
   const approvalActionMatch = pathname.match(/^\/api\/approvals\/([^/]+)\/(claim|approve|deny|cancel)$/);
@@ -450,20 +450,20 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/multimodal/packet' && method === 'POST') return handlers.postMultimodalPacket(req);
   if (pathname === '/api/multimodal/writeback' && method === 'POST') return handlers.postMultimodalWriteback(req);
 
-  if (pathname === '/api/local-auth' && method === 'GET') return handlers.getLocalAuth();
+  if (pathname === '/api/local-auth' && method === 'GET') return handlers.getLocalAuth(req);
   if (pathname === '/api/local-auth/users' && method === 'POST') return handlers.postLocalAuthUser(req);
   const userMatch = pathname.match(/^\/api\/local-auth\/users\/([^/]+)$/);
-  if (userMatch && method === 'DELETE') return handlers.deleteLocalAuthUser(decodeURIComponent(userMatch[1]));
+  if (userMatch && method === 'DELETE') return handlers.deleteLocalAuthUser(decodeURIComponent(userMatch[1]), req);
   const passwordMatch = pathname.match(/^\/api\/local-auth\/users\/([^/]+)\/password$/);
   if (passwordMatch && method === 'POST') return handlers.postLocalAuthPassword(decodeURIComponent(passwordMatch[1]), req);
   const sessionMatch = pathname.match(/^\/api\/local-auth\/sessions\/([^/]+)$/);
-  if (sessionMatch && method === 'DELETE') return handlers.deleteLocalAuthSession(decodeURIComponent(sessionMatch[1]));
-  if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile();
+  if (sessionMatch && method === 'DELETE') return handlers.deleteLocalAuthSession(decodeURIComponent(sessionMatch[1]), req);
+  if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile(req);
 
   if (pathname === '/api/panels' && method === 'GET') return handlers.getPanels();
   if (pathname === '/api/panels/open' && method === 'POST') return handlers.postPanelOpen(req);
   if (pathname === '/api/events' && method === 'GET') return handlers.getEvents(req);
-  if (pathname === '/config' && method === 'GET') return handlers.getConfig();
+  if (pathname === '/config' && method === 'GET') return handlers.getConfig(req);
   if (pathname === '/config' && method === 'POST') return handlers.postConfig(req);
 
   return null;

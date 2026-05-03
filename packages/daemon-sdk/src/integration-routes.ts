@@ -63,7 +63,6 @@ const integrationBodySchemas = createRouteBodySchemaRegistry({
 
 export function createDaemonIntegrationRouteHandlers(
   context: DaemonIntegrationRouteContext,
-  request: Request,
 ): DaemonIntegrationRouteHandlers {
   return {
     getReview: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.buildReview())),
@@ -138,8 +137,8 @@ export function createDaemonIntegrationRouteHandlers(
         return jsonErrorResponse(error, { status: 400 });
       }
     },
-    getLocalAuth: () => {
-      const admin = context.requireAdmin(request);
+    getLocalAuth: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getLocalAuthSnapshot()));
     },
@@ -156,8 +155,8 @@ export function createDaemonIntegrationRouteHandlers(
         return jsonErrorResponse(error, { status: 400 });
       }
     },
-    deleteLocalAuthUser: (username) => {
-      const admin = context.requireAdmin(request);
+    deleteLocalAuthUser: (username, req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       try {
         const removed = context.userAuth.deleteUser(username);
@@ -182,15 +181,15 @@ export function createDaemonIntegrationRouteHandlers(
         return jsonErrorResponse(error, { status: 400 });
       }
     },
-    deleteLocalAuthSession: (sessionId) => {
-      const admin = context.requireAdmin(request);
+    deleteLocalAuthSession: (sessionId, req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return context.userAuth.revokeSession(sessionId)
         ? Response.json({ revoked: true })
         : jsonErrorResponse({ error: 'Unknown session' }, { status: 404 });
     },
-    deleteBootstrapFile: () => {
-      const admin = context.requireAdmin(request);
+    deleteBootstrapFile: (req) => {
+      const admin = context.requireAdmin(req);
       if (admin) return admin;
       return Response.json({ removed: context.userAuth.clearBootstrapCredentialFile() });
     },
