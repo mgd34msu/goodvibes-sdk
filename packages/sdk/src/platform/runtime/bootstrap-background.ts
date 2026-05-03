@@ -22,7 +22,8 @@ export interface BackgroundProviderDiscoveryOptions {
   providerRegistry: ProviderRegistry;
   runtime: RuntimeSelectionState;
   requestRender: () => void;
-  restoreRuntimeModel: (providerRegistry: ProviderRegistry, savedModel: string, savedProvider: string, runtime: RuntimeSelectionState) => void;
+  restoreRuntimeModel?: (providerRegistry: ProviderRegistry, savedModel: string, savedProvider: string, runtime: RuntimeSelectionState) => void;
+  restoreSavedModel?: (providerRegistry: ProviderRegistry, savedModel: string, savedProvider: string, runtime: RuntimeSelectionState) => void;
   systemMessageRouter: HostSystemMessageSink;
   shellPaths: Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'>;
   surfaceRoot: string;
@@ -32,6 +33,10 @@ export function startBackgroundProviderDiscovery(
   options: BackgroundProviderDiscoveryOptions,
 ): void {
   const { configManager, providerRegistry, runtime, requestRender, restoreRuntimeModel, systemMessageRouter, shellPaths, surfaceRoot } = options;
+  const restoreModel = restoreRuntimeModel ?? options.restoreSavedModel;
+  if (!restoreModel) {
+    throw new Error('startBackgroundProviderDiscovery requires restoreRuntimeModel or restoreSavedModel.');
+  }
 
   autoRegisterProviders(providerRegistry);
 
@@ -39,7 +44,7 @@ export function startBackgroundProviderDiscovery(
   if (persisted.length > 0) {
     try {
       providerRegistry.registerDiscoveredProviders(persisted);
-      restoreRuntimeModel(
+      restoreModel(
         providerRegistry,
         configManager.get('provider.model') as string,
         configManager.get('provider.provider') as string,
@@ -68,7 +73,7 @@ export function startBackgroundProviderDiscovery(
     if (result.servers.length > 0) {
       try {
         providerRegistry.registerDiscoveredProviders(result.servers);
-        restoreRuntimeModel(
+        restoreModel(
           providerRegistry,
           configManager.get('provider.model') as string,
           configManager.get('provider.provider') as string,

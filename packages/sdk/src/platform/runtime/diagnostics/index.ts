@@ -32,6 +32,8 @@ export type {
   RuntimeStateSnapshot,
   DomainHealthSummary,
   HealthDashboardData,
+  ComponentResourceEntry,
+  ComponentResourceSnapshot,
 } from './types.js';
 export { DEFAULT_BUFFER_LIMIT, DEFAULT_COMPONENT_CONFIG, applyFilter, appendBounded } from './types.js';
 
@@ -79,6 +81,14 @@ export { EventsPanel } from './panels/events.js';
 export { StateInspectorPanel } from './panels/state-inspector.js';
 export type { InspectableDomain } from './panels/state-inspector.js';
 export { HealthPanel } from './panels/health.js';
+export { ForensicsDataPanel } from './panels/forensics.js';
+export { DivergencePanel } from './panels/divergence.js';
+export { ReplayPanel } from './panels/replay.js';
+export { SecurityPanel } from './panels/security.js';
+export type { SecurityPanelSnapshot } from './panels/security.js';
+export { ToolContractsPanel } from './panels/tool-contracts.js';
+export { TransportPanel } from './panels/transport.js';
+export type { TransportPanelSnapshot } from './panels/transport.js';
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 export { DiagnosticsProvider } from './provider.js';

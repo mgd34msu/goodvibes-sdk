@@ -20,6 +20,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.30.2] - 2026-05-03
+
+### Breaking
+- none
+
+### Added
+- Expanded the public `platform/runtime` seam for host-owned TUI and daemon
+  composition: shell path helpers, provider account snapshots, system-message
+  policy, command shell service contracts, diagnostics panels, eval helpers,
+  forensics, sandbox, worktree, remote runtime, session persistence, return
+  context, settings sync, ecosystem catalog, provider health UI data, and
+  runtime read models are now available through the aggregate runtime entry.
+- Expanded `platform/providers`, `platform/tools`, `platform/config`,
+  `platform/state`, `platform/pairing`, `platform/daemon`,
+  `platform/discovery`, `platform/integrations`, `platform/security`,
+  `platform/knowledge`, and `platform/acp` with SDK-owned symbols needed by
+  host runtimes.
+
+### Fixed
+- Restored package-export-valid public access for the TUI's production SDK
+  imports without adding old private deep-import compatibility paths.
+- Background provider discovery now accepts both current host hook names used
+  by SDK-owned bootstrap code.
+- Ecosystem catalog reviews and install receipts expose `compatibility`
+  alongside `runtimeFit`, matching the marketplace UI contract.
+- Companion pairing token helpers now support scoped host calls and expose
+  stale operator-token pruning through the public pairing seam.
+
+### Migration
+- Keep using `@pellux/goodvibes-sdk/platform/*` seams. Do not import old
+  private SDK source paths; this release makes the host-runtime seams explicit.
+
+---
+
 ## [0.30.1] - 2026-05-03
 
 ### Breaking

@@ -18,6 +18,7 @@ export type {
   ForensicsReplayEvidence,
   ForensicsEvidenceSummary,
 } from './types.js';
+export type { ReplaySnapshotInput } from './registry.js';
 export { classifyFailure, summariseFailure } from './classifier.js';
 export { ForensicsRegistry, DEFAULT_REGISTRY_LIMIT } from './registry.js';
 export { ForensicsCollector } from './collector.js';

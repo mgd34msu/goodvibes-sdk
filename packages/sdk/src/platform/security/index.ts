@@ -1,7 +1,7 @@
 export { SpawnTokenManager } from './spawn-tokens.js';
 export type { SpawnToken, OrchestrationPolicyConfig } from './spawn-tokens.js';
 export { UserAuthManager } from './user-auth.js';
-export type { AuthUser, AuthSession } from './user-auth.js';
+export type { AuthUser, AuthSession, LocalAuthSnapshot } from './user-auth.js';
 export { ApiTokenAuditor } from './token-audit.js';
 export type {
   ApiTokenMetadata,

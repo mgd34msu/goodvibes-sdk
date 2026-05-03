@@ -15,6 +15,96 @@ export * from './store/helpers/index.js';
 export * from './feature-flags/index.js';
 
 export { RuntimeEventBus } from './events/index.js';
+export * from './diagnostics/index.js';
+export * from './eval/index.js';
+export * from './forensics/index.js';
+export * from './idempotency/index.js';
+export * from './perf/index.js';
+export * from './remote/index.js';
+export type { RemoteSessionBundle } from './remote/types.js';
+export * from './tasks/index.js';
+export * from './ui/index.js';
+export * from './tools/index.js';
+export { AcpTaskAdapter } from './tasks/adapters/index.js';
+export { OpsControlPlane } from './ops/control-plane.js';
+export { ComponentHealthMonitor as PanelHealthMonitor } from './perf/index.js';
+export { ToolContractVerifier } from './tools/contract-verifier.js';
+export {
+  buildAuthInspectionSnapshot,
+  inspectProviderAuth,
+} from './auth/inspection.js';
+export type { AuthInspectionSnapshot, ProviderAuthInspection } from './auth/inspection.js';
+export {
+  emitSessionReady,
+  emitSessionResumed,
+  emitSessionStarted,
+} from './emitters/session.js';
+export { fireSessionStart } from './lifecycle.js';
+export {
+  enrichModelEntries,
+  groupEntriesByProvider,
+} from './ui/model-picker/health-enrichment.js';
+export {
+  McpLifecycleManager,
+  McpPermissionManager,
+  McpSchemaFreshnessTracker,
+  buildMcpAttackPathReview,
+  createMcpLifecycleManager,
+} from './mcp/index.js';
+export type {
+  McpAttackPathFinding,
+  McpAttackPathFindingKind,
+  McpAttackPathReview,
+  McpCapabilityClass,
+  McpCoherenceAssessment,
+  McpCoherenceVerdict,
+  McpDecisionRecord,
+  McpEventHandler,
+  McpLifecycleManagerOptions,
+  McpPermission,
+  McpReconnectConfig,
+  McpRiskLevel,
+  McpSchemaRecord,
+  McpSecuritySnapshot,
+  McpServerEntry,
+  McpServerPermissions,
+  McpServerRole,
+  McpServerState,
+  McpToolPermission,
+  McpTrustLevel,
+  McpTrustMode,
+  McpTrustProfile,
+  QuarantineReason,
+  QuarantineRecord,
+  SchemaFreshness,
+} from './mcp/index.js';
+export {
+  DivergenceDashboard,
+  LayeredPolicyEvaluator,
+  PolicyRegistry,
+  PolicyRuntimeState,
+  buildDefaultPolicySimulationScenarios,
+  buildPermissionRuleSuggestions,
+  buildPolicyPreflightReview,
+  createPermissionSimulator,
+  createUnsignedBundle,
+  lintPolicyConfig,
+  loadPolicyBundle,
+  runPolicySimulationScenarios,
+} from './permissions/index.js';
+export type {
+  DivergenceDashboardSnapshot,
+  DivergenceStats,
+  PermissionsConfig,
+  PolicyBundlePayload,
+  PolicyBundleVersion,
+  PolicyDiffResult,
+  PolicyLintFinding,
+  PolicyPreflightReview,
+  PolicyRule,
+  PolicySimulationSummary,
+} from './permissions/index.js';
+export type { PermissionAuditEntry } from './permissions/policy-runtime.js';
 export { createEventEnvelope } from './event-envelope.js';
 export type { EventEnvelope, EventEnvelopeContext } from './event-envelope.js';
 export type { RuntimeEventEnvelope, EnvelopeContext } from './events/envelope.js';
@@ -24,6 +114,8 @@ export { createRuntimeEventFeed, createRuntimeEventFeeds } from './event-feeds.j
 export type { RuntimeEventFeed, RuntimeEventFeeds } from './event-feeds.js';
 export { getSecuritySettingsReport } from './security-settings.js';
 export type { SecuritySettingReport, SecuritySettingsReporter } from './security-settings.js';
+export type { ComponentConfig as PanelConfig } from './diagnostics/types.js';
+export { DEFAULT_COMPONENT_CONFIG as DEFAULT_PANEL_CONFIG } from './diagnostics/types.js';
 
 export type { EmitterContext } from './emitters/index.js';
 
@@ -101,6 +193,7 @@ export type { OpsApi } from './ops-api.js';
 export {
   scheduleBackgroundMcpDiscovery,
   startBackgroundProviderDiscovery,
+  startBackgroundProviderDiscovery as startBackgroundProviderRegistration,
 } from './bootstrap-background.js';
 export type {
   BackgroundMcpDiscoveryOptions,
@@ -110,19 +203,77 @@ export type {
 } from './bootstrap-background.js';
 export {
   loadRuntimeSystemPrompt,
+  loadRuntimeSystemPrompt as loadBootstrapSystemPrompt,
   restoreRuntimeModel,
+  restoreRuntimeModel as restoreSavedModel,
   synchronizeConfiguredServices,
+  synchronizeConfiguredServices as syncConfiguredServices,
 } from './bootstrap-helpers.js';
 export type { RuntimeModelSelectionState } from './bootstrap-helpers.js';
 export { registerBootstrapRuntimeEvents, registerHostRuntimeEvents } from './bootstrap-runtime-events.js';
 export type { BootstrapRuntimeEventBridgeOptions, HostRuntimeEventBridgeOptions, HostRuntimeMessageRouter } from './bootstrap-runtime-events.js';
 export { startHostServices } from './bootstrap-services.js';
+export { startHostServices as startExternalServices } from './bootstrap-services.js';
 export type {
   HostServiceMode,
   HostServicesConfig,
   HostServicesHandle,
+  HostServicesHandle as ExternalServicesHandle,
   HostServiceStatus,
 } from './bootstrap-services.js';
+export { registerBootstrapHookBridge } from './bootstrap-hook-bridge.js';
+export type { HookBridgeRegistrationOptions } from './bootstrap-hook-bridge.js';
+
+export { createDeferredStartupCoordinator } from './deferred-startup.js';
+export type { DeferredStartupCoordinator, DeferredStartupTask } from './deferred-startup.js';
+export {
+  dismissGuidance,
+  evaluateContextualGuidance,
+  formatGuidanceItems,
+  resetGuidance,
+} from './guidance.js';
+export type {
+  ContextualGuidanceSnapshot,
+  GuidanceCategory,
+  GuidanceItem,
+  GuidancePersistenceOptions,
+} from './guidance.js';
+export * from './host-ui.js';
+export { IntegrationHelperService } from './integration/helpers.js';
+export type { ContinuitySnapshot, IntegrationHelpersContext, PanelSnapshot, SettingsSnapshot, WorktreeSnapshot } from './integration/helpers.js';
+export * from './mutable-runtime-state.js';
+export * from './provider-accounts/registry.js';
+export * from './sandbox/backend.js';
+export * from './sandbox/manager.js';
+export * from './sandbox/provisioning.js';
+export * from './sandbox/qemu-wrapper-template.js';
+export * from './sandbox/session-registry.js';
+export * from './sandbox/types.js';
+export * from './session-maintenance.js';
+export * from './session-persistence.js';
+export * from './session-return-context.js';
+export * from './settings/control-plane.js';
+export * from './settings/control-plane-store.js';
+export * from './shell-command-extensions.js';
+export * from './shell-command-ops.js';
+export * from './shell-command-platform.js';
+export * from './shell-command-services.js';
+export * from './shell-command-workspace.js';
+export * from './shell-paths.js';
+export * from './surface-root.js';
+export * from './system-message-policy.js';
+export * from './ui-events.js';
+export * from './ui-read-models-base.js';
+export * from './ui-read-models-core.js';
+export * from './ui-read-models-observability.js';
+export * from './ui-read-models-observability-maintenance.js';
+export * from './ui-read-models-observability-options.js';
+export * from './ui-read-models-observability-remote.js';
+export * from './ui-read-models-observability-security.js';
+export * from './ui-read-models-observability-system.js';
+export * from './ui-read-models-operations.js';
+export * from './worktree/registry.js';
+export * from './ecosystem/catalog.js';
 
 export { createDiagnosticsProvider, DiagnosticsProvider } from './diagnostics/index.js';
 export type { DiagnosticsProviderConfig, DiagnosticPanelName } from './diagnostics/provider.js';

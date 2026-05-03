@@ -1,4 +1,5 @@
 export { KnowledgeConnectorRegistry, createDefaultKnowledgeConnectorRegistry } from './connectors.js';
+export type { MemoryApi } from './knowledge-api.js';
 export { extractKnowledgeArtifact } from './extractors.js';
 export {
   KNOWLEDGE_BINARY_EXTENDED_RATIO_THRESHOLD,

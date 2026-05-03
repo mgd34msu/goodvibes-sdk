@@ -93,6 +93,17 @@ export interface ComponentHealthState {
   totalPermitted: number;
 }
 
+export type PanelThrottleStatus = ComponentThrottleStatus;
+export type PanelHealthStatus = ComponentHealthStatus;
+
+export type PanelResourceContract = Omit<ComponentResourceContract, 'componentId'> & {
+  panelId: string;
+};
+
+export type PanelHealthState = Omit<ComponentHealthState, 'componentId'> & {
+  panelId: string;
+};
+
 /**
  * Default resource contracts by component category.
  *
@@ -182,5 +193,14 @@ export function createInitialComponentHealthState(componentId: string): Componen
     nextAllowedAt: 0,
     totalSuppressed: 0,
     totalPermitted: 0,
+  };
+}
+
+export function createInitialPanelHealthState(panelId: string): PanelHealthState {
+  const state = createInitialComponentHealthState(panelId);
+  const { componentId: _componentId, ...rest } = state;
+  return {
+    panelId,
+    ...rest,
   };
 }

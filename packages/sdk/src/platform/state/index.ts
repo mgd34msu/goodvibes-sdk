@@ -1,5 +1,6 @@
 export { JsonFileStore } from './json-file-store.js';
 export { KVState } from './kv-state.js';
+export { PersistentStore } from './persistent-store.js';
 export { FileStateCache } from './file-cache.js';
 export type { CacheEntry, CacheStatus, ConflictInfo } from './file-cache.js';
 export { ProjectIndex } from './project-index.js';
@@ -17,6 +18,7 @@ export type { FileOperation } from './file-undo.js';
 export { MemoryStore } from './memory-store.js';
 export { MemoryRegistry } from './memory-registry.js';
 export type {
+  MemoryBundle,
   MemoryClass,
   MemoryRecord,
   MemoryLink,
@@ -30,6 +32,12 @@ export type {
   ProvenanceLink,
   ProvenanceLinkKind,
 } from './memory-store.js';
+export {
+  buildIncidentMemoryAddOptions,
+  buildMcpSecurityMemoryAddOptions,
+  buildPluginSecurityMemoryAddOptions,
+  buildPolicyPreflightMemoryAddOptions,
+} from './memory-ingest.js';
 export {
   MEMORY_VECTOR_DIMS,
   embedMemoryText,

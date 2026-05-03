@@ -33,6 +33,7 @@ export type { TransportEvent, TransportEventType } from '../../../events/transpo
 export type { CompactionEvent, CompactionEventType } from '../../../events/compaction.js';
 export type { UIEvent, UIEventType } from '../../../events/ui.js';
 export type { OpsEvent, OpsEventType } from '../../../events/ops.js';
+export type { OpsInterventionReason } from '../../../events/ops.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from '../../../events/domain-map.js';
 export type { AnyRuntimeEvent, RuntimeEventPayload, RuntimeEventDomain, DomainEventMap, RuntimeEventRecord } from '../../../events/domain-map.js';
 export type { AutomationEvent, AutomationEventType, AutomationScheduleKind, AutomationExecutionMode, AutomationRunOutcome } from '../../../events/automation.js';
