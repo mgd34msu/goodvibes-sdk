@@ -26,6 +26,10 @@ export type DomainEvents<
   TEvent extends EventLike = EventLike,
 > = RuntimeEventFeeds<TDomain, TEvent>;
 
+export interface RemoteDomainEventsOptions<TDomain extends string = string> {
+  readonly onConnectionError?: (error: Error, domain: TDomain) => void;
+}
+
 function addListener<T>(map: Map<string, Set<T>>, type: string, listener: T): () => void {
   const listeners = map.get(type) ?? new Set<T>();
   listeners.add(listener);
@@ -58,6 +62,38 @@ function isExpectedDisconnectError(error: unknown): boolean {
   );
 }
 
+function normalizeConnectionError(error: unknown, domain: string): Error {
+  return error instanceof Error
+    ? error
+    : new Error(`Remote domain event connection for "${domain}" failed with a non-Error value: ${describeUnknownError(error)}`);
+}
+
+function reportUnexpectedConnectionError<TDomain extends string>(
+  error: unknown,
+  domain: TDomain,
+  options: RemoteDomainEventsOptions<TDomain>,
+): void {
+  options.onConnectionError?.(normalizeConnectionError(error, domain), domain);
+}
+
+function describeUnknownError(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (typeof error === 'number' || typeof error === 'boolean' || error === null || error === undefined) {
+    return String(error);
+  }
+  if (typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    const name = typeof record.name === 'string' ? record.name : undefined;
+    const type = typeof record.type === 'string' ? record.type : undefined;
+    const message = typeof record.message === 'string' ? record.message : undefined;
+    const target = record.target && typeof record.target === 'object'
+      ? `[target:${(record.target as { readonly constructor?: { readonly name?: string } }).constructor?.name ?? 'object'}]`
+      : undefined;
+    return [name, type, message, target].filter(Boolean).join(' ') || Object.prototype.toString.call(error);
+  }
+  return String(error);
+}
+
 function toEventEnvelope<TEvent extends EventLike>(
   envelope: SerializedEventEnvelope<TEvent>,
 ): EventEnvelope<string, TEvent> {
@@ -81,6 +117,7 @@ function createRemoteDomainEventFeed<
 >(
   domain: TDomain,
   connect: DomainEventConnector<TDomain, TEvent>,
+  options: RemoteDomainEventsOptions<TDomain>,
 ): RuntimeEventFeed<TEvent> {
   const payloadListeners = new Map<string, Set<(payload: TEvent) => void>>();
   const envelopeListeners = new Map<string, Set<(envelope: EventEnvelope<string, TEvent>) => void>>();
@@ -115,7 +152,7 @@ function createRemoteDomainEventFeed<
       disconnect = cleanup;
     }).catch((error: unknown) => {
       if (!isExpectedDisconnectError(error)) {
-        throw error;
+        reportUnexpectedConnectionError(error, domain, options);
       }
     }).finally(() => {
       connectPromise = null;
@@ -161,10 +198,11 @@ export function createRemoteDomainEvents<
 >(
   domains: readonly TDomain[],
   connect: DomainEventConnector<TDomain, TEvent>,
+  options: RemoteDomainEventsOptions<TDomain> = {},
 ): DomainEvents<TDomain, TEvent> {
   return createRuntimeEventFeeds(
     domains,
-    (domain) => createRemoteDomainEventFeed(domain, connect),
+    (domain) => createRemoteDomainEventFeed(domain, connect, options),
   );
 }
 

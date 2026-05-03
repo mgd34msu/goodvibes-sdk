@@ -9,3 +9,4 @@ export { invokeTransportObserver } from './observer.js';
 export type { TransportContext, TransportMiddleware } from './middleware.js';
 export { composeMiddleware } from './middleware.js';
 export { injectTraceparent, injectTraceparentAsync } from './otel.js';
+export { createUuidV4 } from './uuid.js';

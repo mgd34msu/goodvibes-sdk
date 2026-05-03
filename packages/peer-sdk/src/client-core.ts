@@ -13,6 +13,9 @@ import {
   type ContractInvokeOptions,
   type ContractRouteDefinition,
   type ContractRouteLike,
+  splitClientArgs,
+  type MethodArgs,
+  type WithoutKeys,
 } from '@pellux/goodvibes-transport-http';
 
 export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {}
@@ -20,26 +23,6 @@ export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {}
 export interface PeerRemoteClientOptions {
   readonly validateResponses?: boolean;
 }
-
-type RequiredKeys<T extends object> = {
-  [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
-}[keyof T];
-
-type MethodArgs<TInput, TOptions> =
-  [TInput] extends [undefined]
-    ? [input?: undefined, options?: TOptions]
-    : TInput extends object
-      ? [RequiredKeys<TInput>] extends [never]
-        ? [input?: TInput, options?: TOptions]
-        : [input: TInput, options?: TOptions]
-      : [input: TInput, options?: TOptions];
-
-type WithoutKeys<TInput, TKeys extends PropertyKey> =
-  [TInput] extends [undefined]
-    ? undefined
-    : TInput extends object
-      ? Omit<TInput, Extract<keyof TInput, TKeys>>
-      : TInput;
 
 type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<
   PeerEndpointInput<TEndpointId>,
@@ -53,12 +36,6 @@ type KnownPathEndpointArgs<
   WithoutKeys<PeerEndpointInput<TEndpointId>, TKeys>,
   PeerRemoteClientInvokeOptions
 >;
-
-function splitArgs<TInput, TOptions>(
-  args: readonly [TInput?, TOptions?],
-): readonly [TInput | undefined, TOptions | undefined] {
-  return args as readonly [TInput | undefined, TOptions | undefined];
-}
 
 export interface PeerRemoteClient {
   readonly transport: HttpTransport;
@@ -143,7 +120,7 @@ export function createPeerRemoteClient(
     work: {
       pull: (...args) => invokeTyped('work.pull', ...args),
       complete: (workId, ...args) => {
-        const [input, options] = splitArgs(args as readonly [WithoutKeys<PeerEndpointInput<'work.complete'>, 'workId'>?, PeerRemoteClientInvokeOptions?]);
+        const [input, options] = splitClientArgs(args as readonly [WithoutKeys<PeerEndpointInput<'work.complete'>, 'workId'>?, PeerRemoteClientInvokeOptions?]);
         return invokeTyped('work.complete', buildContractInput('workId', workId, input as Record<string, unknown> | undefined), options);
       },
     },
