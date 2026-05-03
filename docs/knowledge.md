@@ -138,6 +138,8 @@ match strong identity tokens such as model/manufacturer names, before they are
 eligible as answer evidence. This keeps a question about "the TV" from ranking
 unrelated NAS, Matter, service, or other-device facts merely because those
 records share generic words such as "smart", "feature", or "support".
+That object inference is shared by the generic ask route and Home Graph ask, so
+Home Assistant extensions do not fork a separate knowledge/retrieval system.
 
 Self-improvement is not limited to Ask. After ingest, reindex, and Home Graph
 snapshot sync, the SDK runs bounded semantic maintenance. The pass looks for
