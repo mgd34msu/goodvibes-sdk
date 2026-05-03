@@ -6,7 +6,16 @@ import {
 import { GoodVibesSdkError, DaemonErrorCategory } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
 import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
-import { readBoundedPositiveInteger, readOptionalBoundedInteger } from './route-helpers.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  readBoundedBodyInteger,
+  readBoundedPositiveInteger,
+  readOptionalBoundedInteger,
+  readOptionalStringField,
+  readStringArrayField,
+  type JsonRecord,
+} from './route-helpers.js';
 import { createDaemonKnowledgeRefinementRouteHandlers } from './knowledge-refinement-routes.js';
 import type {
   AutomationScheduleDefinition,
@@ -18,7 +27,39 @@ import type {
   KnowledgeUsageKind,
 } from './knowledge-route-types.js';
 
-type JsonBody = Record<string, unknown>;
+type KnowledgeSearchBody = {
+  readonly query: string;
+  readonly limit: number;
+};
+
+type KnowledgeAskBody = {
+  readonly query: string;
+  readonly knowledgeSpaceId?: string;
+  readonly limit?: number;
+  readonly mode?: 'concise' | 'standard' | 'detailed';
+  readonly includeSources?: boolean;
+  readonly includeConfidence?: boolean;
+  readonly includeLinkedObjects?: boolean;
+  readonly candidateSourceIds?: string[];
+  readonly candidateNodeIds?: string[];
+  readonly strictCandidates?: boolean;
+};
+
+type KnowledgePacketBody = {
+  readonly task: string;
+  readonly writeScope: string[];
+  readonly limit: number;
+  readonly detail?: KnowledgePacketDetail;
+  readonly budgetLimit?: number;
+};
+
+type KnowledgeRunJobBody = {
+  readonly mode?: 'inline' | 'background';
+  readonly sourceIds?: string[];
+  readonly limit?: number;
+};
+
+const MAX_KNOWLEDGE_INGEST_TAGS = 64;
 
 export function createDaemonKnowledgeRouteHandlers(
   context: DaemonKnowledgeRouteContext,
@@ -32,20 +73,20 @@ export function createDaemonKnowledgeRouteHandlers(
       const item = context.knowledgeService.getItem(id);
       return item
         ? Response.json(item)
-        : Response.json({ error: 'Unknown knowledge item' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge item' }, { status: 404 });
     },
     getKnowledgeConnectors: () => Response.json({ connectors: context.knowledgeService.listConnectors() }),
     getKnowledgeConnector: (id) => {
       const connector = context.knowledgeService.getConnector(id);
       return connector
         ? Response.json({ connector })
-        : Response.json({ error: 'Unknown knowledge connector' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge connector' }, { status: 404 });
     },
     getKnowledgeConnectorDoctor: async (id) => {
       const report = await context.knowledgeService.doctorConnector(id);
       return report
         ? Response.json({ report })
-        : Response.json({ error: 'Unknown knowledge connector' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge connector' }, { status: 404 });
     },
     getKnowledgeProjectionTargets: async (url) => Response.json({ targets: await context.knowledgeService.listProjectionTargets(readLimit(url, 25)) }),
     getKnowledgeMap: async (url) => Response.json(await context.knowledgeService.map({
@@ -92,33 +133,33 @@ export function createDaemonKnowledgeRouteHandlers(
       const candidate = context.knowledgeService.getConsolidationCandidate(id);
       return candidate
         ? Response.json({ candidate })
-        : Response.json({ error: 'Unknown knowledge consolidation candidate' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge consolidation candidate' }, { status: 404 });
     },
     getKnowledgeReports: async (url) => Response.json({ reports: context.knowledgeService.listConsolidationReports(readLimit(url, 100)) }),
     getKnowledgeReport: (id) => {
       const report = context.knowledgeService.getConsolidationReport(id);
       return report
         ? Response.json({ report })
-        : Response.json({ error: 'Unknown knowledge consolidation report' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge consolidation report' }, { status: 404 });
     },
     getKnowledgeExtraction: (id) => {
       const extraction = context.knowledgeService.getExtraction(id);
       return extraction
         ? Response.json({ extraction })
-        : Response.json({ error: 'Unknown knowledge extraction' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge extraction' }, { status: 404 });
     },
     getKnowledgeSourceExtraction: (id) => {
       const extraction = context.knowledgeService.getSourceExtraction(id);
       return extraction
         ? Response.json({ extraction })
-        : Response.json({ error: 'Unknown source extraction' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown source extraction' }, { status: 404 });
     },
     getKnowledgeJobs: () => Response.json({ jobs: context.knowledgeService.listJobs() }),
     getKnowledgeJob: (jobId) => {
       const job = context.knowledgeService.getJob(jobId);
       return job
         ? Response.json({ job })
-        : Response.json({ error: 'Unknown knowledge job' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge job' }, { status: 404 });
     },
     getKnowledgeJobRuns: (url) => {
       const jobId = url.searchParams.get('jobId') ?? undefined;
@@ -130,7 +171,7 @@ export function createDaemonKnowledgeRouteHandlers(
       const schedule = context.knowledgeService.getSchedule(id);
       return schedule
         ? Response.json({ schedule })
-        : Response.json({ error: 'Unknown knowledge schedule' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge schedule' }, { status: 404 });
     },
     postKnowledgeIngestUrl: async (request) => handleKnowledgeIngestUrl(context, request),
     postKnowledgeIngestArtifact: async (request) => handleKnowledgeIngestArtifact(context, request),
@@ -161,7 +202,7 @@ export function createDaemonKnowledgeRouteHandlers(
       const deleted = await context.knowledgeService.deleteSchedule(id);
       return deleted
         ? Response.json({ deleted: true })
-        : Response.json({ error: 'Unknown knowledge schedule' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown knowledge schedule' }, { status: 404 });
     },
     postKnowledgeSetScheduleEnabled: async (id, request) => handleKnowledgeSetScheduleEnabled(context, id, request),
     postKnowledgeRenderProjection: async (request) => handleKnowledgeRenderProjection(context, request),
@@ -180,7 +221,7 @@ function readBooleanQuery(url: URL, key: string): boolean | undefined {
   return raw === '1' || raw.toLowerCase() === 'true' || raw.toLowerCase() === 'yes';
 }
 
-function readKnowledgeMapFilters(url: URL): JsonBody {
+function readKnowledgeMapFilters(url: URL): JsonRecord {
   const minConfidence = readOptionalBoundedInteger(url.searchParams.get('minConfidence'), 0, 100);
   return {
     ...(url.searchParams.get('query') ? { query: url.searchParams.get('query')! } : {}),
@@ -208,8 +249,75 @@ function readStringList(url: URL, ...names: readonly string[]): readonly string[
     .filter(Boolean);
 }
 
+const knowledgeBodySchemas = createRouteBodySchemaRegistry({
+  search: createRouteBodySchema<KnowledgeSearchBody>('POST /api/knowledge/search', (body) => {
+    const query = readOptionalStringField(body, 'query');
+    if (!query) return jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
+    return {
+      query,
+      limit: readBoundedBodyInteger(body.limit, 10, 100),
+    };
+  }),
+  ask: createRouteBodySchema<KnowledgeAskBody>('POST /api/knowledge/ask', (body) => {
+    const query = readOptionalStringField(body, 'query');
+    if (!query) return jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
+    const mode = readKnowledgeAnswerMode(body.mode);
+    const knowledgeSpaceId = readOptionalStringField(body, 'knowledgeSpaceId');
+    const candidateSourceIds = readStringArrayField(body, 'candidateSourceIds');
+    const candidateNodeIds = readStringArrayField(body, 'candidateNodeIds');
+    return {
+      query,
+      ...(knowledgeSpaceId ? { knowledgeSpaceId } : {}),
+      ...(Object.hasOwn(body, 'limit') ? { limit: readBoundedBodyInteger(body.limit, 8, 50) } : {}),
+      ...(mode ? { mode } : {}),
+      ...(typeof body.includeSources === 'boolean' ? { includeSources: body.includeSources } : {}),
+      ...(typeof body.includeConfidence === 'boolean' ? { includeConfidence: body.includeConfidence } : {}),
+      ...(typeof body.includeLinkedObjects === 'boolean' ? { includeLinkedObjects: body.includeLinkedObjects } : {}),
+      ...(candidateSourceIds ? { candidateSourceIds } : {}),
+      ...(candidateNodeIds ? { candidateNodeIds } : {}),
+      ...(typeof body.strictCandidates === 'boolean' ? { strictCandidates: body.strictCandidates } : {}),
+    };
+  }),
+  packet: createRouteBodySchema<KnowledgePacketBody>('POST /api/knowledge/packet', (body) => {
+    const task = readOptionalStringField(body, 'task');
+    if (!task) return jsonErrorResponse({ error: 'Missing task' }, { status: 400 });
+    const detail = readKnowledgePacketDetail(body.detail);
+    const budgetLimit = Object.hasOwn(body, 'budgetLimit')
+      ? readBoundedBodyInteger(body.budgetLimit, 6, 100)
+      : undefined;
+    return {
+      task,
+      writeScope: readStringArrayField(body, 'writeScope') ?? [],
+      limit: readBoundedBodyInteger(body.limit, 6, 50),
+      ...(detail ? { detail } : {}),
+      ...(typeof budgetLimit === 'number' ? { budgetLimit } : {}),
+    };
+  }),
+  runJob: createRouteBodySchema<KnowledgeRunJobBody>('POST /api/knowledge/jobs/:jobId/run', (body) => {
+    const mode = readKnowledgeJobRunMode(body.mode);
+    const sourceIds = readStringArrayField(body, 'sourceIds');
+    return {
+      ...(mode ? { mode } : {}),
+      ...(sourceIds ? { sourceIds } : {}),
+      ...(Object.hasOwn(body, 'limit') ? { limit: readBoundedBodyInteger(body.limit, 50, 500) } : {}),
+    };
+  }),
+});
+
+function readKnowledgeAnswerMode(value: unknown): 'concise' | 'standard' | 'detailed' | undefined {
+  return value === 'concise' || value === 'standard' || value === 'detailed' ? value : undefined;
+}
+
+function readKnowledgePacketDetail(value: unknown): KnowledgePacketDetail | undefined {
+  return typeof value === 'string' ? value.toLowerCase() as KnowledgePacketDetail : undefined;
+}
+
+function readKnowledgeJobRunMode(value: unknown): 'inline' | 'background' | undefined {
+  return value === 'inline' || value === 'background' ? value : undefined;
+}
+
 function readKnowledgeProjectionRequest(
-  body: JsonBody,
+  body: JsonRecord,
 ): { kind: KnowledgeProjectionTargetKind; id?: string; limit?: number } | Response {
   const rawKind = typeof body.kind === 'string' ? body.kind.trim().toLowerCase() : '';
   if (
@@ -221,18 +329,19 @@ function readKnowledgeProjectionRequest(
     && rawKind !== 'dashboard'
     && rawKind !== 'rollup'
   ) {
-    return Response.json({
+    return jsonErrorResponse({
       error: 'Projection kind must be one of overview, bundle, source, node, issue, dashboard, or rollup.',
+      code: 'INVALID_PROJECTION_KIND',
     }, { status: 400 });
   }
   const id = typeof body.id === 'string' ? body.id.trim() : '';
   if ((rawKind === 'source' || rawKind === 'node' || rawKind === 'issue' || rawKind === 'rollup') && !id) {
-    return Response.json({ error: `Projection kind ${rawKind} requires id.` }, { status: 400 });
+    return jsonErrorResponse({ error: `Projection kind ${rawKind} requires id.` }, { status: 400 });
   }
   return {
     kind: rawKind,
     ...(id ? { id } : {}),
-    ...(typeof body.limit === 'number' ? { limit: Math.max(1, body.limit) } : {}),
+    ...(Object.hasOwn(body, 'limit') ? { limit: readBoundedBodyInteger(body.limit, 20, 500) } : {}),
   };
 }
 
@@ -241,7 +350,7 @@ function readKnowledgeSchedule(
   value: unknown,
 ): AutomationScheduleDefinition | Response {
   if (typeof value !== 'object' || value === null) {
-    return Response.json({ error: 'Missing schedule object' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Missing schedule object' }, { status: 400 });
   }
   const schedule = value as Record<string, unknown>;
   const kind = typeof schedule.kind === 'string' ? schedule.kind.trim().toLowerCase() : '';
@@ -284,7 +393,7 @@ function readKnowledgeSchedule(
 function readGraphqlVariables(
   value: unknown,
   parseJsonText: DaemonKnowledgeRouteContext['parseJsonText'],
-): Record<string, unknown> | Response | undefined {
+): JsonRecord | Response | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   if (typeof value === 'string') {
     const parsed = parseJsonText(value);
@@ -292,9 +401,9 @@ function readGraphqlVariables(
     return parsed;
   }
   if (typeof value === 'object') {
-    return value as Record<string, unknown>;
+    return value as JsonRecord;
   }
-  return Response.json({ error: 'GraphQL variables must be an object or JSON string.' }, { status: 400 });
+  return jsonErrorResponse({ error: 'GraphQL variables must be an object or JSON string.' }, { status: 400 });
 }
 
 async function parseKnowledgeGraphqlRequest(
@@ -304,7 +413,7 @@ async function parseKnowledgeGraphqlRequest(
   if (req.method === 'GET') {
     const url = new URL(req.url);
     const query = url.searchParams.get('query')?.trim() ?? '';
-    if (!query) return Response.json({ error: 'Missing query' }, { status: 400 });
+    if (!query) return jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
     const variables = readGraphqlVariables(url.searchParams.get('variables'), context.parseJsonText);
     if (variables instanceof Response) return variables;
     const operationName = url.searchParams.get('operationName')?.trim();
@@ -320,14 +429,14 @@ async function parseKnowledgeGraphqlRequest(
     const query = (await req.text()).trim();
     return query
       ? { query }
-      : Response.json({ error: 'Missing query' }, { status: 400 });
+      : jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
   }
 
   const body = await context.parseOptionalJsonBody(req);
   if (body instanceof Response) return body;
-  if (!body) return Response.json({ error: 'Missing query' }, { status: 400 });
+  if (!body) return jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
   const query = typeof body.query === 'string' ? body.query.trim() : '';
-  if (!query) return Response.json({ error: 'Missing query' }, { status: 400 });
+  if (!query) return jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
   const variables = readGraphqlVariables(body.variables, context.parseJsonText);
   if (variables instanceof Response) return variables;
   const operationName = typeof body.operationName === 'string' ? body.operationName.trim() : '';
@@ -341,12 +450,12 @@ async function parseKnowledgeGraphqlRequest(
 async function handleKnowledgeGraphql(context: DaemonKnowledgeRouteContext, req: Request): Promise<Response> {
   const parsed = await parseKnowledgeGraphqlRequest(context, req);
   if (parsed instanceof Response) return parsed;
-  if (req.method === 'GET' && /\bmutation\b/.test(parsed.query)) {
-    return Response.json({ error: 'GraphQL mutations must use POST.' }, { status: 405 });
+  if (req.method === 'GET' && graphqlOperationLooksLikeMutation(parsed.query)) {
+    return jsonErrorResponse({ error: 'GraphQL mutations must use POST.' }, { status: 405 });
   }
   const principal = context.resolveAuthenticatedPrincipal(req);
   if (!principal) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
   }
 
   let access;
@@ -361,7 +470,7 @@ async function handleKnowledgeGraphql(context: DaemonKnowledgeRouteContext, req:
     return Response.json(scopeDenied, { status: 403 });
   }
   if (access.adminRequired && !principal.admin) {
-    return Response.json({ error: 'Knowledge GraphQL mutation requires admin access.' }, { status: 403 });
+    return jsonErrorResponse({ error: 'Knowledge GraphQL mutation requires admin access.' }, { status: 403 });
   }
 
   const result = await context.knowledgeGraphqlService.execute({
@@ -373,6 +482,14 @@ async function handleKnowledgeGraphql(context: DaemonKnowledgeRouteContext, req:
   });
   const status = result.errors?.length && !result.data ? 400 : 200;
   return Response.json(result, { status });
+}
+
+function graphqlOperationLooksLikeMutation(query: string): boolean {
+  const withoutComments = query.replace(/#[^\n\r]*/g, '');
+  const withoutStrings = withoutComments
+    .replace(/"""[\s\S]*?"""/g, ' ')
+    .replace(/"(?:\\.|[^"\\])*"/g, ' ');
+  return /^\s*mutation\b/.test(withoutStrings);
 }
 
 function buildKnowledgePrivateHostFetchOptions(
@@ -390,15 +507,16 @@ async function handleKnowledgeIngestUrl(context: DaemonKnowledgeRouteContext, re
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
   const url = typeof body.url === 'string' ? body.url.trim() : '';
-  if (!url) return Response.json({ error: 'Missing url' }, { status: 400 });
+  if (!url) return jsonErrorResponse({ error: 'Missing url' }, { status: 400 });
   const privateHostFetchOptions = buildKnowledgePrivateHostFetchOptions(context, body.allowPrivateHosts);
   if (privateHostFetchOptions instanceof Response) return privateHostFetchOptions;
+  const tags = readStringArrayField(body, 'tags', MAX_KNOWLEDGE_INGEST_TAGS);
   try {
     return Response.json(await context.knowledgeService.ingestUrl({
       url,
       ...(typeof body.title === 'string' ? { title: body.title } : {}),
       ...(typeof body.folderPath === 'string' ? { folderPath: body.folderPath } : {}),
-      ...(Array.isArray(body.tags) ? { tags: body.tags.filter((entry): entry is string => typeof entry === 'string') } : {}),
+      ...(tags ? { tags } : {}),
       ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
       ...(typeof body.sourceType === 'string' ? { sourceType: body.sourceType as KnowledgeSourceType } : {}),
       ...(typeof body.connectorId === 'string' ? { connectorId: body.connectorId } : {}),
@@ -431,6 +549,7 @@ async function handleKnowledgeIngestArtifact(context: DaemonKnowledgeRouteContex
   if (body instanceof Response) return body;
   const privateHostFetchOptions = buildKnowledgePrivateHostFetchOptions(context, body.allowPrivateHosts);
   if (privateHostFetchOptions instanceof Response) return privateHostFetchOptions;
+  const tags = readStringArrayField(body, 'tags', MAX_KNOWLEDGE_INGEST_TAGS);
   try {
     return Response.json(await context.knowledgeService.ingestArtifact({
       ...(typeof body.artifactId === 'string' ? { artifactId: body.artifactId } : {}),
@@ -438,7 +557,7 @@ async function handleKnowledgeIngestArtifact(context: DaemonKnowledgeRouteContex
       ...(typeof body.uri === 'string' ? { uri: body.uri } : {}),
       ...(typeof body.title === 'string' ? { title: body.title } : {}),
       ...(typeof body.folderPath === 'string' ? { folderPath: body.folderPath } : {}),
-      ...(Array.isArray(body.tags) ? { tags: body.tags.filter((entry): entry is string => typeof entry === 'string') } : {}),
+      ...(tags ? { tags } : {}),
       ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
       ...(typeof body.sourceType === 'string' ? { sourceType: body.sourceType as KnowledgeSourceType } : {}),
       ...(typeof body.connectorId === 'string' ? { connectorId: body.connectorId } : {}),
@@ -464,7 +583,7 @@ async function handleKnowledgeSyncBrowserHistory(context: DaemonKnowledgeRouteCo
     : undefined;
   try {
     return Response.json(await context.knowledgeService.syncBrowserHistory({
-      ...(typeof input.limit === 'number' ? { limit: Math.max(1, input.limit) } : {}),
+      ...(Object.hasOwn(input, 'limit') ? { limit: readBoundedBodyInteger(input.limit, 50, 500) } : {}),
       ...(typeof input.sinceMs === 'number' ? { sinceMs: input.sinceMs } : {}),
       ...(typeof input.homeOverride === 'string' ? { homeOverride: input.homeOverride } : {}),
       ...(typeof input.sessionId === 'string' ? { sessionId: input.sessionId } : {}),
@@ -483,7 +602,7 @@ async function handleKnowledgeImportBookmarks(context: DaemonKnowledgeRouteConte
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
   const path = typeof body.path === 'string' ? body.path.trim() : '';
-  if (!path) return Response.json({ error: 'Missing path' }, { status: 400 });
+  if (!path) return jsonErrorResponse({ error: 'Missing path' }, { status: 400 });
   const privateHostFetchOptions = buildKnowledgePrivateHostFetchOptions(context, body.allowPrivateHosts);
   if (privateHostFetchOptions instanceof Response) return privateHostFetchOptions;
   try {
@@ -503,7 +622,7 @@ async function handleKnowledgeImportUrls(context: DaemonKnowledgeRouteContext, r
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
   const path = typeof body.path === 'string' ? body.path.trim() : '';
-  if (!path) return Response.json({ error: 'Missing path' }, { status: 400 });
+  if (!path) return jsonErrorResponse({ error: 'Missing path' }, { status: 400 });
   const privateHostFetchOptions = buildKnowledgePrivateHostFetchOptions(context, body.allowPrivateHosts);
   if (privateHostFetchOptions instanceof Response) return privateHostFetchOptions;
   try {
@@ -523,7 +642,7 @@ async function handleKnowledgeIngestConnector(context: DaemonKnowledgeRouteConte
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
   const connectorId = typeof body.connectorId === 'string' ? body.connectorId.trim() : '';
-  if (!connectorId) return Response.json({ error: 'Missing connectorId' }, { status: 400 });
+  if (!connectorId) return jsonErrorResponse({ error: 'Missing connectorId' }, { status: 400 });
   const privateHostFetchOptions = buildKnowledgePrivateHostFetchOptions(context, body.allowPrivateHosts);
   if (privateHostFetchOptions instanceof Response) return privateHostFetchOptions;
   try {
@@ -543,45 +662,27 @@ async function handleKnowledgeIngestConnector(context: DaemonKnowledgeRouteConte
 async function handleKnowledgeSearch(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
-  const query = typeof body.query === 'string' ? body.query.trim() : '';
-  if (!query) return Response.json({ error: 'Missing query' }, { status: 400 });
-  const limit = typeof body.limit === 'number' ? body.limit : 10;
-  return Response.json({ results: context.knowledgeService.search(query, limit) });
+  const input = knowledgeBodySchemas.search.parse(body);
+  if (input instanceof Response) return input;
+  return Response.json({ results: context.knowledgeService.search(input.query, input.limit) });
 }
 
 async function handleKnowledgeAsk(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
-  const query = typeof body.query === 'string' ? body.query.trim() : '';
-  if (!query) return Response.json({ error: 'Missing query' }, { status: 400 });
-  return Response.json(await context.knowledgeService.ask({
-    query,
-    ...(typeof body.knowledgeSpaceId === 'string' ? { knowledgeSpaceId: body.knowledgeSpaceId } : {}),
-    ...(typeof body.limit === 'number' ? { limit: Math.max(1, body.limit) } : {}),
-    ...(typeof body.mode === 'string' && ['concise', 'standard', 'detailed'].includes(body.mode) ? { mode: body.mode } : {}),
-    ...(typeof body.includeSources === 'boolean' ? { includeSources: body.includeSources } : {}),
-    ...(typeof body.includeConfidence === 'boolean' ? { includeConfidence: body.includeConfidence } : {}),
-    ...(typeof body.includeLinkedObjects === 'boolean' ? { includeLinkedObjects: body.includeLinkedObjects } : {}),
-    ...(Array.isArray(body.candidateSourceIds) ? { candidateSourceIds: body.candidateSourceIds.filter(isString) } : {}),
-    ...(Array.isArray(body.candidateNodeIds) ? { candidateNodeIds: body.candidateNodeIds.filter(isString) } : {}),
-    ...(typeof body.strictCandidates === 'boolean' ? { strictCandidates: body.strictCandidates } : {}),
-  }));
+  const input = knowledgeBodySchemas.ask.parse(body);
+  if (input instanceof Response) return input;
+  return Response.json(await context.knowledgeService.ask(input));
 }
 
 async function handleKnowledgePacket(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
-  const task = typeof body.task === 'string' ? body.task.trim() : '';
-  if (!task) return Response.json({ error: 'Missing task' }, { status: 400 });
-  const writeScope = Array.isArray(body.writeScope) ? body.writeScope.filter((entry): entry is string => typeof entry === 'string') : [];
-  const limit = typeof body.limit === 'number' ? body.limit : 6;
-  const detail = typeof body.detail === 'string'
-    ? body.detail.toLowerCase() as KnowledgePacketDetail
-    : undefined;
-  const budgetLimit = typeof body.budgetLimit === 'number' ? body.budgetLimit : undefined;
-  return Response.json(await context.knowledgeService.buildPacket(task, writeScope, limit, {
-    ...(detail ? { detail } : {}),
-    ...(typeof budgetLimit === 'number' ? { budgetLimit } : {}),
+  const input = knowledgeBodySchemas.packet.parse(body);
+  if (input instanceof Response) return input;
+  return Response.json(await context.knowledgeService.buildPacket(input.task, input.writeScope, input.limit, {
+    ...(input.detail ? { detail: input.detail } : {}),
+    ...(typeof input.budgetLimit === 'number' ? { budgetLimit: input.budgetLimit } : {}),
   }));
 }
 
@@ -592,7 +693,7 @@ async function handleKnowledgeReviewIssue(context: DaemonKnowledgeRouteContext, 
   if (body instanceof Response) return body;
   const action = typeof body?.action === 'string' ? body.action.trim().toLowerCase() : '';
   if (!['accept', 'reject', 'resolve', 'reopen', 'edit', 'forget'].includes(action)) {
-    return Response.json({ error: 'Action must be accept, reject, resolve, reopen, edit, or forget.' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Action must be accept, reject, resolve, reopen, edit, or forget.' }, { status: 400 });
   }
   try {
     return Response.json(await context.knowledgeService.reviewIssue({
@@ -616,7 +717,7 @@ async function handleKnowledgeDecideCandidate(context: DaemonKnowledgeRouteConte
   if (body instanceof Response) return body;
   const decision = typeof body.decision === 'string' ? body.decision.trim().toLowerCase() : '';
   if (decision !== 'accept' && decision !== 'reject' && decision !== 'supersede') {
-    return Response.json({ error: 'Decision must be accept, reject, or supersede.' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Decision must be accept, reject, or supersede.' }, { status: 400 });
   }
   try {
     return Response.json({
@@ -640,13 +741,11 @@ async function handleKnowledgeRunJob(context: DaemonKnowledgeRouteContext, jobId
   if (admin) return admin;
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
+  const input = knowledgeBodySchemas.runJob.parse(body);
+  if (input instanceof Response) return input;
   try {
     return Response.json({
-      run: await context.knowledgeService.runJob(jobId, {
-        ...(typeof body.mode === 'string' ? { mode: body.mode.toLowerCase() as 'inline' | 'background' } : {}),
-        ...(Array.isArray(body.sourceIds) ? { sourceIds: body.sourceIds.filter((entry): entry is string => typeof entry === 'string') } : {}),
-        ...(typeof body.limit === 'number' ? { limit: body.limit } : {}),
-      }),
+      run: await context.knowledgeService.runJob(jobId, input),
     });
   } catch (error) {
     const message = summarizeErrorForRecord(error);
@@ -662,7 +761,7 @@ async function handleKnowledgeSaveSchedule(context: DaemonKnowledgeRouteContext,
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
   const jobId = typeof body.jobId === 'string' ? body.jobId.trim() : '';
-  if (!jobId) return Response.json({ error: 'Missing jobId' }, { status: 400 });
+  if (!jobId) return jsonErrorResponse({ error: 'Missing jobId' }, { status: 400 });
   const schedule = readKnowledgeSchedule(context, body.schedule);
   if (schedule instanceof Response) return schedule;
   try {
@@ -687,12 +786,12 @@ async function handleKnowledgeSetScheduleEnabled(context: DaemonKnowledgeRouteCo
   const body = await context.parseJsonBody(request);
   if (body instanceof Response) return body;
   if (typeof body.enabled !== 'boolean') {
-    return Response.json({ error: 'Missing enabled boolean' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Missing enabled boolean' }, { status: 400 });
   }
   const schedule = await context.knowledgeService.setScheduleEnabled(id, body.enabled);
   return schedule
     ? Response.json({ schedule })
-    : Response.json({ error: 'Unknown knowledge schedule' }, { status: 404 });
+    : jsonErrorResponse({ error: 'Unknown knowledge schedule' }, { status: 404 });
 }
 
 async function handleKnowledgeRenderProjection(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {

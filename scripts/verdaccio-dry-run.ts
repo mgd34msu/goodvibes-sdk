@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   cleanupStage,
+  getRegistryHost,
   getRootVersion,
   getPublicPackageNameOverride,
   readPackage,
@@ -38,7 +39,13 @@ import {
 const __dirname = resolve(fileURLToPath(import.meta.url), '..');
 const SDK_ROOT = resolve(__dirname, '..');
 const PUBLIC_PACKAGE_DIR = 'packages/sdk';
-const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || readPackage(PUBLIC_PACKAGE_DIR).name;
+const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || requirePackageName(PUBLIC_PACKAGE_DIR);
+
+function requirePackageName(dir: string): string {
+  const name = readPackage(dir).name;
+  if (typeof name !== 'string' || !name) throw new Error(`Package ${dir} is missing a string name.`);
+  return name;
+}
 
 // ─── port helpers ────────────────────────────────────────────────────────────
 
@@ -115,10 +122,13 @@ async function startVerdaccio(): Promise<VerdaccioHandle> {
   const localVerdaccioBin = resolve(SDK_ROOT, 'node_modules/.bin/verdaccio');
   const configuredVerdaccioBin = process.env.VERDACCIO_BIN;
   const hasLocalVerdaccio = existsSync(localVerdaccioBin);
-  const verdaccioCommand = configuredVerdaccioBin ?? (hasLocalVerdaccio ? localVerdaccioBin : 'npx');
-  const verdaccioArgs = configuredVerdaccioBin || hasLocalVerdaccio
-    ? ['--config', configPath, '--listen', `127.0.0.1:${port}`]
-    : ['--yes', 'verdaccio@^6.5.2', '--config', configPath, '--listen', `127.0.0.1:${port}`];
+  if (!configuredVerdaccioBin && !hasLocalVerdaccio) {
+    throw new Error(
+      'verdaccio is not installed. Run `bun install --frozen-lockfile` or set VERDACCIO_BIN to an audited Verdaccio binary.',
+    );
+  }
+  const verdaccioCommand = configuredVerdaccioBin ?? localVerdaccioBin;
+  const verdaccioArgs = ['--config', configPath, '--listen', `127.0.0.1:${port}`];
 
   const registryUrl = `http://127.0.0.1:${port}`;
   console.log(`[verdaccio] starting on ${registryUrl} ...`);
@@ -203,7 +213,7 @@ async function waitForVerdaccio(registryUrl: string, timeoutMs: number): Promise
  *  - Falls back to real npm for all other scopes
  */
 function writeNpmrc(projectDir: string, registryUrl: string): void {
-  const host = new URL(registryUrl).host;
+  const host = getRegistryHost(registryUrl);
   const lines = [
     `@pellux:registry=${registryUrl}`,
     `//${host}/:_authToken=verdaccio-local-token`,
@@ -213,22 +223,27 @@ function writeNpmrc(projectDir: string, registryUrl: string): void {
 
 // ─── publish to local Verdaccio ──────────────────────────────────────────────
 
-function publishToLocalRegistry(registryUrl: string): { tempRoot: string } {
+async function publishToLocalRegistry(registryUrl: string): Promise<{ tempRoot: string }> {
   console.log('[publish] staging packages ...');
-  const { tempRoot, publicStages } = stagePackages();
+  const { tempRoot, publicStages } = await stagePackages();
 
   try {
     for (const stage of publicStages) {
+      const packageName = stage.manifest.name;
+      const packageVersion = stage.manifest.version;
+      if (typeof packageName !== 'string' || typeof packageVersion !== 'string') {
+        throw new Error(`Staged package ${stage.dir} is missing a string name/version.`);
+      }
       console.log(
-        `[publish] ${stage.manifest.name}@${stage.manifest.version} → ${registryUrl}`,
+        `[publish] ${packageName}@${packageVersion} → ${registryUrl}`,
       );
       writeNpmrc(stage.stageDir, registryUrl);
       run('npm', ['publish', '--access', 'public', '--registry', registryUrl], stage.stageDir, {
         auth: false,
         registry: registryUrl,
-        packageName: stage.manifest.name,
+        packageName,
       });
-      console.log(`[publish] ${stage.manifest.name}@${stage.manifest.version} OK`);
+      console.log(`[publish] ${packageName}@${packageVersion} OK`);
     }
   } catch (err) {
     cleanupStage(tempRoot);
@@ -383,7 +398,7 @@ async function main(): Promise<void> {
 
   let runError: unknown = null;
   try {
-    const { tempRoot } = publishToLocalRegistry(registryUrl);
+    const { tempRoot } = await publishToLocalRegistry(registryUrl);
     stageRoot = tempRoot;
 
     scratchDir = mkdtempSync(join(tmpdir(), 'verdaccio-scratch-'));

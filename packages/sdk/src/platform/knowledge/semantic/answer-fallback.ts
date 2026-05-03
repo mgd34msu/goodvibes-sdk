@@ -71,7 +71,10 @@ function renderFactPhrase(fact: KnowledgeNodeRecord): string {
   const phrase = value ? `${fact.title}: ${value}` : summary ? `${fact.title}: ${summary}` : fact.title;
   const cleaned = normalizeWhitespace(clampText(phrase, 220));
   if (isRawSourceFragment(cleaned)) return '';
-  return isLowValueFeatureOrSpecText(cleaned) ? '' : cleaned;
+  if (!isLowValueFeatureOrSpecText(cleaned)) return cleaned;
+  const fallback = normalizeWhitespace(clampText(value ?? summary ?? fact.title, 220));
+  if (!fallback || isRawSourceFragment(fallback)) return '';
+  return isLowValueFeatureOrSpecText(fallback) ? '' : fallback;
 }
 
 function renderFeatureProfile(

@@ -1,5 +1,7 @@
 # Error Architecture
 
+> Internal source map. For consumer guidance see [Error Handling](./error-handling.md) and [SDK Error Kinds](./error-kinds.md).
+
 GoodVibes errors use shared categories and kinds from
 `@pellux/goodvibes-errors`.
 

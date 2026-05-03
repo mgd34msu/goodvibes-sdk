@@ -1,6 +1,7 @@
 import type { ModelDefinition, ProviderRegistry } from './registry.js';
 import type { ModelLimitsService } from './model-limits.js';
 import type { MinimalModelDefinition, SyntheticModelInfo } from './model-catalog-synthetic.js';
+import { logger } from '../utils/logger.js';
 
 export interface CatalogProvider {
   id: string;
@@ -63,7 +64,7 @@ export function getCostFromPricingCatalog(
     }
   }
   if (opts.debug) {
-    console.debug(`[cost-tracker] model not in catalog: ${modelId}`);
+    logger.debug('[cost-tracker] model not in catalog', { modelId });
   }
   return { input: 0, output: 0 };
 }

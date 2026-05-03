@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { classifyHostTrustTier, extractHostname } from '../tools/fetch/trust-tiers.js';
 import type { ConfigKey } from '../config/schema.js';
@@ -52,6 +52,14 @@ function resolveArtifactRootDir(config: ArtifactStoreConfig): string {
     throw new Error('ArtifactStore requires an explicit rootDir or configManager.getControlPlaneConfigDir().');
   }
   return rootDir;
+}
+
+function assertWithinArtifactRoot(rootDir: string, targetPath: string, label: string): string {
+  const root = resolve(rootDir);
+  const target = resolve(targetPath);
+  const rel = relative(root, target);
+  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return target;
+  throw new Error(`${label} is outside the artifact storage root.`);
 }
 
 function normalizeMimeType(value: string | undefined, fallbackFilename?: string): string {
@@ -253,7 +261,7 @@ export class ArtifactStore {
   private readonly allowPrivateHostFetches: boolean;
 
   constructor(config: ArtifactStoreConfig) {
-    this.rootDir = resolveArtifactRootDir(config);
+    this.rootDir = resolve(resolveArtifactRootDir(config));
     this.maxBytes = readConfiguredArtifactMaxBytes(config);
     this.defaultRetentionMs = Math.max(0, config.defaultRetentionMs ?? DEFAULT_ARTIFACT_RETENTION_MS);
     this.maxRetentionMs = Math.max(this.defaultRetentionMs, config.maxRetentionMs ?? DEFAULT_MAX_RETENTION_MS);
@@ -330,8 +338,8 @@ export class ArtifactStore {
   async createFromStream(input: ArtifactStreamCreateInput): Promise<ArtifactDescriptor> {
     const id = `artifact-${randomUUID().slice(0, 8)}`;
     const filename = sanitizeArtifactFilename(input.filename, 'artifact');
-    const contentPath = join(this.rootDir, `${id}.data`);
-    const metadataPath = join(this.rootDir, `${id}.json`);
+    const contentPath = assertWithinArtifactRoot(this.rootDir, join(this.rootDir, `${id}.data`), 'Artifact content path');
+    const metadataPath = assertWithinArtifactRoot(this.rootDir, join(this.rootDir, `${id}.json`), 'Artifact metadata path');
     const retentionMs = sanitizeRetentionMs(input.retentionMs, this.defaultRetentionMs, this.maxRetentionMs);
     await mkdir(this.rootDir, { recursive: true });
     const { sizeBytes, sha256 } = await this.writeStreamContent({
@@ -399,9 +407,10 @@ export class ArtifactStore {
     if (typeof input.expectedSizeBytes === 'number' && input.expectedSizeBytes > this.maxBytes) {
       throw new Error(`Artifact exceeds the ${this.maxBytes}-byte limit.`);
     }
+    const contentPath = assertWithinArtifactRoot(this.rootDir, input.contentPath, 'Artifact cleanup path');
 
     const hash = createHash('sha256');
-    const writer = createWriteStream(input.contentPath, { flags: 'wx' });
+    const writer = createWriteStream(contentPath, { flags: 'wx' });
     let sizeBytes = 0;
     try {
       for await (const chunk of streamToAsyncIterable(input.stream)) {
@@ -420,7 +429,7 @@ export class ArtifactStore {
       return { sizeBytes, sha256: hash.digest('hex') };
     } catch (error) {
       writer.destroy();
-      rmSync(input.contentPath, { force: true });
+      rmSync(contentPath, { force: true });
       throw error;
     }
   }
@@ -492,6 +501,8 @@ export class ArtifactStore {
       try {
         const parsed = normalizeExistingRecord(JSON.parse(readFileSync(metadataPath, 'utf-8')) as ArtifactRecord);
         if (!parsed?.id || typeof parsed.contentPath !== 'string' || !existsSync(parsed.contentPath)) continue;
+        assertWithinArtifactRoot(this.rootDir, parsed.contentPath, 'Stored artifact content path');
+        assertWithinArtifactRoot(this.rootDir, parsed.metadataPath, 'Stored artifact metadata path');
         if (typeof parsed.expiresAt === 'number' && parsed.expiresAt <= Date.now()) {
           this.removeRecordFiles(parsed);
           continue;
@@ -517,8 +528,10 @@ export class ArtifactStore {
   private removeRecordFiles(record: ArtifactRecord): void {
     this.records.delete(record.id);
     try {
-      if (existsSync(record.contentPath)) rmSync(record.contentPath, { force: true });
-      if (existsSync(record.metadataPath)) rmSync(record.metadataPath, { force: true });
+      const contentPath = assertWithinArtifactRoot(this.rootDir, record.contentPath, 'Artifact content deletion path');
+      const metadataPath = assertWithinArtifactRoot(this.rootDir, record.metadataPath, 'Artifact metadata deletion path');
+      if (existsSync(contentPath)) rmSync(contentPath, { force: true });
+      if (existsSync(metadataPath)) rmSync(metadataPath, { force: true });
     } catch (error) {
       logger.debug('[artifacts] failed to prune expired artifact files', {
         artifactId: record.id,

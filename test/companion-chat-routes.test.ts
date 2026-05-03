@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
+import { settleEvents } from './_helpers/test-timeout.js';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
 import type {
@@ -199,7 +200,7 @@ describe('companion-chat-routes: update session', () => {
     expect(body.session.model).toBe('claude-sonnet-4-5');
 
     await manager.postMessage(session.id, 'use the session model');
-    await new Promise((r) => setTimeout(r, 25));
+    await settleEvents(25);
     expect(calls.at(-1)).toEqual({ provider: 'anthropic', model: 'claude-sonnet-4-5' });
   });
 
@@ -299,7 +300,7 @@ describe('companion-chat-routes: post message and events', () => {
     await manager.postMessage(session.id, 'Hello');
 
     // Give the async turn a tick to complete
-    await new Promise((r) => setTimeout(r, 50));
+    await settleEvents();
 
     const eventTypes = publisher.events.map((e) => {
       const payload = e.payload as { type?: string };

@@ -73,7 +73,11 @@ import { HomeAssistantConversationRoutes } from './homeassistant-routes.js';
 import { HomeGraphRoutes } from './home-graph-routes.js';
 import { dispatchOpenAICompatibleRoutes } from './openai-compatible-routes.js';
 import { ProjectPlanningRoutes } from './project-planning-routes.js';
-import { readTextBodyWithinLimit } from '../../utils/request-body.js';
+import {
+  parseDaemonJsonBody,
+  parseDaemonJsonText,
+  parseOptionalDaemonJsonBody,
+} from './router-request-body.js';
 
 interface DaemonHttpRouterContext {
   readonly configManager: ConfigManager;
@@ -649,32 +653,15 @@ export class DaemonHttpRouter {
   }
 
   async parseJsonBody(req: Request): Promise<JsonRecord | Response> {
-    // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
-    const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
-    try {
-      const text = await readTextBodyWithinLimit(req, MAX_JSON_BYTES);
-      if (text instanceof Response) return text;
-      return this.parseJsonText(text);
-    } catch {
-      return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
+    return parseDaemonJsonBody(req);
   }
 
   async parseOptionalJsonBody(req: Request): Promise<JsonRecord | null | Response> {
-    // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
-    const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
-    const raw = await readTextBodyWithinLimit(req, MAX_JSON_BYTES);
-    if (raw instanceof Response) return raw;
-    if (!raw.trim()) return null;
-    return this.parseJsonText(raw);
+    return parseOptionalDaemonJsonBody(req);
   }
 
   parseJsonText(rawBody: string): JsonRecord | Response {
-    try {
-      return JSON.parse(rawBody) as JsonRecord;
-    } catch {
-      return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
+    return parseDaemonJsonText(rawBody);
   }
 
   recordApiResponse(

@@ -102,7 +102,7 @@ describe('F-PROV-009 — GET /api/providers: secretsResolutionSkipped observabil
     expect(res).not.toBeNull();
     const body = await res!.json() as Record<string, unknown>;
     // When secretsManager is present, the field should be absent or falsy
-    expect(body['secretsResolutionSkipped']).toBeFalsy();
+    expect(body['secretsResolutionSkipped'] ?? false).toBe(false);
   });
 });
 

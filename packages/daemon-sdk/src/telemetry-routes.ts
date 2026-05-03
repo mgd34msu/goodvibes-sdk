@@ -1,9 +1,10 @@
 import type { DaemonTelemetryRouteHandlers } from './context.js';
+import { jsonErrorResponse } from './error-response.js';
 import { buildMissingScopeBody, type AuthenticatedPrincipal } from './http-policy.js';
 import { decodeOtlpProtobuf } from './otlp-protobuf.js';
 import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import { DaemonErrorCategory } from '@pellux/goodvibes-errors';
-import { readBoundedPositiveInteger, readOptionalBoundedInteger } from './route-helpers.js';
+import { hasAnyScope, readBoundedPositiveInteger, readOptionalBoundedInteger, type JsonRecord } from './route-helpers.js';
 
 type TelemetrySeverity = 'debug' | 'info' | 'warn' | 'error';
 type TelemetryViewMode = 'safe' | 'raw';
@@ -64,7 +65,7 @@ interface TelemetryRouteContext {
    * In production `DaemonHttpRouter` this is the `TelemetryApiService` instance
    * which stores ingested records in its bounded event buffer (default 500
    * records) and makes them observable via GET /api/v1/telemetry/events.
-   * Pass `null` only in test/stub contexts where ingestion is intentionally
+   * Pass `null` only in test fixtures where ingestion is intentionally
    * a no-op — the receivers still return 200 to keep OTLP exporters happy but
    * discard the payload.
    */
@@ -144,6 +145,7 @@ const OTLP_PARTIAL_SUCCESS_KEYS: Record<OtlpIngestKind, string> = {
   traces: 'partialSuccess',
   metrics: 'partialSuccess',
 };
+const OTLP_INGEST_SCOPES = ['ingest:telemetry', 'write:telemetry'] as const;
 
 /**
  * Validate and parse an OTLP HTTP ingest request body.
@@ -155,13 +157,13 @@ const OTLP_PARTIAL_SUCCESS_KEYS: Record<OtlpIngestKind, string> = {
 async function parseOtlpBody(
   req: Request,
   kind: OtlpIngestKind,
-): Promise<Record<string, unknown> | Response> {
+): Promise<JsonRecord | Response> {
   const contentType = (req.headers.get('content-type') ?? '').toLowerCase().split(';')[0].trim();
 
   const acceptsJson = contentType === OTLP_JSON_CONTENT_TYPE;
   const acceptsProtobuf = OTLP_PROTOBUF_CONTENT_TYPES.has(contentType);
   if (!acceptsJson && !acceptsProtobuf) {
-    return Response.json(
+    return jsonErrorResponse(
       {
         error: `Unsupported Content-Type '${contentType}' for OTLP ingest`,
         code: 'UNSUPPORTED_MEDIA_TYPE',
@@ -174,7 +176,7 @@ async function parseOtlpBody(
 
   const raw = await req.arrayBuffer();
   if (raw.byteLength > OTLP_INGEST_MAX_BODY_BYTES) {
-    return Response.json(
+    return jsonErrorResponse(
       {
         error: `OTLP ingest payload too large (${raw.byteLength} > ${OTLP_INGEST_MAX_BODY_BYTES} bytes)`,
         code: 'PAYLOAD_TOO_LARGE',
@@ -189,7 +191,7 @@ async function parseOtlpBody(
       return decodeOtlpProtobuf(kind, new Uint8Array(raw));
     } catch (error) {
       void error;
-      return Response.json(
+      return jsonErrorResponse(
         { error: 'OTLP ingest body is not valid protobuf', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
         { status: 400 },
       );
@@ -200,7 +202,7 @@ async function parseOtlpBody(
     const text = new TextDecoder().decode(raw);
     const parsed = JSON.parse(text) as unknown;
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      return Response.json(
+      return jsonErrorResponse(
         { error: 'OTLP ingest body must be a JSON object', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
         { status: 400 },
       );
@@ -208,7 +210,7 @@ async function parseOtlpBody(
     return parsed as Record<string, unknown>;
   } catch (error) {
     void error;
-    return Response.json(
+    return jsonErrorResponse(
       { error: 'OTLP ingest body is not valid JSON', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
       { status: 400 },
     );
@@ -221,8 +223,34 @@ function otlpIngestSuccess(kind: OtlpIngestKind): Response {
   return Response.json({ [OTLP_PARTIAL_SUCCESS_KEYS[kind]]: {} });
 }
 
+function authenticateTelemetryIngest(context: TelemetryRouteContext, req: Request): AuthenticatedPrincipal | Response {
+  const principal = context.resolveAuthenticatedPrincipal(req);
+  if (!principal) {
+    return jsonErrorResponse(
+      { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: DaemonErrorCategory.AUTHENTICATION, status: 401 },
+      { status: 401 },
+    );
+  }
+  if (!principal.admin && !hasAnyScope(principal.scopes, OTLP_INGEST_SCOPES)) {
+    return jsonErrorResponse(
+      {
+        error: `Missing required telemetry ingest scope: ${OTLP_INGEST_SCOPES.join(' or ')}`,
+        code: 'MISSING_SCOPE',
+        category: DaemonErrorCategory.AUTHORIZATION,
+        source: 'permission',
+        recoverable: false,
+        requiredScopes: [...OTLP_INGEST_SCOPES],
+        grantedScopes: [...principal.scopes],
+        status: 403,
+      },
+      { status: 403 },
+    );
+  }
+  return principal;
+}
+
 function unavailable(): Response {
-  return Response.json({
+  return jsonErrorResponse({
     error: 'Telemetry API unavailable',
     code: 'TELEMETRY_UNAVAILABLE',
     category: DaemonErrorCategory.SERVICE,
@@ -234,7 +262,7 @@ function unavailable(): Response {
 }
 
 function invalidCursor(error: unknown): Response {
-  return Response.json({
+  return jsonErrorResponse({
     error: error instanceof Error ? error.message : 'Invalid telemetry cursor',
     code: 'INVALID_CURSOR',
     category: DaemonErrorCategory.BAD_REQUEST,
@@ -252,7 +280,7 @@ function authenticateTelemetryRequest(
 ): { principal: AuthenticatedPrincipal; view: TelemetryViewMode; rawAccessible: boolean } | Response {
   const principal = context.resolveAuthenticatedPrincipal(req);
   if (!principal) {
-    return Response.json({
+    return jsonErrorResponse({
       error: 'Authentication required for telemetry access',
       code: 'AUTH_REQUIRED',
       category: DaemonErrorCategory.AUTHENTICATION,
@@ -265,7 +293,7 @@ function authenticateTelemetryRequest(
 
   const missingRead = buildMissingScopeBody('telemetry access', ['read:telemetry'], principal.scopes);
   if (missingRead) {
-    return Response.json({
+    return jsonErrorResponse({
       error: missingRead.error,
       code: 'MISSING_SCOPE',
       category: DaemonErrorCategory.AUTHORIZATION,
@@ -279,7 +307,7 @@ function authenticateTelemetryRequest(
 
   const rawAccessible = principal.admin || principal.scopes.includes('read:telemetry-sensitive');
   if (requestedView === 'raw' && !rawAccessible) {
-    return Response.json({
+    return jsonErrorResponse({
       error: 'Raw telemetry view requires elevated telemetry scope',
       code: 'MISSING_SCOPE',
       category: DaemonErrorCategory.AUTHORIZATION,
@@ -399,39 +427,24 @@ export function createDaemonTelemetryRouteHandlers(
     // OTLP POST ingest receivers
     // -------------------------------------------------------------------------
     postTelemetryOtlpLogs: async (req) => {
-      const auth = context.resolveAuthenticatedPrincipal(req);
-      if (!auth) {
-        return Response.json(
-          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: DaemonErrorCategory.AUTHENTICATION, status: 401 },
-          { status: 401 },
-        );
-      }
+      const auth = authenticateTelemetryIngest(context, req);
+      if (auth instanceof Response) return auth;
       const bodyOrErr = await parseOtlpBody(req, 'logs');
       if (bodyOrErr instanceof Response) return bodyOrErr;
       context.ingestSink?.ingestLogs(bodyOrErr);
       return otlpIngestSuccess('logs');
     },
     postTelemetryOtlpTraces: async (req) => {
-      const auth = context.resolveAuthenticatedPrincipal(req);
-      if (!auth) {
-        return Response.json(
-          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: DaemonErrorCategory.AUTHENTICATION, status: 401 },
-          { status: 401 },
-        );
-      }
+      const auth = authenticateTelemetryIngest(context, req);
+      if (auth instanceof Response) return auth;
       const bodyOrErr = await parseOtlpBody(req, 'traces');
       if (bodyOrErr instanceof Response) return bodyOrErr;
       context.ingestSink?.ingestTraces(bodyOrErr);
       return otlpIngestSuccess('traces');
     },
     postTelemetryOtlpMetrics: async (req) => {
-      const auth = context.resolveAuthenticatedPrincipal(req);
-      if (!auth) {
-        return Response.json(
-          { error: 'Authentication required for OTLP ingest', code: 'AUTH_REQUIRED', category: DaemonErrorCategory.AUTHENTICATION, status: 401 },
-          { status: 401 },
-        );
-      }
+      const auth = authenticateTelemetryIngest(context, req);
+      if (auth instanceof Response) return auth;
       const bodyOrErr = await parseOtlpBody(req, 'metrics');
       if (bodyOrErr instanceof Response) return bodyOrErr;
       context.ingestSink?.ingestMetrics(bodyOrErr);

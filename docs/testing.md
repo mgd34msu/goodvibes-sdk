@@ -1,5 +1,7 @@
 # Testing Architecture
 
+> Internal source map. For day-to-day validation commands see [Testing and Validation](./testing-and-validation.md).
+
 Tests should protect architecture, not just implementation details.
 
 Key expectations:

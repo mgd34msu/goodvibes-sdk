@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { createReadStream, readdirSync, readFileSync, statSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -89,7 +89,18 @@ function assertErrorKindContract(): void {
   }
 }
 
-function assertRetryContract(): void {
+async function fileContainsPattern(rel: string, pattern: RegExp): Promise<boolean> {
+  const stream = createReadStream(resolve(repoRoot, rel), { encoding: 'utf8', highWaterMark: 16_384 });
+  let carry = '';
+  for await (const chunk of stream) {
+    const text = carry + chunk;
+    if (pattern.test(text)) return true;
+    carry = text.slice(-512);
+  }
+  return false;
+}
+
+async function assertRetryContract(): Promise<void> {
   const errorsSource = read('packages/errors/src/index.ts');
   const sdkTypesSource = read('packages/sdk/src/platform/types/errors.ts');
   const transportRetrySource = read('packages/transport-http/src/retry.ts');
@@ -116,7 +127,7 @@ function assertRetryContract(): void {
     for (const rel of walkFiles(root)) {
       if (retryLiteralAllowedFiles.has(rel)) continue;
       if (!/\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(rel)) continue;
-      if (retryLiteralPattern.test(read(rel))) {
+      if (await fileContainsPattern(rel, retryLiteralPattern)) {
         fail(`${rel} must import RETRYABLE_STATUS_CODES instead of inlining the canonical retryable status list`);
       }
     }
@@ -131,8 +142,6 @@ function assertNoStaleServerKindDocs(): void {
     'docs/expo-integration.md',
     'docs/react-native-integration.md',
     'docs/web-ui-integration.md',
-    'test/browser/SETUP.md',
-    'test/browser/transport-http.test.ts',
     'test/workers/SETUP.md',
     'test/workers/workers.test.ts',
     'test/workers-wrangler/wrangler.test.ts',
@@ -149,6 +158,6 @@ function assertNoStaleServerKindDocs(): void {
 }
 
 assertErrorKindContract();
-assertRetryContract();
+await assertRetryContract();
 assertNoStaleServerKindDocs();
 console.log('error-contract-check: OK');

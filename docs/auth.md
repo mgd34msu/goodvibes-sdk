@@ -1,5 +1,7 @@
 # Auth Architecture
 
+> Internal source map. For consumer guidance see [Authentication](./authentication.md).
+
 Auth is split between client token handling and daemon route enforcement.
 
 Client-facing code uses token stores and transport middleware. Daemon-facing

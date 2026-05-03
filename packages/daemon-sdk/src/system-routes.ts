@@ -1,5 +1,11 @@
 import type { DaemonSystemRouteHandlers } from './context.js';
-import type { JsonRecord } from './route-helpers.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  readBoundedBodyInteger,
+  readOptionalStringField,
+  type JsonRecord,
+} from './route-helpers.js';
 import { jsonErrorResponse } from './error-response.js';
 import type {
   AutomationDeliveryGuarantee,
@@ -10,6 +16,48 @@ import type {
   DaemonSystemRouteContext,
   WatcherKind,
 } from './system-route-types.js';
+
+const WATCHER_KIND_VALUES: readonly WatcherKind[] = ['filesystem', 'webhook', 'socket', 'integration', 'polling'];
+const WATCHER_SOURCE_KIND_MAP: Readonly<Record<string, WatcherKind>> = {
+  webhook: 'webhook',
+  file: 'filesystem',
+  stream: 'socket',
+  api: 'integration',
+};
+const WATCHER_SOURCE_RECORD_KIND_MAP: Readonly<Record<string, 'webhook' | 'hook' | 'watcher'>> = {
+  webhook: 'webhook',
+  file: 'hook',
+  stream: 'hook',
+  api: 'hook',
+};
+const DEFAULT_WATCHER_INTERVAL_MS = 60_000;
+const MIN_WATCHER_INTERVAL_MS = 1_000;
+const MAX_WATCHER_INTERVAL_MS = 86_400_000;
+
+interface RouteBindingCreateBody {
+  readonly surfaceKind: AutomationSurfaceKind;
+  readonly kind: AutomationRouteBindingKind;
+  readonly surfaceId: string;
+  readonly externalId: string;
+}
+
+const systemBodySchemas = createRouteBodySchemaRegistry({
+  routeBindingCreate: createRouteBodySchema<RouteBindingCreateBody>('POST /api/system/route-bindings', (body) => {
+    const surfaceKind = readOptionalStringField(body, 'surfaceKind');
+    const kind = readOptionalStringField(body, 'kind');
+    const surfaceId = readOptionalStringField(body, 'surfaceId');
+    const externalId = readOptionalStringField(body, 'externalId');
+    if (!surfaceKind || !kind || !surfaceId || !externalId) {
+      return jsonErrorResponse({ error: 'Missing required route binding fields' }, { status: 400 });
+    }
+    return {
+      surfaceKind: surfaceKind as AutomationSurfaceKind,
+      kind: kind as AutomationRouteBindingKind,
+      surfaceId,
+      externalId,
+    };
+  }),
+});
 
 export function createDaemonSystemRouteHandlers(
   context: DaemonSystemRouteContext,
@@ -38,7 +86,7 @@ export function createDaemonSystemRouteHandlers(
       const removed = context.watcherRegistry.removeWatcher(watcherId);
       return removed
         ? Response.json({ removed: true, id: watcherId })
-        : Response.json({ error: 'Unknown watcher' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown watcher' }, { status: 404 });
     },
     getServiceStatus: () => Response.json({
       ...context.platformServiceManager.status(),
@@ -79,19 +127,14 @@ export function createDaemonSystemRouteHandlers(
       if (admin) return admin;
       const body = await context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      const surfaceKind = typeof body.surfaceKind === 'string' ? body.surfaceKind : '';
-      const kind = typeof body.kind === 'string' ? body.kind : '';
-      const surfaceId = typeof body.surfaceId === 'string' ? body.surfaceId : '';
-      const externalId = typeof body.externalId === 'string' ? body.externalId : '';
-      if (!surfaceKind || !kind || !surfaceId || !externalId) {
-        return Response.json({ error: 'Missing required route binding fields' }, { status: 400 });
-      }
+      const input = systemBodySchemas.routeBindingCreate.parse(body);
+      if (input instanceof Response) return input;
       const binding = await context.routeBindings.upsertBinding({
         id: typeof body.id === 'string' ? body.id : undefined,
-        kind: kind as AutomationRouteBindingKind,
-        surfaceKind: surfaceKind as AutomationSurfaceKind,
-        surfaceId,
-        externalId,
+        kind: input.kind,
+        surfaceKind: input.surfaceKind,
+        surfaceId: input.surfaceId,
+        externalId: input.externalId,
         sessionPolicy: typeof body.sessionPolicy === 'string' ? body.sessionPolicy as AutomationSessionPolicy : undefined,
         threadPolicy: typeof body.threadPolicy === 'string' ? body.threadPolicy as AutomationThreadPolicy : undefined,
         deliveryGuarantee: typeof body.deliveryGuarantee === 'string' ? body.deliveryGuarantee as AutomationDeliveryGuarantee : undefined,
@@ -124,7 +167,7 @@ export function createDaemonSystemRouteHandlers(
       });
       return updated
         ? Response.json(updated)
-        : Response.json({ error: 'Unknown route binding' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown route binding' }, { status: 404 });
     },
     deleteRouteBinding: async (bindingId) => {
       const admin = context.requireAdmin(request);
@@ -132,11 +175,11 @@ export function createDaemonSystemRouteHandlers(
       const removed = await context.routeBindings.removeBinding(bindingId);
       return removed
         ? Response.json({ removed: true, id: bindingId })
-        : Response.json({ error: 'Unknown route binding' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown route binding' }, { status: 404 });
     },
     getApprovals: () => {
       if (!context.integrationHelpers) {
-        return Response.json({ error: 'Integration helper service unavailable' }, { status: 503 });
+        return jsonErrorResponse({ error: 'Integration helper service unavailable' }, { status: 503 });
       }
       return Response.json(context.integrationHelpers.getApprovalSnapshot());
     },
@@ -153,31 +196,13 @@ export function createDaemonSystemRouteHandlers(
       if (payload instanceof Response) return payload;
       const { key, value } = payload;
       if (!key || typeof key !== 'string') {
-        return Response.json({ error: 'Missing or invalid key' }, { status: 400 });
+        return jsonErrorResponse({ error: 'Missing or invalid key' }, { status: 400 });
       }
-      // Special-case: runtime.workingDir is handled by the workspace swap manager.
       if (key === 'runtime.workingDir') {
-        if (!context.swapManager) {
-          return Response.json({ error: 'Workspace swapping is not available in this daemon configuration.' }, { status: 400 });
-        }
-        if (typeof value !== 'string' || !value.trim()) {
-          return Response.json({ error: 'runtime.workingDir value must be a non-empty string path.', code: 'INVALID_PATH' }, { status: 400 });
-        }
-        const result = await context.swapManager.requestSwap(value);
-        if (result.ok) {
-          return Response.json({ success: true, key, value: result.current, previous: result.previous });
-        }
-        if (result.code === 'WORKSPACE_BUSY') {
-          return Response.json(
-            { error: result.reason, code: 'WORKSPACE_BUSY', retryAfter: result.retryAfter },
-            { status: 409 },
-          );
-        }
-        // INVALID_PATH
-        return Response.json({ error: result.reason, code: 'INVALID_PATH' }, { status: 400 });
+        return handleWorkingDirectoryConfig(context, key, value);
       }
       if (!context.isValidConfigKey(key)) {
-        return Response.json({ error: 'Invalid config key' }, { status: 400 });
+        return jsonErrorResponse({ error: 'Invalid config key' }, { status: 400 });
       }
       try {
         context.configManager.setDynamic(key, value);
@@ -198,22 +223,10 @@ async function handleRegisterWatcher(context: DaemonSystemRouteContext, req: Req
     : label
       ? `watcher-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`
       : `watcher-${Date.now()}`;
-  const kind = typeof body.kind === 'string'
-    ? body.kind as WatcherKind
-    : typeof body.sourceKind === 'string'
-      ? body.sourceKind === 'webhook'
-        ? 'webhook'
-        : body.sourceKind === 'file'
-          ? 'filesystem'
-          : body.sourceKind === 'stream'
-            ? 'socket'
-            : body.sourceKind === 'api'
-              ? 'integration'
-              : 'polling'
-      : 'polling';
-  const intervalMs = Number(body.intervalMs ?? context.configManager.get('watchers.pollIntervalMs') ?? 60_000);
+  const kind = readWatcherKind(body.kind, body.sourceKind, 'polling');
+  const intervalMs = readWatcherIntervalMs(body.intervalMs, context.configManager.get('watchers.pollIntervalMs'));
   if (!label) {
-    return Response.json({ error: 'Missing watcher label' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Missing watcher label' }, { status: 400 });
   }
   const metadata = typeof body.metadata === 'object' && body.metadata !== null
     ? body.metadata as Record<string, unknown>
@@ -234,11 +247,7 @@ async function handleRegisterWatcher(context: DaemonSystemRouteContext, req: Req
     source: {
       id: typeof body.sourceId === 'string' && body.sourceId.trim() ? body.sourceId.trim() : `source:${id}`,
       kind: typeof body.sourceKind === 'string'
-        ? body.sourceKind === 'webhook'
-          ? 'webhook'
-          : body.sourceKind === 'file' || body.sourceKind === 'stream' || body.sourceKind === 'api'
-            ? 'hook'
-            : 'watcher'
+        ? WATCHER_SOURCE_RECORD_KIND_MAP[body.sourceKind] ?? 'watcher'
         : 'watcher',
       label,
       enabled: true,
@@ -253,26 +262,61 @@ async function handleRegisterWatcher(context: DaemonSystemRouteContext, req: Req
   return Response.json(record, { status: 201 });
 }
 
+async function handleWorkingDirectoryConfig(
+  context: DaemonSystemRouteContext,
+  key: string,
+  value: unknown,
+): Promise<Response> {
+  if (!context.swapManager) {
+    return jsonErrorResponse({ error: 'Workspace swapping is not available in this daemon configuration.' }, { status: 400 });
+  }
+  if (typeof value !== 'string' || !value.trim()) {
+    return jsonErrorResponse({ error: 'runtime.workingDir value must be a non-empty string path.', code: 'INVALID_PATH' }, { status: 400 });
+  }
+  const result = await context.swapManager.requestSwap(value);
+  if (result.ok) {
+    return Response.json({ success: true, key, value: result.current, previous: result.previous });
+  }
+  return jsonErrorResponse(
+    {
+      error: result.reason,
+      code: result.code,
+      ...(result.code === 'WORKSPACE_BUSY' ? { retryAfter: result.retryAfter } : {}),
+    },
+    { status: result.code === 'WORKSPACE_BUSY' ? 409 : 400 },
+  );
+}
+
+function readWatcherKind(kind: unknown, sourceKind: unknown, fallback: WatcherKind): WatcherKind {
+  if (typeof kind === 'string' && (WATCHER_KIND_VALUES as readonly string[]).includes(kind)) {
+    return kind as WatcherKind;
+  }
+  return typeof sourceKind === 'string'
+    ? WATCHER_SOURCE_KIND_MAP[sourceKind] ?? fallback
+    : fallback;
+}
+
+function readWatcherIntervalMs(value: unknown, fallbackValue: unknown): number {
+  const fallback = typeof fallbackValue === 'number' && Number.isFinite(fallbackValue)
+    ? fallbackValue
+    : DEFAULT_WATCHER_INTERVAL_MS;
+  return readBoundedBodyInteger(value, fallback, MAX_WATCHER_INTERVAL_MS, MIN_WATCHER_INTERVAL_MS);
+}
+
 async function handleUpdateWatcher(context: DaemonSystemRouteContext, watcherId: string, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const current = context.watcherRegistry.getWatcher(watcherId);
   if (!current) {
-    return Response.json({ error: 'Unknown watcher' }, { status: 404 });
+    return jsonErrorResponse({ error: 'Unknown watcher' }, { status: 404 });
   }
   const nextSourceKind = typeof body.sourceKind === 'string'
-    ? body.sourceKind === 'webhook'
-      ? 'webhook'
-      : body.sourceKind === 'file' || body.sourceKind === 'stream' || body.sourceKind === 'api'
-        ? 'hook'
-        : 'watcher'
+    ? WATCHER_SOURCE_RECORD_KIND_MAP[body.sourceKind] ?? 'watcher'
     : current.source.kind;
   const updated = context.watcherRegistry.registerWatcher({
     id: watcherId,
     label: typeof body.label === 'string' ? body.label : current.label,
-    kind: typeof body.kind === 'string'
-      ? body.kind as WatcherKind
-      : current.kind,
+    kind: readWatcherKind(body.kind, undefined, current.kind),
     source: {
       ...current.source,
       ...(typeof body.source === 'object' && body.source !== null ? body.source as Partial<typeof current.source> : {}),
@@ -292,7 +336,7 @@ async function handleUpdateWatcher(context: DaemonSystemRouteContext, watcherId:
       },
       updatedAt: Date.now(),
     },
-    intervalMs: typeof body.intervalMs === 'number' ? body.intervalMs : (current.intervalMs ?? 60_000),
+    intervalMs: body.intervalMs !== undefined ? readWatcherIntervalMs(body.intervalMs, current.intervalMs) : (current.intervalMs ?? DEFAULT_WATCHER_INTERVAL_MS),
     metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : current.metadata,
   });
   return Response.json(updated);
@@ -307,18 +351,18 @@ async function handleWatcherAction(
     const watcher = context.watcherRegistry.startWatcher(watcherId);
     return watcher
       ? Response.json(watcher)
-      : Response.json({ error: 'Unknown watcher' }, { status: 404 });
+      : jsonErrorResponse({ error: 'Unknown watcher' }, { status: 404 });
   }
   if (action === 'stop') {
     const watcher = context.watcherRegistry.stopWatcher(watcherId, 'operator-stop');
     return watcher
       ? Response.json(watcher)
-      : Response.json({ error: 'Unknown watcher' }, { status: 404 });
+      : jsonErrorResponse({ error: 'Unknown watcher' }, { status: 404 });
   }
   const watcher = await context.watcherRegistry.runWatcherNow(watcherId);
   return watcher
     ? Response.json(watcher)
-    : Response.json({ error: 'Unknown watcher' }, { status: 404 });
+    : jsonErrorResponse({ error: 'Unknown watcher' }, { status: 404 });
 }
 
 async function handleApprovalAction(
@@ -335,13 +379,13 @@ async function handleApprovalAction(
     const approval = await context.approvalBroker.claimApproval(approvalId, actor, 'web', note);
     return approval
       ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
-      : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ error: 'Unknown approval' }, { status: 404 }));
+      : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, jsonErrorResponse({ error: 'Unknown approval' }, { status: 404 }));
   }
   if (action === 'cancel') {
     const approval = await context.approvalBroker.cancelApproval(approvalId, actor, 'web', note);
     return approval
       ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
-      : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ error: 'Unknown approval' }, { status: 404 }));
+      : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, jsonErrorResponse({ error: 'Unknown approval' }, { status: 404 }));
   }
   const approval = await context.approvalBroker.resolveApproval(approvalId, {
     approved: action === 'approve',
@@ -352,5 +396,5 @@ async function handleApprovalAction(
   });
   return approval
     ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
-    : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ error: 'Unknown approval' }, { status: 404 }));
+    : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, jsonErrorResponse({ error: 'Unknown approval' }, { status: 404 }));
 }

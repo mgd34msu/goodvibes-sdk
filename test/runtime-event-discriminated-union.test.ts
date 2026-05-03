@@ -270,12 +270,12 @@ describe('discriminated union — TurnEvent', () => {
 
 describe('discriminated union — SessionEvent', () => {
   test('SESSION_STARTED: sessionId, profileId, workingDir are accessible without cast', () => {
-    const event: SessionEvent = { type: 'SESSION_STARTED', sessionId: 'sess-1', profileId: 'profile-a', workingDir: '/home/user' };
+    const event: SessionEvent = { type: 'SESSION_STARTED', sessionId: 'sess-1', profileId: 'profile-a', workingDir: '/tmp/test-workdir' };
     if (event.type === 'SESSION_STARTED') {
       // All three fields narrowed correctly:
       expect(event.sessionId).toBe('sess-1');
       expect(event.profileId).toBe('profile-a');
-      expect(event.workingDir).toBe('/home/user');
+      expect(event.workingDir).toBe('/tmp/test-workdir');
     }
   });
 

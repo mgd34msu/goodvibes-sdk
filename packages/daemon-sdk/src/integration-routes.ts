@@ -1,6 +1,65 @@
 import type { DaemonIntegrationRouteHandlers } from './context.js';
 import { jsonErrorResponse } from './error-response.js';
 import type { DaemonIntegrationRouteContext, IntegrationHelperServiceLike, RuntimeEventDomain } from './integration-route-types.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  readOptionalStringField,
+  readStringArrayField,
+} from './route-helpers.js';
+
+const MAX_LOCAL_AUTH_ROLES = 32;
+
+type EmbeddingDefaultBody = {
+  readonly providerId: string;
+};
+
+type LocalAuthUserBody = {
+  readonly username: string;
+  readonly password: string;
+  readonly roles: readonly string[];
+};
+
+type LocalAuthPasswordBody = {
+  readonly password: string;
+};
+
+type PanelOpenBody = {
+  readonly panelId: string;
+  readonly pane: 'top' | 'bottom';
+};
+
+const integrationBodySchemas = createRouteBodySchemaRegistry({
+  embeddingDefault: createRouteBodySchema<EmbeddingDefaultBody>('POST /api/memory/embedding/default', (body) => {
+    const providerId = readOptionalStringField(body, 'providerId');
+    if (!providerId) return jsonErrorResponse({ error: 'Missing providerId' }, { status: 400 });
+    return { providerId };
+  }),
+  localAuthUser: createRouteBodySchema<LocalAuthUserBody>('POST /api/local-auth/users', (body) => {
+    const username = readOptionalStringField(body, 'username');
+    const password = readOptionalStringField(body, 'password');
+    if (!username) return jsonErrorResponse({ error: 'Missing username' }, { status: 400 });
+    if (!password) return jsonErrorResponse({ error: 'Missing password' }, { status: 400 });
+    return {
+      username,
+      password,
+      roles: readStringArrayField(body, 'roles', MAX_LOCAL_AUTH_ROLES) ?? ['admin'],
+    };
+  }),
+  localAuthPassword: createRouteBodySchema<LocalAuthPasswordBody>('POST /api/local-auth/users/:username/password', (body) => {
+    const password = readOptionalStringField(body, 'password');
+    if (!password) return jsonErrorResponse({ error: 'Missing password' }, { status: 400 });
+    return { password };
+  }),
+  panelOpen: createRouteBodySchema<PanelOpenBody>('POST /api/integrations/panels/open', (body) => {
+    const panelId = readOptionalStringField(body, 'id');
+    if (!panelId) return jsonErrorResponse({ error: 'Missing panel id' }, { status: 400 });
+    return {
+      panelId,
+      pane: body.pane === 'bottom' ? 'bottom' : 'top',
+    };
+  }),
+});
 
 export function createDaemonIntegrationRouteHandlers(
   context: DaemonIntegrationRouteContext,
@@ -17,7 +76,7 @@ export function createDaemonIntegrationRouteHandlers(
       const runtimeStore = context.integrationHelpers?.getRuntimeStore() ?? null;
       const delivery = runtimeStore?.getState().deliveries.deliveryAttempts.get(deliveryId);
       if (!delivery) {
-        return Response.json({ error: 'Unknown delivery' }, { status: 404 });
+        return jsonErrorResponse({ error: 'Unknown delivery' }, { status: 404 });
       }
       return Response.json({ delivery });
     },
@@ -26,7 +85,7 @@ export function createDaemonIntegrationRouteHandlers(
     getHealth: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getHealthSnapshot())),
     getAccounts: async () => {
       if (!context.integrationHelpers) {
-        return Response.json({ error: 'Integration helper service unavailable' }, { status: 503 });
+        return jsonErrorResponse({ error: 'Integration helper service unavailable' }, { status: 503 });
       }
       const [snapshot, channelAccounts] = await Promise.all([
         context.integrationHelpers.getAccountsSnapshot(),
@@ -43,13 +102,13 @@ export function createDaemonIntegrationRouteHandlers(
       const provider = await context.providerRuntime.getSnapshot(providerId);
       return provider
         ? Response.json(provider)
-        : Response.json({ error: 'Unknown provider' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown provider' }, { status: 404 });
     },
     getProviderUsage: async (providerId) => {
       const usage = await context.providerRuntime.getUsageSnapshot(providerId);
       return usage
         ? Response.json(usage)
-        : Response.json({ error: 'Unknown provider' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown provider' }, { status: 404 });
     },
     getSettings: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getSettingsSnapshot())),
     getSecuritySettings: () => withHelpers(context.integrationHelpers, (helpers) => Response.json({
@@ -70,10 +129,10 @@ export function createDaemonIntegrationRouteHandlers(
       if (admin) return admin;
       const body = await context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      const providerId = typeof body.providerId === 'string' ? body.providerId : '';
-      if (!providerId) return Response.json({ error: 'Missing providerId' }, { status: 400 });
+      const input = integrationBodySchemas.embeddingDefault.parse(body);
+      if (input instanceof Response) return input;
       try {
-        context.memoryEmbeddingRegistry.setDefaultProvider(providerId);
+        context.memoryEmbeddingRegistry.setDefaultProvider(input.providerId);
         return Response.json(await context.memoryRegistry.doctor());
       } catch (error) {
         return jsonErrorResponse(error, { status: 400 });
@@ -89,11 +148,10 @@ export function createDaemonIntegrationRouteHandlers(
       if (admin) return admin;
       const body = await context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      const username = typeof body.username === 'string' ? body.username : '';
-      const password = typeof body.password === 'string' ? body.password : '';
-      const roles = Array.isArray(body.roles) ? body.roles.filter((value): value is string => typeof value === 'string') : ['admin'];
+      const input = integrationBodySchemas.localAuthUser.parse(body);
+      if (input instanceof Response) return input;
       try {
-        return Response.json({ user: context.userAuth.addUser(username, password, roles) }, { status: 201 });
+        return Response.json({ user: context.userAuth.addUser(input.username, input.password, input.roles) }, { status: 201 });
       } catch (error) {
         return jsonErrorResponse(error, { status: 400 });
       }
@@ -105,7 +163,7 @@ export function createDaemonIntegrationRouteHandlers(
         const removed = context.userAuth.deleteUser(username);
         return removed
           ? Response.json({ deleted: true })
-          : Response.json({ error: 'Unknown user' }, { status: 404 });
+          : jsonErrorResponse({ error: 'Unknown user' }, { status: 404 });
       } catch (error) {
         return jsonErrorResponse(error, { status: 400 });
       }
@@ -115,9 +173,10 @@ export function createDaemonIntegrationRouteHandlers(
       if (admin) return admin;
       const body = await context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      const password = typeof body.password === 'string' ? body.password : '';
+      const input = integrationBodySchemas.localAuthPassword.parse(body);
+      if (input instanceof Response) return input;
       try {
-        context.userAuth.rotatePassword(username, password);
+        context.userAuth.rotatePassword(username, input.password);
         return Response.json({ rotated: true });
       } catch (error) {
         return jsonErrorResponse(error, { status: 400 });
@@ -128,7 +187,7 @@ export function createDaemonIntegrationRouteHandlers(
       if (admin) return admin;
       return context.userAuth.revokeSession(sessionId)
         ? Response.json({ revoked: true })
-        : Response.json({ error: 'Unknown session' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown session' }, { status: 404 });
     },
     deleteBootstrapFile: () => {
       const admin = context.requireAdmin(request);
@@ -139,13 +198,12 @@ export function createDaemonIntegrationRouteHandlers(
     postPanelOpen: async (req) => {
       const body = await context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      const panelId = typeof body.id === 'string' ? body.id : '';
-      const pane = body.pane === 'bottom' ? 'bottom' : 'top';
-      if (!panelId) return Response.json({ error: 'Missing panel id' }, { status: 400 });
-      const ok = context.integrationHelpers?.openPanel(panelId, pane) ?? false;
+      const input = integrationBodySchemas.panelOpen.parse(body);
+      if (input instanceof Response) return input;
+      const ok = context.integrationHelpers?.openPanel(input.panelId, input.pane) ?? false;
       return ok
-        ? Response.json({ opened: true, id: panelId, pane })
-        : Response.json({ error: `Unknown panel: ${panelId}` }, { status: 404 });
+        ? Response.json({ opened: true, id: input.panelId, pane: input.pane })
+        : jsonErrorResponse({ error: `Unknown panel: ${input.panelId}` }, { status: 404 });
     },
     getEvents: (req) => {
       const url = new URL(req.url);
@@ -161,7 +219,7 @@ function withHelpers<T>(
   run: (helpers: IntegrationHelperServiceLike) => T,
 ): T | Response {
   if (!helpers) {
-    return Response.json({ error: 'Integration helper service unavailable' }, { status: 503 });
+    return jsonErrorResponse({ error: 'Integration helper service unavailable' }, { status: 503 });
   }
   return run(helpers);
 }

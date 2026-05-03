@@ -1,4 +1,6 @@
-# Runtime Surfaces
+# Runtime Boundary Model
+
+> Internal source map. For consumer import guidance see [Published surface matrix](./surfaces.md).
 
 The SDK keeps all capabilities available while keeping runtime requirements
 explicit.

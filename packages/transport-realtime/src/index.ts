@@ -14,5 +14,6 @@ export {
   createWebSocketConnector,
   DEFAULT_WS_MAX_ATTEMPTS,
   forSessionRuntime,
+  WebSocketTransportError,
 } from './runtime-events.js';
 export type { RuntimeEventConnectorOptions } from './runtime-events.js';

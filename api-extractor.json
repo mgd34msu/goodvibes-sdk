@@ -47,7 +47,7 @@
   "messages": {
     "compilerMessageReporting": {
       "default": {
-        "logLevel": "none"
+        "logLevel": "warning"
       },
       "TS1259": { "logLevel": "none" }
     },

@@ -15,30 +15,6 @@ export interface KVStateOptions {
   readonly stateDir: string;
 }
 
-function resolveLegacyStateDir(storageRoot?: string): string {
-  if (!storageRoot) {
-    throw new Error('KVState requires an explicit stateDir or storageRoot');
-  }
-  return join(storageRoot, '.goodvibes', 'state');
-}
-
-function resolveKVStateOptions(
-  sessionIdOrOptions?: string | KVStateOptions,
-  storageRoot?: string,
-): KVStateOptions {
-  if (typeof sessionIdOrOptions === 'object' && sessionIdOrOptions !== null) {
-    if (!sessionIdOrOptions.stateDir || sessionIdOrOptions.stateDir.trim().length === 0) {
-      throw new Error('KVState requires a non-empty stateDir');
-    }
-    return sessionIdOrOptions;
-  }
-
-  return {
-    sessionId: sessionIdOrOptions,
-    stateDir: resolveLegacyStateDir(storageRoot),
-  };
-}
-
 /**
  * KVState — Session-scoped persistent key-value store.
  *
@@ -59,10 +35,10 @@ export class KVState {
   private loadPromise: Promise<void> | null = null;
   private readonly store: JsonFileStore<Record<string, unknown>>;
 
-  constructor(options: KVStateOptions);
-  constructor(sessionId?: string, storageRoot?: string);
-  constructor(sessionIdOrOptions?: string | KVStateOptions, storageRoot?: string) {
-    const options = resolveKVStateOptions(sessionIdOrOptions, storageRoot);
+  constructor(options: KVStateOptions) {
+    if (!options.stateDir || options.stateDir.trim().length === 0) {
+      throw new Error('KVState requires a non-empty stateDir');
+    }
     this.sessionId = options.sessionId ?? KVState.generateId();
     this.stateDir = options.stateDir;
     this.filePath = join(this.stateDir, `session_${this.sessionId}.json`);
@@ -144,12 +120,8 @@ export class KVState {
     return this.sessionId;
   }
 
-  static listSessions(options: Pick<KVStateOptions, 'stateDir'>): string[];
-  static listSessions(storageRoot?: string): string[];
-  static listSessions(optionsOrStorageRoot?: string | Pick<KVStateOptions, 'stateDir'>): string[] {
-    const stateDir = typeof optionsOrStorageRoot === 'object' && optionsOrStorageRoot !== null
-      ? resolveKVStateOptions(optionsOrStorageRoot).stateDir
-      : resolveLegacyStateDir(optionsOrStorageRoot);
+  static listSessions(options: Pick<KVStateOptions, 'stateDir'>): string[] {
+    const stateDir = readKVStateDir(options);
     if (!existsSync(stateDir)) return [];
     try {
       return readdirSync(stateDir)
@@ -161,12 +133,8 @@ export class KVState {
     }
   }
 
-  static cleanupOldSessions(keepCount: number, options: Pick<KVStateOptions, 'stateDir'>): void;
-  static cleanupOldSessions(keepCount: number, storageRoot?: string): void;
-  static cleanupOldSessions(keepCount: number, optionsOrStorageRoot?: string | Pick<KVStateOptions, 'stateDir'>): void {
-    const stateDir = typeof optionsOrStorageRoot === 'object' && optionsOrStorageRoot !== null
-      ? resolveKVStateOptions(optionsOrStorageRoot).stateDir
-      : resolveLegacyStateDir(optionsOrStorageRoot);
+  static cleanupOldSessions(keepCount: number, options: Pick<KVStateOptions, 'stateDir'>): void {
+    const stateDir = readKVStateDir(options);
     if (!existsSync(stateDir)) return;
     try {
       const files = readdirSync(stateDir)
@@ -238,4 +206,11 @@ export class KVState {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
   }
+}
+
+function readKVStateDir(options: Pick<KVStateOptions, 'stateDir'>): string {
+  if (!options.stateDir || options.stateDir.trim().length === 0) {
+    throw new Error('KVState requires a non-empty stateDir');
+  }
+  return options.stateDir;
 }

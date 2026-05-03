@@ -31,6 +31,7 @@ const MAX_TURNS = 50;
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000];
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000;
 const RATE_LIMIT_MAX_RETRIES = 3;
+const MAX_CHAT_RETRY_ITERATIONS = NETWORK_RETRY_DELAYS_MS.length + RATE_LIMIT_MAX_RETRIES + 4;
 const CONTEXT_COMPACT_THRESHOLD = 0.85;
 const MIN_WINDOW_FOR_LLM_COMPACT = 12_000;
 
@@ -468,13 +469,12 @@ export async function runAgentTask(
         );
       }
 
-      let response: Awaited<ReturnType<LLMProvider['chat']>>;
+      let response: Awaited<ReturnType<LLMProvider['chat']>> | undefined;
       {
         let networkAttempt = 0;
         let rateLimitAttempt = 0;
         let contextRetried = false;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
+        for (let chatRetryIteration = 0; chatRetryIteration < MAX_CHAT_RETRY_ITERATIONS; chatRetryIteration++) {
           let streamAccumulated = '';
           record.streamingContent = undefined;
 
@@ -576,6 +576,9 @@ export async function runAgentTask(
               throw chatErr;
             }
           }
+        }
+        if (response === undefined) {
+          throw new Error(`Agent ${record.id}: chat retry loop exceeded ${MAX_CHAT_RETRY_ITERATIONS} iterations`);
         }
         record.streamingContent = undefined;
         record.progress = `Turn ${turn} · Thinking…`;

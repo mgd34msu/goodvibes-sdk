@@ -16,7 +16,7 @@ export function attachTransportDomain(
         const span = startTransportSpan(helpers.tracer, {
           transportId: env.payload.transportId,
           protocol: env.payload.protocol,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         transportSpans.set(env.payload.transportId, span);
       });
@@ -120,7 +120,7 @@ export function attachTaskDomain(
           agentId: env.payload.agentId,
           description: env.payload.description,
           priority: env.payload.priority,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         taskSpans.set(env.payload.taskId, span);
       });

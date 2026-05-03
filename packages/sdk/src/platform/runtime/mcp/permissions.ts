@@ -28,7 +28,7 @@ const DEFAULT_TRUST_MODE: McpTrustMode = 'ask-on-risk';
 const DEFAULT_SERVER_ROLE: McpServerRole = 'general';
 const MAX_DECISION_HISTORY = 50;
 
-function modeFromLegacyTrust(level: McpTrustLevel): McpTrustMode {
+function modeFromTrustLevel(level: McpTrustLevel): McpTrustMode {
   switch (level) {
     case 'trusted':
       return 'allow-all';
@@ -253,7 +253,7 @@ export class McpPermissionManager {
       profile: {
         serverName,
         role: profile?.role ?? DEFAULT_SERVER_ROLE,
-        mode: profile?.mode ?? modeFromLegacyTrust(trustLevel),
+        mode: profile?.mode ?? modeFromTrustLevel(trustLevel),
         allowedPaths: profile?.allowedPaths ?? [],
         allowedHosts: profile?.allowedHosts ?? [],
         allowedCapabilities: profile?.allowedCapabilities ?? [],

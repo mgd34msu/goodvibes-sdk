@@ -12,6 +12,7 @@ import {
   getStreamReconnectDelay,
   normalizeStreamReconnectPolicy,
 } from '../packages/sdk/dist/index.js';
+import { settleEvents, waitFor } from './_helpers/test-timeout.js';
 
 function createFetchStub(factory: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): typeof fetch {
   return factory as unknown as typeof fetch;
@@ -344,10 +345,7 @@ describe('transport realtime', () => {
       payloads.push(event.payload);
     });
 
-    const deadline = Date.now() + 500;
-    while (Date.now() < deadline && payloads.length === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    }
+    await waitFor(() => payloads.length > 0, { timeoutMs: 500, intervalMs: 5 });
     unsubscribe();
 
     expect(seenLastEventIds.slice(0, 2)).toEqual([null, 'evt-1']);
@@ -384,9 +382,9 @@ describe('transport realtime', () => {
       const ws = instances[instances.length - 1];
       if (!ws) break;
       ws.simulateOpen();
-      await new Promise((r) => setTimeout(r, 0)); // allow onOpen to settle
+      await settleEvents(0); // allow onOpen to settle
       ws.simulateClose();
-      await new Promise((r) => setTimeout(r, 0)); // allow scheduleReconnect to settle
+      await settleEvents(0); // allow scheduleReconnect to settle
     }
 
     // Reconnects are bounded: total instances <= DEFAULT_WS_MAX_ATTEMPTS + 1 (original connection).
@@ -415,16 +413,16 @@ describe('transport realtime', () => {
 
     // Simulate one full connect + first successful message.
     instances[0].simulateOpen();
-    await new Promise((r) => setTimeout(r, 0));
+    await settleEvents(0);
     instances[0].simulateMessage(JSON.stringify({
       type: 'event',
       event: 'agents',
-      payload: { type: 'AGENT_STARTED', sessionId: 's1', payload: { id: 'a1' } },
+      payload: { type: 'AGENT_STARTED', sessionId: 's1', payload: { type: 'AGENT_STARTED', id: 'a1' } },
     }));
     // After message, reconnectAttempt should have reset: close and reconnect multiple times
     // without hitting the maxAttempts cap (they should all succeed since counter reset).
     instances[0].simulateClose();
-    await new Promise((r) => setTimeout(r, 0));
+    await settleEvents(0);
 
     expect(instances.length).toBeGreaterThanOrEqual(2);
     // 2nd connection opened after reset, meaning cap was not exhausted by the first close.
@@ -472,7 +470,7 @@ describe('transport realtime', () => {
 
     // Now resolve the token.
     resolveToken();
-    await new Promise((r) => setTimeout(r, 0));
+    await settleEvents(0);
 
     // Auth frame should now be the first and only outbound message.
     expect(ws.sentMessages).toHaveLength(1);

@@ -23,9 +23,9 @@ function cleanPackageDists(): void {
   }
 }
 
-withWorkspaceLock('build', () => {
+await withWorkspaceLock('build', () => {
   run('bun', ['run', 'sync:version']);
   cleanPackageDists();
-  run('bun', ['x', 'tsc', '-b', '--force']);
+  run('bunx', ['tsc', '-b', '--force']);
   run('bun', ['run', 'prepare:sdk']);
 });

@@ -1,5 +1,7 @@
 # Runtime Surfaces
 
+> Consumer surface map. For internal runtime boundary details see [Runtime Boundary Model](./runtime-surfaces.md).
+
 The `@pellux/goodvibes-sdk` package has two surfaces with different runtime requirements.
 
 See also: [Public Surface reference](./public-surface.md) for the full exports

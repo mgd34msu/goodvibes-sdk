@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { logger } from '../utils/logger.js';
 import { createDomainDispatch } from '../runtime/store/index.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { RuntimeEventBus, RuntimeEventDomain } from '../runtime/events/index.js';
@@ -120,7 +121,7 @@ export class ControlPlaneGateway {
   private _recentEventsHead = 0;
   private _recentEventsCount = 0;
   private readonly _recentEventsCapacity = 500;
-  /** Back-compat accessor used by getSnapshot / listRecentEvents */
+  /** Materialized newest-first view of the recent event ring buffer. */
   private get recentEvents(): ScopedControlPlaneRecentEvent[] {
     const out: ScopedControlPlaneRecentEvent[] = [];
     const count = this._recentEventsCount;
@@ -132,7 +133,7 @@ export class ControlPlaneGateway {
         out.push(entry);
       } else if (process.env.NODE_ENV !== 'production') {
         // Dev-only: undefined slot despite valid count — ring buffer accounting bug.
-        console.error('[ControlPlaneGateway] recentEvents: undefined slot at ring index', idx, { head: this._recentEventsHead, count: this._recentEventsCount, i });
+        logger.error('[ControlPlaneGateway] recentEvents: undefined slot at ring index', { head: this._recentEventsHead, count: this._recentEventsCount, index: idx, offset: i });
       }
     }
     return out;
@@ -779,7 +780,7 @@ export class ControlPlaneGateway {
     replayScope?: ControlPlaneEventReplayScope,
   ): ScopedControlPlaneRecentEvent {
     const record: ScopedControlPlaneRecentEvent = {
-      id: `cpe-${randomUUID().slice(0, 8)}`,
+      id: `evt-${randomUUID().slice(0, 8)}`,
       event,
       createdAt: Date.now(),
       payload,

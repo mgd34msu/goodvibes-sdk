@@ -1,3 +1,5 @@
+import type { JsonRecord } from './route-helpers.js';
+
 export type ArtifactKind = string;
 export type FetchExtractMode = string;
 export type MediaArtifact = Record<string, unknown>;
@@ -74,7 +76,7 @@ export interface DaemonMediaRouteContext {
   readonly configManager: ConfigManagerLike;
   readonly mediaProviders: MediaProviderRegistryLike;
   readonly multimodalService: MultimodalServiceLike;
-  readonly parseJsonBody: (req: Request) => Promise<Record<string, unknown> | Response>;
+  readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
   readonly requireAdmin: (req: Request) => Response | null;
   readonly voiceService: VoiceServiceLike;
   readonly webSearchService: WebSearchServiceLike;

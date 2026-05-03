@@ -14,6 +14,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { settleEvents } from './_helpers/test-timeout.js';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionLLMProvider,
@@ -130,7 +131,7 @@ describe('TR1: ToolRegistry.execute() called when LLM emits tool_call', () => {
     await manager.postMessage(session.id, 'use a tool please');
 
     // Give async turn time to complete
-    await new Promise((r) => setTimeout(r, 100));
+    await settleEvents(100);
 
     expect(calls.length).toBe(1);
     expect(calls[0]!.args).toEqual({ query: 'hello' });
@@ -161,7 +162,7 @@ describe('TR2: turn.tool_result event published after tool executes', () => {
     const session = manager.createSession();
     await manager.postMessage(session.id, 'run tool');
 
-    await new Promise((r) => setTimeout(r, 100));
+    await settleEvents(100);
 
     const toolResultEvents = events.filter((e) => e.event === 'companion-chat.turn.tool_result');
     expect(toolResultEvents.length).toBeGreaterThanOrEqual(1);
@@ -206,7 +207,7 @@ describe('TR3: tool execution error published as isError=true', () => {
     const session = manager.createSession();
     await manager.postMessage(session.id, 'run failing tool');
 
-    await new Promise((r) => setTimeout(r, 100));
+    await settleEvents(100);
 
     const toolResultEvents = events.filter((e) => e.event === 'companion-chat.turn.tool_result');
     expect(toolResultEvents.length).toBeGreaterThanOrEqual(1);
@@ -239,7 +240,7 @@ describe('TR4: no toolRegistry — tool_call event published, graceful degradati
     const session = manager.createSession();
     await manager.postMessage(session.id, 'run tool with no registry');
 
-    await new Promise((r) => setTimeout(r, 100));
+    await settleEvents(100);
 
     const toolCallEvents = events.filter((e) => e.event === 'companion-chat.turn.tool_call');
     expect(toolCallEvents.length).toBeGreaterThanOrEqual(1);

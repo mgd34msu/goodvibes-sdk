@@ -1,14 +1,10 @@
 # Verdaccio Dry-Run CI Setup
 
-## DevDependency to add
+## Dependency
 
-Add to root `package.json` → `devDependencies`:
-
-```json
-"verdaccio": "^6.5.2"
-```
-
-Then run `bun install`.
+The root workspace declares `verdaccio` as a devDependency so the dry-run can
+run in air-gapped CI after `bun install --frozen-lockfile`. `VERDACCIO_BIN` may
+still be set to test a different local Verdaccio binary intentionally.
 
 ## CI Job YAML snippet
 

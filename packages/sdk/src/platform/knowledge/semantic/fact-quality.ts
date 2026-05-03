@@ -34,10 +34,10 @@ export function semanticFactText(fact: KnowledgeNodeRecord): string {
   ].filter(Boolean) as string[];
   const uniqueParts: string[] = [];
   for (const part of parts) {
-    const normalized = part.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const normalized = normalizeComparableFactPart(part);
     if (!normalized) continue;
     if (uniqueParts.some((existing) => {
-      const existingNormalized = existing.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const existingNormalized = normalizeComparableFactPart(existing);
       return existingNormalized === normalized
         || normalized.startsWith(`${existingNormalized} `)
         || existingNormalized.startsWith(`${normalized} `);
@@ -45,6 +45,14 @@ export function semanticFactText(fact: KnowledgeNodeRecord): string {
     uniqueParts.push(part);
   }
   return uniqueParts.join(' ').toLowerCase();
+}
+
+function normalizeComparableFactPart(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/^(?:the|this|these|a|an)\s+/, '');
 }
 
 export function isLowValueFeatureOrSpecText(text: string): boolean {

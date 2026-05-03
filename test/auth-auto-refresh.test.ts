@@ -17,20 +17,22 @@ import type { AutoRefreshOptions } from '../packages/sdk/src/auth.js';
 import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 import type { SDKObserver } from '../packages/sdk/src/observer/index.js';
 import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
+import { installFrozenNow } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 const TEST_NOW_MS = 1_800_000_000_000;
-const originalDateNow = Date.now;
+let restoreDateNow: (() => void) | undefined;
 
 beforeEach(() => {
-  Date.now = () => TEST_NOW_MS;
+  restoreDateNow = installFrozenNow(TEST_NOW_MS);
 });
 
 afterEach(() => {
-  Date.now = originalDateNow;
+  restoreDateNow?.();
+  restoreDateNow = undefined;
 });
 
 /** Build a 401 HTTP-status-error matching the SDK's expected shape. */

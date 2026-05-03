@@ -7,6 +7,11 @@ import type { McpRegistry } from '../mcp/registry.js';
 import type { ShellPathService } from './shell-paths.js';
 import { summarizeError } from '../utils/error-display.js';
 
+const FALLBACK_MODEL = {
+  model: 'openrouter/free',
+  provider: 'openrouter',
+} as const;
+
 export interface RuntimeSelectionState {
   model: string;
   provider: string;
@@ -116,19 +121,19 @@ export function startBackgroundProviderDiscovery(
         );
         const wasActive = server.models.includes(currentModel);
         if (wasActive) {
-          configManager.set('provider.model', 'openrouter/free');
-          configManager.set('provider.provider', 'openrouter');
+          configManager.set('provider.model', FALLBACK_MODEL.model);
+          configManager.set('provider.provider', FALLBACK_MODEL.provider);
           try {
-            providerRegistry.setCurrentModel('openrouter/free');
-            runtime.model = 'openrouter/free';
-            runtime.provider = 'openrouter';
+            providerRegistry.setCurrentModel(FALLBACK_MODEL.model);
+            runtime.model = FALLBACK_MODEL.model;
+            runtime.provider = FALLBACK_MODEL.provider;
           } catch (err) {
             logger.debug('[bootstrap] Non-fatal error switching model after server removal', {
               error: summarizeError(err),
             });
           }
           systemMessageRouter.high(
-            `[Scan] Active model was on ${server.name} — switched to openrouter/free`,
+            `[Scan] Active model was on ${server.name} — switched to ${FALLBACK_MODEL.model}`,
           );
         }
       }

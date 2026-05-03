@@ -29,6 +29,10 @@ export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions
 
 export interface OperatorRemoteClientOptions {
   readonly getResponseSchema?: (methodId: string) => ContractInvokeOptions['responseSchema'];
+  /**
+   * Applies to JSON request/response methods. Server-sent event stream payloads
+   * are validated by their realtime event schemas at the transport boundary.
+   */
   readonly validateResponses?: boolean;
 }
 
@@ -209,6 +213,8 @@ export function createOperatorRemoteClient(
     // Streams may be opened without handlers when the caller wants the raw
     // cancel function only; provide the empty handler map explicitly so
     // openContractRouteStream never has to infer a missing options object.
+    // Response validation is not applied here because stream payloads are
+    // delivered through per-event handlers rather than a single response body.
     const streamOptions = options ?? { handlers: {} };
     return openContractRouteStream(
       transport,

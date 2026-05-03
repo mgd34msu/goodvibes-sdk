@@ -1,29 +1,57 @@
 import type { DaemonRuntimeAutomationRouteHandlers } from './context.js';
 import type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
 import { jsonErrorResponse } from './error-response.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  readBoundedBodyInteger,
+  readOptionalStringField,
+  readStringArrayField,
+  type JsonRecord,
+} from './route-helpers.js';
+
+type AutomationScheduleBody = {
+  readonly prompt: string;
+  readonly kind: string;
+  readonly cron?: string;
+  readonly every?: string;
+  readonly at?: string | number;
+  readonly timezone?: string;
+  readonly timeoutMs?: number;
+  readonly fallbackModels?: string[];
+};
 
 export function createDaemonRuntimeAutomationRouteHandlers(
   context: DaemonRuntimeRouteContext,
 ): DaemonRuntimeAutomationRouteHandlers {
   return {
     getAutomationJobs: () => Response.json({ jobs: context.automationManager.listJobs() }),
-    postAutomationJob: async (request) => handlePostSchedule(context, request),
+    postAutomationJob: async (request) => withAdmin(context, request, () => handlePostSchedule(context, request)),
     getAutomationRuns: () => Response.json({ runs: context.automationManager.listRuns() }),
     getAutomationRun: (runId) => handleGetAutomationRun(context, runId),
     getAutomationHeartbeat: () => Response.json({ pending: [] }),
-    postAutomationHeartbeat: async (request) => handlePostAutomationHeartbeat(context, request),
-    automationRunAction: async (runId, action, request) => handleAutomationRunAction(context, runId, action, request),
-    patchAutomationJob: async (jobId, request) => handlePatchSchedule(context, jobId, request),
-    deleteAutomationJob: async (jobId) => handleDeleteSchedule(context, jobId),
-    setAutomationJobEnabled: async (jobId, enabled) => handleSetScheduleEnabled(context, jobId, enabled),
-    runAutomationJobNow: async (jobId) => handleRunScheduleNow(context, jobId),
+    postAutomationHeartbeat: async (request) => withAdmin(context, request, () => handlePostAutomationHeartbeat(context, request)),
+    automationRunAction: async (runId, action, request) => withAdmin(context, request, () => handleAutomationRunAction(context, runId, action, request)),
+    patchAutomationJob: async (jobId, request) => withAdmin(context, request, () => handlePatchSchedule(context, jobId, request)),
+    deleteAutomationJob: async (jobId, request) => withAdmin(context, request, () => handleDeleteSchedule(context, jobId)),
+    setAutomationJobEnabled: async (jobId, enabled, request) => withAdmin(context, request, () => handleSetScheduleEnabled(context, jobId, enabled)),
+    runAutomationJobNow: async (jobId, request) => withAdmin(context, request, () => handleRunScheduleNow(context, jobId)),
     getSchedules: () => handleGetSchedules(context),
-    postSchedule: (request) => handlePostSchedule(context, request),
-    deleteSchedule: async (scheduleId) => handleDeleteSchedule(context, scheduleId),
-    setScheduleEnabled: (scheduleId, enabled) => handleSetScheduleEnabled(context, scheduleId, enabled),
-    runScheduleNow: (scheduleId) => handleRunScheduleNow(context, scheduleId),
+    postSchedule: (request) => withAdmin(context, request, () => handlePostSchedule(context, request)),
+    deleteSchedule: async (scheduleId, request) => withAdmin(context, request, () => handleDeleteSchedule(context, scheduleId)),
+    setScheduleEnabled: (scheduleId, enabled, request) => withAdmin(context, request, () => handleSetScheduleEnabled(context, scheduleId, enabled)),
+    runScheduleNow: (scheduleId, request) => withAdmin(context, request, () => handleRunScheduleNow(context, scheduleId)),
     getSchedulerCapacity: () => Response.json(context.automationManager.getSchedulerCapacity()),
   };
+}
+
+function withAdmin(
+  context: DaemonRuntimeRouteContext,
+  req: Request,
+  next: () => Response | Promise<Response>,
+): Response | Promise<Response> {
+  const denied = context.requireAdmin(req);
+  return denied ?? next();
 }
 
 function handleGetSchedules(context: DaemonRuntimeRouteContext): Response {
@@ -32,47 +60,68 @@ function handleGetSchedules(context: DaemonRuntimeRouteContext): Response {
   return Response.json({ jobs, runs });
 }
 
+const automationBodySchemas = createRouteBodySchemaRegistry({
+  schedule: createRouteBodySchema<AutomationScheduleBody>('POST /api/automation/schedules', (body) => {
+    const prompt = readOptionalStringField(body, 'prompt');
+    if (!prompt) return jsonErrorResponse({ error: 'Missing required field: prompt (string)' }, { status: 400 });
+    if (prompt.length > 10_000) {
+      return jsonErrorResponse({ error: 'prompt exceeds maximum length of 10000 characters' }, { status: 400 });
+    }
+    const scheduleObj = body.schedule && typeof body.schedule === 'object' && !Array.isArray(body.schedule)
+      ? body.schedule as JsonRecord
+      : null;
+    const timeoutMs = readScheduleTimeoutMs(body.timeoutMs);
+    if (timeoutMs instanceof Response) return timeoutMs;
+    const cron = readOptionalStringField(body, 'cron') ?? readOptionalStringField(scheduleObj ?? {}, 'expression');
+    const every = readOptionalStringField(body, 'every');
+    const timezone = readOptionalStringField(body, 'timezone');
+    const fallbackModels = readStringArrayField(body, 'fallbackModels');
+    return {
+      prompt,
+      kind: readOptionalStringField(body, 'kind') ?? 'cron',
+      ...(cron ? { cron } : {}),
+      ...(every ? { every } : {}),
+      ...(typeof body.at === 'string' || typeof body.at === 'number' ? { at: body.at } : {}),
+      ...(timezone ? { timezone } : {}),
+      ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+      ...(fallbackModels ? { fallbackModels } : {}),
+    };
+  }),
+});
+
+function readScheduleTimeoutMs(value: unknown): number | Response | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return jsonErrorResponse({ error: 'timeoutMs must be a finite positive number' }, { status: 400 });
+  }
+  return readBoundedBodyInteger(value, 1, 86_400_000);
+}
+
 async function handlePostSchedule(context: DaemonRuntimeRouteContext, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
-  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : undefined;
-  const kind = typeof body.kind === 'string' ? body.kind : 'cron';
-  const scheduleObj = typeof body.schedule === 'object' && body.schedule !== null ? body.schedule as Record<string, unknown> : null;
-  const cronExpression = typeof body.cron === 'string' ? body.cron : typeof scheduleObj?.expression === 'string' ? scheduleObj.expression : undefined;
-  const cron = cronExpression;
-  const every = typeof body.every === 'string' ? body.every : undefined;
-  const at = typeof body.at === 'string' || typeof body.at === 'number' ? body.at : undefined;
-  const timezone = typeof body.timezone === 'string' ? body.timezone : undefined;
-  if (!prompt) {
-    return Response.json({ error: 'Missing required field: prompt (string)' }, { status: 400 });
-  }
-  if (prompt.length > 10_000) {
-    return Response.json({ error: 'prompt exceeds maximum length of 10000 characters' }, { status: 400 });
-  }
+  const input = automationBodySchemas.schedule.parse(body);
+  if (input instanceof Response) return input;
   try {
-    const fallbackModelsSource = body.fallbackModels ?? body.fallbacks;
-    const fallbackModels = Array.isArray(fallbackModelsSource)
-      ? fallbackModelsSource.filter((value): value is string => typeof value === 'string')
-      : undefined;
-    const schedule = kind === 'every'
-      ? context.normalizeEverySchedule(every ?? '')
-      : kind === 'at'
-        ? context.normalizeAtSchedule(typeof at === 'number' ? at : Date.parse(String(at)))
-        : context.normalizeCronSchedule(cron ?? '', timezone, body.staggerMs ?? body.stagger);
+    const schedule = input.kind === 'every'
+      ? context.normalizeEverySchedule(input.every ?? '')
+      : input.kind === 'at'
+        ? context.normalizeAtSchedule(readAtSchedule(input.at))
+        : context.normalizeCronSchedule(input.cron ?? '', input.timezone, body.staggerMs ?? body.stagger);
     const job = await context.automationManager.createJob({
-      name: typeof body.name === 'string' ? body.name : prompt.slice(0, 40),
-      prompt,
+      name: typeof body.name === 'string' ? body.name : input.prompt.slice(0, 40),
+      prompt: input.prompt,
       schedule,
-      description: prompt,
+      description: input.prompt,
       model: typeof body.model === 'string' ? body.model : undefined,
       provider: typeof body.provider === 'string' ? body.provider : undefined,
-      fallbackModels,
+      ...(input.fallbackModels ? { fallbackModels: input.fallbackModels } : {}),
       template: typeof body.template === 'string' ? body.template : undefined,
       target: typeof body.target === 'object' && body.target !== null ? body.target as Record<string, unknown> : undefined,
       reasoningEffort: body.reasoningEffort,
       thinking: typeof body.thinking === 'string' ? body.thinking : undefined,
       wakeMode: body.wakeMode,
-      timeoutMs: typeof body.timeoutMs === 'number' ? body.timeoutMs : undefined,
+      ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
       toolAllowlist: Array.isArray(body.toolAllowlist) ? body.toolAllowlist.filter((value: unknown): value is string => typeof value === 'string') : undefined,
       autoApprove: typeof body.autoApprove === 'boolean' ? body.autoApprove : undefined,
       allowUnsafeExternalContent: typeof body.allowUnsafeExternalContent === 'boolean' ? body.allowUnsafeExternalContent : undefined,
@@ -89,16 +138,24 @@ async function handlePostSchedule(context: DaemonRuntimeRouteContext, req: Reque
   }
 }
 
+function readAtSchedule(at: string | number | undefined): number {
+  const value = typeof at === 'number' ? at : Date.parse(String(at));
+  if (!Number.isFinite(value)) {
+    throw new Error('Invalid at schedule; expected an epoch timestamp or parseable date string');
+  }
+  return value;
+}
+
 async function handlePatchSchedule(context: DaemonRuntimeRouteContext, id: string, req: Request): Promise<Response> {
   const job = findAutomationJob(context, id);
-  if (!job) return Response.json({ error: `Schedule not found: ${id}` }, { status: 404 });
+  if (!job) return jsonErrorResponse({ error: `Schedule not found: ${id}` }, { status: 404 });
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   try {
     const updated = await context.automationManager.updateJob(job.id, body as Record<string, unknown>);
     return updated
       ? Response.json(updated)
-      : Response.json({ error: `Schedule not found: ${id}` }, { status: 404 });
+      : jsonErrorResponse({ error: `Schedule not found: ${id}` }, { status: 404 });
   } catch (error) {
     return jsonErrorResponse(error, { status: 400, fallbackMessage: 'Failed to update schedule' });
   }
@@ -106,21 +163,21 @@ async function handlePatchSchedule(context: DaemonRuntimeRouteContext, id: strin
 
 async function handleDeleteSchedule(context: DaemonRuntimeRouteContext, id: string): Promise<Response> {
   const job = findAutomationJob(context, id);
-  if (!job) return Response.json({ error: `Schedule not found: ${id}` }, { status: 404 });
+  if (!job) return jsonErrorResponse({ error: `Schedule not found: ${id}` }, { status: 404 });
   await context.automationManager.removeJob(job.id);
   return Response.json({ removed: true, id: job.id });
 }
 
 async function handleSetScheduleEnabled(context: DaemonRuntimeRouteContext, id: string, enabled: boolean): Promise<Response> {
   const job = findAutomationJob(context, id);
-  if (!job) return Response.json({ error: `Schedule not found: ${id}` }, { status: 404 });
+  if (!job) return jsonErrorResponse({ error: `Schedule not found: ${id}` }, { status: 404 });
   const updated = await context.automationManager.setEnabled(job.id, enabled);
   return Response.json(updated ?? { id: job.id, enabled });
 }
 
 async function handleRunScheduleNow(context: DaemonRuntimeRouteContext, id: string): Promise<Response> {
   const job = findAutomationJob(context, id);
-  if (!job) return Response.json({ error: `Schedule not found: ${id}` }, { status: 404 });
+  if (!job) return jsonErrorResponse({ error: `Schedule not found: ${id}` }, { status: 404 });
   try {
     const run = await context.automationManager.runNow(job.id);
     return Response.json({ jobId: job.id, runId: run.id, agentId: run.agentId, status: run.status });
@@ -154,7 +211,7 @@ async function handleAutomationRunAction(
     const run = await context.automationManager.cancelRun(runId, reason);
     return run
       ? context.recordApiResponse(req, `/api/automation/runs/${runId}/${action}`, Response.json({ run }))
-      : context.recordApiResponse(req, `/api/automation/runs/${runId}/${action}`, Response.json({ error: 'Unknown automation run' }, { status: 404 }));
+      : context.recordApiResponse(req, `/api/automation/runs/${runId}/${action}`, jsonErrorResponse({ error: 'Unknown automation run' }, { status: 404 }));
   }
   try {
     const run = await context.automationManager.retryRun(runId);
@@ -171,7 +228,7 @@ async function handleAutomationRunAction(
 function handleGetAutomationRun(context: DaemonRuntimeRouteContext, runId: string): Response {
   const run = context.automationManager.getRun(runId);
   if (!run) {
-    return Response.json({ error: 'Unknown automation run' }, { status: 404 });
+    return jsonErrorResponse({ error: 'Unknown automation run' }, { status: 404 });
   }
   return Response.json({ run, deliveries: [] });
 }

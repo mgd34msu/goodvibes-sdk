@@ -317,6 +317,9 @@ type SharpFactory = (input: Buffer) => SharpInstance;
  */
 export async function tryLoadSharp(): Promise<SharpFactory | null> {
   try {
+    // Preserve dynamic ESM import when TypeScript is emitted through CommonJS
+    // targets; `import('sharp')` would otherwise be lowered into `require`.
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
     const dynamicImport = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<unknown>;
     const mod = await dynamicImport('sharp');
     if (typeof mod === 'function') {

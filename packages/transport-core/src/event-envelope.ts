@@ -3,12 +3,12 @@ import { createUuidV4 } from './uuid.js';
 export interface EventEnvelope<TType extends string, TPayload> {
   readonly type: TType;
   readonly ts: number;
-  readonly traceId: string;
-  readonly sessionId: string;
+  readonly traceId?: string;
+  readonly sessionId?: string;
   readonly turnId?: string;
   readonly agentId?: string;
   readonly taskId?: string;
-  readonly source: string;
+  readonly source?: string;
   readonly payload: TPayload;
 }
 
@@ -29,6 +29,9 @@ export function createEventEnvelope<TType extends string, TPayload>(
   return Object.freeze({
     type,
     ts: Date.now(),
+    // Callers that want multiple fan-out envelopes correlated under one trace
+    // must provide a shared traceId; this helper only creates a traceId when no
+    // correlation context was supplied.
     traceId: context.traceId ?? createUuidV4(),
     sessionId: context.sessionId,
     turnId: context.turnId,

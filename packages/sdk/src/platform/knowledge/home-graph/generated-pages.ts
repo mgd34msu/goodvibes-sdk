@@ -72,6 +72,8 @@ interface DevicePassportSourceLookup {
   readonly sourcesById: ReadonlyMap<string, KnowledgeSourceRecord>;
   readonly sourceIdsByNodeId: ReadonlyMap<string, ReadonlySet<string>>;
 }
+type HomeGraphStateSnapshot = ReturnType<typeof readHomeGraphState>;
+type ExtractionBySourceId = ReadonlyMap<string, ReturnType<KnowledgeStore['getExtractionBySourceId']>>;
 
 export async function generateAutomaticHomeGraphPages(
   context: HomeGraphPageContext & { readonly input: HomeGraphSnapshotInput },
@@ -115,6 +117,12 @@ async function generateHomeGraphPagesForCurrentState(
     : undefined;
 
   const state = readHomeGraphState(context.store, context.spaceId);
+  const sourceLookup = buildDevicePassportSourceLookup(state.sources, state.nodes, state.edges);
+  const extractionsBySourceId = new Map(
+    context.store
+      .listExtractionsForSources(new Set(state.sources.map((source) => source.id)))
+      .map((extraction) => [extraction.sourceId, extraction]),
+  );
   if (effectiveOptions.devicePassports !== false) {
     const allDevices = prioritizeNodesForGeneratedPages(
       state.nodes.filter((node) => node.kind === 'ha_device' && node.status !== 'stale'),
@@ -131,6 +139,9 @@ async function generateHomeGraphPagesForCurrentState(
       try {
         const page = await refreshHomeGraphDevicePassport({
           ...context,
+          state,
+          sourceLookup,
+          extractionsBySourceId,
           input: {
             knowledgeSpaceId: context.spaceId,
             deviceId,
@@ -197,7 +208,12 @@ function deadlineReached(deadlineAt: number | undefined): boolean {
 }
 
 export async function refreshHomeGraphDevicePassport(
-  context: HomeGraphPageContext & { readonly input: HomeGraphProjectionInput },
+  context: HomeGraphPageContext & {
+    readonly input: HomeGraphProjectionInput;
+    readonly state?: HomeGraphStateSnapshot;
+    readonly sourceLookup?: DevicePassportSourceLookup;
+    readonly extractionsBySourceId?: ExtractionBySourceId;
+  },
 ): Promise<HomeGraphDevicePassportResult & { readonly artifactCreated: boolean }> {
   const { store, artifactStore, spaceId, installationId, input } = context;
   if (!input.deviceId) {
@@ -207,7 +223,7 @@ export async function refreshHomeGraphDevicePassport(
       operation: 'homegraph.refreshDevicePassport',
     });
   }
-  const state = readHomeGraphState(store, spaceId);
+  const state = context.state ?? readHomeGraphState(store, spaceId);
   const device = findHomeAssistantNode(state.nodes, 'ha_device', input.deviceId);
   if (!device) {
     throw new GoodVibesSdkError(`Unknown Home Assistant device: ${input.deviceId}`, {
@@ -226,8 +242,16 @@ export async function refreshHomeGraphDevicePassport(
       && edge.relation === 'belongs_to_device'
     ))
   ));
-  const sources = sourcesForDevicePassport(device.id, buildDevicePassportSourceLookup(state.sources, state.nodes, state.edges));
-  const pageProfileFacts = await upsertDevicePageProfileFacts({ store, spaceId, installationId, device, sources });
+  const sourceLookup = context.sourceLookup ?? buildDevicePassportSourceLookup(state.sources, state.nodes, state.edges);
+  const sources = sourcesForDevicePassport(device.id, sourceLookup);
+  const pageProfileFacts = await upsertDevicePageProfileFacts({
+    store,
+    spaceId,
+    installationId,
+    device,
+    sources,
+    extractionsBySourceId: context.extractionsBySourceId,
+  });
   const semanticFacts = uniqueNodesById([
     ...semanticFactsForNode(device.id, sources, state.nodes, state.edges),
     ...pageProfileFacts,
@@ -639,6 +663,7 @@ async function upsertDevicePageProfileFacts(input: {
   readonly installationId: string;
   readonly device: KnowledgeNodeRecord;
   readonly sources: readonly KnowledgeSourceRecord[];
+  readonly extractionsBySourceId?: ExtractionBySourceId;
 }): Promise<KnowledgeNodeRecord[]> {
   return input.store.batch(async () => {
     const facts: KnowledgeNodeRecord[] = [];
@@ -647,7 +672,7 @@ async function upsertDevicePageProfileFacts(input: {
       .sort(compareHomeGraphPageSources)
       .slice(0, MAX_PROFILE_SOURCES_PER_DEVICE_PAGE);
     for (const source of sources) {
-      const extraction = input.store.getExtractionBySourceId(source.id);
+      const extraction = input.extractionsBySourceId?.get(source.id) ?? input.store.getExtractionBySourceId(source.id);
       const sourceText = extractedPageSourceText(source, extraction);
       if (!sourceText.trim()) continue;
       const profileFacts = deriveRepairProfileFacts({

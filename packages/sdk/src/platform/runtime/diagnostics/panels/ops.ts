@@ -109,8 +109,8 @@ export class OpsPanel {
       note: payload.note,
       outcome: payload.outcome,
       errorMessage: payload.errorMessage,
-      traceId: envelope.traceId,
-      sessionId: envelope.sessionId,
+      traceId: envelope.traceId ?? '',
+      sessionId: envelope.sessionId ?? '',
     };
 
     appendBounded(this._audit, record, this._config.bufferLimit);

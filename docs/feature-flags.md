@@ -161,6 +161,5 @@ side effects are expected:
    command and user-facing denial-output fixtures.
 3. Tighten `tool-contract-verification` metadata over time by adding explicit
    categories and idempotency declarations to side-effecting tools.
-   behavior.
-5. Keep new feature flags out of the table until they have either a tested
+4. Keep new feature flags out of the table until they have either a tested
    runtime gate or a clear `registry-only` classification.

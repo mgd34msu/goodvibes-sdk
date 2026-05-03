@@ -275,7 +275,7 @@ export function registerAllTools(
     ...(archetypeLoader ? { archetypeLoader } : {}),
     ...(wrfcController ? { wrfcController } : {}),
   }));
-  const kvState = new KVState(undefined, workingDirectory);
+  const kvState = new KVState({ stateDir: join(workingDirectory, '.goodvibes', 'state') });
   const hookDispatcher = new HookDispatcher();
   registerTool(createStateTool(kvState, projectIndex, {
     memoryDir: join(workingDirectory, '.goodvibes', 'memory'),

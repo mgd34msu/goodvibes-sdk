@@ -58980,7 +58980,7 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
 
 Return the session integration snapshot.
 
-- Title: `Legacy Session Snapshot`
+- Title: `Session Integration Snapshot`
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`

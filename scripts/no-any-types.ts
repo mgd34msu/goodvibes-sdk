@@ -42,26 +42,32 @@ const REPO_ROOT = resolve(__dirname, '..');
  *
  * Type-position prefixes:
  *   :\s*    — type annotation (e.g., foo: any)
- *   <       — generic arg start (e.g., Array<any>)
- *   ,\s*    — generic arg separator (e.g., Foo<T, any>)
+ *   <\s*    — generic arg start (e.g., Array<any>, Array < any >)
+ *   [\s*    — tuple/array element start (e.g., [any, string])
+ *   ,\s*    — generic/tuple arg separator (e.g., Foo<T, any>, [string, any])
  *   \|\s*   — union member (e.g., string | any)
  *   &\s*    — intersection member
  *   as\s+   — type assertion (e.g., x as any)
  *   extends\s+ — constraint
  *   =\s*    — type alias RHS (e.g., type Foo = any)
+ *   =>\s*   — function return type (e.g., () => any)
+ *   keyof\s+ — keyof constraint root (e.g., keyof any)
  *
  * Type-terminator suffixes (what can follow `any` in a type position):
- *   > [ ) , ; | & space newline
+ *   > [ ] ) , ; ? : | & space newline
  */
 const ANY_TYPE_PATTERNS: RegExp[] = [
-  /:\s*any(?=[\s>\[\),;&|]|$)/,       // : any
-  /<any(?=[\s>\[\),;&|]|$)/,           // <any
-  /,\s*any(?=[\s>\[\),;&|]|$)/,        // , any
-  /\|\s*any(?=[\s>\[\),;&|]|$)/,       // | any
-  /&\s*any(?=[\s>\[\),;&|]|$)/,        // & any
-  /\bas\s+any(?=[\s>\[\),;&|]|$)/,     // as any
-  /\bextends\s+any(?=[\s>\[\),;&|]|$)/, // extends any
-  /=\s*any(?=[\s>\[\),;&|]|$)/,        // = any
+  /:\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,        // : any, : readonly any[]
+  /<\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,        // <any, < readonly any
+  /\[\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,       // [any
+  /,\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,        // , any
+  /\|\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,       // | any
+  /&\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,        // & any
+  /=>\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,       // => any
+  /\bas\s+any(?=[\s>\[\]\),;?:&|]|$)/,                     // as any
+  /\bextends\s+(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/, // extends any
+  /=\s*(?:readonly\s+)?any(?=[\s>\[\]\),;?:&|]|$)/,        // = any
+  /\bkeyof\s+any(?=[\s>\[\]\),;?:&|]|$)/,                  // keyof any
 ];
 
 /** Source extensions we care about. */

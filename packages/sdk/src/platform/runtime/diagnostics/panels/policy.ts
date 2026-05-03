@@ -19,6 +19,7 @@ import type { PermissionAuditEntry } from '../../permissions/policy-runtime.js';
 import type { PolicyLintFinding } from '../../permissions/lint.js';
 import type { PolicySimulationSummary } from '../../permissions/simulation-scenarios.js';
 import type { PolicyPreflightReview } from '../../permissions/preflight.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * A point-in-time snapshot of policy state for diagnostics rendering.
@@ -169,7 +170,7 @@ export class PolicyPanel {
       try {
         cb();
       } catch (err) {
-        console.debug('[PolicyPanel] subscriber error:', err);
+        logger.debug('[PolicyPanel] subscriber error', { err });
       }
     }
   }

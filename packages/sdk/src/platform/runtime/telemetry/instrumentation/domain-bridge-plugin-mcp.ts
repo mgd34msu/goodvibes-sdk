@@ -17,7 +17,7 @@ export function attachPluginDomain(
           pluginId: env.payload.pluginId,
           path: env.payload.path,
           version: env.payload.version,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         pluginSpans.set(env.payload.pluginId, span);
       });
@@ -115,7 +115,7 @@ export function attachMcpDomain(
           serverId: env.payload.serverId,
           transport: env.payload.transport,
           url: env.payload.url,
-          traceId: env.traceId,
+          traceId: env.traceId ?? '',
         });
         mcpSpans.set(env.payload.serverId, span);
       });

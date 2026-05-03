@@ -1,8 +1,15 @@
 import type { DaemonMediaRouteHandlers } from './context.js';
 import { resolvePrivateHostFetchOptions } from './http-policy.js';
 import { jsonErrorResponse } from './error-response.js';
-import { DaemonErrorCategory } from '@pellux/goodvibes-errors';
 import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  readBoundedBodyInteger,
+  readOptionalStringField,
+  readStringArrayField,
+  type JsonRecord,
+} from './route-helpers.js';
 import type {
   ArtifactKind,
   DaemonMediaRouteContext,
@@ -17,8 +24,6 @@ import type {
   WebSearchVerbosity,
 } from './media-route-types.js';
 
-type JsonBody = Record<string, unknown>;
-
 function readErrorMessage(error: unknown): string {
   if (typeof error === 'string') return error;
   if (error instanceof Error) return error.message;
@@ -29,17 +34,7 @@ function readErrorMessage(error: unknown): string {
 }
 
 function isProviderNotConfiguredError(error: unknown): boolean {
-  const msg = readErrorMessage(error).toLowerCase();
-  return (
-    msg.includes('not configured')
-    || msg.includes('no provider')
-    || msg.includes('api key')
-    || msg.includes('api_key')
-    || msg.includes('missing key')
-    || msg.includes('no api')
-    || msg.includes('provider not')
-    || msg.includes('unconfigured')
-  );
+  return Boolean(error && typeof error === 'object' && (error as { readonly code?: unknown }).code === 'PROVIDER_NOT_CONFIGURED');
 }
 
 export function createDaemonMediaRouteHandlers(
@@ -63,7 +58,7 @@ export function createDaemonMediaRouteHandlers(
       const artifact = context.artifactStore.get(artifactId);
       return artifact
         ? Response.json({ artifact })
-        : Response.json({ error: 'Unknown artifact' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown artifact' }, { status: 404 });
     },
     getArtifactContent: async (artifactId, request) => handleArtifactContent(context, artifactId, request),
     getMediaProviders: async () => Response.json({ providers: await context.mediaProviders.status() }),
@@ -83,8 +78,15 @@ function readOptionalConfigString(context: DaemonMediaRouteContext, key: string)
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+const MAX_MEDIA_WRITEBACK_TAGS = 64;
+
+function readOptionalBoundedNumber(value: unknown, min: number, max: number): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.min(max, Math.max(min, value));
+}
+
 function readVoiceSynthesisRequest(
-  body: JsonBody,
+  body: JsonRecord,
   context?: DaemonMediaRouteContext,
 ): {
   readonly providerId?: string;
@@ -109,7 +111,7 @@ function readVoiceSynthesisRequest(
       : undefined;
   const modelId = typeof body.modelId === 'string' ? body.modelId : undefined;
   const format = typeof body.format === 'string' ? body.format : undefined;
-  const speed = typeof body.speed === 'number' ? body.speed : undefined;
+  const speed = readOptionalBoundedNumber(body.speed, 0.25, 4);
   const input: {
     text: string;
     voiceId?: string;
@@ -131,11 +133,68 @@ function readVoiceSynthesisRequest(
   };
 }
 
+type WebSearchBody = {
+  readonly query: string;
+  readonly providerId?: string;
+  readonly maxResults?: number;
+  readonly verbosity?: WebSearchVerbosity;
+  readonly region?: string;
+  readonly safeSearch?: WebSearchSafeSearch;
+  readonly timeRange?: WebSearchTimeRange;
+  readonly includeInstantAnswer?: boolean;
+  readonly includeEvidence?: boolean;
+  readonly evidenceTopN?: number;
+  readonly evidenceExtract?: FetchExtractMode;
+};
+
+type MultimodalPacketBody = {
+  readonly analysis: MultimodalAnalysisResult;
+  readonly detail: MultimodalDetail;
+  readonly budgetLimit?: number;
+};
+
+const mediaBodySchemas = createRouteBodySchemaRegistry({
+  webSearch: createRouteBodySchema<WebSearchBody>('POST /api/web-search', (body) => {
+    const query = readOptionalStringField(body, 'query');
+    if (!query) return jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
+    const providerId = readOptionalStringField(body, 'providerId');
+    const verbosity = readOptionalStringField(body, 'verbosity');
+    const region = readOptionalStringField(body, 'region');
+    const safeSearch = readOptionalStringField(body, 'safeSearch');
+    const timeRange = readOptionalStringField(body, 'timeRange');
+    const evidenceExtract = readOptionalStringField(body, 'evidenceExtract');
+    return {
+      query,
+      ...(providerId ? { providerId } : {}),
+      ...(Object.hasOwn(body, 'maxResults') ? { maxResults: readBoundedBodyInteger(body.maxResults, 5, 50) } : {}),
+      ...(verbosity ? { verbosity: verbosity as WebSearchVerbosity } : {}),
+      ...(region ? { region } : {}),
+      ...(safeSearch ? { safeSearch: safeSearch as WebSearchSafeSearch } : {}),
+      ...(timeRange ? { timeRange: timeRange as WebSearchTimeRange } : {}),
+      ...(typeof body.includeInstantAnswer === 'boolean' ? { includeInstantAnswer: body.includeInstantAnswer } : {}),
+      ...(typeof body.includeEvidence === 'boolean' ? { includeEvidence: body.includeEvidence } : {}),
+      ...(Object.hasOwn(body, 'evidenceTopN') ? { evidenceTopN: readBoundedBodyInteger(body.evidenceTopN, 3, 20) } : {}),
+      ...(evidenceExtract ? { evidenceExtract: evidenceExtract as FetchExtractMode } : {}),
+    };
+  }),
+  multimodalPacket: createRouteBodySchema<MultimodalPacketBody>('POST /api/multimodal/packet', (body) => {
+    if (typeof body.analysis !== 'object' || body.analysis === null) {
+      return jsonErrorResponse({ error: 'Missing analysis payload' }, { status: 400 });
+    }
+    const detail = readOptionalStringField(body, 'detail');
+    return {
+      analysis: body.analysis as MultimodalAnalysisResult,
+      detail: (detail as MultimodalDetail | undefined) ?? 'standard',
+      ...(Object.hasOwn(body, 'budgetLimit') ? { budgetLimit: readBoundedBodyInteger(body.budgetLimit, 8, 100) } : {}),
+    };
+  }),
+});
+
 async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const { providerId, input } = readVoiceSynthesisRequest(body);
-  if (!input.text.trim()) return Response.json({ error: 'Missing text' }, { status: 400 });
+  if (!input.text.trim()) return jsonErrorResponse({ error: 'Missing text' }, { status: 400 });
   try {
     const result = await context.voiceService.synthesize(
       providerId,
@@ -144,8 +203,8 @@ async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): P
     return Response.json(result);
   } catch (error) {
     if (isProviderNotConfiguredError(error)) {
-      return Response.json(
-        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+      return jsonErrorResponse(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
         { status: 409 },
       );
     }
@@ -157,14 +216,14 @@ async function handleVoiceTtsStream(context: DaemonMediaRouteContext, req: Reque
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const { providerId, input } = readVoiceSynthesisRequest(body, context);
-  if (!input.text.trim()) return Response.json({ error: 'Missing text' }, { status: 400 });
+  if (!input.text.trim()) return jsonErrorResponse({ error: 'Missing text' }, { status: 400 });
   try {
     const result = await context.voiceService.synthesizeStream(providerId, { ...input, signal: req.signal });
     return voiceStreamResponse(result);
   } catch (error) {
     if (isProviderNotConfiguredError(error)) {
-      return Response.json(
-        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the streaming TTS provider API key or service credentials.' },
+      return jsonErrorResponse(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), source: 'provider', recoverable: false, hint: 'Configure the streaming TTS provider API key or service credentials.' },
         { status: 409 },
       );
     }
@@ -210,7 +269,7 @@ async function handleVoiceStt(context: DaemonMediaRouteContext, req: Request): P
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   if (typeof body.audio !== 'object' || body.audio === null) {
-    return Response.json({ error: 'Missing audio artifact' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Missing audio artifact' }, { status: 400 });
   }
   try {
     const result = await context.voiceService.transcribe(
@@ -226,8 +285,8 @@ async function handleVoiceStt(context: DaemonMediaRouteContext, req: Request): P
     return Response.json(result);
   } catch (error) {
     if (isProviderNotConfiguredError(error)) {
-      return Response.json(
-        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+      return jsonErrorResponse(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
         { status: 409 },
       );
     }
@@ -253,8 +312,8 @@ async function handleVoiceRealtimeSession(context: DaemonMediaRouteContext, req:
     return Response.json(result, { status: 201 });
   } catch (error) {
     if (isProviderNotConfiguredError(error)) {
-      return Response.json(
-        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), category: DaemonErrorCategory.CONFIG, source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
+      return jsonErrorResponse(
+        { code: 'PROVIDER_NOT_CONFIGURED', error: readErrorMessage(error), source: 'provider', recoverable: false, hint: 'Configure the voice provider API key or service credentials.' },
         { status: 409 },
       );
     }
@@ -266,7 +325,7 @@ async function handleMediaAnalyze(context: DaemonMediaRouteContext, req: Request
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const provider = context.mediaProviders.findProvider('understand', typeof body.providerId === 'string' ? body.providerId : undefined);
-  if (!provider?.analyze) return Response.json({ error: 'No media analysis provider is registered' }, { status: 404 });
+  if (!provider?.analyze) return jsonErrorResponse({ error: 'No media analysis provider is registered' }, { status: 404 });
   const artifact = typeof body.artifact === 'object' && body.artifact !== null
     ? body.artifact as MediaArtifact
     : typeof body.artifactId === 'string' && body.artifactId.trim().length > 0
@@ -277,7 +336,7 @@ async function handleMediaAnalyze(context: DaemonMediaRouteContext, req: Request
         } satisfies MediaArtifact
       : null;
   if (!artifact) {
-    return Response.json({ error: 'Missing media artifact' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Missing media artifact' }, { status: 400 });
   }
   return Response.json(await provider.analyze({
     artifact,
@@ -332,7 +391,8 @@ async function handleArtifactContent(context: DaemonMediaRouteContext, artifactI
     });
     const download = new URL(req.url).searchParams.get('download');
     if (record.filename && download !== '0') {
-      headers.set('Content-Disposition', `attachment; filename="${record.filename.replace(/"/g, '\\"')}"`);
+      const asciiFallback = record.filename.replace(/[\r\n"]/g, '_');
+      headers.set('Content-Disposition', `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(record.filename)}`);
     }
     return new Response(bytes as BodyInit, { status: 200, headers });
   } catch (error) {
@@ -343,22 +403,10 @@ async function handleArtifactContent(context: DaemonMediaRouteContext, artifactI
 async function handleWebSearch(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
-  const query = typeof body.query === 'string' ? body.query.trim() : '';
-  if (!query) return Response.json({ error: 'Missing query' }, { status: 400 });
+  const input = mediaBodySchemas.webSearch.parse(body);
+  if (input instanceof Response) return input;
   try {
-    return Response.json(await context.webSearchService.search({
-      query,
-      ...(typeof body.providerId === 'string' ? { providerId: body.providerId } : {}),
-      ...(typeof body.maxResults === 'number' ? { maxResults: body.maxResults } : {}),
-      ...(typeof body.verbosity === 'string' ? { verbosity: body.verbosity as WebSearchVerbosity } : {}),
-      ...(typeof body.region === 'string' ? { region: body.region } : {}),
-      ...(typeof body.safeSearch === 'string' ? { safeSearch: body.safeSearch as WebSearchSafeSearch } : {}),
-      ...(typeof body.timeRange === 'string' ? { timeRange: body.timeRange as WebSearchTimeRange } : {}),
-      ...(typeof body.includeInstantAnswer === 'boolean' ? { includeInstantAnswer: body.includeInstantAnswer } : {}),
-      ...(typeof body.includeEvidence === 'boolean' ? { includeEvidence: body.includeEvidence } : {}),
-      ...(typeof body.evidenceTopN === 'number' ? { evidenceTopN: body.evidenceTopN } : {}),
-      ...(typeof body.evidenceExtract === 'string' ? { evidenceExtract: body.evidenceExtract as FetchExtractMode } : {}),
-    }));
+    return Response.json(await context.webSearchService.search(input));
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });
   }
@@ -368,12 +416,12 @@ async function handleMediaTransform(context: DaemonMediaRouteContext, req: Reque
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const provider = context.mediaProviders.findProvider('transform', typeof body.providerId === 'string' ? body.providerId : undefined);
-  if (!provider?.transform) return Response.json({ error: 'No media transform provider is registered' }, { status: 404 });
+  if (!provider?.transform) return jsonErrorResponse({ error: 'No media transform provider is registered' }, { status: 404 });
   if (typeof body.artifact !== 'object' || body.artifact === null) {
-    return Response.json({ error: 'Missing media artifact' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Missing media artifact' }, { status: 400 });
   }
   const operation = typeof body.operation === 'string' ? body.operation : '';
-  if (!operation) return Response.json({ error: 'Missing media transform operation' }, { status: 400 });
+  if (!operation) return jsonErrorResponse({ error: 'Missing media transform operation' }, { status: 400 });
   return Response.json(await provider.transform({
     artifact: body.artifact as MediaArtifact,
     operation,
@@ -387,9 +435,9 @@ async function handleMediaGenerate(context: DaemonMediaRouteContext, req: Reques
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const provider = context.mediaProviders.findProvider('generate', typeof body.providerId === 'string' ? body.providerId : undefined);
-  if (!provider?.generate) return Response.json({ error: 'No media generation provider is registered' }, { status: 404 });
+  if (!provider?.generate) return jsonErrorResponse({ error: 'No media generation provider is registered' }, { status: 404 });
   const prompt = typeof body.prompt === 'string' ? body.prompt : '';
-  if (!prompt.trim()) return Response.json({ error: 'Missing media generation prompt' }, { status: 400 });
+  if (!prompt.trim()) return jsonErrorResponse({ error: 'Missing media generation prompt' }, { status: 400 });
   return Response.json(await provider.generate({
     prompt,
     outputMimeType: typeof body.outputMimeType === 'string' ? body.outputMimeType : undefined,
@@ -464,16 +512,13 @@ async function handleMultimodalAnalyze(context: DaemonMediaRouteContext, req: Re
 async function handleMultimodalPacket(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
-  if (typeof body.analysis !== 'object' || body.analysis === null) {
-    return Response.json({ error: 'Missing analysis payload' }, { status: 400 });
-  }
-  const detail = typeof body.detail === 'string' ? body.detail as MultimodalDetail : 'standard';
-  const budgetLimit = typeof body.budgetLimit === 'number' ? body.budgetLimit : undefined;
+  const input = mediaBodySchemas.multimodalPacket.parse(body);
+  if (input instanceof Response) return input;
   return Response.json({
     packet: context.multimodalService.buildPacket(
-      body.analysis as MultimodalAnalysisResult,
-      detail,
-      budgetLimit,
+      input.analysis,
+      input.detail,
+      input.budgetLimit,
     ),
   });
 }
@@ -482,15 +527,16 @@ async function handleMultimodalWriteback(context: DaemonMediaRouteContext, req: 
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   if (typeof body.analysis !== 'object' || body.analysis === null) {
-    return Response.json({ error: 'Missing analysis payload' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Missing analysis payload' }, { status: 400 });
   }
+  const tags = readStringArrayField(body, 'tags', MAX_MEDIA_WRITEBACK_TAGS);
   try {
     const writeback = await context.multimodalService.writeBackAnalysis(
       body.analysis as MultimodalAnalysisResult,
       {
         ...(typeof body.sessionId === 'string' ? { sessionId: body.sessionId } : {}),
         ...(typeof body.title === 'string' ? { title: body.title } : {}),
-        ...(Array.isArray(body.tags) ? { tags: body.tags.filter((entry): entry is string => typeof entry === 'string') } : {}),
+        ...(tags ? { tags } : {}),
         ...(typeof body.folderPath === 'string' ? { folderPath: body.folderPath } : {}),
         ...(typeof body.metadata === 'object' && body.metadata !== null ? { metadata: body.metadata as Record<string, unknown> } : {}),
       },

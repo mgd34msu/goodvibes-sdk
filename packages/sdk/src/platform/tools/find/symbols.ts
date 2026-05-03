@@ -11,6 +11,7 @@ import {
   validateSearchPath,
   readTextFile,
 } from './shared.js';
+import { compileSafeRegExp } from '../../utils/safe-regex.js';
 
 interface SymbolResult {
   name: string;
@@ -54,7 +55,7 @@ export async function executeSymbolsQuery(
   let queryRegex: RegExp | null = null;
   if (query.query) {
     try {
-      queryRegex = new RegExp(query.query, 'i');
+      queryRegex = compileSafeRegExp(query.query, 'i', { operation: 'find symbols query' });
     } catch {
       return { error: `Invalid symbol query pattern: ${query.query}` };
     }

@@ -264,16 +264,20 @@ export class DaemonSurfaceActionHelper {
     this.ntfyChatReplyUnsubscribers = [
       this.context.runtimeBus.on<Extract<TurnEvent, { type: 'TURN_SUBMITTED' }>>(
         'TURN_SUBMITTED',
-        (envelope) => this.matchNtfyChatReplyTurn(
-          envelope.sessionId,
-          envelope.payload.turnId,
-          envelope.payload.prompt,
-          envelope.payload.origin,
-        ),
+        (envelope) => {
+          if (!envelope.sessionId) return;
+          this.matchNtfyChatReplyTurn(
+            envelope.sessionId,
+            envelope.payload.turnId,
+            envelope.payload.prompt,
+            envelope.payload.origin,
+          );
+        },
       ),
       this.context.runtimeBus.on<Extract<TurnEvent, { type: 'TURN_COMPLETED' }>>(
         'TURN_COMPLETED',
         (envelope) => {
+          if (!envelope.sessionId) return;
           void this.deliverNtfyChatReply(
             envelope.sessionId,
             envelope.payload.turnId,
@@ -290,6 +294,7 @@ export class DaemonSurfaceActionHelper {
       this.context.runtimeBus.on<Extract<TurnEvent, { type: 'TURN_ERROR' }>>(
         'TURN_ERROR',
         (envelope) => {
+          if (!envelope.sessionId) return;
           void this.deliverNtfyChatReply(
             envelope.sessionId,
             envelope.payload.turnId,

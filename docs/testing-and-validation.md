@@ -1,5 +1,7 @@
 # Testing and Validation
 
+> Consumer and contributor guidance. For internal testing architecture see [Testing Architecture](./testing.md).
+
 The SDK repo validates more than TypeScript build success. `bun run validate` is the portable command CI runs; it does not require any external repo checkout.
 
 ## CI Gates
@@ -99,6 +101,13 @@ The `./web` companion entry point (`createWebGoodVibesSdk`) is Workers-ready (Cl
 ## Type-Level Tests
 
 `bun run types:check` compiles type-level usage tests in `tsconfig.type-tests.json`. These catch public API type regressions without running the code — e.g. verifying that factory function return types are assignable to their documented interfaces.
+
+## Structured Suite IDs
+
+Some numbered test families intentionally retain gaps, such as `obs-*`,
+`sec-*`, and `perf-*`. Those ids are durable review and release references, so
+retired or merged checks leave their numbers unused rather than renumbering
+later files and breaking historical bug, audit, and changelog links.
 
 ## Why Each Gate Exists
 

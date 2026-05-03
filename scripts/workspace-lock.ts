@@ -11,8 +11,11 @@ const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const STALE_AFTER_MS = 15 * 60 * 1000;
 const POLL_MS = 200;
 
-function sleep(ms: number): void {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }
 
 interface LockInfo {
@@ -52,7 +55,7 @@ function clearStaleLock(): void {
   }
 }
 
-export function waitForWorkspaceLockRelease(label: string, timeoutMs = DEFAULT_TIMEOUT_MS): void {
+export async function waitForWorkspaceLockRelease(label: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<void> {
   mkdirSync(TMP_ROOT, { recursive: true });
   const deadline = Date.now() + timeoutMs;
   while (existsSync(LOCK_DIR)) {
@@ -65,11 +68,11 @@ export function waitForWorkspaceLockRelease(label: string, timeoutMs = DEFAULT_T
         : 'unknown owner';
       throw new Error(`Timed out waiting for workspace lock before ${label}; current owner: ${owner}`);
     }
-    sleep(POLL_MS);
+    await sleep(POLL_MS);
   }
 }
 
-export function withWorkspaceLock<T>(label: string, fn: () => T, timeoutMs = DEFAULT_TIMEOUT_MS): T {
+export async function withWorkspaceLock<T>(label: string, fn: () => T | Promise<T>, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
   mkdirSync(TMP_ROOT, { recursive: true });
   const deadline = Date.now() + timeoutMs;
   while (true) {
@@ -93,12 +96,12 @@ export function withWorkspaceLock<T>(label: string, fn: () => T, timeoutMs = DEF
           : 'unknown owner';
         throw new Error(`Timed out acquiring workspace lock for ${label}; current owner: ${owner}`);
       }
-      sleep(POLL_MS);
+      await sleep(POLL_MS);
     }
   }
 
   try {
-    return fn();
+    return await fn();
   } finally {
     rmSync(LOCK_DIR, { recursive: true, force: true });
   }

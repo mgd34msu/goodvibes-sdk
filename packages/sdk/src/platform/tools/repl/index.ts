@@ -10,6 +10,8 @@ import type { Tool } from '../../types/tools.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { REPL_TOOL_SCHEMA, type ReplToolInput } from './schema.js';
 
+const REPL_ENV_ALLOWLIST = ['PATH', 'HOME', 'TMPDIR', 'TEMP', 'TMP', 'LANG'] as const;
+
 interface ReplHistoryEntry {
   readonly ts: number;
   readonly runtime: 'javascript' | 'typescript' | 'python' | 'sql' | 'graphql';
@@ -33,14 +35,20 @@ function resolveHistoryPath(workspaceRoot: string, surfaceRoot: string): string 
   return join(workspaceRoot, '.goodvibes', surfaceRoot, 'repl-history.json');
 }
 
-function createLocalExecPlan(workspaceRoot: string): SandboxLaunchPlan {
-  return {
-    backend: 'local',
-    command: process.env.SHELL || 'bash',
-    args: ['-lc', 'true'],
-    workspaceRoot,
-    summary: 'local process exec',
-  };
+function createReplEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  const env: Record<string, string> = {};
+  for (const key of REPL_ENV_ALLOWLIST) {
+    const value = process.env[key];
+    if (value !== undefined) env[key] = value;
+  }
+  return { ...env, ...extra };
+}
+
+function requireReplSandbox(launchPlan: SandboxLaunchPlan | undefined): SandboxLaunchPlan {
+  if (!launchPlan || launchPlan.backend !== 'qemu') {
+    throw new Error('REPL eval requires an explicit QEMU sandbox backend; configure sandbox.vmBackend, sandbox.qemuImagePath, and sandbox.qemuExecWrapper before evaluating code.');
+  }
+  return launchPlan;
 }
 
 function loadHistory(historyPath: string): ReplHistoryEntry[] {
@@ -87,17 +95,13 @@ process.stdout.write(typeof value === 'string' ? value : JSON.stringify(value));
   const result = sessionId
     ? sandboxSessionRegistry.execute(sessionId, process.execPath, ['-e', runner], configManager, {
         timeoutMs: 1000,
-        env: {
-          ...process.env,
-          GV_REPL_PAYLOAD: payload,
-        },
+        inheritHostEnv: false,
+        env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       })
     : executeSandboxCommand(launchPlan, process.execPath, ['-e', runner], {
         timeoutMs: 1000,
-        env: {
-          ...process.env,
-          GV_REPL_PAYLOAD: payload,
-        },
+        inheritHostEnv: false,
+        env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       });
   if (result.status !== 0) {
     throw new Error((result.stderr || result.stdout || 'JavaScript eval failed.').trim());
@@ -134,10 +138,14 @@ function evalPython(
     ? sandboxSessionRegistry.execute(sessionId, 'python3', ['-I', '-S', '-c', `import json\nresult = (${expression})\nprint(json.dumps(result))`], configManager, {
         cwd: workspaceRoot,
         timeoutMs: 5000,
+        inheritHostEnv: false,
+        env: createReplEnv(),
       })
     : executeSandboxCommand(launchPlan, 'python3', ['-I', '-S', '-c', `import json\nresult = (${expression})\nprint(json.dumps(result))`], {
         cwd: workspaceRoot,
         timeoutMs: 5000,
+        inheritHostEnv: false,
+        env: createReplEnv(),
       });
   if (run.status !== 0) {
     throw new Error((run.stderr || run.stdout || 'Python eval failed.').trim());
@@ -166,17 +174,13 @@ process.stdout.write(JSON.stringify(rows));
   const result = sessionId
     ? sandboxSessionRegistry.execute(sessionId, process.execPath, ['-e', script], configManager, {
         timeoutMs: 5000,
-        env: {
-          ...process.env,
-          GV_REPL_PAYLOAD: payload,
-        },
+        inheritHostEnv: false,
+        env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       })
     : executeSandboxCommand(launchPlan, process.execPath, ['-e', script], {
         timeoutMs: 5000,
-        env: {
-          ...process.env,
-          GV_REPL_PAYLOAD: payload,
-        },
+        inheritHostEnv: false,
+        env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       });
   if (result.status !== 0) {
     throw new Error((result.stderr || result.stdout || 'SQL eval failed.').trim());
@@ -207,17 +211,13 @@ process.stdout.write(JSON.stringify({
   const result = sessionId
     ? sandboxSessionRegistry.execute(sessionId, process.execPath, ['-e', script], configManager, {
         timeoutMs: 2000,
-        env: {
-          ...process.env,
-          GV_REPL_PAYLOAD: payload,
-        },
+        inheritHostEnv: false,
+        env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       })
     : executeSandboxCommand(launchPlan, process.execPath, ['-e', script], {
         timeoutMs: 2000,
-        env: {
-          ...process.env,
-          GV_REPL_PAYLOAD: payload,
-        },
+        inheritHostEnv: false,
+        env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       });
   if (result.status !== 0) {
     throw new Error((result.stderr || result.stdout || 'GraphQL eval failed.').trim());
@@ -250,7 +250,6 @@ export function createReplTool(
       }
       const historyPath = resolveHistoryPath(input.workspaceRoot, surfaceRoot);
       const history = loadHistory(historyPath);
-      const localExecPlan = createLocalExecPlan(input.workspaceRoot);
 
       if (input.mode === 'history') {
         return { success: true, output: JSON.stringify({ count: history.length, history }) };
@@ -264,22 +263,23 @@ export function createReplTool(
         configManager,
       );
       try {
+        const launchPlan = requireReplSandbox(sandboxSession.launchPlan);
         let rendered = '';
         switch (runtime) {
           case 'javascript':
-            rendered = await evalJavaScriptInSandbox(input.expression, input.bindings ?? {}, sandboxSession.launchPlan ?? localExecPlan, configManager, sandboxSessionRegistry, sandboxSession.id);
+            rendered = await evalJavaScriptInSandbox(input.expression, input.bindings ?? {}, launchPlan, configManager, sandboxSessionRegistry, sandboxSession.id);
             break;
           case 'typescript':
-            rendered = await evalTypeScript(input.expression, input.bindings ?? {}, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
+            rendered = await evalTypeScript(input.expression, input.bindings ?? {}, configManager, sandboxSessionRegistry, launchPlan, sandboxSession.id);
             break;
           case 'python':
-            rendered = evalPython(input.expression, input.workspaceRoot, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
+            rendered = evalPython(input.expression, input.workspaceRoot, configManager, sandboxSessionRegistry, launchPlan, sandboxSession.id);
             break;
           case 'sql':
-            rendered = await evalSql(input.expression, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
+            rendered = await evalSql(input.expression, configManager, sandboxSessionRegistry, launchPlan, sandboxSession.id);
             break;
           case 'graphql':
-            rendered = evalGraphql(input.expression, configManager, sandboxSessionRegistry, sandboxSession.launchPlan ?? localExecPlan, sandboxSession.id);
+            rendered = evalGraphql(input.expression, configManager, sandboxSessionRegistry, launchPlan, sandboxSession.id);
             break;
         }
         saveHistory(historyPath, [...history, {

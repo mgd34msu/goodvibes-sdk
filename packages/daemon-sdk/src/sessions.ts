@@ -17,8 +17,8 @@ export async function dispatchSessionRoutes(
   const sharedSessionCloseMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/(close|reopen)$/);
   if (sharedSessionCloseMatch && method === 'POST') {
     return sharedSessionCloseMatch[2] === 'close'
-      ? handlers.closeSharedSession(sharedSessionCloseMatch[1])
-      : handlers.reopenSharedSession(sharedSessionCloseMatch[1]);
+      ? handlers.closeSharedSession(sharedSessionCloseMatch[1], req)
+      : handlers.reopenSharedSession(sharedSessionCloseMatch[1], req);
   }
 
   const sharedSessionMessagesMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/messages$/);
@@ -36,7 +36,7 @@ export async function dispatchSessionRoutes(
 
   const sharedSessionCancelInputMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/inputs\/([^/]+)\/cancel$/);
   if (sharedSessionCancelInputMatch && method === 'POST') {
-    return handlers.cancelSharedSessionInput(sharedSessionCancelInputMatch[1], sharedSessionCancelInputMatch[2]);
+    return handlers.cancelSharedSessionInput(sharedSessionCancelInputMatch[1], sharedSessionCancelInputMatch[2], req);
   }
 
   const sharedSessionEventsMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/events$/);

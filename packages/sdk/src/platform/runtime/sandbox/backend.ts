@@ -240,14 +240,16 @@ function runSandboxCommand(
   options: {
     readonly cwd?: string;
     readonly env?: NodeJS.ProcessEnv;
+    readonly inheritHostEnv?: boolean;
     readonly timeoutMs?: number;
     readonly input?: string;
   } = {},
 ): SandboxCommandResult {
   const resolved = resolveSandboxCommandPlan(launchPlan, command, args, managerLike);
+  const baseEnv = options.inheritHostEnv === false ? {} : process.env;
   const result = spawnSync(resolved.command, [...resolved.args], {
     cwd: options.cwd ?? launchPlan.workspaceRoot,
-    env: { ...process.env, ...resolved.env, ...options.env },
+    env: { ...baseEnv, ...resolved.env, ...options.env },
     encoding: 'utf-8',
     timeout: options.timeoutMs ?? 5000,
     input: options.input,
@@ -267,6 +269,7 @@ export function executeSandboxCommand(
   options: {
     readonly cwd?: string;
     readonly env?: NodeJS.ProcessEnv;
+    readonly inheritHostEnv?: boolean;
     readonly timeoutMs?: number;
     readonly input?: string;
   } = {},
@@ -282,6 +285,7 @@ export function executeSandboxManagedCommand(
   options: {
     readonly cwd?: string;
     readonly env?: NodeJS.ProcessEnv;
+    readonly inheritHostEnv?: boolean;
     readonly timeoutMs?: number;
     readonly input?: string;
   } = {},

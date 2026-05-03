@@ -64,7 +64,7 @@ not inherit dependency-package overrides:
 
 **Please do not file public GitHub issues for security vulnerabilities.**
 
-Report security issues privately via the main GoodVibes security channel:
+Report security issues privately via GitHub private vulnerability reporting:
 
 - **GitHub private vulnerability reporting**: Use the [Security tab](https://github.com/mgd34msu/goodvibes-sdk/security/advisories/new) on this repository
 

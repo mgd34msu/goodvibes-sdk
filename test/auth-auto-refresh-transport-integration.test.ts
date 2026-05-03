@@ -17,20 +17,22 @@ import {
   createMemoryTokenStore,
 } from '../packages/sdk/src/auth.js';
 import { GoodVibesSdkError } from '../packages/errors/src/index.js';
+import { installFrozenNow } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 const TEST_NOW_MS = 1_800_000_000_000;
-const originalDateNow = Date.now;
+let restoreDateNow: (() => void) | undefined;
 
 beforeEach(() => {
-  Date.now = () => TEST_NOW_MS;
+  restoreDateNow = installFrozenNow(TEST_NOW_MS);
 });
 
 afterEach(() => {
-  Date.now = originalDateNow;
+  restoreDateNow?.();
+  restoreDateNow = undefined;
 });
 
 /** Minimal valid accounts.snapshot response that passes Zod validation. */

@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { AppError, RETRYABLE_STATUS_CODES } from '../types/errors.js';
 import { summarizeError } from './error-display.js';
 
@@ -57,7 +58,7 @@ export function isRetryableError(error: unknown): boolean {
 function computeDelay(attempt: number, initialDelayMs: number, maxDelayMs: number): number {
   // Exponential backoff: initialDelay * 2^attempt, with jitter
   const exponential = initialDelayMs * Math.pow(2, attempt);
-  const jitter = Math.random() * initialDelayMs;
+  const jitter = randomInt(0, Math.max(1, Math.floor(initialDelayMs) + 1));
   return Math.min(exponential + jitter, maxDelayMs);
 }
 

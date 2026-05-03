@@ -163,7 +163,7 @@ describe('artifact uploads and ingest', () => {
     }));
     const body = await response.json() as { error: string };
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(413);
     expect(body.error).toContain('1024-byte limit');
     expect(store.list()).toHaveLength(0);
   });

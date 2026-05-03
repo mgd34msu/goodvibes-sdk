@@ -1,5 +1,7 @@
 # SDK Error Kinds
 
+> Consumer reference. For handling patterns see [Error Handling](./error-handling.md); for internals see [Error Architecture](./errors.md).
+
 Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkError`. The `kind` field is the primary discriminant — use it in `switch` statements or `if` chains instead of parsing `message` strings or using `instanceof` on subclasses.
 
 ## Quick reference
@@ -11,8 +13,8 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 | `contract` | Method/route contract violation | No |
 | `network` | Transport or connectivity failure | Yes |
 | `not-found` | Remote resource does not exist | No |
-| `protocol` | Wire-format or protocol failure | Sometimes |
 | `rate-limit` | Upstream rate limit exceeded | Yes |
+| `protocol` | Wire-format or protocol failure | Sometimes |
 | `service` | Upstream service or HTTP 5xx failure | Sometimes |
 | `internal` | Daemon/internal SDK failure | No |
 | `tool` | Tool execution failure | Sometimes |

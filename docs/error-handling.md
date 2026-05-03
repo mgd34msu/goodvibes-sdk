@@ -1,5 +1,7 @@
 # Error Handling
 
+> Consumer guidance. For internal error architecture see [Error Architecture](./errors.md).
+
 All public client packages normalize transport failures into structured SDK errors.
 
 ## Typed error discrimination

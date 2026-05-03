@@ -80,6 +80,10 @@ async function probeOtel(): Promise<OtelApi | null> {
   // Test injection seam takes highest priority.
   if (_otelModuleOverride !== undefined) return _otelModuleOverride;
   if (otelApi !== undefined) return otelApi;
+  if (typeof window !== 'undefined') {
+    otelApi = null;
+    return otelApi;
+  }
   try {
     const mod = await dynamicImport('@opentelemetry/api');
     otelApi = mod as OtelApi;

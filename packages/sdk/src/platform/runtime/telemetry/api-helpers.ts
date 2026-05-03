@@ -104,7 +104,7 @@ export const ALL_DOMAINS: readonly RuntimeEventDomain[] = [
 ] as const;
 
 function hashHex(value: string, length: number): string {
-  return createHash('sha1').update(value).digest('hex').slice(0, length);
+  return createHash('sha256').update(value).digest('hex').slice(0, length);
 }
 
 export function normalizeTraceId(traceId: string | undefined): string {

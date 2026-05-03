@@ -1,7 +1,31 @@
 import { randomUUID } from 'node:crypto';
 import type { DaemonChannelRouteHandlers } from './context.js';
-import { readBoundedPositiveInteger, readChannelConversationKind, readChannelLifecycleAction } from './route-helpers.js';
+import { jsonErrorResponse } from './error-response.js';
+import {
+  createRouteBodySchema,
+  createRouteBodySchemaRegistry,
+  readBoundedPositiveInteger,
+  readChannelConversationKind,
+  readChannelLifecycleAction,
+  type JsonRecord,
+} from './route-helpers.js';
 import type { ChannelDirectoryScope, ChannelSurface, DaemonChannelRouteContext } from './channel-route-types.js';
+
+type OptionalChannelBody = JsonRecord | undefined;
+
+const channelBodySchemas = createRouteBodySchemaRegistry({
+  optional: createRouteBodySchema<OptionalChannelBody>('POST /api/channels/* optional body', (body) => body),
+});
+
+async function readOptionalChannelBody(
+  context: DaemonChannelRouteContext,
+  req: Request,
+): Promise<OptionalChannelBody | Response> {
+  const body = await context.parseOptionalJsonBody(req);
+  if (body instanceof Response) return body;
+  if (body === null) return undefined;
+  return channelBodySchemas.optional.parse(body);
+}
 
 export function createDaemonChannelRouteHandlers(
   context: DaemonChannelRouteContext,
@@ -19,7 +43,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return account
         ? Response.json(account)
-        : Response.json({ error: 'Unknown channel account' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel account' }, { status: 404 });
     },
     getChannelSetupSchema: async (surface, url) => {
       const schema = await context.channelPlugins.getSetupSchema(
@@ -28,7 +52,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return schema
         ? Response.json(schema)
-        : Response.json({ error: 'Unknown channel setup schema' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel setup schema' }, { status: 404 });
     },
     getChannelDoctor: async (surface, url) => {
       const report = await context.channelPlugins.doctor(
@@ -37,7 +61,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return report
         ? Response.json(report)
-        : Response.json({ error: 'Unknown channel doctor surface' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel doctor surface' }, { status: 404 });
     },
     getChannelRepairActions: async (surface, url) => Response.json({
       actions: await context.channelPlugins.listRepairActions(
@@ -52,19 +76,16 @@ export function createDaemonChannelRouteHandlers(
       );
       return state
         ? Response.json(state)
-        : Response.json({ error: 'Unknown channel lifecycle surface' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel lifecycle surface' }, { status: 404 });
     },
     postChannelAccountAction: async (surface, accountId, action, req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;
-      const body = await context.parseJsonBody(req);
-      const input = body instanceof Response ? undefined : body;
-      if (body instanceof Response && req.headers.get('content-length') && req.headers.get('content-length') !== '0') {
-        return body;
-      }
+      const input = await readOptionalChannelBody(context, req);
+      if (input instanceof Response) return input;
       const lifecycleAction = readChannelLifecycleAction(action);
       if (!lifecycleAction) {
-        return Response.json({ error: 'Unknown channel account action' }, { status: 400 });
+        return jsonErrorResponse({ error: 'Unknown channel account action' }, { status: 400 });
       }
       const result = await context.channelPlugins.runAccountAction(
         surface as ChannelSurface,
@@ -74,7 +95,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return result !== null
         ? Response.json({ surface, accountId, action: lifecycleAction, result })
-        : Response.json({ error: 'Unknown channel account action' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel account action' }, { status: 404 });
     },
     getChannelCapabilities: () => context.channelPlugins.listCapabilities().then((capabilities) => Response.json({ capabilities })),
     getChannelSurfaceCapabilities: (surface) => context.channelPlugins
@@ -93,11 +114,8 @@ export function createDaemonChannelRouteHandlers(
     postChannelTool: async (surface, toolId, req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;
-      const body = await context.parseJsonBody(req);
-      const input = body instanceof Response ? undefined : body;
-      if (body instanceof Response && req.headers.get('content-length') && req.headers.get('content-length') !== '0') {
-        return body;
-      }
+      const input = await readOptionalChannelBody(context, req);
+      if (input instanceof Response) return input;
       const result = await context.channelPlugins.runTool(
         surface as ChannelSurface,
         toolId,
@@ -105,7 +123,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return result !== null
         ? Response.json({ toolId, surface, result })
-        : Response.json({ error: 'Unknown channel tool' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel tool' }, { status: 404 });
     },
     getChannelActions: () => context.channelPlugins.listOperatorActions().then((actions) => Response.json({ actions })),
     getChannelSurfaceActions: (surface) => context.channelPlugins
@@ -114,11 +132,8 @@ export function createDaemonChannelRouteHandlers(
     postChannelAction: async (surface, actionId, req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;
-      const body = await context.parseJsonBody(req);
-      const input = body instanceof Response ? undefined : body;
-      if (body instanceof Response && req.headers.get('content-length') && req.headers.get('content-length') !== '0') {
-        return body;
-      }
+      const input = await readOptionalChannelBody(context, req);
+      if (input instanceof Response) return input;
       const result = await context.channelPlugins.runOperatorAction(
         surface as ChannelSurface,
         actionId,
@@ -126,7 +141,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return result !== null
         ? Response.json({ actionId, surface, result })
-        : Response.json({ error: 'Unknown channel action' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel action' }, { status: 404 });
     },
     postChannelResolveTarget: async (surface, req) => {
       const admin = context.requireAdmin(req);
@@ -141,7 +156,7 @@ export function createDaemonChannelRouteHandlers(
             ? body.query
             : '';
       if (!targetInput.trim()) {
-        return Response.json({ error: 'Target resolution requires target, input, or query.' }, { status: 400 });
+        return jsonErrorResponse({ error: 'Target resolution requires target, input, or query.' }, { status: 400 });
       }
       const preferredKind = readChannelConversationKind(body.preferredKind);
       const target = await context.channelPlugins.resolveTarget(
@@ -159,7 +174,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return target
         ? Response.json({ surface, target })
-        : Response.json({ error: 'Unable to resolve channel target' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unable to resolve channel target' }, { status: 404 });
     },
     postChannelAuthorize: async (surface, req) => {
       const admin = context.requireAdmin(req);
@@ -188,7 +203,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return result
         ? Response.json({ surface, result })
-        : Response.json({ error: 'Unable to authorize channel action' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unable to authorize channel action' }, { status: 404 });
     },
     postChannelAllowlistResolve: async (surface, req) => {
       const admin = context.requireAdmin(req);
@@ -209,7 +224,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return result
         ? Response.json(result)
-        : Response.json({ error: 'Unknown channel allowlist surface' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel allowlist surface' }, { status: 404 });
     },
     postChannelAllowlistEdit: async (surface, req) => {
       const admin = context.requireAdmin(req);
@@ -230,7 +245,7 @@ export function createDaemonChannelRouteHandlers(
       );
       return result
         ? Response.json(result)
-        : Response.json({ error: 'Unknown channel allowlist surface' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown channel allowlist surface' }, { status: 404 });
     },
     getChannelPolicies: () => Response.json({ policies: context.channelPolicy.listPolicies() }),
     patchChannelPolicy: async (surface, req) => {

@@ -9,6 +9,8 @@ export async function dispatchTaskRoutes(
   const method = req.method;
 
   if (pathname === '/task' && method === 'POST') return handlers.postTask(req);
+  // GET /task is intentionally left to extension routers that expose
+  // surface-specific task status pages.
   if (pathname === '/task' && method === 'GET') return null;
 
   if (pathname === '/api/tasks' && method === 'GET') return handlers.getIntegrationTasks();

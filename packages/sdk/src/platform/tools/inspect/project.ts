@@ -309,11 +309,11 @@ export function buildScaffold(
     },
     {
       path: `src/${kebab}/types.ts`,
-      content: `export interface ${pascal} {\n  id: string;\n}\n\nexport interface ${pascal}Input {\n    name: string;\n  // add more fields as needed\n}\n`,
+      content: `export interface ${pascal} {\n  id: string;\n}\n\nexport interface ${pascal}Input {\n  name: string;\n}\n`,
     },
     {
       path: `src/${kebab}/${kebab}.ts`,
-      content: `import type { ${pascal}, ${pascal}Input } from './types.js';\n\nexport function create${pascal}(input: ${pascal}Input): ${pascal} {\n    // Simple implementation: generate a random id and spread input\n  return { id: crypto.randomUUID(), ...input };\n\n  throw new Error('Not implemented');\n}\n`,
+      content: `import type { ${pascal}, ${pascal}Input } from './types.js';\n\nexport function create${pascal}(input: ${pascal}Input): ${pascal} {\n  return { id: crypto.randomUUID(), ...input };\n}\n`,
     },
     {
       path: `src/${kebab}/${kebab}.test.ts`,
@@ -513,4 +513,3 @@ export async function inspectApiSync(root: string, framework: ApiFramework): Pro
 
   return { fetch_calls: fetchCalls, unmatched_fetches, unmatched_routes, drift_detected };
 }
-

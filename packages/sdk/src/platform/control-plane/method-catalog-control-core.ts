@@ -307,7 +307,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   }),
   methodDescriptor({
     id: 'sessions.integration.snapshot',
-    title: 'Legacy Session Snapshot',
+    title: 'Session Integration Snapshot',
     description: 'Return the session integration snapshot.',
     category: 'sessions',
     scopes: ['read:sessions'],

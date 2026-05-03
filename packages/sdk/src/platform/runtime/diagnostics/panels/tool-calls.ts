@@ -85,8 +85,8 @@ export class ToolCallsPanel {
     // Type narrowing is done by checking the discriminant field on payload.
     if (!('type' in p)) return;
     const type = (p as { type: string }).type;
-    const traceId = envelope.traceId;
-    const sessionId = envelope.sessionId;
+    const traceId = envelope.traceId ?? '';
+    const sessionId = envelope.sessionId ?? '';
 
     switch (type) {
       case 'TOOL_RECEIVED': {

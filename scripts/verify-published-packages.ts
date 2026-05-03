@@ -9,13 +9,14 @@ import {
 
 const version = process.argv[2] || getRootVersion();
 const registry = getPublishRegistryOverride() || 'https://registry.npmjs.org';
-const MAX_ATTEMPTS = Number.parseInt(process.env.GOODVIBES_VERIFY_ATTEMPTS || '24', 10);
+const MAX_ATTEMPTS = Number.parseInt(process.env.GOODVIBES_VERIFY_ATTEMPTS || '48', 10);
 const RETRY_DELAY_MS = Number.parseInt(process.env.GOODVIBES_VERIFY_DELAY_MS || '5000', 10);
 
 function packageNameForDir(dir: string): string {
   const pkg = readPackage(dir);
-  if (dir === 'packages/sdk') return getPublicPackageNameOverride() || pkg.name;
-  return pkg.name;
+  const name = dir === 'packages/sdk' ? getPublicPackageNameOverride() || pkg.name : pkg.name;
+  if (typeof name !== 'string' || !name) throw new Error(`Package ${dir} is missing a string name.`);
+  return name;
 }
 
 function sleep(ms: number) {

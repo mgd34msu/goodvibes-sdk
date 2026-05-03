@@ -1,4 +1,23 @@
 export type JsonRecord = Record<string, unknown>;
+export type JsonBody = JsonRecord;
+
+export interface RouteBodySchema<T> {
+  readonly routeId: string;
+  readonly parse: (body: JsonRecord) => T | Response;
+}
+
+export function createRouteBodySchema<T>(
+  routeId: string,
+  parse: (body: JsonRecord) => T | Response,
+): RouteBodySchema<T> {
+  return { routeId, parse };
+}
+
+export function createRouteBodySchemaRegistry<
+  const TSchemaMap extends Record<string, RouteBodySchema<unknown>>,
+>(schemas: TSchemaMap): TSchemaMap {
+  return schemas;
+}
 
 export function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -34,7 +53,7 @@ export interface BoundedIntegerOptions {
 }
 
 export function readBoundedInteger(raw: string | null, options: BoundedIntegerOptions): number {
-  const min = options.min ?? 1;
+  const min = options.min ?? 0;
   const max = options.max ?? 1_000;
   if (raw === null || raw.trim() === '') return clampInteger(options.fallback, min, max);
   const value = Number(raw);
@@ -44,6 +63,11 @@ export function readBoundedInteger(raw: string | null, options: BoundedIntegerOp
 
 export function readBoundedPositiveInteger(raw: string | null, fallback: number, max = 1_000): number {
   return readBoundedInteger(raw, { fallback, min: 1, max });
+}
+
+export function readBoundedBodyInteger(value: unknown, fallback: number, max: number, min = 1): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return clampInteger(fallback, min, max);
+  return clampInteger(value, min, max);
 }
 
 export function readOptionalBoundedInteger(raw: string | null, min: number, max: number): number | undefined {
@@ -57,12 +81,35 @@ function clampInteger(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
+export function readOptionalStringField(body: JsonRecord, key: string): string | undefined {
+  const value = body[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+export function readStringArrayField(body: JsonRecord, key: string, max = 128): string[] | undefined {
+  const value = body[key];
+  if (!Array.isArray(value)) return undefined;
+  const output: string[] = [];
+  for (let index = 0; index < value.length && index < max; index++) {
+    const entry = value[index];
+    if (typeof entry !== 'string') continue;
+    const trimmed = entry.trim();
+    if (trimmed) output.push(trimmed);
+  }
+  return output.length > 0 ? output : undefined;
+}
+
 export function scopeMatches(granted: string, required: string): boolean {
   if (granted === '*' || granted === required) return true;
   if (granted.endsWith(':*')) {
     return required.startsWith(granted.slice(0, -1));
   }
   return false;
+}
+
+export function hasAnyScope(grantedScopes: readonly string[] | undefined, requiredScopes: readonly string[]): boolean {
+  const granted = grantedScopes ?? [];
+  return requiredScopes.some((required) => granted.some((entry) => scopeMatches(entry, required)));
 }
 
 export function missingScopes(grantedScopes: readonly string[] | undefined, requiredScopes: readonly string[]): string[] {

@@ -214,6 +214,10 @@ export async function openRawServerSentEventStream(
           consumeLine(buffer.replace(/\r$/, ''));
           flush();
         }
+        // Abort and remote-close can land in the same microtask. Yield once so
+        // the abort listener can mark the stream stopped before reconnect logic
+        // treats the close as unexpected.
+        await Promise.resolve();
         if (reconnectPolicy.enabled && !controller.signal.aborted && !outerController.signal.aborted && !stopped) {
           throw createStreamError(response.status, url, 'Stream closed unexpectedly');
         }

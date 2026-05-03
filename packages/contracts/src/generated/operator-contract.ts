@@ -58358,7 +58358,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       },
       {
         "id": "sessions.integration.snapshot",
-        "title": "Legacy Session Snapshot",
+        "title": "Session Integration Snapshot",
         "description": "Return the session integration snapshot.",
         "category": "sessions",
         "source": "builtin",

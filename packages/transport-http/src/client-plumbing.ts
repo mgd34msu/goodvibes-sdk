@@ -1,5 +1,13 @@
 import { ContractError } from '@pellux/goodvibes-errors';
 
+const MAX_SCHEMA_PATTERN_CHARS = 512;
+const MAX_SCHEMA_PATTERN_INPUT_CHARS = 50_000;
+const RISKY_SCHEMA_PATTERN_CHECKS: readonly RegExp[] = [
+  /(^|[^\\])\\[1-9]/,
+  /\((?:[^()\\]|\\.)*[+*{][^)]*\)\s*[+*{]/,
+  /\.\*(?:[^|)]{0,64})\.\*/,
+];
+
 export type RequiredKeys<T extends object> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
 }[keyof T];
@@ -117,8 +125,8 @@ export function firstJsonSchemaFailure(
     return { path, expected: `length <= ${maxLength}`, received: `length ${value.length}` };
   }
   if (typeof value === 'string' && typeof schema.pattern === 'string') {
-    const pattern = new RegExp(schema.pattern);
-    if (!pattern.test(value)) return { path, expected: `pattern ${schema.pattern}`, received: 'non-matching string' };
+    const pattern = compileContractPattern(schema.pattern);
+    if (!contractPatternMatches(pattern, value)) return { path, expected: `pattern ${schema.pattern}`, received: 'non-matching string' };
   }
   if (typeof value === 'string' && typeof schema.format === 'string' && !stringMatchesJsonSchemaFormat(value, schema.format)) {
     return { path, expected: `format ${schema.format}`, received: 'non-matching string' };
@@ -192,6 +200,26 @@ function readSchemaTypes(type: unknown): string[] {
   return [];
 }
 
+function compileContractPattern(source: string): RegExp {
+  if (source.length > MAX_SCHEMA_PATTERN_CHARS) {
+    throw new ContractError(`Contract schema pattern exceeds ${MAX_SCHEMA_PATTERN_CHARS} characters.`);
+  }
+  for (const pattern of RISKY_SCHEMA_PATTERN_CHECKS) {
+    if (pattern.test(source)) {
+      throw new ContractError('Contract schema pattern is too expensive to evaluate safely.');
+    }
+  }
+  return new RegExp(source);
+}
+
+function contractPatternMatches(pattern: RegExp, value: string): boolean {
+  if (value.length > MAX_SCHEMA_PATTERN_INPUT_CHARS) {
+    throw new ContractError(`Contract schema pattern input exceeds ${MAX_SCHEMA_PATTERN_INPUT_CHARS} characters.`);
+  }
+  pattern.lastIndex = 0;
+  return pattern.test(value);
+}
+
 function valueMatchesJsonType(value: unknown, type: string): boolean {
   switch (type) {
     case 'null': return value === null;
@@ -210,7 +238,8 @@ function stringMatchesJsonSchemaFormat(value: string, format: string): boolean {
     case 'date-time':
       // JSON Schema date-time requires a full date/time separator; Date.parse
       // alone accepts date-only strings in some runtimes.
-      return !Number.isNaN(Date.parse(value)) && /\dT\d/.test(value);
+      return /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value)
+        && !Number.isNaN(Date.parse(value));
     case 'date':
       return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`));
     case 'time':

@@ -1,5 +1,12 @@
 import type { FetchExtractMode } from './schema.js';
 
+const HTML_SELECTOR_TAG_RE = /^[a-z][a-z0-9-]*$/i;
+const HTML_SELECTOR_ATTRIBUTE_RE = /^[a-z0-9_-]+$/i;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -112,11 +119,15 @@ function extractStructured(html: string, selectors: string[]): string {
       tagPattern = trimmed || '[a-z][a-z0-9]*';
     }
 
+    if (tagPattern !== '[a-z][a-z0-9]*' && !HTML_SELECTOR_TAG_RE.test(tagPattern)) continue;
+    if (idFilter !== null && !HTML_SELECTOR_ATTRIBUTE_RE.test(idFilter)) continue;
+    if (classFilter !== null && !HTML_SELECTOR_ATTRIBUTE_RE.test(classFilter)) continue;
+
     let attrClause = '';
     if (idFilter) {
-      attrClause = `(?=[^>]*\\bid=["']${idFilter}["'])`;
+      attrClause = `(?=[^>]*\\bid=["']${escapeRegExp(idFilter)}["'])`;
     } else if (classFilter) {
-      attrClause = `(?=[^>]*\\bclass=["'][^"']*\\b${classFilter}\\b[^"']*["'])`;
+      attrClause = `(?=[^>]*\\bclass=["'][^"']*\\b${escapeRegExp(classFilter)}\\b[^"']*["'])`;
     }
 
     const re = new RegExp(`<(${tagPattern})${attrClause}[^>]*>([\\s\\S]*?)<\\/\\1>`, 'gi');

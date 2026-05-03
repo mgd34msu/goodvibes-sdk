@@ -1,5 +1,8 @@
 node_modules/
 dist/
+coverage/
+*.log
+.DS_Store
 *.tsbuildinfo
 sbom.cdx.json*
 .tmp/

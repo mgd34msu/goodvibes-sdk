@@ -3,6 +3,23 @@
 This directory vendors `bash-language-server@5.6.0` for the published SDK
 package.
 
+Upstream package:
+
+- npm: `bash-language-server@5.6.0`
+- integrity: copy from `bun.lock` when refreshing this vendor directory
+
+Refresh procedure:
+
+```bash
+TMPDIR="$(mktemp -d)"
+npm pack bash-language-server@5.6.0 --pack-destination "$TMPDIR"
+tar -xzf "$TMPDIR"/bash-language-server-5.6.0.tgz -C "$TMPDIR"
+rsync -a --delete "$TMPDIR"/package/ vendor/bash-language-server/
+node -e "const p=require('./vendor/bash-language-server/package.json'); p.dependencies.editorconfig='3.0.2'; require('fs').writeFileSync('./vendor/bash-language-server/package.json', JSON.stringify(p,null,2)+'\n')"
+find vendor/bash-language-server/out -name '*.js.map' -delete
+rm -rf "$TMPDIR"
+```
+
 Patch:
 
 - `dependencies.editorconfig` is changed from `2.0.1` to `3.0.2`.

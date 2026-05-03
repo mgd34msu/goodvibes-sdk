@@ -55,19 +55,19 @@ function makeAutomationHandlers(
       Response.json({ ok: true, runId, action }),
     patchAutomationJob: (jobId, _req) =>
       Response.json({ ...makeJob(jobId), name: 'Updated Job' }),
-    deleteAutomationJob: (jobId) =>
+    deleteAutomationJob: (jobId, _req) =>
       Response.json({ ok: true, jobId }),
-    setAutomationJobEnabled: (jobId, enabled) =>
+    setAutomationJobEnabled: (jobId, enabled, _req) =>
       Response.json({ ok: true, jobId, enabled }),
-    runAutomationJobNow: (jobId) =>
+    runAutomationJobNow: (jobId, _req) =>
       Response.json({ ok: true, jobId }),
     getDeliveries: () => Response.json({ deliveries: [] }),
     getDelivery: (id) => Response.json({ id, status: 'delivered' }),
     getSchedules: () => Response.json({ schedules: [] }),
     postSchedule: async () => Response.json({ id: 'sched-1' }, { status: 201 }),
-    deleteSchedule: (id) => Response.json({ ok: true, id }),
-    setScheduleEnabled: (id, enabled) => Response.json({ ok: true, id, enabled }),
-    runScheduleNow: (id) => Response.json({ ok: true, id }),
+    deleteSchedule: (id, _req) => Response.json({ ok: true, id }),
+    setScheduleEnabled: (id, enabled, _req) => Response.json({ ok: true, id, enabled }),
+    runScheduleNow: (id, _req) => Response.json({ ok: true, id }),
   };
 
   return { ...defaults, ...overrides } as DaemonApiRouteHandlers;
@@ -168,7 +168,7 @@ describe('router-e2e automation — failure paths', () => {
   test('DELETE /api/automation/jobs/:id removes job', async () => {
     let capturedId: string | null = null;
     const handlers = makeAutomationHandlers({
-      deleteAutomationJob: (jobId) => {
+      deleteAutomationJob: (jobId, _req) => {
         capturedId = jobId;
         return Response.json({ ok: true, jobId });
       },

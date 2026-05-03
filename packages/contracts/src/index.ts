@@ -86,7 +86,5 @@ export function isPeerEndpointId(value: string): value is (typeof PEER_ENDPOINT_
   return (PEER_ENDPOINT_IDS as readonly string[]).includes(value);
 }
 
-
-
 // Re-export Zod schemas + inferred shapes for runtime validation.
 export * from './zod-schemas/index.js';

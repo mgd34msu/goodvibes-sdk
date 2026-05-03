@@ -139,7 +139,7 @@ const raw = qrScanner.scan();
 const payload = JSON.parse(raw) as CompanionConnectionPayload;
 
 // Persist the token for future sessions
-await tokenStore.save(payload.token);
+await tokenStore.setToken(payload.token);
 const client = createCompanionClient({ baseUrl: payload.url, token: payload.token });
 ```
 
@@ -149,7 +149,7 @@ All subsequent API calls from the companion app include the token:
 
 ```http
 GET /api/control-plane/auth HTTP/1.1
-Authorization: Bearer gvt_abc123...
+Authorization: Bearer gv_abc123...
 ```
 
 Use the SDK's standard auth helpers to handle this automatically:
@@ -159,7 +159,7 @@ import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const tokenStore = createMemoryTokenStore();
-await tokenStore.set(payload.token);
+await tokenStore.setToken(payload.token);
 
 const sdk = createGoodVibesSdk({
   baseUrl: payload.url,
@@ -309,7 +309,7 @@ export function usePairedSdk(baseUrl: string) {
 // After scanning the QR code and parsing the payload:
 async function onQrScanned(payloadJson: string) {
   const payload = JSON.parse(payloadJson);
-  await tokenStore.set(payload.token);
+  await tokenStore.setToken(payload.token);
   // sdk is now ready to use with the stored token
 }
 ```
@@ -321,13 +321,13 @@ Native clients that do not use the TypeScript SDK can connect using standard HTT
 ```
 # Verify the token is working
 GET /api/control-plane/auth
-Authorization: Bearer gvt_abc123...
+Authorization: Bearer gv_abc123...
 ```
 
 For realtime events, open a WebSocket to:
 
 ```
-ws://<daemon-host>:<port>/realtime
+ws://<daemon-host>:<port>/api/control-plane/ws
 ```
 
 with the same `Authorization: Bearer <token>` header (or as a query parameter if the WebSocket client library does not support custom headers).

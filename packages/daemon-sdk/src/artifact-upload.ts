@@ -3,6 +3,7 @@ import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
+import { jsonErrorResponse } from './error-response.js';
 
 export type ArtifactUploadFieldMap = Record<string, unknown>;
 
@@ -133,7 +134,7 @@ function readArtifactId(artifact: unknown): string | Response {
     const id = (artifact as { readonly id?: unknown }).id;
     if (typeof id === 'string' && id.trim().length > 0) return id;
   }
-  return Response.json({ error: 'Artifact store returned an artifact without an id.' }, { status: 500 });
+  return jsonErrorResponse({ error: 'Artifact store returned an artifact without an id.' }, { status: 500 });
 }
 
 function isFileLike(value: unknown): value is UploadFileLike {
@@ -154,18 +155,21 @@ async function createArtifactFromMultipart(
     form = await req.formData();
   } catch (error) {
     void error;
-    return Response.json({ error: 'Invalid multipart upload.' }, { status: 400 });
+    return jsonErrorResponse({ error: 'Invalid multipart upload.' }, { status: 400 });
   }
 
   const fields: ArtifactUploadFieldMap = {};
   let file: UploadFileLike | null = null;
   for (const [name, value] of form.entries() as Iterable<[string, unknown]>) {
     if (typeof value === 'string') {
+      if (Buffer.byteLength(value, 'utf8') > MAX_MULTIPART_FIELD_BYTES) {
+        return jsonErrorResponse({ error: `Multipart field ${name} is too large.` }, { status: 413 });
+      }
       try {
         const parsed = parseUploadField(name, value);
         if (parsed !== undefined) fields[name] = parsed;
       } catch (error) {
-        return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
+        return jsonErrorResponse({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
       }
       continue;
     }
@@ -174,11 +178,13 @@ async function createArtifactFromMultipart(
     }
   }
 
-  if (!file) return Response.json({ error: 'Multipart upload requires a file field.' }, { status: 400 });
+  if (!file) return jsonErrorResponse({ error: 'Multipart upload requires a file field.' }, { status: 400 });
   const maxBytes = artifactStore.getMaxBytes?.();
   if (typeof maxBytes === 'number' && typeof file.size === 'number' && file.size > maxBytes) {
-    return Response.json({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
+    return jsonErrorResponse({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
   }
+  // Some FormData implementations omit `File.size`; createFromStream performs
+  // the authoritative streaming byte-count check for those uploads.
   const artifact = await createArtifactFromStream(artifactStore, {
     stream: file.stream(),
     fields,
@@ -209,7 +215,7 @@ async function createArtifactFromStreamingMultipart(
     const artifactId = readArtifactId(artifact);
     return artifactId instanceof Response ? artifactId : { artifact, artifactId, fields: spooled.fields };
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
+    return jsonErrorResponse(error, { status: error instanceof GoodVibesSdkError && error.status ? error.status : 400 });
   } finally {
     await spooled?.cleanup();
   }
@@ -219,14 +225,14 @@ async function createArtifactFromRawBody(
   artifactStore: ArtifactStoreUploadLike,
   req: Request,
 ): Promise<ArtifactUploadResult | Response> {
-  if (!req.body) return Response.json({ error: 'Raw artifact upload requires a request body.' }, { status: 400 });
+  if (!req.body) return jsonErrorResponse({ error: 'Raw artifact upload requires a request body.' }, { status: 400 });
   const url = new URL(req.url);
   const fields = readFieldsFromSearchParams(url.searchParams);
   const contentType = req.headers.get('content-type')?.split(';')[0]?.trim();
   const maxBytes = artifactStore.getMaxBytes?.();
   const sizeBytes = readContentLength(req);
   if (typeof maxBytes === 'number' && typeof sizeBytes === 'number' && sizeBytes > maxBytes) {
-    return Response.json({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
+    return jsonErrorResponse({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
   }
   const artifact = await createArtifactFromStream(artifactStore, {
     stream: req.body,
@@ -277,6 +283,9 @@ function readContentLength(req: Request): number | undefined {
 
 function filenameFromContentDisposition(header: string | null): string | undefined {
   if (!header) return undefined;
+  // Minimal RFC 5987 support for filename*=UTF-8''... values. Complex
+  // parameter continuations are intentionally unsupported by this lightweight
+  // daemon helper; callers should prefer multipart filename metadata.
   const match = header.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
   if (!match?.[1]) return undefined;
   try {
@@ -329,6 +338,10 @@ function parseMultipartPartHeaders(headerText: string): MultipartPartHeaders {
   }
   const disposition = headers.get('content-disposition') ?? '';
   const output: { name?: string; filename?: string; contentType?: string } = {};
+  // Lightweight multipart parser: supports ordinary parameters without
+  // embedded semicolons plus filename*=UTF-8''... values. RFC 5987
+  // continuations and semicolons inside quoted values are intentionally out of
+  // scope for this daemon helper.
   for (const segment of disposition.split(';').slice(1)) {
     const [rawKey, ...rawValue] = segment.split('=');
     const key = rawKey?.trim().toLowerCase();

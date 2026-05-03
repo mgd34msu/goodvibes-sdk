@@ -19,6 +19,7 @@ run('bun', ['run', 'changelog:check']);
 run('bun', ['run', 'version:check']);
 run('bun', ['run', 'todo:check']);
 run('bun', ['run', 'test-skip:check']);
+run('bun', ['run', 'platform-console:check']);
 run('bun', ['run', 'build']);
 run('bun', ['run', 'types:check']);
 run('bun', ['run', '--cwd', 'examples', 'typecheck']);

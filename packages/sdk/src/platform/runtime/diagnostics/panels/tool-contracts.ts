@@ -15,6 +15,7 @@ import type {
 } from '../types.js';
 import { DEFAULT_COMPONENT_CONFIG, appendBounded } from '../types.js';
 import type { ContractVerificationResult } from '../../tools/contract-verifier.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * ToolContractsPanel — diagnostics data provider for tool contract verification.
@@ -205,7 +206,7 @@ export class ToolContractsPanel {
         cb();
       } catch (err) {
         // Non-fatal: subscriber errors must not crash the provider
-        console.debug('[ToolContractsPanel] subscriber error:', err);
+        logger.debug('[ToolContractsPanel] subscriber error', { err });
       }
     }
   }

@@ -34,7 +34,7 @@ export function getDefaultAcpAgentCommand(): string[] {
  *
  * @example
  * ```ts
- * const mgr = new AcpManager(bus);
+ * const mgr = new AcpManager({ requestPermission });
  * const id = await mgr.spawn({ description: 'Fix the bug', context: '...', tools: ['read'] });
  * const results = await mgr.waitAll();
  * ```
@@ -47,15 +47,15 @@ export class AcpManager {
   private readonly runtimeBus: RuntimeEventBus | null;
   private readonly hookDispatcher: Pick<HookDispatcher, 'fire'> | null;
 
-  constructor(
-    permissionOrLegacyBus?: PermissionRequestHandler | { emit?: unknown },
-    runtimeBus: RuntimeEventBus | null = null,
-    hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null,
-  ) {
+  constructor(options: {
+    readonly requestPermission?: PermissionRequestHandler;
+    readonly runtimeBus?: RuntimeEventBus | null;
+    readonly hookDispatcher?: Pick<HookDispatcher, 'fire'> | null;
+  } = {}) {
     this.agentCmd = resolveAgentCommand();
-    this.requestPermission = typeof permissionOrLegacyBus === 'function' ? permissionOrLegacyBus : undefined;
-    this.runtimeBus = runtimeBus;
-    this.hookDispatcher = hookDispatcher;
+    this.requestPermission = options.requestPermission;
+    this.runtimeBus = options.runtimeBus ?? null;
+    this.hookDispatcher = options.hookDispatcher ?? null;
   }
 
   /**

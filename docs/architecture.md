@@ -25,7 +25,7 @@ All of these share the same orchestration core, permission system, knowledge sto
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
 │                        LLM PROVIDERS                                   │
-│   Anthropic · OpenAI · Gemini · InceptionLabs · Ollama · …            │
+│   Anthropic · OpenAI · Gemini · Inception Labs · Ollama · …           │
 └───────────────────────┬───────────────────────────────────────────────┘
                         │  ProviderRegistry (chat, stream, model list)
 ┌───────────────────────▼───────────────────────────────────────────────┐
@@ -390,7 +390,7 @@ The `RuntimeEventBus` is an in-process event emitter that carries typed events a
 
 Context compaction reduces the token footprint of long conversations to stay within the LLM's context window. `CompactionManager` (`compaction/manager.ts`) coordinates the strategy selection and execution lifecycle.
 
-Four built-in strategies:
+Five built-in strategies:
 
 | Strategy | Behavior |
 |---|---|
@@ -432,10 +432,6 @@ Four built-in strategies:
 4. **Deactivation** — graceful shutdown calls each plugin's deactivation hook
 
 `PluginApi` (`plugins/api.ts`) is the interface that plugins receive on activation: access to config, secrets, tool registration, hook registration, and event subscription.
-
----
-
----
 
 ## Platform Layer Map
 

@@ -13,6 +13,7 @@
 import type { TransportNegotiationEntry, ComponentConfig } from '../types.js';
 import { DEFAULT_COMPONENT_CONFIG, appendBounded } from '../types.js';
 import type { NegotiatedProtocol, VersionNegotiationResult } from '../../remote/types.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Snapshot of the transport panel for a single connection.
@@ -370,7 +371,7 @@ export class TransportPanel {
         cb();
       } catch (err) {
         // Non-fatal: subscriber errors must not crash the provider
-        console.debug('[TransportPanel] subscriber error:', err);
+        logger.debug('[TransportPanel] subscriber error', { err });
       }
     }
   }

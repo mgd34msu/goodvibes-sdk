@@ -30,7 +30,6 @@ export type {
   ChannelSecretBackend,
   ChannelSetupFieldKind,
   ChannelDoctorStatus,
-  ChannelLifecycleAction,
   ChannelAllowlistTargetKind,
   ChannelReasoningVisibility,
   ChannelRenderFormat,

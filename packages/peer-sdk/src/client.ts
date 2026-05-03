@@ -7,13 +7,15 @@ import {
   type PeerRemoteClientInvokeOptions,
 } from './client-core.js';
 
-export interface PeerSdkOptions extends HttpTransportOptions {
+export interface PeerSdkBehaviorOptions {
   /**
    * When `true` (default), response bodies are checked against the peer
    * contract's JSON Schema shape before typed calls return.
    */
   readonly validateResponses?: boolean;
 }
+
+export type PeerSdkOptions = HttpTransportOptions & PeerSdkBehaviorOptions;
 
 /**
  * Public invocation options intentionally wrap the remote-client options so
@@ -29,8 +31,6 @@ export type PeerSdk =
     getOperation(endpointId: PeerEndpointId): PeerEndpointContract;
     dispose(): void;
     asyncDispose(): Promise<void>;
-    [Symbol.dispose](): void;
-    [Symbol.asyncDispose](): Promise<void>;
   };
 
 export function createPeerSdk(options: PeerSdkOptions): PeerSdk {
@@ -48,12 +48,6 @@ export function createPeerSdk(options: PeerSdkOptions): PeerSdk {
       // SDK object gives callers a stable lifecycle hook as transports evolve.
     },
     async asyncDispose(): Promise<void> {
-      this.dispose();
-    },
-    [Symbol.dispose](): void {
-      this.dispose();
-    },
-    async [Symbol.asyncDispose](): Promise<void> {
       this.dispose();
     },
   };

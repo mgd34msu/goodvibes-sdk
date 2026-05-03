@@ -1,11 +1,10 @@
 {
   "compilerOptions": {
-    "target": "ES2023",
+    "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": [
-      "ES2023",
-      "ESNext.Disposable"
+      "ES2024"
     ],
     "strict": true,
     "declaration": true,

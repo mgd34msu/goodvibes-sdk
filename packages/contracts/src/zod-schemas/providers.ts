@@ -9,6 +9,7 @@ import { z } from 'zod/v4';
  *   PATCH  /api/providers/current  → PatchCurrentModelBodySchema (request) / CurrentModelResponseSchema (response)
  */
 
+/** @experimental Provider HTTP schema coverage is still being aligned with the operator contract. */
 export const ProviderModelRefSchema = z.object({
   registryKey: z.string(),
   provider: z.string(),
@@ -28,6 +29,7 @@ export type ProviderModelEntry = z.infer<typeof ProviderModelEntrySchema>;
 export const ConfiguredViaSchema = z.enum(['env', 'secrets', 'subscription', 'anonymous']);
 export type ConfiguredVia = z.infer<typeof ConfiguredViaSchema>;
 
+/** @experimental Provider HTTP schema coverage is still being aligned with the operator contract. */
 export const ProviderAuthRouteDescriptorSchema = z.object({
   route: z.enum(['api-key', 'secret-ref', 'service-oauth', 'subscription-oauth', 'anonymous', 'none']),
   label: z.string(),
@@ -81,6 +83,7 @@ export const PatchCurrentModelErrorSchema = z.object({
 });
 export type PatchCurrentModelError = z.infer<typeof PatchCurrentModelErrorSchema>;
 
+/** @experimental Provider HTTP schema coverage is still being aligned with the operator contract. */
 export const PatchCurrentModelResponseSchema = CurrentModelResponseSchema.extend({
   persisted: z.boolean(),
 });
@@ -91,6 +94,7 @@ export type PatchCurrentModelResponse = z.infer<typeof PatchCurrentModelResponse
  *
  * Forwarded to companion SSE streams when the current model changes.
  */
+/** @experimental Provider event schema coverage is still being aligned with the operator contract. */
 export const ModelChangedEventSchema = z.object({
   type: z.literal('MODEL_CHANGED'),
   registryKey: z.string(),
