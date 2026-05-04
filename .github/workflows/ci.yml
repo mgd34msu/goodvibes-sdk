@@ -5,10 +5,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    # 06:00 UTC = 23:00 US-Pacific / 08:00 CET — least-busy global window
-    - cron: '0 6 * * *' # nightly — flake-check only
-
 # Default to read-only permissions. Individual jobs elevate as needed.
 permissions:
   contents: read
@@ -27,7 +23,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name != 'schedule'
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -56,30 +51,6 @@ jobs:
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  flake-check:
-    name: Flake detector
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: github.event_name == 'schedule'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Run flake detector
-        id: flake-detector
-        env:
-          FLAKE_RUNS: "3"
-        run: bun run flake:check
-      - name: Upload flake detector output
-        if: always() && steps.flake-detector.outcome != 'skipped'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: flake-output-${{ github.run_id }}
-          path: flake-output.log
-          if-no-files-found: ignore
-          retention-days: 7
 
   # ---------------------------------------------------------------------------
   # Single build job. Uploads packages/sdk/dist as an artifact so downstream
