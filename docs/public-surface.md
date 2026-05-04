@@ -34,6 +34,12 @@ Authentication client, token stores, and auth types. Exports `createGoodVibesAut
 
 Stability contract: public method signatures are stable. Internal token format may change between major versions.
 
+### `./client-auth` — `@pellux/goodvibes-sdk/client-auth`
+
+**Status:** beta
+
+Low-level authentication primitives, including `AutoRefreshCoordinator`, platform-specific token stores (browser, iOS keystore, Android keychain, Expo secure store), and auto-refresh options. Use `./auth` for the recommended public authentication surface; import from `./client-auth` only when you need direct access to platform-specific token store implementations or the coordinator.
+
 ### `./contracts` — `@pellux/goodvibes-sdk/contracts`
 
 **Status:** stable
@@ -52,17 +58,27 @@ Contract extensions for file-based artifact types. Used on the full (Bun) surfac
 
 Raw JSON schema for the operator ACP contract. Suitable for tooling and validators.
 
+> **Bundle-budget note:** JSON artifacts are static and excluded from gzip bundle-budget tracking. See `bundle-budgets.json` comments.
+
 ### `./contracts/peer-contract.json` — `@pellux/goodvibes-sdk/contracts/peer-contract.json`
 
 **Status:** stable
 
 Raw JSON schema for the peer ACP contract.
 
+> **Bundle-budget note:** JSON artifacts are static and excluded from gzip bundle-budget tracking.
+
 ### `./daemon` — `@pellux/goodvibes-sdk/daemon`
 
 **Status:** stable
 
 Daemon HTTP API types, route helpers, and server bootstrap utilities.
+
+### `./observer` — `@pellux/goodvibes-sdk/observer`
+
+**Status:** beta
+
+Observability helpers: `createConsoleObserver`, `createOpenTelemetryObserver`, and associated observer types. The root `@pellux/goodvibes-sdk` entry also re-exports this surface via `export *`; either import path is valid. Prefer `./observer` when you need tree-shaking control.
 
 ### `./operator` — `@pellux/goodvibes-sdk/operator`
 
@@ -96,6 +112,8 @@ Shared error types and error-contract helpers.
 Runtime event domain types. Use `./events` for the aggregate event-domain
 barrel, or `./events/<domain>` for a single domain such as
 `@pellux/goodvibes-sdk/events/agents`.
+
+> **Contract note:** `./events/*` is a wildcard subpath resolving per-domain files from `dist/events/`. The supported domain identifiers are: `agents`, `automation`, `communication`, `compaction`, `control-plane`, `deliveries`, `forensics`, `knowledge`, `mcp`, `ops`, `orchestration`, `permissions`, `planner`, `plugins`, `providers`, `routes`, `security`, `session`, `surfaces`, `tasks`, `tools`, `transport`, `turn`, `ui`, `watchers`, `workflows`, `workspace`. Internal modules (`domain-map`, `contracts`) are reachable via the wildcard but are considered implementation details; prefer the aggregate `./events` barrel.
 
 ### `./transport-core` — `@pellux/goodvibes-sdk/transport-core`
 
@@ -162,7 +180,7 @@ Expo-specific SDK entry built on top of `react-native`.
 
 Granular platform modules exposed through explicit public subpaths. Each path is listed intentionally rather than exposed by a wildcard.
 
-The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package no longer exports a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
+The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package does not export a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
 
 Stability contract: the module shape (exported names and their TypeScript signatures) is stable within a minor version. Pre-1.0 releases may still make breaking changes; current behavior is recorded in `CHANGELOG.md`.
 
@@ -172,40 +190,38 @@ Bun/server embedders. Runtime-boundary helpers live at
 `@pellux/goodvibes-sdk/platform/knowledge`; Home Assistant Home Graph extends
 that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 
-#### Subsystems included in the platform surface
+#### Platform subpaths — exact export map entries
 
-| Subpath prefix | Description | Status |
+The following subpaths are the complete list of exported platform paths.
+Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPORTED` error.
+
+| Subpath | Description | Status |
 |---|---|---|
-| `platform/acp/*` | ACP connection, manager, protocol | beta |
-| `platform/adapters/*` | Channel adapter helpers | beta |
-| `platform/artifacts/*` | Artifact store and types | beta |
-| `platform/automation/*` | Automation jobs, scheduling, delivery | beta |
-| `platform/batch/*` | Batch orchestration and queue helpers | beta |
-| `platform/channels/*` | Channel policy and route managers | beta |
-| `platform/cloudflare/*` | Cloudflare provisioning and worker helpers | beta |
-| `platform/companion/*` | Companion chat and route helpers | beta |
-| `platform/config/*` | Config manager, secrets, schema, subscriptions | beta |
-| `platform/control-plane/*` | Session broker, gateway, method catalog | beta |
-| `platform/daemon/*` | HTTP server, routes, policy | beta |
-| `platform/discovery/*` | Codebase discovery and scanner | beta |
-| `platform/git/*` | Git service integration | beta |
-| `platform/hooks/*` | Hook dispatcher, workbench, runners | beta |
-| `platform/integrations/*` | Delivery, Slack, Discord, Ntfy notifiers | beta |
-| `platform/intelligence/*` | LSP, tree-sitter, import graph | beta |
-| `platform/knowledge/*` | Knowledge store and API | beta |
-| `platform/mcp/*` | MCP client, registry, config | beta |
-| `platform/media/*` | Media provider registry | beta |
-| `platform/multimodal/*` | Multimodal input | beta |
-| `platform/node/*` | Node-like runtime boundary and capability metadata | beta |
-| `platform/pairing/*` | Companion token, QR, pairing index | beta |
-| `platform/providers/*` | LLM provider registry, catalog, capabilities | beta |
-| `platform/runtime/*` | Full runtime surface (events, store, lifecycle, tasks, sandbox, etc.) | beta |
-| `platform/security/*` | Token audit, spawn tokens, HTTP auth | beta |
-| `platform/state/*` | File state, KV store, memory, vector store | beta |
-| `platform/tools/*` | Tool registry, exec, fetch, read, write, edit, agent | beta |
-| `platform/voice/*` | Voice provider registry, provider-agnostic TTS/STT/realtime voice types, and streaming TTS primitives | beta |
-| `platform/watchers/*` | File watcher store | beta |
-| `platform/web-search/*` | Web search providers | beta |
+| `platform` | Full platform hub for Bun/server embedders | beta |
+| `platform/config` | Config manager, secrets, schema, subscriptions | beta |
+| `platform/core` | Orchestrator, transcript events, execution plan | beta |
+| `platform/daemon` | HTTP server, routes, port-in-use checks | beta |
+| `platform/git` | Git service integration | beta |
+| `platform/integrations` | Delivery, Slack, Discord, Ntfy notifiers | beta |
+| `platform/intelligence` | LSP, tree-sitter, import graph | beta |
+| `platform/knowledge` | Knowledge store and API | beta |
+| `platform/knowledge/extensions` | Knowledge system extension contracts | beta |
+| `platform/knowledge/home-graph` | Home Assistant Home Graph extension | beta |
+| `platform/multimodal` | Multimodal input | beta |
+| `platform/node` | Node-like runtime boundary and capability metadata | beta |
+| `platform/node/runtime-boundary` | Client-safe runtime boundary detection (no Bun globals) | beta |
+| `platform/pairing` | Companion token, QR, pairing index | beta |
+| `platform/providers` | LLM provider registry, catalog, capabilities | beta |
+| `platform/runtime` | Full runtime surface (events, store, lifecycle, tasks, sandbox, etc.) | beta |
+| `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
+| `platform/runtime/state` | Runtime state primitives | beta |
+| `platform/runtime/store` | Runtime store and selectors | beta |
+| `platform/runtime/ui` | Curated UI surface (model-picker, provider-health); not a barrel of `runtime/ui/` subdirectory | beta |
+| `platform/tools` | Tool registry, exec, fetch, read, write, edit, agent | beta |
+| `platform/utils` | Shared platform utilities | beta |
+| `platform/voice` | Voice provider registry, provider-agnostic TTS/STT/realtime voice types, and streaming TTS primitives | beta |
+
+> **Subsystems available internally via `./platform` and `./platform/node`:** The following subsystems are accessible as namespaces through the aggregate `./platform` or `./platform/node` entry points, but do not have their own dedicated public subpaths: `acp`, `adapters`, `artifacts`, `automation`, `batch`, `channels`, `cloudflare`, `companion`, `control-plane`, `discovery`, `hooks`, `mcp`, `media`, `security`, `state`, `watchers`, `web-search`. Import them via `@pellux/goodvibes-sdk/platform` if you are embedding the full platform surface.
 
 ---
 
@@ -213,7 +229,7 @@ that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 
 The following paths are intentionally NOT exported and will cause a module resolution error if imported:
 
-- Any `@pellux/goodvibes-sdk/platform/...` path not listed in the package export map.
+- Any `@pellux/goodvibes-sdk/platform/...` path not listed in the export map above.
 - Any `dist/...` file path reached by bypassing the package export map.
 
 Consumers must use the corresponding documented subpath when one is exported.

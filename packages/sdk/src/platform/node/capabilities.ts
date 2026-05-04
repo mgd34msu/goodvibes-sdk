@@ -38,11 +38,27 @@ export const GOODVIBES_CLIENT_SAFE_ENTRYPOINTS = [
 export const GOODVIBES_NODE_RUNTIME_ENTRYPOINTS = [
   '@pellux/goodvibes-sdk/platform',
   '@pellux/goodvibes-sdk/platform/node',
-  '@pellux/goodvibes-sdk/platform/runtime',
-  '@pellux/goodvibes-sdk/platform/knowledge',
-  '@pellux/goodvibes-sdk/platform/providers',
-  '@pellux/goodvibes-sdk/platform/tools',
+  '@pellux/goodvibes-sdk/platform/node/runtime-boundary',
+  '@pellux/goodvibes-sdk/platform/config',
+  '@pellux/goodvibes-sdk/platform/core',
+  '@pellux/goodvibes-sdk/platform/daemon',
+  '@pellux/goodvibes-sdk/platform/git',
+  '@pellux/goodvibes-sdk/platform/intelligence',
   '@pellux/goodvibes-sdk/platform/integrations',
+  '@pellux/goodvibes-sdk/platform/knowledge',
+  '@pellux/goodvibes-sdk/platform/knowledge/extensions',
+  '@pellux/goodvibes-sdk/platform/knowledge/home-graph',
+  '@pellux/goodvibes-sdk/platform/multimodal',
+  '@pellux/goodvibes-sdk/platform/pairing',
+  '@pellux/goodvibes-sdk/platform/providers',
+  '@pellux/goodvibes-sdk/platform/runtime',
+  '@pellux/goodvibes-sdk/platform/runtime/observability',
+  '@pellux/goodvibes-sdk/platform/runtime/state',
+  '@pellux/goodvibes-sdk/platform/runtime/store',
+  '@pellux/goodvibes-sdk/platform/runtime/ui',
+  '@pellux/goodvibes-sdk/platform/tools',
+  '@pellux/goodvibes-sdk/platform/utils',
+  '@pellux/goodvibes-sdk/platform/voice',
 ] as const;
 
 export const GOODVIBES_RUNTIME_CAPABILITIES: readonly GoodVibesRuntimeCapability[] = [
@@ -52,6 +68,7 @@ export const GOODVIBES_RUNTIME_CAPABILITIES: readonly GoodVibesRuntimeCapability
     entrypoints: GOODVIBES_CLIENT_SAFE_ENTRYPOINTS,
     surfaces: ['client', 'edge', 'mobile'],
     requirements: ['fetch', 'websocket'],
+    // Display-only patterns — not glob patterns for resolution; document the npm package family.
     dependencyFamilies: [
       '@pellux/goodvibes-transport-*',
       '@pellux/goodvibes-operator-sdk',
