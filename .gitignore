@@ -25,3 +25,8 @@ test/workers-wrangler/.wrangler/
 
 # Defensive guard against accidental SQLite `:memory:` sentinel file leaks
 :memory:
+
+# Review artifacts (transient)
+*-review.md
+*-review-*.md
+.claude/scheduled_tasks.lock
