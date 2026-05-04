@@ -270,7 +270,11 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     const outboundQueue: Array<{ readonly data: string; readonly sizeBytes: number }> = [];
     let outboundQueueBytes = 0;
     let droppedOutboundCount = 0;
+    // MIN-17: track overflow notification count so we fire on every overflow burst
+    // rather than once per connection lifetime. queueOverflowNotified is reset in
+    // flushOutboundQueue when the connection restores.
     let queueOverflowNotified = false;
+    let overflowEventCount = 0;
     const getAuthToken = normalizeAuthToken(token ?? undefined);
 
     /**
@@ -296,7 +300,10 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       const sizeBytes = textEncoder.encode(data).byteLength;
       if (sizeBytes > MAX_OUTBOUND_MESSAGE_BYTES) {
         droppedOutboundCount += 1;
-        if (!queueOverflowNotified) {
+        overflowEventCount += 1;
+        // MIN-17: fire on first overflow and every 10th thereafter so bursts between
+        // reconnects are observable rather than silently swallowed after the first.
+        if (overflowEventCount === 1 || overflowEventCount % 10 === 0) {
           queueOverflowNotified = true;
           options.onError?.(new WebSocketTransportError(
             `WebSocket outbound message too large (${sizeBytes} bytes, limit ${MAX_OUTBOUND_MESSAGE_BYTES}). Dropping the message while the socket reconnects.`,
@@ -316,7 +323,9 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         if (!dropped) break;
         outboundQueueBytes -= dropped.sizeBytes;
         droppedOutboundCount += 1;
-        if (!queueOverflowNotified) {
+        overflowEventCount += 1;
+        // MIN-17: fire on first overflow and every 10th thereafter.
+        if (overflowEventCount === 1 || overflowEventCount % 10 === 0) {
           queueOverflowNotified = true;
           options.onError?.(new WebSocketTransportError(
             `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE} messages / ${MAX_OUTBOUND_QUEUE_BYTES} bytes). Dropping oldest messages until the socket reconnects.`,
@@ -336,6 +345,12 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 
     const closeSocket = () => {
       if (!socket) return;
+      // MIN-18: clear any pending reconnect timer so close() cannot schedule
+      // a second reconnect while one is already pending.
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       socket.removeEventListener('open', onOpen);
       socket.removeEventListener('message', onMessage);
       socket.removeEventListener('close', onClose);
@@ -372,7 +387,9 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         outboundQueueBytes -= item.sizeBytes;
         ws.send(item.data);
       }
+      // Reset overflow state on successful reconnect so the next burst is reported.
       queueOverflowNotified = false;
+      overflowEventCount = 0;
     };
 
     const onOpen = async (event: Event) => {
@@ -518,12 +535,20 @@ function webSocketCloseError(event: CloseEvent): Error {
 
 function webSocketEventError(event: Event, socket: WebSocket | null, url: string): Error {
   const candidate = event as ErrorEvent;
+  // MIN-19: avoid retaining the raw event.error (which may hold currentTarget/target
+  // back-references to the WebSocket, creating retention chains over many reconnects).
+  // Capture only name+message from Error instances; stringify anything else.
+  const safeError = candidate.error instanceof Error
+    ? { name: candidate.error.name, message: candidate.error.message }
+    : candidate.error !== undefined && candidate.error !== null
+      ? String(candidate.error)
+      : undefined;
   const cause = {
     eventType: event.type,
     url,
     readyState: socket?.readyState,
     message: typeof candidate.message === 'string' ? candidate.message : undefined,
-    error: candidate.error,
+    error: safeError,
   };
   if (candidate.error) {
     return new WebSocketTransportError(

@@ -119,6 +119,9 @@ export function composeMiddleware(
         ctx.activeMiddlewareName = mwName;
         try {
           await mw(ctx, () => dispatch(i + 1));
+          // MIN-9: clear middlewareError if the middleware swallowed the error
+          // (i.e. it caught internally and did not re-throw).
+          ctx.middlewareError = false;
         } catch (err) {
           // Mark that the error originated from this middleware (not the real fetch).
           ctx.middlewareError = true;

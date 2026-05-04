@@ -164,10 +164,15 @@ export function createNetworkTransportError(
     ? error.message.trim()
     : `Transport request failed before receiving a response for ${url}`;
   const hint = `Transport could not reach ${url}. Verify the baseUrl is reachable.`;
+  // MIN-14: only mark network/connection errors as recoverable (i.e. fetch-thrown).
+  // TypeError or other programmer errors should not trigger retries.
+  const isNetworkError = error instanceof TypeError
+    || (error instanceof Error && /^(?:EAI_AGAIN|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EPIPE|ECONNABORTED)$/.test((error as { code?: string }).code ?? ''))
+    || (error instanceof Error && /^UND_ERR_/.test((error as { code?: string }).code ?? ''));
   const networkError = new HttpStatusError(message, {
     category: 'network',
     source: 'transport',
-    recoverable: true,
+    recoverable: isNetworkError,
     url,
     method,
     body: { error: message },
@@ -267,7 +272,8 @@ function parseRetryAfterMs(headers: Headers): number | undefined {
   if (!retryAfter) return undefined;
   // Numeric seconds
   const seconds = Number(retryAfter);
-  if (!Number.isNaN(seconds) && seconds >= 0) {
+  // MIN-13: map 0 → undefined so callers treat it as "no hint", not "retry immediately".
+  if (!Number.isNaN(seconds) && seconds > 0) {
     return Math.ceil(seconds * 1000);
   }
   // HTTP-date
@@ -344,7 +350,17 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
     // Determine idempotency: non-GET mutations without an explicit idempotent flag do NOT retry.
     // This is enforced below by gating the retry check on method type.
     const isMutatingMethod = IDEMPOTENCY_KEY_METHODS.has(method.toUpperCase());
-    const idempotencyKey = isMutatingMethod ? generateIdempotencyKey() : undefined;
+    // MIN-11: pin traceparent once before the retry loop so all retries share one trace span.
+    const pinnedTraceHeaders: Record<string, string> = {};
+    await injectTraceparentAsync(pinnedTraceHeaders);
+    // MAJ-3: only generate an idempotency key when the call is actually idempotent
+    // (contract-marked or has a per-method policy override). Sending keys on all
+    // mutating methods would silently de-duplicate a non-retried request if a proxy
+    // retries it, without the SDK ever knowing.
+    const hasPerMethodOverride = methodId !== undefined && resolveHttpRetryPolicy(retryPolicy, requestOptions.retry).perMethodPolicy[methodId] !== undefined;
+    const idempotencyKey = isMutatingMethod && (contractIdempotent || hasPerMethodOverride)
+      ? generateIdempotencyKey()
+      : undefined;
 
     let attempt = 0;
 
@@ -364,9 +380,11 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         mergedHeaders['Content-Type'] = 'application/json';
       }
 
-      // Inject W3C traceparent if OTel is active. This path is async so pure
-      // ESM OpenTelemetry providers can be loaded before the request is sent.
-      await injectTraceparentAsync(mergedHeaders);
+      // MIN-11: merge pre-pinned traceparent headers (captured once before the retry loop)
+      // so all retry attempts share a single logical trace span.
+      for (const [k, v] of Object.entries(pinnedTraceHeaders)) {
+        mergedHeaders[k] = v;
+      }
 
       // Inject idempotency key for mutating methods.
       if (idempotencyKey && !hasHeader(mergedHeaders, 'Idempotency-Key')) {

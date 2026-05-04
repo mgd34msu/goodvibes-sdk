@@ -80,7 +80,10 @@ async function probeOtel(): Promise<OtelApi | null> {
   // Test injection seam takes highest priority.
   if (_otelModuleOverride !== undefined) return _otelModuleOverride;
   if (otelApi !== undefined) return otelApi;
-  if (typeof window !== 'undefined') {
+  // MIN-10: skip dynamic import in browser windows AND Service Workers / workerd
+  // (which have no `window` but do have WorkerGlobalScope). The Function constructor
+  // used in dynamicImport violates strict `script-src 'self'` CSPs in workers.
+  if (typeof window !== 'undefined' || 'WorkerGlobalScope' in globalThis) {
     otelApi = null;
     return otelApi;
   }

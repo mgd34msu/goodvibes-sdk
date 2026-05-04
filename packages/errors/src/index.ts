@@ -268,13 +268,27 @@ export class GoodVibesSdkError extends Error {
   }
 }
 
-function serializeCause(cause: unknown): unknown {
+function serializeCause(cause: unknown, seen = new Set<object>(), depth = 0): unknown {
   if (cause === undefined) return undefined;
+  if (depth >= MAX_ERROR_CAUSE_DEPTH) return undefined;
   if (cause instanceof Error) {
-    return omitUndefined({
-      name: cause.name,
-      message: cause.message,
-    });
+    const record: Record<string, unknown> = { name: cause.name, message: cause.message };
+    // Walk .cause, .originalError, .error chains symmetrically with inferCategoryFromCause.
+    const causeRecord = cause as { readonly cause?: unknown; readonly originalError?: unknown; readonly error?: unknown };
+    const nestedCause = causeRecord.cause ?? causeRecord.originalError ?? causeRecord.error;
+    if (nestedCause !== undefined) {
+      const objectKey = causeRecord.cause !== undefined ? 'cause' : causeRecord.originalError !== undefined ? 'originalError' : 'error';
+      const serialized = typeof nestedCause === 'object' && nestedCause !== null
+        ? (seen.has(nestedCause as object) ? '[Circular]' : serializeCause(nestedCause, new Set([...seen, nestedCause as object]), depth + 1))
+        : serializeCause(nestedCause, seen, depth + 1);
+      if (serialized !== undefined) record[objectKey] = serialized;
+    }
+    return omitUndefined(record as Record<string, unknown>);
+  }
+  if (typeof cause === 'object' && cause !== null) {
+    if (seen.has(cause as object)) return '[Circular]';
+    // Serialize plain-object causes (e.g. from transport error payloads) as-is.
+    return cause;
   }
   return cause;
 }
@@ -308,8 +322,9 @@ export class ConfigurationError extends GoodVibesSdkError {
         && value !== null
         && this.prototype.isPrototypeOf(value);
     }
-    return typeof value === 'object'
-      && value !== null
+    // Require both the brand (real SDK error instance) and matching code
+    // to prevent plain objects like { code: 'SDK_CONFIGURATION_ERROR' } from passing.
+    return GoodVibesSdkError[Symbol.hasInstance](value)
       && (value as Record<PropertyKey, unknown>).code === 'SDK_CONFIGURATION_ERROR';
   }
 
@@ -350,8 +365,9 @@ export class ContractError extends GoodVibesSdkError {
         && value !== null
         && this.prototype.isPrototypeOf(value);
     }
-    return typeof value === 'object'
-      && value !== null
+    // Require both the brand (real SDK error instance) and matching code
+    // to prevent plain objects like { code: 'SDK_CONTRACT_ERROR' } from passing.
+    return GoodVibesSdkError[Symbol.hasInstance](value)
       && (value as Record<PropertyKey, unknown>).code === 'SDK_CONTRACT_ERROR';
   }
 
@@ -399,9 +415,10 @@ export class HttpStatusError extends GoodVibesSdkError {
         && value !== null
         && this.prototype.isPrototypeOf(value);
     }
-    if (typeof value !== 'object' || value === null) return false;
-    const record = value as Record<PropertyKey, unknown>;
-    return record.code === 'SDK_HTTP_STATUS_ERROR';
+    // Require both the brand (real SDK error instance) and matching code
+    // to prevent plain objects like { code: 'SDK_HTTP_STATUS_ERROR' } from passing.
+    return GoodVibesSdkError[Symbol.hasInstance](value)
+      && (value as Record<PropertyKey, unknown>).code === 'SDK_HTTP_STATUS_ERROR';
   }
 
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
