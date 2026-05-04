@@ -25,11 +25,10 @@ import {
 export type { HttpRetryPolicy, PerMethodRetryPolicy } from './retry.js';
 export type { TransportContext, TransportMiddleware } from '@pellux/goodvibes-transport-core';
 
-// JsonValue canonical declaration lives in @pellux/goodvibes-contracts.
-// This re-export keeps the transport-http public API stable without introducing a second identity.
-export type { JsonValue } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
-
-import type { JsonValue } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
+// Re-export canonical JsonValue from contracts root index — single identity across all bundled packages.
+// Using the root import ensures the same JsonValue identity as inline uses in foundation-client-types.
+export type { JsonValue } from '@pellux/goodvibes-contracts';
+import type { JsonValue } from '@pellux/goodvibes-contracts';
 export type JsonObject = { readonly [key: string]: JsonValue };
 
 /**

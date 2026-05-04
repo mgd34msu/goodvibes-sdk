@@ -23,6 +23,8 @@ export type {
 } from './types.js';
 export { FOUNDATION_METADATA } from './generated/foundation-metadata.js';
 export type {
+  JsonPrimitive,
+  JsonValue,
   OperatorEventPayload,
   OperatorEventPayloadMap,
   OperatorMethodInput,
