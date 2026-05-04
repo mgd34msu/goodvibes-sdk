@@ -1,5 +1,5 @@
 import type { SurfaceAdapterContext } from '../types.js';
-import { parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
+import { constantTimeEquals, parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -48,7 +48,7 @@ export async function handleTelegramSurfaceWebhook(req: Request, context: Surfac
     || '';
   if (configuredSecret) {
     const providedSecret = req.headers.get('x-telegram-bot-api-secret-token') ?? '';
-    if (providedSecret !== configuredSecret) {
+    if (!constantTimeEquals(configuredSecret, providedSecret)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }

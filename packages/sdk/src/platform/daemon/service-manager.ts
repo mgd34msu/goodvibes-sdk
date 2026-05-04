@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync, spawn, type SpawnOptions } from 'node:child_process';
 import { ConfigManager } from '../config/manager.js';
@@ -401,16 +401,22 @@ export class PlatformServiceManager {
     mkdirSync(dirname(logPath), { recursive: true });
     const stdoutFd = openSync(logPath, 'a');
     const stderrFd = openSync(logPath, 'a');
-    const spawnOptions: SpawnOptions = {
-      cwd: definition.workingDirectory,
-      detached: true,
-      stdio: ['ignore', stdoutFd, stderrFd],
-      env: {
-        ...process.env,
-        ...definition.env,
-      },
-    };
-    const child = spawn(definition.command, [...definition.args], spawnOptions);
+    let child: ReturnType<typeof spawn>;
+    try {
+      const spawnOptions: SpawnOptions = {
+        cwd: definition.workingDirectory,
+        detached: true,
+        stdio: ['ignore', stdoutFd, stderrFd],
+        env: {
+          ...process.env,
+          ...definition.env,
+        },
+      };
+      child = spawn(definition.command, [...definition.args], spawnOptions);
+    } finally {
+      closeSync(stdoutFd);
+      closeSync(stderrFd);
+    }
     child.unref();
     writeFileSync(pidPath, `${child.pid}\n`, 'utf-8');
     return {

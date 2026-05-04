@@ -17,12 +17,14 @@ export interface AuthSession {
 
 interface UserAuthConfig {
   sessionTtlMs?: number | undefined;
+  maxSessions?: number | undefined;
   users?: AuthUser[] | undefined;
   bootstrapFilePath: string;
   bootstrapCredentialPath: string;
 }
 
 const DEFAULT_SESSION_TTL_MS = 3_600_000;
+const DEFAULT_MAX_SESSIONS = 1000;
 const SCRYPT_KEY_LENGTH = 64;
 
 interface AuthUserStore {
@@ -226,6 +228,7 @@ export class UserAuthManager {
   private users = new Map<string, AuthUser>();
   private sessions = new Map<string, AuthSession>();
   private sessionTtlMs: number;
+  private readonly maxSessions: number;
   private readonly userStorePath: string;
   private readonly bootstrapCredentialPath: string;
   private readonly persistUsers: boolean;
@@ -234,6 +237,7 @@ export class UserAuthManager {
     if (!config.bootstrapFilePath) throw new Error('UserAuthManager requires an explicit bootstrapFilePath.');
     if (!config.bootstrapCredentialPath) throw new Error('UserAuthManager requires an explicit bootstrapCredentialPath.');
     this.sessionTtlMs = config.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
+    this.maxSessions = config.maxSessions ?? DEFAULT_MAX_SESSIONS;
     this.userStorePath = config.bootstrapFilePath;
     this.bootstrapCredentialPath = config.bootstrapCredentialPath;
     this.persistUsers = config.users === undefined;
@@ -272,6 +276,20 @@ export class UserAuthManager {
 
   createSession(username: string): AuthSession {
     this.pruneExpiredSessions();
+    if (this.sessions.size >= this.maxSessions) {
+      // Evict the session with the earliest expiry to make room.
+      let oldestToken: string | undefined;
+      let oldestExpiry = Infinity;
+      for (const [token, session] of this.sessions.entries()) {
+        if (session.expiresAt < oldestExpiry) {
+          oldestExpiry = session.expiresAt;
+          oldestToken = token;
+        }
+      }
+      if (oldestToken !== undefined) {
+        this.sessions.delete(oldestToken);
+      }
+    }
     const token = randomBytes(32).toString('hex');
     const session: AuthSession = {
       token,

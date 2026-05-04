@@ -1,5 +1,5 @@
 import type { SurfaceAdapterContext } from '../types.js';
-import { parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
+import { constantTimeEquals, parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -22,7 +22,7 @@ export async function handleGoogleChatSurfaceWebhook(req: Request, context: Surf
   const payload = readRecord(body);
   if (!payload) return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   const providedToken = readString(payload.token) ?? req.headers.get('x-goog-chat-token') ?? '';
-  if (verificationToken && providedToken !== verificationToken) {
+  if (verificationToken && !constantTimeEquals(verificationToken, providedToken)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

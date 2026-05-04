@@ -1,4 +1,4 @@
-import { parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
 import type { SurfaceAdapterContext } from '../types.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -22,7 +22,7 @@ export async function handleMatrixSurfaceWebhook(req: Request, context: SurfaceA
     || process.env.MATRIX_ACCESS_TOKEN
     || '';
   const providedToken = readBearerOrHeaderToken(req, 'x-goodvibes-matrix-token');
-  if (configuredToken && providedToken !== configuredToken) {
+  if (configuredToken && !constantTimeEquals(configuredToken, providedToken)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const rawBody = await readTextBodyWithinLimit(req);
