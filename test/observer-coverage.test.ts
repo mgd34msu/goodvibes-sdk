@@ -158,7 +158,7 @@ describe('createOpenTelemetryObserver — onError', () => {
     obs.onError?.(err);
     expect(counters.some((c) => c.name === 'sdk.errors' && c.value === 1)).toBe(true);
     const errSpan = spans.find((s) => s.name === 'sdk.error');
-    expect(errSpan).toBeDefined();
+    expect(errSpan?.name).toBe('sdk.error');
     expect(errSpan!.ended).toBe(true);
     expect(errSpan!.attrs['sdk.error.kind']).toBe('rate-limit');
     expect(errSpan!.attrs['sdk.error.category']).toBe('rate_limit');

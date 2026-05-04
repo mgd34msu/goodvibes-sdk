@@ -85,8 +85,7 @@ describe('createOperatorRemoteClient — invoke throws for missing HTTP binding'
     const client = createOperatorRemoteClient(transport, contract as ReturnType<typeof getOperatorContract>);
     // requireMethodRoute throws synchronously when method.http is null
     expect(() => client.invoke('internal.only' as never)).toThrow(GoodVibesSdkError);
-    let caught: unknown;
-    try { client.invoke('internal.only' as never); } catch (e) { caught = e; }
+    const caught = (() => { try { client.invoke('internal.only' as never); } catch (e) { return e; } })();
     expect(caught).toBeInstanceOf(GoodVibesSdkError);
     expect((caught as GoodVibesSdkError).category).toBe('contract');
   });
@@ -185,7 +184,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.tasks.get('task-1');
     expect(calls[0]).toContain('task-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'task-1' });
   });
 
   test('tasks.cancel builds path from taskId', async () => {
@@ -200,7 +199,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.tasks.cancel('task-1');
     expect(calls[0]).toContain('task-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ cancelled: true });
   });
 
   test('tasks.retry builds path from taskId', async () => {
@@ -215,7 +214,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.tasks.retry('task-1');
     expect(calls[0]).toContain('task-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ retried: true });
   });
 
   test('approvals.claim builds path from approvalId', async () => {
@@ -230,7 +229,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.approvals.claim('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ claimed: true });
   });
 
   test('approvals.approve builds path from approvalId', async () => {
@@ -245,7 +244,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.approvals.approve('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ approved: true });
   });
 
   test('approvals.deny builds path from approvalId', async () => {
@@ -260,7 +259,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.approvals.deny('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ denied: true });
   });
 
   test('approvals.cancel builds path from approvalId', async () => {
@@ -275,7 +274,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.approvals.cancel('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ cancelled: true });
   });
 
   test('providers.get builds path from providerId', async () => {
@@ -290,7 +289,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.providers.get('provider-1');
     expect(calls[0]).toContain('provider-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'provider-1' });
   });
 
   test('providers.usage builds path from providerId', async () => {
@@ -305,7 +304,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.providers.usage('provider-1');
     expect(calls[0]).toContain('provider-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ usage: [] });
   });
 
   test('control.methods.get builds path from methodId', async () => {
@@ -320,7 +319,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.control.methods.get('method-1');
     expect(calls[0]).toContain('method-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'method-1' });
   });
 });
 
@@ -337,7 +336,7 @@ describe('createOperatorSdk — validateResponses option', () => {
     });
     // Should not throw even if response shape is unexpected — Zod is bypassed
     const result = await sdk.accounts.snapshot();
-    expect(result).toBeDefined();
+    expect(result).not.toBeNull(); // presence-only: validateResponses:false bypasses schema, no guaranteed shape
   });
 
   test('validateResponses: true (default) validates response against Zod schema', async () => {
@@ -382,7 +381,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.create({ task: 'hello' });
     expect(calls[0]).toContain('/sessions');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'session-1', status: 'active' });
   });
 
   test('sessions.get builds path from sessionId', async () => {
@@ -393,7 +392,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.get('session-abc');
     expect(calls[0]).toContain('session-abc');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'session-1', status: 'active' });
   });
 
   test('sessions.list invokes sessions.list route', async () => {
@@ -404,7 +403,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.list();
     expect(calls[0]).toContain('/sessions');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ sessions: [], total: 0 });
   });
 
   test('sessions.messages.create builds path from sessionId', async () => {
@@ -415,7 +414,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.messages.create('session-1', { role: 'user', content: 'hi' });
     expect(calls[0]).toContain('session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'msg-1' });
   });
 
   test('sessions.messages.list builds path from sessionId', async () => {
@@ -426,7 +425,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.messages.list('session-1');
     expect(calls[0]).toContain('session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ messages: [] });
   });
 
   test('sessions.inputs.cancel builds path from sessionId + inputId', async () => {
@@ -437,7 +436,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.inputs.cancel('session-1', 'input-1');
     expect(calls[0]).toContain('session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ cancelled: true });
   });
 
   test('sessions.followUp invokes followUp route', async () => {
@@ -448,7 +447,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.followUp({ sessionId: 's-1', task: 'continue' });
     expect(calls[0]).toContain('follow');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 
   test('sessions.steer invokes steer route', async () => {
@@ -459,7 +458,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.steer({ sessionId: 's-1', guidance: 'go left' });
     expect(calls[0]).toContain('steer');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 
   test('sessions.close builds path from sessionId', async () => {
@@ -470,7 +469,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.close('session-1');
     expect(calls[0]).toContain('session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ closed: true });
   });
 
   test('sessions.reopen builds path from sessionId', async () => {
@@ -481,7 +480,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.sessions.reopen('session-1');
     expect(calls[0]).toContain('session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ reopened: true });
   });
 
   test('tasks.create invokes task creation route', async () => {
@@ -492,7 +491,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.tasks.create({ task: 'do it', sessionId: 's-1', routing: { target: 'main' } });
     expect(calls[0]).toContain('task');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ taskId: 'task-1' });
   });
 
   test('tasks.get builds path from taskId', async () => {
@@ -503,7 +502,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.tasks.get('task-1');
     expect(calls[0]).toContain('task-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'task-1' });
   });
 
   test('tasks.list invokes tasks.list route', async () => {
@@ -514,7 +513,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.tasks.list();
     expect(calls[0]).toContain('task');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ tasks: [] });
   });
 
   test('tasks.status throws for no HTTP binding (internal-only route)', () => {
@@ -531,7 +530,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.tasks.cancel('task-1');
     expect(calls[0]).toContain('task-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ cancelled: true });
   });
 
   test('tasks.retry builds path from taskId', async () => {
@@ -542,7 +541,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.tasks.retry('task-1');
     expect(calls[0]).toContain('task-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ retried: true });
   });
 
   test('approvals.list invokes approvals.list route', async () => {
@@ -553,7 +552,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.approvals.list();
     expect(calls[0]).toContain('approval');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ approvals: [] });
   });
 
   test('approvals.claim builds path from approvalId', async () => {
@@ -564,7 +563,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.approvals.claim('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ claimed: true });
   });
 
   test('approvals.approve builds path from approvalId', async () => {
@@ -575,7 +574,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.approvals.approve('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ approved: true });
   });
 
   test('approvals.deny builds path from approvalId', async () => {
@@ -586,7 +585,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.approvals.deny('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ denied: true });
   });
 
   test('approvals.cancel builds path from approvalId', async () => {
@@ -597,7 +596,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.approvals.cancel('approval-1');
     expect(calls[0]).toContain('approval-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ cancelled: true });
   });
 
   test('providers.list invokes providers.list route', async () => {
@@ -608,7 +607,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.providers.list();
     expect(calls[0]).toContain('provider');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ providers: [] });
   });
 
   test('providers.get builds path from providerId', async () => {
@@ -619,7 +618,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.providers.get('provider-1');
     expect(calls[0]).toContain('provider-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'provider-1' });
   });
 
   test('providers.usage builds path from providerId', async () => {
@@ -630,7 +629,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.providers.usage('provider-1');
     expect(calls[0]).toContain('provider-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ usage: [] });
   });
 
   test('accounts.snapshot invokes accounts.snapshot route', async () => {
@@ -641,7 +640,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.accounts.snapshot();
     expect(calls[0]).toContain('account');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ configuredCount: 0, issueCount: 0 });
   });
 
   test('localAuth.status invokes local_auth.status route', async () => {
@@ -652,7 +651,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.localAuth.status();
     expect(calls[0]).toContain('auth');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ enabled: false });
   });
 
   test('control.snapshot invokes control.snapshot route', async () => {
@@ -663,7 +662,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.snapshot();
     expect(calls[0]).toContain('control');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 
   test('control.status invokes control.status route', async () => {
@@ -674,7 +673,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.status();
     expect(calls).toHaveLength(1); // route was called
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ version: '0.19.7' });
   });
 
   test('control.contract invokes control.contract route', async () => {
@@ -685,7 +684,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.contract();
     expect(calls[0]).toContain('control');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ version: 1 });
   });
 
   test('control.methods.list invokes methods.list route', async () => {
@@ -696,7 +695,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.methods.list();
     expect(calls[0]).toContain('method');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ methods: [] });
   });
 
   test('control.methods.get builds path from methodId', async () => {
@@ -707,7 +706,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.methods.get('method-1');
     expect(calls[0]).toContain('method-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'method-1' });
   });
 
   test('control.auth.current invokes auth.current route', async () => {
@@ -718,7 +717,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.auth.current();
     expect(calls[0]).toContain('auth');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ authenticated: true, principalId: 'alice' });
   });
 
   test('control.auth.login invokes auth.login route', async () => {
@@ -729,7 +728,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.auth.login({ username: 'alice', password: 'pw' });
     expect(calls).toHaveLength(1); // route was called
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ token: 'tok', authenticated: true });
   });
 
   test('control.events.catalog invokes events.catalog route', async () => {
@@ -740,7 +739,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.control.events.catalog();
     expect(calls[0]).toContain('event');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ events: [] });
   });
 
   test('telemetry.snapshot invokes telemetry.snapshot route', async () => {
@@ -751,7 +750,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.snapshot();
     expect(calls[0]).toContain('telemetry');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 
   test('telemetry.events invokes telemetry.events.list route', async () => {
@@ -762,7 +761,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.events();
     expect(calls[0]).toContain('telemetry');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ events: [] });
   });
 
   test('telemetry.errors invokes telemetry.errors.list route', async () => {
@@ -773,7 +772,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.errors();
     expect(calls[0]).toContain('telemetry');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ errors: [] });
   });
 
   test('telemetry.traces invokes telemetry.traces.list route', async () => {
@@ -784,7 +783,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.traces();
     expect(calls[0]).toContain('telemetry');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ traces: [] });
   });
 
   test('telemetry.metrics invokes telemetry.metrics.get route', async () => {
@@ -795,7 +794,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.metrics();
     expect(calls[0]).toContain('telemetry');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ metrics: [] });
   });
 
   test('telemetry.otlp.traces invokes telemetry.otlp.traces route', async () => {
@@ -806,7 +805,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.otlp.traces({ resourceSpans: [] });
     expect(calls[0]).toContain('otlp');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 
   test('telemetry.otlp.logs invokes telemetry.otlp.logs route', async () => {
@@ -817,7 +816,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.otlp.logs({ resourceLogs: [] });
     expect(calls[0]).toContain('otlp');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 
   test('telemetry.otlp.metrics invokes telemetry.otlp.metrics route', async () => {
@@ -828,6 +827,6 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     });
     const result = await client.telemetry.otlp.metrics({ resourceMetrics: [] });
     expect(calls[0]).toContain('otlp');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 });

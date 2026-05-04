@@ -187,8 +187,8 @@ describe('Home Graph sync and generated pages', () => {
     const nodes = (await service.browse({ installationId: 'house-1' })).nodes;
     const kitchenSensor = nodes.find((node) => node.title === 'Kitchen Sensor');
     const garageOpener = nodes.find((node) => node.title === 'Garage Opener');
-    expect(kitchenSensor).toBeDefined();
-    expect(garageOpener).toBeDefined();
+    expect(kitchenSensor?.title).toBe('Kitchen Sensor');
+    expect(garageOpener?.title).toBe('Garage Opener');
     await store.upsertIssue({
       id: 'issue-kitchen-sensor',
       severity: 'info',

@@ -118,7 +118,7 @@ describe('composeMiddleware: ctx mutation', () => {
     const mw: TransportMiddleware = async (ctx, next) => {
       expect(ctx.response).toBeUndefined();
       await next();
-      expect(ctx.response).toBeDefined();
+      expect(ctx.response).not.toBeUndefined(); // presence-only: ctx.response set after next()
       expect(ctx.response?.status).toBe(201);
     };
     const ctx = makeCtx();
@@ -167,12 +167,7 @@ describe('composeMiddleware: error propagation', () => {
     };
     const ctx = makeCtx();
     const composed = composeMiddleware([], inner);
-    let caught: unknown;
-    try {
-      await composed(ctx);
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await composed(ctx).catch((e: unknown) => e);
     expect(caught).toBe(expectedError);
     expect(ctx.error).toBe(expectedError);
     // MAJ-03 (eighth-review): dropped >= 0 tautology; upper bound carries the real assertion
@@ -190,12 +185,7 @@ describe('composeMiddleware: error propagation', () => {
     };
     const ctx = makeCtx();
     const composed = composeMiddleware([mw], inner);
-    let caught: unknown;
-    try {
-      await composed(ctx);
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await composed(ctx).catch((e: unknown) => e);
     expect((caught as Error).message).toBe('middleware blew up');
     expect(innerCalled).toBe(false);
   });
@@ -207,12 +197,7 @@ describe('composeMiddleware: error propagation', () => {
     };
     const ctx = makeCtx();
     const composed = composeMiddleware([mw], makeInnerFetch());
-    let caught: unknown;
-    try {
-      await composed(ctx);
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await composed(ctx).catch((e: unknown) => e);
     expect((caught as Error).message).toContain('next() called multiple times');
   });
 });
@@ -385,14 +370,8 @@ describe('middleware error wrap: HttpStatusError from middleware', () => {
     }
     transport.use(myMw);
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/v1/test');
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await transport.requestJson('/v1/test').catch((e: unknown) => e);
 
-    expect(caught).toBeDefined();
     expect(caught instanceof GoodVibesSdkError).toBe(true);
     const err = caught as GoodVibesSdkError;
     expect(err.category).toBe('unknown');
@@ -418,12 +397,7 @@ describe('middleware error wrap: HttpStatusError from middleware', () => {
     }
     transport.use(loggerMw as Parameters<typeof transport.use>[0]);
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/v1/test');
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await transport.requestJson('/v1/test').catch((e: unknown) => e);
 
     expect(caught instanceof GoodVibesSdkError).toBe(true);
     const err = caught as GoodVibesSdkError;

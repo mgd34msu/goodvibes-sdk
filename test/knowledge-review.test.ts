@@ -51,7 +51,7 @@ describe('knowledge review decisions', () => {
 
     expect(reviewed.issue.status).toBe('resolved');
     expect(refreshed[0]?.status).toBe('resolved');
-    expect(refreshed[0]?.metadata.review).toBeDefined();
+    expect(refreshed[0]?.metadata.review).not.toBeUndefined(); // presence-only: review metadata set
   });
 });
 

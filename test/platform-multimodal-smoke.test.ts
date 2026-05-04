@@ -49,7 +49,7 @@ describe('platform/multimodal — behavior smoke', () => {
     // With no configured media/voice providers, only the built-in extractor is present
     expect(providers.length).toBeGreaterThanOrEqual(1);
     const extractor = providers.find((p) => p.id === 'knowledge-extractors');
-    expect(extractor).toBeDefined();
+    expect(extractor?.id).toBe('knowledge-extractors');
     expect(typeof extractor!.id).toBe('string');
     expect(typeof extractor!.label).toBe('string');
     expect(extractor!.capabilities).toBeInstanceOf(Array);

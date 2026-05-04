@@ -100,7 +100,7 @@ describe('I2(a): setModelContextCap invalidation reflected in listModels()', () 
     // Prime the cache
     const before = registry.listModels();
     const found = before.find((m) => m.registryKey === 'custom-test:custom-model-a');
-    expect(found).toBeDefined();
+    expect(found?.registryKey).toBe('custom-test:custom-model-a');
     expect(found!.contextWindow).toBe(4096);
 
     // Mutate via setModelContextCap (customModels path)
@@ -109,7 +109,7 @@ describe('I2(a): setModelContextCap invalidation reflected in listModels()', () 
     // Must reflect the new cap — cache must be invalidated
     const after = registry.listModels();
     const updated = after.find((m) => m.registryKey === 'custom-test:custom-model-a');
-    expect(updated).toBeDefined();
+    expect(updated?.registryKey).toBe('custom-test:custom-model-a');
     expect(updated!.contextWindow).toBe(8192);
   });
 
@@ -133,7 +133,7 @@ describe('I2(a): setModelContextCap invalidation reflected in listModels()', () 
     // Prime the cache
     const before = registry.listModels();
     const found = before.find((m) => m.id === 'llama3');
-    expect(found).toBeDefined();
+    expect(found?.id).toBe('llama3');
     expect(found!.contextWindow).toBe(4096);
 
     // Mutate via setModelContextCap (discoveredModels path)
@@ -142,7 +142,7 @@ describe('I2(a): setModelContextCap invalidation reflected in listModels()', () 
     // Must reflect the new cap
     const after = registry.listModels();
     const updated = after.find((m) => m.id === 'llama3');
-    expect(updated).toBeDefined();
+    expect(updated?.id).toBe('llama3');
     expect(updated!.contextWindow).toBe(16384);
   });
 });

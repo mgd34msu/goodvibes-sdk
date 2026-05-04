@@ -492,8 +492,8 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     const page = await service.refreshDevicePassport({ installationId: 'house', deviceId: 'tv' });
 
     expect(repaired.answer.text).toContain('NanoCell 4K');
-    expect(repairSource).toBeDefined();
-    expect(tvNode).toBeDefined();
+    expect(repairSource).not.toBeUndefined(); // presence-only: repairSource returned
+    expect(tvNode).not.toBeUndefined(); // presence-only: tvNode found
     expect(store.listEdges().some((edge) => (
       edge.fromKind === 'source'
       && edge.fromId === repairSource?.id

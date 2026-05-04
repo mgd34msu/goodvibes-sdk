@@ -99,14 +99,14 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
     gateway.publishEvent('my-event', { value: 42 }, { clientId });
 
     const match = received.find((r) => r.event === 'my-event');
-    expect(match).toBeDefined();
+    expect(match?.event).toBe('my-event');
     expect((match!.payload as { value: number }).value).toBe(42);
     expect(match!.id).toMatch(/^evt-/);
 
     // Must also appear in listRecentEvents
     const recent = gateway.listRecentEvents();
     const recentMatch = recent.find((r) => r.event === 'my-event');
-    expect(recentMatch).toBeDefined();
+    expect(recentMatch?.event).toBe('my-event');
     expect((recentMatch!.payload as { value: number }).value).toBe(42);
   });
 
@@ -136,7 +136,7 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
 
     // Client send must have been invoked with 'surface-message'
     const surfaceMsg = received.find((r) => r.event === 'surface-message');
-    expect(surfaceMsg).toBeDefined();
+    expect(surfaceMsg?.event).toBe('surface-message');
     expect((surfaceMsg!.payload as { title: string }).title).toBe('Hello Surface');
 
     // Message must be stored in listSurfaceMessages
@@ -301,7 +301,7 @@ describe('ControlPlaneGateway — invariants', () => {
     expect(receivedA).toContain('targeted-private');
     expect(receivedB).not.toContain('targeted-private');
     const publicRecent = gateway.listRecentEvents().find((event) => event.event === 'targeted-private');
-    expect(publicRecent).toBeDefined();
+    expect(publicRecent?.event).toBe('targeted-private');
     expect('replayScope' in (publicRecent as Record<string, unknown>)).toBe(false);
   });
 });

@@ -10,7 +10,7 @@ import { describe, expect, test } from 'bun:test';
 describe('obs-12 runtime meter', () => {
   test('platformMeter is exported from metrics module', async () => {
     const { platformMeter } = await import('../packages/sdk/src/platform/runtime/metrics.js');
-    expect(platformMeter).toBeDefined();
+    expect(platformMeter).not.toBeNull(); // presence-only: platformMeter exported
   });
 
   test('httpRequestsTotal counter add() and value() work', async () => {

@@ -212,7 +212,7 @@ describe('router-e2e telemetry — failure paths (telemetryApi null)', () => {
     // The unavailable() helper returns 503
     expect(res!.status).toBe(503);
     const body = await res!.json() as Record<string, unknown>;
-    expect(body.error).toBeDefined();
+    expect(typeof body.error).toBe('string'); // error is a string message
   });
 
   test('GET /api/v1/telemetry/events returns 503 when telemetryApi is null', async () => {

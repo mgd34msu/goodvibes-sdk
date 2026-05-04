@@ -91,7 +91,7 @@ describe('F21 — method catalog registers companion-chat methods', () => {
   test('companion.chat.messages.list descriptor targets the restored GET /messages path', () => {
     const catalog = new GatewayMethodCatalog({ includeBuiltins: true });
     const desc = catalog.list().find((m) => m.id === 'companion.chat.messages.list');
-    expect(desc).toBeDefined();
+    expect(desc?.id).toBe('companion.chat.messages.list');
     expect(desc!.http).toEqual({ method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/messages' });
   });
 });

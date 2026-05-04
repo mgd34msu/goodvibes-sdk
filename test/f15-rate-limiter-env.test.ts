@@ -90,13 +90,7 @@ describe('CompanionChatRateLimiter threshold precedence', () => {
     // Request 2 — OK
     expect(() => limiter.check('session-f15', 'client-1')).not.toThrow();
     // Request 3 — must throw with rate-limit category
-    let caught: unknown;
-    try {
-      limiter.check('session-f15', 'client-1');
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeDefined();
+    const caught = (() => { try { limiter.check('session-f15', 'client-1'); } catch (e) { return e; } })();
     // GoodVibesSdkError should have category 'rate_limit'
     expect((caught as { category?: string }).category).toBe('rate_limit');
   });

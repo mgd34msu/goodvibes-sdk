@@ -5,7 +5,7 @@ import { describe, expect, test } from 'bun:test';
 
 describe('telegram adapter — contract surface', () => {
   test('telegram adapter module is importable without throwing', async () => {
-    await expect(import('../packages/sdk/src/platform/adapters/telegram/index.js')).resolves.toBeDefined();
+    await expect(import('../packages/sdk/src/platform/adapters/telegram/index.js')).resolves.not.toBeNull(); // presence-only: module importable
   });
 
   test('telegram adapter module exports at least one function', async () => {

@@ -432,7 +432,7 @@ describe('feature flag safe-default gates', () => {
     const report = getSecuritySettingsReport(manager);
     const fetchSetting = report.find((entry) => entry.key === 'featureFlags.fetch-sanitization');
 
-    expect(fetchSetting).toBeDefined();
+    expect(fetchSetting?.key).toBe('featureFlags.fetch-sanitization');
     expect(fetchSetting?.currentState).toBe('disabled');
     expect(fetchSetting?.insecureWhen).toMatch(/SSRF-risk hosts/i);
     expect(fetchSetting?.enablementRequirements).toEqual([

@@ -179,12 +179,7 @@ describe('ProviderRegistry.require()', () => {
   test('error message includes the requested provider ID', () => {
     const registry = makeRegistry();
     registry.register(makeProvider('anthropic'));
-    let caught: unknown;
-    try {
-      registry.require('phantom');
-    } catch (e) {
-      caught = e;
-    }
+    const caught = (() => { try { registry.require('phantom'); } catch (e) { return e; } })();
     expect(caught).toBeInstanceOf(ProviderNotFoundError);
     expect((caught as ProviderNotFoundError).message).toContain('phantom');
   });
@@ -193,12 +188,7 @@ describe('ProviderRegistry.require()', () => {
     const registry = makeRegistry();
     registry.register(makeProvider('alpha'));
     registry.register(makeProvider('beta'));
-    let caught: unknown;
-    try {
-      registry.require('unknown');
-    } catch (e) {
-      caught = e;
-    }
+    const caught = (() => { try { registry.require('unknown'); } catch (e) { return e; } })();
     expect(caught).toBeInstanceOf(ProviderNotFoundError);
     const err = caught as ProviderNotFoundError;
     // The message should include the available provider names
@@ -211,12 +201,7 @@ describe('ProviderRegistry.require()', () => {
 
   test('ProviderNotFoundError has correct providerId property', () => {
     const registry = makeRegistry();
-    let caught: unknown;
-    try {
-      registry.require('ghost');
-    } catch (e) {
-      caught = e;
-    }
+    const caught = (() => { try { registry.require('ghost'); } catch (e) { return e; } })();
     expect(caught).toBeInstanceOf(ProviderNotFoundError);
     expect((caught as ProviderNotFoundError).providerId).toBe('ghost');
   });

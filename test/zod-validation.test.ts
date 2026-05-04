@@ -94,17 +94,12 @@ describe('zod-validation: contract violations', () => {
       expiresAt: Date.now(),
     };
 
-    let caught: unknown;
-    try {
-      await invokeContractRoute(
-        makeTransport(wrongTypes),
-        LOGIN_ROUTE,
-        {},
-        { responseSchema: ControlAuthLoginResponseSchema },
-      );
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await invokeContractRoute(
+      makeTransport(wrongTypes),
+      LOGIN_ROUTE,
+      {},
+      { responseSchema: ControlAuthLoginResponseSchema },
+    ).catch((err: unknown) => err);
 
     expect(caught).toBeInstanceOf(ContractError);
     const msg = (caught as ContractError).message;

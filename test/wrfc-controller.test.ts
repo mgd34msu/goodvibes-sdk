@@ -401,11 +401,11 @@ describe('WrfcController — escalation', () => {
 
     // Verify WORKFLOW_CHAIN_FAILED payload contains chainId
     const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
-    expect(failedEvent).toBeDefined();
+    expect(failedEvent?.type).toBe('WORKFLOW_CHAIN_FAILED');
 
     // Verify fix-attempted event shape
     const fixAttemptEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_FIX_ATTEMPTED');
-    expect(fixAttemptEvent).toBeDefined();
+    expect(fixAttemptEvent?.type).toBe('WORKFLOW_FIX_ATTEMPTED');
 
     h.controller.dispose();
   });
@@ -422,7 +422,7 @@ describe('WrfcController — escalation', () => {
     await flushMicrotasks();
 
     expect(chain.state).toBe('failed');
-    expect(chain.error).toBeDefined();
+    expect(chain.error).not.toBeUndefined(); // presence-only: error was set on failed chain
 
     const types = h.workflowEvents.map((e) => e.type);
     expect(types).toContain('WORKFLOW_CHAIN_FAILED');
@@ -545,7 +545,7 @@ describe('WrfcController — Phase 5 constraint integration', () => {
 
     // Review event must NOT have constraint fields (no-op path)
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     const reviewPayload = p5EventData(reviewEvent!);
     expect(reviewPayload['passed']).toBe(true);
     expect(reviewPayload['constraintsSatisfied']).toBeUndefined();

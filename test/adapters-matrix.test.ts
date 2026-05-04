@@ -5,7 +5,7 @@ import { describe, expect, test } from 'bun:test';
 
 describe('matrix adapter — contract surface', () => {
   test('matrix adapter module is importable without throwing', async () => {
-    await expect(import('../packages/sdk/src/platform/adapters/matrix/index.js')).resolves.toBeDefined();
+    await expect(import('../packages/sdk/src/platform/adapters/matrix/index.js')).resolves.not.toBeNull(); // presence-only: module importable
   });
 
   test('matrix adapter module exports at least one function', async () => {

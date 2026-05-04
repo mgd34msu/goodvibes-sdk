@@ -74,8 +74,8 @@ describe('RouteBindingManager.upsertBinding — emissions', () => {
     await manager.upsertBinding(BASE_INPUT);
     await flush();
 
-    const created = events.find((e) => e.type === 'ROUTE_BINDING_CREATED');
-    expect(created).toBeDefined();
+    const created = events.find((e) => e.type === 'ROUTE_BINDING_CREATED')
+    expect(created?.type).toBe('ROUTE_BINDING_CREATED');
   });
 
   it('emits ROUTE_BINDING_UPDATED when the binding already exists', async () => {
@@ -86,8 +86,8 @@ describe('RouteBindingManager.upsertBinding — emissions', () => {
     await manager.upsertBinding({ ...BASE_INPUT, id: first.id });
     await flush();
 
-    const updated = events.find((e) => e.type === 'ROUTE_BINDING_UPDATED');
-    expect(updated).toBeDefined();
+    const updated = events.find((e) => e.type === 'ROUTE_BINDING_UPDATED')
+    expect(updated?.type).toBe('ROUTE_BINDING_UPDATED');
     const created = events.find((e) => e.type === 'ROUTE_BINDING_CREATED');
     expect(created).toBeUndefined();
   });
@@ -136,8 +136,8 @@ describe('RouteBindingManager.removeBinding — emissions', () => {
     await manager.removeBinding(binding.id);
     await flush();
 
-    const removed = events.find((e) => e.type === 'ROUTE_BINDING_REMOVED');
-    expect(removed).toBeDefined();
+    const removed = events.find((e) => e.type === 'ROUTE_BINDING_REMOVED')
+    expect(removed?.type).toBe('ROUTE_BINDING_REMOVED');
   });
 
   it('ROUTE_BINDING_REMOVED contains bindingId, surfaceKind, externalId', async () => {

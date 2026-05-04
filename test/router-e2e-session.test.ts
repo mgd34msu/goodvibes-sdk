@@ -102,7 +102,7 @@ describe('router-e2e session — POST /api/sessions (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(body.id).toBeDefined();
+    expect(typeof body.id).toBe('string'); // id is a string session ID
     expect(body.status).toBe('active');
   });
 
@@ -137,7 +137,7 @@ describe('router-e2e session — messages (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(body.messageId).toBeDefined();
+    expect(typeof body.messageId).toBe('string'); // messageId is a string
   });
 
   test('POST /api/sessions/:id/close closes session', async () => {

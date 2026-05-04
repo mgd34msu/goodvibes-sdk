@@ -12,7 +12,7 @@ describe('platform/runtime/inspection/state-inspector — behavior smoke', () =>
   test('getSnapshot returns an object with domains array and capturedAt timestamp', () => {
     const inspector = createStateInspector({ domains: [] });
     const snapshot = inspector.getSnapshot();
-    expect(snapshot).toBeDefined();
+    expect(snapshot).not.toBeNull(); // presence-only: inspector snapshot returned
     expect(snapshot.domains).toBeInstanceOf(Array);
     expect(typeof snapshot.capturedAt).toBe('number');
   });

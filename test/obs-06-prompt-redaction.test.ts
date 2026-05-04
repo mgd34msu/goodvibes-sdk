@@ -112,8 +112,8 @@ describe('obs-06 end-to-end through TelemetryApiService safe view', () => {
 
     // Default view is 'safe' — prompt field must be redacted
     const safeEvents = telemetry.listEvents({});
-    const safeRecord = safeEvents.find((e) => e.type === 'TURN_SUBMITTED');
-    expect(safeRecord).toBeDefined();
+    const safeRecord = safeEvents.find((e) => e.type === 'TURN_SUBMITTED')
+    expect(safeRecord?.type).toBe('TURN_SUBMITTED');
     const serialized = JSON.stringify(safeRecord);
     expect(serialized).not.toContain('sk-very-secret-token');
     expect(serialized).not.toContain('hunter2');
@@ -136,8 +136,8 @@ describe('obs-06 end-to-end through TelemetryApiService safe view', () => {
     await new Promise((r) => setImmediate(r));
 
     const rawEvents = telemetry.listEvents({ view: 'raw' });
-    const rawRecord = rawEvents.find((e) => e.type === 'TURN_SUBMITTED');
-    expect(rawRecord).toBeDefined();
+    const rawRecord = rawEvents.find((e) => e.type === 'TURN_SUBMITTED')
+    expect(rawRecord?.type).toBe('TURN_SUBMITTED');
     const payload = rawRecord!.payload as Record<string, unknown>;
     expect(payload['prompt']).toBe('raw visible prompt');
   });

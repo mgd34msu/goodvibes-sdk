@@ -261,14 +261,9 @@ describe('reactive 401 terminal: double 401 throws auth error', () => {
       },
     });
 
-    let caught: unknown;
-    try {
-      await coordinator.withRetryOn401(async () => {
-        throw make401Error();
-      });
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await coordinator.withRetryOn401(async () => {
+      throw make401Error();
+    }).catch((err: unknown) => err);
 
     expect(caught).toBeInstanceOf(GoodVibesSdkError);
     const sdkErr = caught as GoodVibesSdkError;
@@ -341,14 +336,9 @@ describe('opt-out: autoRefresh:false disables refresh and bubbles 401', () => {
       },
     });
 
-    let caught: unknown;
-    try {
-      await coordinator.withRetryOn401(async () => {
-        throw make401Error();
-      });
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await coordinator.withRetryOn401(async () => {
+      throw make401Error();
+    }).catch((err: unknown) => err);
 
     // The original 401 error should bubble up unchanged.
     expect(caught).toBeInstanceOf(GoodVibesSdkError);
@@ -396,12 +386,7 @@ describe('opt-out: autoRefresh:false disables refresh and bubbles 401', () => {
       { autoRefresh: false },
     );
 
-    let caught: unknown;
-    try {
-      await auth.current();
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await auth.current().catch((err: unknown) => err);
 
     // With autoRefresh:false, the coordinator is disabled entirely.
     // The 401 from the operator should propagate directly.
@@ -451,7 +436,7 @@ describe('observer: onAuthTransition emitted on successful refresh', () => {
 
     // refresh transition should have been emitted
     const refreshTransition = transitions.find((t) => t.reason === 'refresh');
-    expect(refreshTransition).toBeDefined();
+    expect(refreshTransition?.reason).toBe('refresh');
     expect(refreshTransition!.from).toBe('token');
     expect(refreshTransition!.to).toBe('token');
     expect(refreshTransition!.reason).toBe('refresh');
@@ -485,7 +470,7 @@ describe('observer: onAuthTransition emitted on successful refresh', () => {
     await coordinator.ensureFreshToken();
 
     const expiredTransition = transitions.find((t) => t.reason === 'expire');
-    expect(expiredTransition).toBeDefined();
+    expect(expiredTransition?.reason).toBe('expire');
     expect(expiredTransition!.from).toBe('token');
     expect(expiredTransition!.to).toBe('anonymous');
     expect(expiredTransition!.reason).toBe('expire');
@@ -722,14 +707,9 @@ describe('is401Error: broadened error shapes', () => {
     });
 
     const notAuthError = { response: { status: 403 } };
-    let caught: unknown;
-    try {
-      await coordinator.withRetryOn401(async () => {
-        throw notAuthError;
-      });
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await coordinator.withRetryOn401(async () => {
+      throw notAuthError;
+    }).catch((err: unknown) => err);
 
     expect(caught).toBe(notAuthError);
     expect(refreshCalled).toBe(false);

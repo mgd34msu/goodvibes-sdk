@@ -5,7 +5,7 @@ import { describe, expect, test } from 'bun:test';
 
 describe('webhook adapter — contract surface', () => {
   test('webhook adapter module is importable without throwing', async () => {
-    await expect(import('../packages/sdk/src/platform/adapters/webhook/index.js')).resolves.toBeDefined();
+    await expect(import('../packages/sdk/src/platform/adapters/webhook/index.js')).resolves.not.toBeNull(); // presence-only: module importable
   });
 
   test('webhook adapter module exports at least one function', async () => {

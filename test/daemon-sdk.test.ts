@@ -229,7 +229,7 @@ describe('daemon sdk', () => {
         runWatcherNow: async () => null,
       },
     }, new Request('http://127.0.0.1/api/system/status'));
-    expect(systemHandlers.getServiceStatus).toBeDefined();
+    expect(typeof systemHandlers.getServiceStatus).toBe('function'); // getServiceStatus is a function
 
     const knowledgeHandlers = createDaemonKnowledgeRouteHandlers({
       configManager: { get: () => false },

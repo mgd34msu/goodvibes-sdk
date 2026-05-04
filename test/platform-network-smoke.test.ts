@@ -26,7 +26,7 @@ function makeConfig() {
 describe('platform/runtime/network — behavior smoke', () => {
   test('inspectInboundTls for controlPlane returns snapshot with surface and mode', () => {
     const snapshot = inspectInboundTls(makeConfig(), 'controlPlane');
-    expect(snapshot).toBeDefined();
+    expect(snapshot).toHaveProperty('mode');
     expect(snapshot.surface).toBe('controlPlane');
     expect('mode' in snapshot).toBe(true);
     expect(typeof snapshot.host).toBe('string');
@@ -40,14 +40,14 @@ describe('platform/runtime/network — behavior smoke', () => {
 
   test('resolveInboundTlsContext returns context with tls undefined in default (off) mode', () => {
     const ctx = resolveInboundTlsContext(makeConfig(), 'controlPlane');
-    expect(ctx).toBeDefined();
+    expect(ctx).not.toBeNull(); // presence-only: context returned
     // In 'off' mode no TLS credentials — tls is undefined
     expect(ctx.tls).toBeUndefined();
   });
 
   test('inspectOutboundTls returns snapshot with mode and trustMode fields', () => {
     const snapshot = inspectOutboundTls(makeConfig());
-    expect(snapshot).toBeDefined();
+    expect(snapshot).toHaveProperty('mode'); // presence-only refined: check mode field
     expect('mode' in snapshot).toBe(true);
   });
 
@@ -58,7 +58,7 @@ describe('platform/runtime/network — behavior smoke', () => {
 
   test('GlobalNetworkTransportInstaller instance exposes install and setConfigManager', () => {
     const installer = new GlobalNetworkTransportInstaller();
-    expect(installer.install).toBeDefined();
-    expect(installer.setConfigManager).toBeDefined();
+    expect(typeof installer.install).toBe('function');
+    expect(typeof installer.setConfigManager).toBe('function');
   });
 });

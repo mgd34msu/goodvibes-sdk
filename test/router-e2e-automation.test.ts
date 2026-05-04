@@ -100,7 +100,7 @@ describe('router-e2e automation — GET /api/automation/jobs (happy path)', () =
     expect(res).not.toBeNull();
     expect(res!.status).toBe(201);
     const body = await res!.json() as Record<string, unknown>;
-    expect(body.id).toBeDefined();
+    expect(typeof body.id).toBe('string'); // id is a string
   });
 });
 

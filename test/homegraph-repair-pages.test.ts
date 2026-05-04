@@ -119,7 +119,7 @@ describe('Home Graph repair and generated pages', () => {
     expect(pages.pages.some((page) => page.markdown?.includes('Dolby Vision'))).toBe(true);
 
     const passportPage = pages.pages.find((page) => page.source.title === 'LG webOS Smart TV passport');
-    expect(passportPage).toBeDefined();
+    expect(passportPage?.source.title).toBe('LG webOS Smart TV passport');
     await store.upsertSource({
       ...passportPage!.source,
       metadata: {
@@ -246,7 +246,7 @@ describe('Home Graph repair and generated pages', () => {
     const spaceId = homeAssistantKnowledgeSpaceId('house-1');
     const browse = await service.browse({ installationId: 'house-1' });
     const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
-    expect(device).toBeDefined();
+    expect(device?.title).toBe('LG webOS Smart TV');
     const source = await store.upsertSource({
       connectorId: 'semantic-gap-repair',
       sourceType: 'url',
@@ -392,7 +392,7 @@ describe('Home Graph repair and generated pages', () => {
     const spaceId = homeAssistantKnowledgeSpaceId('house-1');
     const browse = await service.browse({ installationId: 'house-1' });
     const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
-    expect(device).toBeDefined();
+    expect(device?.title).toBe('LG webOS Smart TV');
     const source = await store.upsertSource({
       connectorId: 'semantic-gap-repair',
       sourceType: 'url',
@@ -464,7 +464,7 @@ describe('Home Graph repair and generated pages', () => {
     const spaceId = homeAssistantKnowledgeSpaceId('house-1');
     const browse = await service.browse({ installationId: 'house-1' });
     const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
-    expect(device).toBeDefined();
+    expect(device?.title).toBe('LG webOS Smart TV');
     const source = await store.upsertSource({
       connectorId: 'semantic-gap-repair',
       sourceType: 'url',
@@ -629,7 +629,7 @@ describe('Home Graph repair and generated pages', () => {
     const spaceId = homeAssistantKnowledgeSpaceId('house-1');
     const browse = await service.browse({ installationId: 'house-1' });
     const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
-    expect(device).toBeDefined();
+    expect(device?.title).toBe('LG webOS Smart TV');
     const source = await store.upsertSource({
       connectorId: 'semantic-gap-repair',
       sourceType: 'url',
@@ -692,7 +692,7 @@ describe('Home Graph repair and generated pages', () => {
     const spaceId = homeAssistantKnowledgeSpaceId('house-1');
     const browse = await service.browse({ installationId: 'house-1' });
     const device = browse.nodes.find((node) => node.kind === 'ha_device' && node.title === 'LG webOS Smart TV');
-    expect(device).toBeDefined();
+    expect(device?.title).toBe('LG webOS Smart TV');
     const source = await store.upsertSource({
       connectorId: 'semantic-gap-repair',
       sourceType: 'url',

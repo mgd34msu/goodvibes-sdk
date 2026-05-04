@@ -437,7 +437,7 @@ describe('Home Graph ask, source repair, and reindex', () => {
     });
     const spaceId = homeAssistantKnowledgeSpaceId('house-1');
     const tvNode = store.listNodes(1_000).find((node) => node.title === 'Living Room TV');
-    expect(tvNode).toBeDefined();
+    expect(tvNode?.title).toBe('Living Room TV');
     const repairSource = await store.upsertSource({
       connectorId: 'semantic-gap-repair',
       sourceType: 'url',
@@ -489,7 +489,7 @@ describe('Home Graph ask, source repair, and reindex', () => {
       }],
     });
     const tvNode = store.listNodes(100).find((node) => node.title === 'Living Room TV');
-    expect(tvNode).toBeDefined();
+    expect(tvNode?.title).toBe('Living Room TV');
     await store.upsertEdge({
       fromKind: 'node',
       fromId: tvNode!.id,

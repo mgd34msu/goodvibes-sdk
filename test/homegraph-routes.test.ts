@@ -58,7 +58,7 @@ describe('Home Graph daemon routes', () => {
     const batteryIssues = initial.issues.filter((issue) => issue.code === 'homegraph.device.unknown_battery');
     const frontDoorIssue = batteryIssues.find((issue) => issue.message.includes('Front Door Sensor'));
 
-    expect(frontDoorIssue).toBeDefined();
+    expect(frontDoorIssue?.message).toContain('Front Door Sensor');
     expect(batteryIssues.some((issue) => issue.message.includes('Living Room TV'))).toBe(false);
     expect(initial.issues.some((issue) => issue.message.includes('ZHA Bridge'))).toBe(false);
 
