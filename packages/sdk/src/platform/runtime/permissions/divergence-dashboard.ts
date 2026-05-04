@@ -129,12 +129,15 @@ export interface DivergenceDashboardConfig {
  * const simulator = createPermissionSimulator(actual, simulated, 'warn-on-divergence');
  * const dashboard = new DivergenceDashboard(simulator, 'warn-on-divergence');
  *
+ * // The setInterval and console.error below are caller-side integration
+ * // examples only — the class itself does not use timers or console output.
  * // Periodically capture trend entries (e.g. every 30 seconds):
  * setInterval(() => dashboard.recordTrendEntry(), 30_000);
  *
  * // Before switching to enforce mode:
  * const gate = dashboard.checkEnforceGate();
  * if (gate.status !== 'allowed') {
+ *   // Replace with your logging framework in production.
  *   console.error('Enforce blocked:', gate.message);
  * }
  * ```

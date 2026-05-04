@@ -66,6 +66,9 @@ export function createReactNativeGoodVibesSdk(
 ): ReactNativeGoodVibesSdk {
   const base = createGoodVibesSdk({
     ...options,
+    // Default retry: 3 attempts with exponential back-off capped at 2 s.
+    // React Native links can be flaky (radio, background suspension) so a
+    // conservative retry budget prevents cascading failures.
     retry: options.retry ?? {
       maxAttempts: 3,
       baseDelayMs: 250,

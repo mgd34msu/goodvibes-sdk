@@ -240,6 +240,9 @@ class ConditionParser {
       switch (op) {
         case '===': return left === right;
         case '!==': return left !== right;
+        // Loose equality is intentional: user-authored trigger conditions may
+        // use `==` to allow type-coercive matching (e.g. numeric payload field
+        // compared to string literal). Strict `===` is also supported.
         // eslint-disable-next-line eqeqeq
         case '==': return left == right;
         // eslint-disable-next-line eqeqeq

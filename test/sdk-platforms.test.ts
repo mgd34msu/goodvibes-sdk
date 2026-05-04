@@ -38,17 +38,18 @@ describe('sdk platform integrations', () => {
       configurable: true,
       value: { origin: 'https://goodvibes.example.com' },
     });
+    try {
+      const sdk = createBrowserGoodVibesSdk({
+        fetch: fetchStub as typeof fetch,
+      });
 
-    const sdk = createBrowserGoodVibesSdk({
-      fetch: fetchStub as typeof fetch,
-    });
-
-    expect(sdk.operator.transport.baseUrl).toBe('https://goodvibes.example.com');
-
-    Object.defineProperty(globalThis, 'location', {
-      configurable: true,
-      value: previousLocation,
-    });
+      expect(sdk.operator.transport.baseUrl).toBe('https://goodvibes.example.com');
+    } finally {
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: previousLocation,
+      });
+    }
   });
 
   test('web entry aliases the browser integration layer', () => {
@@ -57,17 +58,18 @@ describe('sdk platform integrations', () => {
       configurable: true,
       value: { origin: 'https://goodvibes.example.com' },
     });
+    try {
+      const sdk = createWebGoodVibesSdk({
+        fetch: fetchStub as typeof fetch,
+      });
 
-    const sdk = createWebGoodVibesSdk({
-      fetch: fetchStub as typeof fetch,
-    });
-
-    expect(sdk.operator.transport.baseUrl).toBe('https://goodvibes.example.com');
-
-    Object.defineProperty(globalThis, 'location', {
-      configurable: true,
-      value: previousLocation,
-    });
+      expect(sdk.operator.transport.baseUrl).toBe('https://goodvibes.example.com');
+    } finally {
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: previousLocation,
+      });
+    }
   });
 
   test('react native entry exposes websocket-first realtime helpers', () => {

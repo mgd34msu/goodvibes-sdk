@@ -233,6 +233,27 @@ function mediaAndArtifactStubs(): HandlerStubs {
   };
 }
 
+/**
+ * Wraps a handler function to record all invocations.
+ *
+ * Usage:
+ *   const handler = makeRecordingHandler(jsonStub({ ok: true }));
+ *   await callRoute();
+ *   expect(handler.calls).toHaveLength(1);
+ */
+export function makeRecordingHandler<T extends (...args: never[]) => unknown>(
+  fn: T,
+): T & { readonly calls: { args: Parameters<T>; result: ReturnType<T> }[] } {
+  const calls: { args: Parameters<T>; result: ReturnType<T> }[] = [];
+  const wrapped = ((...args: Parameters<T>) => {
+    const result = fn(...args) as ReturnType<T>;
+    calls.push({ args, result });
+    return result;
+  }) as T & { readonly calls: { args: Parameters<T>; result: ReturnType<T> }[] };
+  Object.defineProperty(wrapped, 'calls', { get: () => calls, enumerable: true });
+  return wrapped;
+}
+
 export function makeDefaultDaemonHandlerStub(
   overrides: Partial<DaemonApiRouteHandlers> = {},
 ): DaemonApiRouteHandlers {

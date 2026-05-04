@@ -532,17 +532,18 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
           },
         });
         officialSourceId = source.id;
-        setTimeout(() => {
-          void store.upsertExtraction({
-            sourceId: source.id,
-            extractorId: 'web',
-            format: 'html',
-            structure: {
-              searchText: 'LG 86NANO90UNA specifications include a 4K UHD NanoCell display, 120 Hz refresh rate, HDR10, Dolby Vision, HDMI eARC, webOS smart TV features, Wi-Fi, Bluetooth, 2 x 10W speakers, and Game Optimizer.',
-            },
-            metadata: { knowledgeSpaceId: request.spaceId },
-          });
-        }, 120);
+        // MAJ-08 (eighth-review): replaced race-prone setTimeout(..., 120) with an
+        // awaited call so the extraction is committed before the gapRepairer returns.
+        // The ask() timeout (30 s) is the only deadline that now matters.
+        await store.upsertExtraction({
+          sourceId: source.id,
+          extractorId: 'web',
+          format: 'html',
+          structure: {
+            searchText: 'LG 86NANO90UNA specifications include a 4K UHD NanoCell display, 120 Hz refresh rate, HDR10, Dolby Vision, HDMI eARC, webOS smart TV features, Wi-Fi, Bluetooth, 2 x 10W speakers, and Game Optimizer.',
+          },
+          metadata: { knowledgeSpaceId: request.spaceId },
+        });
         return {
           searched: true,
           evidenceSufficient: true,

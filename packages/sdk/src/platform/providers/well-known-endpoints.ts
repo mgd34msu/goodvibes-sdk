@@ -19,6 +19,10 @@
  * Keys correspond to the canonical service identifier used across the codebase.
  * Values are the bare origin (scheme + host + port, **no trailing slash**).
  * Append a path suffix (e.g. `/v1`) at the call site where the full URL is built.
+ *
+ * @remarks These are development/local defaults only. Production deployments
+ * must configure explicit provider base URLs via the `providers` config key.
+ * These constants are never used when a user-supplied value is present.
  */
 export const WELL_KNOWN_LOCAL_ENDPOINTS = Object.freeze({
   /** Ollama — default listen address (loopback) */

@@ -115,7 +115,10 @@ async function main(): Promise<void> {
 
   const shutdown = async (): Promise<void> => {
     await Promise.allSettled([listener.stop(), daemon.stop()]);
-    process.exit(0);
+    // Set exitCode rather than calling process.exit(0) so that any
+    // already-queued I/O (log flushes, connection drains) can complete
+    // before the process terminates naturally.
+    process.exitCode = 0;
   };
 
   process.on('SIGINT', () => void shutdown());

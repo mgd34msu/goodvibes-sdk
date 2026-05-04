@@ -202,7 +202,10 @@ export class GitService {
       if (options?.amend) flags.push('--amend');
       if (options?.noVerify) flags.push('--no-verify');
 
-      // @ts-expect-error simple-git types do not expose the 3-arg commit signature
+      // @ts-expect-error simple-git's TypeScript types only expose a 2-arg overload for
+      // commit(message, files); the 3-arg form (message, files, options) is supported at
+      // runtime but not reflected in the type definitions. Passing undefined for files
+      // (to skip staging) and flags as the third arg is the documented workaround.
       const result = await this.git.commit(message, undefined, flags);
       const output = { hash: result.commit, summary: JSON.stringify(result.summary) };
       await this.firePost('commit', { message, ...output });

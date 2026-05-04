@@ -19,11 +19,14 @@ import type {
   GoodVibesTokenStore,
 } from './client-auth/types.js';
 
-// Re-export focused responsibility classes for consumers who prefer
-// narrower, single-concern APIs over the combined GoodVibesAuthClient facade.
-// OAuthClient is intentionally omitted from this client-safe surface because it
-// depends on Node runtime facilities. Daemon OAuth flows belong on the server
-// side; clients receive acquired tokens via TokenStore.
+/**
+ * @remarks
+ * Re-export focused responsibility classes for consumers who prefer narrower,
+ * single-concern APIs over the combined GoodVibesAuthClient facade.
+ * OAuthClient is intentionally omitted from this client-side surface because it
+ * depends on Node runtime facilities. Daemon OAuth flows belong on the server
+ * side; clients receive acquired tokens via TokenStore.
+ */
 export { PermissionResolver, SessionManager, TokenStore } from './client-auth/index.js';
 export type { OAuthStartState, OAuthTokenPayload } from './client-auth/oauth-types.js';
 export type {

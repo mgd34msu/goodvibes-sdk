@@ -44,8 +44,13 @@ for (const pkg of MONITORED_PACKAGES) {
     if (distMtime < srcMtime) {
       stalePackages.push(`${pkg}: dist/index.js (${new Date(distMtime).toISOString()}) is older than src/index.ts (${new Date(srcMtime).toISOString()})`);
     }
-  } catch {
-    // dist/ may not exist in all environments; skip missing files
+  } catch (e) {
+    // MAJ-11 (eighth-review): dist/ absent is strictly worse than stale — fail loudly
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+      stalePackages.push(`${pkg}: dist/index.js is MISSING — run \`bun run build\``);
+    } else {
+      stalePackages.push(`${pkg}: stat error — ${(e as Error).message}`);
+    }
   }
 }
 

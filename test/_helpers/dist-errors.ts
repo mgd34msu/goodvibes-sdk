@@ -11,7 +11,7 @@
  * CRIT-01 (eighth-review): Wire the dist-staleness sentinel so dist-loading tests
  * fail loudly when the compiled output is older than the TypeScript source.
  */
-import '../_helpers/dist-mtime-check.js';
+import './dist-mtime-check.js';
 export {
   GoodVibesSdkError,
   HttpStatusError,

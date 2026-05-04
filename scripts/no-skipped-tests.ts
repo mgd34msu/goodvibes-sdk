@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const testRoot = resolve(repoRoot, 'test');
 const testFilePattern = /\.test\.(ts|tsx|mjs)$/;
-const forbidden = /\b(?:describe|test|it)\.(?:skip|todo)\s*\(/;
+// NIT-08 (eighth-review): also catch .skipIf, .skip.if, .each.skip, .runIf variants that Bun supports
+const forbidden = /\b(?:describe|test|it)\.(?:skip(?:If|\.if)?|todo)\b/;
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

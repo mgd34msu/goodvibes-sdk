@@ -127,6 +127,8 @@ export class AutomationManager {
   private readonly heartbeatWakes = new Map<string, AutomationHeartbeatWake>();
   private deliveryManager: AutomationDeliveryManager | null;
   private readonly deliveryInFlight = new Set<string>();
+  // runtimeDispatch and runtimeBus are wired lazily via attachRuntime() after
+  // construction; null-init here avoids a required-constructor-arg dependency.
   private runtimeDispatch: DomainDispatch | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
   private readonly featureFlags: FeatureFlagReader;

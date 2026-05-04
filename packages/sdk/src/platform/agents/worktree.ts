@@ -114,7 +114,7 @@ export class AgentWorktree {
       return count > 0;
     } catch (err) {
       // If rev-list fails (e.g. brand-new worktree with no commits), treat as no changes
-      logger.debug('AgentWorktree._hasChanges: rev-list failed, treating as no changes', { branch, error: summarizeError(err) });
+      logger.debug('AgentWorktree._hasChanges: rev-list failed, treating as no changes', { branch, worktreeDir: worktreePath, error: summarizeError(err) });
       return false;
     }
   }

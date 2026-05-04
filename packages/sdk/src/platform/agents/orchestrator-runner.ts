@@ -1,3 +1,9 @@
+// OrchestratorRunner — single-agent turn loop coordinator.
+//
+// This module implements the coordinator pattern: it orchestrates agent runs
+// (LLM call → tool execution → loop) but delegates domain logic to imported
+// collaborators (ConversationManager, ToolRegistry, AgentSession, etc.).
+// It does not own any state beyond the duration of a single runAgentLoop() call.
 import { ConversationManager } from '../core/conversation.js';
 import { ToolRegistry } from '../tools/registry.js';
 import { join } from 'node:path';
@@ -27,13 +33,13 @@ import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 
-const MAX_TURNS = 50;
-const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000];
-const RATE_LIMIT_RETRY_DELAY_MS = 60_000;
-const RATE_LIMIT_MAX_RETRIES = 3;
-const MAX_CHAT_RETRY_ITERATIONS = NETWORK_RETRY_DELAYS_MS.length + RATE_LIMIT_MAX_RETRIES + 4;
-const CONTEXT_COMPACT_THRESHOLD = 0.85;
-const MIN_WINDOW_FOR_LLM_COMPACT = 12_000;
+const MAX_TURNS = 50; // hard cap per agent run to prevent unbounded loops
+const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000]; // exponential back-off on transient network errors
+const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // fixed pause on 429/quota responses
+const RATE_LIMIT_MAX_RETRIES = 3; // cap retries so a sustained quota violation terminates cleanly
+const MAX_CHAT_RETRY_ITERATIONS = NETWORK_RETRY_DELAYS_MS.length + RATE_LIMIT_MAX_RETRIES + 4; // total iteration budget across all retry categories
+const CONTEXT_COMPACT_THRESHOLD = 0.85; // fraction of context window at which compaction is triggered
+const MIN_WINDOW_FOR_LLM_COMPACT = 12_000; // don't attempt LLM-driven compaction below this token floor
 
 type EmitterContext = import('../runtime/emitters/index.js').EmitterContext;
 
