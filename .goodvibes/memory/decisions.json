@@ -7,7 +7,8 @@
       "what": "OTLP telemetry routes remain GET consumer-pull only; POST ingest not added",
       "why": "The daemon is a telemetry producer, not a collector. GET endpoints export recorded telemetry to external collectors. Adding POST OTLP ingest would make the daemon a collector, conflating two distinct roles. Operators who need push-over-HTTP delivery should configure an external OTLP collector (e.g. OpenTelemetry Collector) to receive from the daemon.",
       "category": "architecture",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "companion-token-shared-path",
@@ -18,7 +19,8 @@
       "category": "api-design",
       "confidence": "high",
       "breaking": true,
-      "migration": "Existing companions must re-pair after upgrade. Old token files at .goodvibes/tui/companion-token.json and .goodvibes/daemon/companion-token.json are no longer read."
+      "migration": "Existing companions must re-pair after upgrade. Old token files at .goodvibes/tui/companion-token.json and .goodvibes/daemon/companion-token.json are no longer read.",
+      "status": "active"
     },
     {
       "id": "standalone-route-extension-pattern",
@@ -27,7 +29,8 @@
       "what": "dispatchDaemonApiRoutes extended with optional DaemonApiRouteExtension[] parameter",
       "why": "Companion-chat and provider routes use SDK-internal context types (CompanionChatRouteContext, ProviderRegistry) that daemon-sdk cannot depend on directly. Rather than copying or re-exporting internal types, we expose an extension slot that lets standalone daemon binaries inject these route dispatchers at composition time without modifying core files.",
       "category": "library",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "voice-error-409-not-404",
@@ -36,7 +39,8 @@
       "what": "Voice TTS/STT/realtime errors for unconfigured providers now return 409 PROVIDER_NOT_CONFIGURED instead of 404",
       "why": "404 implies the route does not exist. 409 Conflict conveys that the resource (voice provider configuration) is in a state that prevents the request from proceeding, matching the HTTP semantics for a missing configuration dependency.",
       "category": "api-design",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "capacity-429-not-500",
@@ -45,7 +49,8 @@
       "what": "Agent spawn capacity exceeded now returns 429 with Retry-After: 5 instead of 500",
       "why": "HTTP 500 is for server errors; capacity throttling is an expected backpressure condition, not a bug. 429 Too Many Requests is the correct semantic and enables clients to implement automatic retry with backoff.",
       "category": "api-design",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "daemon-home-identity-split",
@@ -54,7 +59,8 @@
       "what": "Identity files (auth-users.json, auth-bootstrap.txt, operator-tokens.json) relocated to daemonHomeDir (~/.goodvibes/daemon/ default), separate from runtime workingDir",
       "why": "Workspace swaps must not invalidate companion pairings or authentication state. Mixing identity files in the workspace directory meant every workspace swap could orphan paired companions. Separating identity (stable, tied to the machine/operator) from workspace (mutable, the active project directory) makes swaps safe.",
       "category": "architecture",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "workspace-swap-busy-check",
@@ -63,7 +69,8 @@
       "what": "WorkspaceSwapManager refuses swap with WORKSPACE_BUSY (409) when any session has pendingInputCount > 0",
       "why": "Swapping while a session is actively processing input could corrupt in-flight context or lose messages. The retryAfter: 5 seconds gives callers a concrete backoff target. Sessions with no pending input (idle) are safe to move across store re-roots.",
       "category": "api-design",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "f3-operator-tokens-daemon-home",
@@ -72,7 +79,8 @@
       "what": "F3 revision: operator-tokens.json moved from workspace-scoped path to daemonHomeDir",
       "why": "0.21.17 moved tokens to <cwd>/.goodvibes/operator-tokens.json for workspace portability, but this introduced a new problem: workspace swaps would change the working directory and thus invalidate the token path. Moving to daemon home ensures the token store survives workspace swaps.",
       "category": "api-design",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "f15-env-rate-limit-threshold",
@@ -81,7 +89,8 @@
       "what": "GOODVIBES_CHAT_LIMITER_THRESHOLD env var overrides per-session companion chat rate limit; precedence: explicit config > env > default",
       "why": "Operators running automated tests or high-throughput pipelines need to tune the rate limit without code changes. The env var enables runtime configuration. The explicit config option always wins so library users can lock the limit programmatically.",
       "category": "library",
-      "confidence": "high"
+      "confidence": "high",
+      "status": "active"
     },
     {
       "id": "dec_20260504_000000",

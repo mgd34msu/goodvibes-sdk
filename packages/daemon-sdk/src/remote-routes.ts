@@ -347,6 +347,36 @@ function validateRemoteJsonPayload(value: unknown, maxBytes: number, field: stri
   }, { status: 413 });
 }
 
+/**
+ * Compute the exact JSON-encoded byte length of a string without allocating the encoded form.
+ * Walks each code unit and counts the bytes JSON.stringify would emit:
+ *   - 2 bytes for the surrounding quotes
+ *   - 2 bytes for short-escape characters (", \, \b, \t, \n, \f, \r)
+ *   - 6 bytes for other control chars (\uXXXX)
+ *   - 1–4 bytes per non-control code point (UTF-8 encoding length)
+ */
+function jsonStringByteLength(s: string): number {
+  let len = 2; // surrounding quotes
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 0x22 || c === 0x5c || c === 0x08 || c === 0x09 || c === 0x0a || c === 0x0c || c === 0x0d) {
+      len += 2; // \" \\ \b \t \n \f \r
+    } else if (c < 0x20) {
+      len += 6; // \uXXXX
+    } else if (c < 0x80) {
+      len += 1;
+    } else if (c < 0x800) {
+      len += 2;
+    } else if ((c & 0xfc00) === 0xd800 && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) {
+      len += 4; // surrogate pair → 4-byte UTF-8
+      i++;
+    } else {
+      len += 3;
+    }
+  }
+  return len;
+}
+
 export function estimateJsonByteLengthWithinLimit(
   value: unknown,
   maxBytes: number,
@@ -354,17 +384,14 @@ export function estimateJsonByteLengthWithinLimit(
   // MAJ-08: walk the value with a counting replacer so we never allocate
   // the full encoded string. The replacer throws a sentinel when the running
   // byte total exceeds maxBytes, preventing peak allocation before the cap.
+  // MIN-01 (carry-forward): switched from `val.length * 6` worst-case to exact
+  // jsonStringByteLength() count — same allocation profile, much tighter near the cap.
   let byteCount = 0;
   const OVER_LIMIT = Symbol('over-limit');
   try {
     JSON.stringify(value, (_key, val: unknown) => {
       if (typeof val === 'string') {
-        // JSON-encode the string value length: quotes + escape overhead (worst case 6x per char)
-        // We use the actual UTF-8 byte length of the JSON-encoded string fragment.
-        // For counting purposes, approximate: 2 quotes + content bytes (UTF-8).
-        // Exact: Buffer.byteLength(JSON.stringify(val)) but that allocates; use a cap-aware estimate.
-        // Safe over-estimate: each char can become at most 6 bytes (\uXXXX) in JSON.
-        byteCount += 2 + val.length * 6;
+        byteCount += jsonStringByteLength(val);
       } else {
         // null/number/boolean/object-open/array-open — add a small fixed cost per node.
         byteCount += 16;
@@ -376,7 +403,7 @@ export function estimateJsonByteLengthWithinLimit(
       return val;
     });
     if (value === undefined) return { kind: 'ok', byteLength: 4 }; // undefined → JSON undefined
-    // byteCount is an over-estimate; clamp to maxBytes+1 so callers only learn "within" vs "over".
+    // Result is an exact-count for strings; node-overhead remains a fixed approximation.
     return { kind: 'ok', byteLength: Math.min(byteCount, maxBytes + 1) };
   } catch (err) {
     if (err === OVER_LIMIT) return { kind: 'ok', byteLength: maxBytes + 1 };

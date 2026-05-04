@@ -17,9 +17,10 @@ export interface ConversationMessageEnvelope {
 }
 
 // AutomationSurfaceKind: daemon-sdk cannot import the full union from the SDK platform layer
-// (circular dep). Kept as a string alias for backward compat with runtime-session-routes.ts
-// and system-routes.ts imports. The _2 rename in api-extractor is suppressed via ae-internal.
-/** @internal */
+// (circular dep). Kept as a string alias because the public-surface field RouteBindingRecordInput.surfaceKind
+// references it directly; promoting to @public eliminates the api-extractor incompatible-release-tags warning
+// without leaking platform internals (the alias is widened to string, hiding the underlying union).
+/** @public */
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
   readonly modelId?: string | undefined;
