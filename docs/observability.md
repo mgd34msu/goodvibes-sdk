@@ -1,5 +1,7 @@
 # Observability
 
+> **Surface scope:** This document covers the observability stack for the **full surface (Bun runtime)**. Most observer APIs (`SDKObserver`, `createConsoleObserver`) are also available on companion surfaces (React Native, Expo, browser) via their surface-specific entry points. See [Runtime Surfaces](./surfaces.md) for the full breakdown.
+
 This guide covers the SDK's observability stack: structured logging, runtime event feeds, session telemetry, health monitoring, failure forensics, and diagnostic panels.
 
 ## Logging

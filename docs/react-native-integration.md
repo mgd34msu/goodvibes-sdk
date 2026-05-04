@@ -76,7 +76,7 @@ const sdk = createReactNativeGoodVibesSdk({
 - `fetch` can come from the React Native runtime or be injected explicitly.
 - `WebSocket` can come from the runtime or be passed through `WebSocketImpl`.
 - The default React Native entrypoint prefers WebSocket over SSE because fetch streaming support varies across mobile stacks.
-- Provide a token store or `getAuthToken` when token state can rotate during the app session.
+- Provide a token store or `getAuthToken` when token state can rotate during the app session. Use `createIOSKeychainTokenStore` or `createAndroidKeystoreTokenStore` (both exported from `@pellux/goodvibes-sdk/react-native`) for persistent secure storage rather than rolling a custom `GoodVibesTokenStore` adapter.
 - Reconnect after foreground/resume and network transitions.
 - Use HTTP for snapshots/mutations and WebSocket for live updates.
 - For Expo-managed apps, use [expo-integration.md](./expo-integration.md).
