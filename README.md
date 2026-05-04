@@ -42,7 +42,7 @@ Alternate registry:
   stores, browser localStorage, iOS Keychain, Android Keystore, and Expo Secure
   Store.
 - **Provider/model runtime** (daemon-side) for OpenAI, OpenAI subscription/Codex, Anthropic,
-  Gemini, Bedrock, Vertex, GitHub Copilot, local/custom providers,
+  Gemini, Bedrock, Vertex, GitHub Copilot, Inception Labs, Ollama, local/custom providers,
   OpenAI-compatible providers, model catalogs, health, pricing, context limits,
   caching, and failover. Client SDK consumers connect to the daemon for these features;
   the SDK does not call AI providers directly.

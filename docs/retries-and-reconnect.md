@@ -88,7 +88,7 @@ const key = crypto.randomUUID();
 
 // Pass the key in the per-call options accepted by the transport layer.
 // On retry with the same key, the daemon returns the cached result.
-const result = await sdk.operator.requestJson(route, payload, { idempotencyKey: key });
+const result = await sdk.operator.sessions.create({ body: payload }, { idempotencyKey: key });
 ```
 
 Never retry unsafe mutations blindly. Only operations with application-level or contract-level idempotency guarantees are safe to retry.

@@ -40,6 +40,18 @@ Response:
 - `kind: 'task'` explicitly routes through the session broker and can spawn an
   agent/WRFC continuation.
 - `kind: 'followup'` explicitly queues a session follow-up through the broker. Unlike `kind: 'task'` (which spawns a fresh WRFC continuation), a follow-up appends a structured continuation hint to the current session and is processed in the next available agent turn. Use `kind: 'followup'` when the companion wants to steer an already-running session rather than start a new task.
+
+  **Example — `kind: 'followup'`:**
+  ```http
+  POST /api/sessions/:sessionId/messages
+  Content-Type: application/json
+
+  { "body": "Continue with option B", "kind": "followup" }
+  ```
+  Response:
+  ```json
+  { "messageId": "<uuid>", "routedTo": "followup" }
+  ```
 - Unknown `kind` values return `400 INVALID_KIND`.
 
 ## Control-Plane Event
@@ -71,6 +83,9 @@ bus and handle it as follows:
 2. Delegate to the active orchestrator instead of spawning an agent or WRFC chain.
 
 ```ts
+// NOTE: runtimeBus and orchestrator are TUI host internals — this pattern applies to
+// embedders running the full daemon surface. Companion apps receive messages through
+// the realtime event feed (sdk.realtime) — they do not subscribe to runtimeBus directly.
 runtimeBus.on('COMPANION_MESSAGE_RECEIVED', ({ payload }) => {
   if (payload.sessionId !== activeSessionId) return;
   void orchestrator.handleUserInput(payload.body, undefined, {

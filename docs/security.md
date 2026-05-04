@@ -37,7 +37,7 @@ function matchesSharedToken(token: string, sharedToken: string): boolean {
 
 Users authenticate with a username and password via the login endpoint. On success, the daemon issues a session token (random 32-byte hex string). Subsequent requests present this token as a bearer credential or in the `goodvibes_session` cookie.
 
-`UserAuthManager` (`security/user-auth.ts`) manages the user store and sessions:
+`UserAuthManager` manages the user store and sessions:
 - Passwords are hashed with **scrypt** (64-byte key, random salt), stored as `salt:hash` in base64
 - Default session TTL is **1 hour** (`DEFAULT_SESSION_TTL_MS = 3_600_000`)
 - Sessions are pruned on access; expired sessions are rejected and cleaned up
@@ -61,7 +61,7 @@ The cookie is set with `buildOperatorSessionCookie()` and cleared with `buildExp
 
 ### Spawn Tokens
 
-`SpawnTokenManager` (`security/spawn-tokens.ts`) governs sub-agent spawning. When the orchestrator spawns an agent, it issues a cryptographically signed `SpawnToken`:
+`SpawnTokenManager` governs sub-agent spawning. When the orchestrator spawns an agent, it issues a cryptographically signed `SpawnToken`:
 
 ```ts
 interface SpawnToken {
@@ -88,7 +88,7 @@ Tokens can be revoked by signature via `revoke(tokenSignature)`. Revoked tokens 
 
 ### API Token Auditing
 
-`ApiTokenAuditor` (`security/token-audit.ts`) enforces scope minimization and rotation cadence for registered API tokens (LLM provider keys, integration credentials, etc.).
+`ApiTokenAuditor` enforces scope minimization and rotation cadence for registered API tokens (LLM provider keys, integration credentials, etc.).
 
 **Two audit dimensions:**
 
@@ -195,7 +195,7 @@ For reverse proxies (nginx, Caddy, Traefik), set `trustProxy: true` in the daemo
 
 CORS policy should be configured at the network edge (reverse proxy) or in the daemon's HTTP server configuration. Do not rely on the browser's same-origin restriction alone when deploying the web UI on a different origin than the daemon.
 
-### Rate Limiting
+### Rate Limiting {#rate-limiting}
 
 The daemon ships two built-in rate limiters:
 
@@ -223,7 +223,7 @@ The `fetch` tool has a separate opt-in protection gate: `featureFlags.fetch-sani
 
 ## Secret Management
 
-**Source:** `packages/sdk/src/platform/config/secrets.ts` and `config/secret-refs.ts`
+Internal module: `@pellux/goodvibes-sdk/platform/config` (daemon embedders only).
 
 ### SecretsManager
 
@@ -309,7 +309,7 @@ Every tool call goes through the `PermissionManager` before execution.
 
 ### Risk Levels
 
-`analyzePermissionRequest()` (`permissions/analysis.ts`) classifies each tool call:
+`analyzePermissionRequest()` classifies each tool call:
 
 | Risk Level | Criteria |
 |---|---|
@@ -420,6 +420,11 @@ Drift detection fires only on file-backed instances; test configs that pass expl
    authManager.clearBootstrapCredentialFile(); // returns true if the file existed and was removed
    ```
    Alternatively, delete the file manually: `rm .goodvibes/tui/auth-bootstrap.txt`.
+   Or, from a remote operator client using the SDK:
+   ```ts
+   // Requires admin access. Available via the operator control surface.
+   await sdk.operator.invoke('admin.deleteBootstrapCredential', {});
+   ```
 4. Verify the file is gone:
    ```ts
    const snap = authManager.inspect();

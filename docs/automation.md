@@ -3,13 +3,7 @@
 The automation system provides durable jobs, runs, schedules, route bindings,
 deliveries, and watcher services for daemon-hosted work.
 
-Sources:
-
-- `packages/sdk/src/platform/automation/`
-- `packages/sdk/src/platform/watchers/`
-- `packages/sdk/src/platform/channels/`
-- `packages/sdk/src/platform/control-plane/method-catalog-control-automation.ts`
-- `packages/sdk/src/platform/control-plane/method-catalog-channels.ts`
+Accessible via `@pellux/goodvibes-sdk/platform/automation` (daemon embedders). Consumer apps interact through operator methods documented below.
 
 ## Automation Domain
 

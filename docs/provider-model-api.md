@@ -228,7 +228,7 @@ The `previous` field is omitted when there is no meaningful prior selection (e.g
 
 ## Zod contract schemas
 
-Importable from `@pellux/contracts`:
+Importable from `@pellux/goodvibes-sdk/contracts`:
 
 ```typescript
 import {
@@ -238,7 +238,7 @@ import {
   PatchCurrentModelErrorSchema,
   PatchCurrentModelResponseSchema,
   ModelChangedEventSchema,
-} from '@pellux/contracts';
+} from '@pellux/goodvibes-sdk/contracts';
 
 // Validate a response body at runtime:
 const result = ListProvidersResponseSchema.safeParse(responseBody);

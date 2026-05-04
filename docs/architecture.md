@@ -441,7 +441,7 @@ For a directory-by-directory breakdown of every subdirectory under `packages/sdk
 
 ## Pairing System
 
-**Source:** `packages/sdk/src/platform/pairing/`
+Internal module: `@pellux/goodvibes-sdk/platform/pairing` (daemon embedders only).
 
 The pairing system lets companion apps (mobile, web) establish an authenticated connection to the daemon by scanning a QR code displayed in the TUI or operator interface.
 

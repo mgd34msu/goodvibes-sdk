@@ -5,7 +5,7 @@ WRFC chains, and remote surfaces. Tools are registered through
 `registerAllTools()` and guarded by config permissions plus feature-flagged
 contract checks.
 
-Source: `packages/sdk/src/platform/tools/`.
+Accessible via `@pellux/goodvibes-sdk/platform/tools` (daemon embedders). Consumer apps interact through sessions and operator methods.
 
 ## Built-In Tools
 
