@@ -1,4 +1,4 @@
-import { parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
 import type { SurfaceAdapterContext } from '../types.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -17,7 +17,7 @@ export async function handleSignalSurfaceWebhook(req: Request, context: SurfaceA
     || '';
   if (configuredToken) {
     const providedToken = readBearerOrHeaderToken(req, 'x-goodvibes-signal-token');
-    if (providedToken !== configuredToken) {
+    if (!constantTimeEquals(configuredToken, providedToken)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }

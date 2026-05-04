@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { GenericWebhookAdapterContext } from '../types.js';
 import { validatePublicWebhookUrl } from '../../utils/url-safety.js';
-import { readTextBodyWithinLimit } from '../helpers.js';
+import { constantTimeEquals, readTextBodyWithinLimit } from '../helpers.js';
 
 function parseJsonRecord(rawBody: string): Record<string, unknown> | Response {
   try {
@@ -27,7 +27,7 @@ export async function handleGenericWebhookSurface(req: Request, context: Generic
   const signatureValid =
     providedSignature.length === computedSignature.length
     && timingSafeEqual(Buffer.from(providedSignature), Buffer.from(computedSignature));
-  if ((!providedSecret || providedSecret !== configuredSecret) && !signatureValid) {
+  if ((!providedSecret || !constantTimeEquals(configuredSecret, providedSecret)) && !signatureValid) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

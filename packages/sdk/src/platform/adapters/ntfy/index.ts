@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import {
   isGoodVibesNtfyDeliveryEcho,
@@ -19,7 +19,7 @@ export async function handleNtfySurfaceWebhook(req: Request, context: SurfaceAda
   const providedToken = req.headers.get('x-ntfy-token')
     ?? readBearerOrHeaderToken(req, 'x-goodvibes-ntfy-token')
     ?? '';
-  if (providedToken !== configuredToken) {
+  if (!constantTimeEquals(configuredToken, providedToken)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const rawBody = await readTextBodyWithinLimit(req);
