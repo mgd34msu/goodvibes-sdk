@@ -3,7 +3,7 @@
 GoodVibes exposes media, voice, multimodal analysis, artifact, and web-search
 features through the daemon control plane and SDK platform modules.
 
-Accessible via platform subpaths (`@pellux/goodvibes-sdk/platform/media`, `/platform/multimodal`, etc.) for daemon embedders. Consumer apps interact through operator methods documented below.
+Accessible via the aggregate `@pellux/goodvibes-sdk/platform` namespace (as `platform.media.*`) and the dedicated `@pellux/goodvibes-sdk/platform/multimodal` subpath for daemon embedders. Consumer apps interact through operator methods documented below.
 
 ## Artifacts
 

@@ -45,10 +45,9 @@ import type { SDKObserver } from './observer/index.js';
  *
  * Each domain's events are accessible via the per-domain feed:
  * ```ts
- * sdk.realtime.viaSse().then(events => {
- *   events.agents.on('AGENT_SPAWNING', (payload) => {
- *     console.log(payload.agentId, payload.task); // fully typed
- *   });
+ * const events = sdk.realtime.viaSse();
+ * events.agents.on('AGENT_SPAWNING', (payload) => {
+ *   console.log(payload.agentId, payload.task); // fully typed
  * });
  * ```
  *
@@ -206,7 +205,7 @@ export interface GoodVibesSdkOptions {
 export interface GoodVibesRealtimeOptions {
   readonly sseReconnect?: StreamReconnectPolicy | undefined;
   readonly webSocketReconnect?: StreamReconnectPolicy | undefined;
-  readonly onError?: ((error: unknown) => void) | undefined | undefined;
+  readonly onError?: ((error: unknown) => void) | undefined;
 }
 
 /**
@@ -327,7 +326,7 @@ function createClientOptions<T extends OperatorSdkOptions | PeerSdkOptions>(
   options: GoodVibesSdkOptions,
 ): T {
   const getAuthToken = options.tokenStore
-    ? () => options.tokenStore?.getToken()!
+    ? () => options.tokenStore!.getToken()
     : options.getAuthToken;
   return {
     baseUrl: requireBaseUrl(options.baseUrl),

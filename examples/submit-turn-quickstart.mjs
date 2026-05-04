@@ -12,9 +12,13 @@
 import { createGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
 
 // 1. Construct the SDK.
+const authToken = process.env.GOODVIBES_TOKEN;
+if (!authToken) {
+  throw new Error('GOODVIBES_TOKEN env var is required (operator bearer token from the daemon).');
+}
 const sdk = createGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3421',
-  authToken: process.env.GOODVIBES_TOKEN ?? null,
+  authToken,
 });
 
 // 2. Create a session. All fields optional; title is a human-readable label.
@@ -41,8 +45,7 @@ const turnDone = new Promise((resolve) => {
   });
 
   // Resolve and clean up on any terminal event (completed / error / cancelled).
-  /** @param {string} label @param {string} [detail] */
-  const finish = (label, detail = '') => { unsubDelta(); process.stdout.write('\n'); console.log(`[turn] ${label}${detail}`); resolve(undefined); };
+  const finish = (/** @type {string} */ label, detail = '') => { unsubDelta(); process.stdout.write('\n'); console.log(`[turn] ${label}${detail}`); resolve(undefined); };
   sessionEvents.turn.onEnvelope('TURN_COMPLETED', (e) => { finish('completed', ` (${e.payload.stopReason})`); });
   sessionEvents.turn.onEnvelope('TURN_ERROR',     (e) => { finish('error', `: ${e.payload.error}`); });
   sessionEvents.turn.onEnvelope('TURN_CANCEL',    () => { finish('cancelled'); });

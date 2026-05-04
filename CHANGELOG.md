@@ -20,6 +20,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.30.5] - 2026-05-04
+
+### Breaking
+- none
+
+### Added
+- Closed eleventh-review docs+examples findings (4 CRITICAL, 7 MAJOR, 33 MINOR, 15 NITPICK) across `docs/`, `examples/`, `packages/sdk/src/client.ts`, and all package `package.json` files.
+- Bumped all package versions to `0.30.5` to align CHANGELOG with source-of-truth (CRIT-03).
+- Fixed `docs/media-and-search.md`: removed non-existent `platform/media` subpath; corrected to `platform.media.*` namespace and `platform/multimodal` subpath (CRIT-01).
+- Fixed `packages/sdk/src/client.ts:48`: JSDoc example replaced broken `.then(events => ...)` form with correct synchronous `viaSse()` usage (CRIT-02).
+- Fixed `docs/security.md:226`: changed "Internal module" to "**Public subpath:**" for `platform/config` (CRIT-04).
+- Fixed five example quickstarts (`submit-turn`, `retry-and-reconnect`, `realtime-events`, `peer-http`, `operator-http`): replaced silent `?? null` authToken with explicit guard that throws when `GOODVIBES_TOKEN` is unset (MAJ-01).
+- Removed duplicate `> **Note:**` block from `docs/observability.md` after daemon-embedder gate was already present at section top (MAJ-02).
+- Updated `examples/peer-http-quickstart.mjs` clarification comment to reference `docs/public-surface.md` capability namespaces (MAJ-03).
+- Strengthened `examples/README.md` daemon-fetch-handler entry to call out ~14 placeholder callbacks explicitly (MAJ-04).
+- Added Route-Level Error Codes section to `docs/error-kinds.md` cataloguing `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `INVALID_REQUEST`, and other HTTP-route error codes (MAJ-05).
+- Removed lone JSDoc `@param` annotation from `examples/submit-turn-quickstart.mjs` for consistency with other `.mjs` examples (MAJ-06).
+- Added `(internal helper)` marker to `extractAuthToken` prose in `docs/auth.md` (MIN-03).
+- Converted long companion-chat route list paragraph to a table in `docs/companion-message-routing.md` (MIN-22).
+
+### Fixed
+- none
+
+### Migration
+- none
+
+---
+
 ## [0.30.4] - 2026-05-04
 
 ### Breaking

@@ -32,7 +32,7 @@ Request → extractAuthToken() → resolveAuthenticatedPrincipal()
        → [requireAdmin()?] → route handler
 ```
 
-`extractAuthToken` reads the `Authorization: Bearer` header or the operator
+`extractAuthToken` (internal helper) reads the `Authorization: Bearer` header or the operator
 session cookie. `resolveAuthenticatedPrincipal` resolves the token against
 the in-memory token registry and returns the principal or `null`. Routes that
 need admin call `requireAdmin(principal)` before proceeding.

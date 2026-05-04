@@ -150,4 +150,14 @@ Other session routes cover adjacent use cases. Use the one that matches your int
 Callers should route structured intents through `POST /api/sessions/:id/inputs`
 instead of building ad-hoc bodies for `/messages`.
 
-All companion-chat routes (`POST /api/companion/chat/sessions`, `PATCH /api/companion/chat/sessions/:id`, `POST /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/messages`, `GET /api/companion/chat/sessions/:id/events`, `GET /api/companion/chat/sessions/:id`, `DELETE /api/companion/chat/sessions/:id`) are registered in the live method catalog. Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.
+All companion-chat routes are registered in the live method catalog. Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.
+
+| Route | Purpose |
+|-------|---------|
+| `POST /api/companion/chat/sessions` | Create a new remote companion-chat session |
+| `PATCH /api/companion/chat/sessions/:id` | Update session provider/model metadata |
+| `POST /api/companion/chat/sessions/:id/messages` | Send a message to the companion-chat session |
+| `GET /api/companion/chat/sessions/:id/messages` | Fetch the message history for the session |
+| `GET /api/companion/chat/sessions/:id/events` | Stream events for the session |
+| `GET /api/companion/chat/sessions/:id` | Get session details |
+| `DELETE /api/companion/chat/sessions/:id` | Delete the session |
