@@ -43,7 +43,9 @@ function json(data: unknown): Response {
  */
 function handleSmoke(): Response {
   const sdk = createWebGoodVibesSdk({
-    baseUrl: 'http://mock-daemon.internal',
+    // Use localhost URL — normalizeBaseUrl requires https:// or a local
+    // (127.x / localhost) host for http://. 'mock-daemon.internal' is neither.
+    baseUrl: 'http://127.0.0.1:9999',
     authToken: 'test-token',
   });
 
@@ -70,7 +72,7 @@ function handleSmoke(): Response {
 async function handleAuth(): Promise<Response> {
   const token = 'workers-auth-token-abc123';
   const sdk = createWebGoodVibesSdk({
-    baseUrl: 'http://mock-daemon.internal',
+    baseUrl: 'http://127.0.0.1:9999',
     authToken: token,
   });
 
@@ -125,7 +127,7 @@ async function handleTransportSuccess(): Promise<Response> {
   };
 
   const sdk = createWebGoodVibesSdk({
-    baseUrl: 'http://mock-daemon.internal',
+    baseUrl: 'http://127.0.0.1:9999',
     authToken: 'test-token',
     fetch: mockFetch,
     retry: { maxAttempts: 1 }, // no retries: avoid cross-request timer issues
@@ -171,7 +173,7 @@ async function handleTransportError(): Promise<Response> {
   };
 
   const sdk = createWebGoodVibesSdk({
-    baseUrl: 'http://mock-daemon.internal',
+    baseUrl: 'http://127.0.0.1:9999',
     authToken: 'test-token',
     fetch: mockFetch,
     retry: { maxAttempts: 1 }, // no retries

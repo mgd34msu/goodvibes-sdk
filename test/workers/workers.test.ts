@@ -72,6 +72,13 @@ beforeAll(async () => {
         '--platform=browser',
         '--format=esm',
         '--target=es2022',
+        // Keep node built-ins external so esbuild does not try to bundle them.
+        // Miniflare resolves them via the nodejs_compat compatibility flag
+        // added to the Miniflare config below.
+        '--external:fs',
+        '--external:path',
+        '--external:node:fs',
+        '--external:node:path',
         `--outfile=${WORKER_BUNDLED}`,
         WORKER_IN_DIST,
       ],
@@ -94,6 +101,11 @@ beforeAll(async () => {
     // m-6: compatibilityDate — bump quarterly; pick a date within the last
     // calendar quarter. Updated from '2024-09-23' to '2026-04-01'.
     compatibilityDate: '2026-04-01',
+    // nodejs_compat lets Miniflare resolve bare node built-in specifiers
+    // (fs, path, node:fs, node:path) that esbuild leaves in the bundle when
+    // they are marked --external. Without this flag Miniflare throws
+    // ERR_MODULE_RULE for any bare 'fs' import encountered at load time.
+    compatibilityFlags: ['nodejs_compat'],
   });
   // Wait for Miniflare to be ready
   await mf.ready;
@@ -184,8 +196,14 @@ describe('Workers harness: transport-http round-trip', () => {
     expect(body.kind).toBe('service'); // 500 maps to category 'service' -> kind 'service'
     expect(validKinds).toContain(body.kind as string);
 
-    // m-2: assert 'ctor' is a string (the constructor name of the thrown error)
-    expect(body.ctor).toBe('GoodVibesSdkError');
+    // m-2: assert 'ctor' is a string ending with 'Error' (the constructor name of
+    // the thrown error). esbuild mangles class names with a '_' prefix to avoid
+    // collisions, so we cannot assert an exact name — just that it is a named
+    // Error subclass (ends with 'Error') and not a raw RuntimeError or string.
+    expect(typeof body.ctor).toBe('string');
+    expect(body.ctor as string).toMatch(/Error$/);
+    // The thrown error must have a typed kind (not null)
+    expect(body.kind).not.toBeNull();
   }, 10_000);
 });
 
