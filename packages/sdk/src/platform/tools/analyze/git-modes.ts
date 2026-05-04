@@ -1,7 +1,4 @@
 import { existsSync } from 'node:fs';
-
-// 1.2 s — warm `git status` cache response budget; keeps semantic-diff LLM probe non-blocking
-const GIT_PROBE_TIMEOUT_MS = 1200;
 import { join, relative } from 'node:path';
 import { GitService } from '../../git/service.js';
 import type { ToolLLM } from '../../config/tool-llm.js';
@@ -17,6 +14,9 @@ import {
   validateGitRefs,
 } from './shared.js';
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+
+// 1.2 s — warm `git status` cache response budget; keeps semantic-diff LLM probe non-blocking
+const GIT_PROBE_TIMEOUT_MS = 1200;
 
 function parseSemanticDiffResponse(
   llmResponse: string | null,

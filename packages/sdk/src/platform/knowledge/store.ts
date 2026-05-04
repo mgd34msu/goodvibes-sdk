@@ -288,19 +288,11 @@ export class KnowledgeStore {
         ? this.getSourceByCanonicalUri(input.canonicalUri)
         : null;
     const now = nowMs();
-    // applyOptional: include field only when the new value is non-null,
-    // falling back to the existing value when provided, or omitting entirely.
-    function applyOptional<V>(newVal: V | null, existingVal?: V): Record<string, V> {
-      if (newVal !== null) return { value: newVal } as unknown as Record<string, V>;
-      if (existingVal !== undefined) return { value: existingVal } as unknown as Record<string, V>;
-      return {};
-    }
     function opt<K extends string, V>(key: K, newVal: V | null, existingVal?: V): { [P in K]?: V } {
       if (newVal !== null) return { [key]: newVal } as { [P in K]?: V };
       if (existingVal !== undefined) return { [key]: existingVal } as { [P in K]?: V };
       return {} as { [P in K]?: V };
     }
-    void applyOptional; // suppress unused-var; opt() is the real helper
     const _title = stableText(input.title);
     const _sourceUri = stableText(input.sourceUri);
     const _canonicalUri = stableText(input.canonicalUri);
