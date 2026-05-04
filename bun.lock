@@ -18,6 +18,7 @@
       },
       "devDependencies": {
         "@arethetypeswrong/cli": "0.18.2",
+        "@ast-grep/napi": "^0.42.0",
         "@cloudflare/workers-types": "4.20260503.1",
         "@cyclonedx/cyclonedx-npm": "4.2.1",
         "@microsoft/api-extractor": "^7.58.4",
@@ -28,7 +29,7 @@
         "miniflare": "^4.20260415.0",
         "msw": "^2.7.0",
         "publint": "0.3.18",
-        "typescript": "^6.0.3",
+        "typescript": "6.0.3",
         "verdaccio": "^6.5.2",
         "wrangler": "4.87.0",
       },
@@ -156,7 +157,7 @@
     "bash-language-server": "file:vendor/bash-language-server",
     "fast-xml-parser": "5.7.1",
     "google-auth-library": "10.6.2",
-    "lodash": "4.17.21",
+    "lodash": "4.18.1",
     "minimatch": "^10.2.5",
     "uuid": "file:vendor/uuid-cjs",
   },
@@ -1223,7 +1224,7 @@
 
     "lockfile": ["lockfile@1.0.4", "", { "dependencies": { "signal-exit": "^3.0.2" } }, "sha512-cvbTwETRfsFh4nHsL1eGWapU1XFi5Ot9E85sWAwia7Y7EgB7vfqcZhTKZ+l7hCGxSPoushMv5GKhT5PdLv03WA=="],
 
-    "lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="],
+    "lodash": ["lodash@4.18.1", "", {}, "sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q=="],
 
     "lodash.includes": ["lodash.includes@4.3.0", "", {}, "sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w=="],
 
