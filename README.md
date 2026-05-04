@@ -26,6 +26,8 @@ Alternate registry:
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
+> **Warning:** `YOUR_GITHUB_TOKEN` is a placeholder. Never commit a real token to source control.
+
 ## What The SDK Provides
 
 - **Client SDKs** for operator, peer, browser, web, React Native, Expo, and
@@ -39,13 +41,14 @@ Alternate registry:
 - **Auth and token storage** for session login, shared bearer tokens, memory
   stores, browser localStorage, iOS Keychain, Android Keystore, and Expo Secure
   Store.
-- **Provider/model runtime** for OpenAI, OpenAI subscription/Codex, Anthropic,
+- **Provider/model runtime** (daemon-side) for OpenAI, OpenAI subscription/Codex, Anthropic,
   Gemini, Bedrock, Vertex, GitHub Copilot, local/custom providers,
   OpenAI-compatible providers, model catalogs, health, pricing, context limits,
-  caching, and failover.
-- **Agentic runtime** with sessions, turns, tools, agents, WRFC review/fix
+  caching, and failover. Client SDK consumers connect to the daemon for these features;
+  the SDK does not call AI providers directly.
+- **Agentic runtime** (daemon-side) with sessions, turns, tools, agents, WRFC review/fix
   chains, compaction, session memory, and remote companion sessions.
-- **Runtime-aware tool context** so models can inspect redacted settings,
+- **Runtime-aware tool context** (daemon-side) so models can inspect redacted settings,
   configured integrations, host/surface capabilities, provider/model state,
   tool catalogs, and Cloudflare setup posture without leaking secrets.
 - **Knowledge/wiki system** with structured SQLite storage, knowledge spaces,

@@ -153,10 +153,10 @@ console.log(current.principalId);
 
 ```ts
 // SSE (Bun, browser dashboards)
-const stop = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (event) => { ... });
+const stop = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (event) => { /* handle */ });
 
 // WebSocket (React Native, Expo, persistent duplex)
-const stop = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (event) => { ... });
+const stop = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (event) => { /* handle */ });
 ```
 
 Recommended defaults:

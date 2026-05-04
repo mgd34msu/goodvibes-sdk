@@ -1,6 +1,6 @@
 # Contributing
 
-> **Runtime**: This SDK is developed with Bun 1.0+. Node is not a supported runtime — all scripts, tests, and CI run under Bun.
+> **Runtime**: This SDK is developed with Bun 1.3.10 (exact). Node is not a supported runtime — all scripts, tests, and CI run under Bun. Install the pinned version: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.10"`.
 
 `goodvibes-sdk` is a standalone TypeScript SDK workspace.
 

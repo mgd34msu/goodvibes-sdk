@@ -18,4 +18,6 @@ const unsubscribeTimer = setTimeout(() => {
   unsubscribe();
   console.log('unsubscribed from AGENT_COMPLETED');
 }, 30_000);
+// unref() prevents the timer from keeping the process alive when it is the only pending task.
+// This lets Bun/Node exit cleanly after all other async work finishes.
 unsubscribeTimer.unref?.();

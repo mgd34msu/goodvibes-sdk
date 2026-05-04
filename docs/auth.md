@@ -5,7 +5,7 @@
 Auth is split between client token handling and daemon route enforcement.
 
 Client-facing code uses token stores and transport middleware
-(`packages/sdk/src/platform/auth/token-store.ts`). Daemon-facing
+(public API: `@pellux/goodvibes-sdk/auth` and `@pellux/goodvibes-sdk/client-auth`). Daemon-facing
 code resolves principals, scopes, sessions, and admin requirements. Transport
 helpers do not read process-wide config or environment state implicitly; callers
 provide tokens, token stores, or resolvers.

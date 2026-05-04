@@ -14,9 +14,8 @@ import { GoodVibesSdkError } from '@pellux/goodvibes-sdk/errors';
 try {
   await sdk.operator.accounts.snapshot();
 } catch (err) {
-  if (!(err instanceof GoodVibesSdkError)) throw err;
-
-  switch (err.kind) {
+  if (err instanceof GoodVibesSdkError) {
+    switch (err.kind) {
     case 'auth':
       // Redirect to login or surface auth UI
       break;
@@ -51,9 +50,11 @@ See [error-kinds.md](./error-kinds.md) for the full reference on each kind.
 ## TUI / consumer example
 
 ```ts
+import type { GoodVibesSdk } from '@pellux/goodvibes-sdk';
 import { GoodVibesSdkError } from '@pellux/goodvibes-sdk/errors';
+import type { OperatorMethodOutput } from '@pellux/goodvibes-sdk/contracts';
 
-async function safeSnapshot(sdk: OperatorSdk): Promise<ControlSnapshot | null> {
+async function safeSnapshot(sdk: GoodVibesSdk): Promise<OperatorMethodOutput<'control.snapshot'> | null> {
   try {
     return await sdk.operator.control.snapshot();
   } catch (err) {

@@ -1,9 +1,10 @@
 # GoodVibes SDK Examples
 
-Small runnable examples for the published SDK entry points. Build the SDK first
-when running directly from the repository:
+Small runnable examples for the published SDK entry points. Run all commands
+from the **repository root** (not from `examples/`), because `examples/tsconfig.json`
+extends `../tsconfig.base.json`. Build the SDK first:
 
-```sh
+```bash
 bun run build
 bun --cwd examples run typecheck
 ```
