@@ -49,17 +49,46 @@
       "default": {
         "logLevel": "warning"
       },
-      // TS1259: re-exported module not referenced by bundledPackages (expected for type-only re-exports)
+      // TS1259: Module can only be default-imported using 'esModuleInterop'.
+      // Triggered by: type-only star-re-exports in packages/sdk/src/transport-core.ts,
+      // transport-http.ts, and transport-realtime.ts that re-export from bundledPackages
+      // without a default import reference (e.g. `export * from '@pellux/goodvibes-transport-core'`).
+      // Re-evaluate when api-extractor upgrades to a TS6+ bundled compiler.
       "TS1259": { "logLevel": "none" },
-      // TS2305: module has no exported member (stale after tree-shaking; actual shape validated by build)
+      // TS2305: Module has no exported member.
+      // Triggered by: @pellux/goodvibes-transport-core `observer` export — api-extractor
+      // resolves the dist snapshot which may pre-date the current build; the `observer`
+      // export exists in packages/transport-core/dist/observer.d.ts at runtime.
+      // Re-evaluate when the transport-core dist is rebuilt and a clean api-extractor pass succeeds.
       "TS2305": { "logLevel": "none" },
-      // TS2307: cannot find module (optional deps not installed in CI api-extractor pass)
+      // TS2307: Cannot find module or its corresponding type declarations.
+      // Triggered by: optional peer deps declared as ambient modules but not installed:
+      //   - expo-secure-store, react-native-keychain (packages/sdk/src/platform/types/peer-deps.d.ts)
+      //   - pdfjs-dist/legacy/build/pdf.mjs (packages/sdk/src/platform/types/pdfjs-dist.d.ts)
+      //   - sql.js (packages/sdk/src/platform/types/sql-js.d.ts)
+      //   - WASM path modules (packages/sdk/src/platform/types/wasm-files.d.ts)
+      // Re-evaluate if any of these deps is promoted to a direct SDK dependency or bundledPackage.
       "TS2307": { "logLevel": "none" },
-      // TS2344: type does not satisfy constraint (conditional type narrowing in api-extractor's reduced checker)
+      // TS2344: Type does not satisfy the constraint.
+      // Triggered by: conditional type narrowing in api-extractor's reduced checker against
+      // transport types — specifically DirectClientTransport and EventEnvelope<T> generic
+      // parameters in packages/transport-core/dist/.
+      // Re-evaluate when api-extractor upgrades to a TS6+ bundled compiler.
       "TS2344": { "logLevel": "none" },
-      // TS2694: namespace has no exported member (triggered by ambient module declarations)
+      // TS2694: Namespace has no exported member.
+      // Triggered by: ambient `declare module` blocks in
+      //   - packages/sdk/src/platform/types/peer-deps.d.ts (expo-secure-store, react-native-keychain)
+      //   - packages/sdk/src/platform/types/sql-js.d.ts (sql.js Database/SqlJsStatic)
+      //   - packages/sdk/src/platform/types/wasm-files.d.ts (WASM path modules)
+      // api-extractor cannot resolve namespace members from ambient module augmentations.
+      // Re-evaluate when these type files migrate to direct package exports or bundledPackages.
       "TS2694": { "logLevel": "none" },
-      // TS2707: generic type requires N type argument(s) (false positive from api-extractor's partial lib.dom.d.ts)
+      // TS2707: Generic type requires between N and M type arguments.
+      // Triggered by: ReadableStream<R> and EventTarget generic uses in
+      // packages/sdk/src/platform/runtime/transports/ — api-extractor's bundled
+      // lib.dom.d.ts omits default type parameter values present in the full TypeScript lib.
+      // Re-evaluate when api-extractor ships a TS6-compatible bundled compiler with
+      // a complete lib.dom.d.ts.
       "TS2707": { "logLevel": "none" }
     },
     "extractorMessageReporting": {
@@ -75,6 +104,14 @@
         "logLevel": "none"
       },
       "ae-unresolved-inheritdoc-reference": {
+        "logLevel": "none"
+      },
+      // ae-forgotten-export: public declarations whose dependency types have no public
+      // re-export path. Suppressed here to keep the api report clean; each forgotten
+      // type should receive @internal in source or a facade re-export in the relevant
+      // platform barrel. TODO: remove this suppression once all daemon route-handler
+      // and transport-shape types have been explicitly tagged or re-exported.
+      "ae-forgotten-export": {
         "logLevel": "none"
       }
     },

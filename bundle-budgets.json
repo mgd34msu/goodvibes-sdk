@@ -15,7 +15,8 @@
     "Entry keys must match the `exports` map keys in packages/sdk/package.json exactly.",
     "",
     "Intentional exclusions (not budgeted here):",
-    "  - './events/<domain>' explicit subpath entries: each per-domain event file is a",
+    "  - './events/<domain>' explicit subpath entries (current domains: ./events/runtime,",
+    "    ./events/permissions, ./events/observability): each per-domain event file is a",
     "    small typed barrel (~50-200 B gzip); contributors adding a new event domain that",
     "    pulls in a large dependency should verify size manually via bundle:check.",
     "  - './contracts/operator-contract.json' and './contracts/peer-contract.json':",
@@ -25,174 +26,174 @@
   ],
   ".": {
     "gzip_bytes": 633,
-    "rationale": "full SDK re-export entry — re-exports all sub-entries; measured 527 B gzip; max(ceil(527*1.2)=633, 527+50=577)=633"
+    "rationale": "full SDK re-export entry — re-exports all sub-entries; measured 527 B gzip; budget 633 B"
   },
   "./auth": {
     "gzip_bytes": 3214,
-    "rationale": "auth surface with TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator + createAutoRefreshMiddleware; measured 2678 B gzip; max(ceil(2678*1.2)=3214, 2678+50=2728)=3214"
+    "rationale": "auth surface with TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator + createAutoRefreshMiddleware; measured 2678 B gzip; budget 3214 B"
   },
   "./browser": {
     "gzip_bytes": 1102,
-    "rationale": "companion browser surface with localStorage token store; measured 918 B gzip; max(ceil(918*1.2)=1102, 918+50=968)=1102"
+    "rationale": "companion browser surface with localStorage token store; measured 918 B gzip; budget 1102 B"
   },
   "./client-auth": {
     "gzip_bytes": 213,
-    "rationale": "public facade; measured 163 B gzip; max(ceil(163*1.2)=196, 163+50=213)=213"
+    "rationale": "public facade; measured 163 B gzip; budget 213 B"
   },
   "./contracts": {
     "gzip_bytes": 115,
-    "rationale": "contract re-export entry; measured 65 B gzip; max(ceil(65*1.2)=78, 65+50=115)=115"
+    "rationale": "contract re-export entry; measured 65 B gzip; budget 115 B"
   },
   "./contracts/node": {
     "gzip_bytes": 120,
-    "rationale": "Node-only contract re-export entry; measured 70 B gzip; max(ceil(70*1.2)=84, 70+50=120)=120"
+    "rationale": "Node-only contract re-export entry; measured 70 B gzip; budget 120 B"
   },
   "./daemon": {
     "gzip_bytes": 116,
-    "rationale": "daemon route handler re-export entry; measured 66 B gzip; max(ceil(66*1.2)=80, 66+50=116)=116"
+    "rationale": "daemon route handler re-export entry; measured 66 B gzip; budget 116 B"
   },
   "./errors": {
     "gzip_bytes": 306,
-    "rationale": "error taxonomy re-export entry; measured 255 B gzip; max(ceil(255*1.2)=306, 255+50=305)=306"
+    "rationale": "error taxonomy re-export entry; measured 255 B gzip; budget 306 B"
   },
   "./events": {
     "gzip_bytes": 374,
-    "rationale": "public facade; measured 311 B gzip; max(ceil(311*1.2)=374, 311+50=361)=374"
+    "rationale": "public facade; measured 311 B gzip; budget 374 B"
   },
   "./expo": {
     "gzip_bytes": 286,
-    "rationale": "Expo with SecureStore helper; measured 236 B gzip; max(ceil(236*1.2)=284, 236+50=286)=286"
+    "rationale": "Expo with SecureStore helper; measured 236 B gzip; budget 286 B"
   },
   "./observer": {
     "gzip_bytes": 2189,
-    "rationale": "public facade; measured 1824 B gzip; max(ceil(1824*1.2)=2189, 1824+50=1874)=2189"
+    "rationale": "public facade; measured 1824 B gzip; budget 2189 B"
   },
   "./operator": {
     "gzip_bytes": 118,
-    "rationale": "operator SDK client re-export entry; measured 68 B gzip; max(ceil(68*1.2)=82, 68+50=118)=118"
+    "rationale": "operator SDK client re-export entry; measured 68 B gzip; budget 118 B"
   },
   "./peer": {
     "gzip_bytes": 114,
-    "rationale": "peer SDK client re-export entry; measured 64 B gzip; max(ceil(64*1.2)=77, 64+50=114)=114"
+    "rationale": "peer SDK client re-export entry; measured 64 B gzip; budget 114 B"
   },
   "./platform": {
     "gzip_bytes": 537,
-    "rationale": "platform namespace facade; measured 447 B gzip; max(ceil(447*1.2)=537, 447+50=497)=537"
+    "rationale": "platform namespace facade; measured 447 B gzip; budget 537 B"
   },
   "./platform/config": {
     "gzip_bytes": 992,
-    "rationale": "config facade with secrets, services, subscriptions, helper model, and tool LLM; measured 826 B gzip; max(ceil(826*1.2)=992, 826+50=876)=992"
+    "rationale": "config facade with secrets, services, subscriptions, helper model, and tool LLM; measured 826 B gzip; budget 992 B"
   },
   "./platform/core": {
     "gzip_bytes": 342,
-    "rationale": "public platform seam; measured 285 B gzip; max(ceil(285*1.2)=342, 285+50=335)=342"
+    "rationale": "public platform seam; measured 285 B gzip; budget 342 B"
   },
   "./platform/daemon": {
     "gzip_bytes": 414,
-    "rationale": "dependency refresh baseline; measured 345 B gzip; max(ceil(345*1.2)=414, 345+50=395)=414"
+    "rationale": "dependency refresh baseline; measured 345 B gzip; budget 414 B"
   },
   "./platform/git": {
     "gzip_bytes": 109,
-    "rationale": "public facade; measured 59 B gzip; max(ceil(59*1.2)=71, 59+50=109)=109"
+    "rationale": "public facade; measured 59 B gzip; budget 109 B"
   },
   "./platform/integrations": {
     "gzip_bytes": 477,
-    "rationale": "public facade; measured 397 B gzip; max(ceil(397*1.2)=477, 397+50=447)=477"
+    "rationale": "public facade; measured 397 B gzip; budget 477 B"
   },
   "./platform/intelligence": {
     "gzip_bytes": 490,
-    "rationale": "public facade; measured 408 B gzip; max(ceil(408*1.2)=490, 408+50=458)=490"
+    "rationale": "public facade; measured 408 B gzip; budget 490 B"
   },
   "./platform/knowledge": {
     "gzip_bytes": 1204,
-    "rationale": "public facade; measured 1003 B gzip; max(ceil(1003*1.2)=1204, 1003+50=1053)=1204"
+    "rationale": "public facade; measured 1003 B gzip; budget 1204 B"
   },
   "./platform/knowledge/extensions": {
     "gzip_bytes": 81,
-    "rationale": "public facade; measured 31 B gzip; max(ceil(31*1.2)=38, 31+50=81)=81"
+    "rationale": "public facade; measured 31 B gzip; budget 81 B"
   },
   "./platform/knowledge/home-graph": {
     "gzip_bytes": 192,
-    "rationale": "public facade; measured 142 B gzip; max(ceil(142*1.2)=171, 142+50=192)=192"
+    "rationale": "public facade; measured 142 B gzip; budget 192 B"
   },
   "./platform/multimodal": {
     "gzip_bytes": 116,
-    "rationale": "public facade; measured 66 B gzip; max(ceil(66*1.2)=80, 66+50=116)=116"
+    "rationale": "public facade; measured 66 B gzip; budget 116 B"
   },
   "./platform/node": {
     "gzip_bytes": 342,
-    "rationale": "public facade; measured 285 B gzip; max(ceil(285*1.2)=342, 285+50=335)=342"
+    "rationale": "public facade; measured 285 B gzip; budget 342 B"
   },
   "./platform/node/runtime-boundary": {
     "gzip_bytes": 696,
-    "rationale": "public facade; measured 580 B gzip; max(ceil(580*1.2)=696, 580+50=630)=696"
+    "rationale": "public facade; measured 580 B gzip; budget 696 B"
   },
   "./platform/pairing": {
     "gzip_bytes": 238,
-    "rationale": "public facade; measured 188 B gzip; max(ceil(188*1.2)=226, 188+50=238)=238"
+    "rationale": "public facade; measured 188 B gzip; budget 238 B"
   },
   "./platform/providers": {
     "gzip_bytes": 1206,
-    "rationale": "dependency refresh baseline; measured 1005 B gzip; max(ceil(1005*1.2)=1206, 1005+50=1055)=1206"
+    "rationale": "dependency refresh baseline; measured 1005 B gzip; budget 1206 B"
   },
   "./platform/runtime": {
     "gzip_bytes": 192,
-    "rationale": "platform runtime re-export entry; measured 142 B gzip; max(ceil(142*1.2)=171, 142+50=192)=192"
+    "rationale": "platform runtime re-export entry; measured 142 B gzip; budget 192 B"
   },
   "./platform/runtime/observability": {
     "gzip_bytes": 692,
-    "rationale": "public runtime seam; measured 576 B gzip; max(ceil(576*1.2)=692, 576+50=626)=692"
+    "rationale": "public runtime seam; measured 576 B gzip; budget 692 B"
   },
   "./platform/runtime/state": {
     "gzip_bytes": 423,
-    "rationale": "public runtime seam; measured 352 B gzip; max(ceil(352*1.2)=423, 352+50=402)=423"
+    "rationale": "public runtime seam; measured 352 B gzip; budget 423 B"
   },
   "./platform/runtime/store": {
     "gzip_bytes": 1371,
-    "rationale": "public runtime seam; measured 1142 B gzip; max(ceil(1142*1.2)=1371, 1142+50=1192)=1371"
+    "rationale": "public runtime seam; measured 1142 B gzip; budget 1371 B"
   },
   "./platform/runtime/ui": {
     "gzip_bytes": 916,
-    "rationale": "public runtime seam; measured 763 B gzip; max(ceil(763*1.2)=916, 763+50=813)=916"
+    "rationale": "public runtime seam; measured 763 B gzip; budget 916 B"
   },
   "./platform/tools": {
     "gzip_bytes": 2766,
-    "rationale": "dependency refresh baseline; measured 2305 B gzip; max(ceil(2305*1.2)=2766, 2305+50=2355)=2766"
+    "rationale": "dependency refresh baseline; measured 2305 B gzip; budget 2766 B"
   },
   "./platform/utils": {
     "gzip_bytes": 277,
-    "rationale": "public platform seam; measured 227 B gzip; max(ceil(227*1.2)=273, 227+50=277)=277"
+    "rationale": "public platform seam; measured 227 B gzip; budget 277 B"
   },
   "./platform/voice": {
     "gzip_bytes": 168,
-    "rationale": "public facade; measured 118 B gzip; max(ceil(118*1.2)=142, 118+50=168)=168"
+    "rationale": "public facade; measured 118 B gzip; budget 168 B"
   },
   "./react-native": {
     "gzip_bytes": 1475,
-    "rationale": "RN/Hermes companion surface; measured 1229 B gzip; max(ceil(1229*1.2)=1475, 1229+50=1279)=1475"
+    "rationale": "RN/Hermes companion surface; measured 1229 B gzip; budget 1475 B"
   },
   "./transport-core": {
     "gzip_bytes": 118,
-    "rationale": "shared transport types + observer re-export entry; measured 68 B gzip; max(ceil(68*1.2)=82, 68+50=118)=118"
+    "rationale": "shared transport types + observer re-export entry; measured 68 B gzip; budget 118 B"
   },
   "./transport-direct": {
     "gzip_bytes": 141,
-    "rationale": "SDK direct-transport facade backed by transport-core; measured 91 B gzip; max(ceil(91*1.2)=110, 91+50=141)=141"
+    "rationale": "SDK direct-transport facade backed by transport-core; measured 91 B gzip; budget 141 B"
   },
   "./transport-http": {
     "gzip_bytes": 118,
-    "rationale": "HTTP client primitives re-export entry; measured 68 B gzip; max(ceil(68*1.2)=82, 68+50=118)=118"
+    "rationale": "HTTP client primitives re-export entry; measured 68 B gzip; budget 118 B"
   },
   "./transport-realtime": {
     "gzip_bytes": 122,
-    "rationale": "SSE + WebSocket connectors re-export entry; measured 72 B gzip; max(ceil(72*1.2)=87, 72+50=122)=122"
+    "rationale": "SSE + WebSocket connectors re-export entry; measured 72 B gzip; budget 122 B"
   },
   "./web": {
     "gzip_bytes": 249,
-    "rationale": "Workers-compat companion surface; measured 199 B gzip; max(ceil(199*1.2)=239, 199+50=249)=249"
+    "rationale": "Workers-compat companion surface; measured 199 B gzip; budget 249 B"
   },
   "./workers": {
     "gzip_bytes": 3095,
-    "rationale": "public facade; measured 2579 B gzip; max(ceil(2579*1.2)=3095, 2579+50=2629)=3095"
+    "rationale": "public facade; measured 2579 B gzip; budget 3095 B"
   }
 }
