@@ -7,12 +7,6 @@
 import { z } from 'zod/v4';
 import type { ZodType } from 'zod/v4';
 
-// @internal
-export const __internal__: {
-    readonly buildSchemaRegistry: (methodIds: readonly string[], schemas: Record<string, unknown>) => Partial<Record<string, ZodType>>;
-    readonly methodIdToSchemaName: (methodId: string) => string;
-};
-
 // @public (undocumented)
 export type AccountsSnapshotResponse = z.infer<typeof AccountsSnapshotResponseSchema>;
 
@@ -91,34 +85,87 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
     issueCount: z.ZodNumber;
 }, z.core.$strip>;
 
-// Warning: (ae-forgotten-export) The symbol "SessionEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "TurnEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "ProviderEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "ToolEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "TaskEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "AgentEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "WorkflowEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "OrchestrationEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "CommunicationEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "PlannerEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "PermissionEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "PluginEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "McpEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "TransportEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "CompactionEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "UIEvent_2" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "OpsEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "ForensicsEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "SecurityEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "AutomationEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "RouteEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "ControlPlaneEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DeliveryEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "WatcherEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "SurfaceEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "KnowledgeEvent" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "WorkspaceEvent" needs to be exported by the entry point index.d.ts
-//
+// @public
+export type AgentEvent =
+/** Agent is being initialised and configured. */
+    {
+    type: 'AGENT_SPAWNING';
+    agentId: string;
+    taskId?: string;
+    task: string;
+    parentAgentId?: string;
+    orchestrationGraphId?: string;
+    parentNodeId?: string;
+}
+/** Agent is actively running and processing. */
+| {
+    type: 'AGENT_RUNNING';
+    agentId: string;
+    taskId?: string;
+}
+/** Agent emitted a textual progress update. */
+| {
+    type: 'AGENT_PROGRESS';
+    agentId: string;
+    taskId?: string;
+    progress: string;
+}
+/** Agent streamed a chunk of output. */
+| {
+    type: 'AGENT_STREAM_DELTA';
+    agentId: string;
+    taskId?: string;
+    content: string;
+    accumulated: string;
+}
+/** Agent is waiting to send a message to the LLM. */
+| {
+    type: 'AGENT_AWAITING_MESSAGE';
+    agentId: string;
+    taskId?: string;
+}
+/** Agent is waiting for a tool call to complete. */
+| {
+    type: 'AGENT_AWAITING_TOOL';
+    agentId: string;
+    taskId?: string;
+    callId: string;
+    tool: string;
+}
+/** Agent is performing final output assembly. */
+| {
+    type: 'AGENT_FINALIZING';
+    agentId: string;
+    taskId?: string;
+}
+/** Agent completed successfully. */
+| {
+    type: 'AGENT_COMPLETED';
+    agentId: string;
+    taskId?: string;
+    durationMs: number;
+    output?: string;
+    toolCallsMade?: number;
+}
+/** Agent failed with an error. */
+| {
+    type: 'AGENT_FAILED';
+    agentId: string;
+    taskId?: string;
+    error: string;
+    durationMs: number;
+}
+/** Agent was cancelled before completion. */
+| {
+    type: 'AGENT_CANCELLED';
+    agentId: string;
+    taskId?: string;
+    reason?: string;
+};
+
+// @public
+export type AgentEventType = AgentEvent['type'];
+
 // @public
 export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | UIEvent_2 | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent;
 
@@ -230,13 +277,95 @@ export interface AuthTransitionInfo {
 export type AuthTransitionReason = 'login' | 'logout' | 'refresh' | 'expire' | 'revoke';
 
 // @public (undocumented)
+export const AUTOMATION_RUN_OUTCOMES: readonly ["success", "partial", "failed", "cancelled"];
+
+// @public
+export const AUTOMATION_SCHEDULE_KINDS: readonly ["at", "every", "cron"];
+
+// @public (undocumented)
 export type AutomationDeliveryGuarantee = string;
+
+// @public (undocumented)
+export type AutomationEvent = {
+    type: 'AUTOMATION_JOB_CREATED';
+    jobId: string;
+    name: string;
+    scheduleKind: AutomationScheduleKind;
+    enabled: boolean;
+} | {
+    type: 'AUTOMATION_JOB_UPDATED';
+    jobId: string;
+    changedFields: string[];
+} | {
+    type: 'AUTOMATION_JOB_ENABLED';
+    jobId: string;
+} | {
+    type: 'AUTOMATION_JOB_DISABLED';
+    jobId: string;
+    reason: string;
+} | {
+    type: 'AUTOMATION_RUN_QUEUED';
+    jobId: string;
+    runId: string;
+    scheduledAt: number;
+    forced: boolean;
+} | {
+    type: 'AUTOMATION_RUN_STARTED';
+    jobId: string;
+    runId: string;
+    startedAt: number;
+    attempt: number;
+} | {
+    type: 'AUTOMATION_RUN_COMPLETED';
+    jobId: string;
+    runId: string;
+    startedAt: number;
+    completedAt: number;
+    durationMs: number;
+    outcome: AutomationRunOutcome;
+} | {
+    type: 'AUTOMATION_RUN_FAILED';
+    jobId: string;
+    runId: string;
+    startedAt: number;
+    failedAt: number;
+    error: string;
+    retryable: boolean;
+} | {
+    type: 'AUTOMATION_RUN_CANCELLED';
+    jobId: string;
+    runId: string;
+    cancelledAt: number;
+    reason: string;
+} | {
+    type: 'AUTOMATION_SCHEDULE_ERROR';
+    jobId: string;
+    scheduleText: string;
+    error: string;
+} | {
+    type: 'AUTOMATION_JOB_AUTO_DISABLED';
+    jobId: string;
+    reason: string;
+    consecutiveFailures: number;
+};
+
+// @public (undocumented)
+export type AutomationEventType = AutomationEvent['type'];
+
+// @public (undocumented)
+export type AutomationExecutionMode = 'isolated' | 'current' | 'pinned' | 'background';
 
 // @public (undocumented)
 export type AutomationRouteBindingKind = string;
 
 // @public (undocumented)
+export type AutomationRunOutcome = (typeof AUTOMATION_RUN_OUTCOMES)[number];
+
+// @public (undocumented)
 export type AutomationScheduleDefinition = unknown;
+
+// @public (undocumented)
+export type AutomationScheduleKind = (typeof AUTOMATION_SCHEDULE_KINDS)[number];
 
 // @public (undocumented)
 export type AutomationSessionPolicy = string;
@@ -293,7 +422,7 @@ export interface BrowserTokenStoreOptions {
 export function buildErrorResponseBody(error: unknown, options?: JsonErrorResponseOptions): StructuredDaemonErrorBody;
 
 // @public (undocumented)
-export function buildEventSourceUrl(baseUrl: string, domain: RuntimeEventDomain): string;
+export function buildEventSourceUrl(baseUrl: string, domain: DaemonRuntimeEventDomain): string;
 
 // @public (undocumented)
 export function buildMissingScopeBody(target: string, requiredScopes: readonly string[], grantedScopes: readonly string[] | undefined): {
@@ -307,7 +436,7 @@ export function buildMissingScopeBody(target: string, requiredScopes: readonly s
 export function buildUrl(baseUrl: string, path: string): string;
 
 // @public (undocumented)
-export function buildWebSocketUrl(baseUrl: string, domains: readonly RuntimeEventDomain[]): string;
+export function buildWebSocketUrl(baseUrl: string, domains: readonly DaemonRuntimeEventDomain[]): string;
 
 // @public (undocumented)
 export interface ChannelAccountRegistryLike {
@@ -418,6 +547,146 @@ export interface ClientTransport<TKind extends string, TOperator, TPeer> {
     readonly peer: TPeer;
 }
 
+// @public (undocumented)
+export type CommunicationEvent = {
+    type: 'COMMUNICATION_SENT';
+    messageId: string;
+    fromId: string;
+    toId: string;
+    scope: CommunicationScope;
+    kind: CommunicationKind;
+    content: string;
+    fromRole?: string;
+    toRole?: string;
+    cohort?: string;
+    wrfcId?: string;
+    parentAgentId?: string;
+} | {
+    type: 'COMMUNICATION_DELIVERED';
+    messageId: string;
+    fromId: string;
+    toId: string;
+    scope: CommunicationScope;
+    kind: CommunicationKind;
+} | {
+    type: 'COMMUNICATION_BLOCKED';
+    messageId: string;
+    fromId: string;
+    toId: string;
+    scope: CommunicationScope;
+    kind: CommunicationKind;
+    reason: string;
+    fromRole?: string;
+    toRole?: string;
+    cohort?: string;
+    wrfcId?: string;
+    parentAgentId?: string;
+};
+
+// @public (undocumented)
+export type CommunicationEventType = CommunicationEvent['type'];
+
+// @public
+export type CommunicationKind = 'directive' | 'status' | 'question' | 'finding' | 'review' | 'handoff' | 'escalation' | 'completion';
+
+// @public (undocumented)
+export type CommunicationScope = 'direct' | 'broadcast';
+
+// @public
+export type CompactionEvent =
+/** A compaction threshold check was triggered. */
+    {
+    type: 'COMPACTION_CHECK';
+    sessionId: string;
+    tokenCount: number;
+    threshold: number;
+}
+/** Micro-compaction: lightweight summary of recent turns only. */
+| {
+    type: 'COMPACTION_MICROCOMPACT';
+    sessionId: string;
+    turnCount: number;
+    tokensBefore: number;
+    tokensAfter: number;
+}
+/** Collapse: full context collapsed into a single summary message. */
+| {
+    type: 'COMPACTION_COLLAPSE';
+    sessionId: string;
+    messageCount: number;
+    tokensBefore: number;
+    tokensAfter: number;
+}
+/** Auto-compaction: automatic compaction triggered by threshold breach. */
+| {
+    type: 'COMPACTION_AUTOCOMPACT';
+    sessionId: string;
+    strategy: string;
+    tokensBefore: number;
+    tokensAfter: number;
+}
+/** Reactive compaction: triggered by an imminent context overflow. */
+| {
+    type: 'COMPACTION_REACTIVE';
+    sessionId: string;
+    tokenCount: number;
+    limit: number;
+}
+/** Compaction boundary commit: the compacted state has been persisted. */
+| {
+    type: 'COMPACTION_BOUNDARY_COMMIT';
+    sessionId: string;
+    checkpointId: string;
+}
+/** Compaction completed successfully. */
+| {
+    type: 'COMPACTION_DONE';
+    sessionId: string;
+    strategy: string;
+    tokensBefore: number;
+    tokensAfter: number;
+    durationMs: number;
+}
+/** Compaction failed. */
+| {
+    type: 'COMPACTION_FAILED';
+    sessionId: string;
+    strategy: string;
+    error: string;
+}
+/** Session resume repair pipeline completed. */
+| {
+    type: 'COMPACTION_RESUME_REPAIR';
+    sessionId: string;
+    repaired: boolean;
+    actionsCount: number;
+    safeToResume: boolean;
+}
+/** Quality score computed after a strategy run. */
+| {
+    type: 'COMPACTION_QUALITY_SCORE';
+    sessionId: string;
+    strategy: string;
+    score: number;
+    grade: string;
+    compressionRatio: number;
+    retentionScore: number;
+    isLowQuality: boolean;
+    description: string;
+}
+/** Strategy switched automatically due to low quality score. */
+| {
+    type: 'COMPACTION_STRATEGY_SWITCH';
+    sessionId: string;
+    fromStrategy: string;
+    toStrategy: string;
+    reason: string;
+    score: number;
+};
+
+// @public
+export type CompactionEventType = CompactionEvent['type'];
+
 // @public
 export function composeMiddleware(middleware: readonly TransportMiddleware[], innerFetch: (ctx: TransportContext) => Promise<Response>): (ctx: TransportContext) => Promise<void>;
 
@@ -426,7 +695,6 @@ export function computeBackoffDelay(attempt: number, policy: ResolvedBackoffPoli
 
 // @public
 export class ConfigurationError extends GoodVibesSdkError {
-    // (undocumented)
     static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
@@ -445,6 +713,16 @@ export const ConfiguredViaSchema: z.ZodEnum<{
 // @public (undocumented)
 export interface ConsoleObserverOptions {
     readonly level?: 'debug' | 'info';
+}
+
+// @public
+export interface Constraint {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly source: 'prompt' | 'inherited';
+    // (undocumented)
+    readonly text: string;
 }
 
 // @public
@@ -471,6 +749,14 @@ export interface ContractInvokeOptions {
     readonly signal?: AbortSignal;
 }
 
+// @public
+export interface ContractResult {
+    // (undocumented)
+    readonly valid: boolean;
+    // (undocumented)
+    readonly violations: readonly string[];
+}
+
 // @public (undocumented)
 export interface ContractRouteDefinition {
     // (undocumented)
@@ -491,6 +777,15 @@ export interface ContractStreamOptions extends ContractInvokeOptions {
     // (undocumented)
     readonly handlers: ServerSentEventHandlers;
 }
+
+// @public
+export const CONTROL_PLANE_CLIENT_KINDS: readonly ["tui", "web", "slack", "discord", "ntfy", "daemon", "webhook", "homeassistant", "service", "telegram", "google-chat", "signal", "whatsapp", "imessage", "msteams", "bluebubbles", "mattermost", "matrix"];
+
+// @public (undocumented)
+export const CONTROL_PLANE_PRINCIPAL_KINDS: readonly ["user", "bot", "service", "token"];
+
+// @public (undocumented)
+export const CONTROL_PLANE_TRANSPORT_KINDS: readonly ["local", "http", "sse", "ws", "websocket", "webhook"];
 
 // @public (undocumented)
 export type ControlAuthCurrentResponse = z.infer<typeof ControlAuthCurrentResponseSchema>;
@@ -529,6 +824,51 @@ export const ControlAuthLoginResponseSchema: z.ZodObject<{
     username: z.ZodString;
     expiresAt: z.ZodNumber;
 }, z.core.$strip>;
+
+// @public (undocumented)
+export type ControlPlaneClientKind = (typeof CONTROL_PLANE_CLIENT_KINDS)[number];
+
+// @public (undocumented)
+export type ControlPlaneEvent = {
+    type: 'CONTROL_PLANE_CLIENT_CONNECTED';
+    clientId: string;
+    clientKind: ControlPlaneClientKind;
+    transport: ControlPlaneTransportKind;
+} | {
+    type: 'CONTROL_PLANE_CLIENT_DISCONNECTED';
+    clientId: string;
+    reason: string;
+} | {
+    type: 'CONTROL_PLANE_SUBSCRIPTION_CREATED';
+    clientId: string;
+    subscriptionId: string;
+    topics: string[];
+} | {
+    type: 'CONTROL_PLANE_SUBSCRIPTION_DROPPED';
+    clientId: string;
+    subscriptionId: string;
+    reason: string;
+} | {
+    type: 'CONTROL_PLANE_AUTH_GRANTED';
+    clientId: string;
+    principalId: string;
+    principalKind: ControlPlanePrincipalKind;
+    scopes: string[];
+} | {
+    type: 'CONTROL_PLANE_AUTH_REJECTED';
+    clientId: string;
+    principalId: string;
+    reason: string;
+};
+
+// @public (undocumented)
+export type ControlPlaneEventType = ControlPlaneEvent['type'];
+
+// @public (undocumented)
+export type ControlPlanePrincipalKind = (typeof CONTROL_PLANE_PRINCIPAL_KINDS)[number];
+
+// @public (undocumented)
+export type ControlPlaneTransportKind = (typeof CONTROL_PLANE_TRANSPORT_KINDS)[number];
 
 // @public (undocumented)
 export type ControlStatusResponse = z.infer<typeof ControlStatusResponseSchema>;
@@ -608,7 +948,7 @@ export function createEventEnvelope<TType extends string, TPayload>(type: TType,
 // Warning: (ae-forgotten-export) The symbol "AuthTokenSource" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function createEventSourceConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, fetchImpl: typeof fetch, options?: RuntimeEventConnectorOptions): DomainEventConnector<RuntimeEventDomain, TEvent>;
+export function createEventSourceConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, fetchImpl: typeof fetch, options?: RuntimeEventConnectorOptions): DomainEventConnector<DaemonRuntimeEventDomain, TEvent>;
 
 // @public (undocumented)
 export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactNativeGoodVibesSdk;
@@ -672,7 +1012,7 @@ export function createReactNativeGoodVibesSdk(options: ReactNativeGoodVibesSdkOp
 export function createRemoteDomainEvents<TDomain extends string, TEvent extends EventLike = EventLike>(domains: readonly TDomain[], connect: DomainEventConnector<TDomain, TEvent>, options?: RemoteDomainEventsOptions<TDomain>): DomainEvents<TDomain, TEvent>;
 
 // @public (undocumented)
-export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(connect: DomainEventConnector<RuntimeEventDomain, TEvent>, options?: RemoteRuntimeEventsOptions): RemoteRuntimeEvents<TEvent>;
+export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(connect: DomainEventConnector<DaemonRuntimeEventDomain, TEvent>, options?: RemoteRuntimeEventsOptions): RemoteRuntimeEvents<TEvent>;
 
 // @public (undocumented)
 export function createRouteBodySchema<T>(routeId: string, parse: (body: JsonRecord) => T | Response): RouteBodySchema<T>;
@@ -698,7 +1038,7 @@ export function createUuidV4(): string;
 export function createWebGoodVibesSdk(options?: WebGoodVibesSdkOptions): GoodVibesSdk;
 
 // @public (undocumented)
-export function createWebSocketConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, WebSocketImpl: typeof WebSocket, options?: RuntimeEventConnectorOptions): DomainEventConnector<RuntimeEventDomain, TEvent>;
+export function createWebSocketConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, WebSocketImpl: typeof WebSocket, options?: RuntimeEventConnectorOptions): DomainEventConnector<DaemonRuntimeEventDomain, TEvent>;
 
 // @public (undocumented)
 export type CurrentModelResponse = z.infer<typeof CurrentModelResponseSchema>;
@@ -1151,7 +1491,7 @@ export interface DaemonRuntimeAutomationRouteHandlers {
     // (undocumented)
     getAutomationRuns(): MaybeResponse;
     // (undocumented)
-    getSchedulerCapacity(): MaybeResponse;
+    getSchedulerCapacity(req: Request): MaybeResponse;
     // (undocumented)
     getSchedules(): MaybeResponse;
     // (undocumented)
@@ -1171,6 +1511,11 @@ export interface DaemonRuntimeAutomationRouteHandlers {
     // (undocumented)
     setScheduleEnabled(scheduleId: string, enabled: boolean, req: Request): MaybeResponse;
 }
+
+// Warning: (ae-forgotten-export) The symbol "RUNTIME_EVENT_DOMAINS_2" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export type DaemonRuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS_2[number];
 
 // @public (undocumented)
 export interface DaemonRuntimeRouteContext {
@@ -1504,7 +1849,7 @@ export interface DaemonSystemRouteHandlers {
     // (undocumented)
     getConfig(req: Request): MaybeResponse;
     // (undocumented)
-    getRouteBindings(): MaybeResponse;
+    getRouteBindings(req: Request): MaybeResponse;
     // (undocumented)
     getServiceStatus(): MaybeResponse;
     // (undocumented)
@@ -1577,6 +1922,63 @@ export const DEFAULT_STREAM_RECONNECT_POLICY: ResolvedStreamReconnectPolicy;
 export const DEFAULT_WS_MAX_ATTEMPTS = 10;
 
 // @public (undocumented)
+export const DELIVERY_KINDS: readonly ["notification", "reply", "action", "callback"];
+
+// @public (undocumented)
+export type DeliveryEvent = {
+    type: 'DELIVERY_QUEUED';
+    deliveryId: string;
+    jobId: string;
+    runId: string;
+    surfaceKind: RouteSurfaceKind;
+    targetId: string;
+    deliveryKind: DeliveryKind;
+} | {
+    type: 'DELIVERY_STARTED';
+    deliveryId: string;
+    jobId: string;
+    runId: string;
+    surfaceKind: RouteSurfaceKind;
+    targetId: string;
+    startedAt: number;
+} | {
+    type: 'DELIVERY_SUCCEEDED';
+    deliveryId: string;
+    jobId: string;
+    runId: string;
+    surfaceKind: RouteSurfaceKind;
+    targetId: string;
+    completedAt: number;
+    durationMs: number;
+    statusCode: number;
+} | {
+    type: 'DELIVERY_FAILED';
+    deliveryId: string;
+    jobId: string;
+    runId: string;
+    surfaceKind: RouteSurfaceKind;
+    targetId: string;
+    failedAt: number;
+    error: string;
+    retryable: boolean;
+} | {
+    type: 'DELIVERY_DEAD_LETTERED';
+    deliveryId: string;
+    jobId: string;
+    runId: string;
+    surfaceKind: RouteSurfaceKind;
+    targetId: string;
+    reason: string;
+    attempts: number;
+};
+
+// @public (undocumented)
+export type DeliveryEventType = DeliveryEvent['type'];
+
+// @public (undocumented)
+export type DeliveryKind = (typeof DELIVERY_KINDS)[number];
+
+// @public (undocumented)
 export function describeUnknownTransportError(error: unknown): string;
 
 // @public (undocumented)
@@ -1588,7 +1990,7 @@ export function dispatchAutomationRoutes(req: Request, handlers: DaemonAutomatio
 // @public (undocumented)
 export function dispatchDaemonApiRoutes(req: Request, handlers: DaemonApiRouteHandlers, extensions?: readonly DaemonApiRouteExtension[]): Promise<Response | null>;
 
-// @public (undocumented)
+// @public
 export function dispatchOperatorRoutes(req: Request, handlers: DaemonOperatorRouteHandlers): Promise<Response | null>;
 
 // @public (undocumented)
@@ -1603,6 +2005,37 @@ export function dispatchTaskRoutes(req: Request, handlers: DaemonTaskRouteHandle
 // @public (undocumented)
 export type DomainEventConnector<TDomain extends string, TEvent extends EventLike = EventLike> = (domain: TDomain, onEnvelope: (envelope: SerializedEventEnvelope<TEvent>) => void) => void | Promise<() => void>;
 
+// @public
+export type DomainEventMap = {
+    session: SessionEvent;
+    turn: TurnEvent;
+    providers: ProviderEvent;
+    tools: ToolEvent;
+    tasks: TaskEvent;
+    agents: AgentEvent;
+    workflows: WorkflowEvent;
+    orchestration: OrchestrationEvent;
+    communication: CommunicationEvent;
+    planner: PlannerEvent;
+    permissions: PermissionEvent;
+    plugins: PluginEvent;
+    mcp: McpEvent;
+    transport: TransportEvent;
+    compaction: CompactionEvent;
+    ui: UIEvent_2;
+    ops: OpsEvent;
+    forensics: ForensicsEvent;
+    security: SecurityEvent;
+    automation: AutomationEvent;
+    routes: RouteEvent;
+    'control-plane': ControlPlaneEvent;
+    deliveries: DeliveryEvent;
+    watchers: WatcherEvent;
+    surfaces: SurfaceEvent;
+    knowledge: KnowledgeEvent;
+    workspace: WorkspaceEvent;
+};
+
 // @public (undocumented)
 export type DomainEvents<TDomain extends string, TEvent extends EventLike = EventLike> = RuntimeEventFeeds<TDomain, TEvent>;
 
@@ -1611,7 +2044,7 @@ export type DomainEvents<TDomain extends string, TEvent extends EventLike = Even
 // @public (undocumented)
 export type EnvelopeSubscriber<TEvent extends EventLike_2> = <TType extends TEvent['type']>(type: TType, listener: (envelope: EventEnvelope<TType, EventForType<TEvent, TType>>) => void) => () => void;
 
-// @public (undocumented)
+// @public
 export type ErrorCategory = DaemonErrorCategory | 'contract';
 
 // @public (undocumented)
@@ -1656,6 +2089,23 @@ export interface EventEnvelopeContext {
 }
 
 // @public (undocumented)
+export interface EventEnvelopeShape {
+    // (undocumented)
+    readonly event: Record<string, unknown>;
+    // (undocumented)
+    readonly sessionId: string;
+    // (undocumented)
+    readonly source: string;
+    // (undocumented)
+    readonly timestamp: number;
+    // (undocumented)
+    readonly traceId: string;
+}
+
+// @public
+export type ExecutionStrategy = 'auto' | 'single' | 'cohort' | 'background' | 'remote';
+
+// @public (undocumented)
 export interface ExpoGoodVibesSdkOptions extends ReactNativeGoodVibesSdkOptions {
 }
 
@@ -1663,7 +2113,42 @@ export interface ExpoGoodVibesSdkOptions extends ReactNativeGoodVibesSdkOptions 
 export type FetchExtractMode = string;
 
 // @public (undocumented)
-export function firstJsonSchemaFailure(schema: Record<string, unknown>, value: unknown, path?: string, root?: Record<string, unknown>): JsonSchemaValidationFailure | undefined;
+export type FieldKind = 'string' | 'number' | 'boolean' | 'string[]' | 'enum' | 'object';
+
+// @public (undocumented)
+export interface FieldSpec {
+    // (undocumented)
+    readonly key: string;
+    // (undocumented)
+    readonly kind: FieldKind;
+    // (undocumented)
+    readonly values?: readonly string[];
+}
+
+// @public (undocumented)
+export function firstJsonSchemaFailure(schema: Record<string, unknown>, value: unknown, path?: string, root?: Record<string, unknown>, _depth?: number): JsonSchemaValidationFailure | undefined;
+
+// @public
+export type ForensicsEvent =
+/** A new failure report has been generated for a terminal task or turn. */
+    {
+    type: 'FORENSICS_REPORT_CREATED';
+    reportId: string;
+    classification: string;
+    errorMessage?: string;
+    taskId?: string;
+    turnId?: string;
+}
+/** A report was exported (to stdout or file). */
+| {
+    type: 'FORENSICS_REPORT_EXPORTED';
+    reportId: string;
+    destination: 'stdout' | 'file';
+    path?: string;
+};
+
+// @public
+export type ForensicsEventType = ForensicsEvent['type'];
 
 // @public
 function forSession<TDomain extends string, TEvent extends EventLike = EventLike>(events: DomainEvents<TDomain, TEvent>, sessionId: string): DomainEvents<TDomain, TEvent>;
@@ -2029,7 +2514,7 @@ export interface IntegrationHelperServiceLike {
     // (undocumented)
     buildReview(): unknown;
     // (undocumented)
-    createEventStream(req: Request, domains: readonly RuntimeEventDomain[]): Response | Promise<Response>;
+    createEventStream(req: Request, domains: readonly DaemonRuntimeEventDomain[]): Response | Promise<Response>;
     // (undocumented)
     getAccountsSnapshot(): Promise<Record<string, unknown>>;
     // (undocumented)
@@ -2092,6 +2577,9 @@ export function isJsonContentType(contentType: string | null): boolean;
 export function isJsonRecord(value: unknown): value is JsonRecord;
 
 // @public (undocumented)
+export function isKnownEventType(type: unknown): type is string;
+
+// @public (undocumented)
 export function isOperatorMethodId(value: string): value is (typeof OPERATOR_METHOD_IDS)[number];
 
 // @public (undocumented)
@@ -2140,6 +2628,82 @@ export interface JsonSchemaValidationFailure {
 export type JsonValue = string | number | boolean | null | {
     readonly [key: string]: JsonValue;
 } | readonly JsonValue[];
+
+// @public
+export type KnowledgeEvent = {
+    type: 'KNOWLEDGE_INGEST_STARTED';
+    sourceId: string;
+    connectorId: string;
+    sourceType: string;
+    uri?: string;
+} | {
+    type: 'KNOWLEDGE_INGEST_COMPLETED';
+    sourceId: string;
+    status: string;
+    artifactId?: string;
+    title?: string;
+} | {
+    type: 'KNOWLEDGE_INGEST_FAILED';
+    sourceId: string;
+    error: string;
+} | {
+    type: 'KNOWLEDGE_EXTRACTION_COMPLETED';
+    sourceId: string;
+    extractionId: string;
+    format: string;
+    estimatedTokens: number;
+} | {
+    type: 'KNOWLEDGE_EXTRACTION_FAILED';
+    sourceId: string;
+    error: string;
+} | {
+    type: 'KNOWLEDGE_COMPILE_COMPLETED';
+    sourceId: string;
+    nodeCount: number;
+    edgeCount: number;
+} | {
+    type: 'KNOWLEDGE_LINT_COMPLETED';
+    issueCount: number;
+} | {
+    type: 'KNOWLEDGE_PACKET_BUILT';
+    task: string;
+    itemCount: number;
+    estimatedTokens: number;
+    detail: 'compact' | 'standard' | 'detailed';
+} | {
+    type: 'KNOWLEDGE_PROJECTION_RENDERED';
+    targetId: string;
+    pageCount: number;
+} | {
+    type: 'KNOWLEDGE_PROJECTION_MATERIALIZED';
+    targetId: string;
+    artifactId: string;
+    pageCount: number;
+} | {
+    type: 'KNOWLEDGE_JOB_QUEUED';
+    jobId: string;
+    runId: string;
+    mode: 'inline' | 'background';
+} | {
+    type: 'KNOWLEDGE_JOB_STARTED';
+    jobId: string;
+    runId: string;
+    mode: 'inline' | 'background';
+} | {
+    type: 'KNOWLEDGE_JOB_COMPLETED';
+    jobId: string;
+    runId: string;
+    durationMs: number;
+} | {
+    type: 'KNOWLEDGE_JOB_FAILED';
+    jobId: string;
+    runId: string;
+    error: string;
+    durationMs: number;
+};
+
+// @public (undocumented)
+export type KnowledgeEventType = KnowledgeEvent['type'];
 
 // @public (undocumented)
 export interface KnowledgeGraphqlAccessLike {
@@ -2379,6 +2943,93 @@ export type MaybePromise<T> = T | Promise<T>;
 // @public (undocumented)
 export type MaybeResponse = Response | Promise<Response>;
 
+// @public
+export type McpEvent =
+/** MCP server configuration has been parsed and validated. */
+    {
+    type: 'MCP_CONFIGURED';
+    serverId: string;
+    transport: string;
+    url?: string;
+    role?: McpServerRole;
+    trustMode?: McpTrustMode;
+    allowedPaths?: string[];
+    allowedHosts?: string[];
+}
+/** Connection attempt to MCP server is in progress. */
+| {
+    type: 'MCP_CONNECTING';
+    serverId: string;
+}
+/** Connection to MCP server established successfully. */
+| {
+    type: 'MCP_CONNECTED';
+    serverId: string;
+    toolCount: number;
+    resourceCount: number;
+}
+/** MCP server is running in degraded mode (partial tool availability). */
+| {
+    type: 'MCP_DEGRADED';
+    serverId: string;
+    reason: string;
+    availableTools: string[];
+}
+/** MCP server requires authentication before proceeding. */
+| {
+    type: 'MCP_AUTH_REQUIRED';
+    serverId: string;
+    authType: string;
+}
+/** Attempting to re-establish a dropped MCP connection. */
+| {
+    type: 'MCP_RECONNECTING';
+    serverId: string;
+    attempt: number;
+    maxAttempts: number;
+}
+/** Connection to MCP server has been dropped or closed. */
+| {
+    type: 'MCP_DISCONNECTED';
+    serverId: string;
+    reason?: string;
+    willRetry: boolean;
+}
+/**
+* MCP schema has been quarantined.
+*
+* Tool execution on this server is blocked until the schema is refreshed or
+* an operator explicitly approves a temporary override.
+*/
+| {
+    type: 'MCP_SCHEMA_QUARANTINED';
+    serverId: string;
+    reason: QuarantineReason;
+    detail?: string;
+}
+/**
+* An operator has acknowledged a quarantined schema and approved a temporary
+* execution override. Freshness transitions to `stale`; a refresh is still
+* recommended.
+*/
+| {
+    type: 'MCP_SCHEMA_QUARANTINE_APPROVED';
+    serverId: string;
+    operatorId: string;
+}
+/** MCP trust/role policy has changed. */
+| {
+    type: 'MCP_POLICY_UPDATED';
+    serverId: string;
+    role: McpServerRole;
+    trustMode: McpTrustMode;
+    allowedPaths: string[];
+    allowedHosts: string[];
+};
+
+// @public
+export type McpEventType = McpEvent['type'];
+
 // @public (undocumented)
 export type MediaArtifact = Record<string, unknown>;
 
@@ -2574,7 +3225,7 @@ export interface OperatorEventContract {
     // (undocumented)
     readonly description: string;
     // (undocumented)
-    readonly domains?: readonly RuntimeEventDomain[];
+    readonly domains?: readonly DaemonRuntimeEventDomain[];
     // (undocumented)
     readonly id: string;
     // (undocumented)
@@ -2802,7 +3453,6 @@ export interface OperatorMethodContract {
     readonly inputSchema?: JsonSchema;
     // (undocumented)
     readonly invokable?: boolean;
-    // (undocumented)
     readonly metadata?: Record<string, unknown>;
     // (undocumented)
     readonly outputSchema?: JsonSchema;
@@ -13862,6 +14512,174 @@ export type OperatorTypedEventId = keyof OperatorEventPayloadMap & string;
 export type OperatorTypedMethodId = keyof OperatorMethodInputMap & string;
 
 // @public (undocumented)
+export type OpsEvent =
+/** Context usage crossed a warning threshold. */
+    {
+    type: 'OPS_CONTEXT_WARNING';
+    usage: number;
+    threshold: number;
+}
+/** Cache hit-rate and token metrics snapshot. */
+| {
+    type: 'OPS_CACHE_METRICS';
+    hitRate: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    totalInputTokens: number;
+    turns: number;
+}
+/** Helper-model cumulative usage snapshot. */
+| {
+    type: 'OPS_HELPER_USAGE';
+    inputTokens: number;
+    outputTokens: number;
+    calls: number;
+}
+/** Operator cancelled a running or queued task. */
+| {
+    type: 'OPS_TASK_CANCELLED';
+    taskId: string;
+    reason: OpsInterventionReason;
+    note?: string;
+}
+/** Operator paused a running task (transitions to blocked). */
+| {
+    type: 'OPS_TASK_PAUSED';
+    taskId: string;
+    reason: OpsInterventionReason;
+    note?: string;
+}
+/** Operator resumed a blocked task. */
+| {
+    type: 'OPS_TASK_RESUMED';
+    taskId: string;
+    reason: OpsInterventionReason;
+    note?: string;
+}
+/** Operator retried a failed or cancelled task. */
+| {
+    type: 'OPS_TASK_RETRIED';
+    taskId: string;
+    reason: OpsInterventionReason;
+    note?: string;
+}
+/** Operator cancelled a running agent. */
+| {
+    type: 'OPS_AGENT_CANCELLED';
+    agentId: string;
+    reason: OpsInterventionReason;
+    note?: string;
+}
+/** Audit trail entry for any ops intervention. */
+| {
+    type: 'OPS_AUDIT';
+    action: string;
+    targetId: string;
+    targetKind: 'task' | 'agent';
+    reason: OpsInterventionReason;
+    note?: string;
+    outcome: 'success' | 'rejected' | 'error';
+    errorMessage?: string;
+}
+/** A subscriber threw an error during event dispatch; emitted after dedup threshold. */
+| {
+    type: 'OPS_LISTENER_MISBEHAVING';
+    listenerId: string;
+    eventType: string;
+    errorMessage: string;
+    errorCount: number;
+};
+
+// @public
+export type OpsEventType = OpsEvent['type'];
+
+// @public (undocumented)
+export type OrchestrationEvent = {
+    type: 'ORCHESTRATION_GRAPH_CREATED';
+    graphId: string;
+    title: string;
+    mode: 'single-worker' | 'parallel-workers' | 'review-loop' | 'graph-execute';
+} | {
+    type: 'ORCHESTRATION_NODE_ADDED';
+    graphId: string;
+    nodeId: string;
+    title: string;
+    role: 'planner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | 'researcher' | 'integrator';
+    parentNodeId?: string;
+    dependsOn?: string[];
+    taskId?: string;
+    agentId?: string;
+    contract?: OrchestrationTaskContract;
+} | {
+    type: 'ORCHESTRATION_NODE_READY';
+    graphId: string;
+    nodeId: string;
+} | {
+    type: 'ORCHESTRATION_NODE_STARTED';
+    graphId: string;
+    nodeId: string;
+    taskId?: string;
+    agentId?: string;
+} | {
+    type: 'ORCHESTRATION_NODE_PROGRESS';
+    graphId: string;
+    nodeId: string;
+    message: string;
+} | {
+    type: 'ORCHESTRATION_NODE_BLOCKED';
+    graphId: string;
+    nodeId: string;
+    reason: string;
+} | {
+    type: 'ORCHESTRATION_NODE_COMPLETED';
+    graphId: string;
+    nodeId: string;
+    summary?: string;
+} | {
+    type: 'ORCHESTRATION_NODE_FAILED';
+    graphId: string;
+    nodeId: string;
+    error: string;
+} | {
+    type: 'ORCHESTRATION_NODE_CANCELLED';
+    graphId: string;
+    nodeId: string;
+    reason?: string;
+} | {
+    type: 'ORCHESTRATION_RECURSION_GUARD_TRIGGERED';
+    graphId: string;
+    nodeId?: string;
+    depth: number;
+    activeAgents: number;
+    reason: string;
+};
+
+// @public (undocumented)
+export type OrchestrationEventType = OrchestrationEvent['type'];
+
+// @public
+export interface OrchestrationTaskContract {
+    // (undocumented)
+    allowedTools?: string[];
+    // (undocumented)
+    capabilityCeiling?: string[];
+    // (undocumented)
+    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
+    // (undocumented)
+    executionProtocol?: 'direct' | 'gather-plan-apply';
+    // (undocumented)
+    inheritsParentConstraints?: boolean;
+    // (undocumented)
+    requiredEvidence?: string[];
+    // (undocumented)
+    reviewMode?: 'none' | 'wrfc';
+    // (undocumented)
+    successCriteria?: string[];
+    // (undocumented)
+    writeScope?: string[];
+}
+
+// @public (undocumented)
 export interface OtelCounter {
     // (undocumented)
     add(value: number, attributes?: Record<string, string | number | boolean>): void;
@@ -13907,6 +14725,18 @@ export interface OtelTracer {
     startActiveSpan<F extends (span: OtelSpan) => unknown>(name: string, fn: F): ReturnType<F>;
     // (undocumented)
     startSpan(name: string, options?: unknown): OtelSpan;
+}
+
+// @public
+export interface PartialToolCall {
+    // (undocumented)
+    readonly arguments?: string;
+    // (undocumented)
+    readonly id?: string;
+    // (undocumented)
+    readonly index: number;
+    // (undocumented)
+    readonly name?: string;
 }
 
 // @public (undocumented)
@@ -14672,6 +15502,116 @@ export interface PerMethodRetryPolicy {
     readonly maxDelayMs?: number;
 }
 
+// @public
+export type PermissionEvent =
+/** A tool call is requesting permission evaluation. */
+    {
+    type: 'PERMISSION_REQUESTED';
+    callId: string;
+    tool: string;
+    args: Record<string, unknown>;
+    category: string;
+    classification?: string;
+    riskLevel?: string;
+    summary?: string;
+    reasons?: readonly string[];
+}
+/** Permission rules have been collected from all sources. */
+| {
+    type: 'RULES_COLLECTED';
+    callId: string;
+    tool: string;
+    ruleCount: number;
+}
+/** Tool arguments have been normalised for policy evaluation. */
+| {
+    type: 'INPUT_NORMALIZED';
+    callId: string;
+    tool: string;
+}
+/** Static policy rules have been evaluated. */
+| {
+    type: 'POLICY_EVALUATED';
+    callId: string;
+    tool: string;
+    result: 'allow' | 'deny' | 'unknown';
+}
+/** Trust mode (yolo/normal/restricted) has been evaluated. */
+| {
+    type: 'MODE_EVALUATED';
+    callId: string;
+    tool: string;
+    mode: string;
+    result: 'allow' | 'deny' | 'unknown';
+}
+/** Session-level overrides (always-allow list) have been evaluated. */
+| {
+    type: 'SESSION_OVERRIDE_EVALUATED';
+    callId: string;
+    tool: string;
+    overrideApplied: boolean;
+}
+/** Safety checks (path traversal, sandbox escapes, etc.) have been run. */
+| {
+    type: 'SAFETY_CHECKED';
+    callId: string;
+    tool: string;
+    safe: boolean;
+    warnings: string[];
+}
+/** Final permission decision has been emitted. */
+| {
+    type: 'DECISION_EMITTED';
+    callId: string;
+    tool: string;
+    approved: boolean;
+    source: string;
+    sourceLayer?: string;
+    persisted?: boolean;
+    reasonCode?: string;
+    classification?: string;
+    riskLevel?: string;
+    summary?: string;
+};
+
+// @public
+export type PermissionEventType = PermissionEvent['type'];
+
+// @public (undocumented)
+export interface PlannerDecision {
+    // (undocumented)
+    readonly candidates: readonly StrategyCandidate[];
+    // (undocumented)
+    readonly inputs: {
+        readonly riskScore: number;
+        readonly latencyBudgetMs: number;
+        readonly isMultiStep: boolean;
+        readonly remoteAvailable: boolean;
+        readonly backgroundEligible: boolean;
+        readonly taskDescription?: string;
+    };
+    // (undocumented)
+    readonly overrideActive: boolean;
+    // (undocumented)
+    readonly reasonCode: string;
+    // (undocumented)
+    readonly selected: ExecutionStrategy;
+    // (undocumented)
+    readonly timestamp: number;
+}
+
+// @public (undocumented)
+export type PlannerEvent = ({
+    type: 'PLAN_STRATEGY_SELECTED';
+} & PlannerDecision) | {
+    type: 'PLAN_STRATEGY_OVERRIDDEN';
+    strategy: ExecutionStrategy | null;
+    clearedBy?: string;
+};
+
+// @public (undocumented)
+export type PlannerEventType = PlannerEvent['type'];
+
 // @public (undocumented)
 export interface PlatformServiceManagerLike {
     // (undocumented)
@@ -14687,6 +15627,63 @@ export interface PlatformServiceManagerLike {
     // (undocumented)
     uninstall(): unknown;
 }
+
+// @public
+export type PluginEvent =
+/** Plugin has been found during discovery scan. */
+    {
+    type: 'PLUGIN_DISCOVERED';
+    pluginId: string;
+    path: string;
+    version: string;
+}
+/** Plugin is being loaded and initialised. */
+| {
+    type: 'PLUGIN_LOADING';
+    pluginId: string;
+    path: string;
+}
+/** Plugin has been successfully loaded. */
+| {
+    type: 'PLUGIN_LOADED';
+    pluginId: string;
+    version: string;
+    capabilities: string[];
+}
+/** Plugin is fully active and serving requests. */
+| {
+    type: 'PLUGIN_ACTIVE';
+    pluginId: string;
+}
+/** Plugin is running in degraded mode (partial functionality). */
+| {
+    type: 'PLUGIN_DEGRADED';
+    pluginId: string;
+    reason: string;
+    affectedCapabilities: string[];
+}
+/** Plugin encountered a non-fatal error. */
+| {
+    type: 'PLUGIN_ERROR';
+    pluginId: string;
+    error: string;
+    fatal: boolean;
+}
+/** Plugin is being unloaded and cleaned up. */
+| {
+    type: 'PLUGIN_UNLOADING';
+    pluginId: string;
+    reason?: string;
+}
+/** Plugin has been disabled (will not reload on restart). */
+| {
+    type: 'PLUGIN_DISABLED';
+    pluginId: string;
+    reason: string;
+};
+
+// @public
+export type PluginEventType = PluginEvent['type'];
 
 // @public (undocumented)
 export type ProviderEntry = z.infer<typeof ProviderEntrySchema>;
@@ -14737,6 +15734,33 @@ export const ProviderEntrySchema: z.ZodObject<{
         contextWindow: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
+
+// @public
+export type ProviderEvent = {
+    type: 'PROVIDERS_CHANGED';
+    added: string[];
+    removed: string[];
+    updated: string[];
+} | {
+    type: 'PROVIDER_WARNING';
+    message: string;
+} | {
+    type: 'MODEL_FALLBACK';
+    from: string;
+    to: string;
+    provider: string;
+} | {
+    type: 'MODEL_CHANGED';
+    registryKey: string;
+    provider: string;
+    previous?: {
+        registryKey: string;
+        provider: string;
+    };
+};
+
+// @public (undocumented)
+export type ProviderEventType = ProviderEvent['type'];
 
 // @public (undocumented)
 export type ProviderModelEntry = z.infer<typeof ProviderModelEntrySchema>;
@@ -14833,20 +15857,23 @@ export function readOptionalStringField(body: JsonRecord, key: string): string |
 export function readStringArrayField(body: JsonRecord, key: string, max?: number): string[] | undefined;
 
 // @public (undocumented)
+export function registeredEventTypes(): readonly string[];
+
+// @public (undocumented)
 export interface RemoteDomainEventsOptions<TDomain extends string = string> {
     // (undocumented)
     readonly onConnectionError?: (error: Error, domain: TDomain) => void;
 }
 
 // @public (undocumented)
-export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2> = DomainEvents<RuntimeEventDomain, TEvent>;
+export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2> = DomainEvents<DaemonRuntimeEventDomain, TEvent>;
 
 // @public (undocumented)
 export interface RemoteRuntimeEventsOptions {
     // (undocumented)
     readonly observer?: TransportObserver;
     // (undocumented)
-    readonly onError?: (error: Error, domain: RuntimeEventDomain) => void;
+    readonly onError?: (error: Error, domain: DaemonRuntimeEventDomain) => void;
 }
 
 // @public
@@ -14925,6 +15952,14 @@ export function resolvePrivateHostFetchOptions(requested: unknown, context: Priv
 // @public (undocumented)
 export const RETRYABLE_STATUS_CODES: readonly number[];
 
+// @public
+const ROUTE_SURFACE_KINDS: readonly ["tui", "web", "slack", "discord", "ntfy", "webhook", "homeassistant", "telegram", "google-chat", "signal", "whatsapp", "imessage", "msteams", "bluebubbles", "mattermost", "matrix", "service"];
+export { ROUTE_SURFACE_KINDS }
+export { ROUTE_SURFACE_KINDS as SURFACE_KINDS }
+
+// @public (undocumented)
+export const ROUTE_TARGET_KINDS: readonly ["session", "run", "job", "task", "message"];
+
 // @public (undocumented)
 export interface RouteBindingManagerLike {
     // (undocumented)
@@ -14950,6 +15985,53 @@ export interface RouteBodySchema<T> {
 }
 
 // @public (undocumented)
+export type RouteEvent = {
+    type: 'ROUTE_BINDING_CREATED';
+    bindingId: string;
+    surfaceKind: RouteSurfaceKind;
+    externalId: string;
+    targetKind: RouteTargetKind;
+    targetId: string;
+} | {
+    type: 'ROUTE_BINDING_UPDATED';
+    bindingId: string;
+    changedFields: string[];
+} | {
+    type: 'ROUTE_BINDING_REMOVED';
+    bindingId: string;
+    surfaceKind: RouteSurfaceKind;
+    externalId: string;
+} | {
+    type: 'ROUTE_BINDING_RESOLVED';
+    bindingId: string;
+    surfaceKind: RouteSurfaceKind;
+    externalId: string;
+    targetKind: RouteTargetKind;
+    targetId: string;
+} | {
+    type: 'ROUTE_REPLY_TARGET_CAPTURED';
+    bindingId: string;
+    surfaceKind: RouteSurfaceKind;
+    externalId: string;
+    replyTargetId: string;
+    threadId: string;
+} | {
+    type: 'ROUTE_BINDING_FAILED';
+    surfaceKind: RouteSurfaceKind;
+    externalId: string;
+    error: string;
+};
+
+// @public (undocumented)
+export type RouteEventType = RouteEvent['type'];
+
+// @public (undocumented)
+export type RouteSurfaceKind = (typeof ROUTE_SURFACE_KINDS)[number];
+
+// @public (undocumented)
+export type RouteTargetKind = (typeof ROUTE_TARGET_KINDS)[number];
+
+// @public
 export const RUNTIME_EVENT_DOMAINS: readonly ["session", "turn", "providers", "tools", "tasks", "agents", "workflows", "orchestration", "communication", "planner", "permissions", "plugins", "mcp", "transport", "compaction", "ui", "ops", "forensics", "security", "automation", "routes", "control-plane", "deliveries", "watchers", "surfaces", "knowledge", "workspace"];
 
 // @public (undocumented)
@@ -15133,10 +16215,8 @@ export interface RuntimeEventConnectorOptions {
     readonly reconnect?: StreamReconnectPolicy;
 }
 
-// @public (undocumented)
-type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
-export { RuntimeEventDomain as DaemonRuntimeEventDomain }
-export { RuntimeEventDomain }
+// @public
+export type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
 
 // @public (undocumented)
 export interface RuntimeEventFeed<TEvent extends EventLike_2 = EventLike_2> {
@@ -15153,6 +16233,11 @@ export type RuntimeEventFeeds<TDomain extends string, TEvent extends EventLike_2
 } & {
     readonly [K in TDomain]: RuntimeEventFeed<TEvent>;
 };
+
+// @public
+export type RuntimeEventPayload<T extends AnyRuntimeEvent['type']> = Extract<AnyRuntimeEvent, {
+    type: T;
+}>;
 
 // @public
 export type RuntimeEventRecord = AnyRuntimeEvent;
@@ -15178,6 +16263,83 @@ export interface SDKObserver extends TransportObserver {
     onEvent?(event: AnyRuntimeEvent): void;
     onTransportActivity?(activity: TransportActivityInfo): void;
 }
+
+// @public
+export type SecurityEvent =
+/** A token was found to hold scopes beyond its policy's allowedScopes. */
+    {
+    type: 'TOKEN_SCOPE_VIOLATION';
+    tokenId: string;
+    label: string;
+    policyId: string;
+    excessScopes: string[];
+}
+/** A token is approaching its rotation deadline (within warning threshold). */
+| {
+    type: 'TOKEN_ROTATION_WARNING';
+    tokenId: string;
+    label: string;
+    msUntilDue: number;
+    dueAt: number;
+    ageMs: number;
+}
+/** A token is past its rotation deadline and has not been rotated. */
+| {
+    type: 'TOKEN_ROTATION_EXPIRED';
+    tokenId: string;
+    label: string;
+    ageMs: number;
+    cadenceMs: number;
+    dueAt: number;
+}
+/** A token has been blocked by the auditor in managed mode. */
+| {
+    type: 'TOKEN_BLOCKED';
+    tokenId: string;
+    label: string;
+    reason: 'scope_violation' | 'rotation_overdue' | 'scope_violation_and_rotation_overdue';
+}
+/** Emitted when a user authenticates successfully. Never includes credentials. */
+| {
+    type: 'AUTH_SUCCEEDED';
+    username: string;
+    sessionId: string;
+    clientIp: string;
+    method: 'password' | 'cookie' | 'token';
+}
+/** Emitted when an authentication attempt fails. Never includes credential values. */
+| {
+    type: 'AUTH_FAILED';
+    usernameAttempted: string;
+    clientIp: string;
+    reason: 'invalid_credentials' | 'rate_limited' | 'session_expired' | 'origin_denied' | 'unknown';
+}
+/** Emitted when a companion pairing request is initiated. */
+| {
+    type: 'COMPANION_PAIR_REQUESTED';
+    clientIp: string;
+}
+/** Emitted when a companion pairing is successfully verified. */
+| {
+    type: 'COMPANION_PAIR_VERIFIED';
+    tokenId: string;
+    clientIp: string;
+}
+/** Emitted when a companion token is rotated. */
+| {
+    type: 'COMPANION_TOKEN_ROTATED';
+    newTokenId: string;
+    clientIp: string;
+}
+/** Emitted when a companion token is revoked. */
+| {
+    type: 'COMPANION_TOKEN_REVOKED';
+    clientIp: string;
+    reason?: string;
+};
+
+// @public
+export type SecurityEventType = SecurityEvent['type'];
 
 // @public (undocumented)
 export interface SerializedEventEnvelope<TEvent extends EventLike = EventLike> {
@@ -15239,11 +16401,79 @@ export { ServerSentEventHandlers }
 export interface ServerSentEventOptions extends Omit<RawServerSentEventOptions, 'authToken'> {
 }
 
+// @public
+export type SessionEvent =
+/** A new session has been created and is initialising. */
+    {
+    type: 'SESSION_STARTED';
+    sessionId: string;
+    profileId: string;
+    workingDir: string;
+}
+/** An existing session is being loaded from disk. */
+| {
+    type: 'SESSION_LOADING';
+    sessionId: string;
+    path: string;
+}
+/** A previously saved session is being resumed. */
+| {
+    type: 'SESSION_RESUMED';
+    sessionId: string;
+    turnCount: number;
+}
+/** Session state is being repaired after a detected inconsistency. */
+| {
+    type: 'SESSION_REPAIRING';
+    sessionId: string;
+    reason: string;
+}
+/** Context messages are being reconciled with stored state. */
+| {
+    type: 'SESSION_RECONCILING';
+    sessionId: string;
+    messageCount: number;
+}
+/** Session is fully loaded and ready for input. */
+| {
+    type: 'SESSION_READY';
+    sessionId: string;
+}
+/** Session recovery has failed unrecoverably. */
+| {
+    type: 'SESSION_RECOVERY_FAILED';
+    sessionId: string;
+    error: string;
+}
+/** A companion-app follow-up message was received for the session. */
+| {
+    type: 'COMPANION_MESSAGE_RECEIVED';
+    sessionId: string;
+    messageId: string;
+    body: string;
+    source: string;
+    timestamp: number;
+    metadata?: Readonly<Record<string, unknown>>;
+};
+
+// @public
+export type SessionEventType = SessionEvent['type'];
+
 // @public (undocumented)
 export function sleepWithSignal(delayMs: number, signal?: AbortSignal): Promise<void>;
 
 // @public
 export function splitClientArgs<TInput, TOptions>(args: readonly unknown[]): readonly [TInput | undefined, TOptions | undefined];
+
+// @public (undocumented)
+export interface StrategyCandidate {
+    // (undocumented)
+    readonly reasonCode: string;
+    // (undocumented)
+    readonly score: number;
+    // (undocumented)
+    readonly strategy: ExecutionStrategy;
+}
 
 // @public (undocumented)
 export interface StreamReconnectPolicy extends BackoffPolicy {
@@ -15287,10 +16517,232 @@ export interface StructuredDaemonErrorBody {
 export function summarizeErrorForRecord(error: unknown, options?: JsonErrorResponseOptions): string;
 
 // @public (undocumented)
+export type SurfaceEvent = {
+    type: 'SURFACE_ENABLED';
+    surfaceKind: SurfaceKind;
+    surfaceId: string;
+    accountId: string;
+} | {
+    type: 'SURFACE_DISABLED';
+    surfaceKind: SurfaceKind;
+    surfaceId: string;
+    reason: string;
+} | {
+    type: 'SURFACE_ACCOUNT_CONNECTED';
+    surfaceKind: SurfaceKind;
+    surfaceId: string;
+    accountId: string;
+    displayName: string;
+} | {
+    type: 'SURFACE_ACCOUNT_DEGRADED';
+    surfaceKind: SurfaceKind;
+    surfaceId: string;
+    accountId: string;
+    error: string;
+} | {
+    type: 'SURFACE_CAPABILITY_CHANGED';
+    surfaceKind: SurfaceKind;
+    surfaceId: string;
+    capability: string;
+    enabled: boolean;
+};
+
+// @public (undocumented)
+export type SurfaceEventType = SurfaceEvent['type'];
+
+// @public (undocumented)
+export type SurfaceKind = RouteSurfaceKind;
+
+// @public (undocumented)
 export interface SurfaceRegistryLike {
     // (undocumented)
     list(): readonly unknown[];
 }
+
+// @public
+export type TaskEvent =
+/** A new task has been created in the task queue. */
+    {
+    type: 'TASK_CREATED';
+    taskId: string;
+    agentId?: string;
+    description: string;
+    priority: number;
+}
+/** Task execution has started. */
+| {
+    type: 'TASK_STARTED';
+    taskId: string;
+    agentId?: string;
+}
+/** Task is blocked waiting on a dependency or resource. */
+| {
+    type: 'TASK_BLOCKED';
+    taskId: string;
+    agentId?: string;
+    reason: string;
+}
+/** Task has made measurable progress. */
+| {
+    type: 'TASK_PROGRESS';
+    taskId: string;
+    agentId?: string;
+    progress: number;
+    message?: string;
+}
+/** Task completed successfully. */
+| {
+    type: 'TASK_COMPLETED';
+    taskId: string;
+    agentId?: string;
+    durationMs: number;
+}
+/** Task failed with an error. */
+| {
+    type: 'TASK_FAILED';
+    taskId: string;
+    agentId?: string;
+    error: string;
+    durationMs: number;
+}
+/** Task was cancelled before completion. */
+| {
+    type: 'TASK_CANCELLED';
+    taskId: string;
+    agentId?: string;
+    reason?: string;
+};
+
+// @public
+export type TaskEventType = TaskEvent['type'];
+
+// @public (undocumented)
+export type ToolEvent =
+/** A tool call request was received from the LLM. */
+    {
+    type: 'TOOL_RECEIVED';
+    callId: string;
+    turnId: string;
+    tool: string;
+    args: Record<string, unknown>;
+}
+/** Tool call arguments passed schema validation. */
+| {
+    type: 'TOOL_VALIDATED';
+    callId: string;
+    turnId: string;
+    tool: string;
+}
+/** Pre-execution hooks have run for this tool call. */
+| {
+    type: 'TOOL_PREHOOKED';
+    callId: string;
+    turnId: string;
+    tool: string;
+}
+/** Permission check completed; call may proceed. */
+| {
+    type: 'TOOL_PERMISSIONED';
+    callId: string;
+    turnId: string;
+    tool: string;
+    approved: boolean;
+}
+/** Tool is actively executing. */
+| {
+    type: 'TOOL_EXECUTING';
+    callId: string;
+    turnId: string;
+    tool: string;
+    startedAt: number;
+}
+/** Tool result has been mapped/transformed for the provider. */
+| {
+    type: 'TOOL_MAPPED';
+    callId: string;
+    turnId: string;
+    tool: string;
+}
+/** Post-execution hooks have run for this tool call. */
+| {
+    type: 'TOOL_POSTHOOKED';
+    callId: string;
+    turnId: string;
+    tool: string;
+}
+/** Tool call completed successfully. */
+| {
+    type: 'TOOL_SUCCEEDED';
+    callId: string;
+    turnId: string;
+    tool: string;
+    durationMs: number;
+    result?: ToolResultSummary;
+}
+/** Tool call failed with an error. */
+| {
+    type: 'TOOL_FAILED';
+    callId: string;
+    turnId: string;
+    tool: string;
+    error: string;
+    durationMs: number;
+    result?: ToolResultSummary;
+}
+/** Tool results were synthesized to reconcile unresolved calls. */
+| {
+    type: 'TOOL_RECONCILED';
+    turnId: string;
+    count: number;
+    callIds: string[];
+    toolNames: string[];
+    reason: string;
+    timestamp: number;
+    isMalformed?: boolean;
+}
+/** Tool call was cancelled before completion. */
+| {
+    type: 'TOOL_CANCELLED';
+    callId: string;
+    turnId: string;
+    tool: string;
+    reason?: string;
+}
+/**
+* A runtime budget was exceeded and the phase pipeline was terminated.
+* The `reason` discriminant distinguishes the type of budget breached:
+*  - BUDGET_EXCEEDED_MS    — wall-clock execution time limit
+*  - BUDGET_EXCEEDED_TOKENS — token consumption limit
+*  - BUDGET_EXCEEDED_COST  — cost limit in USD
+*/
+| {
+    type: 'BUDGET_EXCEEDED_MS';
+    callId: string;
+    turnId: string;
+    tool: string;
+    phase: string;
+    limitMs: number;
+    elapsedMs: number;
+} | {
+    type: 'BUDGET_EXCEEDED_TOKENS';
+    callId: string;
+    turnId: string;
+    tool: string;
+    phase: string;
+    limitTokens: number;
+    usedTokens: number;
+} | {
+    type: 'BUDGET_EXCEEDED_COST';
+    callId: string;
+    turnId: string;
+    tool: string;
+    phase: string;
+    limitCostUsd: number;
+    usedCostUsd: number;
+};
+
+// @public
+export type ToolEventType = ToolEvent['type'];
 
 // @public
 export interface TransportActivityInfo {
@@ -15322,6 +16774,91 @@ export interface TransportContext {
 
 // @public (undocumented)
 export function transportErrorFromUnknown(error: unknown, context: string): Error;
+
+// @public
+export type TransportEvent =
+/** Transport layer is being initialised. */
+    {
+    type: 'TRANSPORT_INITIALIZING';
+    transportId: string;
+    protocol: string;
+}
+/** Transport is authenticating with the remote endpoint. */
+| {
+    type: 'TRANSPORT_AUTHENTICATING';
+    transportId: string;
+}
+/** Transport connection is established and ready. */
+| {
+    type: 'TRANSPORT_CONNECTED';
+    transportId: string;
+    endpoint: string;
+}
+/** Transport is synchronising state with the remote. */
+| {
+    type: 'TRANSPORT_SYNCING';
+    transportId: string;
+}
+/** Transport is operating with reduced reliability or throughput. */
+| {
+    type: 'TRANSPORT_DEGRADED';
+    transportId: string;
+    reason: string;
+}
+/** Transport is attempting to reconnect after a failure. */
+| {
+    type: 'TRANSPORT_RECONNECTING';
+    transportId: string;
+    attempt: number;
+    maxAttempts: number;
+}
+/** Transport connection has been closed. */
+| {
+    type: 'TRANSPORT_DISCONNECTED';
+    transportId: string;
+    reason?: string;
+    willRetry: boolean;
+}
+/** Transport has failed unrecoverably and will not retry. */
+| {
+    type: 'TRANSPORT_TERMINAL_FAILURE';
+    transportId: string;
+    error: string;
+}
+/** OBS-18: A retry has been scheduled after a transient failure. */
+| {
+    type: 'TRANSPORT_RETRY_SCHEDULED';
+    transportId: string;
+    attempt: number;
+    maxAttempts: number;
+    backoffMs: number;
+    reason: string;
+}
+/** OBS-18: A scheduled retry is now being executed. */
+| {
+    type: 'TRANSPORT_RETRY_EXECUTED';
+    transportId: string;
+    attempt: number;
+    maxAttempts: number;
+}
+/** OBS-19: An SSE subscriber connected to the event stream. */
+| {
+    type: 'STREAM_SUBSCRIBER_CONNECTED';
+    streamId: string;
+    subscriberId: string;
+    streamType: string;
+}
+/** OBS-19: An SSE subscriber disconnected from the event stream. */
+| {
+    type: 'STREAM_SUBSCRIBER_DISCONNECTED';
+    streamId: string;
+    subscriberId: string;
+    streamType: string;
+    reason?: string;
+};
+
+// @public
+export type TransportEventType = TransportEvent['type'];
 
 // @public (undocumented)
 export interface TransportJsonError {
@@ -15405,6 +16942,148 @@ export interface TransportPaths {
 }
 
 // @public (undocumented)
+export type TurnEvent =
+/** User prompt has been submitted for processing. */
+    {
+    type: 'TURN_SUBMITTED';
+    turnId: string;
+    prompt: string;
+    origin?: TurnInputOrigin;
+}
+/** Preflight checks (context, rate limits, etc.) passed. */
+| {
+    type: 'PREFLIGHT_OK';
+    turnId: string;
+}
+/** Preflight checks failed; turn will not proceed. */
+| {
+    type: 'PREFLIGHT_FAIL';
+    turnId: string;
+    reason: string;
+    stopReason: Extract<TurnStopReason, 'preflight_failed' | 'context_overflow'>;
+}
+/** A provider stream iteration has begun inside the logical turn. */
+| {
+    type: 'STREAM_START';
+    turnId: string;
+    scope?: 'provider';
+    terminal?: false;
+}
+/** An incremental content chunk arrived from the provider. */
+| {
+    type: 'STREAM_DELTA';
+    turnId: string;
+    content: string;
+    accumulated: string;
+    reasoning?: string;
+    toolCalls?: PartialToolCall[];
+}
+/**
+* A provider stream iteration has ended.
+*
+* This is not the logical end of the turn when tools or multi-step provider
+* calls are involved. Clients that need turn completion should wait for
+* TURN_COMPLETED, TURN_ERROR, TURN_CANCEL, or PREFLIGHT_FAIL.
+*/
+| {
+    type: 'STREAM_END';
+    turnId: string;
+    scope?: 'provider';
+    terminal?: false;
+}
+/** OBS-04: An LLM request is about to be dispatched to the provider. */
+| {
+    type: 'LLM_REQUEST_STARTED';
+    turnId: string;
+    provider: string;
+    model: string;
+    promptSummary: {
+        length: number;
+        sha256: string;
+        first100chars: string;
+    } | string;
+}
+/** A provider chat call completed within the current turn iteration. */
+| {
+    type: 'LLM_RESPONSE_RECEIVED';
+    turnId: string;
+    provider: string;
+    model: string;
+    contentSummary: {
+        length: number;
+        sha256: string;
+        first100chars: string;
+    } | string;
+    toolCallCount: number;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+    durationMs?: number;
+    retries?: number;
+    costUsdCents?: number;
+    finishReason?: string;
+    providerRequestId?: string;
+}
+/** A batch of tool calls is ready for execution. */
+| {
+    type: 'TOOL_BATCH_READY';
+    turnId: string;
+    toolCalls: string[];
+}
+/** All tool calls in the current batch have completed. */
+| {
+    type: 'TOOLS_DONE';
+    turnId: string;
+}
+/** Post-processing hooks (WRFC, formatters, etc.) have completed. */
+| {
+    type: 'POST_HOOKS_DONE';
+    turnId: string;
+}
+/** Turn completed successfully with a final response. */
+| {
+    type: 'TURN_COMPLETED';
+    turnId: string;
+    response: string;
+    stopReason: Extract<TurnStopReason, 'completed' | 'empty_response'>;
+}
+/** Turn failed with an error. */
+| {
+    type: 'TURN_ERROR';
+    turnId: string;
+    error: string;
+    stopReason: Exclude<TurnStopReason, 'completed' | 'empty_response' | 'cancelled'>;
+}
+/** Turn was cancelled by the user or system. */
+| {
+    type: 'TURN_CANCEL';
+    turnId: string;
+    reason?: string;
+    stopReason: Extract<TurnStopReason, 'cancelled'>;
+};
+
+// @public
+export type TurnEventType = TurnEvent['type'];
+
+// @public (undocumented)
+export interface TurnInputOrigin {
+    // (undocumented)
+    readonly messageId?: string;
+    // (undocumented)
+    readonly metadata?: Readonly<Record<string, unknown>>;
+    // (undocumented)
+    readonly source?: string;
+    // (undocumented)
+    readonly surface?: string;
+    // (undocumented)
+    readonly topic?: string;
+}
+
+// @public (undocumented)
+export type TurnStopReason = 'completed' | 'empty_response' | 'preflight_failed' | 'context_overflow' | 'provider_exhausted' | 'provider_error' | 'hook_denied' | 'tool_loop_circuit_breaker' | 'cancelled' | 'unexpected_error';
+
+// @public (undocumented)
 export const TypedSerializedEventEnvelopeSchema: z.ZodObject<{
     type: z.ZodString;
     ts: z.ZodOptional<z.ZodNumber>;
@@ -15419,6 +17098,63 @@ export const TypedSerializedEventEnvelopeSchema: z.ZodObject<{
 // @public (undocumented)
 export type TypedSerializedEventEnvelopeShape = z.infer<typeof TypedSerializedEventEnvelopeSchema>;
 
+// @public
+type UIEvent_2 =
+/** A full re-render has been requested. */
+    {
+    type: 'UI_RENDER_REQUEST';
+}
+/** Scroll by a relative delta (positive = down, negative = up). */
+| {
+    type: 'UI_SCROLL_DELTA';
+    delta: number;
+}
+/** Scroll to an absolute line number. */
+| {
+    type: 'UI_SCROLL_TO';
+    line: number;
+}
+/** A collapsible block's collapsed state was toggled. */
+| {
+    type: 'UI_BLOCK_TOGGLE_COLLAPSE';
+    blockIndex: number;
+}
+/** A block was requested to re-run. */
+| {
+    type: 'UI_BLOCK_RERUN';
+    blockIndex: number;
+    content: string;
+}
+/** The screen was cleared. */
+| {
+    type: 'UI_CLEAR_SCREEN';
+}
+/** A panel was opened. */
+| {
+    type: 'UI_PANEL_OPEN';
+    panelId: string;
+}
+/** A panel was closed. */
+| {
+    type: 'UI_PANEL_CLOSE';
+    panelId: string;
+}
+/** A panel was focused. */
+| {
+    type: 'UI_PANEL_FOCUS';
+    panelId: string;
+}
+/** The active view changed (e.g. chat -> search -> help). */
+| {
+    type: 'UI_VIEW_CHANGED';
+    from: string;
+    to: string;
+};
+export { UIEvent_2 as UIEvent }
+
+// @public
+export type UIEventType = UIEvent_2['type'];
+
 // @public (undocumented)
 export interface UserAuthManagerLike {
     // (undocumented)
@@ -15432,6 +17168,9 @@ export interface UserAuthManagerLike {
     // (undocumented)
     rotatePassword(username: string, password: string): void;
 }
+
+// @public (undocumented)
+export function validateEvent(event: unknown): ContractResult;
 
 // @public (undocumented)
 export type VoiceAudioArtifact = Record<string, unknown>;
@@ -15455,6 +17194,42 @@ export interface VoiceServiceLike {
     // (undocumented)
     transcribe(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
 }
+
+// @public
+export const WATCHER_SOURCE_KINDS: readonly ["poll", "webhook", "tail", "file", "api", "stream"];
+
+// @public (undocumented)
+export type WatcherEvent = {
+    type: 'WATCHER_STARTED';
+    watcherId: string;
+    sourceKind: WatcherSourceKind;
+    name: string;
+} | {
+    type: 'WATCHER_HEARTBEAT';
+    watcherId: string;
+    sourceKind: WatcherSourceKind;
+    seenAt: number;
+    checkpoint: string;
+} | {
+    type: 'WATCHER_CHECKPOINT_ADVANCED';
+    watcherId: string;
+    sourceKind: WatcherSourceKind;
+    checkpoint: string;
+} | {
+    type: 'WATCHER_FAILED';
+    watcherId: string;
+    sourceKind: WatcherSourceKind;
+    error: string;
+    retryable: boolean;
+} | {
+    type: 'WATCHER_STOPPED';
+    watcherId: string;
+    sourceKind: WatcherSourceKind;
+    reason: string;
+};
+
+// @public (undocumented)
+export type WatcherEventType = WatcherEvent['type'];
 
 // @public (undocumented)
 export type WatcherKind = string;
@@ -15488,6 +17263,9 @@ export interface WatcherRegistryLike {
 }
 
 // @public (undocumented)
+export type WatcherSourceKind = (typeof WATCHER_SOURCE_KINDS)[number];
+
+// @public (undocumented)
 export interface WebGoodVibesSdkOptions extends BrowserGoodVibesSdkOptions {
 }
 
@@ -15512,10 +17290,11 @@ export type WebSearchVerbosity = string;
 
 // @public (undocumented)
 export class WebSocketTransportError extends GoodVibesSdkError {
-    constructor(message: string, options?: {
+    static [Symbol.hasInstance](value: unknown): boolean;
+    constructor(message: string, options: {
         readonly cause?: unknown;
         readonly hint?: string;
-        readonly code?: string;
+        readonly code: string;
     });
 }
 
@@ -15523,6 +17302,98 @@ export class WebSocketTransportError extends GoodVibesSdkError {
 export type WithoutKeys<TInput, TKeys extends PropertyKey> = [
 TInput
 ] extends [undefined] ? undefined : TInput extends object ? Omit<TInput, Extract<keyof TInput, TKeys>> : TInput;
+
+// @public (undocumented)
+export type WorkflowEvent = {
+    type: 'WORKFLOW_CHAIN_CREATED';
+    chainId: string;
+    task: string;
+} | {
+    type: 'WORKFLOW_STATE_CHANGED';
+    chainId: string;
+    from: WrfcState;
+    to: WrfcState;
+} | {
+    type: 'WORKFLOW_REVIEW_COMPLETED';
+    chainId: string;
+    score: number;
+    passed: boolean;
+    constraintsSatisfied?: number;
+    constraintsTotal?: number;
+    unsatisfiedConstraintIds?: string[];
+} | {
+    type: 'WORKFLOW_FIX_ATTEMPTED';
+    chainId: string;
+    attempt: number;
+    maxAttempts: number;
+    targetConstraintIds?: string[];
+} | {
+    type: 'WORKFLOW_GATE_RESULT';
+    chainId: string;
+    gate: string;
+    passed: boolean;
+} | {
+    type: 'WORKFLOW_CHAIN_PASSED';
+    chainId: string;
+} | {
+    type: 'WORKFLOW_CHAIN_FAILED';
+    chainId: string;
+    reason: string;
+} | {
+    type: 'WORKFLOW_AUTO_COMMITTED';
+    chainId: string;
+    commitHash?: string;
+} | {
+    type: 'WORKFLOW_CASCADE_ABORTED';
+    chainId: string;
+    reason: string;
+} | {
+    type: 'WORKFLOW_CONSTRAINTS_ENUMERATED';
+    chainId: string;
+    constraints: Constraint[];
+};
+
+// @public (undocumented)
+export type WorkflowEventType = WorkflowEvent['type'];
+
+// @public
+export type WorkspaceEvent =
+/** Emitted immediately before the swap procedure begins. */
+    {
+    type: 'WORKSPACE_SWAP_STARTED';
+    from: string;
+    to: string;
+}
+/** Emitted after all stores have been re-rooted at the new working directory. */
+| {
+    type: 'WORKSPACE_SWAP_COMPLETED';
+    from: string;
+    to: string;
+    persistedInDaemonSettings: boolean;
+}
+/** Emitted when a swap is rejected because at least one session has pending input. */
+| {
+    type: 'WORKSPACE_SWAP_REFUSED';
+    from: string;
+    to: string;
+    reason: string;
+    retryAfter: number;
+}
+/**
+* Emitted when a workspace swap fails (mkdir or rerootStores threw).
+* Any subscriber that saw WORKSPACE_SWAP_STARTED without a subsequent
+* WORKSPACE_SWAP_COMPLETED should watch for this event. (OBS-08)
+*/
+| {
+    type: 'WORKSPACE_SWAP_FAILED';
+    from: string;
+    to: string;
+    code: 'INVALID_PATH' | 'REROOT_FAILED' | 'UNKNOWN';
+    reason: string;
+};
+
+// @public (undocumented)
+export type WorkspaceEventType = WorkspaceEvent['type'];
 
 // @public (undocumented)
 export interface WorkspaceSwapManagerLike {
@@ -15545,6 +17416,9 @@ export interface WorkspaceSwapManagerLike {
     }>;
 }
 
+// @public (undocumented)
+export type WrfcState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'awaiting_gates' | 'gating' | 'passed' | 'failed' | 'committing';
+
 // Warnings were encountered during analysis:
 //
 // packages/contracts/src/generated/foundation-client-types.ts:444:562 - (ae-forgotten-export) The symbol "JsonValue_2" needs to be exported by the entry point index.d.ts
@@ -15561,6 +17435,11 @@ export interface WorkspaceSwapManagerLike {
 // packages/daemon-sdk/src/system-route-types.ts:110:5 - (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
 // packages/operator-sdk/src/client-core.ts:77:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
 // packages/peer-sdk/src/client-core.ts:64:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/events/mcp.ts:15:82 - (ae-forgotten-export) The symbol "McpServerRole" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/events/mcp.ts:15:104 - (ae-forgotten-export) The symbol "McpTrustMode" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/events/mcp.ts:34:57 - (ae-forgotten-export) The symbol "QuarantineReason" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/events/ops.ts:47:7 - (ae-forgotten-export) The symbol "OpsInterventionReason" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/events/tools.ts:38:97 - (ae-forgotten-export) The symbol "ToolResultSummary" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

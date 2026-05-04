@@ -32,7 +32,7 @@ Use this for general SDK consumption when you don't need a subsystem-specific en
 
 Authentication client, token stores, and auth types. Exports `createGoodVibesAuthClient`, `createBrowserTokenStore`, `createMemoryTokenStore`, and associated types.
 
-Stability contract: public method signatures are stable. Internal token format may change between major versions.
+**Stability contract:** public method signatures are stable. Internal token format may change between major versions.
 
 ### `./client-auth` — `@pellux/goodvibes-sdk/client-auth`
 
@@ -182,7 +182,7 @@ Granular platform modules exposed through explicit public subpaths. Each path is
 
 The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package does not export a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
 
-Stability contract: the module shape (exported names and their TypeScript signatures) is stable within a minor version. Pre-1.0 releases may still make breaking changes; current behavior is recorded in `CHANGELOG.md`.
+**Stability contract:** the module shape (exported names and their TypeScript signatures) is stable within a minor version. Pre-1.0 releases may still make breaking changes; current behavior is recorded in `CHANGELOG.md`.
 
 The root `@pellux/goodvibes-sdk/platform` entry is a full platform hub for
 Bun/server embedders. Runtime-boundary helpers live at
