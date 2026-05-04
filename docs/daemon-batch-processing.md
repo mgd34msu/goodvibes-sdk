@@ -109,7 +109,7 @@ The SDK provisioning flow needs:
 
 - A Cloudflare account id.
 - A Cloudflare API token. Pass `apiToken`, configure `cloudflare.apiTokenRef`, store `CLOUDFLARE_API_TOKEN` in `SecretsManager`, or set the `CLOUDFLARE_API_TOKEN` environment variable.
-- `cloudflare.daemonBaseUrl`, the origin URL the Cloudflare Worker or Tunnel should use for Worker-to-daemon calls. Without a Tunnel this must be public; with a Zero Trust Tunnel it may be a local daemon URL such as `http://127.0.0.1:3210`.
+- `cloudflare.daemonBaseUrl`, the origin URL the Cloudflare Worker or Tunnel should use for Worker-to-daemon calls. Without a Tunnel this must be public; with a Zero Trust Tunnel it may be a local daemon URL such as `http://127.0.0.1:3421` (default control-plane port; configurable via `controlPlane.port`).
 - A Worker-to-daemon operator token. By default the daemon uses its current operator token; callers may pass `operatorToken` or configure `cloudflare.workerTokenRef`.
 - A Worker client bearer token. If one is not supplied, provisioning generates one, stores it in `SecretsManager`, writes `cloudflare.workerClientTokenRef`, and installs it as the Worker secret `GOODVIBES_WORKER_TOKEN`.
 - For DNS automation, a selected Cloudflare zone via `zoneId` or `zoneName`.
