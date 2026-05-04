@@ -282,7 +282,18 @@ export function buildErrorResponseBody(
   // MAJ-5: only expose internal pipeline fields to privileged callers.
   const isPrivileged = options.isPrivileged === true;
   if (isStructuredDaemonErrorBody(error)) {
-    return error;
+    if (isPrivileged) return error;
+    // CRIT-02: strip pipeline-internal fields before returning to unprivileged callers.
+    const safe: StructuredDaemonErrorBody = {
+      error: error.error,
+      ...(error.hint !== undefined ? { hint: error.hint } : {}),
+      ...(error.code !== undefined ? { code: error.code } : {}),
+      ...(error.category !== undefined ? { category: error.category } : {}),
+      ...(error.source !== undefined ? { source: error.source } : {}),
+      ...(error.recoverable !== undefined ? { recoverable: error.recoverable } : {}),
+      ...(error.status !== undefined ? { status: error.status } : {}),
+    };
+    return safe;
   }
   if (error instanceof GoodVibesSdkError || isStructuredErrorLike(error)) {
     const status = error instanceof GoodVibesSdkError

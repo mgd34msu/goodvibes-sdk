@@ -426,7 +426,9 @@ describe('error-response — buildErrorResponseBody — GoodVibesSdkError', () =
 });
 
 describe('error-response — buildErrorResponseBody — structured body passthrough', () => {
-  test('StructuredDaemonErrorBody is returned as-is', () => {
+  test('StructuredDaemonErrorBody unprivileged: returns safe copy (not original reference)', () => {
+    // CRIT-02: non-privileged callers get a stripped copy — internal fields like
+    // provider/operation/phase are not exposed. Source and category are safe.
     const structured = {
       error: 'already structured',
       category: 'authentication' as const,
@@ -434,7 +436,48 @@ describe('error-response — buildErrorResponseBody — structured body passthro
       recoverable: false,
     };
     const body = buildErrorResponseBody(structured);
+    // Must NOT be the original object (new copy was created for safety)
+    expect(body).not.toBe(structured);
+    // Safe fields must be preserved
+    expect(body.error).toBe('already structured');
+    expect(body.category).toBe('authentication');
+    expect(body.source).toBe('provider');
+    expect(body.recoverable).toBe(false);
+  });
+
+  test('StructuredDaemonErrorBody privileged: original object returned as-is', () => {
+    const structured = {
+      error: 'already structured',
+      category: 'authentication' as const,
+      source: 'provider' as const,
+      recoverable: false,
+      provider: 'openai',
+      operation: 'chat',
+    };
+    const body = buildErrorResponseBody(structured, { isPrivileged: true });
+    // Privileged callers get the original object with all fields
     expect(body).toBe(structured);
+    expect((body as { provider?: string }).provider).toBe('openai');
+  });
+
+  test('StructuredDaemonErrorBody unprivileged: strips internal fields (provider, operation, phase)', () => {
+    const structured = {
+      error: 'provider error',
+      category: 'authentication' as const,
+      provider: 'openai',
+      operation: 'chat',
+      phase: 'request',
+      providerCode: 'invalid_key',
+      providerType: 'llm',
+    };
+    const body = buildErrorResponseBody(structured);
+    expect(body.error).toBe('provider error');
+    // Internal fields must be stripped
+    expect((body as { provider?: string }).provider).toBeUndefined();
+    expect((body as { operation?: string }).operation).toBeUndefined();
+    expect((body as { phase?: string }).phase).toBeUndefined();
+    expect((body as { providerCode?: string }).providerCode).toBeUndefined();
+    expect((body as { providerType?: string }).providerType).toBeUndefined();
   });
 });
 

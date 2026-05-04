@@ -55,6 +55,13 @@ export interface TransportContext {
    * Set alongside `middlewareError` for error identity in cause objects.
    */
   activeMiddlewareName?: string | undefined;
+  /**
+   * MAJ-03: the already-parsed response body, stashed by innerFetch after
+   * the real fetch resolves. If set, middleware callers should read this
+   * field directly instead of calling `ctx.response.json()` to avoid an
+   * unnecessary JSON stringify → parse round-trip.
+   */
+  parsedBody?: unknown | undefined;
 }
 
 /**

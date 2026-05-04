@@ -28,6 +28,7 @@ import {
   type SerializedEventEnvelope,
 } from './domain-events.js';
 
+/** @internal Structural constraint matching any runtime event; avoids duplicate `_2` api-extractor renaming. */
 type RuntimeEventRecord = { readonly type: string };
 
 export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = RuntimeEventRecord> =

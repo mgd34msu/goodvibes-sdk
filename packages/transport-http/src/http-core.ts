@@ -439,6 +439,8 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         // MAJ-03: stash the already-parsed body so the no-middleware fast path can
         // read it directly without a JSON.stringify → JSON.parse round-trip.
         _parsedBodyCache = body;
+        // Also expose on ctx so middleware callers can read parsedBody directly.
+        ctx.parsedBody = body;
         // Return synthetic Response carrying parsed body so callers (middleware) can .json().
         return new Response(JSON.stringify(body), {
           status: response.status,
@@ -462,7 +464,8 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
               method,
             });
           }
-          const result = await ctx.response.json() as T;
+          // MAJ-03: use parsedBody stashed by innerFetch to avoid a JSON round-trip.
+          const result = (ctx.parsedBody !== undefined ? ctx.parsedBody : await ctx.response.json()) as T;
           invokeTransportObserver(() => observer?.onTransportActivity?.({
             direction: 'recv',
             url,
