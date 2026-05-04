@@ -23,7 +23,7 @@ declare module '@agentclientprotocol/sdk' {
   // ClientSideConnection is used as a constructor (new ClientSideConnection(...)),
   // so it must be a value (class), not just a type alias.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  export declare class ClientSideConnection {
+  export class ClientSideConnection {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(...args: any[]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
