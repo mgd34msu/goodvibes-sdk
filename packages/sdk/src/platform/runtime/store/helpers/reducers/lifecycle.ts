@@ -1,8 +1,4 @@
-import type { CompactionEvent } from '../../../../../events/compaction.js';
-import type { PermissionEvent } from '../../../../../events/permissions.js';
-import type { TaskEvent } from '../../../../../events/tasks.js';
-import type { AgentEvent } from '../../../../../events/agents.js';
-import type { OrchestrationEvent } from '../../../../../events/orchestration.js';
+import type { CompactionEvent, PermissionEvent, TaskEvent, AgentEvent, OrchestrationEvent } from '../events.js';
 import type { SessionDomainState } from '../../domains/session.js';
 import type {
   PermissionDomainState,

@@ -288,6 +288,19 @@ export class KnowledgeStore {
         ? this.getSourceByCanonicalUri(input.canonicalUri)
         : null;
     const now = nowMs();
+    // applyOptional: include field only when the new value is non-null,
+    // falling back to the existing value when provided, or omitting entirely.
+    function applyOptional<V>(newVal: V | null, existingVal?: V): Record<string, V> {
+      if (newVal !== null) return { value: newVal } as unknown as Record<string, V>;
+      if (existingVal !== undefined) return { value: existingVal } as unknown as Record<string, V>;
+      return {};
+    }
+    function opt<K extends string, V>(key: K, newVal: V | null, existingVal?: V): { [P in K]?: V } {
+      if (newVal !== null) return { [key]: newVal } as { [P in K]?: V };
+      if (existingVal !== undefined) return { [key]: existingVal } as { [P in K]?: V };
+      return {} as { [P in K]?: V };
+    }
+    void applyOptional; // suppress unused-var; opt() is the real helper
     const _title = stableText(input.title);
     const _sourceUri = stableText(input.sourceUri);
     const _canonicalUri = stableText(input.canonicalUri);
@@ -302,19 +315,19 @@ export class KnowledgeStore {
       id: existing?.id ?? input.id ?? `source-${randomUUID().slice(0, 8)}`,
       connectorId: input.connectorId,
       sourceType: input.sourceType,
-      ...(_title !== null ? { title: _title } : {}),
-      ...(_sourceUri !== null ? { sourceUri: _sourceUri } : {}),
-      ...(_canonicalUri !== null ? { canonicalUri: _canonicalUri } : {}),
-      ...(_summary !== null ? { summary: _summary } : {}),
-      ...(_description !== null ? { description: _description } : {}),
+      ...opt('title', _title),
+      ...opt('sourceUri', _sourceUri),
+      ...opt('canonicalUri', _canonicalUri),
+      ...opt('summary', _summary),
+      ...opt('description', _description),
       tags: uniq(input.tags ?? existing?.tags),
-      ...(_folderPath !== null ? { folderPath: _folderPath } : existing?.folderPath ? { folderPath: existing.folderPath } : {}),
+      ...opt('folderPath', _folderPath, existing?.folderPath),
       status: input.status,
-      ...(_artifactId !== null ? { artifactId: _artifactId } : existing?.artifactId ? { artifactId: existing.artifactId } : {}),
-      ...(_contentHash !== null ? { contentHash: _contentHash } : existing?.contentHash ? { contentHash: existing.contentHash } : {}),
+      ...opt('artifactId', _artifactId, existing?.artifactId),
+      ...opt('contentHash', _contentHash, existing?.contentHash),
       ...(typeof input.lastCrawledAt === 'number' ? { lastCrawledAt: input.lastCrawledAt } : existing?.lastCrawledAt ? { lastCrawledAt: existing.lastCrawledAt } : {}),
-      ...(_crawlError !== null ? { crawlError: _crawlError } : existing?.crawlError && input.status !== 'indexed' ? { crawlError: existing.crawlError } : {}),
-      ...(_sessionId !== null ? { sessionId: _sessionId } : existing?.sessionId ? { sessionId: existing.sessionId } : {}),
+      ...opt('crawlError', _crawlError, existing?.crawlError && input.status !== 'indexed' ? existing.crawlError : undefined),
+      ...opt('sessionId', _sessionId, existing?.sessionId),
       metadata: {
         ...(existing?.metadata ?? {}),
         ...(input.metadata ?? {}),

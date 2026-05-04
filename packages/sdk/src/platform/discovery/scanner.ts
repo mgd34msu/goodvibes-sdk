@@ -7,6 +7,7 @@ import { WELL_KNOWN_LOCAL_PORTS } from '../providers/well-known-endpoints.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
 import { resolveSurfaceDirectory } from '../runtime/surface-root.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { summarizeError } from '../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -244,7 +245,8 @@ async function tryFetch(url: string): Promise<FetchResult | null> {
     const headers: Record<string, string> = {};
     res.headers.forEach((value, key) => { headers[key.toLowerCase()] = value.toLowerCase(); });
     return { body, headers };
-  } catch {
+  } catch (err) {
+    logger.debug('discovery probe failed', { url, error: summarizeError(err) });
     return null;
   }
 }

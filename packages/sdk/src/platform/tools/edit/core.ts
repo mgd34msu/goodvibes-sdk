@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { relative } from 'node:path';
 import type { Tool, ToolDefinition } from '../../types/tools.js';
 import { logger } from '../../utils/logger.js';
@@ -207,10 +208,10 @@ async function buildImportGraphWarning(cwd: string, writtenPaths: Set<string>): 
   }
 }
 
-function restoreOriginalContents(fileContents: Map<string, string>, env: EditExecutionContext): void {
+async function restoreOriginalContents(fileContents: Map<string, string>, env: EditExecutionContext): Promise<void> {
   for (const [resolvedPath, originalContent] of fileContents) {
     try {
-      writeFileSync(resolvedPath, originalContent, 'utf-8');
+      await writeFile(resolvedPath, originalContent, 'utf-8');
       env.fileCache.update(resolvedPath, originalContent);
     } catch {
       // Best-effort rollback
@@ -265,7 +266,7 @@ async function validateAfterTextEdits(
   }
 
   if (transactionMode === 'atomic') {
-    restoreOriginalContents(fileContents, env);
+    await restoreOriginalContents(fileContents, env);
   }
   return {
     error: `Post-edit validation failed${transactionMode === 'atomic' ? ' — edits rolled back' : ''}. ${formatValidatorFailure(failure)}`,
