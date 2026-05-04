@@ -130,12 +130,20 @@ export class WebSocketTransportError extends GoodVibesSdkError {
     }
     // Require the base SDK brand AND a WS-specific code prefix to prevent plain
     // objects like { code: 'WEBSOCKET_TRANSPORT_ERROR' } from passing.
+    // MIN-3: use an explicit allowlist of canonical WS codes rather than
+    // the open-ended 'WS_' prefix check which would match any hand-crafted
+    // GoodVibesSdkError with a WS_* code.
+    const CANONICAL_WS_CODES = new Set([
+      'WEBSOCKET_TRANSPORT_ERROR',
+      'WS_CLOSE_ABNORMAL',
+      'WS_EVENT_ERROR',
+      'WS_QUEUE_OVERFLOW',
+      'WS_REMOTE_ERROR',
+      'WS_FRAME_TOO_LARGE',
+    ]);
     return GoodVibesSdkError[Symbol.hasInstance](value)
       && typeof (value as Record<PropertyKey, unknown>).code === 'string'
-      && (
-        (value as Record<PropertyKey, unknown>).code === 'WEBSOCKET_TRANSPORT_ERROR'
-        || String((value as Record<PropertyKey, unknown>).code).startsWith('WS_')
-      );
+      && CANONICAL_WS_CODES.has(String((value as Record<PropertyKey, unknown>).code));
   }
 
   // NIT-9: code is required — all call sites pass an explicit sub-code.
@@ -183,6 +191,9 @@ export function buildWebSocketUrl(
   baseUrl: string,
   domains: readonly RuntimeEventDomain[],
 ): string {
+  // MIN-4: protocol validation and error messaging here mirrors normalizeBaseUrl in
+  // transport-http/src/paths.ts. These two code paths enforce the same rule with
+  // different error messages. If the supported protocol set ever changes, update both.
   const url = new URL('/api/control-plane/ws', normalizeBaseUrl(baseUrl));
   if (url.protocol === 'http:') {
     url.protocol = 'ws:';
@@ -406,7 +417,15 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     };
 
     const flushOutboundQueue = (ws: WebSocket) => {
+      // MAJ-2: re-check socket open before each send so queued messages are not
+      // lost when the socket closes between the auth frame and the drain loop.
+      // Messages that cannot be sent are pushed back (via unshift) so they can be
+      // delivered on the next reconnect cycle.
       while (outboundQueue.length > 0) {
+        if (!isSocketOpen(ws, WebSocketImpl)) {
+          // Socket closed mid-drain; leave the remaining items for the next reconnect.
+          break;
+        }
         const item = outboundQueue.shift();
         if (!item) break;
         outboundQueueBytes -= item.sizeBytes;
@@ -454,6 +473,15 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       try {
         if (typeof event.data !== 'string') {
           throw new WebSocketTransportError('WebSocket runtime event frame was not a string payload.', { code: 'WS_EVENT_ERROR' });
+        }
+        // MAJ-6: cheap pre-check (1 byte per char worst case) avoids allocating
+        // the full UTF-8 buffer for clearly-oversized frames. Only fall through
+        // to textEncoder.encode when within the fast bound.
+        if (event.data.length > MAX_INBOUND_FRAME_BYTES) {
+          throw new WebSocketTransportError(
+            `WebSocket runtime event frame too large (>${MAX_INBOUND_FRAME_BYTES} bytes, limit ${MAX_INBOUND_FRAME_BYTES}).`,
+            { code: 'WS_FRAME_TOO_LARGE' },
+          );
         }
         const frameBytes = textEncoder.encode(event.data).byteLength;
         if (frameBytes > MAX_INBOUND_FRAME_BYTES) {
@@ -525,20 +553,21 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       nextSocket.addEventListener('error', onError);
     };
 
-    try {
-      await connect();
-    } catch (error) {
-      const connectionError = transportErrorFromUnknown(error, 'WebSocket runtime event connection failed');
-      invokeTransportObserver(() => observer?.onError?.(connectionError));
-      options.onError?.(connectionError);
-      throw connectionError;
-    }
+    // MAJ-1: connect() is async but new WebSocket() does not throw synchronously;
+    // transport-level failures surface through onError/onClose. The try/catch
+    // here was dead code. Remove it and rely entirely on those event handlers.
+    void connect();
     return () => {
       stopped = true;
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
       }
       closeSocket();
+      // MAJ-3: reset the outbound buffer on disposal so a future reconnect
+      // (or re-use of the returned cleanup path in tests) does not accumulate
+      // stale byte totals. Both must be reset together to prevent accounting drift.
+      outboundQueue.length = 0;
+      outboundQueueBytes = 0;
     };
   };
 }

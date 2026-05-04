@@ -96,8 +96,12 @@ export function composeMiddleware(
   return async (ctx: TransportContext): Promise<void> => {
     let index = -1;
 
+    let dispatchCount = 0;
     const dispatch = async (i: number): Promise<void> => {
-      if (i > MAX_MIDDLEWARE_DEPTH) {
+      // MIN-1: count actual re-entrant dispatch() invocations rather than
+      // reusing `i` (which is the chain index and cannot exceed chain length).
+      dispatchCount += 1;
+      if (dispatchCount > MAX_MIDDLEWARE_DEPTH) {
         throw new GoodVibesSdkError(`Transport middleware recursion exceeded the maximum depth of ${MAX_MIDDLEWARE_DEPTH}.`, {
           category: 'internal',
           source: 'transport',

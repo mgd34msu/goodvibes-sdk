@@ -143,7 +143,8 @@ export function firstJsonSchemaFailure(
     const itemSchema = schema.items;
     if (itemSchema && typeof itemSchema === 'object' && !Array.isArray(itemSchema)) {
       for (let index = 0; index < value.length; index++) {
-        const failure = firstJsonSchemaFailure(itemSchema as Record<string, unknown>, value[index], `${path}[${index}]`, root);
+        // MIN-2: pass _depth + 1 so depth-reset through array items is prevented.
+        const failure = firstJsonSchemaFailure(itemSchema as Record<string, unknown>, value[index], `${path}[${index}]`, root, _depth + 1);
         if (failure) return failure;
       }
     }
@@ -164,7 +165,8 @@ export function firstJsonSchemaFailure(
       for (const [key, propertySchema] of Object.entries(properties as Record<string, unknown>)) {
         if (!(key in objectValue)) continue;
         if (!propertySchema || typeof propertySchema !== 'object' || Array.isArray(propertySchema)) continue;
-        const failure = firstJsonSchemaFailure(propertySchema as Record<string, unknown>, objectValue[key], `${path}.${key}`, root);
+        // MIN-2: pass _depth + 1 so nested property recursion respects the walk depth limit.
+        const failure = firstJsonSchemaFailure(propertySchema as Record<string, unknown>, objectValue[key], `${path}.${key}`, root, _depth + 1);
         if (failure) return failure;
       }
     }

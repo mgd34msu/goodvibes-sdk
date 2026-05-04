@@ -10,6 +10,13 @@ export interface JsonErrorResponseOptions {
   readonly status?: number;
   readonly fallbackMessage?: string;
   readonly source?: DaemonErrorSource;
+  /**
+   * MAJ-5: when false (default), internal pipeline fields (`provider`,
+   * `operation`, `phase`, `providerCode`, `providerType`) are stripped from
+   * the wire body to prevent information disclosure to unprivileged clients.
+   * Pass `true` only for admin/operator-authenticated callers.
+   */
+  readonly isPrivileged?: boolean;
 }
 
 interface StructuredErrorLike {
@@ -138,7 +145,22 @@ function inferCategory(status?: number, code?: string): DaemonErrorCategory {
 
 const MAX_INFER_MESSAGE_LENGTH = 2_000;
 
+// MIN-6: fast-path exact-code lookup to avoid regex on the hot path for
+// well-known error codes that appear frequently in daemon responses.
+const FAST_PATH_CODE_CATEGORIES: ReadonlyMap<string, DaemonErrorCategory> = new Map([
+  ['ECONNREFUSED', DaemonErrorCategory.NETWORK],
+  ['ENOTFOUND', DaemonErrorCategory.NETWORK],
+  ['EAI_AGAIN', DaemonErrorCategory.NETWORK],
+  ['EHOSTUNREACH', DaemonErrorCategory.NETWORK],
+  ['ECONNRESET', DaemonErrorCategory.NETWORK],
+  ['ETIMEDOUT', DaemonErrorCategory.TIMEOUT],
+  ['ECONNABORTED', DaemonErrorCategory.TIMEOUT],
+]);
+
 function inferCategoryFromMessage(message: string): DaemonErrorCategory {
+  // MIN-6: check exact code match before falling through to regex.
+  const fastPath = FAST_PATH_CODE_CATEGORIES.get(message.trim().toUpperCase());
+  if (fastPath !== undefined) return fastPath;
   // m8: cap length before lowercasing to avoid regex on unbounded strings
   const msg = message.length > MAX_INFER_MESSAGE_LENGTH
     ? message.slice(0, MAX_INFER_MESSAGE_LENGTH).toLowerCase()
@@ -257,6 +279,8 @@ export function buildErrorResponseBody(
   error: unknown,
   options: JsonErrorResponseOptions = {},
 ): StructuredDaemonErrorBody {
+  // MAJ-5: only expose internal pipeline fields to privileged callers.
+  const isPrivileged = options.isPrivileged === true;
   if (isStructuredDaemonErrorBody(error)) {
     return error;
   }
@@ -289,12 +313,13 @@ export function buildErrorResponseBody(
       ...(normalizeSource(error.source) ? { source: normalizeSource(error.source) } : {}),
       ...(error.recoverable !== undefined ? { recoverable: error.recoverable } : {}),
       ...(status !== undefined ? { status } : {}),
-      ...(provider ? { provider } : {}),
-      ...(error.operation ? { operation: error.operation } : {}),
-      ...(phase ? { phase } : {}),
+      // MAJ-5: strip pipeline-internal fields for unprivileged callers.
+      ...(isPrivileged && provider ? { provider } : {}),
+      ...(isPrivileged && error.operation ? { operation: error.operation } : {}),
+      ...(isPrivileged && phase ? { phase } : {}),
       ...(requestId ? { requestId } : {}),
-      ...(providerCode ? { providerCode } : {}),
-      ...(error.providerType ? { providerType: error.providerType } : {}),
+      ...(isPrivileged && providerCode ? { providerCode } : {}),
+      ...(isPrivileged && error.providerType ? { providerType: error.providerType } : {}),
       ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
     };
   }
@@ -326,12 +351,13 @@ export function buildErrorResponseBody(
       ...(source ? { source } : {}),
       ...(recoverable !== undefined ? { recoverable } : {}),
       ...(status !== undefined ? { status } : {}),
-      ...(provider ? { provider } : {}),
-      ...(operation ? { operation } : {}),
-      ...(phase ? { phase } : {}),
+      // MAJ-5: strip pipeline-internal fields for unprivileged callers.
+      ...(isPrivileged && provider ? { provider } : {}),
+      ...(isPrivileged && operation ? { operation } : {}),
+      ...(isPrivileged && phase ? { phase } : {}),
       ...(requestId ? { requestId } : {}),
-      ...(providerCode ? { providerCode } : {}),
-      ...(providerType ? { providerType } : {}),
+      ...(isPrivileged && providerCode ? { providerCode } : {}),
+      ...(isPrivileged && providerType ? { providerType } : {}),
       ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
     };
   }

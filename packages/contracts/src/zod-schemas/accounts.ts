@@ -37,6 +37,11 @@ const ProviderSnapshotSchema = z.object({
   issues: z.array(z.string()),
   recommendedActions: z.array(z.string()),
   routeRecords: z.array(ProviderRouteRecordSchema),
+  // NIT-4: catchall(z.unknown()) accepts any extra keys silently. A typo in the
+  // daemon (e.g. `activeRouteReson`) will parse cleanly with the typo'd value in
+  // unknown and the typed field undefined. If strict shape enforcement is needed,
+  // remove catchall. The catchall is kept intentionally for forward-compatibility
+  // (new daemon fields won't break old SDK versions).
 }).catchall(z.unknown());
 
 /**
