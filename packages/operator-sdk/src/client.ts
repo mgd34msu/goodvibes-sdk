@@ -60,9 +60,9 @@ function isZodSchema(value: unknown): value is ZodType {
  * Derives a candidate export name from a contract method id.
  * e.g. "local_auth.status" → "LocalAuthStatusResponseSchema"
  *      "control.auth.login" → "ControlAuthLoginResponseSchema"
+ * Supported id grammar: /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/
  */
-// Supported id grammar: /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/
-function methodIdToSchemaName(methodId: string): string {
+function _methodIdToSchemaName(methodId: string): string {
   const pascal = methodId
     .split('.')
     .flatMap((segment) => segment.split('_'))
@@ -78,14 +78,14 @@ function methodIdToSchemaName(methodId: string): string {
  * dropped. This handles snake_case namespace segments (e.g. `local_auth.status`)
  * correctly, which a naive PascalCase→dot transform cannot.
  */
-function buildSchemaRegistry(
+function _buildSchemaRegistry(
   methodIds: readonly string[],
   schemas: Record<string, unknown>,
 ): Partial<Record<string, ZodType>> {
   // Build a reverse map: candidateExportName → methodId
   const candidateMap = new Map<string, string>();
   for (const methodId of methodIds) {
-    candidateMap.set(methodIdToSchemaName(methodId), methodId);
+    candidateMap.set(_methodIdToSchemaName(methodId), methodId);
   }
   const registry: Partial<Record<string, ZodType>> = {};
   for (const [key, value] of Object.entries(schemas)) {
@@ -98,14 +98,23 @@ function buildSchemaRegistry(
 }
 
 /** @internal Exposed for unit testing only. */
-export const __internal__ = { buildSchemaRegistry, methodIdToSchemaName } as const;
+export const __internal__: {
+  readonly buildSchemaRegistry: (
+    methodIds: readonly string[],
+    schemas: Record<string, unknown>,
+  ) => Partial<Record<string, ZodType>>;
+  readonly methodIdToSchemaName: (methodId: string) => string;
+} = {
+  buildSchemaRegistry: _buildSchemaRegistry,
+  methodIdToSchemaName: _methodIdToSchemaName,
+};
 
 export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk {
   const validateResponses = options.validateResponses !== false;
   const transport = createHttpTransport(options);
   const contract = getOperatorContract();
   const schemaRegistry = validateResponses
-    ? buildSchemaRegistry(OPERATOR_METHOD_IDS, ContractZodSchemas)
+    ? _buildSchemaRegistry(OPERATOR_METHOD_IDS, ContractZodSchemas)
     : {};
   const remote = createOperatorRemoteClient(transport, contract, {
     validateResponses,

@@ -9,8 +9,8 @@ import type { ZodType } from 'zod/v4';
 
 // @internal
 export const __internal__: {
-    buildSchemaRegistry: typeof buildSchemaRegistry;
-    methodIdToSchemaName: typeof methodIdToSchemaName;
+    readonly buildSchemaRegistry: (methodIds: readonly string[], schemas: Record<string, unknown>) => Partial<Record<string, ZodType>>;
+    readonly methodIdToSchemaName: (methodId: string) => string;
 };
 
 // @public (undocumented)
@@ -15560,8 +15560,6 @@ export interface WorkspaceSwapManagerLike {
 // packages/daemon-sdk/src/runtime-route-types.ts:215:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/system-route-types.ts:110:5 - (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
 // packages/operator-sdk/src/client-core.ts:77:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
-// packages/operator-sdk/src/client.ts:100:26 - (ae-forgotten-export) The symbol "buildSchemaRegistry" needs to be exported by the entry point index.d.ts
-// packages/operator-sdk/src/client.ts:100:26 - (ae-forgotten-export) The symbol "methodIdToSchemaName" needs to be exported by the entry point index.d.ts
 // packages/peer-sdk/src/client-core.ts:64:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
