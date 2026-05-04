@@ -981,7 +981,7 @@ export function createArtifactFromUploadRequest(artifactStore: ArtifactStoreUplo
 export function createBrowserGoodVibesSdk(options?: BrowserGoodVibesSdkOptions): GoodVibesSdk;
 
 // @public
-export function createBrowserTokenStore(options?: BrowserTokenStoreOptions): GoodVibesTokenStore;
+export function createBrowserTokenStore(options?: BrowserTokenStoreOptions): GoodVibesExpiringTokenStore;
 
 // @public (undocumented)
 export function createClientTransport<TKind extends string, TOperator, TPeer>(kind: TKind, operator: TOperator, peer: TPeer): ClientTransport<TKind, TOperator, TPeer>;
@@ -1076,7 +1076,7 @@ export const createJsonInit: typeof createJsonRequestInit;
 export function createJsonRequestInit(token: string | null | undefined, body?: unknown, method?: string, headers?: HeadersInit, signal?: AbortSignal, defaultHeaders?: HeadersInit): RequestInit;
 
 // @public
-export function createMemoryTokenStore(initialToken?: string | null, initialExpiresAt?: number): GoodVibesTokenStore;
+export function createMemoryTokenStore(initialToken?: string | null, initialExpiresAt?: number): GoodVibesExpiringTokenStore;
 
 // @public
 export function createOpenTelemetryObserver(tracer: OtelTracer, meter: OtelMeter): SDKObserver;
@@ -1093,7 +1093,7 @@ export function createPeerRemoteClient(transport: HttpTransport, contract: PeerC
 // @public (undocumented)
 export function createPeerSdk(options: PeerSdkOptions): PeerSdk;
 
-// @public (undocumented)
+// @public
 export function createReactNativeGoodVibesSdk(options: ReactNativeGoodVibesSdkOptions): ReactNativeGoodVibesSdk;
 
 // Warning: (ae-forgotten-export) The symbol "EventLike" needs to be exported by the entry point index.d.ts
@@ -2380,6 +2380,17 @@ export interface GoodVibesCloudflareWorkerOptions {
 // @public (undocumented)
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
 
+// @public
+export interface GoodVibesExpiringTokenStore extends GoodVibesTokenStore {
+    // (undocumented)
+    getTokenEntry(): Promise<{
+        token: string | null;
+        expiresAt?: number;
+    }>;
+    // (undocumented)
+    setTokenEntry(token: string | null, expiresAt?: number): Promise<void>;
+}
+
 // @public (undocumented)
 export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;
 
@@ -2397,7 +2408,7 @@ export interface GoodVibesRealtime {
 // @public
 export interface GoodVibesRealtimeOptions {
     // (undocumented)
-    readonly onError?: ((error: unknown) => void) | undefined | undefined;
+    readonly onError?: ((error: unknown) => void) | undefined;
     // (undocumented)
     readonly sseReconnect?: StreamReconnectPolicy | undefined;
     // (undocumented)
@@ -2520,14 +2531,7 @@ export interface GoodVibesTokenStore {
     // (undocumented)
     getToken(): Promise<string | null>;
     // (undocumented)
-    getTokenEntry?(): Promise<{
-        token: string | null;
-        expiresAt?: number;
-    }>;
-    // (undocumented)
     setToken(token: string | null): Promise<void>;
-    // (undocumented)
-    setTokenEntry?(token: string | null, expiresAt?: number): Promise<void>;
 }
 
 // @public
@@ -16765,7 +16769,7 @@ export type SessionEventType = SessionEvent['type'];
 
 // @public (undocumented)
 export class SessionManager {
-    constructor(operator: OperatorSdk, tokenStore: TokenStore | null);
+    constructor(operator: OperatorSdk, tokenStore: TokenStore | null, observer?: SDKObserver);
     current(): Promise<GoodVibesCurrentAuth>;
     login(input: GoodVibesLoginInput, options?: GoodVibesAuthLoginOptions): Promise<GoodVibesLoginOutput>;
     get tokenStore(): TokenStore | null;
@@ -16774,6 +16778,9 @@ export class SessionManager {
 
 // @public (undocumented)
 export function sleepWithSignal(delayMs: number, signal?: AbortSignal): Promise<void>;
+
+// @public
+export const SPAN_STATUS_ERROR: 2;
 
 // @public
 export function splitClientArgs<TInput, TOptions>(args: readonly unknown[]): readonly [TInput | undefined, TOptions | undefined];
@@ -17447,8 +17454,11 @@ export interface UserAuthManagerLike {
     rotatePassword(username: string, password: string): void;
 }
 
-// @public (undocumented)
+// @public @deprecated
 export function validateEvent(event: unknown): ContractResult;
+
+// @public
+export function validateKnownEvent(event: unknown): ContractResult;
 
 // @public (undocumented)
 export type VoiceAudioArtifact = Record<string, unknown>;
