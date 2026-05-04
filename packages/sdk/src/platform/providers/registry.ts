@@ -17,7 +17,6 @@ import { emitProvidersChanged, emitProviderWarning, emitModelChanged } from '../
 import { loadCustomProviders, watchCustomProviders } from './custom-loader.js';
 import {
   buildSyntheticCanonicalModels,
-  fetchCatalog,
   getCatalogCachePath,
   getCatalogModelDefinitionsFrom,
   getCatalogTmpPath,
@@ -25,10 +24,6 @@ import {
   getSyntheticBackendModelIds,
   getSyntheticModelDefinitions,
   getSyntheticModelInfo,
-  isCatalogCacheStale,
-  loadCatalogCache,
-  notifyCatalogChanges,
-  saveCatalogCache,
   type CatalogModel,
   type CatalogProvider,
   type MinimalModelDefinition,
@@ -52,6 +47,8 @@ import {
   stableStringify,
   withRegistryKey,
 } from './registry-helpers.js';
+import { computeConfiguredProviderIds } from './registry-configured-ids.js';
+import { initProviderCatalog, refreshProviderCatalog } from './registry-catalog-lifecycle.js';
 import {
   buildModelRegistry,
   findModelDefinition,
@@ -467,49 +464,11 @@ export class ProviderRegistry {
   }
 
   getConfiguredProviderIds(): string[] {
-    const configured = new Set<string>();
-    const providerEnvMap = new Map<string, string[]>();
-
-    for (const model of this.catalogModels) {
-      if (!providerEnvMap.has(model.providerId)) {
-        providerEnvMap.set(model.providerId, model.providerEnvVars);
-      }
-    }
-
-    for (const [providerId, envVars] of providerEnvMap) {
-      if (envVars.length === 0) {
-        configured.add(providerId);
-      } else if (envVars.some((envVar) => {
-        const value = process.env[envVar];
-        return typeof value === 'string' && value.length > 0;
-      })) {
-        configured.add(providerId);
-      }
-    }
-
-    try {
-      const configApiKeys = getConfiguredApiKeys();
-      const configToCatalog: Record<string, string> = { gemini: 'google', inceptionlabs: 'inception' };
-      for (const [configName, key] of Object.entries(configApiKeys)) {
-        if (key) {
-          configured.add(configToCatalog[configName] ?? configName);
-        }
-      }
-    } catch {
-      // non-fatal
-    }
-
-    if (this.getSyntheticBackendModelIds().size > 0) {
-      configured.add('synthetic');
-    }
-
-    for (const [name, provider] of this.providers) {
-      if (typeof provider.isConfigured === 'function' && provider.isConfigured()) {
-        configured.add(name);
-      }
-    }
-
-    return [...configured];
+    return computeConfiguredProviderIds(
+      this.catalogModels,
+      this.providers,
+      () => this.getSyntheticBackendModelIds(),
+    );
   }
 
   /** Only the models the user can switch to. */
@@ -788,34 +747,22 @@ export class ProviderRegistry {
   }
 
   initCatalog(): void {
-    const cached = loadCatalogCache(this.getCatalogCachePaths().cachePath);
-    if (cached) {
-      this.updateCatalogState(cached.models, cached.fetchedAt);
-    }
-    if (!cached || isCatalogCacheStale(cached)) {
-      void this.refreshCatalog().catch((err) => {
-        logger.debug('[model-catalog] Background refresh failed', { error: summarizeError(err) });
-      });
-    }
+    initProviderCatalog(this._catalogLifecycleCtx());
   }
 
   async refreshCatalog(): Promise<void> {
-    const previous = [...this.catalogModels];
-    const models = await fetchCatalog();
-    if (models.length === 0) {
-      logger.warn('[model-catalog] Refresh returned 0 models — keeping existing catalog');
-      return;
-    }
-    const { cachePath, tmpPath } = this.getCatalogCachePaths();
-    saveCatalogCache(models, cachePath, tmpPath);
-    this.updateCatalogState(models);
-    const favorites = await this.favoritesStore.load();
-    notifyCatalogChanges(
-      previous,
-      this.catalogModels,
-      favorites,
-      this.benchmarkStore.getTopBenchmarkModelIds(10),
-    );
-    logger.debug('[model-catalog] Catalog updated', { count: models.length });
+    await refreshProviderCatalog(this._catalogLifecycleCtx());
+  }
+
+  private _catalogLifecycleCtx() {
+    return {
+      getCatalogCachePaths: () => this.getCatalogCachePaths(),
+      updateCatalogState: (models: readonly CatalogModel[], fetchedAt?: number) =>
+        this.updateCatalogState(models, fetchedAt),
+      getCatalogModels: () => this.catalogModels as readonly CatalogModel[],
+      favoritesStore: this.favoritesStore,
+      benchmarkStore: this.benchmarkStore,
+      refreshCatalog: () => this.refreshCatalog(),
+    };
   }
 }
