@@ -242,17 +242,19 @@ function getPackageScope(packageName: unknown): string | null {
   return slashIndex > 1 ? packageName.slice(0, slashIndex) : null;
 }
 
-export interface AuthEnv extends NodeJS.ProcessEnv {
-  /** Absolute path to the temp .npmrc file created by createAuthEnv, or undefined if no token. */
-  readonly _npmrcTempDir?: string;
+export interface AuthEnv {
+  /** The full process environment including auth token and npmrc config path. */
+  readonly env: NodeJS.ProcessEnv;
+  /** Absolute path to the temp npmrc directory created by createAuthEnv, or undefined if no token. */
+  readonly tempDir?: string;
 }
 
 export function createAuthEnv(extraEnv: NodeJS.ProcessEnv = {}, options: { readonly registry?: string; readonly packageName?: string } = {}): AuthEnv {
-  const env: AuthEnv = { ...process.env, ...extraEnv };
+  const merged: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
   const registry = options.registry || 'https://registry.npmjs.org';
   const token = getAuthToken(registry);
   if (!token) {
-    return env;
+    return { env: merged };
   }
   const registryHost = getRegistryHost(registry);
   const npmrcTempDir = createSdkTempDir('goodvibes-sdk-npmrc-');
@@ -263,28 +265,30 @@ export function createAuthEnv(extraEnv: NodeJS.ProcessEnv = {}, options: { reado
     npmrcLines.push(`${scope}:registry=${registry}`);
   }
   writeFileSync(userConfigPath, `${npmrcLines.join('\n')}\n`);
-  (env as Record<string, unknown>).NODE_AUTH_TOKEN = token;
-  (env as Record<string, unknown>).NPM_CONFIG_USERCONFIG = userConfigPath;
-  (env as Record<string, unknown>)._npmrcTempDir = npmrcTempDir;
-  return env;
+  const env: NodeJS.ProcessEnv = {
+    ...merged,
+    NODE_AUTH_TOKEN: token,
+    NPM_CONFIG_USERCONFIG: userConfigPath,
+  };
+  return { env, tempDir: npmrcTempDir };
 }
 
-export function cleanupAuthEnv(env: AuthEnv): void {
-  if (env._npmrcTempDir) {
-    rmSync(env._npmrcTempDir, { recursive: true, force: true });
+export function cleanupAuthEnv(authEnv: AuthEnv): void {
+  if (authEnv.tempDir) {
+    rmSync(authEnv.tempDir, { recursive: true, force: true });
   }
 }
 
 export function run(command: string, args: readonly string[], cwd: string, options: RunOptions = {}): string {
-  const env = options.auth
+  const childEnv = options.auth
     ? (options.authEnv ?? createAuthEnv(options.env, {
       registry: options.registry,
       packageName: options.packageName,
-    }))
+    })).env
     : { ...process.env, ...options.env };
   return execFileSync(command, args, {
     cwd,
-    env,
+    env: childEnv,
     stdio: options.stdio ?? 'inherit',
     encoding: options.encoding ?? 'utf8',
   });

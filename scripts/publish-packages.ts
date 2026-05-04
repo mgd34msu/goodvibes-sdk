@@ -16,7 +16,7 @@ const USE_PROVENANCE = process.argv.includes('--provenance') || process.env.GITH
 const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 const SUPPORTS_PROVENANCE = REGISTRY === 'https://registry.npmjs.org';
 
-function isPublished(name: string, version: string): boolean {
+function isPublished(name: string, version: string, authEnv: AuthEnv): boolean {
   try {
     const output = run(
       'npm',
@@ -27,6 +27,7 @@ function isPublished(name: string, version: string): boolean {
         registry: REGISTRY,
         packageName: name,
         stdio: 'pipe',
+        authEnv,
       },
     ).trim();
     return output === version;
@@ -63,7 +64,7 @@ try {
     if (typeof packageName !== 'string' || typeof packageVersion !== 'string') {
       throw new Error(`Staged package ${stage.dir} is missing a string name/version.`);
     }
-    if (!DRY_RUN && isPublished(packageName, packageVersion)) {
+    if (!DRY_RUN && isPublished(packageName, packageVersion, sharedAuthEnv)) {
       console.log(`Skipping ${packageName}@${packageVersion}; already published.`);
       continue;
     }
