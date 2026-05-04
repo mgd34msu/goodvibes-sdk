@@ -197,10 +197,17 @@ CORS policy should be configured at the network edge (reverse proxy) or in the d
 
 ### Rate Limiting
 
-The daemon does not implement built-in rate limiting. For production deployments, place a rate-limiting reverse proxy (nginx, Traefik middleware, Cloudflare) in front of the daemon to protect against:
-- Brute-force attacks on the login endpoint
-- Denial-of-service via expensive LLM requests
-- Enumeration attacks on the knowledge or session endpoints
+The daemon ships two built-in rate limiters:
+
+- **General rate limiter** — 60 requests per minute per IP address (configurable via `rateLimit` option). Applied to all routes except login.
+- **Login rate limiter** — 5 requests per minute per IP address (configurable via `loginRateLimit` option). Applied to `POST /login` to prevent online brute-force attacks.
+
+For production deployments, place an additional rate-limiting reverse proxy (nginx, Traefik middleware, Cloudflare) **in front of** the daemon to provide a defence-in-depth second layer and to protect against:
+- High-volume denial-of-service via expensive LLM requests that the per-IP limiter alone may not catch
+- Enumeration attacks on the knowledge or session endpoints from rotating IPs
+- Distributed login brute-force from botnets that bypass per-IP limits
+
+The reverse proxy rate limiter supplements the daemon's built-in limits; do not remove the built-in limits when adding a proxy.
 
 ### Private Host SSRF Protection
 

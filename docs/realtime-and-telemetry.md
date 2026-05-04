@@ -1,5 +1,7 @@
 # Realtime and Telemetry
 
+> **Surface scope:** This document covers realtime transport and telemetry for both the **full surface (Bun runtime)** and the **companion surface** (React Native, Expo, browser). Full-surface consumers use `createGoodVibesSdk`; companion consumers use their surface-specific constructors. See [Runtime Surfaces](./surfaces.md) for the full breakdown.
+
 Use realtime feeds for live UI updates and operator monitoring.
 
 ## Runtime events

@@ -170,16 +170,23 @@ const sdk = createGoodVibesSdk({
 const status = await sdk.operator.control.status();
 ```
 
-For React Native or Expo, use `createMemoryTokenStore` from `@pellux/goodvibes-sdk/auth` or implement a custom `GoodVibesTokenStore` adapter backed by `expo-secure-store` or `react-native-keychain`:
+For React Native or Expo, prefer the built-in secure token stores rather than rolling a custom adapter:
+
+- **Expo**: `createExpoSecureTokenStore` from `@pellux/goodvibes-sdk/expo` — backed by `expo-secure-store`
+- **iOS**: `createIOSKeychainTokenStore` from `@pellux/goodvibes-sdk/react-native` — backed by iOS Keychain
+- **Android**: `createAndroidKeystoreTokenStore` from `@pellux/goodvibes-sdk/react-native` — backed by Android Keystore
 
 ```ts
-import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
+import { createReactNativeGoodVibesSdk, createIOSKeychainTokenStore } from '@pellux/goodvibes-sdk/react-native';
 
-const sdk = createGoodVibesSdk({
+const tokenStore = createIOSKeychainTokenStore({ service: 'com.example.gv' });
+const sdk = createReactNativeGoodVibesSdk({
   baseUrl: payload.url,
-  tokenStore: createMemoryTokenStore(),
+  tokenStore,
 });
 ```
+
+For `createMemoryTokenStore` (non-persistent, suitable only for ephemeral use or development), import from `@pellux/goodvibes-sdk/auth`.
 
 ---
 
@@ -292,14 +299,15 @@ A companion app requires:
 ### Minimal integration pattern (React Native / Expo)
 
 ```ts
-import { useState } from 'react';
-import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
-import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
+import { createReactNativeGoodVibesSdk, createIOSKeychainTokenStore } from '@pellux/goodvibes-sdk/react-native';
 
-const tokenStore = createMemoryTokenStore();
+// createIOSKeychainTokenStore and createAndroidKeystoreTokenStore are available from
+// @pellux/goodvibes-sdk/react-native. For Expo, use createExpoSecureTokenStore
+// from @pellux/goodvibes-sdk/expo.
+const tokenStore = createIOSKeychainTokenStore({ service: 'com.example.goodvibes' });
 
 export function usePairedSdk(baseUrl: string) {
-  const sdk = createGoodVibesSdk({
+  const sdk = createReactNativeGoodVibesSdk({
     baseUrl,
     tokenStore,
   });

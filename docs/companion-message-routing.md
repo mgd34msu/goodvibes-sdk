@@ -39,7 +39,7 @@ Response:
 - The `kind` field defaults to `'message'` when omitted.
 - `kind: 'task'` explicitly routes through the session broker and can spawn an
   agent/WRFC continuation.
-- `kind: 'followup'` explicitly queues a session follow-up through the broker.
+- `kind: 'followup'` explicitly queues a session follow-up through the broker. Unlike `kind: 'task'` (which spawns a fresh WRFC continuation), a follow-up appends a structured continuation hint to the current session and is processed in the next available agent turn. Use `kind: 'followup'` when the companion wants to steer an already-running session rather than start a new task.
 - Unknown `kind` values return `400 INVALID_KIND`.
 
 ## Control-Plane Event

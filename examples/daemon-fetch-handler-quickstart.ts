@@ -32,6 +32,7 @@ const controlHandlers = createDaemonControlRouteHandlers({
     get: () => null,
   },
   getOperatorContract: () => ({ version: 1 }), // minimal example contract; real contracts come from buildOperatorContract().
+  // In production: import { buildOperatorContract } from '@pellux/goodvibes-sdk/operator';
   inspectInboundTls: () => ({ mode: 'off' }),
   inspectOutboundTls: () => ({ mode: 'system' }),
   invokeGatewayMethodCall: async () => ({

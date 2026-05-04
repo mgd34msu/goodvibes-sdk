@@ -18,7 +18,7 @@ const sdk = createExpoGoodVibesSdk({
 ## Guidance
 
 - prefer bearer tokens for Expo apps
-- store tokens in `expo-secure-store` or equivalent secure storage
+- store tokens using `createExpoSecureTokenStore` from `@pellux/goodvibes-sdk/expo` (backed by `expo-secure-store`) rather than rolling a custom adapter
 - prefer `sdk.realtime.viaWebSocket()` over SSE
 - reconnect on foreground/resume transitions
 - wrap token access in a `tokenStore` or `getAuthToken` so reconnects do not keep stale tokens
