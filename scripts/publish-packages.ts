@@ -1,6 +1,9 @@
 import {
+  type AuthEnv,
   assertChangelogSection,
+  cleanupAuthEnv,
   cleanupStage,
+  createAuthEnv,
   getAuthToken,
   getPublishRegistryOverride,
   readPackage,
@@ -49,6 +52,10 @@ if (!DRY_RUN && !getAuthToken(REGISTRY)) {
 
 const { tempRoot, publicStages } = await stagePackages();
 
+// Create a single shared auth env for all publish calls in this run so that
+// the temp npmrc directory can be reliably cleaned up in the finally block.
+const sharedAuthEnv: AuthEnv = createAuthEnv({}, { registry: REGISTRY });
+
 try {
   for (const stage of publicStages) {
     const packageName = stage.manifest.name;
@@ -76,8 +83,10 @@ try {
       auth: true,
       registry: REGISTRY,
       packageName,
+      authEnv: sharedAuthEnv,
     });
   }
 } finally {
+  cleanupAuthEnv(sharedAuthEnv);
   cleanupStage(tempRoot);
 }

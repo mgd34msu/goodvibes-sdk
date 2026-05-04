@@ -47,6 +47,12 @@ export interface RunOptions {
   readonly packageName?: string;
   readonly stdio?: 'inherit' | 'pipe' | 'ignore';
   readonly encoding?: BufferEncoding;
+  /**
+   * When provided along with `auth: true`, the caller-supplied AuthEnv is used
+   * instead of creating a new one. Allows the caller to track and clean up
+   * the temp npmrc directory via cleanupAuthEnv().
+   */
+  readonly authEnv?: AuthEnv;
 }
 
 export function getRootPackage(): PackageManifest {
@@ -236,35 +242,45 @@ function getPackageScope(packageName: unknown): string | null {
   return slashIndex > 1 ? packageName.slice(0, slashIndex) : null;
 }
 
-export function createAuthEnv(extraEnv: NodeJS.ProcessEnv = {}, options: { readonly registry?: string; readonly packageName?: string } = {}): NodeJS.ProcessEnv {
-  const env = { ...process.env, ...extraEnv };
+export interface AuthEnv extends NodeJS.ProcessEnv {
+  /** Absolute path to the temp .npmrc file created by createAuthEnv, or undefined if no token. */
+  readonly _npmrcTempDir?: string;
+}
+
+export function createAuthEnv(extraEnv: NodeJS.ProcessEnv = {}, options: { readonly registry?: string; readonly packageName?: string } = {}): AuthEnv {
+  const env: AuthEnv = { ...process.env, ...extraEnv };
   const registry = options.registry || 'https://registry.npmjs.org';
   const token = getAuthToken(registry);
   if (!token) {
     return env;
   }
   const registryHost = getRegistryHost(registry);
-  const userConfigPath = resolve(
-    createSdkTempDir('goodvibes-sdk-npmrc-'),
-    '.npmrc',
-  );
+  const npmrcTempDir = createSdkTempDir('goodvibes-sdk-npmrc-');
+  const userConfigPath = resolve(npmrcTempDir, '.npmrc');
   const npmrcLines = [`//${registryHost}/:_authToken=${token}`];
   const scope = getPackageScope(options.packageName);
   if (scope && registryHost !== 'registry.npmjs.org') {
     npmrcLines.push(`${scope}:registry=${registry}`);
   }
   writeFileSync(userConfigPath, `${npmrcLines.join('\n')}\n`);
-  env.NODE_AUTH_TOKEN = token;
-  env.NPM_CONFIG_USERCONFIG = userConfigPath;
+  (env as Record<string, unknown>).NODE_AUTH_TOKEN = token;
+  (env as Record<string, unknown>).NPM_CONFIG_USERCONFIG = userConfigPath;
+  (env as Record<string, unknown>)._npmrcTempDir = npmrcTempDir;
   return env;
+}
+
+export function cleanupAuthEnv(env: AuthEnv): void {
+  if (env._npmrcTempDir) {
+    rmSync(env._npmrcTempDir, { recursive: true, force: true });
+  }
 }
 
 export function run(command: string, args: readonly string[], cwd: string, options: RunOptions = {}): string {
   const env = options.auth
-    ? createAuthEnv(options.env, {
+    ? (options.authEnv ?? createAuthEnv(options.env, {
       registry: options.registry,
       packageName: options.packageName,
-    })
+    }))
     : { ...process.env, ...options.env };
   return execFileSync(command, args, {
     cwd,
