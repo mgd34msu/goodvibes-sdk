@@ -223,7 +223,7 @@ The `fetch` tool has a separate opt-in protection gate: `featureFlags.fetch-sani
 
 ## Secret Management
 
-Internal module: `@pellux/goodvibes-sdk/platform/config` (daemon embedders only).
+**Public subpath:** `@pellux/goodvibes-sdk/platform/config` (daemon embedders).
 
 ### SecretsManager
 

@@ -155,6 +155,27 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ---
 
+## Route-Level Error Codes
+
+Daemon HTTP routes return structured error bodies with a `code` string that is separate from the SDK-layer `kind` discriminant. These codes appear in route-specific error responses and are not `GoodVibesSdkError` instances — they are HTTP error body fields returned by the daemon before the SDK maps them to a `GoodVibesSdkError`.
+
+Common route-level codes:
+
+| Code | HTTP Status | Meaning |
+|------|-------------|----------|
+| `INVALID_KIND` | 400 | The `kind` field in the request body is not a recognized or registered event/intent kind. |
+| `INVALID_REQUEST` | 400 | The request body failed a required-field or schema check. |
+| `PROVIDER_NOT_CONFIGURED` | 400 | The requested provider is not registered with the daemon's provider registry. |
+| `UNAUTHORIZED` | 401 | No valid bearer token or session cookie was present. |
+| `FORBIDDEN` | 403 | The caller's principal does not have the required scope. |
+| `NOT_FOUND` | 404 | The resource (session, artifact, job, etc.) does not exist. |
+| `RATE_LIMITED` | 429 | The request was rejected by an upstream rate-limit policy. |
+| `INTERNAL_ERROR` | 500 | The daemon encountered an unhandled internal error. |
+
+The SDK maps these HTTP error responses to `GoodVibesSdkError` instances using the `kind` mapping above. To inspect the raw route-level code, read `err.code` on the thrown `GoodVibesSdkError`. To cross-reference route-specific codes, check the route documentation for that namespace (e.g., [Companion Message Routing](./companion-message-routing.md) for `INVALID_KIND`).
+
+---
+
 ## WRFC Synthetic Critical Issues
 
 > These are not `GoodVibesSdkError` error kinds — they are WRFC reviewer-report markers that may appear in review task payloads and can be confused for error kinds.

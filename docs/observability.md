@@ -51,8 +51,6 @@ Log entries are buffered in memory and written asynchronously to avoid blocking 
 
 The logger is best-effort: filesystem errors are reported to `stderr` but do not propagate to the caller. Never put secrets or PII in log data.
 
-> **Note:** `configureActivityLogger` rotates a process-wide singleton. Daemon embedders own this surface; consumer apps should **not** call `configureActivityLogger` directly, as doing so will contend with internal SDK log writes. For consumer-side logging, subscribe to runtime events via the observer surface (e.g. `sdk.observer`) or inject your own logger through an observer callback instead of writing to the activity log directly.
-
 ---
 
 ## Runtime Events

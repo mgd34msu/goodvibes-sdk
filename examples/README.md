@@ -28,7 +28,7 @@ that handle credentials, pairing tokens, or daemon URLs.
 | `auth-login-and-token-store.ts` | `bun examples/auth-login-and-token-store.ts` | Login and token-store lifecycle. |
 | `browser-web-ui-quickstart.ts` | typecheck only | Browser/web UI client setup. |
 | `companion-approvals-feed.ts` | `bun examples/companion-approvals-feed.ts` | Approval feed via realtime events. |
-| `daemon-fetch-handler-quickstart.ts` | `bun examples/daemon-fetch-handler-quickstart.ts` | Minimal daemon route handler composition. Note: uses a contract placeholder; end-to-end operation requires swapping in `buildOperatorContract()`. |
+| `daemon-fetch-handler-quickstart.ts` | `bun examples/daemon-fetch-handler-quickstart.ts` | Daemon route handler composition skeleton. Demonstrates the wiring shape with ~14 placeholder callbacks; `getStatus()` is the only end-to-end route. To run a real daemon host, replace placeholders with `buildOperatorContract()`, gateway-method invocations, principal resolution, and a real session manager. See [Daemon embedding](../docs/daemon-embedding.md). |
 | `direct-transport-quickstart.ts` | `bun examples/direct-transport-quickstart.ts` | In-process direct transport usage. |
 | `expo-quickstart.tsx` | typecheck only | Expo client setup; run inside an Expo app. |
 | `operator-http-quickstart.mjs` | `bun examples/operator-http-quickstart.mjs` | Operator HTTP client calls. |
