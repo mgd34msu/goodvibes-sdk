@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { VERSION } from '../../version.js';
 import { getCorrelationContext } from '../correlation.js';
-import type { ErrorSource } from '../../types/errors.js';
+import type { PlatformErrorSource } from '../../types/errors.js';
 import type { NormalizedError } from '../../utils/error-display.js';
 import { redactStructuredData } from '../../utils/redaction.js';
 import type {
@@ -189,7 +189,7 @@ export function inferSeverity(type: string, error?: NormalizedError): TelemetryS
   return 'info';
 }
 
-export function inferErrorSource(domain: RuntimeEventDomain): ErrorSource {
+export function inferErrorSource(domain: RuntimeEventDomain): PlatformErrorSource {
   switch (domain) {
     case 'providers':
       return 'provider';

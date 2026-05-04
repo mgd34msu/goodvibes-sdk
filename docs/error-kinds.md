@@ -174,6 +174,8 @@ Common route-level codes:
 
 The SDK maps these HTTP error responses to `GoodVibesSdkError` instances using the `kind` mapping above. To inspect the raw route-level code, read `err.code` on the thrown `GoodVibesSdkError`. To cross-reference route-specific codes, check the route documentation for that namespace (e.g., [Companion Message Routing](./companion-message-routing.md) for `INVALID_KIND`).
 
+> **Two `code` namespaces:** `err.code` may surface either a **route-body code** (e.g. `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `RATE_LIMITED` — enumerated above) **or** a **typed-error-subclass code** (e.g. `'CONFIG_ERROR'`, `'PROVIDER_ERROR'`, `'TOOL_ERROR'` — see [Typed error codes](#typed-error-codes) below). The two namespaces share the `err.code` field but are distinguished by their value space; HTTP-route codes are SCREAMING_SNAKE bare strings (no suffix), while typed-error-subclass codes always end in `_ERROR`. When in doubt, switch on `err.kind` (the `SDKErrorKind` discriminant) before reading `err.code`.
+
 ---
 
 ## WRFC Synthetic Critical Issues

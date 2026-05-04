@@ -83,6 +83,46 @@ export function buildUrl(baseUrl: string, path: string): string {
   }
 }
 
+/**
+ * Assert that an absolute URL has the same origin as a reference URL (or baseUrl).
+ *
+ * Used by transport call sites that allow absolute URLs as a convenience but
+ * MUST NOT leak the bearer Authorization header to a different origin. Throws
+ * `ConfigurationError SDK_TRANSPORT_CROSS_ORIGIN` when origins diverge.
+ *
+ * Returns the validated absolute URL unchanged on success.
+ */
+export function assertSameOriginAbsoluteUrl(absoluteUrl: string, originReferenceUrl: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(absoluteUrl);
+  } catch (cause) {
+    throw new ConfigurationError(`Invalid absolute transport URL: ${absoluteUrl}`, {
+      code: 'SDK_TRANSPORT_URL_INVALID',
+      source: 'transport',
+      cause,
+    });
+  }
+  let referenceOrigin: string;
+  try {
+    referenceOrigin = new URL(originReferenceUrl).origin;
+  } catch (cause) {
+    throw new ConfigurationError(`Invalid transport origin reference URL: ${originReferenceUrl}`, {
+      code: 'SDK_TRANSPORT_URL_INVALID',
+      source: 'transport',
+      cause,
+    });
+  }
+  if (parsed.origin !== referenceOrigin) {
+    throw new ConfigurationError(`Cross-origin transport request rejected: ${parsed.origin} does not match transport baseUrl origin ${referenceOrigin}`, {
+      code: 'SDK_TRANSPORT_CROSS_ORIGIN',
+      source: 'transport',
+      hint: 'The transport bearer token would be sent to a different origin. Use a same-origin URL or open a separate transport for the cross-origin endpoint.',
+    });
+  }
+  return absoluteUrl;
+}
+
 export function createTransportPaths(baseUrl: string): TransportPaths {
   const normalized = normalizeBaseUrl(baseUrl);
   return {

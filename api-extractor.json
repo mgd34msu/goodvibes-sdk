@@ -91,7 +91,32 @@
       // present in the full TypeScript lib.
       // Re-evaluate when api-extractor ships a TS6-compatible bundled compiler with
       // a complete lib.dom.d.ts.
-      "TS2707": { "logLevel": "none" }
+      "TS2707": { "logLevel": "none" },
+      // TS2702: Type only refers to a type, but is being used as a namespace here.
+      // Triggered by: vendored qrcodegen.d.ts (QrCode, QrSegment) and bash-language-server
+      // tree-sitter parser type ('Parser' namespace). Upstream types we cannot patch
+      // without forking; runtime behaviour is unaffected.
+      "TS2702": { "logLevel": "none" },
+      // TS2709: Cannot use namespace as a type.
+      // Triggered by: vendor/bash-language-server tree-sitter parser type imports.
+      // Same root cause as TS2702 above; suppressed for the vendored upstream.
+      "TS2709": { "logLevel": "none" },
+      // TS18028: Private identifiers are only available when targeting ECMAScript 2015.
+      // Triggered by: oauth-client.d.ts:19 — api-extractor's reduced checker does not
+      // honour the project's `target: "es2022"` setting and falls back to a pre-ES2015
+      // default. The runtime targets are all ES2022+.
+      "TS18028": { "logLevel": "none" },
+      // TS2552: Cannot find name 'X'.
+      // Triggered by: bun-types overrides.d.ts:316 referencing 'ConnectionOptions' from
+      // node:tls which api-extractor's reduced lib.d.ts does not expose. Confirmed by
+      // grep that no first-party code references ConnectionOptions.
+      "TS2552": { "logLevel": "none" },
+      // TS2304: Cannot find name 'X'. (without "Did you mean...")
+      // Triggered by: bun-types overrides.d.ts:360 ('TLSSocket') and
+      // web-tree-sitter@0.26.8 ('EmscriptenModule'). Both upstream type packages reference
+      // names api-extractor's reduced lib.d.ts does not expose; confirmed by grep that no
+      // first-party code references these names.
+      "TS2304": { "logLevel": "none" }
     },
     "extractorMessageReporting": {
       "default": {

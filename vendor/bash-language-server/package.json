@@ -19,6 +19,11 @@
   ],
   "repository": {
     "type": "git",
+    "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git",
+    "directory": "vendor/bash-language-server"
+  },
+  "upstream": {
+    "name": "bash-language-server",
     "url": "https://github.com/bash-lsp/bash-language-server"
   },
   "engines": {

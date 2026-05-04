@@ -6,7 +6,7 @@ This guide covers the SDK's observability stack: structured logging, runtime eve
 
 ## Logging
 
-> **Daemon embedders only:** The `configureActivityLogger` API and `logger` singleton are intended for daemon-embedder use. Consumer apps should subscribe to runtime events via `sdk.observer` or inject a logger through an observer callback instead of writing to the activity log directly.
+> **Daemon embedders only:** The `configureActivityLogger` API and `logger` singleton are intended for daemon-embedder use. Consumer apps should pass an `SDKObserver` via the `observer` option when constructing the SDK (`createGoodVibesSdk({ ..., observer })`) or subscribe to runtime events via `sdk.realtime.viaSse()` / `sdk.realtime.viaWebSocket()`, instead of writing to the activity log directly.
 
 ### ActivityLogger
 
@@ -14,9 +14,14 @@ The SDK ships a persistent, buffered activity logger that writes structured entr
 
 ```ts
 import { configureActivityLogger } from '@pellux/goodvibes-sdk/platform/utils';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
-// Call once at startup with the log directory path
-configureActivityLogger('/home/user/.goodvibes/logs');
+// Call once at startup with the log directory path. The example below uses
+// the cross-platform `homedir()` resolver so it works on Linux/macOS/Windows;
+// daemon embedders should use the resolved `daemonHomeDir` from their config
+// system instead of hardcoding a path.
+configureActivityLogger(join(homedir(), '.goodvibes', 'logs'));
 ```
 
 The logger is a singleton (`logger`) used throughout the platform. It exposes four levels:
@@ -30,16 +35,16 @@ logger.error('provider call failed', { error: err.message });
 logger.debug('[AdaptivePlanner] auto-selected', { strategy, score });
 ```
 
-Each call produces a structured Markdown entry:
+Each call produces a structured Markdown entry (the outer four-backtick fence escapes the inner triple-backtick `json` block):
 
-~~~~
+````
 [2026-04-15T10:23:01.042Z] [INFO] session started
 ```json
 {
   "sessionId": "sess_abc123"
 }
 ```
-~~~~
+````
 
 ### Write Behavior
 
@@ -789,7 +794,7 @@ For full details on the constraint propagation lifecycle, see [WRFC Constraint P
 
 ---
 
-## Related
+## Next Reads
 
 - [Performance and Tuning](./performance.md)
 - [Realtime and telemetry](./realtime-and-telemetry.md)

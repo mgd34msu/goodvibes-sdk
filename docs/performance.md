@@ -471,7 +471,7 @@ const decision = planner.select({
 
 ---
 
-## Related
+## Next Reads
 
 - [Retries and reconnect](./retries-and-reconnect.md)
 - [Observability](./observability.md)

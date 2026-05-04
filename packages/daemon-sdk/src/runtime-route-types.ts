@@ -31,6 +31,13 @@ export interface SharedSessionRoutingIntent {
 interface AutomationRouteBinding {
   readonly id?: string | undefined;
 }
+// ExecutionIntent: daemon-sdk cannot import the structured ExecutionIntent interface from
+// the SDK platform layer (circular dep). Kept as `unknown` because the public-surface fields
+// SharedSessionRoutingIntent.executionIntent and downstream session/automation routes reference
+// it directly; promoting to @public eliminates the api-extractor incompatible-release-tags warning
+// without leaking platform internals (the alias is widened to unknown, hiding the underlying interface).
+// Same pattern as AutomationSurfaceKind above.
+/** @public */
 export type ExecutionIntent = unknown;
 type AgentRecordLike = {
   readonly id: string;

@@ -232,7 +232,7 @@ This path does not add constraint fields to events or constraint blocks to agent
 
 ---
 
-## Related
+## Next Reads
 
 - [Runtime events reference](./reference-runtime-events.md) — `WORKFLOW_CONSTRAINTS_ENUMERATED`, `WORKFLOW_REVIEW_COMPLETED`, `WORKFLOW_FIX_ATTEMPTED` event shapes
 - [Observability](./observability.md) — event domain subscription
