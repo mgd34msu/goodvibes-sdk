@@ -11,8 +11,19 @@ export interface GoodVibesTokenStore {
   getToken(): Promise<string | null>;
   setToken(token: string | null): Promise<void>;
   clearToken(): Promise<void>;
-  getTokenEntry?(): Promise<{ token: string | null; expiresAt?: number }>;
-  setTokenEntry?(token: string | null, expiresAt?: number): Promise<void>;
+}
+
+/**
+ * Extended token store that supports expiry-aware token retrieval and
+ * storage. Implement this interface when your storage backend can persist
+ * token metadata (e.g. expiry timestamps for proactive refresh).
+ *
+ * Compose with `GoodVibesTokenStore` by extending your implementation class
+ * to implement both interfaces, or pass an object that satisfies both.
+ */
+export interface GoodVibesExpiringTokenStore extends GoodVibesTokenStore {
+  getTokenEntry(): Promise<{ token: string | null; expiresAt?: number }>;
+  setTokenEntry(token: string | null, expiresAt?: number): Promise<void>;
 }
 
 export interface GoodVibesAuthLoginOptions {

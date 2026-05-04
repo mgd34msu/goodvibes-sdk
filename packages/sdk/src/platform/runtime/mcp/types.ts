@@ -5,6 +5,9 @@
  * Spec: server state machine and MCP evolution.
  */
 import type { McpServerConfig } from '../../mcp/config.js';
+import type { McpServerRole, McpTrustMode, QuarantineReason } from '../../../../events/mcp.js';
+
+export type { McpServerRole, McpTrustMode, QuarantineReason };
 
 // ── State machine ─────────────────────────────────────────────────────────────
 
@@ -52,7 +55,7 @@ export type SchemaFreshness = 'fresh' | 'stale' | 'unknown' | 'fetch_failed' | '
  * - `unsupported`      — schema version is unsupported with the runtime
  * - `operator_flagged`  — manually flagged by an operator for review
  */
-export type QuarantineReason = 'stale_threshold' | 'unsupported' | 'operator_flagged' | 'incompatible';
+// QuarantineReason is imported from events/mcp.ts (see top of file).
 
 /** Quarantine record attached to a schema when it enters the quarantined state. */
 export interface QuarantineRecord {
@@ -99,19 +102,7 @@ export interface McpSchemaRecord {
 export type McpTrustLevel = 'trusted' | 'standard' | 'restricted' | 'blocked';
 
 /** Runtime trust mode used by the hardened MCP policy layer. */
-export type McpTrustMode = 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked';
-
-/** High-level server role used for coherence evaluation. */
-export type McpServerRole =
-  | 'general'
-  | 'docs'
-  | 'filesystem'
-  | 'git'
-  | 'database'
-  | 'browser'
-  | 'automation'
-  | 'ops'
-  | 'remote';
+// McpTrustMode and McpServerRole are imported from events/mcp.ts (see top of file).
 
 /** Capability classes inferred for MCP tool calls. */
 export type McpCapabilityClass =
@@ -126,6 +117,9 @@ export type McpCapabilityClass =
   | 'config_mutation'
   | 'system_mutation'
   | 'generic';
+
+/** Runtime trust mode used by the hardened MCP policy layer. */
+// McpTrustMode is imported from events/mcp.ts (see top of file).
 
 export type McpCoherenceVerdict = 'allow' | 'ask' | 'deny';
 export type McpRiskLevel = 'low' | 'medium' | 'high' | 'critical';

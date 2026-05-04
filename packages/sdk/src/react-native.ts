@@ -1,4 +1,6 @@
 import { ConfigurationError } from '@pellux/goodvibes-errors';
+
+export { forSession } from './_companion-realtime.js';
 import {
   createRemoteRuntimeEvents,
   createWebSocketConnector,
@@ -59,8 +61,6 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
  * const events = sdk.realtime.viaWebSocket();
  * events.agents.on('AGENT_SPAWNING', ({ agentId }) => console.log(agentId));
  */
-export { forSession } from './_companion-realtime.js';
-
 export function createReactNativeGoodVibesSdk(
   options: ReactNativeGoodVibesSdkOptions,
 ): ReactNativeGoodVibesSdk {

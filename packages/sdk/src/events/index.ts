@@ -1,3 +1,12 @@
+/**
+ * Event type and guard exports for @pellux/goodvibes-sdk/events.
+ *
+ * Validation helpers:
+ * - `isRuntimeEventDomain(value)` — typeguard for the 27 domain names.
+ * - `isKnownEventType(value)` — typeguard for the full discriminant union of event types.
+ * - `registeredEventTypes()` — enumerates all known event-type strings.
+ * - `validateEvent(envelope)` — runtime-validates an envelope's payload against the contract registry.
+ */
 export type { SessionEvent, SessionEventType } from './session.js';
 export type { TurnEvent, TurnEventType, TurnInputOrigin, TurnStopReason, PartialToolCall } from './turn.js';
 export type { ProviderEvent, ProviderEventType } from './providers.js';
@@ -59,6 +68,7 @@ export {
   isKnownEventType,
   registeredEventTypes,
   validateEvent,
+  validateKnownEvent,
 } from './contracts.js';
 export type {
   ContractResult,
