@@ -52,6 +52,9 @@ export { WATCHER_SOURCE_KINDS } from './watchers.js';
 export type { SurfaceEvent, SurfaceEventType, SurfaceKind } from './surfaces.js';
 export { SURFACE_KINDS } from './surfaces.js';
 export type { KnowledgeEvent, KnowledgeEventType } from './knowledge.js';
+export type { ForensicsEvent, ForensicsEventType } from './forensics.js';
+export type { SecurityEvent, SecurityEventType } from './security.js';
+export type { WorkspaceEvent, WorkspaceEventType } from './workspace.js';
 export {
   isKnownEventType,
   registeredEventTypes,

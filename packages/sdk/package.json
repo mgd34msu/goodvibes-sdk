@@ -233,7 +233,9 @@
   },
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "homepage": "https://github.com/mgd34msu/goodvibes-sdk",
   "keywords": [

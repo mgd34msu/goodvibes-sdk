@@ -63,6 +63,8 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 | `@pellux/goodvibes-sdk/web` | Web UI companion defaults |
 | `@pellux/goodvibes-sdk/workers` | Manual Cloudflare Worker bridge for optional daemon batch queue/tick integration; SDK-owned provisioning is done through daemon `/api/cloudflare/*` routes |
 | `@pellux/goodvibes-sdk/auth` | Token storage and auth flows |
+| `@pellux/goodvibes-sdk/client-auth` | Low-level auth primitives: `AutoRefreshCoordinator`, platform-specific token stores, and auto-refresh options. Use `./auth` for most use cases. |
+| `@pellux/goodvibes-sdk/observer` | Observability helpers (`createConsoleObserver`, `createOpenTelemetryObserver`). Also re-exported from root. |
 | `@pellux/goodvibes-sdk/errors` | Typed error classes |
 | `@pellux/goodvibes-sdk/contracts` | Runtime-neutral contract types and method IDs |
 | `@pellux/goodvibes-sdk/operator` | Operator/control-plane client |

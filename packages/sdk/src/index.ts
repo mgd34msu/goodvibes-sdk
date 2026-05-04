@@ -43,7 +43,12 @@ export type {
 export { createReactNativeGoodVibesSdk } from './react-native.js';
 export type { ExpoGoodVibesSdkOptions } from './expo.js';
 export { createExpoGoodVibesSdk } from './expo.js';
+// The barrel re-exports below flatten symbols from their respective packages
+// into the root SDK entrypoint. Each module is a single-concern passthrough.
+// Collision risk: if two packages export the same name, TypeScript silently
+// prefers the first binding. Keep all exported names unique across these modules.
 export * from './observer/index.js';
+export * from './events/index.js';
 export * from './contracts.js';
 export * from './daemon.js';
 export * from './errors.js';
