@@ -86,10 +86,10 @@ const sdk = createExpoGoodVibesSdk({
 ### Browser / web app
 
 ```ts
-import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
+import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 import { createBrowserTokenStore } from '@pellux/goodvibes-sdk/auth';
 
-const sdk = createWebGoodVibesSdk({
+const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
   tokenStore: createBrowserTokenStore(),
 });
@@ -213,7 +213,8 @@ See [Observability](./observability.md) for the `SDKObserver` interface and avai
 - `@pellux/goodvibes-sdk/daemon` — Bun server hosts embedding daemon routes.
 - `@pellux/goodvibes-sdk/react-native` — React Native (Hermes) companion apps.
 - `@pellux/goodvibes-sdk/expo` — Expo companion defaults and Expo secure token stores.
-- `@pellux/goodvibes-sdk/browser` or `/web` — browser and web apps.
+- `@pellux/goodvibes-sdk/browser` — browser and web apps (canonical browser entrypoint).
+- `@pellux/goodvibes-sdk/web` — alias for `/browser`; prefer `/browser` for new projects (see [Web UI integration](./web-ui-integration.md)).
 - `@pellux/goodvibes-sdk/operator` — operator/control-plane client only.
 - `@pellux/goodvibes-sdk/peer` — peer/distributed-runtime client only.
 - `@pellux/goodvibes-sdk/auth` — token storage helpers and auth flows.

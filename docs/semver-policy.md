@@ -72,7 +72,8 @@ Example:
 
 ```ts
 /**
- * Use `createWebGoodVibesSdk` for browser/web clients.
+ * Use `createBrowserGoodVibesSdk` from `@pellux/goodvibes-sdk/browser` for browser/web clients.
+ * (`createWebGoodVibesSdk` from `./web` is an equivalent alias.)
  */
 export function createBrowserGoodVibesSdk(/* ... */) { /* ... */ }
 ```
