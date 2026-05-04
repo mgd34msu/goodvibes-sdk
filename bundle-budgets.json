@@ -72,8 +72,8 @@
     ]
   },
   "./expo": {
-    "gzip_bytes": 286,
-    "rationale": "Expo with SecureStore helper; measured 236 B gzip @ commit 4e5a5e2; headroom max(ceil(236*1.2)=284, 236+50=286) → 286 (+50 B floor dominates by 2 B)"
+    "gzip_bytes": 289,
+    "rationale": "Expo with SecureStore helper; measured 239 B gzip @ commit beee912; headroom max(ceil(239*1.2)=287, 239+50=289) → 289 (+50 floor dominates)"
   },
   "./observer": {
     "gzip_bytes": 2231,
@@ -200,8 +200,8 @@
     "rationale": "SSE + WebSocket connectors re-export entry; measured 72 B gzip @ commit 4e5a5e2; headroom max(ceil(72*1.2)=87, 72+50=122) → 122 (+50 B floor dominates by 35 B)"
   },
   "./web": {
-    "gzip_bytes": 249,
-    "rationale": "Workers-compat companion surface; measured 199 B gzip @ commit 4e5a5e2; headroom max(ceil(199*1.2)=239, 199+50=249) → 249 (+50 B floor dominates by 10 B)"
+    "gzip_bytes": 252,
+    "rationale": "Workers-compat companion surface; measured 202 B gzip @ commit beee912; headroom max(ceil(202*1.2)=243, 202+50=252) → 252 (+50 floor dominates)"
   },
   "./workers": {
     "gzip_bytes": 3681,
