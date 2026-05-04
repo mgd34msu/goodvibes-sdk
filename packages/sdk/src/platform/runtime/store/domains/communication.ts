@@ -13,12 +13,12 @@ export interface RuntimeCommunicationRecord {
   content: string;
   timestamp: number;
   status: 'sent' | 'delivered' | 'blocked';
-  fromRole?: string;
-  toRole?: string;
-  cohort?: string;
-  wrfcId?: string;
-  parentAgentId?: string;
-  reason?: string;
+  fromRole?: string | undefined;
+  toRole?: string | undefined;
+  cohort?: string | undefined;
+  wrfcId?: string | undefined;
+  parentAgentId?: string | undefined;
+  reason?: string | undefined;
 }
 
 export interface CommunicationDomainState {

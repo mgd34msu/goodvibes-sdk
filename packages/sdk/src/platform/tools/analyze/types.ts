@@ -17,20 +17,20 @@ export interface AnalyzeInput {
     | 'permissions'
     | 'env_audit'
     | 'test_find';
-  files?: string[];
-  projectRoot?: string;
-  changes?: string;
-  submode?: 'analyze' | 'circular' | 'upgrade';
-  securityScope?: 'secrets' | 'permissions' | 'env' | 'all';
-  before?: string;
-  after?: string;
-  find?: string;
-  replace?: string;
-  include?: string[];
-  packages?: string[];
+  files?: string[] | undefined;
+  projectRoot?: string | undefined;
+  changes?: string | undefined;
+  submode?: 'analyze' | 'circular' | 'upgrade' | undefined;
+  securityScope?: 'secrets' | 'permissions' | 'env' | 'all' | undefined;
+  before?: string | undefined;
+  after?: string | undefined;
+  find?: string | undefined;
+  replace?: string | undefined;
+  include?: string[] | undefined;
+  packages?: string[] | undefined;
   output?: {
-    format?: 'summary' | 'detailed' | 'json';
-    max_tokens?: number;
+    format?: 'summary' | 'detailed' | 'json' | undefined;
+    max_tokens?: number | undefined;
   };
 }
 

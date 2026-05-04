@@ -32,20 +32,20 @@ interface AnthropicCompatResponseBody {
 /** Anthropic SSE event types used in streaming responses. */
 interface AnthropicCompatSSEEvent {
   type: string;
-  index?: number;
+  index?: number | undefined;
   delta?: {
-    type?: string;
-    text?: string;
-    thinking?: string;
-    partial_json?: string;
-    stop_reason?: string;
+    type?: string | undefined;
+    text?: string | undefined;
+    thinking?: string | undefined;
+    partial_json?: string | undefined;
+    stop_reason?: string | undefined;
   };
   content_block?: {
     type: string;
-    id?: string;
-    name?: string;
-    text?: string;
-    thinking?: string;
+    id?: string | undefined;
+    name?: string | undefined;
+    text?: string | undefined;
+    thinking?: string | undefined;
   };
   message?: {
     usage?: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
@@ -65,23 +65,23 @@ export interface AnthropicCompatOptions {
   /** List of model IDs exposed by this provider */
   models: string[];
   /** Optional extra HTTP headers sent with every request */
-  defaultHeaders?: Record<string, string>;
+  defaultHeaders?: Record<string, string> | undefined;
   /** Optional env vars or secret keys that can satisfy auth for this provider. */
-  authEnvVars?: readonly string[];
+  authEnvVars?: readonly string[] | undefined;
   /** Optional service names that expose service-owned OAuth for this provider. */
-  serviceNames?: readonly string[];
+  serviceNames?: readonly string[] | undefined;
   /** Optional provider aliases exposed to runtime metadata consumers. */
-  aliases?: readonly string[];
+  aliases?: readonly string[] | undefined;
   /** Optional subscription-provider identity when this provider can use a stored OAuth session. */
-  subscriptionProviderId?: string;
+  subscriptionProviderId?: string | undefined;
   /** Optional explicit stream protocol label for diagnostics. */
-  streamProtocol?: string;
+  streamProtocol?: string | undefined;
   /** Optional auth header mode. Default: x-api-key. */
-  authHeaderMode?: 'x-api-key' | 'bearer';
+  authHeaderMode?: 'x-api-key' | 'bearer' | undefined;
   /** Optional anonymous/local access posture. */
-  allowAnonymous?: boolean;
-  anonymousConfigured?: boolean;
-  anonymousDetail?: string;
+  allowAnonymous?: boolean | undefined;
+  anonymousConfigured?: boolean | undefined;
+  anonymousDetail?: string | undefined;
 }
 
 /**
@@ -104,12 +104,12 @@ export class AnthropicCompatProvider implements LLMProvider {
   private readonly authEnvVars: readonly string[];
   private readonly serviceNames: readonly string[];
   private readonly aliases: readonly string[];
-  private readonly subscriptionProviderId?: string;
-  private readonly streamProtocol?: string;
+  private readonly subscriptionProviderId?: string | undefined;
+  private readonly streamProtocol?: string | undefined;
   private readonly authHeaderMode: 'x-api-key' | 'bearer';
   private readonly allowAnonymous: boolean;
   private readonly anonymousConfigured: boolean;
-  private readonly anonymousDetail?: string;
+  private readonly anonymousDetail?: string | undefined;
 
   constructor(opts: AnthropicCompatOptions) {
     this.name = opts.name;
@@ -156,7 +156,7 @@ export class AnthropicCompatProvider implements LLMProvider {
       }
 
       if (reasoningEffort && reasoningEffort !== 'instant') {
-        const budget = REASONING_BUDGET_MAP[reasoningEffort];
+        const budget = REASONING_BUDGET_MAP[reasoningEffort]!;
         if (budget !== undefined && budget > 0) {
           body['thinking'] = { type: 'enabled', budget_tokens: budget };
           const currentMax = (body['max_tokens'] as number) ?? 8192;
@@ -189,8 +189,8 @@ export class AnthropicCompatProvider implements LLMProvider {
           method: 'POST',
           headers,
           body: JSON.stringify(body),
-          signal,
-        });
+          ...(signal !== undefined ? { signal } : {}),
+        } as RequestInit);
       } catch (err: unknown) {
         throw toProviderError(err, {
           provider: this.name,

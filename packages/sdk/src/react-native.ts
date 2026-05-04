@@ -12,7 +12,7 @@ import {
 } from './client.js';
 
 export interface ReactNativeGoodVibesSdkOptions extends GoodVibesSdkOptions {
-  readonly WebSocketImpl?: typeof WebSocket;
+  readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 export interface ReactNativeGoodVibesRealtime {

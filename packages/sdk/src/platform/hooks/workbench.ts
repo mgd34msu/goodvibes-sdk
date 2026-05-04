@@ -13,7 +13,7 @@ export interface HookAuthoringAction {
   readonly kind: 'load' | 'save' | 'reload' | 'scaffold-hook' | 'scaffold-chain' | 'remove' | 'toggle' | 'simulate' | 'export' | 'import' | 'inspect';
   readonly target: string;
   readonly timestamp: number;
-  readonly detail?: string;
+  readonly detail?: string | undefined;
 }
 
 export interface HookSimulationResult {
@@ -41,7 +41,7 @@ export interface HookConfigInspection {
 export interface HookWorkbenchOptions {
   readonly hookDispatcher: Pick<HookDispatcher, 'clear' | 'loadFromFile'>;
   readonly configManager: Pick<ConfigManager, 'get' | 'getWorkingDirectory'>;
-  readonly hooksFilePathResolver?: () => string;
+  readonly hooksFilePathResolver?: (() => string) | undefined | undefined;
 }
 
 const EMPTY_CONFIG: HooksConfig = Object.freeze({ hooks: {}, chains: [] });
@@ -264,7 +264,7 @@ export class HookWorkbench {
       const merged = cloneConfig(this.managedConfig);
       merged.hooks ??= {};
       for (const [pattern, defs] of Object.entries(incoming.hooks ?? {})) {
-        const existing = merged.hooks[pattern] ?? [];
+        const existing = merged.hooks[pattern]! ?? [];
         const byName = new Map(existing.map((def) => [def.name ?? `${pattern}:${def.type}:${existing.indexOf(def)}`, { ...def }]));
         for (const def of defs) {
           byName.set(def.name ?? `${pattern}:${def.type}:${byName.size}`, { ...def });

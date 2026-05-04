@@ -27,22 +27,22 @@ import { readTextBodyWithinLimit } from '../utils/request-body.js';
 // ---------------------------------------------------------------------------
 
 interface HttpListenerConfig {
-  port?: number;
-  host?: string;
-  allowedOrigins?: string[];
-  hookDispatcher?: HookDispatcher;
+  port?: number | undefined;
+  host?: string | undefined;
+  allowedOrigins?: string[] | undefined;
+  hookDispatcher?: HookDispatcher | undefined;
   configManager: ConfigManager;
-  serveFactory?: typeof Bun.serve;
+  serveFactory?: typeof Bun.serve | undefined;
   /** Max requests per 60-second window per IP. Default: 60. */
-  rateLimit?: number;
+  rateLimit?: number | undefined;
   /** Max POST /login attempts per 60-second window per IP. Default: 5. */
-  loginRateLimit?: number;
+  loginRateLimit?: number | undefined;
   /**
    * When true, x-forwarded-for / x-real-ip headers are trusted for client IP
    * extraction (rate limiting, audit logging). Only enable behind a trusted
    * reverse proxy. Overrides the httpListener.trustProxy config value when set.
    */
-  trustProxy?: boolean;
+  trustProxy?: boolean | undefined;
   /**
    * When true, CORS enforcement is active:
    *   - Constructor refuses to start when hostMode=network and allowedOrigins is empty
@@ -53,7 +53,7 @@ interface HttpListenerConfig {
    * behavior matches pre-0.21.29 semantics. When true, allowedOrigins must be
    * configured (or hostMode must be local/loopback) — see SEC-07.
    */
-  enforceCors?: boolean;
+  enforceCors?: boolean | undefined;
   /** Pre-configured UserAuthManager owned by the runtime service graph. */
   userAuth: UserAuthManager;
 }

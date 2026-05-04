@@ -132,26 +132,26 @@ export type OutputFormat = 'count_only' | 'minimal' | 'standard' | 'verbose';
 /** Input shape for a single file entry in the read tool. */
 export interface ReadFileInput {
   path: string;
-  extract?: ExtractMode;
+  extract?: ExtractMode | undefined;
   range?: { start: number; end: number };
-  force?: boolean;
+  force?: boolean | undefined;
   /** Page range for PDF files (e.g. '1-5', '3', '10-20'). Max 20 pages. */
-  pages?: string;
-  image_mode?: ImageMode;
+  pages?: string | undefined;
+  image_mode?: ImageMode | undefined;
 }
 
 /** Full input shape for the read tool. */
 export interface ReadInput {
   files: ReadFileInput[];
-  extract?: ExtractMode;
+  extract?: ExtractMode | undefined;
   output?: {
-    format?: OutputFormat;
-    include_line_numbers?: boolean;
-    max_per_item?: number;
-    max_tokens?: number;
+    format?: OutputFormat | undefined;
+    include_line_numbers?: boolean | undefined;
+    max_per_item?: number | undefined;
+    max_tokens?: number | undefined;
   };
-  token_budget?: number;
-  page?: number;
-  image_mode?: ImageMode;
-  max_image_size?: number;
+  token_budget?: number | undefined;
+  page?: number | undefined;
+  image_mode?: ImageMode | undefined;
+  max_image_size?: number | undefined;
 }

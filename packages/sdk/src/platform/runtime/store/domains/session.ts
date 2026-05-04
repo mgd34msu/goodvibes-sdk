@@ -28,9 +28,9 @@ export interface SessionLineageEntry {
   /** Timestamp when this lineage node was created. */
   createdAt: number;
   /** Optional parent session ID (undefined = root). */
-  parentId?: string;
+  parentId?: string | undefined;
   /** Reason this session was branched or resumed. */
-  branchReason?: 'resume' | 'fork' | 'repair' | 'compaction';
+  branchReason?: 'resume' | 'fork' | 'repair' | 'compaction' | undefined;
 }
 
 /**
@@ -51,7 +51,7 @@ export interface SessionDomainState {
   /** Absolute path to the project root for this session. */
   projectRoot: string;
   /** Optional user identifier (from config or auth layer). */
-  userId?: string;
+  userId?: string | undefined;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   /** Current overall session status. */
@@ -59,7 +59,7 @@ export interface SessionDomainState {
   /** Epoch ms when the session was started. */
   startedAt: number;
   /** Epoch ms when the session ended (undefined while active). */
-  endedAt?: number;
+  endedAt?: number | undefined;
 
   // ── Recovery machine ───────────────────────────────────────────────────────
   /** Current state of the session recovery state machine. */
@@ -67,11 +67,11 @@ export interface SessionDomainState {
   /** Whether this session was resumed from a saved state. */
   isResumed: boolean;
   /** ID of the session that was resumed (undefined for fresh sessions). */
-  resumedFromId?: string;
+  resumedFromId?: string | undefined;
   /** Whether a compaction repair was applied during load. */
   wasRepaired: boolean;
   /** Error message if recoveryState === 'failed'. */
-  recoveryError?: string;
+  recoveryError?: string | undefined;
 
   // ── Lineage ────────────────────────────────────────────────────────────────
   /** The root session ID in the lineage chain (equals id for root sessions). */
@@ -92,9 +92,9 @@ export interface SessionDomainState {
     | 'done'
     | 'failed';
   /** Epoch ms of the last compaction run. */
-  lastCompactedAt?: number;
+  lastCompactedAt?: number | undefined;
   /** Number of messages at last compaction checkpoint. */
-  compactionMessageCount?: number;
+  compactionMessageCount?: number | undefined;
 }
 
 /**

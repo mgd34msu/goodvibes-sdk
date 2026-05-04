@@ -5,41 +5,41 @@ import type { ConfigManager } from '../config/manager.js';
 export type ReturnContextMode = 'off' | 'local' | 'assisted';
 
 export interface SessionContinuityHints {
-  readonly pendingApprovals?: number;
-  readonly activeTasks?: number;
-  readonly blockedTasks?: number;
-  readonly remoteContracts?: number;
-  readonly remoteRunners?: readonly string[];
-  readonly worktreeCount?: number;
-  readonly worktreePaths?: readonly string[];
-  readonly openPanels?: readonly string[];
+  readonly pendingApprovals?: number | undefined;
+  readonly activeTasks?: number | undefined;
+  readonly blockedTasks?: number | undefined;
+  readonly remoteContracts?: number | undefined;
+  readonly remoteRunners?: readonly string[] | undefined;
+  readonly worktreeCount?: number | undefined;
+  readonly worktreePaths?: readonly string[] | undefined;
+  readonly openPanels?: readonly string[] | undefined;
 }
 
 export interface SessionReturnContextSummary {
   readonly activityLabel: string;
   readonly statusLabel: string;
-  readonly lastUserPrompt?: string;
-  readonly lastAssistantReply?: string;
+  readonly lastUserPrompt?: string | undefined;
+  readonly lastAssistantReply?: string | undefined;
   readonly pendingApprovals: number;
   readonly toolCallCount: number;
   readonly toolResultCount: number;
   readonly assistantTurnCount: number;
   readonly userTurnCount: number;
-  readonly lastRole?: string;
-  readonly activeTasks?: number;
-  readonly blockedTasks?: number;
-  readonly remoteContracts?: number;
-  readonly remoteRunners?: readonly string[];
-  readonly worktreeCount?: number;
-  readonly worktreePaths?: readonly string[];
-  readonly openPanels?: readonly string[];
+  readonly lastRole?: string | undefined;
+  readonly activeTasks?: number | undefined;
+  readonly blockedTasks?: number | undefined;
+  readonly remoteContracts?: number | undefined;
+  readonly remoteRunners?: readonly string[] | undefined;
+  readonly worktreeCount?: number | undefined;
+  readonly worktreePaths?: readonly string[] | undefined;
+  readonly openPanels?: readonly string[] | undefined;
   readonly lines: readonly string[];
-  readonly assistedNarrative?: string;
+  readonly assistedNarrative?: string | undefined;
 }
 
 export interface PersistedSessionContext {
-  readonly titleSource?: ConversationTitleSource;
-  readonly returnContext?: SessionReturnContextSummary;
+  readonly titleSource?: ConversationTitleSource | undefined;
+  readonly returnContext?: SessionReturnContextSummary | undefined;
 }
 
 type ReturnContextConfig = Pick<ConfigManager, 'get'>;

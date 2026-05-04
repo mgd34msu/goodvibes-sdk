@@ -193,8 +193,8 @@ export async function chatWithOpenAICodex(
             session_id: sessionId,
           },
           body: JSON.stringify(body),
-          signal: params.signal,
-        });
+          ...(params.signal !== undefined ? { signal: params.signal } : {}),
+        } as RequestInit);
       } catch (error: unknown) {
         throw toProviderError(error, {
           provider: OPENAI_CODEX_PROVIDER_NAME,

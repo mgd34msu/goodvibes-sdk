@@ -166,10 +166,10 @@ export function createAutoRefreshMiddleware(
 function is401Error(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
   const e = error as {
-    status?: unknown;
-    transport?: { status?: unknown };
-    response?: { status?: unknown };
-    cause?: { response?: { status?: unknown } };
+    status?: unknown | undefined;
+    transport?: { status?: unknown } | undefined;
+    response?: { status?: unknown } | undefined;
+    cause?: { response?: { status?: unknown } } | undefined;
   };
   const status =
     e.status ??

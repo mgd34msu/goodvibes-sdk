@@ -27,14 +27,14 @@ export interface HomeAssistantChatInput {
   readonly conversationId: string;
   readonly surfaceId: string;
   readonly channelId: string;
-  readonly threadId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
+  readonly threadId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
   readonly title: string;
-  readonly providerId?: string;
-  readonly modelId?: string;
-  readonly tools?: readonly string[];
-  readonly context?: JsonRecord;
+  readonly providerId?: string | undefined;
+  readonly modelId?: string | undefined;
+  readonly tools?: readonly string[] | undefined;
+  readonly context?: JsonRecord | undefined;
   readonly remoteSessionTtlMs: number;
 }
 
@@ -47,22 +47,22 @@ export interface HomeAssistantChatResolution {
 
 export interface HomeAssistantChatPostResult extends HomeAssistantChatResolution {
   readonly messageId: string;
-  readonly assistantMessageId?: string;
-  readonly response?: string;
-  readonly error?: string;
+  readonly assistantMessageId?: string | undefined;
+  readonly response?: string | undefined;
+  readonly error?: string | undefined;
 }
 
 export interface HomeAssistantChatRuntime {
   readonly configManager: Pick<ConfigManager, 'get'> | ConfigReader;
   readonly routeBindings: RouteBindingsLike;
   readonly chatManager: CompanionChatManager;
-  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
+  readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
 }
 
 export async function postHomeAssistantChatMessage(
   runtime: HomeAssistantChatRuntime,
   input: HomeAssistantChatInput,
-  options: { readonly wait?: boolean; readonly timeoutMs?: number; readonly clientId?: string } = {},
+  options: { readonly wait?: boolean; readonly timeoutMs?: number | undefined; readonly clientId?: string } = {},
 ): Promise<HomeAssistantChatPostResult> {
   const resolution = await resolveHomeAssistantChatSession(runtime, input);
   const clientId = options.clientId ?? `homeassistant:${input.surfaceId}:${input.conversationId}`;

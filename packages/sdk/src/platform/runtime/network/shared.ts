@@ -66,8 +66,8 @@ export function extractForwardedClientIp(req: Request, trustProxy: boolean): str
 
 export function inspectPrivateKeyPermissions(path: string): {
   readonly available: boolean;
-  readonly safe?: boolean;
-  readonly mode?: string;
+  readonly safe?: boolean | undefined;
+  readonly mode?: string | undefined;
 } {
   if (!existsSync(path) || process.platform === 'win32') {
     return { available: false };

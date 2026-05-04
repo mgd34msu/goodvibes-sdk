@@ -57,12 +57,12 @@ export interface TrustTierConfig {
    * Trusted hosts may opt out of sanitization via fetch config.
    * Example: `['api.anthropic.com', '*.internal.example.com']`
    */
-  trustedHosts?: string[];
+  trustedHosts?: string[] | undefined;
   /**
    * Hostnames or glob patterns that are explicitly blocked.
    * Blocked hosts are denied pre-request regardless of other config.
    */
-  blockedHosts?: string[];
+  blockedHosts?: string[] | undefined;
 }
 
 // ---------------------------------------------------------------------------

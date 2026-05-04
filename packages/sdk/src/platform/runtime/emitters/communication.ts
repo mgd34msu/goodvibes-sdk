@@ -19,11 +19,11 @@ export function emitCommunicationSent(
   ctx: EmitterContext,
   data: BaseCommunication & {
     content: string;
-    fromRole?: string;
-    toRole?: string;
-    cohort?: string;
-    wrfcId?: string;
-    parentAgentId?: string;
+    fromRole?: string | undefined;
+    toRole?: string | undefined;
+    cohort?: string | undefined;
+    wrfcId?: string | undefined;
+    parentAgentId?: string | undefined;
   },
 ): void {
   bus.emit('communication', createEventEnvelope('COMMUNICATION_SENT', { type: 'COMMUNICATION_SENT', ...data }, ctx));
@@ -42,11 +42,11 @@ export function emitCommunicationBlocked(
   ctx: EmitterContext,
   data: BaseCommunication & {
     reason: string;
-    fromRole?: string;
-    toRole?: string;
-    cohort?: string;
-    wrfcId?: string;
-    parentAgentId?: string;
+    fromRole?: string | undefined;
+    toRole?: string | undefined;
+    cohort?: string | undefined;
+    wrfcId?: string | undefined;
+    parentAgentId?: string | undefined;
   },
 ): void {
   bus.emit('communication', createEventEnvelope('COMMUNICATION_BLOCKED', { type: 'COMMUNICATION_BLOCKED', ...data }, ctx));

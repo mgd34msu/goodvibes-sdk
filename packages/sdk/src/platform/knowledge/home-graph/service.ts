@@ -334,10 +334,10 @@ export class HomeGraphService {
   }
 
   async listIssues(input: HomeGraphSpaceInput & {
-    readonly status?: string;
-    readonly severity?: string;
-    readonly code?: string;
-    readonly limit?: number;
+    readonly status?: string | undefined;
+    readonly severity?: string | undefined;
+    readonly code?: string | undefined;
+    readonly limit?: number | undefined;
   }): Promise<{ readonly ok: true; readonly spaceId: string; readonly issues: readonly KnowledgeIssueRecord[] }> {
     await this.store.init();
     const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
@@ -380,10 +380,10 @@ export class HomeGraphService {
   }
 
   async listRefinementTasks(input: HomeGraphSpaceInput & {
-    readonly limit?: number;
-    readonly state?: string;
-    readonly subjectId?: string;
-    readonly gapId?: string;
+    readonly limit?: number | undefined;
+    readonly state?: string | undefined;
+    readonly subjectId?: string | undefined;
+    readonly gapId?: string | undefined;
   } = {}) {
     return listHomeGraphRefinementTasks({ ...input, store: this.store });
   }
@@ -393,11 +393,11 @@ export class HomeGraphService {
   }
 
   async runRefinement(input: HomeGraphSpaceInput & {
-    readonly gapIds?: readonly string[];
-    readonly sourceIds?: readonly string[];
-    readonly limit?: number;
-    readonly maxRunMs?: number;
-    readonly force?: boolean;
+    readonly gapIds?: readonly string[] | undefined;
+    readonly sourceIds?: readonly string[] | undefined;
+    readonly limit?: number | undefined;
+    readonly maxRunMs?: number | undefined;
+    readonly force?: boolean | undefined;
   } = {}) {
     return runHomeGraphRefinement({ ...input, store: this.store, semanticService: this.options.semanticService });
   }
@@ -445,11 +445,11 @@ export class HomeGraphService {
     readonly spaceId: string;
     readonly installationId: string;
     readonly artifact: ArtifactDescriptor;
-    readonly title?: string;
-    readonly sourceUri?: string;
+    readonly title?: string | undefined;
+    readonly sourceUri?: string | undefined;
     readonly sourceType: KnowledgeSourceType;
     readonly tags: readonly string[];
-    readonly target?: HomeGraphKnowledgeTarget;
+    readonly target?: HomeGraphKnowledgeTarget | undefined;
     readonly metadata: Record<string, unknown>;
   }): Promise<HomeGraphIngestResult> {
     const sourceId = homeGraphSourceId(input.spaceId, input.metadata.homeGraphSourceKind as string, input.sourceUri ?? input.artifact.id);

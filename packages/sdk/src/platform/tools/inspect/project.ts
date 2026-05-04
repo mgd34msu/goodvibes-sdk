@@ -110,7 +110,7 @@ async function findNextjsAppRoutes(root: string): Promise<ApiRoute[]> {
 
     const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = lines[i]!;
       for (const method of HTTP_METHODS) {
         if (
           line.match(new RegExp(`export\\s+(async\\s+)?function\\s+${method}\\b`)) ||
@@ -150,10 +150,10 @@ async function findExpressRoutes(root: string): Promise<ApiRoute[]> {
     const relFile = relative(root, file);
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      const m = EXPRESS_RE.exec(lines[i]);
+      const m = EXPRESS_RE.exec(lines[i]!);
       if (m) {
         const method = (m[1] || m[3] || 'get').toUpperCase();
-        const path = m[2] || m[4] || '/';
+        const path = m[2]! || m[4] || '/';
         routes.push({ method, path, file: relFile, line: i + 1 });
       }
     }
@@ -171,10 +171,10 @@ async function findFastifyRoutes(root: string): Promise<ApiRoute[]> {
     const relFile = relative(root, file);
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      const m = FASTIFY_RE.exec(lines[i]);
+      const m = FASTIFY_RE.exec(lines[i]!);
       if (m) {
         const method = (m[1] || m[3] || 'get').toUpperCase();
-        const path = m[2] || m[4] || '/';
+        const path = m[2]! || m[4] || '/';
         routes.push({ method, path, file: relFile, line: i + 1 });
       }
     }
@@ -192,10 +192,10 @@ async function findHonoRoutes(root: string): Promise<ApiRoute[]> {
     const relFile = relative(root, file);
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      const m = HONO_RE.exec(lines[i]);
+      const m = HONO_RE.exec(lines[i]!);
       if (m) {
         const method = (m[1] || m[3] || 'get').toUpperCase();
-        const path = m[2] || m[4] || '/';
+        const path = m[2]! || m[4] || '/';
         routes.push({ method, path, file: relFile, line: i + 1 });
       }
     }
@@ -245,10 +245,10 @@ function parseModelFields(body: string): DbField[] {
   for (const line of body.split('\n')) {
     const m = FIELD_RE.exec(line.trim());
     if (!m) continue;
-    const name = m[1];
+    const name = m[1]!;
     if (['@@', '@'].some((p) => name.startsWith(p))) continue;
-    const type = m[2];
-    const isOptional = m[4] === '?';
+    const type = m[2]!;
+    const isOptional = m[4]! === '?';
     const isRelation = /^[A-Z]/.test(type);
     fields.push({ name, type, isRelation, isOptional });
   }
@@ -262,17 +262,17 @@ export function parsePrismaSchema(content: string): DatabaseInfo {
   const MODEL_RE = /^model\s+(\w+)\s*\{([^}]*)\}/gm;
   let m: RegExpExecArray | null;
   while ((m = MODEL_RE.exec(content)) !== null) {
-    models.push({ name: m[1], fields: parseModelFields(m[2]) });
+    models.push({ name: m[1]!, fields: parseModelFields(m[2]!) });
   }
 
   const ENUM_RE = /^enum\s+(\w+)\s*\{([^}]*)\}/gm;
   while ((m = ENUM_RE.exec(content)) !== null) {
-    const values = m[2]
+    const values = m[2]!
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith('//'))
       .filter((l) => /^\w+$/.test(l));
-    enums.push({ name: m[1], values });
+    enums.push({ name: m[1]!, values });
   }
 
   return { models, enums };
@@ -468,11 +468,11 @@ async function findFetchCalls(root: string): Promise<FetchCall[]> {
       const relFile = relative(root, file);
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+        const line = lines[i]!;
         let m: RegExpExecArray | null;
         const re = new RegExp(FETCH_RE.source, 'g');
         while ((m = re.exec(line)) !== null) {
-          calls.push({ url: m[1], file: relFile, line: i + 1 });
+          calls.push({ url: m[1]!, file: relFile, line: i + 1 });
         }
       }
     }

@@ -7,41 +7,41 @@ import type { ExecutionIntent } from '../../runtime/execution-intents.js';
 
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
-  readonly modelId?: string;
-  readonly providerId?: string;
-  readonly tools?: readonly string[];
-  readonly executionIntent?: ExecutionIntent;
+  readonly modelId?: string | undefined;
+  readonly providerId?: string | undefined;
+  readonly tools?: readonly string[] | undefined;
+  readonly executionIntent?: ExecutionIntent | undefined;
 }
 interface AutomationRouteBinding {
-  readonly id?: string;
+  readonly id?: string | undefined;
 }
 type AgentRecordLike = {
   readonly id: string;
   readonly status: string;
   readonly task: string;
-  readonly model?: string | null;
+  readonly model?: string | null | undefined;
   readonly tools: readonly string[];
   readonly startedAt: number;
-  readonly completedAt?: number;
-  readonly toolCallCount?: number;
-  readonly progress?: string | null;
-  readonly error?: string | null;
+  readonly completedAt?: number | undefined;
+  readonly toolCallCount?: number | undefined;
+  readonly progress?: string | null | undefined;
+  readonly error?: string | null | undefined;
 };
 type AutomationJobLike = { readonly id: string };
 type AutomationRunLike = {
   readonly id: string;
   readonly jobId: string;
-  readonly agentId?: string;
+  readonly agentId?: string | undefined;
   readonly status: string;
-  readonly startedAt?: number;
+  readonly startedAt?: number | undefined;
   readonly queuedAt: number;
-  readonly continuationMode?: string;
+  readonly continuationMode?: string | undefined;
 };
 interface RuntimeTaskLike {
-  readonly kind?: string;
-  readonly owner?: string;
-  readonly description?: string;
-  readonly title?: string;
+  readonly kind?: string | undefined;
+  readonly owner?: string | undefined;
+  readonly description?: string | undefined;
+  readonly title?: string | undefined;
 }
 interface RuntimeTaskStateLike {
   readonly tasks: Map<string, RuntimeTaskLike>;
@@ -55,85 +55,85 @@ export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteCon
   readonly sessionBroker: {
     start(): Promise<void>;
     submitMessage(input: {
-      sessionId?: string;
-      routeId?: string;
+      sessionId?: string | undefined;
+      routeId?: string | undefined;
       surfaceKind: AutomationSurfaceKind;
       surfaceId: string;
-      externalId?: string;
-      threadId?: string;
-      userId?: string;
-      displayName?: string;
-      title?: string;
+      externalId?: string | undefined;
+      threadId?: string | undefined;
+      userId?: string | undefined;
+      displayName?: string | undefined;
+      title?: string | undefined;
       body: string;
-      metadata?: Record<string, unknown>;
-      routing?: SharedSessionRoutingIntent;
+      metadata?: Record<string, unknown> | undefined;
+      routing?: SharedSessionRoutingIntent | undefined;
     }): Promise<{
       mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
       input: { id: string; routing?: SharedSessionRoutingIntent };
       session: { id: string; status: string };
-      routeBinding?: AutomationRouteBinding;
-      task?: string;
-      activeAgentId?: string | null;
-      userMessage?: unknown;
+      routeBinding?: AutomationRouteBinding | undefined;
+      task?: string | undefined;
+      activeAgentId?: string | null | undefined;
+      userMessage?: unknown | undefined;
     }>;
     steerMessage(input: {
-      sessionId?: string;
-      routeId?: string;
+      sessionId?: string | undefined;
+      routeId?: string | undefined;
       surfaceKind: AutomationSurfaceKind;
       surfaceId: string;
-      externalId?: string;
-      threadId?: string;
-      userId?: string;
-      displayName?: string;
-      title?: string;
+      externalId?: string | undefined;
+      threadId?: string | undefined;
+      userId?: string | undefined;
+      displayName?: string | undefined;
+      title?: string | undefined;
       body: string;
-      metadata?: Record<string, unknown>;
-      routing?: SharedSessionRoutingIntent;
-      allowSpawnFallback?: boolean;
+      metadata?: Record<string, unknown> | undefined;
+      routing?: SharedSessionRoutingIntent | undefined;
+      allowSpawnFallback?: boolean | undefined;
     }): Promise<{
       mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
       input: { id: string; state: string; routing?: SharedSessionRoutingIntent };
       session: { id: string; status: string };
-      routeBinding?: AutomationRouteBinding;
-      task?: string;
-      activeAgentId?: string | null;
-      userMessage?: unknown;
+      routeBinding?: AutomationRouteBinding | undefined;
+      task?: string | undefined;
+      activeAgentId?: string | null | undefined;
+      userMessage?: unknown | undefined;
     }>;
     followUpMessage(input: {
-      sessionId?: string;
-      routeId?: string;
+      sessionId?: string | undefined;
+      routeId?: string | undefined;
       surfaceKind: AutomationSurfaceKind;
       surfaceId: string;
-      externalId?: string;
-      threadId?: string;
-      userId?: string;
-      displayName?: string;
-      title?: string;
+      externalId?: string | undefined;
+      threadId?: string | undefined;
+      userId?: string | undefined;
+      displayName?: string | undefined;
+      title?: string | undefined;
       body: string;
-      metadata?: Record<string, unknown>;
-      routing?: SharedSessionRoutingIntent;
+      metadata?: Record<string, unknown> | undefined;
+      routing?: SharedSessionRoutingIntent | undefined;
     }): Promise<{
       mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
       input: { id: string; state: string; routing?: SharedSessionRoutingIntent };
       session: { id: string; status: string };
-      routeBinding?: AutomationRouteBinding;
-      task?: string;
-      activeAgentId?: string | null;
-      userMessage?: unknown;
+      routeBinding?: AutomationRouteBinding | undefined;
+      task?: string | undefined;
+      activeAgentId?: string | null | undefined;
+      userMessage?: unknown | undefined;
     }>;
     bindAgent(sessionId: string, agentId: string): Promise<unknown>;
     createSession(input: {
-      id?: string;
-      title?: string;
-      metadata?: Record<string, unknown>;
-      routeBinding?: AutomationRouteBinding;
+      id?: string | undefined;
+      title?: string | undefined;
+      metadata?: Record<string, unknown> | undefined;
+      routeBinding?: AutomationRouteBinding | undefined;
       participant?: {
         surfaceKind: AutomationSurfaceKind;
         surfaceId: string;
-        externalId?: string;
-        userId?: string;
-        displayName?: string;
-        routeId?: string;
+        externalId?: string | undefined;
+        userId?: string | undefined;
+        displayName?: string | undefined;
+        routeId?: string | undefined;
         lastSeenAt: number;
       };
     }): Promise<{ id: string }>;
@@ -179,11 +179,11 @@ export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteCon
   readonly trySpawnAgent: (input: {
     mode: 'spawn';
     task: string;
-    model?: string;
-    tools?: string[] | readonly string[];
-    provider?: string;
-    context?: string;
-    executionIntent?: ExecutionIntent;
+    model?: string | undefined;
+    tools?: string[] | readonly string[] | undefined;
+    provider?: string | undefined;
+    context?: string | undefined;
+    executionIntent?: ExecutionIntent | undefined;
   }, logLabel: string, sessionId?: string) => AgentRecordLike | Response;
   readonly queueSurfaceReplyFromBinding: (
     binding: AutomationRouteBinding | undefined,

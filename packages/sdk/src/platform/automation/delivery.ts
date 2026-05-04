@@ -8,10 +8,10 @@ export type AutomationDeliveryMode = 'none' | 'webhook' | 'surface' | 'integrati
 
 export interface AutomationDeliveryTarget {
   readonly kind: AutomationDeliveryMode;
-  readonly surfaceKind?: AutomationSurfaceKind;
-  readonly address?: string;
-  readonly routeId?: string;
-  readonly label?: string;
+  readonly surfaceKind?: AutomationSurfaceKind | undefined;
+  readonly address?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly label?: string | undefined;
 }
 
 export interface AutomationDeliveryPolicy {
@@ -21,7 +21,7 @@ export interface AutomationDeliveryPolicy {
   readonly includeSummary: boolean;
   readonly includeTranscript: boolean;
   readonly includeLinks: boolean;
-  readonly replyToRouteId?: string;
+  readonly replyToRouteId?: string | undefined;
 }
 
 export interface AutomationDeliveryAttempt {
@@ -30,8 +30,8 @@ export interface AutomationDeliveryAttempt {
   readonly jobId: string;
   readonly target: AutomationDeliveryTarget;
   readonly status: 'pending' | 'sending' | 'sent' | 'failed' | 'dead_lettered';
-  readonly startedAt?: number;
-  readonly endedAt?: number;
-  readonly error?: string;
-  readonly responseId?: string;
+  readonly startedAt?: number | undefined;
+  readonly endedAt?: number | undefined;
+  readonly error?: string | undefined;
+  readonly responseId?: string | undefined;
 }

@@ -49,9 +49,9 @@ export function ensureColumn(
 ): void {
   const rows = db.exec(`PRAGMA table_info(${table})`);
   const existing = new Set<string>();
-  if (rows[0]) {
-    const nameIndex = rows[0].columns.indexOf('name');
-    for (const value of rows[0].values) {
+  if (rows[0]!) {
+    const nameIndex = rows[0]!.columns.indexOf('name');
+    for (const value of rows[0]!.values) {
       if (nameIndex >= 0) {
         existing.add(String(value[nameIndex]));
       }
@@ -63,7 +63,7 @@ export function ensureColumn(
 }
 
 export function rowToRecord(columns: string[], values: unknown[]): MemoryRecord {
-  const row = Object.fromEntries(columns.map((column, index) => [column, values[index]])) as Record<string, unknown>;
+  const row = Object.fromEntries(columns.map((column, index) => [column, values[index]!])) as Record<string, unknown>;
   return {
     id: String(row.id),
     scope: normalizeScope(row.scope),

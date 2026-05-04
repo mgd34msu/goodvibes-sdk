@@ -30,22 +30,22 @@ export interface OperatorMethodContract {
   readonly access: GatewayMethodAccess;
   readonly transport: readonly GatewayMethodTransport[];
   readonly scopes: readonly string[];
-  readonly http?: ContractHttpDefinition;
-  readonly events?: readonly string[];
-  readonly inputSchema?: JsonSchema;
-  readonly outputSchema?: JsonSchema;
-  readonly pluginId?: string;
-  readonly dangerous?: boolean;
-  readonly invokable?: boolean;
+  readonly http?: ContractHttpDefinition | undefined;
+  readonly events?: readonly string[] | undefined;
+  readonly inputSchema?: JsonSchema | undefined;
+  readonly outputSchema?: JsonSchema | undefined;
+  readonly pluginId?: string | undefined;
+  readonly dangerous?: boolean | undefined;
+  readonly invokable?: boolean | undefined;
   /** Whether this method is idempotent. When true, safe to retry on 5xx + network errors. */
-  readonly idempotent?: boolean;
+  readonly idempotent?: boolean | undefined;
   /**
    * MIN-3: Intentionally open bag for generator-supplied extension fields (e.g.
    * plugin manifests, analytics tags, UI hints). Consumers must not rely on any
    * specific key being present — treat as advisory display metadata only.
    * Narrowing this type would require a versioned generator ABI bump.
    */
-  readonly metadata?: Record<string, unknown>;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface OperatorEventContract {
@@ -56,12 +56,12 @@ export interface OperatorEventContract {
   readonly source: GatewayMethodSource;
   readonly transport: readonly GatewayEventTransport[];
   readonly scopes: readonly string[];
-  readonly domains?: readonly RuntimeEventDomain[];
-  readonly wireEvents?: readonly string[];
-  readonly payloadSchema?: JsonSchema;
-  readonly outputSchema?: JsonSchema;
-  readonly pluginId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly domains?: readonly RuntimeEventDomain[] | undefined;
+  readonly wireEvents?: readonly string[] | undefined;
+  readonly payloadSchema?: JsonSchema | undefined;
+  readonly outputSchema?: JsonSchema | undefined;
+  readonly pluginId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface OperatorSchemaCoverageContract {
@@ -96,7 +96,7 @@ export interface OperatorContractManifest {
     readonly current: {
       readonly method: string;
       readonly path: string;
-      readonly aliasPaths?: readonly string[];
+      readonly aliasPaths?: readonly string[] | undefined;
       readonly responseSchema: JsonSchema;
     };
     readonly sessionCookie: {
@@ -126,11 +126,11 @@ export interface OperatorContractManifest {
       readonly path: string;
       readonly clientFrames: readonly {
         readonly type: string;
-        readonly fields?: readonly string[];
+        readonly fields?: readonly string[] | undefined;
       }[];
       readonly serverFrames: readonly {
         readonly type: string;
-        readonly fields?: readonly string[];
+        readonly fields?: readonly string[] | undefined;
       }[];
     };
   };
@@ -151,12 +151,12 @@ export interface PeerEndpointContract {
   readonly method: 'GET' | 'POST';
   readonly path: string;
   readonly auth: 'none' | 'bearer-peer-token' | 'bearer-operator-token';
-  readonly requiredScope?: string;
+  readonly requiredScope?: string | undefined;
   readonly description: string;
-  readonly inputSchema?: JsonSchema;
-  readonly outputSchema?: JsonSchema;
+  readonly inputSchema?: JsonSchema | undefined;
+  readonly outputSchema?: JsonSchema | undefined;
   /** Whether this endpoint is idempotent. When true, safe to retry on 5xx + network errors. */
-  readonly idempotent?: boolean;
+  readonly idempotent?: boolean | undefined;
 }
 
 export interface PeerContractManifest {

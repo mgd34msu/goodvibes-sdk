@@ -17,7 +17,7 @@ export interface UiSessionSnapshot {
   readonly estimatedContextTokens: number;
   readonly contextWindow: number;
   readonly turnState: TurnState;
-  readonly streamToolPreview?: string;
+  readonly streamToolPreview?: string | undefined;
   readonly contextWarningActive: boolean;
   readonly pendingApproval: boolean;
   readonly denialCount: number;

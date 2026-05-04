@@ -21,13 +21,13 @@ import { uniqueStrings } from './utils.js';
 import { runKnowledgeSemanticSelfImprovement } from './self-improvement.js';
 
 export interface KnowledgeSemanticServiceOptions {
-  readonly llm?: KnowledgeSemanticLlm | null;
-  readonly maxLlmSourcesPerReindex?: number;
-  readonly gapRepairer?: KnowledgeSemanticGapRepairer | null;
-  readonly maxReindexRunMs?: number;
-  readonly backgroundRepairDelayMs?: number;
-  readonly backgroundRepairLimit?: number;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
+  readonly llm?: KnowledgeSemanticLlm | null | undefined;
+  readonly maxLlmSourcesPerReindex?: number | undefined;
+  readonly gapRepairer?: KnowledgeSemanticGapRepairer | null | undefined;
+  readonly maxReindexRunMs?: number | undefined;
+  readonly backgroundRepairDelayMs?: number | undefined;
+  readonly backgroundRepairLimit?: number | undefined;
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
 }
 
 export class KnowledgeSemanticService {
@@ -58,7 +58,7 @@ export class KnowledgeSemanticService {
 
   async enrichSource(
     sourceId: string,
-    input: { readonly force?: boolean; readonly knowledgeSpaceId?: string } = {},
+    input: { readonly force?: boolean | undefined; readonly knowledgeSpaceId?: string | undefined } = {},
   ): Promise<KnowledgeSemanticEnrichmentResult | null> {
     await this.store.init();
     const source = this.store.getSource(sourceId);
@@ -82,11 +82,11 @@ export class KnowledgeSemanticService {
   }
 
   async reindex(input: {
-    readonly sourceIds?: readonly string[];
-    readonly limit?: number;
-    readonly maxRunMs?: number;
-    readonly force?: boolean;
-    readonly knowledgeSpaceId?: string;
+    readonly sourceIds?: readonly string[] | undefined;
+    readonly limit?: number | undefined;
+    readonly maxRunMs?: number | undefined;
+    readonly force?: boolean | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
   } = {}): Promise<{
     readonly scanned: number;
     readonly enriched: number;
@@ -245,8 +245,8 @@ export class KnowledgeSemanticService {
 
   async repairAnswerGaps(input: {
     readonly answer: KnowledgeSemanticAnswerResult;
-    readonly maxRunMs?: number;
-    readonly limit?: number;
+    readonly maxRunMs?: number | undefined;
+    readonly limit?: number | undefined;
   }): Promise<KnowledgeSemanticSelfImproveResult> {
     const gaps = input.answer.answer.gaps.filter((gap) => readString(readRecord(gap.metadata).gapKind) === 'answer');
     if (!this.options.gapRepairer || gaps.length === 0) return emptySelfImproveResult();
@@ -476,13 +476,13 @@ function answerRefinementFromRepair(
   repair: KnowledgeSemanticSelfImproveResult,
   status: KnowledgeSemanticAnswerRefinement['status'],
   options: {
-    readonly waitedMs?: number;
-    readonly answerCacheInvalidated?: boolean;
+    readonly waitedMs?: number | undefined;
+    readonly answerCacheInvalidated?: boolean | undefined;
   } = {},
 ): KnowledgeSemanticAnswerRefinement {
   const acceptedSourceIds = repair.acceptedSourceIds ?? [];
   const promotedFactCount = repair.promotedFactCount ?? 0;
-  const reason = repair.errors[0]?.error
+  const reason = repair.errors[0]!?.error
     ?? (repair.budgetExhausted ? 'Repair did not finish within the current run budget.' : undefined);
   return {
     status,

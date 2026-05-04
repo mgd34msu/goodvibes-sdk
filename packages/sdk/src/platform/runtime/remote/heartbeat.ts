@@ -3,8 +3,8 @@ import type { RemoteRunnerContract } from './types.js';
 
 export interface RemoteHeartbeatSnapshot {
   readonly status: 'fresh' | 'stale' | 'offline';
-  readonly lastSeenAt?: number;
-  readonly ageMs?: number;
+  readonly lastSeenAt?: number | undefined;
+  readonly ageMs?: number | undefined;
   readonly detail: string;
 }
 

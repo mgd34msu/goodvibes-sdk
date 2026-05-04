@@ -30,11 +30,11 @@ export const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
 ];
 
 export interface ControlPlaneEventReplayScope {
-  readonly clientKind?: string;
-  readonly clientId?: string;
-  readonly routeId?: string;
-  readonly surfaceId?: string;
-  readonly domains?: readonly RuntimeEventDomain[];
+  readonly clientKind?: string | undefined;
+  readonly clientId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly domains?: readonly RuntimeEventDomain[] | undefined;
 }
 
 export interface ControlPlaneRecentEvent {
@@ -45,15 +45,15 @@ export interface ControlPlaneRecentEvent {
 }
 
 export interface ScopedControlPlaneRecentEvent extends ControlPlaneRecentEvent {
-  readonly replayScope?: ControlPlaneEventReplayScope;
+  readonly replayScope?: ControlPlaneEventReplayScope | undefined;
 }
 
 export interface ControlPlaneReplayClientOptions {
-  readonly clientId?: string;
-  readonly clientKind?: string;
-  readonly domains?: readonly RuntimeEventDomain[];
-  readonly routeId?: string;
-  readonly surfaceId?: string;
+  readonly clientId?: string | undefined;
+  readonly clientKind?: string | undefined;
+  readonly domains?: readonly RuntimeEventDomain[] | undefined;
+  readonly routeId?: string | undefined;
+  readonly surfaceId?: string | undefined;
 }
 
 const DISCONNECTED_CLIENT_TTL_MS = 30 * 60 * 1000;

@@ -25,52 +25,52 @@ export interface PluginProviderConfig {
   /** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:8080/v1"). */
   baseURL: string;
   /** API key. May be empty string for local/unauthenticated servers. */
-  apiKey?: string;
+  apiKey?: string | undefined;
   /** Model IDs this provider exposes. */
   models: string[];
   /** Optional display label shown in the model picker. */
-  displayName?: string;
+  displayName?: string | undefined;
   /** Optional embedding model exposed by the endpoint. */
-  embeddingModel?: string;
+  embeddingModel?: string | undefined;
   /** Optional reasoning-format override for compatible endpoints. */
-  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'none';
+  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'none' | undefined;
   /** Optional context-window metadata for runtime-registered model picker entries. */
-  contextWindow?: number;
+  contextWindow?: number | undefined;
   /** Optional runtime capability hints for the registered model entries. */
-  capabilities?: Partial<ModelDefinition['capabilities']>;
+  capabilities?: Partial<ModelDefinition['capabilities']> | undefined;
   /** Optional reasoning effort options surfaced in the picker. */
-  reasoningEffort?: string[];
+  reasoningEffort?: string[] | undefined;
   /** Optional provider tier surfaced in the picker. */
-  tier?: ModelTier;
+  tier?: ModelTier | undefined;
   /** Optional token limits surfaced in the picker. */
-  tokenLimits?: TokenLimits;
+  tokenLimits?: TokenLimits | undefined;
   /** Optional auth env vars for provider posture. */
-  authEnvVars?: readonly string[];
+  authEnvVars?: readonly string[] | undefined;
   /** Optional service names that expose service-owned OAuth. */
-  serviceNames?: readonly string[];
+  serviceNames?: readonly string[] | undefined;
   /** Optional subscription-provider identity used for stored OAuth posture. */
-  subscriptionProviderId?: string;
+  subscriptionProviderId?: string | undefined;
   /** Optional catalog suppressions for runtime clients. */
-  suppressCatalogModels?: readonly string[];
+  suppressCatalogModels?: readonly string[] | undefined;
 }
 
 export interface PluginRuntimeProviderModel {
   readonly id: string;
-  readonly displayName?: string;
-  readonly description?: string;
-  readonly contextWindow?: number;
-  readonly selectable?: boolean;
-  readonly capabilities?: Partial<ModelDefinition['capabilities']>;
-  readonly reasoningEffort?: string[];
-  readonly tier?: ModelTier;
-  readonly tokenLimits?: TokenLimits;
+  readonly displayName?: string | undefined;
+  readonly description?: string | undefined;
+  readonly contextWindow?: number | undefined;
+  readonly selectable?: boolean | undefined;
+  readonly capabilities?: Partial<ModelDefinition['capabilities']> | undefined;
+  readonly reasoningEffort?: string[] | undefined;
+  readonly tier?: ModelTier | undefined;
+  readonly tokenLimits?: TokenLimits | undefined;
 }
 
 export interface PluginProviderRegistration {
   readonly provider: LLMProvider;
-  readonly models?: readonly PluginRuntimeProviderModel[];
-  readonly suppressCatalogModels?: readonly string[];
-  readonly replace?: boolean;
+  readonly models?: readonly PluginRuntimeProviderModel[] | undefined;
+  readonly suppressCatalogModels?: readonly string[] | undefined;
+  readonly replace?: boolean | undefined;
 }
 
 /**

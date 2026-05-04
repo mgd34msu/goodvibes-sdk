@@ -18,9 +18,9 @@ export interface PluginPathOptions {
   readonly cwd: string;
   readonly homeDir: string;
   /** Additional plugin directories to search, appended after the standard directories. */
-  readonly additionalDirectories?: readonly string[];
+  readonly additionalDirectories?: readonly string[] | undefined;
   /** Default entry point filename when a plugin manifest does not specify `main`. Defaults to 'index.js'. */
-  readonly entryDefault?: string;
+  readonly entryDefault?: string | undefined;
 }
 
 const PLUGIN_ROOT = 'plugins';
@@ -52,11 +52,11 @@ export interface PluginManifest {
   name: string;
   version: string;
   description: string;
-  author?: string;
+  author?: string | undefined;
   /** Entry point relative to plugin directory. Defaults to "index.js". */
-  main?: string;
+  main?: string | undefined;
   /** Optional list of runtime event names the plugin subscribes to. */
-  hooks?: string[];
+  hooks?: string[] | undefined;
 }
 
 /**
@@ -83,7 +83,7 @@ export interface LoadedPlugin {
   /** Cleanup callbacks accumulated during plugin API use. */
   cleanup: Array<() => void>;
   /** The resolved entry point module (available after load). */
-  entry?: PluginEntryPoint;
+  entry?: PluginEntryPoint | undefined;
 }
 
 /**

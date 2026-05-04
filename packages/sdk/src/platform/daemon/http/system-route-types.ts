@@ -24,34 +24,34 @@ export interface IntegrationApprovalSnapshotSourceLike {
 }
 
 export interface RouteBindingRecordInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly kind: AutomationRouteBindingKind;
   readonly surfaceKind: AutomationSurfaceKind;
   readonly surfaceId: string;
   readonly externalId: string;
-  readonly sessionPolicy?: AutomationSessionPolicy;
-  readonly threadPolicy?: AutomationThreadPolicy;
-  readonly deliveryGuarantee?: AutomationDeliveryGuarantee;
-  readonly threadId?: string;
-  readonly channelId?: string;
-  readonly sessionId?: string | null;
-  readonly jobId?: string | null;
-  readonly runId?: string | null;
-  readonly title?: string;
+  readonly sessionPolicy?: AutomationSessionPolicy | undefined;
+  readonly threadPolicy?: AutomationThreadPolicy | undefined;
+  readonly deliveryGuarantee?: AutomationDeliveryGuarantee | undefined;
+  readonly threadId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly sessionId?: string | null | undefined;
+  readonly jobId?: string | null | undefined;
+  readonly runId?: string | null | undefined;
+  readonly title?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface RouteBindingPatchInput {
-  readonly sessionPolicy?: AutomationSessionPolicy;
-  readonly threadPolicy?: AutomationThreadPolicy;
-  readonly deliveryGuarantee?: AutomationDeliveryGuarantee;
-  readonly threadId?: string;
-  readonly channelId?: string;
-  readonly sessionId?: string | null;
-  readonly jobId?: string | null;
-  readonly runId?: string | null;
-  readonly title?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly sessionPolicy?: AutomationSessionPolicy | undefined;
+  readonly threadPolicy?: AutomationThreadPolicy | undefined;
+  readonly deliveryGuarantee?: AutomationDeliveryGuarantee | undefined;
+  readonly threadId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly sessionId?: string | null | undefined;
+  readonly jobId?: string | null | undefined;
+  readonly runId?: string | null | undefined;
+  readonly title?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface WatcherSourceRecord {
@@ -69,6 +69,6 @@ export interface WatcherRecord {
   readonly label: string;
   readonly kind: WatcherKind;
   readonly source: WatcherSourceRecord;
-  readonly intervalMs?: number;
+  readonly intervalMs?: number | undefined;
   readonly metadata: Record<string, unknown>;
 }

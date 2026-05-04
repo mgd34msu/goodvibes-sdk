@@ -18,22 +18,22 @@ export interface AgentMessage {
   ttlMs: number;
   kind: CommunicationKind;
   scope: CommunicationScope;
-  fromRole?: string;
-  toRole?: string;
-  cohort?: string;
-  wrfcId?: string;
-  parentAgentId?: string;
+  fromRole?: string | undefined;
+  toRole?: string | undefined;
+  cohort?: string | undefined;
+  wrfcId?: string | undefined;
+  parentAgentId?: string | undefined;
 }
 
 export type MessageCallback = (message: AgentMessage) => void;
 
 type MessageOptions = {
-  ttlMs?: number;
-  kind?: CommunicationKind;
-  scope?: CommunicationScope;
-  cohort?: string;
-  wrfcId?: string;
-  parentAgentId?: string;
+  ttlMs?: number | undefined;
+  kind?: CommunicationKind | undefined;
+  scope?: CommunicationScope | undefined;
+  cohort?: string | undefined;
+  wrfcId?: string | undefined;
+  parentAgentId?: string | undefined;
 };
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
@@ -52,11 +52,11 @@ export class AgentMessageBus {
 
   registerAgent(meta: {
     agentId: string;
-    template?: string;
-    role?: AgentCommunicationMetadata['role'];
-    parentAgentId?: string;
-    cohort?: string;
-    wrfcId?: string;
+    template?: string | undefined;
+    role?: AgentCommunicationMetadata['role'] | undefined;
+    parentAgentId?: string | undefined;
+    cohort?: string | undefined;
+    wrfcId?: string | undefined;
   }): void {
     this.identities.set(meta.agentId, {
       agentId: meta.agentId,
@@ -91,7 +91,7 @@ export class AgentMessageBus {
       const decision = evaluateCommunicationRoute({
         from: fromMeta,
         to: toMeta,
-        kind: options.kind,
+        kind: options.kind!,
         scope: 'direct',
       });
       if (!decision.allowed) {
@@ -107,8 +107,8 @@ export class AgentMessageBus {
       to: toId,
       content,
       timestamp: Date.now(),
-      ttlMs: options.ttlMs,
-      kind: options.kind,
+      ttlMs: options.ttlMs!,
+      kind: options.kind!,
       scope: 'direct',
       ...(fromMeta?.role !== undefined ? { fromRole: fromMeta.role } : {}),
       ...(toMeta?.role !== undefined ? { toRole: toMeta.role } : {}),
@@ -132,7 +132,7 @@ export class AgentMessageBus {
       const decision = evaluateCommunicationRoute({
         from: fromMeta,
         to: { agentId: '*', role: 'general', ...(fromMeta.cohort !== undefined ? { cohort: fromMeta.cohort } : {}) },
-        kind: options.kind,
+        kind: options.kind!,
         scope: 'broadcast',
       });
       if (!decision.allowed) {
@@ -148,8 +148,8 @@ export class AgentMessageBus {
       to: '*',
       content,
       timestamp: Date.now(),
-      ttlMs: options.ttlMs,
-      kind: options.kind,
+      ttlMs: options.ttlMs!,
+      kind: options.kind!,
       scope: 'broadcast',
       ...(fromMeta?.role !== undefined ? { fromRole: fromMeta.role } : {}),
       ...(options.cohort ?? fromMeta?.cohort ? { cohort: options.cohort ?? fromMeta?.cohort } : {}),
@@ -258,8 +258,8 @@ export class AgentMessageBus {
       messageId,
       fromId,
       toId,
-      scope: options.scope,
-      kind: options.kind,
+      scope: options.scope!,
+      kind: options.kind!,
       reason,
       ...(fromMeta?.role !== undefined ? { fromRole: fromMeta.role } : {}),
       ...(toMeta?.role !== undefined ? { toRole: toMeta.role } : {}),

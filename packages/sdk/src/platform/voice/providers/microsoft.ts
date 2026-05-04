@@ -16,13 +16,13 @@ import {
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
 type MicrosoftVoiceListEntry = {
-  ShortName?: string;
-  FriendlyName?: string;
-  Locale?: string;
-  Gender?: string;
+  ShortName?: string | undefined;
+  FriendlyName?: string | undefined;
+  Locale?: string | undefined;
+  Gender?: string | undefined;
   VoiceTag?: {
-    ContentCategories?: string[];
-    VoicePersonalities?: string[];
+    ContentCategories?: string[] | undefined;
+    VoicePersonalities?: string[] | undefined;
   };
 };
 

@@ -31,15 +31,15 @@ export const TASK_TOOL_SCHEMA = {
 
 export type TaskToolInput = {
   mode: 'create' | 'list' | 'show' | 'status' | 'depend' | 'cancel' | 'handoff' | 'handoffs';
-  view?: 'summary' | 'full';
-  sessionId?: string;
-  taskId?: string;
-  title?: string;
-  label?: string;
-  status?: 'queued' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled';
-  dependsOnSessionId?: string;
-  dependsOnTaskId?: string;
-  reason?: string;
-  toSessionId?: string;
-  scope?: 'task' | 'subtree' | 'session';
+  view?: 'summary' | 'full' | undefined;
+  sessionId?: string | undefined;
+  taskId?: string | undefined;
+  title?: string | undefined;
+  label?: string | undefined;
+  status?: 'queued' | 'running' | 'blocked' | 'completed' | 'failed' | 'cancelled' | undefined;
+  dependsOnSessionId?: string | undefined;
+  dependsOnTaskId?: string | undefined;
+  reason?: string | undefined;
+  toSessionId?: string | undefined;
+  scope?: 'task' | 'subtree' | 'session' | undefined;
 };

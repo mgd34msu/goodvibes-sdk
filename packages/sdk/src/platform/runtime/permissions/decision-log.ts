@@ -33,13 +33,13 @@ export interface DecisionLogEntry {
 /** Filters for querying the decision log. */
 export interface DecisionLogQuery {
   /** Return only decisions for this tool name. */
-  toolName?: string;
+  toolName?: string | undefined;
   /** Return only allow or only deny decisions. */
-  allowed?: boolean;
+  allowed?: boolean | undefined;
   /** Return decisions after this timestamp (epoch ms, inclusive). */
-  since?: number;
+  since?: number | undefined;
   /** Maximum number of entries to return (default: all). */
-  limit?: number;
+  limit?: number | undefined;
 }
 
 // ── DecisionLog ───────────────────────────────────────────────────────────────────

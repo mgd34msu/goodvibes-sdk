@@ -68,8 +68,8 @@ export async function executeFilesQuery(
 
   interface FileEntry {
     path: string;
-    size?: number;
-    mtimeMs?: number;
+    size?: number | undefined;
+    mtimeMs?: number | undefined;
   }
 
   let entries: FileEntry[] = Array.from(matchedFiles).map((p) => ({ path: p }));

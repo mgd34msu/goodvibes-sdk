@@ -61,10 +61,10 @@ export interface OperatorApprovalsClient {
     approvalId: string,
     input: {
       readonly approved: boolean;
-      readonly remember?: boolean;
+      readonly remember?: boolean | undefined;
       readonly actor: string;
-      readonly actorSurface?: string;
-      readonly note?: string;
+      readonly actorSurface?: string | undefined;
+      readonly note?: string | undefined;
     },
   ): Promise<SharedApprovalRecord | null>;
   approve(approvalId: string, actor: string, actorSurface?: string, note?: string): Promise<SharedApprovalRecord | null>;
@@ -74,9 +74,9 @@ export interface OperatorApprovalsClient {
     approvalId: string,
     input: {
       readonly actor: string;
-      readonly actorSurface?: string;
-      readonly note?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly actorSurface?: string | undefined;
+      readonly note?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     },
   ): Promise<SharedApprovalRecord | null>;
 }
@@ -152,10 +152,10 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     claim: (approvalId: string, actor: string, actorSurface = 'operator', note?: string): Promise<SharedApprovalRecord | null> => services.approvalBroker.claimApproval(approvalId, actor, actorSurface, note),
     resolve: (approvalId: string, input: {
       readonly approved: boolean;
-      readonly remember?: boolean;
+      readonly remember?: boolean | undefined;
       readonly actor: string;
-      readonly actorSurface?: string;
-      readonly note?: string;
+      readonly actorSurface?: string | undefined;
+      readonly note?: string | undefined;
     }): Promise<SharedApprovalRecord | null> => services.approvalBroker.resolveApproval(approvalId, input),
     approve: (approvalId: string, actor: string, actorSurface = 'operator', note?: string): Promise<SharedApprovalRecord | null> => services.approvalBroker.resolveApproval(approvalId, {
       approved: true,
@@ -172,9 +172,9 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     cancel: (approvalId: string, actor: string, actorSurface = 'operator', note?: string): Promise<SharedApprovalRecord | null> => services.approvalBroker.cancelApproval(approvalId, actor, actorSurface, note),
     update: (approvalId: string, input: {
       readonly actor: string;
-      readonly actorSurface?: string;
-      readonly note?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly actorSurface?: string | undefined;
+      readonly note?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     }): Promise<SharedApprovalRecord | null> => services.approvalBroker.recordRemoteUpdate(approvalId, input),
   } satisfies OperatorApprovalsClient;
 

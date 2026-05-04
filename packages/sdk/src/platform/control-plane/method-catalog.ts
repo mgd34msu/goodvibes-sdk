@@ -45,7 +45,7 @@ export type {
 
 interface RegisteredGatewayMethod {
   readonly descriptor: GatewayMethodDescriptor;
-  readonly handler?: GatewayMethodHandler;
+  readonly handler?: GatewayMethodHandler | undefined;
 }
 
 interface RegisteredGatewayEvent {

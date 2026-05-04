@@ -11,10 +11,10 @@ export type ChannelDeliveryTargetKind = 'none' | 'webhook' | 'surface' | 'integr
 
 export interface ChannelDeliveryTarget {
   readonly kind: ChannelDeliveryTargetKind;
-  readonly surfaceKind?: ChannelDeliverySurfaceKind;
-  readonly address?: string;
-  readonly routeId?: string;
-  readonly label?: string;
+  readonly surfaceKind?: ChannelDeliverySurfaceKind | undefined;
+  readonly address?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly label?: string | undefined;
 }
 
 export interface ChannelDeliveryRouteBinding {
@@ -22,9 +22,9 @@ export interface ChannelDeliveryRouteBinding {
   readonly surfaceKind: ChannelDeliverySurfaceKind;
   readonly surfaceId: string;
   readonly externalId: string;
-  readonly threadId?: string;
-  readonly channelId?: string;
-  readonly title?: string;
+  readonly threadId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly title?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -34,17 +34,17 @@ export interface ChannelDeliveryRequest {
   readonly title: string;
   readonly jobId: string;
   readonly runId: string;
-  readonly agentId?: string;
-  readonly sessionId?: string;
-  readonly status?: string;
+  readonly agentId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly status?: string | undefined;
   readonly includeLinks: boolean;
-  readonly attachments?: readonly ArtifactReference[];
-  readonly binding?: ChannelDeliveryRouteBinding;
-  readonly metadata?: Record<string, unknown>;
+  readonly attachments?: readonly ArtifactReference[] | undefined;
+  readonly binding?: ChannelDeliveryRouteBinding | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelDeliveryResult {
-  readonly responseId?: string;
+  readonly responseId?: string | undefined;
 }
 
 export interface ChannelDeliveryStrategy {
@@ -54,10 +54,10 @@ export interface ChannelDeliveryStrategy {
 }
 
 export interface ChannelDeliveryRouterConfig {
-  readonly configManager?: ConfigManager;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
-  readonly serviceRegistry?: ServiceRegistry;
-  readonly artifactStore?: ArtifactStore;
-  readonly controlPlaneGateway?: ControlPlaneGateway | null;
-  readonly strategies?: readonly ChannelDeliveryStrategy[];
+  readonly configManager?: ConfigManager | undefined;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
+  readonly serviceRegistry?: ServiceRegistry | undefined;
+  readonly artifactStore?: ArtifactStore | undefined;
+  readonly controlPlaneGateway?: ControlPlaneGateway | null | undefined;
+  readonly strategies?: readonly ChannelDeliveryStrategy[] | undefined;
 }

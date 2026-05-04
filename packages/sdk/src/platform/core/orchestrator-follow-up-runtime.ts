@@ -93,7 +93,7 @@ export class OrchestratorFollowUpRuntime {
     const provider = providerRegistry.require(model.provider);
     const tokenLimit = Math.min(
       FOLLOW_UP_MAX_OUTPUT_TOKENS,
-      providerRegistry.getTokenLimitsForModel(model).maxOutputTokens,
+      providerRegistry.getTokenLimitsForModel(model).maxOutputTokens ?? FOLLOW_UP_MAX_OUTPUT_TOKENS,
     );
     const batch = this.takeBatch();
     if (batch.length === 0) return;

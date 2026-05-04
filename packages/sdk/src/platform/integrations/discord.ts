@@ -28,63 +28,63 @@ export interface DiscordInteraction {
   type: number;
   applicationId: string;
   token: string;
-  guildId?: string;
-  channelId?: string;
+  guildId?: string | undefined;
+  channelId?: string | undefined;
   userId: string;
-  commandName?: string;
-  commandOptions?: Array<{ name: string; value: unknown }>;
+  commandName?: string | undefined;
+  commandOptions?: Array<{ name: string; value: unknown }> | undefined;
   raw: Record<string, unknown>;
 }
 
 export interface DiscordOAuthAuthorizeOptions {
   readonly clientId: string;
-  readonly redirectUri?: string;
-  readonly scopes?: readonly string[];
-  readonly permissions?: string;
-  readonly guildId?: string;
-  readonly disableGuildSelect?: boolean;
-  readonly state?: string;
+  readonly redirectUri?: string | undefined;
+  readonly scopes?: readonly string[] | undefined;
+  readonly permissions?: string | undefined;
+  readonly guildId?: string | undefined;
+  readonly disableGuildSelect?: boolean | undefined;
+  readonly state?: string | undefined;
 }
 
 export interface DiscordApplicationCommandOption {
   readonly type: number;
   readonly name: string;
   readonly description: string;
-  readonly required?: boolean;
+  readonly required?: boolean | undefined;
 }
 
 export interface DiscordApplicationCommand {
-  readonly id?: string;
-  readonly application_id?: string;
-  readonly guild_id?: string;
+  readonly id?: string | undefined;
+  readonly application_id?: string | undefined;
+  readonly guild_id?: string | undefined;
   readonly name: string;
   readonly description: string;
-  readonly type?: number;
-  readonly options?: readonly DiscordApplicationCommandOption[];
-  readonly default_member_permissions?: string | null;
-  readonly dm_permission?: boolean;
+  readonly type?: number | undefined;
+  readonly options?: readonly DiscordApplicationCommandOption[] | undefined;
+  readonly default_member_permissions?: string | null | undefined;
+  readonly dm_permission?: boolean | undefined;
 }
 
 export interface DiscordGatewayBotResponse {
   readonly url: string;
   readonly shards: number;
-  readonly session_start_limit?: Record<string, unknown>;
+  readonly session_start_limit?: Record<string, unknown> | undefined;
 }
 
 export interface DiscordGatewayDispatch {
   readonly op: number;
-  readonly t?: string;
-  readonly s?: number;
-  readonly d?: Record<string, unknown> | null;
+  readonly t?: string | undefined;
+  readonly s?: number | undefined;
+  readonly d?: Record<string, unknown> | null | undefined;
 }
 
 export interface DiscordGatewayClientOptions {
   readonly token: string;
   readonly integration: DiscordIntegration;
-  readonly intents?: number;
-  readonly gatewayUrl?: string;
+  readonly intents?: number | undefined;
+  readonly gatewayUrl?: string | undefined;
   readonly onDispatch: (dispatch: DiscordGatewayDispatch, client: DiscordGatewayClient) => void | Promise<void>;
-  readonly WebSocketImpl?: typeof WebSocket;
+  readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 export const DiscordGatewayOpcode = {
@@ -406,9 +406,9 @@ export class DiscordIntegration {
   private async apiFetch<T>(
     path: string,
     options: {
-      readonly method?: string;
-      readonly token?: string;
-      readonly body?: unknown;
+      readonly method?: string | undefined;
+      readonly token?: string | undefined;
+      readonly body?: unknown | undefined;
     } = {},
   ): Promise<T> {
     const token = options.token ?? this.botToken;
@@ -483,7 +483,7 @@ export class DiscordIntegration {
     const buf = new ArrayBuffer(hex.length / 2);
     const bytes = new Uint8Array(buf);
     for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+      bytes[i]! = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
     }
     return bytes;
   }

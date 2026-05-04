@@ -8,16 +8,16 @@ export type AuthInspectionFreshness = 'healthy' | 'expiring' | 'expired' | 'pend
 export interface ProviderAuthInspection {
   readonly provider: string;
   readonly configured: boolean;
-  readonly source?: 'service' | 'builtin';
+  readonly source?: 'service' | 'builtin' | undefined;
   readonly freshness: AuthInspectionFreshness;
-  readonly redirectUri?: string;
+  readonly redirectUri?: string | undefined;
   readonly callbackMode: 'local' | 'manual';
-  readonly localCallback?: string;
+  readonly localCallback?: string | undefined;
   readonly activeSubscription: boolean;
   readonly pendingLogin: boolean;
   readonly overrideAmbientApiKeys: boolean;
-  readonly tokenType?: string;
-  readonly expiresAt?: number;
+  readonly tokenType?: string | undefined;
+  readonly expiresAt?: number | undefined;
   readonly issues: readonly string[];
   readonly nextActions: readonly string[];
 }

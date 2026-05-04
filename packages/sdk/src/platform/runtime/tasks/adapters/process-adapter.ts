@@ -22,7 +22,7 @@ export interface ProcessOwner {
   /** Session ID that spawned this process. */
   sessionId: string;
   /** Optional agent ID that owns this process. */
-  agentId?: string;
+  agentId?: string | undefined;
 }
 
 /**
@@ -198,7 +198,7 @@ export class ProcessTaskAdapter {
   private _transitionTask(
     taskId: string,
     status: 'completed' | 'failed' | 'cancelled',
-    extras: { exitCode?: number; error?: string },
+    extras: { exitCode?: number; error?: string | undefined },
   ): void {
     this._dispatch.transitionRuntimeTask(
       taskId,

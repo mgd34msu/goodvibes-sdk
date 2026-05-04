@@ -31,10 +31,10 @@ interface GuidanceDismissalStore {
 }
 
 export interface GuidancePersistenceOptions {
-  readonly guidancePath?: string;
-  readonly userRoot?: string;
-  readonly homeDirectory?: string;
-  readonly surfaceRoot?: string;
+  readonly guidancePath?: string | undefined;
+  readonly userRoot?: string | undefined;
+  readonly homeDirectory?: string | undefined;
+  readonly surfaceRoot?: string | undefined;
 }
 
 function resolveGuidancePath(options?: GuidancePersistenceOptions): string {

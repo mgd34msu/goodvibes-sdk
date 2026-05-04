@@ -59,11 +59,11 @@ type OpsAuditData = {
   targetId: string;
   targetKind: 'task' | 'agent';
   reason: OpsInterventionReason;
-  note?: string;
+  note?: string | undefined;
   outcome: 'success' | 'rejected' | 'error';
-  errorMessage?: string;
-  taskId?: string;
-  agentId?: string;
+  errorMessage?: string | undefined;
+  taskId?: string | undefined;
+  agentId?: string | undefined;
 };
 
 function emitOpsAudit(
@@ -89,7 +89,7 @@ function emitOpsAudit(
 export function emitOpsTaskCancelled(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { taskId: string; reason: OpsInterventionReason; note?: string; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string }
+  data: { taskId: string; reason: OpsInterventionReason; note?: string | undefined; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string | undefined }
 ): void {
   bus.emit('ops', createEventEnvelope('OPS_TASK_CANCELLED', {
     type: 'OPS_TASK_CANCELLED',
@@ -104,7 +104,7 @@ export function emitOpsTaskCancelled(
 export function emitOpsTaskPaused(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { taskId: string; reason: OpsInterventionReason; note?: string; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string }
+  data: { taskId: string; reason: OpsInterventionReason; note?: string | undefined; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string | undefined }
 ): void {
   bus.emit('ops', createEventEnvelope('OPS_TASK_PAUSED', {
     type: 'OPS_TASK_PAUSED',
@@ -119,7 +119,7 @@ export function emitOpsTaskPaused(
 export function emitOpsTaskResumed(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { taskId: string; reason: OpsInterventionReason; note?: string; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string }
+  data: { taskId: string; reason: OpsInterventionReason; note?: string | undefined; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string | undefined }
 ): void {
   bus.emit('ops', createEventEnvelope('OPS_TASK_RESUMED', {
     type: 'OPS_TASK_RESUMED',
@@ -134,7 +134,7 @@ export function emitOpsTaskResumed(
 export function emitOpsTaskRetried(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { taskId: string; reason: OpsInterventionReason; note?: string; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string }
+  data: { taskId: string; reason: OpsInterventionReason; note?: string | undefined; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string | undefined }
 ): void {
   bus.emit('ops', createEventEnvelope('OPS_TASK_RETRIED', {
     type: 'OPS_TASK_RETRIED',
@@ -151,7 +151,7 @@ export function emitOpsTaskRetried(
 export function emitOpsAgentCancelled(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { agentId: string; reason: OpsInterventionReason; note?: string; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string }
+  data: { agentId: string; reason: OpsInterventionReason; note?: string | undefined; outcome: 'success' | 'rejected' | 'error'; errorMessage?: string | undefined }
 ): void {
   bus.emit('ops', createEventEnvelope('OPS_AGENT_CANCELLED', {
     type: 'OPS_AGENT_CANCELLED',

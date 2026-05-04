@@ -10,9 +10,9 @@ export interface ManagedWorktreeMeta {
   readonly path: string;
   readonly kind: ManagedWorktreeKind;
   readonly state: ManagedWorktreeState;
-  readonly ownerId?: string;
-  readonly sessionId?: string;
-  readonly taskId?: string;
+  readonly ownerId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly taskId?: string | undefined;
   readonly updatedAt: number;
 }
 
@@ -54,7 +54,7 @@ export interface WorktreeAttachmentReview {
 
 export interface WorktreeRegistryPaths {
   readonly workingDirectory: string;
-  readonly surfaceRoot?: string;
+  readonly surfaceRoot?: string | undefined;
 }
 
 function getStorePath(workingDirectory: string, surfaceRoot?: string): string {
@@ -165,7 +165,7 @@ function classifyWorktreePath(path: string, workingDirectory: string): Pick<Mana
 export class WorktreeRegistry {
   private readonly git: GitService;
   private readonly workingDirectory: string;
-  private readonly surfaceRoot?: string;
+  private readonly surfaceRoot?: string | undefined;
 
   public constructor(workingDirectory: string, options?: { readonly surfaceRoot?: string }) {
     this.workingDirectory = workingDirectory;
@@ -179,7 +179,7 @@ export class WorktreeRegistry {
     const present = new Set(listed.map((entry) => normalizePath(entry.path, this.workingDirectory)));
     const records: WorktreeStatusRecord[] = listed.map((entry) => {
       const path = normalizePath(entry.path, this.workingDirectory);
-      const meta = store.records[path];
+      const meta = store.records[path]!;
       const classified = classifyWorktreePath(path, this.workingDirectory);
       return {
         path,
@@ -215,7 +215,7 @@ export class WorktreeRegistry {
   public attach(path: string, target: { sessionId?: string; taskId?: string }): void {
     const store = readStore(getStorePath(this.workingDirectory, this.surfaceRoot));
     const normalized = normalizePath(path, this.workingDirectory);
-    const existing = store.records[normalized];
+    const existing = store.records[normalized]!;
     const classified = classifyWorktreePath(normalized, this.workingDirectory);
     store.records[normalized] = {
       path: normalized,
@@ -232,7 +232,7 @@ export class WorktreeRegistry {
   public setState(path: string, state: ManagedWorktreeState): void {
     const store = readStore(getStorePath(this.workingDirectory, this.surfaceRoot));
     const normalized = normalizePath(path, this.workingDirectory);
-    const existing = store.records[normalized];
+    const existing = store.records[normalized]!;
     const classified = classifyWorktreePath(normalized, this.workingDirectory);
     store.records[normalized] = {
       path: normalized,

@@ -23,5 +23,5 @@ export interface TranscriptEvent {
   readonly groupKey: string;
   readonly title: string;
   readonly detail: string;
-  readonly relatedCallId?: string;
+  readonly relatedCallId?: string | undefined;
 }

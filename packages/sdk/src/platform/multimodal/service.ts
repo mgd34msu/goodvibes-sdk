@@ -194,11 +194,11 @@ export class MultimodalService {
   async writeBackAnalysis(
     result: MultimodalAnalysisResult,
     input: {
-      readonly sessionId?: string;
-      readonly title?: string;
-      readonly tags?: readonly string[];
-      readonly folderPath?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly sessionId?: string | undefined;
+      readonly title?: string | undefined;
+      readonly tags?: readonly string[] | undefined;
+      readonly folderPath?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     } = {},
   ): Promise<MultimodalWritebackResult> {
     const analysisArtifact = await this.artifactStore.create({

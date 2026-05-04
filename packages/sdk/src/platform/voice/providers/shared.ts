@@ -21,7 +21,7 @@ export function asRecord(value: unknown): Record<string, unknown> | undefined {
 
 export function readFirstEnv(envVars: readonly string[]): string | null {
   for (const envVar of envVars) {
-    const value = process.env[envVar];
+    const value = process.env[envVar]!;
     if (typeof value === 'string' && value.trim().length > 0) return value.trim();
   }
   return null;

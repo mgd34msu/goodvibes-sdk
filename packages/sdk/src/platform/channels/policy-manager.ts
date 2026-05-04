@@ -72,8 +72,8 @@ export class ChannelPolicyManager {
 
   constructor(
     options: {
-      readonly store?: PersistentStore<ChannelPolicySnapshot>;
-      readonly storePath?: string;
+      readonly store?: PersistentStore<ChannelPolicySnapshot> | undefined;
+      readonly storePath?: string | undefined;
     },
   ) {
     if (options.store) {

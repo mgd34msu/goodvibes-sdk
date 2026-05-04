@@ -21,10 +21,10 @@ export const REMOTE_TRIGGER_TOOL_SCHEMA: ToolDefinition = {
 
 export interface RemoteTriggerToolInput {
   readonly mode: 'create-pool' | 'pools' | 'assign' | 'unassign' | 'contracts' | 'artifacts' | 'review' | 'import-artifact';
-  readonly view?: 'summary' | 'full';
-  readonly poolId?: string;
-  readonly label?: string;
-  readonly runnerId?: string;
-  readonly artifactId?: string;
-  readonly path?: string;
+  readonly view?: 'summary' | 'full' | undefined;
+  readonly poolId?: string | undefined;
+  readonly label?: string | undefined;
+  readonly runnerId?: string | undefined;
+  readonly artifactId?: string | undefined;
+  readonly path?: string | undefined;
 }

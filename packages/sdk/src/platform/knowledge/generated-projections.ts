@@ -15,29 +15,29 @@ export interface GeneratedKnowledgeProjectionInput {
   readonly artifactStore: ArtifactStore;
   readonly connectorId: string;
   readonly sourceId: string;
-  readonly sourceType?: KnowledgeSourceType;
+  readonly sourceType?: KnowledgeSourceType | undefined;
   readonly canonicalUri: string;
   readonly title: string;
-  readonly summary?: string;
-  readonly tags?: readonly string[];
+  readonly summary?: string | undefined;
+  readonly tags?: readonly string[] | undefined;
   readonly filename: string;
   readonly markdown: string;
   readonly projectionKind: string;
-  readonly metadata?: Record<string, unknown>;
-  readonly sourceMetadata?: Record<string, unknown>;
-  readonly artifactMetadata?: Record<string, unknown>;
-  readonly edgeMetadata?: Record<string, unknown>;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly sourceMetadata?: Record<string, unknown> | undefined;
+  readonly artifactMetadata?: Record<string, unknown> | undefined;
+  readonly edgeMetadata?: Record<string, unknown> | undefined;
   readonly target?: {
     readonly kind: KnowledgeReferenceKind;
     readonly id: string;
-    readonly relation?: string;
+    readonly relation?: string | undefined;
   };
 }
 
 export interface GeneratedKnowledgeProjectionResult {
   readonly artifact: ArtifactDescriptor;
   readonly source: KnowledgeSourceRecord;
-  readonly linked?: KnowledgeEdgeRecord;
+  readonly linked?: KnowledgeEdgeRecord | undefined;
   readonly artifactCreated: boolean;
 }
 

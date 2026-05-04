@@ -41,7 +41,7 @@ import { summarizeError } from '../utils/error-display.js';
 /** Shape of an agent_message_chunk session update that carries text content. */
 interface MessageChunkUpdate {
   sessionUpdate: 'agent_message_chunk';
-  content?: Array<{ type: string; text?: string }>;
+  content?: Array<{ type: string; text?: string }> | undefined;
 }
 
 /** Runtime type guard for agent_message_chunk updates. */
@@ -373,7 +373,7 @@ export class AcpConnection {
         const category: PermissionCategory = 'delegate';
         const callId = `acp-${this.id}-${Date.now()}`;
         const toolTitle = params.toolCall?.title ?? 'unknown';
-        const approveOptionId = params.options[0]?.optionId ?? 'allow';
+        const approveOptionId = params.options[0]!?.optionId ?? 'allow';
 
         return this.requestPermission({
           callId,

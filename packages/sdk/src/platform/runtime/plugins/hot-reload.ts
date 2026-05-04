@@ -44,13 +44,13 @@ export interface HotReloadOptions {
    * Return a PluginHealthCheckResult to indicate whether the plugin is healthy.
    * Defaults to a trivial healthy check.
    */
-  healthCheck?: (name: string) => Promise<PluginHealthCheckResult>;
+  healthCheck?: ((name: string) => Promise<PluginHealthCheckResult>) | undefined | undefined;
 
   /**
    * Maximum time (ms) to wait for the health check before timing out.
    * Defaults to 5000ms.
    */
-  healthCheckTimeoutMs?: number;
+  healthCheckTimeoutMs?: number | undefined;
 }
 
 /**
@@ -60,9 +60,9 @@ export interface HotReloadResult {
   /** Whether the reload completed successfully and the plugin is healthy. */
   success: boolean;
   /** Phase that failed (if success === false). */
-  failedPhase?: 'quiesce' | 'unregister' | 'unload' | 'reload' | 're-register' | 'health-check';
+  failedPhase?: 'quiesce' | 'unregister' | 'unload' | 'reload' | 're-register' | 'health-check' | undefined;
   /** Error message (if success === false). */
-  error?: string;
+  error?: string | undefined;
   /** Duration of the reload in milliseconds. */
   durationMs: number;
   /** Whether the plugin ended in degraded state (partial success). */

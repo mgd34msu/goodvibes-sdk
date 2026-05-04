@@ -33,18 +33,18 @@ export async function requestDistributedPairing(
   state: DistributedRuntimeManagerState,
   input: {
     readonly peerKind: DistributedPeerKind;
-    readonly requestedId?: string;
+    readonly requestedId?: string | undefined;
     readonly label: string;
-    readonly platform?: string;
-    readonly deviceFamily?: string;
-    readonly version?: string;
-    readonly clientMode?: string;
-    readonly capabilities?: readonly string[];
-    readonly commands?: readonly string[];
-    readonly metadata?: Record<string, unknown>;
-    readonly requestedBy?: 'remote' | 'operator';
-    readonly remoteAddress?: string;
-    readonly ttlMs?: number;
+    readonly platform?: string | undefined;
+    readonly deviceFamily?: string | undefined;
+    readonly version?: string | undefined;
+    readonly clientMode?: string | undefined;
+    readonly capabilities?: readonly string[] | undefined;
+    readonly commands?: readonly string[] | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
+    readonly requestedBy?: 'remote' | 'operator' | undefined;
+    readonly remoteAddress?: string | undefined;
+    readonly ttlMs?: number | undefined;
   },
 ): Promise<{ request: DistributedRuntimePairRequest; challenge: string }> {
   await startDistributedRuntime(state);
@@ -86,10 +86,10 @@ export async function approveDistributedPairRequest(
   state: DistributedRuntimeManagerState,
   requestId: string,
   input: {
-    readonly actor?: string;
-    readonly note?: string;
-    readonly label?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly actor?: string | undefined;
+    readonly note?: string | undefined;
+    readonly label?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   } = {},
 ): Promise<{ request: DistributedRuntimePairRequest; peer: DistributedPeerRecord } | null> {
   await startDistributedRuntime(state);
@@ -129,8 +129,8 @@ export async function rejectDistributedPairRequest(
   state: DistributedRuntimeManagerState,
   requestId: string,
   input: {
-    readonly actor?: string;
-    readonly note?: string;
+    readonly actor?: string | undefined;
+    readonly note?: string | undefined;
   } = {},
 ): Promise<DistributedRuntimePairRequest | null> {
   await startDistributedRuntime(state);
@@ -157,8 +157,8 @@ export async function verifyDistributedPairRequest(
   requestId: string,
   challenge: string,
   input: {
-    readonly remoteAddress?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly remoteAddress?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   } = {},
 ): Promise<{ peer: DistributedPeerRecord; token: DistributedPeerTokenRecord & { value: string } } | null> {
   await startDistributedRuntime(state);
@@ -208,9 +208,9 @@ export async function rotateDistributedPeerToken(
   state: DistributedRuntimeManagerState,
   peerId: string,
   input: {
-    readonly actor?: string;
-    readonly label?: string;
-    readonly scopes?: readonly string[];
+    readonly actor?: string | undefined;
+    readonly label?: string | undefined;
+    readonly scopes?: readonly string[] | undefined;
   } = {},
 ): Promise<{ peer: DistributedPeerRecord; token: DistributedPeerTokenRecord & { value: string } } | null> {
   await startDistributedRuntime(state);
@@ -240,9 +240,9 @@ export async function revokeDistributedPeerToken(
   state: DistributedRuntimeManagerState,
   peerId: string,
   input: {
-    readonly actor?: string;
-    readonly tokenId?: string;
-    readonly note?: string;
+    readonly actor?: string | undefined;
+    readonly tokenId?: string | undefined;
+    readonly note?: string | undefined;
   } = {},
 ): Promise<DistributedPeerRecord | null> {
   await startDistributedRuntime(state);
@@ -281,9 +281,9 @@ export async function disconnectDistributedPeer(
   state: DistributedRuntimeManagerState,
   peerId: string,
   input: {
-    readonly actor?: string;
-    readonly note?: string;
-    readonly requeueClaimedWork?: boolean;
+    readonly actor?: string | undefined;
+    readonly note?: string | undefined;
+    readonly requeueClaimedWork?: boolean | undefined;
   } = {},
 ): Promise<DistributedPeerRecord | null> {
   await startDistributedRuntime(state);
@@ -355,12 +355,12 @@ export async function heartbeatDistributedPeer(
   state: DistributedRuntimeManagerState,
   auth: DistributedPeerAuth,
   input: {
-    readonly remoteAddress?: string;
-    readonly capabilities?: readonly string[];
-    readonly commands?: readonly string[];
-    readonly version?: string;
-    readonly clientMode?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly remoteAddress?: string | undefined;
+    readonly capabilities?: readonly string[] | undefined;
+    readonly commands?: readonly string[] | undefined;
+    readonly version?: string | undefined;
+    readonly clientMode?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   } = {},
 ): Promise<DistributedPeerRecord> {
   await startDistributedRuntime(state);
@@ -505,7 +505,7 @@ function updatePeerConnectionState(
   peerId: string,
   status: 'connected' | 'disconnected',
   input: {
-    readonly remoteAddress?: string;
+    readonly remoteAddress?: string | undefined;
   } = {},
 ): StoredPeerRecord | null {
   const peer = state.peers.get(peerId);

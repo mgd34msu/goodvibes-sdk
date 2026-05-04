@@ -10,19 +10,19 @@ import type { FailureClass } from './types.js';
 /** Inputs available to the classifier at report generation time. */
 interface ClassifierInput {
   /** Stop reason from the LLM provider (if any). */
-  readonly stopReason?: string;
+  readonly stopReason?: string | undefined;
   /** Error message from the terminal event. */
-  readonly errorMessage?: string;
+  readonly errorMessage?: string | undefined;
   /** Whether this entity was explicitly cancelled by the operator. */
-  readonly wasCancelled?: boolean;
+  readonly wasCancelled?: boolean | undefined;
   /** Whether any cascade events were present in the causal context. */
-  readonly hasCascadeEvents?: boolean;
+  readonly hasCascadeEvents?: boolean | undefined;
   /** Whether any tool calls failed in this turn/task. */
-  readonly hasToolFailure?: boolean;
+  readonly hasToolFailure?: boolean | undefined;
   /** Whether any permission check was denied. */
-  readonly hasPermissionDenial?: boolean;
+  readonly hasPermissionDenial?: boolean | undefined;
   /** Whether a compaction error was recorded. */
-  readonly hasCompactionError?: boolean;
+  readonly hasCompactionError?: boolean | undefined;
 }
 
 /**

@@ -10,36 +10,36 @@ export interface VoiceProviderStatus {
   readonly state: VoiceProviderState;
   readonly capabilities: readonly VoiceProviderCapability[];
   readonly configured: boolean;
-  readonly detail?: string;
+  readonly detail?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface VoiceDescriptor {
   readonly id: string;
   readonly label: string;
-  readonly locale?: string;
-  readonly gender?: string;
+  readonly locale?: string | undefined;
+  readonly gender?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface VoiceAudioArtifact {
   readonly mimeType: string;
   readonly format: VoiceAudioFormat | string;
-  readonly dataBase64?: string;
-  readonly uri?: string;
-  readonly sampleRateHz?: number;
-  readonly durationMs?: number;
+  readonly dataBase64?: string | undefined;
+  readonly uri?: string | undefined;
+  readonly sampleRateHz?: number | undefined;
+  readonly durationMs?: number | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface VoiceSynthesisRequest {
   readonly text: string;
-  readonly voiceId?: string;
-  readonly modelId?: string;
-  readonly format?: VoiceAudioFormat | string;
-  readonly speed?: number;
-  readonly signal?: AbortSignal;
-  readonly metadata?: Record<string, unknown>;
+  readonly voiceId?: string | undefined;
+  readonly modelId?: string | undefined;
+  readonly format?: VoiceAudioFormat | string | undefined;
+  readonly speed?: number | undefined;
+  readonly signal?: AbortSignal | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface VoiceSynthesisResult {
@@ -51,10 +51,10 @@ export interface VoiceSynthesisResult {
 export interface VoiceAudioChunk {
   readonly data: Uint8Array;
   readonly sequence: number;
-  readonly mimeType?: string;
-  readonly format?: VoiceAudioFormat | string;
-  readonly final?: boolean;
-  readonly metadata?: Record<string, unknown>;
+  readonly mimeType?: string | undefined;
+  readonly format?: VoiceAudioFormat | string | undefined;
+  readonly final?: boolean | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface VoiceSynthesisStreamResult {
@@ -67,41 +67,41 @@ export interface VoiceSynthesisStreamResult {
 
 export interface VoiceTranscriptionRequest {
   readonly audio: VoiceAudioArtifact;
-  readonly language?: string;
-  readonly modelId?: string;
-  readonly prompt?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly language?: string | undefined;
+  readonly modelId?: string | undefined;
+  readonly prompt?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface VoiceTranscriptionResult {
   readonly providerId: string;
   readonly text: string;
-  readonly language?: string;
+  readonly language?: string | undefined;
   readonly segments?: readonly {
     readonly text: string;
-    readonly startMs?: number;
-    readonly endMs?: number;
-    readonly confidence?: number;
+    readonly startMs?: number | undefined;
+    readonly endMs?: number | undefined;
+    readonly confidence?: number | undefined;
   }[];
   readonly metadata: Record<string, unknown>;
 }
 
 export interface VoiceRealtimeSessionRequest {
-  readonly modelId?: string;
-  readonly voiceId?: string;
-  readonly inputFormat?: VoiceAudioFormat | string;
-  readonly outputFormat?: VoiceAudioFormat | string;
-  readonly instructions?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly modelId?: string | undefined;
+  readonly voiceId?: string | undefined;
+  readonly inputFormat?: VoiceAudioFormat | string | undefined;
+  readonly outputFormat?: VoiceAudioFormat | string | undefined;
+  readonly instructions?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface VoiceRealtimeSession {
   readonly providerId: string;
   readonly sessionId: string;
   readonly transport: 'websocket' | 'webrtc' | 'sse' | 'http' | 'custom';
-  readonly url?: string;
-  readonly expiresAt?: number;
-  readonly headers?: Record<string, string>;
+  readonly url?: string | undefined;
+  readonly expiresAt?: number | undefined;
+  readonly headers?: Record<string, string> | undefined;
   readonly metadata: Record<string, unknown>;
 }
 

@@ -37,11 +37,11 @@ interface GeminiCandidate {
 }
 
 interface GeminiResponseBody {
-  candidates?: GeminiCandidate[];
+  candidates?: GeminiCandidate[] | undefined;
   usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-    cachedContentTokenCount?: number;
+    promptTokenCount?: number | undefined;
+    candidatesTokenCount?: number | undefined;
+    cachedContentTokenCount?: number | undefined;
   };
 }
 
@@ -225,7 +225,7 @@ export class GeminiProvider implements LLMProvider {
       }
 
       if (reasoningEffort) {
-        const budget = REASONING_BUDGET_MAP[reasoningEffort];
+        const budget = REASONING_BUDGET_MAP[reasoningEffort]!;
         if (budget !== undefined) {
           body['generationConfig'] = {
             ...(body['generationConfig'] as Record<string, unknown> ?? {}),
@@ -246,8 +246,8 @@ export class GeminiProvider implements LLMProvider {
             'x-goog-api-key': this.apiKey,
           },
           body: JSON.stringify(body),
-          signal,
-        });
+          ...(signal !== undefined ? { signal } : {}),
+        } as RequestInit);
       } catch (err: unknown) {
         throw toProviderError(err, {
           provider: this.name,
@@ -397,8 +397,8 @@ export class GeminiProvider implements LLMProvider {
           'x-goog-api-key': this.apiKey,
         },
         body: JSON.stringify(body),
-        signal: request.signal,
-      });
+        ...(request.signal !== undefined ? { signal: request.signal } : {}),
+      } as RequestInit);
     } catch (error: unknown) {
       throw toProviderError(error, {
         provider: this.name,

@@ -46,7 +46,7 @@ export function runReactive(input: StrategyInput): StrategyOutput {
   let totalTokens = perMessageTokens.reduce((a, b) => a + b, 0);
   let cutIndex = 0;
   while (cutIndex < messages.length - 1 && totalTokens > targetTokens) {
-    totalTokens -= perMessageTokens[cutIndex];
+    totalTokens -= perMessageTokens[cutIndex]!
     cutIndex++;
   }
   const remaining: ProviderMessage[] = (messages as ProviderMessage[]).slice(cutIndex);

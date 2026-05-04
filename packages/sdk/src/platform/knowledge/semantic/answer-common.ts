@@ -6,8 +6,8 @@ import type { KnowledgeSemanticLlm } from './types.js';
 
 export interface KnowledgeAnswerContext {
   readonly store: KnowledgeStore;
-  readonly llm?: KnowledgeSemanticLlm | null;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
+  readonly llm?: KnowledgeSemanticLlm | null | undefined;
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
 }
 
 export interface EvidenceItem {
@@ -15,17 +15,17 @@ export interface EvidenceItem {
   readonly id: string;
   readonly title: string;
   readonly score: number;
-  readonly source?: KnowledgeSourceRecord;
-  readonly node?: KnowledgeNodeRecord;
-  readonly excerpt?: string;
+  readonly source?: KnowledgeSourceRecord | undefined;
+  readonly node?: KnowledgeNodeRecord | undefined;
+  readonly excerpt?: string | undefined;
   readonly facts: readonly KnowledgeNodeRecord[];
 }
 
 export type AnswerFactRecord = KnowledgeNodeRecord & {
-  readonly subject?: string;
-  readonly subjectIds?: readonly string[];
-  readonly targetHints?: readonly Record<string, unknown>[];
-  readonly linkedObjectIds?: readonly string[];
+  readonly subject?: string | undefined;
+  readonly subjectIds?: readonly string[] | undefined;
+  readonly targetHints?: readonly Record<string, unknown>[] | undefined;
+  readonly linkedObjectIds?: readonly string[] | undefined;
 };
 
 export const GENERIC_ANSWER_INTENT_TOKENS = new Set([

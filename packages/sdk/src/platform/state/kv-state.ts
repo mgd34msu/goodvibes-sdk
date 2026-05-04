@@ -11,7 +11,7 @@ import { summarizeError } from '../utils/error-display.js';
 const RESERVED_KEYS = new Set(['id', 'started_at', '__proto__', 'constructor', 'prototype']);
 
 export interface KVStateOptions {
-  readonly sessionId?: string;
+  readonly sessionId?: string | undefined;
   readonly stateDir: string;
 }
 

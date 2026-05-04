@@ -216,7 +216,7 @@ export function buildKnowledgeRouteContext(input: {
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;
 }): DaemonKnowledgeRouteContext {
   return {
-    artifactStore: input.artifactStore,
+    artifactStore: input.artifactStore as unknown as DaemonMediaRouteContext['artifactStore'],
     configManager: input.configManager,
     inspectGraphqlAccess: input.inspectGraphqlAccess,
     normalizeAtSchedule: input.normalizeAtSchedule,
@@ -337,18 +337,14 @@ export function buildMediaRouteContext(input: {
   readonly webSearchService: WebSearchService;
 }): DaemonMediaRouteContext {
   return {
-    artifactStore: input.artifactStore,
+    artifactStore: input.artifactStore as unknown as DaemonMediaRouteContext['artifactStore'],
     configManager: input.configManager,
     mediaProviders: {
       status: () => input.mediaProviders.status(),
-      findProvider: (capability, providerId) => input.mediaProviders.findProvider(
+      findProvider: (capability, providerId) => input!.mediaProviders.findProvider(
         capability,
         providerId,
-      ) as {
-        analyze?: (body: Record<string, unknown>) => Promise<unknown>;
-        transform?: (body: Record<string, unknown>) => Promise<unknown>;
-        generate?: (body: Record<string, unknown>) => Promise<unknown>;
-      } | null,
+      ) as unknown as DaemonMediaRouteContext['mediaProviders']['findProvider'] extends (...args: never[]) => infer R ? R : never,
     },
     multimodalService: {
       getStatus: () => input.multimodalService.getStatus(),

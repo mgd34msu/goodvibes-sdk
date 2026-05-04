@@ -49,9 +49,9 @@ export interface PluginTrustRecord {
    * Fingerprint of the verified signature for trusted-tier plugins.
    * Undefined for untrusted/limited plugins.
    */
-  signatureFingerprint?: string;
+  signatureFingerprint?: string | undefined;
   /** Optional human-readable note attached by the operator. */
-  note?: string;
+  note?: string | undefined;
 }
 
 // ── Signature Validation ──────────────────────────────────────────────────────
@@ -63,9 +63,9 @@ export interface SignatureValidationResult {
   /** Whether the signature is valid. */
   valid: boolean;
   /** A stable fingerprint derived from the signature (e.g. hex digest prefix). */
-  fingerprint?: string;
+  fingerprint?: string | undefined;
   /** Human-readable failure reason. Only set when `valid` is false. */
-  reason?: string;
+  reason?: string | undefined;
 }
 
 /**
@@ -83,7 +83,7 @@ export interface SignatureValidationResult {
  *                    validity only is checked (suitable for CI/test).
  */
 export function validatePluginSignature(
-  manifest: { name: string; version: string; capabilities?: string[]; signature?: string },
+  manifest: { name: string; version: string; capabilities?: string[] | undefined; signature?: string | undefined },
   publicKey?: string,
 ): SignatureValidationResult {
   const { name, version, capabilities = [], signature } = manifest;
@@ -215,7 +215,7 @@ export class PluginTrustStore {
   setTier(
     pluginName: string,
     tier: PluginTrustTier,
-    options: { note?: string } = {},
+    options: { note?: string | undefined } = {},
   ): PluginTrustRecord {
     const record: PluginTrustRecord = {
       pluginName,
@@ -235,7 +235,7 @@ export class PluginTrustStore {
    */
   trustSigned(
     pluginName: string,
-    manifest: { name: string; version: string; capabilities?: string[]; signature?: string },
+    manifest: { name: string; version: string; capabilities?: string[] | undefined; signature?: string | undefined },
     publicKey?: string,
   ): { ok: true; record: PluginTrustRecord } | { ok: false; reason: string } {
     const validation = validatePluginSignature(manifest, publicKey);
@@ -261,7 +261,7 @@ export class PluginTrustStore {
    * changing its tier. Useful for `/plugin verify` inspection.
    */
   verify(
-    manifest: { name: string; version: string; capabilities?: string[]; signature?: string },
+    manifest: { name: string; version: string; capabilities?: string[] | undefined; signature?: string | undefined },
     publicKey?: string,
   ): SignatureValidationResult {
     return validatePluginSignature(manifest, publicKey);

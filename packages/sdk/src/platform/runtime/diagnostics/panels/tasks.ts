@@ -25,17 +25,17 @@ type MutableTaskState = TaskEntry['state'];
 /** Internal mutable task record used while the task is in progress. */
 interface MutableTaskRecord {
   taskId: string;
-  agentId?: string;
+  agentId?: string | undefined;
   description: string;
   priority: number;
   state: MutableTaskState;
   createdAt: number;
-  completedAt?: number;
-  durationMs?: number;
-  progress?: number;
-  progressMessage?: string;
-  blockReason?: string;
-  error?: string;
+  completedAt?: number | undefined;
+  durationMs?: number | undefined;
+  progress?: number | undefined;
+  progressMessage?: string | undefined;
+  blockReason?: string | undefined;
+  error?: string | undefined;
   traceId: string;
   sessionId: string;
 }

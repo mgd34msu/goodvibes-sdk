@@ -13,8 +13,8 @@ const USEFUL_PAGE_FACT_KINDS = new Set([
 ]);
 
 export interface KnowledgePageFactQualityOptions {
-  readonly allowedFactKinds?: ReadonlySet<string>;
-  readonly rejectRemoteAccessoryDetails?: boolean;
+  readonly allowedFactKinds?: ReadonlySet<string> | undefined;
+  readonly rejectRemoteAccessoryDetails?: boolean | undefined;
 }
 
 export function isSemanticAnswerLinkedObject(node: KnowledgeNodeRecord): boolean {

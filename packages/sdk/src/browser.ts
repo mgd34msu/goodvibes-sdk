@@ -7,9 +7,9 @@ import {
 
 export interface BrowserGoodVibesSdkOptions
   extends Omit<GoodVibesSdkOptions, 'baseUrl' | 'fetch' | 'WebSocketImpl'> {
-  readonly baseUrl?: string;
-  readonly fetch?: typeof fetch;
-  readonly WebSocketImpl?: typeof WebSocket;
+  readonly baseUrl?: string | undefined;
+  readonly fetch?: typeof fetch | undefined;
+  readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 function resolveBrowserBaseUrl(baseUrl?: string): string {

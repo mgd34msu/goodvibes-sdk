@@ -87,11 +87,11 @@ function parseOrganicResults(html: string): WebSearchResult[] {
   const matches: Array<{ href: string; titleHtml: string; index: number }> = [];
   let anchorMatch: RegExpExecArray | null;
   while ((anchorMatch = anchorRe.exec(html)) !== null) {
-    const tag = anchorMatch[0] ?? '';
+    const tag = anchorMatch[0]! ?? '';
     const hrefMatch = tag.match(/\bhref=["']([^"']+)["']/i);
     matches.push({
       href: hrefMatch?.[1] ?? '',
-      titleHtml: anchorMatch[1] ?? '',
+      titleHtml: anchorMatch[1]! ?? '',
       index: anchorMatch.index,
     });
   }
@@ -109,8 +109,8 @@ function parseOrganicResults(html: string): WebSearchResult[] {
       rank: Number(rankMatch?.[1] ?? results.length + 1),
       url: resolvedUrl,
       title: stripTags(current.titleHtml),
-      snippet: snippetMatch ? stripTags(snippetMatch[1]) : undefined,
-      displayUrl: displayMatch ? stripTags(displayMatch[1]) : undefined,
+      snippet: snippetMatch ? stripTags(snippetMatch[1]!) : undefined,
+      displayUrl: displayMatch ? stripTags(displayMatch[1]!) : undefined,
       domain: resolveDomain(resolvedUrl),
       type: 'organic',
       providerId: 'duckduckgo',
@@ -172,10 +172,10 @@ function parseInstantAnswer(raw: unknown): WebSearchInstantAnswer | undefined {
 }
 
 export interface DuckDuckGoProviderOptions {
-  readonly fetcher?: FetchExecutor;
-  readonly liteEndpoint?: string;
-  readonly instantEndpoint?: string;
-  readonly source?: string;
+  readonly fetcher?: FetchExecutor | undefined;
+  readonly liteEndpoint?: string | undefined;
+  readonly instantEndpoint?: string | undefined;
+  readonly source?: string | undefined;
 }
 
 export function createDuckDuckGoProvider(options: DuckDuckGoProviderOptions = {}): WebSearchProvider {

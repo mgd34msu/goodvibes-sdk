@@ -13,17 +13,17 @@ export interface McpServerConfig {
   /** Executable command to start the MCP server process */
   command: string;
   /** Arguments to pass to the command */
-  args?: string[];
+  args?: string[] | undefined;
   /** Optional environment variables to merge with process.env */
-  env?: Record<string, string>;
+  env?: Record<string, string> | undefined;
   /** Optional role used by runtime coherence checks. */
-  role?: 'general' | 'docs' | 'filesystem' | 'git' | 'database' | 'browser' | 'automation' | 'ops' | 'remote';
+  role?: 'general' | 'docs' | 'filesystem' | 'git' | 'database' | 'browser' | 'automation' | 'ops' | 'remote' | undefined;
   /** Optional initial trust mode for the runtime MCP trust layer. */
-  trustMode?: 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked';
+  trustMode?: 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked' | undefined;
   /** Optional allowed path prefixes for filesystem-oriented tools. */
-  allowedPaths?: string[];
+  allowedPaths?: string[] | undefined;
   /** Optional allowed network hostnames for network-oriented tools. */
-  allowedHosts?: string[];
+  allowedHosts?: string[] | undefined;
 }
 
 export interface McpConfig {

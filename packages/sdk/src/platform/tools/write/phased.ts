@@ -16,9 +16,9 @@ import type { FileUndoManager } from '../../state/file-undo.js';
 
 /** Dependencies forwarded to the underlying write tool factory. */
 export interface WriteDeps {
-  fileCache?: FileStateCache;
-  projectIndex?: ProjectIndex;
-  fileUndoManager?: FileUndoManager;
+  fileCache?: FileStateCache | undefined;
+  projectIndex?: ProjectIndex | undefined;
+  fileUndoManager?: FileUndoManager | undefined;
 }
 
 // ---------------------------------------------------------------------------

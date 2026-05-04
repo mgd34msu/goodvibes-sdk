@@ -28,10 +28,10 @@ export interface KnowledgePacketContext {
     readonly targetKind: KnowledgeUsageRecord['targetKind'];
     readonly targetId: string;
     readonly usageKind: KnowledgeUsageRecord['usageKind'];
-    readonly task?: string;
-    readonly sessionId?: string;
-    readonly score?: number;
-    readonly metadata?: Record<string, unknown>;
+    readonly task?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly score?: number | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }) => void;
   readonly emitIfReady: (
     fn: (bus: RuntimeEventBus, ctx: { readonly traceId: string; readonly sessionId: string; readonly source: string }) => void,

@@ -8,7 +8,7 @@ export async function linkHomeGraphSnapshotObjectReferences(
     readonly spaceId: string;
     readonly installationId: string;
     readonly node: KnowledgeNodeRecord;
-    readonly object: { readonly deviceId?: string; readonly areaId?: string; readonly integrationId?: string };
+    readonly object: { readonly deviceId?: string | undefined; readonly areaId?: string | undefined; readonly integrationId?: string | undefined };
   },
 ): Promise<void> {
   if (input.object.deviceId && input.node.kind !== 'ha_device') {

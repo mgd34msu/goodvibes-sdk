@@ -20,7 +20,7 @@ export interface SessionMaintenanceStatus {
   readonly compactRecommended: boolean;
   readonly sessionMemoryCount: number;
   readonly compactionCount: number;
-  readonly lastCompactedAt?: number;
+  readonly lastCompactedAt?: number | undefined;
   readonly summary: string;
   readonly reasons: readonly string[];
   readonly nextSteps: readonly string[];
@@ -30,9 +30,9 @@ export interface SessionMaintenanceInput {
   readonly configManager: Pick<ConfigManager, 'get'>;
   readonly currentTokens: number;
   readonly contextWindow: number;
-  readonly messageCount?: number;
-  readonly sessionMemoryCount?: number;
-  readonly session?: Partial<SessionDomainState>;
+  readonly messageCount?: number | undefined;
+  readonly sessionMemoryCount?: number | undefined;
+  readonly session?: Partial<SessionDomainState> | undefined;
 }
 
 export function getGuidanceMode(configManager: Pick<ConfigManager, 'get'>): GuidanceMode {

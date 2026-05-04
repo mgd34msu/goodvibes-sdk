@@ -166,15 +166,15 @@ export async function refreshHomeGraphDevicePagesForSourceIds(
 }
 
 export function shouldContinueHomeGraphSyncSelfImprovement(result: {
-  readonly createdGaps?: number;
-  readonly truncated?: boolean;
-  readonly budgetExhausted?: boolean;
-  readonly processedGaps?: number;
+  readonly createdGaps?: number | undefined;
+  readonly truncated?: boolean | undefined;
+  readonly budgetExhausted?: boolean | undefined;
+  readonly processedGaps?: number | undefined;
   readonly repairableGaps: number;
   readonly queuedTasks: number;
   readonly closedGaps: number;
-  readonly acceptedSourceIds?: readonly string[];
-  readonly promotedFactCount?: number;
+  readonly acceptedSourceIds?: readonly string[] | undefined;
+  readonly promotedFactCount?: number | undefined;
   readonly taskIds: readonly string[];
 }): boolean {
   const madeProgress = result.closedGaps > 0

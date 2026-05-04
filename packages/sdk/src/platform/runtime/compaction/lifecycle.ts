@@ -115,7 +115,7 @@ export interface StrategySelectionParams {
   /** Model context window size. */
   contextWindow: number;
   /** Whether a prompt-too-long error was the immediate cause. */
-  isPromptTooLong?: boolean;
+  isPromptTooLong?: boolean | undefined;
 }
 
 /**

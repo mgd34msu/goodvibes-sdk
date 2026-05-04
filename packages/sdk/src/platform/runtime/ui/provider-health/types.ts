@@ -26,14 +26,14 @@ export interface ProviderHealthEntry {
   readonly p95LatencyMs: number;
   readonly avgLatencyMs: number;
   readonly totalCalls: number;
-  readonly cacheHitRate?: number;
-  readonly cacheReadTokens?: number;
-  readonly cacheWriteTokens?: number;
-  readonly lastSuccessAt?: number;
-  readonly lastErrorAt?: number;
-  readonly lastErrorMessage?: string;
-  readonly lastCheckedAt?: number;
-  readonly rateLimitResetAt?: number;
+  readonly cacheHitRate?: number | undefined;
+  readonly cacheReadTokens?: number | undefined;
+  readonly cacheWriteTokens?: number | undefined;
+  readonly lastSuccessAt?: number | undefined;
+  readonly lastErrorAt?: number | undefined;
+  readonly lastErrorMessage?: string | undefined;
+  readonly lastCheckedAt?: number | undefined;
+  readonly rateLimitResetAt?: number | undefined;
   readonly timeline: HealthTimeline;
 }
 
@@ -44,7 +44,7 @@ export interface FallbackChainNode {
   readonly position: number;
   readonly isCurrent: boolean;
   readonly providerStatus: ProviderStatus;
-  readonly reason?: string;
+  readonly reason?: string | undefined;
 }
 
 export interface FallbackChainData {

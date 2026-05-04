@@ -75,12 +75,12 @@ function extractCodeBlocks(html: string): string {
   const preRe = /<pre[^>]*>([\s\S]*?)<\/pre>/gi;
   let m: RegExpExecArray | null;
   while ((m = preRe.exec(html)) !== null) {
-    blocks.push(stripHtml(m[1]));
+    blocks.push(stripHtml(m[1]!));
   }
   const withoutPre = html.replace(/<pre[\s\S]*?<\/pre>/gi, '');
   const codeRe = /<code[^>]*>([\s\S]*?)<\/code>/gi;
   while ((m = codeRe.exec(withoutPre)) !== null) {
-    const code = stripHtml(m[1]);
+    const code = stripHtml(m[1]!);
     if (code.trim()) blocks.push(code);
   }
   return blocks.join('\n\n');
@@ -91,7 +91,7 @@ function extractLinks(html: string): string {
   const re = /(?:href|src)=["']([^"'#][^"']*)["']/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
-    links.push(m[1]);
+    links.push(m[1]!);
   }
   return links.join('\n');
 }
@@ -114,7 +114,7 @@ function extractStructured(html: string, selectors: string[]): string {
     } else if (trimmed.includes('.')) {
       const [tag, cls] = trimmed.split('.');
       tagPattern = tag || '[a-z][a-z0-9]*';
-      classFilter = cls;
+      classFilter = cls ?? null;
     } else {
       tagPattern = trimmed || '[a-z][a-z0-9]*';
     }
@@ -134,7 +134,7 @@ function extractStructured(html: string, selectors: string[]): string {
 
     let m: RegExpExecArray | null;
     while ((m = re.exec(html)) !== null) {
-      const text = stripHtml(m[2]).trim();
+      const text = stripHtml(m[2]!).trim();
       if (text) results.push(text);
     }
   }
@@ -149,26 +149,26 @@ function extractTables(html: string): string {
   let tableM: RegExpExecArray | null;
 
   while ((tableM = tableRe.exec(html)) !== null) {
-    const tableHtml = tableM[1];
+    const tableHtml = tableM[1]!;
     const headers: string[] = [];
     const rows: string[][] = [];
 
     const thRe = /<th[^>]*>([\s\S]*?)<\/th>/gi;
     let thM: RegExpExecArray | null;
     while ((thM = thRe.exec(tableHtml)) !== null) {
-      headers.push(stripHtml(thM[1]).trim());
+      headers.push(stripHtml(thM[1]!).trim());
     }
 
     const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let trM: RegExpExecArray | null;
     while ((trM = trRe.exec(tableHtml)) !== null) {
-      const rowHtml = trM[1];
+      const rowHtml = trM[1]!;
       if (/<th[^>]*>/i.test(rowHtml)) continue;
       const cells: string[] = [];
       const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
       let tdM: RegExpExecArray | null;
       while ((tdM = tdRe.exec(rowHtml)) !== null) {
-        cells.push(stripHtml(tdM[1]).trim());
+        cells.push(stripHtml(tdM[1]!).trim());
       }
       if (cells.length > 0) rows.push(cells);
     }
@@ -184,11 +184,11 @@ function extractPdf(body: string): string {
   const streamRe = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let m: RegExpExecArray | null;
   while ((m = streamRe.exec(body)) !== null) {
-    const chunk = m[1];
+    const chunk = m[1]!;
     const parenRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g;
     let pm: RegExpExecArray | null;
     while ((pm = parenRe.exec(chunk)) !== null) {
-      const text = pm[1]
+      const text = pm[1]!
         .replace(/\\n/g, '\n')
         .replace(/\\r/g, '\r')
         .replace(/\\t/g, '\t')
@@ -214,20 +214,20 @@ function extractMetadata(html: string): string {
   const result: Record<string, string> = {};
 
   const titleM = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  if (titleM) result['title'] = stripHtml(titleM[1]);
+  if (titleM) result['title'] = stripHtml(titleM[1]!);
 
   const metaRe = /<meta[^>]+>/gi;
   let m: RegExpExecArray | null;
   while ((m = metaRe.exec(html)) !== null) {
-    const tag = m[0];
+    const tag = m[0]!;
     const nameM = tag.match(/name=["'](\w[^"']*)["']/i);
     const contentM = tag.match(/content=["']([^"']*)["']/i);
     if (nameM && contentM) {
-      result[nameM[1]] = contentM[1];
+      result[nameM[1]!] = contentM[1]!;
     }
     const propM = tag.match(/property=["'](og:[^"']*)["']/i);
     if (propM && contentM) {
-      result[propM[1]] = contentM[1];
+      result[propM[1]!] = contentM[1]!;
     }
   }
 
@@ -245,12 +245,12 @@ function extractSummary(body: string, contentType: string): string {
 
   const headingM = body.match(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/i);
   if (headingM) {
-    parts.push(stripHtml(headingM[1]).trim());
+    parts.push(stripHtml(headingM[1]!).trim());
   }
 
   const paraM = body.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
   if (paraM) {
-    const text = stripHtml(paraM[1]).trim();
+    const text = stripHtml(paraM[1]!).trim();
     if (text) parts.push(text);
   }
 
@@ -258,8 +258,8 @@ function extractSummary(body: string, contentType: string): string {
   let hm: RegExpExecArray | null;
   const headings: string[] = [];
   while ((hm = headingRe.exec(body)) !== null) {
-    const level = parseInt(hm[1], 10);
-    const text = stripHtml(hm[2]).trim();
+    const level = parseInt(hm[1]!, 10);
+    const text = stripHtml(hm[2]!).trim();
     if (text && !parts.includes(text)) {
       headings.push(`${'#'.repeat(level)} ${text}`);
     }
@@ -293,7 +293,7 @@ export function applyExtract(
   body: string,
   contentType: string,
   mode: FetchExtractMode,
-  opts?: { selectors?: string[] },
+  opts?: { selectors?: string[] | undefined } | undefined,
 ): string {
   const effectiveContentType = sniffContentType(contentType, body);
   const isHtml = /text\/html/i.test(effectiveContentType);

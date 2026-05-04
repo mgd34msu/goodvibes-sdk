@@ -30,9 +30,9 @@ export interface ProviderRuntimeStatus {
   readonly running: boolean;
   readonly configured: boolean;
   readonly transport: 'socket-mode' | 'gateway' | 'json-stream';
-  readonly lastStartedAt?: number;
-  readonly lastStoppedAt?: number;
-  readonly lastError?: string;
+  readonly lastStartedAt?: number | undefined;
+  readonly lastStoppedAt?: number | undefined;
+  readonly lastError?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -45,16 +45,16 @@ export interface ProviderRuntimeActionResult {
 
 interface ProviderRuntimeManagerDeps {
   readonly configManager: ConfigManager;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   readonly serviceRegistry: ServiceRegistry;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;
 }
 
 interface RuntimeState {
   running: boolean;
-  lastStartedAt?: number;
-  lastStoppedAt?: number;
-  lastError?: string;
+  lastStartedAt?: number | undefined;
+  lastStoppedAt?: number | undefined;
+  lastError?: string | undefined;
   metadata: Record<string, unknown>;
 }
 
@@ -121,7 +121,7 @@ export class ChannelProviderRuntimeManager {
   }
 
   status(surface: ProviderRuntimeSurface): ProviderRuntimeStatus {
-    const state = this.state[surface];
+    const state = this.state[surface]!;
     return {
       surface,
       running: state.running,

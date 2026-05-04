@@ -46,9 +46,9 @@ export type McpEventHandler = (event: McpEvent) => void;
 /** Options for constructing a McpLifecycleManager. */
 export interface McpLifecycleManagerOptions {
   /** Reconnect back-off configuration. Defaults to DEFAULT_RECONNECT_CONFIG. */
-  reconnect?: Partial<McpReconnectConfig>;
+  reconnect?: Partial<McpReconnectConfig> | undefined;
   /** Schema freshness TTL in ms. Defaults to 5 minutes. */
-  schemaTtlMs?: number;
+  schemaTtlMs?: number | undefined;
 }
 
 // ── Manager ───────────────────────────────────────────────────────────────────

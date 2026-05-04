@@ -105,7 +105,7 @@ export function evaluateArgShapeRule(
 
   const failedMatchers: string[] = [];
   for (const [key, expected] of matchers) {
-    const actual = args[key];
+    const actual = args[key]!;
     if (!matchArgValue(actual, expected)) {
       failedMatchers.push(key);
     }

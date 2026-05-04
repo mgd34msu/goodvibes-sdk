@@ -5,12 +5,12 @@ import { summarizeError } from '../utils/error-display.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 export interface ModelBenchmarks {
-  gpqa?: number;
-  swe?: number;
-  aime?: number;
-  terminal?: number;
-  tool?: number;
-  mcp?: number;
+  gpqa?: number | undefined;
+  swe?: number | undefined;
+  aime?: number | undefined;
+  terminal?: number | undefined;
+  tool?: number | undefined;
+  mcp?: number | undefined;
 }
 
 export interface BenchmarkEntry {
@@ -23,37 +23,37 @@ export interface BenchmarkEntry {
 export type QualityTier = 'S' | 'A' | 'B' | 'C';
 
 interface ZeroEvalModel {
-  id?: string;
-  model_id?: string;
-  name?: string;
-  model_name?: string;
-  organization?: string;
-  org?: string;
-  gpqa_score?: number | null;
-  gpqa?: number | null;
-  gpqa_diamond?: number | null;
-  swe_bench_verified_score?: number | null;
-  swe_bench?: number | null;
-  swe?: number | null;
-  aime_2025_score?: number | null;
-  aime?: number | null;
-  aime_2024?: number | null;
-  terminal_bench_score?: number | null;
-  terminal_bench?: number | null;
-  terminal?: number | null;
-  toolathlon_score?: number | null;
-  tool_use?: number | null;
-  tool?: number | null;
-  mcp_atlas_score?: number | null;
-  mcp_bench?: number | null;
-  mcp?: number | null;
-  scores?: Record<string, number | null>;
+  id?: string | undefined;
+  model_id?: string | undefined;
+  name?: string | undefined;
+  model_name?: string | undefined;
+  organization?: string | undefined;
+  org?: string | undefined;
+  gpqa_score?: number | null | undefined;
+  gpqa?: number | null | undefined;
+  gpqa_diamond?: number | null | undefined;
+  swe_bench_verified_score?: number | null | undefined;
+  swe_bench?: number | null | undefined;
+  swe?: number | null | undefined;
+  aime_2025_score?: number | null | undefined;
+  aime?: number | null | undefined;
+  aime_2024?: number | null | undefined;
+  terminal_bench_score?: number | null | undefined;
+  terminal_bench?: number | null | undefined;
+  terminal?: number | null | undefined;
+  toolathlon_score?: number | null | undefined;
+  tool_use?: number | null | undefined;
+  tool?: number | null | undefined;
+  mcp_atlas_score?: number | null | undefined;
+  mcp_bench?: number | null | undefined;
+  mcp?: number | null | undefined;
+  scores?: Record<string, number | null> | undefined;
 }
 
 interface ZeroEvalResponse {
-  models?: ZeroEvalModel[];
-  data?: ZeroEvalModel[];
-  leaderboard?: ZeroEvalModel[];
+  models?: ZeroEvalModel[] | undefined;
+  data?: ZeroEvalModel[] | undefined;
+  leaderboard?: ZeroEvalModel[] | undefined;
 }
 
 interface BenchmarksCache {

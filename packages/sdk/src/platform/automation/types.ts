@@ -54,10 +54,10 @@ export type AutomationThreadPolicy = 'preserve' | 'replace' | 'detached';
 export type AutomationDeliveryGuarantee = 'best-effort' | 'at-least-once';
 
 export interface ProviderModelRoutingPolicy {
-  readonly providerSelection?: ProviderRoutingSelection;
-  readonly unresolvedModelPolicy?: UnresolvedModelPolicy;
-  readonly providerFailurePolicy?: ProviderFailurePolicy;
-  readonly fallbackModels?: readonly string[];
+  readonly providerSelection?: ProviderRoutingSelection | undefined;
+  readonly unresolvedModelPolicy?: UnresolvedModelPolicy | undefined;
+  readonly providerFailurePolicy?: ProviderFailurePolicy | undefined;
+  readonly fallbackModels?: readonly string[] | undefined;
 }
 
 export interface AutomationExecutionIntent {
@@ -70,9 +70,9 @@ export interface AutomationEntityBase {
   readonly labels: readonly string[];
   readonly createdAt: number;
   readonly updatedAt: number;
-  readonly createdBy?: string;
-  readonly updatedBy?: string;
-  readonly notes?: string;
+  readonly createdBy?: string | undefined;
+  readonly updatedBy?: string | undefined;
+  readonly notes?: string | undefined;
 }
 
 export type AutomationFailureMode = 'continue' | 'retry' | 'disable_job';
@@ -85,14 +85,14 @@ export interface AutomationAtSchedule {
 export interface AutomationEverySchedule {
   readonly kind: 'every';
   readonly intervalMs: number;
-  readonly anchorAt?: number;
+  readonly anchorAt?: number | undefined;
 }
 
 export interface AutomationCronSchedule {
   readonly kind: 'cron';
   readonly expression: string;
-  readonly timezone?: string;
-  readonly staggerMs?: number;
+  readonly timezone?: string | undefined;
+  readonly staggerMs?: number | undefined;
 }
 
 export type AutomationSchedule =
@@ -102,26 +102,26 @@ export type AutomationSchedule =
 
 export interface AutomationExecutionPolicy {
   readonly prompt: string;
-  readonly model?: string;
-  readonly template?: string;
-  readonly timeoutMs?: number;
-  readonly target?: AutomationExecutionKind;
-  readonly toolAllowlist?: readonly string[];
+  readonly model?: string | undefined;
+  readonly template?: string | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly target?: AutomationExecutionKind | undefined;
+  readonly toolAllowlist?: readonly string[] | undefined;
 }
 
 export interface AutomationDeliveryPolicy {
   readonly kind: AutomationDeliveryKind;
-  readonly target?: string;
-  readonly threadId?: string;
-  readonly webhookUrl?: string;
-  readonly onFailure?: 'none' | 'fallback_webhook' | 'surface_alert';
+  readonly target?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly webhookUrl?: string | undefined;
+  readonly onFailure?: 'none' | 'fallback_webhook' | 'surface_alert' | undefined;
 }
 
 export interface AutomationFailurePolicy {
   readonly mode: AutomationFailureMode;
   readonly maxConsecutiveFailures: number;
-  readonly cooldownMs?: number;
-  readonly disableAfterFailures?: number;
+  readonly cooldownMs?: number | undefined;
+  readonly disableAfterFailures?: number | undefined;
 }
 
 export interface AutomationSourceRef {

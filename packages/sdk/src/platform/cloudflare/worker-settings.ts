@@ -14,8 +14,8 @@ import type { CloudflareProvisioningContext } from './resources.js';
 const GOODVIBES_DO_MIGRATION_TAG = 'goodvibes-coordinator-v1';
 
 type WorkerMigrationMetadata = {
-  readonly new_tag?: string;
-  readonly old_tag?: string;
+  readonly new_tag?: string | undefined;
+  readonly old_tag?: string | undefined;
   readonly steps: readonly { readonly new_sqlite_classes: readonly string[] }[];
 };
 
@@ -26,8 +26,8 @@ export interface WorkerUploadResult {
     | 'current'
     | 'existing-namespace'
     | 'recovered-existing-class';
-  readonly migrationTag?: string;
-  readonly namespaceId?: string;
+  readonly migrationTag?: string | undefined;
+  readonly namespaceId?: string | undefined;
 }
 
 export function describeWorkerUploadDurableObjectMigration(upload: WorkerUploadResult): string {
@@ -113,7 +113,7 @@ async function resolveDurableObjectMigration(
   workerName: string,
   enabled: boolean,
 ): Promise<{
-  readonly migrations?: WorkerMigrationMetadata;
+  readonly migrations?: WorkerMigrationMetadata | undefined;
   readonly result: WorkerUploadResult;
 }> {
   if (!enabled) {
@@ -225,7 +225,7 @@ export async function configureWorkerSubdomain(
   input: {
     readonly accountId: string;
     readonly workerName: string;
-    readonly requestedSubdomain?: string;
+    readonly requestedSubdomain?: string | undefined;
     readonly enableWorkersDev: boolean;
     readonly steps: CloudflareProvisionStep[];
     readonly persist: boolean;

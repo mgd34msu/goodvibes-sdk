@@ -45,9 +45,9 @@ function homeGraphDescriptor(input: {
   readonly path: string;
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: Record<string, unknown>;
-  readonly write?: boolean;
-  readonly dangerous?: boolean;
-  readonly metadata?: Record<string, unknown>;
+  readonly write?: boolean | undefined;
+  readonly dangerous?: boolean | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }): GatewayMethodDescriptor {
   return methodDescriptor({
     id: input.id,

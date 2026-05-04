@@ -19,11 +19,11 @@ export interface TransportActivityInfo {
   /** The full URL of the request. */
   readonly url: string;
   /** HTTP response status code (only present on `'recv'`). */
-  readonly status?: number;
+  readonly status?: number | undefined;
   /** Round-trip duration in milliseconds (only present on `'recv'`). */
-  readonly durationMs?: number;
+  readonly durationMs?: number | undefined;
   /** Transport kind. */
-  readonly kind?: 'http' | 'sse' | 'ws';
+  readonly kind?: 'http' | 'sse' | 'ws' | undefined;
 }
 
 /**

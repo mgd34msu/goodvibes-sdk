@@ -45,7 +45,7 @@ export interface SpanEvent {
   /** Epoch ms when the event occurred. */
   readonly timestamp: number;
   /** Optional attributes for this event. */
-  readonly attributes?: SpanAttributes;
+  readonly attributes?: SpanAttributes | undefined;
 }
 
 /** Immutable span context — the W3C TraceContext identifiers. */
@@ -61,7 +61,7 @@ export interface SpanContext {
 /** Status of a span. */
 export interface SpanStatus {
   readonly code: SpanStatusCode;
-  readonly message?: string;
+  readonly message?: string | undefined;
 }
 
 /** A completed, immutable span record ready for export. */
@@ -73,7 +73,7 @@ export interface ReadableSpan {
   /** This span's context. */
   readonly spanContext: SpanContext;
   /** Parent span ID (undefined for root spans). */
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
   /** Epoch ms when the span started. */
   readonly startTimeMs: number;
   /** Epoch ms when the span ended. */
@@ -95,7 +95,7 @@ export interface Span {
   /** Span context (traceId + spanId). */
   readonly spanContext: SpanContext;
   /** Parent span ID, if this is a child span. */
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
   /** Whether the span has ended. */
   readonly ended: boolean;
 

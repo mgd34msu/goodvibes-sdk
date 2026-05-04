@@ -9,8 +9,8 @@ export type ExecutionNetworkPolicy = typeof EXECUTION_NETWORK_POLICIES[number];
 export type ExecutionFilesystemPolicy = typeof EXECUTION_FILESYSTEM_POLICIES[number];
 
 export interface ExecutionIntent {
-  readonly riskClass?: ExecutionRiskClass;
-  readonly requiresApproval?: boolean;
-  readonly networkPolicy?: ExecutionNetworkPolicy;
-  readonly filesystemPolicy?: ExecutionFilesystemPolicy;
+  readonly riskClass?: ExecutionRiskClass | undefined;
+  readonly requiresApproval?: boolean | undefined;
+  readonly networkPolicy?: ExecutionNetworkPolicy | undefined;
+  readonly filesystemPolicy?: ExecutionFilesystemPolicy | undefined;
 }

@@ -16,5 +16,5 @@ export interface GoodVibesTokenStore {
 }
 
 export interface GoodVibesAuthLoginOptions {
-  readonly persistToken?: boolean;
+  readonly persistToken?: boolean | undefined;
 }

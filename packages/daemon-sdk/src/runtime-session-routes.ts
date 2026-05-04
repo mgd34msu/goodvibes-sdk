@@ -23,9 +23,9 @@ type SharedSessionFollowUpSubmission = Awaited<ReturnType<DaemonRuntimeRouteCont
 type SessionSubmission = SharedSessionSubmission | SharedSessionSteerSubmission | SharedSessionFollowUpSubmission;
 type RuntimeTaskBody = {
   readonly task: string;
-  readonly model?: string;
-  readonly tools?: string[];
-  readonly routing?: SharedSessionRoutingIntent;
+  readonly model?: string | undefined;
+  readonly tools?: string[] | undefined;
+  readonly routing?: SharedSessionRoutingIntent | undefined;
 };
 
 const DEFAULT_LIST_LIMIT = 100;
@@ -459,15 +459,15 @@ function buildSharedSessionMessageInput(
   sessionId: string;
   surfaceKind: AutomationSurfaceKind;
   surfaceId: string;
-  externalId?: string;
-  threadId?: string;
-  userId?: string;
-  displayName?: string;
-  title?: string;
-  routeId?: string;
+  externalId?: string | undefined;
+  threadId?: string | undefined;
+  userId?: string | undefined;
+  displayName?: string | undefined;
+  title?: string | undefined;
+  routeId?: string | undefined;
   body: string;
-  metadata?: Record<string, unknown>;
-  routing?: SharedSessionRoutingIntent;
+  metadata?: Record<string, unknown> | undefined;
+  routing?: SharedSessionRoutingIntent | undefined;
 } {
   const routing = readSharedSessionRoutingIntent(body.routing);
   return {
@@ -512,11 +512,11 @@ async function respondToSessionSubmission(
   path: string,
   logLabel: string,
   spawnOptions: {
-    readonly context?: string;
-    readonly model?: string;
-    readonly provider?: string;
-    readonly tools?: readonly string[];
-    readonly executionIntent?: ExecutionIntent;
+    readonly context?: string | undefined;
+    readonly model?: string | undefined;
+    readonly provider?: string | undefined;
+    readonly tools?: readonly string[] | undefined;
+    readonly executionIntent?: ExecutionIntent | undefined;
   } = {},
 ): Promise<Response> {
   if (submission.mode === 'continued-live' || submission.mode === 'queued-follow-up') {

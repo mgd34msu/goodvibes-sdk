@@ -36,7 +36,7 @@ export interface StateSnapshot {
   /** Total number of domains captured. */
   readonly domainCount: number;
   /** Optional filter applied when capturing (undefined = all domains). */
-  readonly domainFilter?: readonly string[];
+  readonly domainFilter?: readonly string[] | undefined;
 }
 
 // ── Transition log ────────────────────────────────────────────────────────────
@@ -75,15 +75,15 @@ export interface SubscriptionInfo {
   /** Epoch ms when this subscription was registered. */
   readonly registeredAt: number;
   /** Domain filter for this subscription — undefined means all domains. */
-  readonly domainFilter?: readonly string[];
+  readonly domainFilter?: readonly string[] | undefined;
   /** Number of notifications delivered to this subscriber. */
   readonly notificationCount: number;
   /** Epoch ms of the last notification delivered. */
-  readonly lastNotifiedAt?: number;
+  readonly lastNotifiedAt?: number | undefined;
   /** Number of errors thrown by this subscriber's callback. */
-  readonly errorCount?: number;
+  readonly errorCount?: number | undefined;
   /** Last error message thrown by this subscriber's callback. */
-  readonly lastError?: string;
+  readonly lastError?: string | undefined;
 }
 
 // ── Inspector configuration ───────────────────────────────────────────────────
@@ -97,19 +97,19 @@ export interface StateInspectorConfig {
    * Oldest entries are evicted when the limit is reached.
    * @default 1000
    */
-  readonly maxTransitions?: number;
+  readonly maxTransitions?: number | undefined;
   /**
    * Maximum number of timeline events retained for time-travel.
    * Each event stores a full domain snapshot.
    * @default DEFAULT_TIMELINE_BUFFER_SIZE (500)
    */
-  readonly timelineBufferSize?: number;
+  readonly timelineBufferSize?: number | undefined;
   /**
    * Optional set of domain names to observe.
    * When provided, only listed domains will be tracked.
    * Undefined means all registered domains.
    */
-  readonly observedDomains?: readonly string[];
+  readonly observedDomains?: readonly string[] | undefined;
 }
 
 /** Default maximum transition history size. */
@@ -133,7 +133,7 @@ export interface TimelineEvent {
   /** Full domain state at this point in time (JSON-safe). */
   readonly snapshot: Record<string, unknown>;
   /** Optional label for display (e.g. mutation source). */
-  readonly label?: string;
+  readonly label?: string | undefined;
 }
 
 /**
@@ -202,13 +202,13 @@ export interface HotspotSamplerConfig {
    * Samples older than this are dropped on each record().
    * @default DEFAULT_HOTSPOT_WINDOW_MS
    */
-  readonly windowMs?: number;
+  readonly windowMs?: number | undefined;
   /**
    * Maximum number of raw samples retained per selector key.
    * Oldest samples are dropped when the cap is reached.
    * @default DEFAULT_HOTSPOT_MAX_SAMPLES_PER_KEY
    */
-  readonly maxSamplesPerKey?: number;
+  readonly maxSamplesPerKey?: number | undefined;
 }
 
 /** Default sliding window duration for hotspot analysis (10 seconds). */

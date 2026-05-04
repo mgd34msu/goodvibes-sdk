@@ -64,7 +64,7 @@ export class TreeSitterService {
 
     // Look up the embedded WASM path. If not present, the grammar package is
     // not installed — return null rather than throwing.
-    const wasmPath = GRAMMAR_WASM[langId];
+    const wasmPath = GRAMMAR_WASM[langId]!;
     if (!wasmPath) {
       logger.debug('TreeSitterService: grammar WASM not embedded', { langId });
       return null;

@@ -42,19 +42,19 @@ export interface SecretRecord {
   readonly source: SecretSource;
   readonly scope: SecretScope | 'env';
   readonly secure: boolean;
-  readonly path?: string;
+  readonly path?: string | undefined;
   readonly overriddenByEnv: boolean;
-  readonly refSource?: string;
+  readonly refSource?: string | undefined;
 }
 
 export interface SecretWriteOptions {
-  readonly scope?: SecretScope;
-  readonly medium?: SecretStorageMedium;
+  readonly scope?: SecretScope | undefined;
+  readonly medium?: SecretStorageMedium | undefined;
 }
 
 export interface SecretDeleteOptions {
-  readonly scope?: SecretScope;
-  readonly medium?: SecretStorageMedium;
+  readonly scope?: SecretScope | undefined;
+  readonly medium?: SecretStorageMedium | undefined;
 }
 
 export interface SecretStorageReview {
@@ -95,12 +95,12 @@ export interface SecretsManagerOptions {
   readonly projectRoot: string;
   readonly globalHome: string;
   readonly surfaceRoot: string;
-  readonly configManager?: Pick<ConfigManager, 'get'>;
-  readonly policy?: SecretStorageMode;
-  readonly secureProjectFilePath?: string;
-  readonly secureUserFilePath?: string;
-  readonly plaintextProjectFilePath?: string;
-  readonly plaintextUserFilePath?: string;
+  readonly configManager?: Pick<ConfigManager, 'get'> | undefined;
+  readonly policy?: SecretStorageMode | undefined;
+  readonly secureProjectFilePath?: string | undefined;
+  readonly secureUserFilePath?: string | undefined;
+  readonly plaintextProjectFilePath?: string | undefined;
+  readonly plaintextUserFilePath?: string | undefined;
 }
 
 function requireAbsoluteOwnedPath(path: string, name: string): string {
@@ -201,7 +201,7 @@ export class SecretsManager {
   }
 
   private async getInternal(key: string, seen: Set<string>): Promise<string | null> {
-    const envValue = process.env[key];
+    const envValue = process.env[key]!;
     if (envValue !== undefined) {
       logger.debug('SecretsManager: resolved from env', { key });
       return this.resolveMaybeReferencedValue(key, envValue, seen);
@@ -213,7 +213,7 @@ export class SecretsManager {
         : this.readPlaintextFile(path.path);
       if (secrets !== null && key in secrets) {
         logger.debug('SecretsManager: resolved from store', { key, source: path.source });
-        const value = secrets[key];
+        const value = secrets[key]!;
         return value === undefined ? null : this.resolveMaybeReferencedValue(key, value, seen);
       }
     }
@@ -310,7 +310,7 @@ export class SecretsManager {
         : this.readPlaintextFile(path.path);
       if (!values) continue;
       for (const key of Object.keys(values)) {
-        const refSource = getSecretRefSource(values[key]);
+        const refSource = getSecretRefSource(values[key]!);
         records.push({
           key,
           source: path.source,
@@ -378,7 +378,8 @@ export class SecretsManager {
         ? this.readEncryptedFile(store.path)
         : this.readPlaintextFile(store.path);
       if (!values || !(key in values)) continue;
-      delete values[key];
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (values as Record<string, unknown>)[key];
       if (store.secure) this.writeEncryptedFile(store.path, values);
       else this.writePlaintextFile(store.path, values);
       logger.debug('SecretsManager: deleted secret', { key, source: store.source });

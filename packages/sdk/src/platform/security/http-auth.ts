@@ -18,7 +18,7 @@ export type AuthenticatedOperatorRequest =
 interface SessionCookieOptions {
   readonly req: Request;
   readonly expiresAt: number;
-  readonly trustProxy?: boolean;
+  readonly trustProxy?: boolean | undefined;
 }
 
 function parseCookies(header: string | null): Map<string, string> {
@@ -74,7 +74,7 @@ function matchesSharedToken(token: string, sharedToken: string): boolean {
 export function authenticateOperatorToken(
   token: string,
   context: {
-    readonly sharedToken?: string | null;
+    readonly sharedToken?: string | null | undefined;
     readonly userAuth: Pick<UserAuthManager, 'validateSession' | 'getUser'>;
   },
 ): AuthenticatedOperatorRequest | null {
@@ -105,7 +105,7 @@ export function authenticateOperatorToken(
 export function authenticateOperatorRequest(
   req: Request,
   context: {
-    readonly sharedToken?: string | null;
+    readonly sharedToken?: string | null | undefined;
     readonly userAuth: Pick<UserAuthManager, 'validateSession' | 'getUser'>;
   },
 ): AuthenticatedOperatorRequest | null {

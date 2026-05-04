@@ -80,23 +80,23 @@ export interface PluginCapabilityManifest {
  */
 export interface PluginManifestV2 extends PluginManifest {
   /** Optional capability list declared by the plugin. */
-  capabilities?: PluginCapability[];
+  capabilities?: PluginCapability[] | undefined;
   /**
    * Minimum runtime version this plugin requires.
    * Semver string (e.g. "0.9.0"). Unset = no constraint.
    */
-  minRuntimeVersion?: string;
+  minRuntimeVersion?: string | undefined;
   /**
    * Base64-encoded HMAC-SHA256 signature of the canonical manifest payload.
    * Required for plugins that want to operate at the `trusted` tier.
    */
-  signature?: string;
+  signature?: string | undefined;
   /**
    * Declared trust tier hint from the plugin author.
    * The runtime validates this against the actual trust record; it does not
    * grant trust by itself.
    */
-  trustTier?: import('./trust.js').PluginTrustTier;
+  trustTier?: import('./trust.js').PluginTrustTier | undefined;
 }
 
 // ── State machine ─────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ export interface PluginTransition {
   /** Unix timestamp (ms) when the transition occurred. */
   readonly ts: number;
   /** Optional human-readable reason (e.g. error message, disable reason). */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
 }
 
 /**
@@ -157,11 +157,11 @@ export interface PluginLifecycleRecord {
   /** Last N state transitions (capped at MAX_TRANSITION_HISTORY). */
   transitions: PluginTransition[];
   /** Epoch ms when the plugin was last successfully activated. */
-  activatedAt?: number;
+  activatedAt?: number | undefined;
   /** Epoch ms when the plugin last transitioned to error. */
-  errorAt?: number;
+  errorAt?: number | undefined;
   /** Last error message, if any. */
-  lastError?: string;
+  lastError?: string | undefined;
   /** Whether a hot-reload is currently in progress for this plugin. */
   reloading: boolean;
   /** Trust tier assigned to this plugin. Defaults to 'untrusted'. */
@@ -183,23 +183,23 @@ export interface PluginLifecycleManagerOptions {
    * Session ID injected into emitted events.
    * Defaults to an empty string when not provided.
    */
-  sessionId?: string;
+  sessionId?: string | undefined;
   /**
    * Optional policy callback invoked during capability resolution.
    * Return `true` to grant the capability, `false` to deny.
    * Defaults to a permissive policy that grants all valid capabilities.
    */
-  capabilityPolicy?: (pluginName: string, capability: PluginCapability) => boolean;
+  capabilityPolicy?: ((pluginName: string, capability: PluginCapability) => boolean) | undefined | undefined;
   /**
    * Optional trust tier resolver. Called during capability resolution to
    * determine the effective trust tier for capability filtering.
    * Return the tier for the given plugin name.
    * Defaults to 'untrusted' for all plugins when not provided.
    */
-  trustTierResolver?: (pluginName: string) => import('./trust.js').PluginTrustTier;
+  trustTierResolver?: ((pluginName: string) => import('./trust.js').PluginTrustTier) | undefined | undefined;
   /**
    * Runtime event bus used for lifecycle emission.
    * When omitted, the manager creates an isolated in-memory bus.
    */
-  runtimeBus?: import('../events/index.js').RuntimeEventBus;
+  runtimeBus?: import('../events/index.js').RuntimeEventBus | undefined;
 }

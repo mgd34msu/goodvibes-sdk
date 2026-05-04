@@ -42,7 +42,7 @@ export interface PluginStatus {
   name: string;
   version: string;
   description: string;
-  author?: string;
+  author?: string | undefined;
   enabled: boolean;
   active: boolean;
   /** Trust tier for this plugin. */
@@ -56,7 +56,7 @@ export interface PluginManagerObserver {
   list(): PluginStatus[];
   capabilities(name: string): {
     ok: boolean;
-    error?: string;
+    error?: string | undefined;
     requested: string[];
     highRisk: string[];
     safe: string[];
@@ -71,7 +71,7 @@ const DEFAULT_STATE: PluginState = { enabled: {}, config: {}, trust: {}, quarant
 
 export interface PluginManagerOptions {
   readonly pathOptions: PluginPathOptions;
-  readonly stateFilePath?: string;
+  readonly stateFilePath?: string | undefined;
 }
 
 /**
@@ -148,7 +148,7 @@ export class PluginManager {
   trust(
     name: string,
     tier: PluginTrustTier,
-    note?: string,
+    note?: string | undefined,
   ): { ok: boolean; error?: string } {
     const discovered = this.findDiscoveredPlugin(name);
     if (!discovered) {
@@ -180,7 +180,7 @@ export class PluginManager {
   trustSigned(
     name: string,
     publicKey?: string,
-  ): { ok: boolean; fingerprint?: string; error?: string } {
+  ): { ok: boolean; fingerprint?: string | undefined; error?: string } {
     const discovered = this.findDiscoveredPlugin(name);
     if (!discovered) {
       return { ok: false, error: this.notFoundError(name) };
@@ -189,8 +189,8 @@ export class PluginManager {
     const manifest = discovered.manifest as {
       name: string;
       version: string;
-      capabilities?: string[];
-      signature?: string;
+      capabilities?: string[] | undefined;
+      signature?: string | undefined;
     };
 
     const result = this.trustStore.trustSigned(name, manifest, publicKey);
@@ -216,8 +216,8 @@ export class PluginManager {
     const manifest = discovered.manifest as {
       name: string;
       version: string;
-      capabilities?: string[];
-      signature?: string;
+      capabilities?: string[] | undefined;
+      signature?: string | undefined;
     };
 
     const result = this.trustStore.verify(manifest, publicKey);
@@ -232,7 +232,7 @@ export class PluginManager {
    */
   capabilities(name: string): {
     ok: boolean;
-    error?: string;
+    error?: string | undefined;
     requested: string[];
     highRisk: string[];
     safe: string[];

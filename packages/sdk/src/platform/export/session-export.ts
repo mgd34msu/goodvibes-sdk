@@ -9,16 +9,16 @@ export type { ExportMessage, ExportMetadata };
 
 export interface ExportOptions {
   /** Redact API keys, absolute file paths, and other sensitive data. */
-  redact?: boolean;
+  redact?: boolean | undefined;
 }
 
 export interface SessionExportData {
   messages: ExportMessage[];
-  metadata?: ExportMetadata;
+  metadata?: ExportMetadata | undefined;
   /** Cost in USD, if tracked. */
-  cost?: number;
+  cost?: number | undefined;
   /** ISO timestamp of export. */
-  exportedAt?: string;
+  exportedAt?: string | undefined;
 }
 
 // ── Message redaction helper ─────────────────────────────────────────────────
@@ -382,17 +382,17 @@ function renderMarkdownToHtml(text: string): string {
     if (fenceMatch) {
       flushParagraph();
       inFence = true;
-      fenceLang = fenceMatch[2] ?? '';
+      fenceLang = fenceMatch[2]! ?? '';
       continue;
     }
 
     // ATX headings
     const h3 = line.match(/^#{3,6}\s+(.*)/);
-    if (h3) { flushParagraph(); out.push(`<h3>${inlineMarkdown(h3[1])}</h3>`); continue; }
+    if (h3) { flushParagraph(); out.push(`<h3>${inlineMarkdown(h3[1]!)}</h3>`); continue; }
     const h2 = line.match(/^##\s+(.*)/);
-    if (h2) { flushParagraph(); out.push(`<h2>${inlineMarkdown(h2[1])}</h2>`); continue; }
+    if (h2) { flushParagraph(); out.push(`<h2>${inlineMarkdown(h2[1]!)}</h2>`); continue; }
     const h1 = line.match(/^#\s+(.*)/);
-    if (h1) { flushParagraph(); out.push(`<h1>${inlineMarkdown(h1[1])}</h1>`); continue; }
+    if (h1) { flushParagraph(); out.push(`<h1>${inlineMarkdown(h1[1]!)}</h1>`); continue; }
 
     // Blank line ends paragraph
     if (line.trim() === '') {

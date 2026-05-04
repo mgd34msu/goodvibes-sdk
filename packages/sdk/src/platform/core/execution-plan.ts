@@ -27,7 +27,7 @@ export interface ExecutionPlan {
   title: string;
   createdAt: string;
   updatedAt: string;
-  sessionId?: string;
+  sessionId?: string | undefined;
   status: 'draft' | 'active' | 'complete' | 'failed';
   items: PlanItem[];
   specPath?: string; // path to the spec document
@@ -325,7 +325,7 @@ export class ExecutionPlanManager {
       // Phase heading
       const phaseMatch = phaseRe.exec(trimmed);
       if (phaseMatch && trimmed.startsWith('## ')) {
-        currentPhase = phaseMatch[1].trim();
+        currentPhase = phaseMatch[1]!.trim();
         continue;
       }
 
@@ -338,15 +338,15 @@ export class ExecutionPlanManager {
           // Split from the RIGHT on a dash separator to separate description from metadata.
           // Accepts em-dash (—), en-dash (–), or double-hyphen (--) for model output variants.
           // Only the last occurrence splits, so em-dashes in descriptions are preserved.
-          const { index: sepIdx, sepLen } = findLastSeparator(rest);
+          const { index: sepIdx, sepLen } = findLastSeparator(rest!);
           let description: string;
           let metaPart: string | undefined;
 
           if (sepIdx !== -1) {
-            description = rest.slice(0, sepIdx).trim();
-            metaPart = rest.slice(sepIdx + sepLen).trim();
+            description = rest!.slice(0, sepIdx).trim();
+            metaPart = rest!.slice(sepIdx + sepLen).trim();
           } else {
-            description = rest.trim();
+            description = rest!.trim();
           }
 
           let statusLabel: string | undefined;
@@ -357,14 +357,14 @@ export class ExecutionPlanManager {
             // Extract trailing (depends: ...) first
             const depsMatch = /\(depends:\s*([^)]+)\)\s*$/.exec(metaPart);
             if (depsMatch) {
-              rawDeps = depsMatch[1];
+              rawDeps = depsMatch[1]!;
               metaPart = metaPart.slice(0, depsMatch.index).trim();
             }
 
             // Extract trailing (agent-id)
             const agentMatch = /\(([^)]+)\)\s*$/.exec(metaPart);
             if (agentMatch) {
-              const candidate = agentMatch[1].trim();
+              const candidate = agentMatch[1]!.trim();
               if (/^depends:/i.test(candidate)) {
                 rawDeps = rawDeps ?? candidate.replace(/^depends:\s*/i, '');
               } else {
@@ -385,7 +385,7 @@ export class ExecutionPlanManager {
             id: randomUUID(),
             phase: currentPhase,
             description,
-            status: parseItemStatus(checkbox, statusLabel),
+            status: parseItemStatus(checkbox!, statusLabel),
             ...(agentId ? { agentId } : {}),
             ...(dependencies && dependencies.length > 0 ? { dependencies } : {}),
           });
@@ -396,7 +396,7 @@ export class ExecutionPlanManager {
             items.push({
               id: randomUUID(),
               phase: currentPhase,
-              description: descMatch[1].trim(),
+              description: descMatch[1]!.trim(),
               status: 'pending',
             });
           }
@@ -461,18 +461,21 @@ export class ExecutionPlanManager {
       ...item,
       id: randomUUID(),
       status: 'pending' as PlanItemStatus,
-      dependencies: undefined, // resolve in second pass
     }));
+    // Reset dependencies — will be resolved in second pass
+    for (const item of newItems) {
+      delete item.dependencies;
+    }
 
     // Build description → id map for dependency resolution
     const descToId = new Map<string, string>();
     for (let i = 0; i < newItems.length; i++) {
-      descToId.set(items[i].description.toLowerCase().trim(), newItems[i].id);
+      descToId.set(items[i]!.description.toLowerCase().trim(), newItems[i]!.id);
     }
 
     // Second pass: resolve description-based dependencies to IDs
     for (let i = 0; i < newItems.length; i++) {
-      const rawDeps = items[i].dependencies;
+      const rawDeps = items[i]!.dependencies;
       if (rawDeps && rawDeps.length > 0) {
         const resolvedIds = rawDeps
           .map((dep) => {
@@ -485,7 +488,7 @@ export class ExecutionPlanManager {
           })
           .filter((id): id is string => id !== null);
         if (resolvedIds.length > 0) {
-          newItems[i].dependencies = resolvedIds;
+          newItems[i]!.dependencies = resolvedIds;
         }
       }
     }

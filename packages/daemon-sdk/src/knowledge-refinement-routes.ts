@@ -11,11 +11,11 @@ import {
 } from './route-helpers.js';
 
 type KnowledgeRefinementRunBody = {
-  readonly knowledgeSpaceId?: string;
-  readonly gapIds?: string[];
-  readonly sourceIds?: string[];
-  readonly limit?: number;
-  readonly force?: boolean;
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly gapIds?: string[] | undefined;
+  readonly sourceIds?: string[] | undefined;
+  readonly limit?: number | undefined;
+  readonly force?: boolean | undefined;
 };
 
 export function createDaemonKnowledgeRefinementRouteHandlers(

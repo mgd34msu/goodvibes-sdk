@@ -329,9 +329,9 @@ export interface ControlPayloads {
       | 'peer_version_too_old'
       | 'peer_version_unsupported';
     /** The peer's offered version, echoed back for diagnostics. */
-    readonly peerVersion?: ProtocolVersion;
+    readonly peerVersion?: ProtocolVersion | undefined;
     /** The server's offered version, for operator diagnostics. */
-    readonly serverVersion?: ProtocolVersion;
+    readonly serverVersion?: ProtocolVersion | undefined;
   };
   PING: Record<string, never>;
   PONG: { readonly serverTimeMs: number };
@@ -358,19 +358,19 @@ export interface DataPayloads {
     readonly taskId: string;
     readonly agentId: string;
     readonly title: string;
-    readonly description?: string;
+    readonly description?: string | undefined;
     readonly payload: Record<string, unknown>;
   };
   TASK_CANCEL: {
     readonly taskId: string;
-    readonly reason?: string;
+    readonly reason?: string | undefined;
   };
   TASK_UPDATE: {
     readonly taskId: string;
     readonly status: string;
-    readonly progress?: number;
-    readonly message?: string;
-    readonly error?: string;
+    readonly progress?: number | undefined;
+    readonly message?: string | undefined;
+    readonly error?: string | undefined;
   };
   AGENT_SPAWN: {
     readonly agentId: string;
@@ -380,17 +380,17 @@ export interface DataPayloads {
   AGENT_UPDATE: {
     readonly agentId: string;
     readonly state: string;
-    readonly message?: string;
+    readonly message?: string | undefined;
   };
   AGENT_TERMINATE: {
     readonly agentId: string;
-    readonly reason?: string;
+    readonly reason?: string | undefined;
   };
   HEALTH_REPORT: {
     readonly status: string;
-    readonly latencyMs?: number;
-    readonly serverVersion?: string;
-    readonly degradedReason?: string;
+    readonly latencyMs?: number | undefined;
+    readonly serverVersion?: string | undefined;
+    readonly degradedReason?: string | undefined;
   };
   STATE_SNAPSHOT: {
     readonly tasks: Array<Record<string, unknown>>;

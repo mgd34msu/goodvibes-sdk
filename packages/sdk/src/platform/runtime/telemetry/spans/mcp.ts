@@ -18,7 +18,7 @@ export interface McpSpanContext {
   /** Transport type (e.g. 'stdio', 'sse', 'websocket'). */
   readonly transport: string;
   /** Optional server URL for network transports. */
-  readonly url?: string;
+  readonly url?: string | undefined;
   /** Trace ID for cross-span correlation. */
   readonly traceId: string;
 }
@@ -31,13 +31,13 @@ export interface McpSpanEndContext {
   /** Final outcome of the MCP server connection. */
   readonly outcome: 'connected' | 'disconnected' | 'auth_failed';
   /** Reason for disconnection if known. */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
   /** Whether a reconnect will be attempted. */
-  readonly willRetry?: boolean;
+  readonly willRetry?: boolean | undefined;
   /** Number of tools available when connected. */
-  readonly toolCount?: number;
+  readonly toolCount?: number | undefined;
   /** Number of resources available when connected. */
-  readonly resourceCount?: number;
+  readonly resourceCount?: number | undefined;
 }
 
 /**

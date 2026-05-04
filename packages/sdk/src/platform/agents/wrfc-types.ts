@@ -24,31 +24,31 @@ export interface WrfcChain {
   id: string;
   state: WrfcState;
   task: string;
-  currentNodeId?: string;
-  engineerAgentId?: string;
-  reviewerAgentId?: string;
-  fixerAgentId?: string;
+  currentNodeId?: string | undefined;
+  engineerAgentId?: string | undefined;
+  reviewerAgentId?: string | undefined;
+  fixerAgentId?: string | undefined;
   /** All agent IDs involved in this chain (for worktree cleanup). */
   allAgentIds: string[];
-  engineerReport?: CompletionReport;
-  reviewerReport?: ReviewerReport;
+  engineerReport?: CompletionReport | undefined;
+  reviewerReport?: ReviewerReport | undefined;
   fixAttempts: number;
   reviewCycles: number;
-  gateResults?: QualityGateResult[];
+  gateResults?: QualityGateResult[] | undefined;
   createdAt: number;
-  completedAt?: number;
-  parentChainId?: string;
+  completedAt?: number | undefined;
+  parentChainId?: string | undefined;
   /** Whether quality gates passed. Only meaningful when state is 'passed'. */
-  gatesPassed?: boolean;
+  gatesPassed?: boolean | undefined;
   /** Fingerprint of gate failures: used for same-error detection across chained chains. */
-  gateFailureFingerprint?: string;
+  gateFailureFingerprint?: string | undefined;
   /** How many gate-failure retry cycles deep this chain is. 0 = original chain. */
   gateRetryDepth: number;
   /** Review scores history — used to detect regression (2 consecutive below initial). */
   reviewScores: number[];
-  error?: string;
+  error?: string | undefined;
   /** Buffered agent completion — set when agent finishes while chain is still queued/pending. */
-  bufferedCompletion?: { agentId: string; fullOutput?: string };
+  bufferedCompletion?: { agentId: string; fullOutput?: string | undefined } | undefined;
   /** Constraints propagated for this chain. Initialized to [] on construction. */
   constraints: Constraint[];
   /**
@@ -62,7 +62,7 @@ export interface WrfcChain {
    * violations). Prepended to the next review task body, then cleared so they fire once per cycle.
    * Internal only — not surfaced on events.
    */
-  syntheticIssues?: Array<{ severity: 'critical'; description: string }>;
+  syntheticIssues?: Array<{ severity: 'critical'; description: string }> | undefined;
 }
 
 /** Quality gate definition. */

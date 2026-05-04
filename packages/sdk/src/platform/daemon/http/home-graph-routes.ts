@@ -204,8 +204,8 @@ function normalizeHomeGraphPath(pathname: string): string {
 }
 
 type HomeGraphSpaceImportInput = {
-  readonly installationId?: string;
-  readonly knowledgeSpaceId?: string;
+  readonly installationId?: string | undefined;
+  readonly knowledgeSpaceId?: string | undefined;
   readonly data: HomeGraphExport;
 };
 

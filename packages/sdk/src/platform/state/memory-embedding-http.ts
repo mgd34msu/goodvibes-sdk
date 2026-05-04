@@ -16,8 +16,8 @@ interface ProviderRuntimeConfig {
   readonly baseUrlSource: string;
   readonly model: string;
   readonly modelSource: string;
-  readonly apiKey?: string;
-  readonly apiKeySource?: string;
+  readonly apiKey?: string | undefined;
+  readonly apiKeySource?: string | undefined;
   readonly endpoint: string;
   readonly authMode: 'none' | 'bearer' | 'x-goog-api-key';
   readonly requestedDimensions: number;
@@ -37,8 +37,8 @@ interface ProviderDefinition {
 }
 
 interface CreateProviderContext {
-  readonly env?: EnvMap;
-  readonly fetchImpl?: EmbeddingFetchLike;
+  readonly env?: EnvMap | undefined;
+  readonly fetchImpl?: EmbeddingFetchLike | undefined;
 }
 
 type EmbeddingFetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -529,7 +529,7 @@ function createOllamaEmbeddingDefinition(): ProviderDefinition {
 
 function pickEnv(env: EnvMap, keys: readonly string[], fallback: string): { readonly value: string; readonly source: string } {
   for (const key of keys) {
-    const value = env[key]?.trim();
+    const value = env[key]!?.trim();
     if (value) return { value, source: key };
   }
   return { value: fallback, source: 'default' };

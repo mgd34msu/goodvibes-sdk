@@ -33,24 +33,24 @@ export type ErrorSource =
   | 'unknown';
 
 export interface AppErrorOptions {
-  readonly statusCode?: number;
-  readonly category?: ErrorCategory;
-  readonly guidance?: string;
-  readonly detail?: string;
-  readonly source?: ErrorSource;
-  readonly provider?: string;
-  readonly operation?: string;
-  readonly phase?: string;
-  readonly requestId?: string;
-  readonly providerCode?: string;
-  readonly providerType?: string;
-  readonly retryAfterMs?: number;
-  readonly rawMessage?: string;
-  readonly cause?: unknown;
+  readonly statusCode?: number | undefined;
+  readonly category?: ErrorCategory | undefined;
+  readonly guidance?: string | undefined;
+  readonly detail?: string | undefined;
+  readonly source?: ErrorSource | undefined;
+  readonly provider?: string | undefined;
+  readonly operation?: string | undefined;
+  readonly phase?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly providerCode?: string | undefined;
+  readonly providerType?: string | undefined;
+  readonly retryAfterMs?: number | undefined;
+  readonly rawMessage?: string | undefined;
+  readonly cause?: unknown | undefined;
 }
 
 export interface ProviderErrorOptions extends AppErrorOptions {
-  readonly statusCode?: number;
+  readonly statusCode?: number | undefined;
 }
 
 function inferErrorCategory(message: string, statusCode?: number): ErrorCategory {
@@ -112,24 +112,24 @@ function inferRetryAfterMs(message: string, statusCode?: number, explicitRetryAf
   if (statusCode !== 429) return undefined;
   const match = message.match(/retry[-_\s]?after[:=\s]+(\d+)/i);
   if (!match) return undefined;
-  return parseInt(match[1], 10) * 1000;
+  return parseInt(match[1]!, 10) * 1000;
 }
 
 /** Base class for all application errors. Provides a machine-readable code and recoverability hint. */
 export class AppError extends GoodVibesSdkError {
   /** HTTP status code associated with the failure. */
-  public readonly statusCode?: number;
+  public readonly statusCode?: number | undefined;
   /** Human-readable recovery guidance. */
-  public readonly guidance?: string;
+  public readonly guidance?: string | undefined;
   /** Additional detail string not present on GoodVibesSdkError. */
-  public readonly detail?: string;
+  public readonly detail?: string | undefined;
   /** Raw provider message before normalisation. */
-  public readonly rawMessage?: string;
+  public readonly rawMessage?: string | undefined;
 
   constructor(
     message: string,
-    public readonly code: string,
-    public readonly recoverable: boolean,
+    public override readonly code: string,
+    public override readonly recoverable: boolean,
     options: AppErrorOptions = {},
   ) {
     super(message, {

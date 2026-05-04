@@ -245,13 +245,13 @@ export function getSourceRefreshWindowMs(source: { readonly connectorId: string;
   const connectorKey = source.connectorId === 'url-list' ? 'url-list' : source.connectorId;
   return SOURCE_REFRESH_WINDOWS_MS[connectorKey]
     ?? SOURCE_REFRESH_WINDOWS_MS[source.sourceType]
-    ?? SOURCE_REFRESH_WINDOWS_MS.other;
+    ?? SOURCE_REFRESH_WINDOWS_MS.other ?? 0;
 }
 
 export function isSourcePastRefreshWindow(source: {
   readonly connectorId: string;
   readonly sourceType: KnowledgeSourceType;
-  readonly lastCrawledAt?: number | null;
+  readonly lastCrawledAt?: number | null | undefined;
   readonly status: string;
 }): boolean {
   if (!source.lastCrawledAt) return source.status === 'stale';

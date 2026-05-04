@@ -30,8 +30,8 @@ function summarizeWrfcEvent(event: Record<string, unknown>) {
 export function createAgentTool(config: {
   manager: AgentManager;
   messageBus: Pick<AgentMessageBus, 'getMessages' | 'send'>;
-  wrfcController?: Pick<WrfcController, 'getWorkmap'>;
-  archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'>;
+  wrfcController?: Pick<WrfcController, 'getWorkmap'> | undefined;
+  archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'> | undefined;
   configManager: Pick<ConfigManager, 'get'>;
 }): Tool {
   const archetypeLoader = config.archetypeLoader ?? new ArchetypeLoader();
@@ -443,7 +443,7 @@ export function createAgentTool(config: {
         const tasksToSpawn = input.tasks.slice(0, spawnDecision.availableSlots);
         const skipped = input.tasks.length - tasksToSpawn.length;
 
-        const results: Array<{ id: string; task: string; template: string; cohort?: string }> = [];
+        const results: Array<{ id: string; task: string; template: string; cohort?: string | undefined }> = [];
         for (const taskDef of tasksToSpawn) {
           if (!taskDef.task || typeof taskDef.task !== 'string' || taskDef.task.trim() === '') {
             return { success: false, error: 'Each task in batch-spawn must have a non-empty task string.' };

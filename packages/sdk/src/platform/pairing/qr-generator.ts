@@ -45,7 +45,7 @@ export function renderQrToString(matrix: QrMatrix): string {
   for (let row = 0; row < size; row += 2) {
     let line = '';
     for (let col = 0; col < size; col++) {
-      const top = modules[row]?.[col] ?? false;
+      const top = modules[row]!?.[col] ?? false;
       const bottom = modules[row + 1]?.[col] ?? false;
       if (top && bottom) line += '\u2588';
       else if (top && !bottom) line += '\u2580';

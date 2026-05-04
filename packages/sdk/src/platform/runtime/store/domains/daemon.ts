@@ -45,11 +45,11 @@ export interface DaemonJob {
   /** Whether the job is currently running. */
   running: boolean;
   /** Epoch ms of next scheduled run (for recurring jobs). */
-  nextRunAt?: number;
+  nextRunAt?: number | undefined;
   /** Epoch ms of last run. */
-  lastRunAt?: number;
+  lastRunAt?: number | undefined;
   /** Last run exit status. */
-  lastStatus?: 'success' | 'failure' | 'skipped';
+  lastStatus?: 'success' | 'failure' | 'skipped' | undefined;
 }
 
 /**
@@ -70,15 +70,15 @@ export interface DaemonDomainState {
   /** Whether the daemon process is currently running. */
   isRunning: boolean;
   /** Daemon process info (undefined if not connected). */
-  processInfo?: DaemonProcessInfo;
+  processInfo?: DaemonProcessInfo | undefined;
 
   // ── Connection ──────────────────────────────────────────────────────────
   /** Number of reconnect attempts since last successful connection. */
   reconnectAttempts: number;
   /** Epoch ms of last successful connection. */
-  lastConnectedAt?: number;
+  lastConnectedAt?: number | undefined;
   /** Last IPC error message. */
-  lastError?: string;
+  lastError?: string | undefined;
 
   // ── Jobs ─────────────────────────────────────────────────────────────────
   /** Background jobs registered with the daemon. */

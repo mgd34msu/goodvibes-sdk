@@ -89,8 +89,8 @@ export class WrfcController {
       readonly agentManager: AgentManagerLike;
       readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
       readonly projectRoot: string;
-      readonly surfaceRoot?: string;
-      readonly createWorktree?: () => WrfcWorktreeOps;
+      readonly surfaceRoot?: string | undefined;
+      readonly createWorktree?: (() => WrfcWorktreeOps) | undefined | undefined;
     },
   ) {
     this.runtimeBus = runtimeBus;
@@ -344,9 +344,9 @@ export class WrfcController {
 
     const scores = chain.reviewScores;
     if (scores.length >= 3) {
-      const initial = scores[0];
+      const initial = scores[0]!;
       const lastTwo = scores.slice(-2);
-      if (lastTwo[0] < initial && lastTwo[1] < initial) {
+      if (lastTwo[0]! < initial && lastTwo[1]! < initial) {
         emitWrfcCascadeAbort(
           this.runtimeBus,
           this.sessionId,
@@ -582,7 +582,7 @@ export class WrfcController {
       readyCount: readyChains.length,
     });
 
-    const gateRunner = readyChains[0];
+    const gateRunner = readyChains[0]!;
     const results = await this.runGates(gateRunner);
     for (const chain of readyChains) {
       if (chain.id !== gateRunner.id) {

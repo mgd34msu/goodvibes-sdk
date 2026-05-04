@@ -11,7 +11,7 @@ type DeepgramTranscriptionResponse = {
   readonly results?: {
     readonly channels?: ReadonlyArray<{
       readonly alternatives?: ReadonlyArray<{
-        readonly transcript?: string;
+        readonly transcript?: string | undefined;
       }>;
     }>;
   };

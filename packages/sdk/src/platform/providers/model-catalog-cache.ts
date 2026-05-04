@@ -13,9 +13,9 @@ interface CatalogModelPricing {
 interface CatalogProviderShape {
   id: string;
   name: string;
-  env?: string[];
-  api?: string;
-  models?: Record<string, ModelsDevModel>;
+  env?: string[] | undefined;
+  api?: string | undefined;
+  models?: Record<string, ModelsDevModel> | undefined;
 }
 
 interface CatalogCacheFile {
@@ -26,25 +26,25 @@ interface CatalogCacheFile {
 }
 
 interface ModelsDevModelCost {
-  input?: number;
-  output?: number;
+  input?: number | undefined;
+  output?: number | undefined;
 }
 
 interface ModelsDevModelLimit {
-  context?: number;
-  output?: number;
+  context?: number | undefined;
+  output?: number | undefined;
 }
 
 interface ModelsDevModel {
-  id?: string;
-  name?: string;
-  family?: string;
-  cost?: ModelsDevModelCost;
-  limit?: ModelsDevModelLimit;
-  reasoning?: boolean;
-  tool_call?: boolean;
-  structured_output?: boolean;
-  open_weights?: boolean;
+  id?: string | undefined;
+  name?: string | undefined;
+  family?: string | undefined;
+  cost?: ModelsDevModelCost | undefined;
+  limit?: ModelsDevModelLimit | undefined;
+  reasoning?: boolean | undefined;
+  tool_call?: boolean | undefined;
+  structured_output?: boolean | undefined;
+  open_weights?: boolean | undefined;
 }
 
 type ModelsDevResponse = Record<string, CatalogProviderShape>;

@@ -12,7 +12,7 @@ export interface PeerSdkBehaviorOptions {
    * When `true` (default), response bodies are checked against the peer
    * contract's JSON Schema shape before typed calls return.
    */
-  readonly validateResponses?: boolean;
+  readonly validateResponses?: boolean | undefined;
 }
 
 export type PeerSdkOptions = HttpTransportOptions & PeerSdkBehaviorOptions;

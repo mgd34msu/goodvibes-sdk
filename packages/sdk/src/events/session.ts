@@ -29,7 +29,7 @@ export type SessionEvent =
     body: string;
     source: string;
     timestamp: number;
-    metadata?: Readonly<Record<string, unknown>>;
+    metadata?: Readonly<Record<string, unknown>> | undefined;
   };
 
 /** All session event type literals as a union. */

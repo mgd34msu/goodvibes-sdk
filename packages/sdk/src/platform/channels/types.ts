@@ -55,21 +55,21 @@ export type ChannelTargetSource = 'explicit' | 'directory' | 'route' | 'normaliz
 
 export interface ChannelIdentity {
   surface: ChannelSurface;
-  accountId?: string;
-  workspaceId?: string;
-  channelId?: string;
-  threadId?: string;
-  messageId?: string;
-  userId?: string;
+  accountId?: string | undefined;
+  workspaceId?: string | undefined;
+  channelId?: string | undefined;
+  threadId?: string | undefined;
+  messageId?: string | undefined;
+  userId?: string | undefined;
 }
 
 export interface ChannelRouteBinding {
   id: string;
   surface: ChannelSurface;
   identity: ChannelIdentity;
-  sessionId?: string;
-  automationJobId?: string;
-  replyTarget?: string;
+  sessionId?: string | undefined;
+  automationJobId?: string | undefined;
+  replyTarget?: string | undefined;
   createdAt: number;
   updatedAt: number;
 }
@@ -79,7 +79,7 @@ export interface ChannelAdapterDescriptor {
   surface: ChannelSurface;
   displayName: string;
   capabilities: ChannelCapability[];
-  setupVersion?: number;
+  setupVersion?: number | undefined;
 }
 
 export interface ChannelDirectoryEntry {
@@ -87,39 +87,39 @@ export interface ChannelDirectoryEntry {
   readonly surface: ChannelSurface;
   readonly kind: ChannelDirectoryKind;
   readonly label: string;
-  readonly handle?: string;
-  readonly accountId?: string;
-  readonly workspaceId?: string;
-  readonly groupId?: string;
-  readonly threadId?: string;
-  readonly parentId?: string;
-  readonly memberCount?: number;
-  readonly memberIds?: readonly string[];
-  readonly aliases?: readonly string[];
-  readonly isSelf?: boolean;
-  readonly isDirect?: boolean;
-  readonly isGroupConversation?: boolean;
-  readonly searchText?: string;
+  readonly handle?: string | undefined;
+  readonly accountId?: string | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly groupId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly parentId?: string | undefined;
+  readonly memberCount?: number | undefined;
+  readonly memberIds?: readonly string[] | undefined;
+  readonly aliases?: readonly string[] | undefined;
+  readonly isSelf?: boolean | undefined;
+  readonly isDirect?: boolean | undefined;
+  readonly isGroupConversation?: boolean | undefined;
+  readonly searchText?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface ChannelDirectoryQueryOptions {
-  readonly query?: string;
-  readonly scope?: ChannelDirectoryScope;
-  readonly groupId?: string;
-  readonly limit?: number;
-  readonly live?: boolean;
+  readonly query?: string | undefined;
+  readonly scope?: ChannelDirectoryScope | undefined;
+  readonly groupId?: string | undefined;
+  readonly limit?: number | undefined;
+  readonly live?: boolean | undefined;
 }
 
 export interface ChannelTargetResolveOptions {
   readonly input: string;
-  readonly accountId?: string;
-  readonly preferredKind?: ChannelConversationKind;
-  readonly threadId?: string;
-  readonly createIfMissing?: boolean;
-  readonly live?: boolean;
-  readonly sessionId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly accountId?: string | undefined;
+  readonly preferredKind?: ChannelConversationKind | undefined;
+  readonly threadId?: string | undefined;
+  readonly createIfMissing?: boolean | undefined;
+  readonly live?: boolean | undefined;
+  readonly sessionId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelResolvedTarget {
@@ -128,17 +128,17 @@ export interface ChannelResolvedTarget {
   readonly normalized: string;
   readonly kind: ChannelConversationKind;
   readonly to: string;
-  readonly display?: string;
-  readonly accountId?: string;
-  readonly workspaceId?: string;
-  readonly channelId?: string;
-  readonly groupId?: string;
-  readonly threadId?: string;
-  readonly parentId?: string;
-  readonly sessionId?: string;
-  readonly sessionTarget?: string;
-  readonly bindingId?: string;
-  readonly directoryEntryId?: string;
+  readonly display?: string | undefined;
+  readonly accountId?: string | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly groupId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly parentId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly sessionTarget?: string | undefined;
+  readonly bindingId?: string | undefined;
+  readonly directoryEntryId?: string | undefined;
   readonly source: ChannelTargetSource;
   readonly metadata: Record<string, unknown>;
 }
@@ -149,7 +149,7 @@ export interface ChannelStatusSnapshot {
   readonly label: string;
   readonly state: 'healthy' | 'degraded' | 'disabled';
   readonly enabled: boolean;
-  readonly accountId?: string;
+  readonly accountId?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -176,8 +176,8 @@ export interface ChannelAccountRecord {
   readonly linked: boolean;
   readonly state: ChannelAccountState;
   readonly authState: ChannelAuthState;
-  readonly accountId?: string;
-  readonly workspaceId?: string;
+  readonly accountId?: string | undefined;
+  readonly workspaceId?: string | undefined;
   readonly secrets: readonly ChannelSecretStatus[];
   readonly actions: readonly ChannelAccountAction[];
   readonly metadata: Record<string, unknown>;
@@ -199,7 +199,7 @@ export interface ChannelToolDescriptor {
   readonly name: string;
   readonly description: string;
   readonly actionIds: readonly string[];
-  readonly inputSchema?: Record<string, unknown>;
+  readonly inputSchema?: Record<string, unknown> | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -209,42 +209,42 @@ export interface ChannelOperatorActionDescriptor {
   readonly label: string;
   readonly description: string;
   readonly dangerous: boolean;
-  readonly inputSchema?: Record<string, unknown>;
+  readonly inputSchema?: Record<string, unknown> | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface ChannelAccountLifecycleResult {
   readonly surface: ChannelSurface;
-  readonly accountId?: string;
+  readonly accountId?: string | undefined;
   readonly action: ChannelAccountLifecycleAction;
   readonly ok: boolean;
-  readonly state?: ChannelAccountState;
-  readonly authState?: ChannelAuthState;
-  readonly account?: ChannelAccountRecord | null;
-  readonly message?: string;
+  readonly state?: ChannelAccountState | undefined;
+  readonly authState?: ChannelAuthState | undefined;
+  readonly account?: ChannelAccountRecord | null | undefined;
+  readonly message?: string | undefined;
   readonly login?: {
     readonly kind: 'none' | 'browser' | 'qr' | 'manual';
-    readonly url?: string;
-    readonly qr?: string;
-    readonly expiresAt?: number;
-    readonly instructions?: string;
+    readonly url?: string | undefined;
+    readonly qr?: string | undefined;
+    readonly expiresAt?: number | undefined;
+    readonly instructions?: string | undefined;
   };
   readonly metadata: Record<string, unknown>;
 }
 
 export interface ChannelActorAuthorizationRequest {
-  readonly actorId?: string;
+  readonly actorId?: string | undefined;
   readonly actionId: string;
-  readonly accountId?: string;
-  readonly target?: ChannelResolvedTarget;
-  readonly metadata?: Record<string, unknown>;
+  readonly accountId?: string | undefined;
+  readonly target?: ChannelResolvedTarget | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelActorAuthorizationResult {
   readonly allowed: boolean;
   readonly reason: string;
-  readonly account?: ChannelAccountRecord | null;
-  readonly actionAvailable?: boolean;
+  readonly account?: ChannelAccountRecord | null | undefined;
+  readonly actionAvailable?: boolean | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -269,19 +269,19 @@ export interface ChannelPolicyRecord {
 
 export interface ChannelGroupPolicyRecord {
   readonly id: string;
-  readonly label?: string;
-  readonly groupId?: string;
-  readonly channelId?: string;
-  readonly workspaceId?: string;
-  readonly requireMention?: boolean;
-  readonly allowGroupMessages?: boolean;
-  readonly allowThreadMessages?: boolean;
-  readonly allowTextCommandsWithoutMention?: boolean;
-  readonly allowlistUserIds?: readonly string[];
-  readonly allowlistChannelIds?: readonly string[];
-  readonly allowlistGroupIds?: readonly string[];
-  readonly allowedCommands?: readonly string[];
-  readonly metadata?: Record<string, unknown>;
+  readonly label?: string | undefined;
+  readonly groupId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly requireMention?: boolean | undefined;
+  readonly allowGroupMessages?: boolean | undefined;
+  readonly allowThreadMessages?: boolean | undefined;
+  readonly allowTextCommandsWithoutMention?: boolean | undefined;
+  readonly allowlistUserIds?: readonly string[] | undefined;
+  readonly allowlistChannelIds?: readonly string[] | undefined;
+  readonly allowlistGroupIds?: readonly string[] | undefined;
+  readonly allowedCommands?: readonly string[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelPolicyAuditRecord {
@@ -290,39 +290,39 @@ export interface ChannelPolicyAuditRecord {
   readonly createdAt: number;
   readonly allowed: boolean;
   readonly reason: string;
-  readonly userId?: string;
-  readonly channelId?: string;
-  readonly groupId?: string;
-  readonly threadId?: string;
-  readonly conversationKind?: ChannelConversationKind;
-  readonly matchedGroupPolicyId?: string;
-  readonly text?: string;
+  readonly userId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly groupId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly conversationKind?: ChannelConversationKind | undefined;
+  readonly matchedGroupPolicyId?: string | undefined;
+  readonly text?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface ChannelIngressPolicyInput {
   readonly surface: ChannelSurface;
-  readonly userId?: string;
-  readonly channelId?: string;
-  readonly groupId?: string;
-  readonly threadId?: string;
-  readonly workspaceId?: string;
-  readonly conversationKind?: ChannelConversationKind;
-  readonly hasAnyMention?: boolean;
-  readonly text?: string;
-  readonly mentioned?: boolean;
-  readonly controlCommand?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly userId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly groupId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly conversationKind?: ChannelConversationKind | undefined;
+  readonly hasAnyMention?: boolean | undefined;
+  readonly text?: string | undefined;
+  readonly mentioned?: boolean | undefined;
+  readonly controlCommand?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelPolicyDecision {
   readonly allowed: boolean;
   readonly reason: string;
   readonly policy: ChannelPolicyRecord;
-  readonly matchedGroupPolicy?: ChannelGroupPolicyRecord;
-  readonly matchedScope?: ChannelPolicyMatchScope;
-  readonly effectiveRequireMention?: boolean;
-  readonly effectiveAllowedCommands?: readonly string[];
+  readonly matchedGroupPolicy?: ChannelGroupPolicyRecord | undefined;
+  readonly matchedScope?: ChannelPolicyMatchScope | undefined;
+  readonly effectiveRequireMention?: boolean | undefined;
+  readonly effectiveAllowedCommands?: readonly string[] | undefined;
 }
 
 export type ChannelSecretBackend =
@@ -369,11 +369,11 @@ export interface ChannelSecretTargetDescriptor {
   readonly label: string;
   readonly required: boolean;
   readonly supports: readonly ChannelSecretBackend[];
-  readonly serviceName?: string;
-  readonly serviceField?: string;
-  readonly envKeys?: readonly string[];
-  readonly configKeys?: readonly string[];
-  readonly detail?: string;
+  readonly serviceName?: string | undefined;
+  readonly serviceField?: string | undefined;
+  readonly envKeys?: readonly string[] | undefined;
+  readonly configKeys?: readonly string[] | undefined;
+  readonly detail?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -387,12 +387,12 @@ export interface ChannelSetupFieldDescriptor {
   readonly label: string;
   readonly kind: ChannelSetupFieldKind;
   readonly required: boolean;
-  readonly detail?: string;
-  readonly placeholder?: string;
-  readonly configKey?: string;
-  readonly secretTargetId?: string;
-  readonly defaultValue?: string | number | boolean;
-  readonly options?: readonly ChannelSetupFieldOption[];
+  readonly detail?: string | undefined;
+  readonly placeholder?: string | undefined;
+  readonly configKey?: string | undefined;
+  readonly secretTargetId?: string | undefined;
+  readonly defaultValue?: string | number | boolean | undefined;
+  readonly options?: readonly ChannelSetupFieldOption[] | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -413,7 +413,7 @@ export interface ChannelDoctorCheck {
   readonly label: string;
   readonly status: ChannelDoctorStatus;
   readonly detail: string;
-  readonly repairActionId?: string;
+  readonly repairActionId?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -422,13 +422,13 @@ export interface ChannelRepairAction {
   readonly label: string;
   readonly description: string;
   readonly dangerous: boolean;
-  readonly inputSchema?: Record<string, unknown>;
+  readonly inputSchema?: Record<string, unknown> | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface ChannelDoctorReport {
   readonly surface: ChannelSurface;
-  readonly accountId?: string;
+  readonly accountId?: string | undefined;
   readonly state: ChannelAccountState;
   readonly summary: string;
   readonly checkedAt: number;
@@ -439,7 +439,7 @@ export interface ChannelDoctorReport {
 
 export interface ChannelLifecycleState {
   readonly surface: ChannelSurface;
-  readonly accountId?: string;
+  readonly accountId?: string | undefined;
   readonly currentVersion: number;
   readonly targetVersion: number;
   readonly metadata: Record<string, unknown>;
@@ -461,13 +461,13 @@ export interface ChannelAllowlistResolution {
 }
 
 export interface ChannelAllowlistEditInput {
-  readonly add?: readonly string[];
-  readonly remove?: readonly string[];
-  readonly groupId?: string;
-  readonly channelId?: string;
-  readonly workspaceId?: string;
-  readonly kind?: ChannelAllowlistTargetKind;
-  readonly metadata?: Record<string, unknown>;
+  readonly add?: readonly string[] | undefined;
+  readonly remove?: readonly string[] | undefined;
+  readonly groupId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly kind?: ChannelAllowlistTargetKind | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelAllowlistEditResult {
@@ -482,13 +482,13 @@ export interface ChannelRenderEvent {
   readonly kind: ChannelRenderEventKind;
   readonly phase: ChannelRenderPhase;
   readonly ts: number;
-  readonly text?: string;
-  readonly title?: string;
-  readonly provider?: string;
-  readonly model?: string;
-  readonly toolName?: string;
-  readonly callId?: string;
-  readonly summary?: string;
+  readonly text?: string | undefined;
+  readonly title?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly model?: string | undefined;
+  readonly toolName?: string | undefined;
+  readonly callId?: string | undefined;
+  readonly summary?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -505,19 +505,19 @@ export interface ChannelRenderPolicy {
 export interface ChannelRenderRequest {
   readonly surface: ChannelSurface;
   readonly phase: ChannelRenderPhase;
-  readonly agentId?: string;
-  readonly sessionId?: string;
-  readonly routeId?: string;
+  readonly agentId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
   readonly title: string;
   readonly text: string;
   readonly events: readonly ChannelRenderEvent[];
-  readonly pending?: Record<string, unknown>;
+  readonly pending?: Record<string, unknown> | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface ChannelRenderResult {
   readonly delivered: boolean;
-  readonly responseId?: string;
-  readonly threadId?: string;
+  readonly responseId?: string | undefined;
+  readonly threadId?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }

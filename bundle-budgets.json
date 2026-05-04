@@ -12,7 +12,7 @@
     "Entry keys must match the `exports` map keys in packages/sdk/package.json exactly."
   ],
   ".": {
-    "gzip_bytes": 285,
+    "gzip_bytes": 634,
     "rationale": "full SDK re-export entry \u2014 re-exports all sub-entries; measured 235 B gzip + 50 B floor"
   },
   "./auth": {

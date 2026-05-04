@@ -45,7 +45,7 @@ function extractOrigin(baseURL: string): string {
   } catch {
     // Fallback: strip everything after the third slash component
     const match = baseURL.match(/^(https?:\/\/[^/]+)/);
-    return match ? match[1] : baseURL;
+    return match ? match[1]! : baseURL;
   }
 }
 
@@ -55,7 +55,7 @@ function extractOrigin(baseURL: string): string {
  */
 async function probe(
   url: string,
-  options: { apiKey?: string; method?: string; body?: string } = {},
+  options: { apiKey?: string | undefined; method?: string; body?: string | undefined } = {},
 ): Promise<Response | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
@@ -69,9 +69,9 @@ async function probe(
     const response = await instrumentedFetch(url, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body,
+      ...(options.body !== undefined ? { body: options.body } : {}),
       signal: controller.signal,
-    });
+    } as RequestInit);
 
     if (!response.ok) {
       logger.debug('[context-discovery] Non-OK probe response', { url, status: response.status });
@@ -109,7 +109,7 @@ async function parseJSON<T>(response: Response): Promise<T | null> {
 
 interface LMStudioModel {
   key: string;
-  max_context_length?: number;
+  max_context_length?: number | undefined;
   [k: string]: unknown;
 }
 
@@ -123,7 +123,7 @@ interface LMStudioModelsResponse {
  */
 async function probeLMStudio(
   origin: string,
-  apiKey?: string,
+  apiKey?: string | undefined,
 ): Promise<Map<string, number> | null> {
   const url = `${origin}/api/v1/models`;
   const response = await probe(url, { apiKey });
@@ -161,8 +161,8 @@ interface OllamaTagsResponse {
 }
 
 interface OllamaShowResponse {
-  model_info?: Record<string, unknown>;
-  modelfile?: string;
+  model_info?: Record<string, unknown> | undefined;
+  modelfile?: string | undefined;
   [k: string]: unknown;
 }
 
@@ -187,7 +187,7 @@ function extractOllamaContextLength(show: OllamaShowResponse): number | null {
   if (typeof show.modelfile === 'string') {
     const match = show.modelfile.match(/^\s*PARAMETER\s+num_ctx\s+(\d+)/im);
     if (match) {
-      const ctx = parseInt(match[1], 10);
+      const ctx = parseInt(match[1]!, 10);
       if (ctx > 0) return ctx;
     }
   }
@@ -201,7 +201,7 @@ function extractOllamaContextLength(show: OllamaShowResponse): number | null {
  */
 async function probeOllama(
   origin: string,
-  apiKey?: string,
+  apiKey?: string | undefined,
 ): Promise<Map<string, number> | null> {
   const tagsUrl = `${origin}/api/tags`;
   const tagsResponse = await probe(tagsUrl, { apiKey });
@@ -260,12 +260,12 @@ async function probeOllama(
 interface OpenAICompatModel {
   id: string;
   /** vLLM exposes this */
-  max_model_len?: number;
-  max_context_length?: number;
-  context_length?: number;
+  max_model_len?: number | undefined;
+  max_context_length?: number | undefined;
+  context_length?: number | undefined;
   limits?: {
-    max_context_length?: number;
-    context_length?: number;
+    max_context_length?: number | undefined;
+    context_length?: number | undefined;
   };
   [k: string]: unknown;
 }
@@ -296,7 +296,7 @@ function extractOpenAIContextLength(model: OpenAICompatModel): number | null {
  */
 async function probeOpenAICompat(
   baseURL: string,
-  apiKey?: string,
+  apiKey?: string | undefined,
 ): Promise<Map<string, number> | null> {
   const url = baseURL.replace(/\/$/, '') + '/models';
   const response = await probe(url, { apiKey });
@@ -324,7 +324,7 @@ async function probeOpenAICompat(
 // ---------------------------------------------------------------------------
 
 interface LlamaCppProps {
-  n_ctx?: number;
+  n_ctx?: number | undefined;
   [k: string]: unknown;
 }
 
@@ -334,7 +334,7 @@ interface LlamaCppProps {
  */
 async function probeLlamaCpp(
   origin: string,
-  apiKey?: string,
+  apiKey?: string | undefined,
 ): Promise<Map<string, number> | null> {
   const url = `${origin}/props`;
   const response = await probe(url, { apiKey });
@@ -352,8 +352,8 @@ async function probeLlamaCpp(
 // ---------------------------------------------------------------------------
 
 interface TGIInfo {
-  max_input_tokens?: number;
-  max_total_tokens?: number;
+  max_input_tokens?: number | undefined;
+  max_total_tokens?: number | undefined;
   [k: string]: unknown;
 }
 
@@ -364,7 +364,7 @@ interface TGIInfo {
  */
 async function probeTGI(
   origin: string,
-  apiKey?: string,
+  apiKey?: string | undefined,
 ): Promise<Map<string, number> | null> {
   const url = `${origin}/info`;
   const response = await probe(url, { apiKey });
@@ -414,7 +414,7 @@ async function probeTGI(
  */
 export async function discoverContextWindows(
   baseURL: string,
-  apiKey?: string,
+  apiKey?: string | undefined,
 ): Promise<Map<string, number>> {
   const origin = extractOrigin(baseURL);
   const result = new Map<string, number>();

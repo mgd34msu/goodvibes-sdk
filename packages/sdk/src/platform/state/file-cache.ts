@@ -8,7 +8,7 @@ export interface CacheEntry {
   /** SHA-256 hash of the file content at last read/update. */
   contentHash: string;
   /** Stored content (only in with_content mode). */
-  content?: string;
+  content?: string | undefined;
   lineCount: number;
   byteSize: number;
   firstReadAt: number;
@@ -25,7 +25,7 @@ export interface CacheEntry {
 export interface ConflictInfo {
   yourVersion: number;
   currentVersion: number;
-  diffSinceRead?: string;
+  diffSinceRead?: string | undefined;
 }
 
 export type CacheStatus = 'miss' | 'unchanged' | 'modified';
@@ -71,7 +71,7 @@ export class FileStateCache {
    *
    * In `with_content` mode, a unified diff is included when status is 'modified'.
    */
-  lookup(filePath: string): { status: CacheStatus; entry?: CacheEntry; diff?: string } {
+  lookup(filePath: string): { status: CacheStatus; entry?: CacheEntry | undefined; diff?: string | undefined } {
     this.totalReads++;
     const node = this.cache.get(filePath);
     if (!node) {
@@ -300,7 +300,7 @@ function computeHunks(oldLines: string[], newLines: string[], CONTEXT = 3): stri
   let i = 0;
   while (i < edits.length) {
     // Find next non-context edit
-    while (i < edits.length && edits[i].type === 'context') i++;
+    while (i < edits.length && edits[i]!.type === 'context') i++;
     if (i >= edits.length) break;
 
     // Collect hunk starting CONTEXT lines before
@@ -308,12 +308,12 @@ function computeHunks(oldLines: string[], newLines: string[], CONTEXT = 3): stri
     let hunkEnd = i;
     // Extend to next gap
     while (hunkEnd < edits.length) {
-      if (edits[hunkEnd].type !== 'context') {
+      if (edits[hunkEnd]!.type !== 'context') {
         hunkEnd++;
       } else {
         // Check if there's another non-context within CONTEXT distance
         let next = hunkEnd + 1;
-        while (next < edits.length && edits[next].type === 'context') next++;
+        while (next < edits.length && edits[next]!.type === 'context') next++;
         if (next < edits.length && next - hunkEnd <= CONTEXT * 2) {
           hunkEnd = next;
         } else {
@@ -329,8 +329,8 @@ function computeHunks(oldLines: string[], newLines: string[], CONTEXT = 3): stri
     let oldLine = 1;
     let newLine = 1;
     for (let j = 0; j < hunkStart; j++) {
-      if (edits[j].type !== 'added') oldLine++;
-      if (edits[j].type !== 'removed') newLine++;
+      if (edits[j]!.type !== 'added') oldLine++;
+      if (edits[j]!.type !== 'removed') newLine++;
     }
     oldStart = oldLine;
     newStart = newLine;
@@ -366,9 +366,9 @@ function computeEdits(oldLines: string[], newLines: string[]): HunkLine[] {
   for (let i = m - 1; i >= 0; i--) {
     for (let j = n - 1; j >= 0; j--) {
       if (oldLines[i] === newLines[j]) {
-        dp[i][j] = dp[i + 1][j + 1] + 1;
+        dp[i]![j]! = dp[i + 1]![j + 1]! + 1;
       } else {
-        dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        dp[i]![j]! = Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
       }
     }
   }
@@ -378,13 +378,13 @@ function computeEdits(oldLines: string[], newLines: string[]): HunkLine[] {
   let i = 0, j = 0;
   while (i < m || j < n) {
     if (i < m && j < n && oldLines[i] === newLines[j]) {
-      edits.push({ type: 'context', text: oldLines[i] });
+      edits.push({ type: 'context', text: oldLines[i]! });
       i++; j++;
     } else if (j < n && (i >= m || (dp[i + 1]?.[j] ?? 0) <= (dp[i]?.[j + 1] ?? 0))) {
-      edits.push({ type: 'added', text: newLines[j] });
+      edits.push({ type: 'added', text: newLines[j]! });
       j++;
     } else {
-      edits.push({ type: 'removed', text: oldLines[i] });
+      edits.push({ type: 'removed', text: oldLines[i]! });
       i++;
     }
   }

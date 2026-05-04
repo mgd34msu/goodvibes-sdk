@@ -22,7 +22,7 @@ export async function upsertRefinementTaskForGap(
   message: string,
   data: Record<string, unknown> = {},
 ): Promise<KnowledgeRefinementTaskRecord> {
-  const subject = context.linkedObjects[0];
+  const subject = context.linkedObjects[0]!;
   const id = `kref-${semanticHash(spaceId, context.gap.id)}`;
   const existing = store.getRefinementTask(id);
   const attemptCount = existing?.attemptCount ?? 0;

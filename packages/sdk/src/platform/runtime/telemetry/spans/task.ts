@@ -16,7 +16,7 @@ export interface TaskSpanContext {
   /** Task ID (unique). */
   readonly taskId: string;
   /** Optional agent ID that owns this task. */
-  readonly agentId?: string;
+  readonly agentId?: string | undefined;
   /** Human-readable task description. */
   readonly description: string;
   /** Task scheduling priority. */
@@ -27,7 +27,7 @@ export interface TaskSpanContext {
    * Optional parent span ID for nesting under an agent span.
    * When provided, this task span becomes a child of the agent span.
    */
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
 }
 
 /** Phase transitions recordable on a task lifecycle span. */
@@ -40,9 +40,9 @@ export interface TaskSpanEndContext {
   /** Duration of the task in milliseconds. */
   readonly durationMs: number;
   /** Error description when outcome is 'failed'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Cancel reason when outcome is 'cancelled'. */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
 }
 
 /**

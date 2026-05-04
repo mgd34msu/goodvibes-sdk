@@ -164,7 +164,7 @@ export function gatherRecentConversation(
 
   // Work backward from most recent
   for (let i = eligible.length - 1; i >= 0; i--) {
-    const msg = eligible[i];
+    const msg = eligible[i]!;
     const msgTokens = estimateTokens(extractText(msg.content));
     if (tokenCount + msgTokens > maxTokens) break;
     gathered.unshift(msg);

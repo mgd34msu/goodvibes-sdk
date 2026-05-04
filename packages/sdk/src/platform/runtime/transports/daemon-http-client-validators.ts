@@ -175,14 +175,14 @@ export function assertTelemetryMetricsSnapshot(value: unknown, endpoint: string)
 
 export function normalizeSharedSessionRecord(record: SharedSessionRecord | Record<string, unknown>): SharedSessionRecord {
   const candidate = record as SharedSessionRecord & {
-    readonly surfaceKinds?: readonly string[];
+    readonly surfaceKinds?: readonly string[] | undefined;
     readonly participants?: ReadonlyArray<{
       readonly surfaceKind: string;
       readonly surfaceId: string;
-      readonly externalId?: string;
-      readonly userId?: string;
-      readonly displayName?: string;
-      readonly routeId?: string;
+      readonly externalId?: string | undefined;
+      readonly userId?: string | undefined;
+      readonly displayName?: string | undefined;
+      readonly routeId?: string | undefined;
       readonly lastSeenAt: number;
     }>;
   };

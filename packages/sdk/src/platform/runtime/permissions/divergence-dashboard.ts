@@ -63,7 +63,7 @@ export interface EnforceGateResult {
   /** Whether enforce mode transition is permitted. */
   readonly status: EnforceGateStatus;
   /** Current divergence rate (0–1). Undefined when status is `no_data`. */
-  readonly divergenceRate?: number;
+  readonly divergenceRate?: number | undefined;
   /** Configured threshold (0–1). */
   readonly threshold: number;
   /** Total evaluations at the time of the check. */
@@ -100,18 +100,18 @@ export interface DivergenceDashboardConfig {
    * Maximum divergence rate (0–1) before enforce mode is blocked.
    * Defaults to 0.05 (5%).
    */
-  threshold?: number;
+  threshold?: number | undefined;
   /**
    * Minimum number of evaluations required before the gate makes a
    * `blocked` determination. Below this count the gate returns `no_data`.
    * Defaults to 10.
    */
-  minEvaluationsForGate?: number;
+  minEvaluationsForGate?: number | undefined;
   /**
    * Maximum number of trend entries to retain in the bounded FIFO array.
    * Defaults to 100.
    */
-  maxTrendEntries?: number;
+  maxTrendEntries?: number | undefined;
 }
 
 // ── DivergenceDashboard ───────────────────────────────────────────────────────

@@ -33,9 +33,9 @@ export async function persistAnswerGap(
   query: string,
   reason: string,
   context: {
-    readonly subject?: string;
-    readonly sources?: readonly KnowledgeSourceRecord[];
-    readonly linkedObjects?: readonly KnowledgeNodeRecord[];
+    readonly subject?: string | undefined;
+    readonly sources?: readonly KnowledgeSourceRecord[] | undefined;
+    readonly linkedObjects?: readonly KnowledgeNodeRecord[] | undefined;
   } = {},
 ): Promise<KnowledgeNodeRecord> {
   const linkedObjects = context.linkedObjects ?? [];
@@ -122,8 +122,8 @@ export async function persistAnswerGaps(
   query: string,
   gaps: readonly KnowledgeSemanticGapInput[],
   context: {
-    readonly sources?: readonly KnowledgeSourceRecord[];
-    readonly linkedObjects?: readonly KnowledgeNodeRecord[];
+    readonly sources?: readonly KnowledgeSourceRecord[] | undefined;
+    readonly linkedObjects?: readonly KnowledgeNodeRecord[] | undefined;
   } = {},
 ): Promise<readonly KnowledgeNodeRecord[]> {
   const nodes: KnowledgeNodeRecord[] = [];

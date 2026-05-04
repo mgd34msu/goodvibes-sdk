@@ -31,11 +31,11 @@ export interface GoodVibesRuntimeToolDeps {
   readonly configManager: ConfigManager;
   readonly providerRegistry: ProviderRegistry;
   readonly toolRegistry: ToolRegistry;
-  readonly channelRegistry?: ChannelPluginRegistry | null;
-  readonly serviceRegistry?: Pick<ServiceRegistry, 'getAll' | 'inspect'> | null;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
+  readonly channelRegistry?: ChannelPluginRegistry | null | undefined;
+  readonly serviceRegistry?: Pick<ServiceRegistry, 'getAll' | 'inspect'> | null | undefined;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
   readonly workingDirectory: string;
-  readonly homeDirectory?: string;
+  readonly homeDirectory?: string | undefined;
   readonly surfaceRoot: string;
 }
 
@@ -309,7 +309,7 @@ function selectSchema(schema: readonly ConfigSetting[], args: JsonRecord): Confi
 }
 
 function listConfigCategories(schema: readonly ConfigSetting[]): string[] {
-  return [...new Set(schema.map((setting) => setting.key.split('.')[0]))].sort();
+  return [...new Set(schema.map((setting) => setting.key.split('.')[0]!))].sort();
 }
 
 function listSurfaceConfig(configManager: ConfigManager): JsonRecord[] {
@@ -318,10 +318,10 @@ function listSurfaceConfig(configManager: ConfigManager): JsonRecord[] {
     const match = /^surfaces\.([^.]+)\.(.+)$/.exec(setting.key);
     if (!match) continue;
     const [, surface, field] = match;
-    const entry = surfaces.get(surface) ?? { surface, settings: {} };
+    const entry = surfaces.get(surface!) ?? { surface, settings: {} };
     const settings = entry.settings as JsonRecord;
-    settings[field] = redactConfigValue(setting.key, configManager.get(setting.key));
-    surfaces.set(surface, entry);
+    if (field !== undefined) { settings[field] = redactConfigValue(setting.key, configManager.get(setting.key)); }
+    surfaces.set(surface!, entry);
   }
   return [...surfaces.values()].sort((a, b) => String(a.surface).localeCompare(String(b.surface)));
 }

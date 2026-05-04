@@ -49,43 +49,43 @@ const IDEMPOTENCY_KEY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export interface HttpJsonTransportOptions {
   readonly baseUrl: string;
-  readonly authToken?: string | null;
-  readonly getAuthToken?: AuthTokenResolver;
-  readonly fetch?: typeof fetch;
-  readonly fetchImpl?: typeof fetch;
-  readonly headers?: HeadersInit;
-  readonly getHeaders?: HeaderResolver;
-  readonly retry?: HttpRetryPolicy;
-  readonly observer?: TransportObserver;
+  readonly authToken?: string | null | undefined;
+  readonly getAuthToken?: AuthTokenResolver | undefined;
+  readonly fetch?: typeof fetch | undefined;
+  readonly fetchImpl?: typeof fetch | undefined;
+  readonly headers?: HeadersInit | undefined;
+  readonly getHeaders?: HeaderResolver | undefined;
+  readonly retry?: HttpRetryPolicy | undefined;
+  readonly observer?: TransportObserver | undefined;
   /** Middleware chain applied to every HTTP request/response cycle. */
-  readonly middleware?: readonly TransportMiddleware[];
+  readonly middleware?: readonly TransportMiddleware[] | undefined;
 }
 
 export interface HttpJsonRequestOptions {
-  readonly method?: string;
-  readonly body?: unknown;
-  readonly headers?: HeadersInit;
-  readonly signal?: AbortSignal;
-  readonly retry?: false | HttpRetryPolicy;
+  readonly method?: string | undefined;
+  readonly body?: unknown | undefined;
+  readonly headers?: HeadersInit | undefined;
+  readonly signal?: AbortSignal | undefined;
+  readonly retry?: false | HttpRetryPolicy | undefined;
   /**
    * Contract method / endpoint ID used to look up per-method retry policy overrides.
    * Populated automatically by `invokeContractRoute`; callers outside the contract
    * layer may also set this to opt into `perMethodPolicy` overrides.
    */
-  readonly methodId?: string;
+  readonly methodId?: string | undefined;
   /**
    * When `true`, this call is considered idempotent even if the HTTP verb is a
    * mutating method (POST/PUT/PATCH/DELETE). Enables retry-on-5xx for the call.
    * Populated automatically from `contract.idempotent`; takes lower precedence
    * than an explicit `perMethodPolicy` override.
    */
-  readonly idempotent?: boolean;
+  readonly idempotent?: boolean | undefined;
 }
 
 export interface ResolvedContractRequest {
   readonly url: string;
   readonly method: string;
-  readonly body?: Record<string, unknown>;
+  readonly body?: Record<string, unknown> | undefined;
 }
 
 export interface TransportJsonError {
@@ -93,13 +93,13 @@ export interface TransportJsonError {
   readonly body: unknown;
   readonly url: string;
   readonly method: string;
-  readonly retryAfterMs?: number;
-  readonly cause?: unknown;
+  readonly retryAfterMs?: number | undefined;
+  readonly cause?: unknown | undefined;
 }
 
 export interface HttpJsonTransport {
   readonly baseUrl: string;
-  readonly authToken?: string | null;
+  readonly authToken?: string | null | undefined;
   readonly fetchImpl: typeof fetch;
   readonly paths: TransportPaths;
   buildUrl(path: string): string;
@@ -254,7 +254,7 @@ export function createJsonRequestInit(
   return {
     method,
     credentials: 'include',
-    signal,
+    ...(signal !== undefined ? { signal } : {}),
     headers: mergeHeaderRecord(
       defaultHeaders,
       token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -418,7 +418,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         const init: RequestInit = {
           method: c.method,
           credentials: 'include',
-          signal: c.signal,
+          ...(c.signal !== undefined ? { signal: c.signal } : {}),
           headers: c.headers,
           ...(c.body !== undefined ? { body: JSON.stringify(c.body) } : {}),
         };

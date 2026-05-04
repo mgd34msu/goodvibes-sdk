@@ -23,8 +23,8 @@ interface CachedCopilotToken {
 
 export interface GitHubCopilotProviderOptions {
   readonly tokenCachePath: string;
-  readonly env?: NodeJS.ProcessEnv;
-  readonly fetchFn?: typeof fetch;
+  readonly env?: NodeJS.ProcessEnv | undefined;
+  readonly fetchFn?: typeof fetch | undefined;
 }
 
 export function getGitHubCopilotTokenCachePath(cacheDir: string): string {
@@ -33,7 +33,7 @@ export function getGitHubCopilotTokenCachePath(cacheDir: string): string {
 
 function readFirstEnv(envVars: readonly string[], env: NodeJS.ProcessEnv): string | null {
   for (const envVar of envVars) {
-    const value = env[envVar];
+    const value = env[envVar]!;
     if (typeof value === 'string' && value.trim().length > 0) return value.trim();
   }
   return null;

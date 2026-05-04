@@ -1,7 +1,7 @@
 export interface DiffParseResult {
-  filePath?: string;
-  diffOriginal?: string;
-  diffUpdated?: string;
+  filePath?: string | undefined;
+  diffOriginal?: string | undefined;
+  diffUpdated?: string | undefined;
 }
 
 export function parseDiffForApply(diffText: string): DiffParseResult {

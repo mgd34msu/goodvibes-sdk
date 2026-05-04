@@ -63,7 +63,7 @@ export function emitTaskFailed(
 export function emitTaskCancelled(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { taskId: string; agentId?: string; reason?: string }
+  data: { taskId: string; agentId?: string | undefined; reason?: string | undefined }
 ): void {
   bus.emit('tasks', createEventEnvelope('TASK_CANCELLED', { type: 'TASK_CANCELLED', ...data }, ctx));
 }

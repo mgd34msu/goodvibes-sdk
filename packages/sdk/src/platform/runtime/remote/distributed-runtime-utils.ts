@@ -60,8 +60,8 @@ export function sortPairRequests<T extends { readonly updatedAt: number; readonl
 export function sortPeers<T extends {
   readonly id: string;
   readonly pairedAt: number;
-  readonly verifiedAt?: number;
-  readonly lastSeenAt?: number;
+  readonly verifiedAt?: number | undefined;
+  readonly lastSeenAt?: number | undefined;
 }>(records: Iterable<T>): T[] {
   return [...records].sort((a, b) => (b.lastSeenAt ?? b.verifiedAt ?? b.pairedAt) - (a.lastSeenAt ?? a.verifiedAt ?? a.pairedAt) || a.id.localeCompare(b.id));
 }
@@ -136,11 +136,11 @@ export function buildAudit(
   action: DistributedRuntimeAuditRecord['action'],
   actor: string,
   input: {
-    readonly peerId?: string;
-    readonly requestId?: string;
-    readonly workId?: string;
-    readonly note?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly peerId?: string | undefined;
+    readonly requestId?: string | undefined;
+    readonly workId?: string | undefined;
+    readonly note?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   } = {},
 ): DistributedRuntimeAuditRecord {
   return {

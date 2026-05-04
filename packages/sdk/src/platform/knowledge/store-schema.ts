@@ -301,7 +301,7 @@ export function renderKnowledgeSchemaSql(): string {
 }
 
 function rowObject(columns: string[], values: unknown[]): Record<string, unknown> {
-  return Object.fromEntries(columns.map((column, index) => [column, values[index]]));
+  return Object.fromEntries(columns.map((column, index) => [column, values[index]!]));
 }
 
 export function mapSourceRow(columns: string[], values: unknown[]): KnowledgeSourceRecord {

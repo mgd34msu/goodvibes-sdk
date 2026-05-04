@@ -33,32 +33,32 @@ type NativeFetch = (
 
 type LlamaCppChatCompletion = {
   choices?: Array<{
-    finish_reason?: string | null;
+    finish_reason?: string | null | undefined;
     message?: {
-      content?: unknown;
-      reasoning?: unknown;
-      reasoning_content?: unknown;
-      tool_calls?: unknown;
+      content?: unknown | undefined;
+      reasoning?: unknown | undefined;
+      reasoning_content?: unknown | undefined;
+      tool_calls?: unknown | undefined;
     };
   }>;
   usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
+    prompt_tokens?: number | undefined;
+    completion_tokens?: number | undefined;
     prompt_tokens_details?: {
-      cached_tokens?: number;
+      cached_tokens?: number | undefined;
     };
   };
 };
 
 export interface LlamaCppProviderOptions extends OpenAICompatOptions {
-  nativeFetch?: NativeFetch;
-  fallbackProvider?: LLMProvider;
+  nativeFetch?: NativeFetch | undefined;
+  fallbackProvider?: LLMProvider | undefined;
 }
 
 export class LlamaCppProvider implements LLMProvider {
   readonly name: string;
   readonly models: string[];
-  readonly capabilities?: Partial<ProviderCapability>;
+  readonly capabilities?: Partial<ProviderCapability> | undefined;
 
   private readonly defaultModel: string;
   private readonly reasoningFormat: OpenAICompatOptions['reasoningFormat'];
@@ -66,7 +66,7 @@ export class LlamaCppProvider implements LLMProvider {
   private readonly nativeFetch: NativeFetch;
   private readonly fallbackProvider: LLMProvider;
   private readonly apiKey: string;
-  private readonly defaultHeaders?: Record<string, string>;
+  private readonly defaultHeaders?: Record<string, string> | undefined;
 
   constructor(opts: LlamaCppProviderOptions) {
     this.name = opts.name;
@@ -165,8 +165,8 @@ export class LlamaCppProvider implements LLMProvider {
         method: 'POST',
         headers: buildHeaders(this.apiKey, this.defaultHeaders),
         body: JSON.stringify(body),
-        signal: params.signal,
-      });
+        ...(params.signal !== undefined ? { signal: params.signal } : {}),
+      } as RequestInit);
     } catch (err: unknown) {
       throw normalizeProviderError(err, this.name, 'chat', 'request');
     }

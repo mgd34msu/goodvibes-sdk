@@ -5,6 +5,6 @@ export interface ConfigSettingDefinition {
   type: 'boolean' | 'number' | 'string' | 'enum';
   default: unknown;
   description: string;
-  enumValues?: string[];
-  validate?: (value: unknown) => boolean;
+  enumValues?: string[] | undefined;
+  validate?: ((value: unknown) => boolean) | undefined | undefined;
 }

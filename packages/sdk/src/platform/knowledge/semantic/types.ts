@@ -25,47 +25,47 @@ export type KnowledgeSemanticFactKind =
 export interface KnowledgeSemanticFactInput {
   readonly kind: KnowledgeSemanticFactKind;
   readonly title: string;
-  readonly value?: string;
-  readonly summary?: string;
-  readonly evidence?: string;
-  readonly confidence?: number;
-  readonly labels?: readonly string[];
-  readonly targetHints?: readonly string[];
+  readonly value?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly evidence?: string | undefined;
+  readonly confidence?: number | undefined;
+  readonly labels?: readonly string[] | undefined;
+  readonly targetHints?: readonly string[] | undefined;
 }
 
 export interface KnowledgeSemanticEntityInput {
   readonly title: string;
-  readonly kind?: string;
-  readonly aliases?: readonly string[];
-  readonly summary?: string;
-  readonly confidence?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly kind?: string | undefined;
+  readonly aliases?: readonly string[] | undefined;
+  readonly summary?: string | undefined;
+  readonly confidence?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeSemanticRelationInput {
   readonly from: string;
   readonly relation: string;
   readonly to: string;
-  readonly evidence?: string;
-  readonly confidence?: number;
+  readonly evidence?: string | undefined;
+  readonly confidence?: number | undefined;
 }
 
 export interface KnowledgeSemanticGapInput {
   readonly question: string;
-  readonly reason?: string;
-  readonly subject?: string;
-  readonly severity?: 'info' | 'warning' | 'error';
+  readonly reason?: string | undefined;
+  readonly subject?: string | undefined;
+  readonly severity?: 'info' | 'warning' | 'error' | undefined;
 }
 
 export interface KnowledgeSemanticExtraction {
-  readonly summary?: string;
+  readonly summary?: string | undefined;
   readonly entities: readonly KnowledgeSemanticEntityInput[];
   readonly facts: readonly KnowledgeSemanticFactInput[];
   readonly relations: readonly KnowledgeSemanticRelationInput[];
   readonly gaps: readonly KnowledgeSemanticGapInput[];
   readonly wikiPage?: {
-    readonly title?: string;
-    readonly markdown?: string;
+    readonly title?: string | undefined;
+    readonly markdown?: string | undefined;
   };
   readonly extractor: 'llm' | 'deterministic';
 }
@@ -74,47 +74,47 @@ export interface KnowledgeSemanticLlm {
   completeJson(input: {
     readonly systemPrompt: string;
     readonly prompt: string;
-    readonly maxTokens?: number;
+    readonly maxTokens?: number | undefined;
     readonly purpose: string;
-    readonly signal?: AbortSignal;
-    readonly timeoutMs?: number;
+    readonly signal?: AbortSignal | undefined;
+    readonly timeoutMs?: number | undefined;
   }): Promise<unknown | null>;
   completeText(input: {
     readonly systemPrompt: string;
     readonly prompt: string;
-    readonly maxTokens?: number;
+    readonly maxTokens?: number | undefined;
     readonly purpose: string;
-    readonly signal?: AbortSignal;
-    readonly timeoutMs?: number;
+    readonly signal?: AbortSignal | undefined;
+    readonly timeoutMs?: number | undefined;
   }): Promise<string | null>;
 }
 
 export interface KnowledgeSemanticEnrichmentResult {
   readonly source: KnowledgeSourceRecord;
   readonly skipped: boolean;
-  readonly reason?: string;
-  readonly extractor?: 'llm' | 'deterministic';
+  readonly reason?: string | undefined;
+  readonly extractor?: 'llm' | 'deterministic' | undefined;
   readonly facts: readonly KnowledgeNodeRecord[];
   readonly entities: readonly KnowledgeNodeRecord[];
-  readonly wikiPage?: KnowledgeNodeRecord;
+  readonly wikiPage?: KnowledgeNodeRecord | undefined;
   readonly gaps: readonly KnowledgeNodeRecord[];
 }
 
 export interface KnowledgeSemanticAnswerInput {
   readonly query: string;
-  readonly knowledgeSpaceId?: string;
-  readonly mode?: 'concise' | 'standard' | 'detailed';
-  readonly limit?: number;
-  readonly includeSources?: boolean;
-  readonly includeConfidence?: boolean;
-  readonly includeLinkedObjects?: boolean;
-  readonly candidateSourceIds?: readonly string[];
-  readonly candidateNodeIds?: readonly string[];
-  readonly strictCandidates?: boolean;
-  readonly linkedObjects?: readonly KnowledgeNodeRecord[];
-  readonly noMatchMessage?: string;
-  readonly autoRepairGaps?: boolean;
-  readonly timeoutMs?: number;
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly mode?: 'concise' | 'standard' | 'detailed' | undefined;
+  readonly limit?: number | undefined;
+  readonly includeSources?: boolean | undefined;
+  readonly includeConfidence?: boolean | undefined;
+  readonly includeLinkedObjects?: boolean | undefined;
+  readonly candidateSourceIds?: readonly string[] | undefined;
+  readonly candidateNodeIds?: readonly string[] | undefined;
+  readonly strictCandidates?: boolean | undefined;
+  readonly linkedObjects?: readonly KnowledgeNodeRecord[] | undefined;
+  readonly noMatchMessage?: string | undefined;
+  readonly autoRepairGaps?: boolean | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 export interface KnowledgeSemanticAnswer {
@@ -125,23 +125,23 @@ export interface KnowledgeSemanticAnswer {
   readonly linkedObjects: readonly KnowledgeNodeRecord[];
   readonly facts: readonly KnowledgeNodeRecord[];
   readonly gaps: readonly KnowledgeNodeRecord[];
-  readonly refinementTaskIds?: readonly string[];
-  readonly refinement?: KnowledgeSemanticAnswerRefinement;
+  readonly refinementTaskIds?: readonly string[] | undefined;
+  readonly refinement?: KnowledgeSemanticAnswerRefinement | undefined;
   readonly synthesized: boolean;
 }
 
 export interface KnowledgeSemanticAnswerRefinement {
   readonly status: 'not_needed' | 'repaired' | 'deferred' | 'active' | 'incomplete';
-  readonly reason?: string;
-  readonly repairStatus?: string;
+  readonly reason?: string | undefined;
+  readonly repairStatus?: string | undefined;
   readonly refinementTaskIds: readonly string[];
   readonly acceptedSourceIds: readonly string[];
   readonly promotedFactCount: number;
-  readonly nextRepairAttemptAt?: number;
-  readonly waitedMs?: number;
-  readonly answerCacheInvalidated?: boolean;
-  readonly pageRefreshRequested?: boolean;
-  readonly pageRefreshed?: boolean;
+  readonly nextRepairAttemptAt?: number | undefined;
+  readonly waitedMs?: number | undefined;
+  readonly answerCacheInvalidated?: boolean | undefined;
+  readonly pageRefreshRequested?: boolean | undefined;
+  readonly pageRefreshed?: boolean | undefined;
 }
 
 export interface KnowledgeSemanticAnswerResult {
@@ -154,10 +154,10 @@ export interface KnowledgeSemanticAnswerResult {
 
 export interface KnowledgeSemanticLlmAnswer {
   readonly answer: string;
-  readonly confidence?: number;
-  readonly usedSourceIds?: readonly string[];
-  readonly usedNodeIds?: readonly string[];
-  readonly gaps?: readonly KnowledgeSemanticGapInput[];
+  readonly confidence?: number | undefined;
+  readonly usedSourceIds?: readonly string[] | undefined;
+  readonly usedNodeIds?: readonly string[] | undefined;
+  readonly gaps?: readonly KnowledgeSemanticGapInput[] | undefined;
 }
 
 export interface KnowledgeSemanticGapRepairRequest {
@@ -167,20 +167,20 @@ export interface KnowledgeSemanticGapRepairRequest {
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly linkedObjects: readonly KnowledgeNodeRecord[];
   readonly facts: readonly KnowledgeNodeRecord[];
-  readonly maxSources?: number;
-  readonly deadlineAt?: number;
-  readonly signal?: AbortSignal;
+  readonly maxSources?: number | undefined;
+  readonly deadlineAt?: number | undefined;
+  readonly signal?: AbortSignal | undefined;
 }
 
 export interface KnowledgeSemanticGapRepairResult {
   readonly searched: boolean;
-  readonly query?: string;
-  readonly evidenceSufficient?: boolean;
-  readonly acceptedSourceIds?: readonly string[];
+  readonly query?: string | undefined;
+  readonly evidenceSufficient?: boolean | undefined;
+  readonly acceptedSourceIds?: readonly string[] | undefined;
   readonly ingestedSourceIds: readonly string[];
   readonly skippedUrls: readonly string[];
-  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[];
-  readonly reason?: string;
+  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[] | undefined;
+  readonly reason?: string | undefined;
 }
 
 export type KnowledgeSemanticGapRepairer = (
@@ -188,22 +188,22 @@ export type KnowledgeSemanticGapRepairer = (
 ) => Promise<KnowledgeSemanticGapRepairResult | void>;
 
 export interface KnowledgeSemanticSelfImproveInput {
-  readonly knowledgeSpaceId?: string;
-  readonly sourceIds?: readonly string[];
-  readonly gapIds?: readonly string[];
-  readonly limit?: number;
-  readonly maxRunMs?: number;
-  readonly deferRepair?: boolean;
-  readonly force?: boolean;
-  readonly reason?: 'ingest' | 'homegraph-sync' | 'reindex' | 'scheduled' | 'answer' | 'manual';
-  readonly signal?: AbortSignal;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly sourceIds?: readonly string[] | undefined;
+  readonly gapIds?: readonly string[] | undefined;
+  readonly limit?: number | undefined;
+  readonly maxRunMs?: number | undefined;
+  readonly deferRepair?: boolean | undefined;
+  readonly force?: boolean | undefined;
+  readonly reason?: 'ingest' | 'homegraph-sync' | 'reindex' | 'scheduled' | 'answer' | 'manual' | undefined;
+  readonly signal?: AbortSignal | undefined;
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
 }
 
 export interface KnowledgeSemanticSelfImproveResult {
   readonly scannedGaps: number;
-  readonly candidateGaps?: number;
-  readonly processedGaps?: number;
+  readonly candidateGaps?: number | undefined;
+  readonly processedGaps?: number | undefined;
   readonly createdGaps: number;
   readonly repairableGaps: number;
   readonly suppressedGaps: number;
@@ -214,15 +214,15 @@ export interface KnowledgeSemanticSelfImproveResult {
   readonly blockedGaps: number;
   readonly closedGaps: number;
   readonly queuedTasks: number;
-  readonly requestedLimit?: number;
-  readonly effectiveLimit?: number;
-  readonly coalesced?: boolean;
-  readonly truncated?: boolean;
-  readonly budgetExhausted?: boolean;
+  readonly requestedLimit?: number | undefined;
+  readonly effectiveLimit?: number | undefined;
+  readonly coalesced?: boolean | undefined;
+  readonly truncated?: boolean | undefined;
+  readonly budgetExhausted?: boolean | undefined;
   readonly taskIds: readonly string[];
   readonly ingestedSourceIds: readonly string[];
-  readonly acceptedSourceIds?: readonly string[];
-  readonly promotedFactCount?: number;
-  readonly nextRepairAttemptAt?: number;
+  readonly acceptedSourceIds?: readonly string[] | undefined;
+  readonly promotedFactCount?: number | undefined;
+  readonly nextRepairAttemptAt?: number | undefined;
   readonly errors: readonly { readonly gapId: string; readonly error: string }[];
 }

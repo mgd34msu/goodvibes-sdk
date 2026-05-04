@@ -37,8 +37,8 @@ export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEvent
   DomainEvents<RuntimeEventDomain, TEvent>;
 
 export interface RemoteRuntimeEventsOptions {
-  readonly onError?: (error: Error, domain: RuntimeEventDomain) => void;
-  readonly observer?: TransportObserver;
+  readonly onError?: ((error: Error, domain: RuntimeEventDomain) => void) | undefined | undefined;
+  readonly observer?: TransportObserver | undefined;
 }
 
 /**
@@ -70,17 +70,17 @@ export interface RemoteRuntimeEventsOptions {
 export { forSession as forSessionRuntime } from './domain-events.js';
 
 export interface RuntimeEventConnectorOptions {
-  readonly reconnect?: StreamReconnectPolicy;
-  readonly onError?: (error: unknown) => void;
-  readonly onOpen?: () => void;
-  readonly onReconnect?: (attempt: number, delayMs: number) => void;
-  readonly observer?: TransportObserver;
+  readonly reconnect?: StreamReconnectPolicy | undefined;
+  readonly onError?: ((error: unknown) => void) | undefined | undefined;
+  readonly onOpen?: (() => void) | undefined | undefined;
+  readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined | undefined;
+  readonly observer?: TransportObserver | undefined;
   /**
    * Called once the WebSocket connector is set up, providing an `emitLocal`
    * function the caller can use to send messages over this connection.
    * Primarily for tests and local harnesses that need to inject outbound frames.
    */
-  readonly onEmitter?: (emitLocal: (data: string) => void) => void;
+  readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined | undefined;
 }
 
 type AuthTokenSource = string | null | undefined | AuthTokenResolver;

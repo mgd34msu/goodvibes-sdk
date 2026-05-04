@@ -23,11 +23,11 @@ export interface RuntimeStoreAccess {
  */
 export interface TaskHooks {
   /** Called when the tool begins execution. */
-  onStart?: (callId: string, toolName: string) => void;
+  onStart?: ((callId: string, toolName: string) => void) | undefined | undefined;
   /** Called when the tool completes (success or failure). */
-  onComplete?: (callId: string, durationMs: number) => void;
+  onComplete?: ((callId: string, durationMs: number) => void) | undefined | undefined;
   /** Called when the tool fails. */
-  onError?: (callId: string, error: string) => void;
+  onError?: ((callId: string, error: string) => void) | undefined | undefined;
 }
 
 /**
@@ -59,7 +59,7 @@ export interface ToolRuntimeContext {
   };
 
   /** Shared overflow handler used by output-policy and exec tool result truncation. */
-  overflowHandler?: OverflowHandler;
+  overflowHandler?: OverflowHandler | undefined;
 
   /** Active provider and model identifiers. */
   provider: {
@@ -71,7 +71,7 @@ export interface ToolRuntimeContext {
   /** Agent context — present only when executing inside an agent scope. */
   agent?: {
     agentId: string;
-    parentAgentId?: string;
+    parentAgentId?: string | undefined;
     isolationMode: 'full' | 'partial' | 'none';
   };
 
@@ -80,9 +80,9 @@ export interface ToolRuntimeContext {
    * All fields optional — absent means unlimited.
    */
   budget?: {
-    maxMs?: number;
-    maxTokens?: number;
-    maxCostUsd?: number;
+    maxMs?: number | undefined;
+    maxTokens?: number | undefined;
+    maxCostUsd?: number | undefined;
   };
 
   /**
@@ -92,7 +92,7 @@ export interface ToolRuntimeContext {
   cancellation: {
     signal: AbortSignal;
     /** Human-readable reason set when the call is cancelled. */
-    reason?: string;
+    reason?: string | undefined;
   };
 
   /** Execution mode — determines prompt and timeout behaviour. */

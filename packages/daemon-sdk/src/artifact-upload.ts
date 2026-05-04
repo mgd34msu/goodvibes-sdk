@@ -15,15 +15,15 @@ export interface ArtifactStoreUploadLike {
       | ReadableStream<Uint8Array>
       | AsyncIterable<Uint8Array | Buffer | string>
       | Iterable<Uint8Array | Buffer | string>;
-    readonly kind?: string;
-    readonly mimeType?: string;
-    readonly filename?: string;
-    readonly sourceUri?: string;
-    readonly sizeBytes?: number;
-    readonly retentionMs?: number;
-    readonly acquisitionMode?: string;
-    readonly fetchMode?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly kind?: string | undefined;
+    readonly mimeType?: string | undefined;
+    readonly filename?: string | undefined;
+    readonly sourceUri?: string | undefined;
+    readonly sizeBytes?: number | undefined;
+    readonly retentionMs?: number | undefined;
+    readonly acquisitionMode?: string | undefined;
+    readonly fetchMode?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<unknown>;
 }
 
@@ -34,9 +34,9 @@ export interface ArtifactUploadResult {
 }
 
 interface UploadFileLike {
-  readonly name?: string;
-  readonly type?: string;
-  readonly size?: number;
+  readonly name?: string | undefined;
+  readonly type?: string | undefined;
+  readonly size?: number | undefined;
   stream(): ReadableStream<Uint8Array>;
   arrayBuffer(): Promise<ArrayBuffer>;
 }
@@ -113,12 +113,12 @@ function parseJsonField(value: string, fieldName: string): unknown {
 }
 
 function readStringField(fields: ArtifactUploadFieldMap, key: string): string | undefined {
-  const value = fields[key];
+  const value = fields[key]!;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function readNumberField(fields: ArtifactUploadFieldMap, key: string): number | undefined {
-  const value = fields[key];
+  const value = fields[key]!;
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
@@ -298,17 +298,17 @@ function filenameFromContentDisposition(header: string | null): string | undefin
 
 interface MultipartUploadSpool {
   readonly filePath: string;
-  readonly filename?: string;
-  readonly mimeType?: string;
+  readonly filename?: string | undefined;
+  readonly mimeType?: string | undefined;
   readonly sizeBytes: number;
   readonly fields: ArtifactUploadFieldMap;
   cleanup(): Promise<void>;
 }
 
 interface MultipartPartHeaders {
-  readonly name?: string;
-  readonly filename?: string;
-  readonly contentType?: string;
+  readonly name?: string | undefined;
+  readonly filename?: string | undefined;
+  readonly contentType?: string | undefined;
 }
 
 type BoundaryState = 'next' | 'done';
@@ -351,7 +351,7 @@ function parseMultipartPartHeaders(headerText: string): MultipartPartHeaders {
     if (key === 'filename' || key === 'filename*') output.filename = decodeHeaderValue(value);
   }
   const contentType = headers.get('content-type');
-  if (contentType) output.contentType = contentType.split(';')[0]?.trim();
+  if (contentType) output.contentType = contentType.split(';')[0]?.trim() ?? '';
   return output;
 }
 
@@ -544,10 +544,10 @@ async function createArtifactFromStream(
   input: {
     readonly stream: Parameters<NonNullable<ArtifactStoreUploadLike['createFromStream']>>[0]['stream'];
     readonly fields: ArtifactUploadFieldMap;
-    readonly filename?: string;
-    readonly mimeType?: string;
-    readonly sizeBytes?: number;
-    readonly maxBytes?: number;
+    readonly filename?: string | undefined;
+    readonly mimeType?: string | undefined;
+    readonly sizeBytes?: number | undefined;
+    readonly maxBytes?: number | undefined;
   },
 ): Promise<unknown> {
   if (typeof input.maxBytes === 'number' && typeof input.sizeBytes === 'number' && input.sizeBytes > input.maxBytes) {

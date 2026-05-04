@@ -34,7 +34,7 @@ import {
 
 export interface SelfImprovePromotionContext {
   readonly store: KnowledgeStore;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
   readonly enrichSource?: (sourceId: string, options: { readonly force?: boolean; readonly knowledgeSpaceId?: string }) => Promise<unknown>;
 }
 

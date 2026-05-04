@@ -16,7 +16,7 @@ export interface ToolResultSummary {
   /** Approximate byte size of the raw result. */
   byteSize: number;
   /** Optional short preview (first N chars, no credentials). */
-  preview?: string;
+  preview?: string | undefined;
 }
 
 export type ToolEvent =
@@ -47,10 +47,10 @@ export type ToolEvent =
       toolNames: string[];
       reason: string;
       timestamp: number;
-      isMalformed?: boolean;
+      isMalformed?: boolean | undefined;
     }
   /** Tool call was cancelled before completion. */
-  | { type: 'TOOL_CANCELLED'; callId: string; turnId: string; tool: string; reason?: string }
+  | { type: 'TOOL_CANCELLED'; callId: string; turnId: string; tool: string; reason?: string | undefined }
   /**
    * A runtime budget was exceeded and the phase pipeline was terminated.
    * The `reason` discriminant distinguishes the type of budget breached:

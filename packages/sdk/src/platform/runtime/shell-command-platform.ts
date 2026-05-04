@@ -8,14 +8,14 @@ import type { WebhookNotifier } from '../integrations/webhooks.js';
 import type { UiReadModels } from './ui-read-models.js';
 
 export interface CommandPlatformShellServices {
-  readonly readModels?: UiReadModels;
-  readonly serviceRegistry?: ServiceRegistry;
-  readonly subscriptionManager?: SubscriptionManager;
-  readonly secretsManager?: SecretsManager;
-  readonly localUserAuthManager?: UserAuthManager;
-  readonly tokenAuditor?: ApiTokenAuditor;
-  readonly replayEngine?: DeterministicReplayEngine;
-  readonly webhookNotifier?: WebhookNotifier;
+  readonly readModels?: UiReadModels | undefined;
+  readonly serviceRegistry?: ServiceRegistry | undefined;
+  readonly subscriptionManager?: SubscriptionManager | undefined;
+  readonly secretsManager?: SecretsManager | undefined;
+  readonly localUserAuthManager?: UserAuthManager | undefined;
+  readonly tokenAuditor?: ApiTokenAuditor | undefined;
+  readonly replayEngine?: DeterministicReplayEngine | undefined;
+  readonly webhookNotifier?: WebhookNotifier | undefined;
 }
 
 export interface CreateShellPlatformServicesOptions extends CommandPlatformShellServices {}

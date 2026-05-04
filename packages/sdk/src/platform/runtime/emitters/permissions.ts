@@ -14,10 +14,10 @@ export function emitPermissionRequested(
     tool: string;
     args: Record<string, unknown>;
     category: string;
-    classification?: string;
-    riskLevel?: string;
-    summary?: string;
-    reasons?: readonly string[];
+    classification?: string | undefined;
+    riskLevel?: string | undefined;
+    summary?: string | undefined;
+    reasons?: readonly string[] | undefined;
   }
 ): void {
   bus.emit('permissions', createEventEnvelope('PERMISSION_REQUESTED', { type: 'PERMISSION_REQUESTED', ...data }, ctx));
@@ -86,12 +86,12 @@ export function emitPermissionDecision(
     tool: string;
     approved: boolean;
     source: string;
-    sourceLayer?: string;
-    persisted?: boolean;
-    reasonCode?: string;
-    classification?: string;
-    riskLevel?: string;
-    summary?: string;
+    sourceLayer?: string | undefined;
+    persisted?: boolean | undefined;
+    reasonCode?: string | undefined;
+    classification?: string | undefined;
+    riskLevel?: string | undefined;
+    summary?: string | undefined;
   }
 ): void {
   bus.emit('permissions', createEventEnvelope('DECISION_EMITTED', { type: 'DECISION_EMITTED', ...data }, ctx));

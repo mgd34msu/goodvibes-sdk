@@ -2,10 +2,10 @@ import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 
 export interface ReadableHtmlExtraction {
-  readonly title?: string;
-  readonly byline?: string;
-  readonly siteName?: string;
-  readonly excerpt?: string;
+  readonly title?: string | undefined;
+  readonly byline?: string | undefined;
+  readonly siteName?: string | undefined;
+  readonly excerpt?: string | undefined;
   readonly textContent: string;
   readonly length: number;
   readonly links: readonly string[];
@@ -69,7 +69,7 @@ export function extractReadableHtml(html: string): ReadableHtmlExtraction | null
     const parsed = new Readability(document.cloneNode(true) as Document).parse();
     const textContent = normalizeText(parsed?.textContent ?? document.body?.textContent ?? '');
     if (!textContent) return null;
-    const title = headings[0] ?? normalizeText(parsed?.title);
+    const title = headings[0]! ?? normalizeText(parsed?.title);
     return {
       ...(title ? { title } : {}),
       ...(normalizeText(parsed?.byline) ? { byline: normalizeText(parsed?.byline) } : {}),

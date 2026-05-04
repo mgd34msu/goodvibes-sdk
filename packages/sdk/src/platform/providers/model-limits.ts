@@ -11,11 +11,11 @@ interface OpenRouterModelData {
   top_provider: {
     max_completion_tokens: number | null;
   };
-  supported_parameters?: string[];
+  supported_parameters?: string[] | undefined;
   pricing?: {
     prompt: string;
     completion: string;
-  };
+  } | undefined;
 }
 
 interface OpenRouterResponse {
@@ -30,7 +30,7 @@ interface ModelLimitsCache {
     contextLength: number;
     maxOutputTokens: number | null;
     supportedParameters: string[];
-    pricing?: { prompt: number; completion: number };
+    pricing?: { prompt: number; completion: number } | undefined;
   }>;
 }
 
@@ -233,8 +233,8 @@ export class ModelLimitsService {
   }
 
   getToolResultMaxCharsForModel(model: ModelDefinition | null | undefined): number {
-    if (!model) return DEFAULT_TOKEN_LIMITS.maxToolResultTokens;
-    return this.resolveTokenLimits(model).maxToolResultTokens;
+    if (!model) return DEFAULT_TOKEN_LIMITS.maxToolResultTokens!;
+    return this.resolveTokenLimits(model).maxToolResultTokens!;
   }
 
   async refresh(): Promise<number> {

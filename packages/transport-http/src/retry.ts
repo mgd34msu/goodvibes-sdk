@@ -2,18 +2,18 @@ import { RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors';
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
 export interface PerMethodRetryPolicy {
-  readonly maxAttempts?: number;
-  readonly baseDelayMs?: number;
-  readonly maxDelayMs?: number;
-  readonly backoffFactor?: number;
+  readonly maxAttempts?: number | undefined;
+  readonly baseDelayMs?: number | undefined;
+  readonly maxDelayMs?: number | undefined;
+  readonly backoffFactor?: number | undefined;
 }
 
 export interface HttpRetryPolicy extends BackoffPolicy {
-  readonly retryOnStatuses?: readonly number[];
-  readonly retryOnMethods?: readonly string[];
-  readonly retryOnNetworkError?: boolean;
+  readonly retryOnStatuses?: readonly number[] | undefined;
+  readonly retryOnMethods?: readonly string[] | undefined;
+  readonly retryOnNetworkError?: boolean | undefined;
   /** Per-method retry policy overrides keyed by method ID. */
-  readonly perMethodPolicy?: Readonly<Record<string, PerMethodRetryPolicy>>;
+  readonly perMethodPolicy?: Readonly<Record<string, PerMethodRetryPolicy>> | undefined;
 }
 
 export interface ResolvedHttpRetryPolicy extends ResolvedBackoffPolicy {
@@ -75,7 +75,7 @@ export function applyPerMethodPolicy(
   base: ResolvedHttpRetryPolicy,
   methodId: string,
 ): ResolvedHttpRetryPolicy {
-  const override = base.perMethodPolicy[methodId];
+  const override = base.perMethodPolicy[methodId]!;
   if (!override) return base;
   return {
     ...base,

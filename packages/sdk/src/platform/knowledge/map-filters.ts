@@ -19,8 +19,8 @@ export interface KnowledgeMapFilterState {
 }
 
 export interface KnowledgeMapFilterOptions extends KnowledgeMapFilterInput {
-  readonly filters?: KnowledgeMapFilterInput;
-  readonly includeGenerated?: boolean;
+  readonly filters?: KnowledgeMapFilterInput | undefined;
+  readonly includeGenerated?: boolean | undefined;
 }
 
 export function applyKnowledgeMapFilters(
@@ -75,7 +75,7 @@ export function applyKnowledgeMapFilters(
   const issues = recordKinds && !recordKinds.has('issue')
     ? []
     : state.issues
-        .filter((issue) => filters.issueStatuses.length > 0 || issue.status === 'open')
+        .filter((issue) => (filters.issueStatuses?.length ?? 0) > 0 || issue.status === 'open')
         .filter((issue) => matchesSet(filters.issueCodes, issue.code))
         .filter((issue) => matchesSet(filters.issueStatuses, issue.status))
         .filter((issue) => matchesSet(filters.issueSeverities, issue.severity))
@@ -139,9 +139,9 @@ export function normalizeKnowledgeMapFilters(options: KnowledgeMapFilterOptions 
   | 'edgeRelations'
   | 'tags'
 >> & {
-  readonly query?: string;
-  readonly minConfidence?: number;
-  readonly recordKinds?: ReadonlySet<'source' | 'node' | 'issue'>;
+  readonly query?: string | undefined;
+  readonly minConfidence?: number | undefined;
+  readonly recordKinds?: ReadonlySet<'source' | 'node' | 'issue'> | undefined;
 } {
   const nested = options.filters ?? {};
   const recordKinds = normalizeStringArray(options.recordKinds ?? nested.recordKinds);
@@ -212,16 +212,16 @@ function recordIdsLinkedTo(edges: readonly KnowledgeEdgeRecord[], linkedIds: Rea
   return ids;
 }
 
-function matchesSet(allowed: readonly string[], value: string): boolean {
-  return allowed.length === 0 || allowed.includes(value);
+function matchesSet(allowed: readonly string[] | undefined, value: string): boolean {
+  return !allowed || allowed.length === 0 || allowed.includes(value);
 }
 
-function matchesAnyTag(allowed: readonly string[], tags: readonly string[]): boolean {
-  return allowed.length === 0 || tags.some((tag) => allowed.includes(tag));
+function matchesAnyTag(allowed: readonly string[] | undefined, tags: readonly string[]): boolean {
+  return !allowed || allowed.length === 0 || tags.some((tag) => allowed.includes(tag));
 }
 
-function matchesIds(ids: readonly string[], id: string): boolean {
-  return ids.length === 0 || ids.includes(id);
+function matchesIds(ids: readonly string[] | undefined, id: string): boolean {
+  return !ids || ids.length === 0 || ids.includes(id);
 }
 
 function textMatches(query: string, fields: readonly (string | undefined)[]): boolean {

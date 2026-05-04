@@ -11,12 +11,12 @@ import { upsertSessionParticipant } from './session-broker-state.js';
 export const RESERVED_SHARED_SESSION_IDS = new Set(['', 'system']);
 
 export interface CreateSharedSessionRecordInput {
-  readonly id?: string;
-  readonly title?: string;
-  readonly metadata?: Record<string, unknown>;
-  readonly routeBinding?: AutomationRouteBinding;
-  readonly participant?: SharedSessionParticipant;
-  readonly kind?: SharedSessionRecord['kind'];
+  readonly id?: string | undefined;
+  readonly title?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly routeBinding?: AutomationRouteBinding | undefined;
+  readonly participant?: SharedSessionParticipant | undefined;
+  readonly kind?: SharedSessionRecord['kind'] | undefined;
 }
 
 export function assertSharedSessionIdAllowed(id: string | undefined): void {
@@ -92,7 +92,7 @@ export function bindSharedSessionAgent(session: SharedSessionRecord, agentId: st
 export function attachSharedSessionParticipantAndRoute(input: {
   readonly session: SharedSessionRecord;
   readonly message: Omit<SubmitSharedSessionMessageInput, 'metadata'>;
-  readonly binding?: AutomationRouteBinding;
+  readonly binding?: AutomationRouteBinding | undefined;
 }): SharedSessionRecord {
   const nextRouteIds = input.binding?.id
     ? [...new Set([...input.session.routeIds, input.binding.id])]

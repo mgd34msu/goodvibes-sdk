@@ -70,7 +70,7 @@ function attributeValue(
   if (typeof v === 'boolean') return { boolValue: v };
   if (Array.isArray(v)) {
     if (v.length === 0) return { arrayValue: { values: [] } };
-    const first = v[0];
+    const first = v[0]!;
     if (typeof first === 'string')
       return {
         arrayValue: {

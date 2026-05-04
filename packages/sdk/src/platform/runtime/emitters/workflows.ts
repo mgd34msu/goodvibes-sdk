@@ -30,9 +30,9 @@ export function emitWorkflowReviewCompleted(
     chainId: string;
     score: number;
     passed: boolean;
-    constraintsSatisfied?: number;
-    constraintsTotal?: number;
-    unsatisfiedConstraintIds?: string[];
+    constraintsSatisfied?: number | undefined;
+    constraintsTotal?: number | undefined;
+    unsatisfiedConstraintIds?: string[] | undefined;
   }
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_REVIEW_COMPLETED', { type: 'WORKFLOW_REVIEW_COMPLETED', ...data }, ctx));
@@ -73,7 +73,7 @@ export function emitWorkflowChainFailed(
 export function emitWorkflowAutoCommitted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { chainId: string; commitHash?: string }
+  data: { chainId: string; commitHash?: string | undefined }
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_AUTO_COMMITTED', { type: 'WORKFLOW_AUTO_COMMITTED', ...data }, ctx));
 }

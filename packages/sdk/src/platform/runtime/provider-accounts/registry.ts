@@ -35,10 +35,10 @@ export interface ProviderAccountRecord {
   readonly activeRoute: ProviderAuthRoute;
   readonly activeRouteReason: string;
   readonly authFreshness: ProviderAuthFreshness;
-  readonly fallbackRoute?: ProviderAuthRoute;
-  readonly fallbackRisk?: string;
-  readonly expiresAt?: number;
-  readonly tokenType?: string;
+  readonly fallbackRoute?: ProviderAuthRoute | undefined;
+  readonly fallbackRisk?: string | undefined;
+  readonly expiresAt?: number | undefined;
+  readonly tokenType?: string | undefined;
   readonly notes: readonly string[];
   readonly usageWindows: readonly ProviderUsageWindow[];
   readonly issues: readonly string[];

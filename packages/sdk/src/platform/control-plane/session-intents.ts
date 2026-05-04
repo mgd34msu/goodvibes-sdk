@@ -19,16 +19,16 @@ export interface SharedSessionHelperModelOverride {
 }
 
 export interface SharedSessionRoutingIntent {
-  readonly providerId?: string;
-  readonly modelId?: string;
-  readonly providerSelection?: ProviderRoutingSelection;
-  readonly unresolvedModelPolicy?: UnresolvedModelPolicy;
-  readonly providerFailurePolicy?: ProviderFailurePolicy;
-  readonly fallbackModels?: readonly string[];
-  readonly helperModel?: SharedSessionHelperModelOverride;
-  readonly executionIntent?: ExecutionIntent;
-  readonly tools?: readonly string[];
-  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high';
+  readonly providerId?: string | undefined;
+  readonly modelId?: string | undefined;
+  readonly providerSelection?: ProviderRoutingSelection | undefined;
+  readonly unresolvedModelPolicy?: UnresolvedModelPolicy | undefined;
+  readonly providerFailurePolicy?: ProviderFailurePolicy | undefined;
+  readonly fallbackModels?: readonly string[] | undefined;
+  readonly helperModel?: SharedSessionHelperModelOverride | undefined;
+  readonly executionIntent?: ExecutionIntent | undefined;
+  readonly tools?: readonly string[] | undefined;
+  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
 }
 
 export interface SharedSessionInputRecord {
@@ -37,28 +37,28 @@ export interface SharedSessionInputRecord {
   readonly intent: SharedSessionInputIntent;
   readonly state: SharedSessionInputState;
   readonly correlationId: string;
-  readonly causationId?: string;
+  readonly causationId?: string | undefined;
   readonly body: string;
   readonly createdAt: number;
   readonly updatedAt: number;
-  readonly routeId?: string;
-  readonly surfaceKind?: AutomationSurfaceKind;
-  readonly surfaceId?: string;
-  readonly externalId?: string;
-  readonly threadId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
-  readonly activeAgentId?: string;
+  readonly routeId?: string | undefined;
+  readonly surfaceKind?: AutomationSurfaceKind | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly externalId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly activeAgentId?: string | undefined;
   readonly metadata: Record<string, unknown>;
-  readonly routing?: SharedSessionRoutingIntent;
-  readonly error?: string;
+  readonly routing?: SharedSessionRoutingIntent | undefined;
+  readonly error?: string | undefined;
 }
 
 export interface SharedSessionContinuationRequest {
   readonly sessionId: string;
   readonly input: SharedSessionInputRecord;
   readonly task: string;
-  readonly routeBinding?: AutomationRouteBinding;
+  readonly routeBinding?: AutomationRouteBinding | undefined;
 }
 
 export interface SharedSessionContinuationResult {
@@ -72,8 +72,8 @@ export type SharedSessionContinuationRunner = (
 export interface SharedSessionCompletion {
   readonly session: {
     readonly id: string;
-    readonly activeAgentId?: string;
+    readonly activeAgentId?: string | undefined;
   };
-  readonly continuedInput?: SharedSessionInputRecord;
-  readonly continuedAgentId?: string;
+  readonly continuedInput?: SharedSessionInputRecord | undefined;
+  readonly continuedAgentId?: string | undefined;
 }

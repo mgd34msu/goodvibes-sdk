@@ -15,8 +15,8 @@ export interface OAuthStartState {
 
 export interface OAuthTokenPayload {
   readonly accessToken: string;
-  readonly refreshToken?: string;
+  readonly refreshToken?: string | undefined;
   readonly tokenType: string;
-  readonly expiresAt?: number;
-  readonly scopes?: readonly string[];
+  readonly expiresAt?: number | undefined;
+  readonly scopes?: readonly string[] | undefined;
 }

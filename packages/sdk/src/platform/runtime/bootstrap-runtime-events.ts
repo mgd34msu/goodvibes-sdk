@@ -17,7 +17,7 @@ export interface HostRuntimeEventBridgeOptions {
   readonly runtimeBus: RuntimeEventBus;
   readonly domainDispatch: ReturnType<typeof createDomainDispatch>;
   readonly getSystemMessageRouter: () => HostRuntimeMessageRouter | null;
-  readonly queueConversationFollowUp?: (item: ConversationFollowUpItem) => void;
+  readonly queueConversationFollowUp?: ((item: ConversationFollowUpItem) => void) | undefined | undefined;
   readonly requestRender: () => void;
   readonly configManager: ConfigManager;
   readonly agentManager: AgentManager;
@@ -64,7 +64,7 @@ function buildCohortFollowUp(agentManager: AgentManager, cohort: string): Conver
 function checkCohortCompletion(
   agentManager: AgentManager,
   wrfcController: WrfcController,
-  record: { cohort?: string } | null,
+  record: { cohort?: string | undefined } | null,
   getSystemMessageRouter: () => HostRuntimeMessageRouter | null,
   queueConversationFollowUp?: (item: ConversationFollowUpItem) => void,
 ): void {
@@ -166,7 +166,7 @@ export function registerHostRuntimeEvents(
     const chain = wrfcController.getChain(payload.chainId);
     if (chain?.engineerAgentId) {
       const record = agentManager.getStatus(chain.engineerAgentId);
-      checkCohortCompletion(agentManager, wrfcController, record ?? null, getSystemMessageRouter, queueConversationFollowUp);
+      checkCohortCompletion(agentManager, wrfcController, record! ?? null, getSystemMessageRouter, queueConversationFollowUp);
     }
     requestRender();
   }));
@@ -182,7 +182,7 @@ export function registerHostRuntimeEvents(
     const chain = wrfcController.getChain(payload.chainId);
     if (chain?.engineerAgentId) {
       const record = agentManager.getStatus(chain.engineerAgentId);
-      checkCohortCompletion(agentManager, wrfcController, record ?? null, getSystemMessageRouter, queueConversationFollowUp);
+      checkCohortCompletion(agentManager, wrfcController, record! ?? null, getSystemMessageRouter, queueConversationFollowUp);
     }
     requestRender();
   }));
@@ -223,7 +223,7 @@ export function registerHostRuntimeEvents(
         summary: `${record.template} agent ${payload.agentId.slice(-8)} completed "${taskSnippet}" in ${durationSeconds}s after ${record.toolCallCount} tool calls.`,
       });
     }
-    checkCohortCompletion(agentManager, wrfcController, record ?? null, getSystemMessageRouter, queueConversationFollowUp);
+    checkCohortCompletion(agentManager, wrfcController, record! ?? null, getSystemMessageRouter, queueConversationFollowUp);
     requestRender();
   }));
 
@@ -240,7 +240,7 @@ export function registerHostRuntimeEvents(
         summary: `${record.template} agent ${payload.agentId.slice(-8)} failed after ${durationSeconds}s while working on "${taskSnippet}": ${payload.error.slice(0, 120)}`,
       });
     }
-    checkCohortCompletion(agentManager, wrfcController, record ?? null, getSystemMessageRouter, queueConversationFollowUp);
+    checkCohortCompletion(agentManager, wrfcController, record! ?? null, getSystemMessageRouter, queueConversationFollowUp);
     requestRender();
   }));
 

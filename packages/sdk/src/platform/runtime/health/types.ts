@@ -45,9 +45,9 @@ export interface DomainHealth {
   /** Unix timestamp (ms) of the last status transition */
   lastTransitionAt: number;
   /** Capabilities reduced when the domain is degraded (not failed) */
-  degradedCapabilities?: string[];
+  degradedCapabilities?: string[] | undefined;
   /** Human-readable reason for the current failure, if any */
-  failureReason?: string;
+  failureReason?: string | undefined;
   /** Number of recovery attempts made since last failure */
   recoveryAttempts: number;
   /** Maximum recovery attempts allowed before cascading */
@@ -121,22 +121,22 @@ export interface CascadeResult {
    */
   recoveryExhausted: boolean;
   /** Optional context about the entity that triggered the cascade (e.g. { pluginId: 'foo' }) */
-  sourceContext?: Record<string, string>;
+  sourceContext?: Record<string, string> | undefined;
   /**
    * Wall-clock latency (ms) of the cascade rule evaluation that produced this result.
    * Populated by CascadeTimer; undefined when evaluated directly via CascadeEngine.
    */
-  latencyMs?: number;
+  latencyMs?: number | undefined;
   /**
    * Severity tier derived from the cascade effect type and recovery state.
    * Populated by CascadeTimer; undefined when evaluated directly via CascadeEngine.
    */
-  severity?: string;
+  severity?: string | undefined;
   /**
    * Playbook IDs providing remediation actions for this cascade type.
    * Populated by CascadeTimer; empty when evaluated directly via CascadeEngine.
    */
-  remediationPlaybookIds?: readonly string[];
+  remediationPlaybookIds?: readonly string[] | undefined;
 }
 
 /**
@@ -169,22 +169,22 @@ export interface CascadeAppliedEvent {
   /** Whether recovery was exhausted before this cascade was applied */
   recoveryExhausted: boolean;
   /** Optional context about the entity that triggered the cascade */
-  sourceContext?: Record<string, string>;
+  sourceContext?: Record<string, string> | undefined;
   /**
    * Wall-clock latency (ms) of the cascade evaluation that produced this event.
    * Populated when the event is created from a TimedCascadeResult.
    */
-  latencyMs?: number;
+  latencyMs?: number | undefined;
   /**
    * Severity tier of this cascade event.
    * Populated when the event is created from a TimedCascadeResult.
    */
-  severity?: string;
+  severity?: string | undefined;
   /**
    * Playbook IDs that provide remediation actions for this cascade type.
    * Populated when the event is created from a TimedCascadeResult.
    */
-  remediationPlaybookIds?: readonly string[];
+  remediationPlaybookIds?: readonly string[] | undefined;
 }
 
 /**

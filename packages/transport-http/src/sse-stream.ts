@@ -10,21 +10,21 @@ import { isAbortError } from '@pellux/goodvibes-transport-core';
 import type { TransportJsonError } from './http-core.js';
 
 export interface ServerSentEventHandlers {
-  readonly onEvent?: (eventName: string, payload: unknown) => void;
-  readonly onReady?: (payload: unknown) => void;
-  readonly onError?: (error: unknown) => void;
+  readonly onEvent?: ((eventName: string, payload: unknown) => void) | undefined | undefined;
+  readonly onReady?: ((payload: unknown) => void) | undefined | undefined;
+  readonly onError?: ((error: unknown) => void) | undefined | undefined;
   readonly onReconnect?: (input: { readonly attempt: number; readonly delayMs: number }) => void;
-  readonly onClose?: () => void;
+  readonly onClose?: (() => void) | undefined | undefined;
   readonly onTerminate?: (input: { readonly error: unknown; readonly reconnectAttempts: number }) => void;
 }
 
 export interface ServerSentEventOptions {
-  readonly signal?: AbortSignal;
-  readonly headers?: HeadersInit;
-  readonly authToken?: string | null;
-  readonly getAuthToken?: AuthTokenResolver;
-  readonly lastEventId?: string | null;
-  readonly reconnect?: StreamReconnectPolicy;
+  readonly signal?: AbortSignal | undefined;
+  readonly headers?: HeadersInit | undefined;
+  readonly authToken?: string | null | undefined;
+  readonly getAuthToken?: AuthTokenResolver | undefined;
+  readonly lastEventId?: string | null | undefined;
+  readonly reconnect?: StreamReconnectPolicy | undefined;
 }
 
 function readEventPayload(data: string): unknown {

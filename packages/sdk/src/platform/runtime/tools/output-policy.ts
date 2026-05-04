@@ -87,7 +87,7 @@ export interface OutputPolicyResult {
    * Backend type used when `actionTaken === 'spilled'`.
    * Undefined for other action types.
    */
-  spillBackend?: SpillBackendType;
+  spillBackend?: SpillBackendType | undefined;
 }
 
 /**
@@ -99,7 +99,7 @@ export interface OutputPolicyResult {
  */
 export interface ToolResultWithAudit extends ToolResult {
   /** Policy audit record — present on every result that passed through output-policy. */
-  _policyAudit?: OutputPolicyResult;
+  _policyAudit?: OutputPolicyResult | undefined;
 }
 
 // ─── Default Policies ────────────────────────────────────────────────────────

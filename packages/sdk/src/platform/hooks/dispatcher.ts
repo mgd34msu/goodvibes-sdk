@@ -18,9 +18,9 @@ import type { TriggerManagerLike } from '../workflow/trigger-executor.js';
 import { summarizeError } from '../utils/error-display.js';
 
 type HookRunnerDeps = {
-  readonly agentManager?: Pick<AgentManager, 'spawn' | 'getStatus' | 'cancel'>;
-  readonly toolLLM?: Pick<ToolLLM, 'chat'>;
-  readonly projectRoot?: string;
+  readonly agentManager?: Pick<AgentManager, 'spawn' | 'getStatus' | 'cancel'> | undefined;
+  readonly toolLLM?: Pick<ToolLLM, 'chat'> | undefined;
+  readonly projectRoot?: string | undefined;
 };
 
 /** Global timeout: if cumulative hook time exceeds this, skip remaining */

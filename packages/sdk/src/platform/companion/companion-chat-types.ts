@@ -49,17 +49,17 @@ export interface CompanionChatSession {
 // ---------------------------------------------------------------------------
 
 export interface CreateCompanionChatSessionInput {
-  readonly title?: string;
-  readonly model?: string;
-  readonly provider?: string;
-  readonly systemPrompt?: string;
+  readonly title?: string | undefined;
+  readonly model?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly systemPrompt?: string | undefined;
 }
 
 export interface UpdateCompanionChatSessionInput {
-  readonly title?: string;
-  readonly model?: string;
-  readonly provider?: string;
-  readonly systemPrompt?: string | null;
+  readonly title?: string | undefined;
+  readonly model?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly systemPrompt?: string | null | undefined;
 }
 
 export interface CreateCompanionChatSessionOutput {
@@ -73,7 +73,7 @@ export interface UpdateCompanionChatSessionOutput {
 
 export interface PostCompanionChatMessageInput {
   readonly content: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface PostCompanionChatMessageOutput {

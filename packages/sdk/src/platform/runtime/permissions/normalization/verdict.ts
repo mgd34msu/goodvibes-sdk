@@ -76,7 +76,7 @@ export interface CompoundVerdict {
    * Human-readable denial explanation including per-segment reasons.
    * Only set when `allowed` is false.
    */
-  denialExplanation?: string;
+  denialExplanation?: string | undefined;
   /** Whether any segment contains obfuscated content. */
   hasObfuscation: boolean;
 }

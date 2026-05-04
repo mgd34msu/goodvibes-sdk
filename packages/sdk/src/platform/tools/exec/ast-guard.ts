@@ -43,12 +43,12 @@ export interface ASTGuardResult {
    * Human-readable denial explanation for user display.
    * Only set when `allowed` is false.
    */
-  denialMessage?: string;
+  denialMessage?: string | undefined;
   /**
    * The full CompoundVerdict, available for upstream audit logging.
    * Only set when AST normalization is active.
    */
-  verdict?: CompoundVerdict;
+  verdict?: CompoundVerdict | undefined;
   /** Whether AST normalization was active. */
   astModeActive: boolean;
 }

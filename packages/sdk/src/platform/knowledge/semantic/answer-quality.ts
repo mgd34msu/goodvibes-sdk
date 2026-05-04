@@ -3,12 +3,12 @@ import { hasConcreteFeatureSignal, isLowValueFeatureOrSpecText, semanticFactText
 import { readStringArray, splitSentences } from './utils.js';
 
 export interface CleanSynthesizedAnswerOptions {
-  readonly fallbackText?: string;
+  readonly fallbackText?: string | undefined;
 }
 
 export function answerNeedsFeatureGap(input: {
   readonly query: string;
-  readonly text?: string;
+  readonly text?: string | undefined;
   readonly facts: readonly KnowledgeNodeRecord[];
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly linkedObjects: readonly KnowledgeNodeRecord[];
@@ -80,7 +80,7 @@ function hasBroadFeatureQueryIntent(query: string): boolean {
 function queryFeatureTerms(query: string): string[] {
   return Array.from(query.toLowerCase().matchAll(
     /\b(hdmi(?:\s*2\.1)?|usb|hdr10?|dolby vision|dolby|earc|arc|bluetooth|wi-?fi|ethernet|remote|refresh|120\s*hz|60\s*hz|ports?|speakers?|audio|apps?|airplay|homekit|tuner|atsc|qam|gaming|game|vrr|allm)\b/g,
-  )).map((match) => match[1].replace(/\s+/g, ' '));
+  )).map((match) => match[1]!.replace(/\s+/g, ' '));
 }
 
 function featureSignalFamilyCount(text: string): number {

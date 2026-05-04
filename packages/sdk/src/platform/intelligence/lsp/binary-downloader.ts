@@ -36,7 +36,7 @@ interface BinarySpec {
   /** Map from PlatformKey to the asset filename pattern in GitHub releases */
   assets: Record<PlatformKey, string>;
   /** Whether the downloaded asset is a gzip file that needs decompression */
-  gzip?: boolean;
+  gzip?: boolean | undefined;
 }
 
 /**
@@ -93,7 +93,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
     return null;
   }
 
-  const assetName = spec.assets[platformKey];
+  const assetName = spec.assets[platformKey]!;
   if (!assetName) {
     logger.debug(`BinaryDownloader: no asset for ${name} on ${platformKey}`);
     return null;
@@ -159,7 +159,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
         headers: { 'User-Agent': 'goodvibes-sdk' },
       });
       if (sha256Res.ok) {
-        const expectedHash = (await sha256Res.text()).trim().split(/\s+/)[0]; // format: "hash  filename"
+        const expectedHash = ((await sha256Res.text()).trim().split(/\s+/)[0]) ?? ''; // format: "hash  filename"
         if (!/^[a-f0-9]{64}$/.test(expectedHash)) {
           logger.info('BinaryDownloader: SHA256 sidecar has malformed hash, skipping verification', { name, raw: expectedHash?.slice(0, 80) });
         } else {

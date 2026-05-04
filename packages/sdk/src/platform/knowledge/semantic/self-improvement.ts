@@ -39,9 +39,9 @@ const MAX_REFINEMENT_RUN_MS = 60_000;
 
 interface SelfImproveContext {
   readonly store: KnowledgeStore;
-  readonly gapRepairer?: KnowledgeSemanticGapRepairer | null;
+  readonly gapRepairer?: KnowledgeSemanticGapRepairer | null | undefined;
   readonly activeGapRepairs: Set<string>;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
   readonly enrichSource?: (sourceId: string, options: { readonly force?: boolean; readonly knowledgeSpaceId?: string }) => Promise<unknown>;
 }
 
@@ -58,7 +58,7 @@ interface GapRepairOutcome {
   readonly ingestedSourceIds: readonly string[];
   readonly acceptedSourceIds: readonly string[];
   readonly errors: readonly { gapId: string; error: string }[];
-  readonly nextRepairAttemptAt?: number;
+  readonly nextRepairAttemptAt?: number | undefined;
 }
 type GapRepairerResult = Awaited<ReturnType<KnowledgeSemanticGapRepairer>>;
 
@@ -92,7 +92,7 @@ interface SelfImproveRunState {
   ingestedSources: number;
   linkedRepairs: number;
   promotedFactCount: number;
-  nextRepairAttemptAt?: number;
+  nextRepairAttemptAt?: number | undefined;
   readonly taskIds: string[];
   readonly ingestedSourceIds: string[];
   readonly acceptedSourceIds: string[];

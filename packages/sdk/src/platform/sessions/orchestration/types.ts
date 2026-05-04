@@ -30,7 +30,7 @@ export interface CrossSessionTaskRef {
   /** Epoch ms of last status update. */
   updatedAt: number;
   /** Optional label applied at link time. */
-  label?: string;
+  label?: string | undefined;
 }
 
 // ── Dependency edge ───────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ export interface TaskDependencyEdge {
   /** Epoch ms when the dependency was established. */
   readonly linkedAt: number;
   /** Optional human-readable reason for the dependency. */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
 }
 
 // ── Handoff record ────────────────────────────────────────────────────────────
@@ -68,13 +68,13 @@ export interface TaskHandoffRecord {
   /** Session ID receiving the task (destination). */
   readonly toSessionId: string;
   /** Human-readable reason for the handoff. */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
   /** Epoch ms when the handoff was initiated. */
   readonly initiatedAt: number;
   /** Whether the handoff completed (destination session acknowledged it). */
   acknowledged: boolean;
   /** Epoch ms when the destination acknowledged. */
-  acknowledgedAt?: number;
+  acknowledgedAt?: number | undefined;
 }
 
 // ── Cancellation scope ────────────────────────────────────────────────────────
@@ -102,11 +102,11 @@ export interface CancellationRequest {
   /** Session ID of the task to cancel (required for task/subtree scope). */
   sessionId: string;
   /** Task ID to cancel (required for task/subtree scope; ignored for session scope). */
-  taskId?: string;
+  taskId?: string | undefined;
   /** Cancellation scope — defaults to 'task'. */
   scope: CancellationScope;
   /** Human-readable reason surfaced to the task owner. */
-  reason?: string;
+  reason?: string | undefined;
   /** Epoch ms when the cancellation was requested. */
   readonly requestedAt: number;
 }
@@ -122,7 +122,7 @@ export interface CancellationResult {
   /** Task refs that could not be cancelled (e.g. already terminal). */
   skipped: Array<Pick<CrossSessionTaskRef, 'sessionId' | 'taskId' | 'title'> & { reason: string }>;
   /** Error message if the operation failed entirely. */
-  error?: string;
+  error?: string | undefined;
 }
 
 // ── Graph snapshot ────────────────────────────────────────────────────────────

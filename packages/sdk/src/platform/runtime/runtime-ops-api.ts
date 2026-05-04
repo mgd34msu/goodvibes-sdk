@@ -9,10 +9,9 @@ export interface RuntimeOpsApiOptions {
     getSnapshot(): UiTasksSnapshot;
   };
   readonly taskManager: TaskManager;
-  readonly opsControlPlane?: Pick<
-    OpsControlPlane,
-    'cancelTask' | 'pauseTask' | 'resumeTask' | 'retryTask' | 'cancelAgent'
-  >;
+  readonly opsControlPlane?:
+    | Pick<OpsControlPlane, 'cancelTask' | 'pauseTask' | 'resumeTask' | 'retryTask' | 'cancelAgent'>
+    | undefined;
 }
 
 function normalizeLimit(limit: number): number {

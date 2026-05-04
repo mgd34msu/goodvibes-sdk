@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 export interface AuthUser {
   username: string;
   passwordHash: string;
-  roles?: string[];
+  roles?: string[] | undefined;
 }
 
 export interface AuthSession {
@@ -16,8 +16,8 @@ export interface AuthSession {
 }
 
 interface UserAuthConfig {
-  sessionTtlMs?: number;
-  users?: AuthUser[];
+  sessionTtlMs?: number | undefined;
+  users?: AuthUser[] | undefined;
   bootstrapFilePath: string;
   bootstrapCredentialPath: string;
 }

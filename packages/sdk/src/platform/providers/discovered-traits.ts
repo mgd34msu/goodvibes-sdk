@@ -11,14 +11,14 @@ export interface DiscoveredServerTraits {
     | 'localai'
     | 'compat';
   readonly reasoningFormat: 'llamacpp' | 'none';
-  readonly providerCapabilities?: Partial<ProviderCapability>;
+  readonly providerCapabilities?: Partial<ProviderCapability> | undefined;
   readonly modelCapabilities: {
     toolCalling: boolean;
     codeEditing: boolean;
     reasoning: boolean;
     multimodal: boolean;
   };
-  readonly reasoningEffort?: string[];
+  readonly reasoningEffort?: string[] | undefined;
 }
 
 const DEFAULT_MODEL_CAPABILITIES = {

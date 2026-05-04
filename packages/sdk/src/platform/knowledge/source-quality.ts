@@ -1,11 +1,11 @@
 import type { KnowledgeSourceRecord } from './types.js';
 
 export interface KnowledgePageSourceQualityPolicy {
-  readonly isGeneratedSource?: (source: KnowledgeSourceRecord) => boolean;
-  readonly authorityBoost?: (source: KnowledgeSourceRecord) => number;
-  readonly isLowValueSource?: (source: KnowledgeSourceRecord, existing?: KnowledgeSourceRecord) => boolean;
-  readonly usablePendingPattern?: RegExp;
-  readonly qualityKeywordPattern?: RegExp;
+  readonly isGeneratedSource?: ((source: KnowledgeSourceRecord) => boolean) | undefined | undefined;
+  readonly authorityBoost?: ((source: KnowledgeSourceRecord) => number) | undefined | undefined;
+  readonly isLowValueSource?: ((source: KnowledgeSourceRecord, existing?: KnowledgeSourceRecord) => boolean) | undefined | undefined;
+  readonly usablePendingPattern?: RegExp | undefined;
+  readonly qualityKeywordPattern?: RegExp | undefined;
 }
 
 const DEFAULT_USABLE_PENDING_PATTERN = /\b(support|specifications?|manual|product|datasheet|docs?)\b/;

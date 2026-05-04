@@ -19,7 +19,7 @@ export interface MinimalModelDefinition {
   contextWindow: number;
   selectable: boolean;
   tier: 'free' | 'standard' | 'premium' | 'subscription';
-  reasoningEffort?: string[];
+  reasoningEffort?: string[] | undefined;
 }
 
 export interface SyntheticModelInfo {
@@ -37,7 +37,7 @@ export function nameToSlug(name: string): string {
 
 function hasConfiguredEnvVar(envVars: readonly string[]): boolean {
   return envVars.some((envVar) => {
-    const value = process.env[envVar];
+    const value = process.env[envVar]!;
     return typeof value === 'string' && value.length > 0;
   });
 }
@@ -118,7 +118,7 @@ export function buildSyntheticCanonicalModels(models: readonly CatalogModel[]): 
 
     const tierPriority: Record<SyntheticTier, number> = { free: 2, subscription: 1, paid: 0 };
     const tier = group.reduce((best, model) =>
-      (tierPriority[model.tier] ?? 0) > (tierPriority[best] ?? 0) ? model.tier : best, group[0].tier);
+      (tierPriority[model.tier] ?? 0) > (tierPriority[best] ?? 0) ? model.tier : best, group[0]!.tier);
 
     canonical.push({
       id: canonicalId,

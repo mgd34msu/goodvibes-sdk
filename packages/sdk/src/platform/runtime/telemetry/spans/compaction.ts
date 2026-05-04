@@ -21,9 +21,9 @@ export interface CompactionSpanContext {
   /** Token count at the time compaction was triggered. */
   readonly tokenCount: number;
   /** Token threshold that triggered compaction (if applicable). */
-  readonly threshold?: number;
+  readonly threshold?: number | undefined;
   /** Context limit that triggered reactive compaction (if applicable). */
-  readonly limit?: number;
+  readonly limit?: number | undefined;
   /** Trace ID for cross-span correlation. */
   readonly traceId: string;
 }
@@ -41,13 +41,13 @@ export interface CompactionSpanEndContext {
   /** Token count before compaction. */
   readonly tokensBefore: number;
   /** Token count after compaction (only set when outcome is 'done'). */
-  readonly tokensAfter?: number;
+  readonly tokensAfter?: number | undefined;
   /** Duration of the compaction in milliseconds (only set when outcome is 'done'). */
-  readonly durationMs?: number;
+  readonly durationMs?: number | undefined;
   /** Error description when outcome is 'failed'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** ID of the compaction checkpoint committed (when applicable). */
-  readonly checkpointId?: string;
+  readonly checkpointId?: string | undefined;
 }
 
 /**

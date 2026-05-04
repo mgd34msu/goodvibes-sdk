@@ -36,7 +36,7 @@ export async function dispatchBatchRoutes(
 
   const jobMatch = pathname.match(/^\/api\/batch\/jobs\/([^/]+)$/);
   if (jobMatch && req.method === 'GET') {
-    const job = await context.batchManager.getJob(decodeURIComponent(jobMatch[1]));
+    const job = await context.batchManager.getJob(decodeURIComponent(jobMatch[1]!));
     if (!job) return Response.json({ error: 'Batch job not found', code: 'BATCH_JOB_NOT_FOUND' }, { status: 404 });
     return Response.json({ job });
   }
@@ -44,7 +44,7 @@ export async function dispatchBatchRoutes(
   const cancelMatch = pathname.match(/^\/api\/batch\/jobs\/([^/]+)\/cancel$/);
   if (cancelMatch && req.method === 'POST') {
     return handleBatchError(async () => {
-      const job = await context.batchManager.cancelJob(decodeURIComponent(cancelMatch[1]));
+      const job = await context.batchManager.cancelJob(decodeURIComponent(cancelMatch[1]!));
       return Response.json({ job });
     });
   }

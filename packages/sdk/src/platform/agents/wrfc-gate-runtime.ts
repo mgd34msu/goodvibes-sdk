@@ -16,7 +16,7 @@ export async function runWrfcGateChecks(options: {
   readonly runtimeBus: RuntimeEventBus;
   readonly sessionId: string;
   readonly chainId: string;
-  readonly onResult?: (results: readonly QualityGateResult[], result: QualityGateResult) => void;
+  readonly onResult?: ((results: readonly QualityGateResult[], result: QualityGateResult) => void) | undefined | undefined;
 }): Promise<QualityGateResult[]> {
   const gates = getEnabledWrfcGates(options.configManager);
   if (gates.length === 0) {

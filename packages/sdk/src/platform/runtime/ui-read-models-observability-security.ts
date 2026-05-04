@@ -13,9 +13,9 @@ export interface UiMcpServerSnapshot {
   readonly status: string;
   readonly schemaFreshness: string;
   readonly toolCount: number;
-  readonly lastError?: string;
-  readonly quarantineReason?: string;
-  readonly quarantineDetail?: string;
+  readonly lastError?: string | undefined;
+  readonly quarantineReason?: string | undefined;
+  readonly quarantineDetail?: string | undefined;
 }
 
 export interface UiSecuritySnapshot {

@@ -1,8 +1,8 @@
 export interface BackoffPolicy {
-  readonly maxAttempts?: number;
-  readonly baseDelayMs?: number;
-  readonly maxDelayMs?: number;
-  readonly backoffFactor?: number;
+  readonly maxAttempts?: number | undefined;
+  readonly baseDelayMs?: number | undefined;
+  readonly maxDelayMs?: number | undefined;
+  readonly backoffFactor?: number | undefined;
 }
 
 export interface ResolvedBackoffPolicy {

@@ -60,7 +60,7 @@ export interface ProvenanceLink {
   /** The referenced identifier (session ID, turn number, task ID, event ID, or file path). */
   ref: string;
   /** Optional human-readable label. */
-  label?: string;
+  label?: string | undefined;
 }
 
 export interface MemoryRecord {
@@ -73,7 +73,7 @@ export interface MemoryRecord {
   /** Brief summary (one sentence). */
   summary: string;
   /** Optional expanded detail. */
-  detail?: string;
+  detail?: string | undefined;
   /** Tags for search and grouping. */
   tags: string[];
   /** Provenance links back to the source context. */
@@ -83,11 +83,11 @@ export interface MemoryRecord {
   /** Confidence score from 0-100. Higher means the record is more trusted for retrieval. */
   confidence: number;
   /** Last explicit review timestamp, if any. */
-  reviewedAt?: number;
+  reviewedAt?: number | undefined;
   /** Reviewer identity, if recorded. */
-  reviewedBy?: string;
+  reviewedBy?: string | undefined;
   /** If stale/contradicted, why. */
-  staleReason?: string;
+  staleReason?: string | undefined;
   /** Creation timestamp (epoch ms). */
   createdAt: number;
   /** Last updated timestamp (epoch ms). */
@@ -106,47 +106,47 @@ export interface MemoryLink {
 }
 
 export interface MemorySearchFilter {
-  scope?: MemoryScope;
-  cls?: MemoryClass;
-  tags?: string[];
+  scope?: MemoryScope | undefined;
+  cls?: MemoryClass | undefined;
+  tags?: string[] | undefined;
   /** Full-text substring match on summary and detail. */
-  query?: string;
+  query?: string | undefined;
   /** Use the sqlite-vec semantic index for query ranking when available. */
-  semantic?: boolean;
+  semantic?: boolean | undefined;
   /** Return records created after this timestamp. */
-  since?: number;
+  since?: number | undefined;
   /** Match a specific review state or a small set of states. */
-  reviewState?: MemoryReviewState | MemoryReviewState[];
+  reviewState?: MemoryReviewState | MemoryReviewState[] | undefined;
   /** Minimum confidence threshold, 0-100. */
-  minConfidence?: number;
+  minConfidence?: number | undefined;
   /** Restrict to records with at least one matching provenance kind. */
-  provenanceKinds?: ProvenanceLinkKind[];
+  provenanceKinds?: ProvenanceLinkKind[] | undefined;
   /** Convenience flag for review queue retrieval. */
-  staleOnly?: boolean;
-  limit?: number;
+  staleOnly?: boolean | undefined;
+  limit?: number | undefined;
 }
 
 export interface MemoryAddOptions {
-  scope?: MemoryScope;
+  scope?: MemoryScope | undefined;
   cls: MemoryClass;
   summary: string;
-  detail?: string;
-  tags?: string[];
-  provenance?: ProvenanceLink[];
+  detail?: string | undefined;
+  tags?: string[] | undefined;
+  provenance?: ProvenanceLink[] | undefined;
   review?: {
-    state?: MemoryReviewState;
-    confidence?: number;
-    reviewedAt?: number;
-    reviewedBy?: string;
-    staleReason?: string;
+    state?: MemoryReviewState | undefined;
+    confidence?: number | undefined;
+    reviewedAt?: number | undefined;
+    reviewedBy?: string | undefined;
+    staleReason?: string | undefined;
   };
 }
 
 export interface MemoryReviewPatch {
-  state?: MemoryReviewState;
-  confidence?: number;
-  reviewedBy?: string;
-  staleReason?: string;
+  state?: MemoryReviewState | undefined;
+  confidence?: number | undefined;
+  reviewedBy?: string | undefined;
+  staleReason?: string | undefined;
 }
 
 export interface MemoryBundle {
@@ -174,8 +174,8 @@ export interface MemorySemanticSearchResult {
 
 export interface MemoryStoreOptions {
   embeddingRegistry: MemoryEmbeddingProviderRegistry;
-  enableVectorIndex?: boolean;
-  vectorDbPath?: string;
+  enableVectorIndex?: boolean | undefined;
+  vectorDbPath?: string | undefined;
 }
 
 export interface MemoryDoctorReport {
@@ -282,8 +282,8 @@ export class MemoryStore {
       [id],
     );
 
-    if (!rows.length || !rows[0].values.length) return null;
-    return rowToRecord(rows[0].columns, rows[0].values[0]);
+    if (!rows.length || !rows[0]!.values.length) return null;
+    return rowToRecord(rows[0]!.columns, rows[0]!.values[0]!);
   }
 
   /** Search records with an optional filter. */
@@ -345,7 +345,7 @@ export class MemoryStore {
 
     if (!rows.length) return [];
 
-    let records = rows[0].values.map(v => rowToRecord(rows[0].columns, v));
+    let records = rows[0]!.values.map(v => rowToRecord(rows[0]!.columns, v));
 
     if (filter.minConfidence !== undefined) {
       records = records.filter((record) => record.confidence >= filter.minConfidence!);
@@ -551,8 +551,8 @@ export class MemoryStore {
 
     if (!rows.length) return [];
 
-    return rows[0].values.map(v => {
-      const col = rows[0].columns;
+    return rows[0]!.values.map(v => {
+      const col = rows[0]!.columns;
       return {
         fromId:    String(v[col.indexOf('from_id')]),
         toId:      String(v[col.indexOf('to_id')]),
@@ -656,7 +656,7 @@ export class MemoryStore {
          FROM memory_records
          ORDER BY updated_at DESC, created_at DESC`,
     );
-    const records = rows.length ? rows[0].values.map((value) => rowToRecord(rows[0].columns, value)) : [];
+    const records = rows.length ? rows[0]!.values.map((value) => rowToRecord(rows[0]!.columns, value)) : [];
     this.vectorIndex?.sync(records);
     return this.vectorStats();
   }
@@ -671,7 +671,7 @@ export class MemoryStore {
                FROM memory_records
                ORDER BY updated_at DESC, created_at DESC`,
           );
-          const records = rows.length ? rows[0].values.map((value) => rowToRecord(rows[0].columns, value)) : [];
+          const records = rows.length ? rows[0]!.values.map((value) => rowToRecord(rows[0]!.columns, value)) : [];
           if (this.vectorIndex?.syncAsync) {
             await this.vectorIndex.syncAsync(records, { force: true });
           } else {

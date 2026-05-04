@@ -4,14 +4,14 @@ export type MediaProviderCapability = 'metadata' | 'understand' | 'transform' | 
 export type MediaProviderState = 'healthy' | 'degraded' | 'disabled' | 'unconfigured';
 
 export interface MediaArtifact {
-  readonly id?: string;
-  readonly artifactId?: string;
+  readonly id?: string | undefined;
+  readonly artifactId?: string | undefined;
   readonly mimeType: string;
-  readonly dataBase64?: string;
-  readonly uri?: string;
-  readonly filename?: string;
-  readonly sizeBytes?: number;
-  readonly sha256?: string;
+  readonly dataBase64?: string | undefined;
+  readonly uri?: string | undefined;
+  readonly filename?: string | undefined;
+  readonly sizeBytes?: number | undefined;
+  readonly sha256?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -21,31 +21,31 @@ export interface MediaProviderStatus {
   readonly state: MediaProviderState;
   readonly capabilities: readonly MediaProviderCapability[];
   readonly configured: boolean;
-  readonly detail?: string;
+  readonly detail?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface MediaAnalysisRequest {
   readonly artifact: MediaArtifact;
-  readonly prompt?: string;
-  readonly modelId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly prompt?: string | undefined;
+  readonly modelId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MediaAnalysisResult {
   readonly providerId: string;
-  readonly description?: string;
-  readonly labels?: readonly string[];
-  readonly text?: string;
+  readonly description?: string | undefined;
+  readonly labels?: readonly string[] | undefined;
+  readonly text?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface MediaTransformRequest {
   readonly artifact: MediaArtifact;
   readonly operation: string;
-  readonly outputMimeType?: string;
-  readonly options?: Record<string, unknown>;
-  readonly metadata?: Record<string, unknown>;
+  readonly outputMimeType?: string | undefined;
+  readonly options?: Record<string, unknown> | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MediaTransformResult {
@@ -56,10 +56,10 @@ export interface MediaTransformResult {
 
 export interface MediaGenerationRequest {
   readonly prompt: string;
-  readonly outputMimeType?: string;
-  readonly modelId?: string;
-  readonly options?: Record<string, unknown>;
-  readonly metadata?: Record<string, unknown>;
+  readonly outputMimeType?: string | undefined;
+  readonly modelId?: string | undefined;
+  readonly options?: Record<string, unknown> | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MediaGenerationResult {

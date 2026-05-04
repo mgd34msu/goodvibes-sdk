@@ -120,15 +120,15 @@ export type PlanRuntimeService = (subcommand: string, args: string[]) => {
 };
 
 export interface CommandOpsShellServices {
-  agentManager?: ShellAgentManagerService;
-  acpManager?: ShellAcpManagerService;
-  automationManager?: ShellAutomationManagerRuntimeService;
-  modeManager?: ShellModeManagerService;
-  planManager?: ShellPlanManagerService;
-  adaptivePlanner?: unknown;
-  sessionOrchestration?: ShellSessionOrchestrationService;
-  remoteRuntime?: RemoteCommandService;
-  planRuntime?: PlanRuntimeService;
+  agentManager?: ShellAgentManagerService | undefined;
+  acpManager?: ShellAcpManagerService | undefined;
+  automationManager?: ShellAutomationManagerRuntimeService | undefined;
+  modeManager?: ShellModeManagerService | undefined;
+  planManager?: ShellPlanManagerService | undefined;
+  adaptivePlanner?: unknown | undefined;
+  sessionOrchestration?: ShellSessionOrchestrationService | undefined;
+  remoteRuntime?: RemoteCommandService | undefined;
+  planRuntime?: PlanRuntimeService | undefined;
 }
 
 export interface CreateShellOpsServicesOptions extends CommandOpsShellServices {}
@@ -163,7 +163,7 @@ export function createShellOpsServices(
 
 export function createShellRemoteCommandService(options: {
   readonly readModels: import('./ui-read-models.js').UiReadModels;
-  readonly remoteRunnerRegistry?: RemoteRunnerRegistry;
+  readonly remoteRunnerRegistry?: RemoteRunnerRegistry | undefined;
   readonly runtimeStore: RuntimeStore;
 }): RemoteCommandService | undefined {
   const { readModels, remoteRunnerRegistry, runtimeStore } = options;
@@ -199,9 +199,9 @@ export function createShellRemoteCommandService(options: {
 }
 
 export function createShellPlanRuntime(options: {
-  readonly adaptivePlanner?: AdaptivePlanner;
-  readonly runtimeBus?: RuntimeEventBus;
-  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+  readonly adaptivePlanner?: AdaptivePlanner | undefined;
+  readonly runtimeBus?: RuntimeEventBus | undefined;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
 }): PlanRuntimeService | undefined {
   const { adaptivePlanner, runtimeBus, featureFlags } = options;
   if (!adaptivePlanner) return undefined;

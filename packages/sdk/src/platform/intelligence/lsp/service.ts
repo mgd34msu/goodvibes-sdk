@@ -47,7 +47,7 @@ function resolveCommand(command: string, workingDirectory: string): string {
 export interface LspServerConfig {
   command: string;
   args: string[];
-  initializationOptions?: Record<string, unknown>;
+  initializationOptions?: Record<string, unknown> | undefined;
 }
 
 /** Well-known LSP server command → language IDs mapping for auto-detection. */

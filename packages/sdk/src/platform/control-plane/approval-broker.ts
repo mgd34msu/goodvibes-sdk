@@ -10,25 +10,25 @@ export interface SharedApprovalAuditRecord {
   readonly id: string;
   readonly action: 'created' | 'claimed' | 'approved' | 'denied' | 'cancelled' | 'expired' | 'updated';
   readonly actor: string;
-  readonly actorSurface?: string;
+  readonly actorSurface?: string | undefined;
   readonly createdAt: number;
-  readonly note?: string;
+  readonly note?: string | undefined;
 }
 
 export interface SharedApprovalRecord {
   readonly id: string;
   readonly callId: string;
-  readonly sessionId?: string;
-  readonly routeId?: string;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
   readonly status: SharedApprovalStatus;
   readonly request: PermissionPromptRequest;
   readonly createdAt: number;
   readonly updatedAt: number;
-  readonly claimedBy?: string;
-  readonly claimedAt?: number;
-  readonly resolvedAt?: number;
-  readonly resolvedBy?: string;
-  readonly decision?: PermissionPromptDecision;
+  readonly claimedBy?: string | undefined;
+  readonly claimedAt?: number | undefined;
+  readonly resolvedAt?: number | undefined;
+  readonly resolvedBy?: string | undefined;
+  readonly decision?: PermissionPromptDecision | undefined;
   readonly metadata: Record<string, unknown>;
   readonly audit: readonly SharedApprovalAuditRecord[];
 }
@@ -39,11 +39,11 @@ interface SharedApprovalStoreSnapshot extends Record<string, unknown> {
 
 export interface RequestSharedApprovalInput {
   readonly request: PermissionPromptRequest;
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly metadata?: Record<string, unknown>;
-  readonly localPrompt?: PermissionRequestHandler;
-  readonly timeoutMs?: number;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly localPrompt?: PermissionRequestHandler | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 type ApprovalListener = (approval: SharedApprovalRecord) => void;
@@ -72,7 +72,7 @@ export class ApprovalBroker {
   private readonly approvals = new Map<string, SharedApprovalRecord>();
   private readonly pendingResolvers = new Map<string, {
     resolve: (decision: PermissionPromptDecision) => void;
-    timer?: ReturnType<typeof setTimeout>;
+    timer?: ReturnType<typeof setTimeout> | undefined;
   }>();
   private readonly listeners = new Set<ApprovalListener>();
   private publisher: ApprovalPublisher | null = null;
@@ -80,8 +80,8 @@ export class ApprovalBroker {
 
   constructor(
     options: {
-      readonly store?: PersistentStore<SharedApprovalStoreSnapshot>;
-      readonly storePath?: string;
+      readonly store?: PersistentStore<SharedApprovalStoreSnapshot> | undefined;
+      readonly storePath?: string | undefined;
     },
   ) {
     if (!options.store && !options.storePath) {
@@ -203,10 +203,10 @@ export class ApprovalBroker {
     approvalId: string,
     input: {
       readonly approved: boolean;
-      readonly remember?: boolean;
+      readonly remember?: boolean | undefined;
       readonly actor: string;
-      readonly actorSurface?: string;
-      readonly note?: string;
+      readonly actorSurface?: string | undefined;
+      readonly note?: string | undefined;
     },
   ): Promise<SharedApprovalRecord | null> {
     await this.start();
@@ -247,9 +247,9 @@ export class ApprovalBroker {
     approvalId: string,
     input: {
       readonly actor: string;
-      readonly actorSurface?: string;
-      readonly note?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly actorSurface?: string | undefined;
+      readonly note?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     },
   ): Promise<SharedApprovalRecord | null> {
     await this.start();

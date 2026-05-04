@@ -36,7 +36,7 @@ export interface QuarantineRecord {
   /** Whether the quarantine has been lifted. */
   lifted: boolean;
   /** Unix epoch ms when quarantine was lifted, if applicable. */
-  liftedAt?: number;
+  liftedAt?: number | undefined;
 }
 
 // ── Quarantine Engine ─────────────────────────────────────────────────────────

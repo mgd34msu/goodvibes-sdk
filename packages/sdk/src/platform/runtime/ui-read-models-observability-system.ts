@@ -22,7 +22,7 @@ export interface UiIntelligenceSnapshot {
   readonly avgLatencyMs: number;
   readonly hover: {
     readonly active: boolean;
-    readonly filePath?: string;
+    readonly filePath?: string | undefined;
   };
   readonly diagnostics: ReadonlyMap<string, readonly import('./store/domains/intelligence.js').LspDiagnostic[]>;
 }

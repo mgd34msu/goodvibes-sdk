@@ -23,50 +23,50 @@ interface GapRepairSearch {
 interface GapRepairIngest {
   ingestUrl(input: {
     readonly url: string;
-    readonly title?: string;
-    readonly tags?: readonly string[];
-    readonly sourceType?: KnowledgeSourceType;
-    readonly connectorId?: string;
-    readonly allowPrivateHosts?: boolean;
-    readonly metadata?: Record<string, unknown>;
+    readonly title?: string | undefined;
+    readonly tags?: readonly string[] | undefined;
+    readonly sourceType?: KnowledgeSourceType | undefined;
+    readonly connectorId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<{ readonly source: { readonly id: string; readonly status: string } }>;
 }
 
 export interface WebGapRepairOptions {
   readonly searchService: GapRepairSearch;
   readonly ingestService: GapRepairIngest;
-  readonly maxResults?: number;
-  readonly maxSearches?: number;
-  readonly maxSources?: number;
-  readonly minDistinctDomains?: number;
-  readonly minConfidence?: number;
-  readonly maxIngest?: number;
-  readonly searchTimeoutMs?: number;
-  readonly ingestTimeoutMs?: number;
+  readonly maxResults?: number | undefined;
+  readonly maxSearches?: number | undefined;
+  readonly maxSources?: number | undefined;
+  readonly minDistinctDomains?: number | undefined;
+  readonly minConfidence?: number | undefined;
+  readonly maxIngest?: number | undefined;
+  readonly searchTimeoutMs?: number | undefined;
+  readonly ingestTimeoutMs?: number | undefined;
 }
 
 interface GapRepairSearchResult extends WebSearchResult {
   readonly searchQuery: string;
-  readonly searchProviderId?: string;
+  readonly searchProviderId?: string | undefined;
 }
 
 interface GapRepairCandidate extends GapRepairSearchResult {
-  readonly existingSourceId?: string;
+  readonly existingSourceId?: string | undefined;
   readonly confidence: number;
   readonly reasons: readonly string[];
 }
 
 interface GapRepairSourceAssessment {
   readonly url: string;
-  readonly title?: string;
-  readonly domain?: string;
-  readonly rank?: number;
-  readonly query?: string;
+  readonly title?: string | undefined;
+  readonly domain?: string | undefined;
+  readonly rank?: number | undefined;
+  readonly query?: string | undefined;
   readonly accepted: boolean;
   readonly confidence: number;
   readonly reasons: readonly string[];
-  readonly trustReason?: string;
-  readonly rejectionReason?: string;
+  readonly trustReason?: string | undefined;
+  readonly rejectionReason?: string | undefined;
 }
 
 export function createWebKnowledgeGapRepairer(options: WebGapRepairOptions): KnowledgeSemanticGapRepairer {
@@ -228,8 +228,8 @@ function buildGapRepairQueries(request: KnowledgeSemanticGapRepairRequest): read
 }
 
 function bestSubject(request: KnowledgeSemanticGapRepairRequest): string | null {
-  const linked = request.linkedObjects[0];
-  const source = request.sources[0];
+  const linked = request.linkedObjects[0]!;
+  const source = request.sources[0]!;
   const metadata = linked?.metadata ?? {};
   const identity = uniqueStrings([
     readString(metadata.manufacturer),
@@ -572,7 +572,7 @@ function manufacturerDomainSlug(value: string): string {
 function domainManufacturerHints(value: string): readonly string[] {
   const hints: string[] = [];
   for (const match of value.toLowerCase().matchAll(/\b(?:https?:\/\/)?(?:www\.|support\.|docs\.|developer\.)?([a-z0-9-]+)\.(?:com|net|org|io|dev|tv|ca|co\.uk)\b/g)) {
-    const label = match[1]?.replace(/-/g, ' ').trim();
+    const label = match[1]!?.replace(/-/g, ' ').trim();
     if (label && !isGenericManufacturerSlug(manufacturerDomainSlug(label))) hints.push(label);
   }
   return hints;
@@ -582,7 +582,7 @@ function titleManufacturerHints(value: string): readonly string[] {
   const hints: string[] = [];
   const modelMatches = [...value.matchAll(/\b([A-Z][A-Za-z0-9&.-]{1,}(?:\s+[A-Z][A-Za-z0-9&.-]{1,}){0,2})\s+[A-Z]{2,}[-_ ]?[0-9][A-Z0-9._-]{2,}\b/g)];
   for (const match of modelMatches) {
-    const hint = match[1]?.trim();
+    const hint = match[1]!?.trim();
     if (hint && !isGenericManufacturerSlug(manufacturerDomainSlug(hint))) hints.push(hint.toLowerCase());
   }
   return hints;

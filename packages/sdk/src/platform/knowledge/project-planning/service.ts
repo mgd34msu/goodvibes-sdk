@@ -34,7 +34,7 @@ import type {
 } from './types.js';
 
 export interface ProjectPlanningServiceOptions {
-  readonly defaultProjectId?: string;
+  readonly defaultProjectId?: string | undefined;
 }
 
 export class ProjectPlanningService {
@@ -72,7 +72,7 @@ export class ProjectPlanningService {
     };
   }
 
-  async getState(input: ProjectPlanningSpaceInput & { readonly planningId?: string } = {}): Promise<ProjectPlanningStateResult> {
+  async getState(input: ProjectPlanningSpaceInput & { readonly planningId?: string | undefined } = {}): Promise<ProjectPlanningStateResult> {
     await this.store.init();
     const space = this.resolveSpace(input);
     const planningId = normalizePlanningId(input.planningId);

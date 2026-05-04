@@ -6,12 +6,12 @@ export interface PermissionPromptRequest {
   args: Record<string, unknown>;
   category: PermissionCategory;
   analysis: PermissionRequestAnalysis;
-  workingDirectory?: string;
+  workingDirectory?: string | undefined;
 }
 
 export interface PermissionPromptDecision {
   approved: boolean;
-  remember?: boolean;
+  remember?: boolean | undefined;
 }
 
 export type PermissionRequestHandler = (

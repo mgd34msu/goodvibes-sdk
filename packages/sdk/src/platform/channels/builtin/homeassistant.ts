@@ -48,7 +48,7 @@ export interface HomeAssistantSurfaceManifest {
     readonly manufacturer: string;
     readonly model: string;
     readonly name: string;
-    readonly swVersion?: string;
+    readonly swVersion?: string | undefined;
   };
   readonly daemon: {
     readonly baseUrl: string;
@@ -318,8 +318,8 @@ export function resolveHomeAssistantBaseUrl(
 
 export async function resolveHomeAssistantAccessToken(deps: {
   readonly configManager: ConfigReader;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
-  readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveSecret'>;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
+  readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveSecret'> | undefined;
 }): Promise<string | null> {
   return await deps.serviceRegistry?.resolveSecret('homeassistant', 'primary')
     || await resolveConfiguredSecret(deps, deps.configManager.get('surfaces.homeassistant.accessToken'))
@@ -329,8 +329,8 @@ export async function resolveHomeAssistantAccessToken(deps: {
 
 export async function resolveHomeAssistantWebhookSecret(deps: {
   readonly configManager: ConfigReader;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
-  readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveSecret'>;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
+  readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveSecret'> | undefined;
 }): Promise<string | null> {
   return await deps.serviceRegistry?.resolveSecret('homeassistant', 'signingSecret')
     || await resolveConfiguredSecret(deps, deps.configManager.get('surfaces.homeassistant.webhookSecret'))
@@ -433,7 +433,7 @@ async function publishGoodVibesEvent(deps: BuiltinChannelRuntimeDeps, input?: Re
 
 async function resolveConfiguredSecret(
   deps: {
-    readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
+    readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   },
   value: unknown,
 ): Promise<string | null> {

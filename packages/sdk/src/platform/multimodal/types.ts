@@ -4,13 +4,13 @@ export type MultimodalKind = 'image' | 'audio' | 'video' | 'document';
 export type MultimodalDetail = 'compact' | 'standard' | 'detailed';
 
 export interface MultimodalArtifactInput {
-  readonly artifactId?: string;
-  readonly mimeType?: string;
-  readonly dataBase64?: string;
-  readonly uri?: string;
-  readonly allowPrivateHosts?: boolean;
-  readonly filename?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly artifactId?: string | undefined;
+  readonly mimeType?: string | undefined;
+  readonly dataBase64?: string | undefined;
+  readonly uri?: string | undefined;
+  readonly allowPrivateHosts?: boolean | undefined;
+  readonly filename?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MultimodalProviderDescriptor {
@@ -24,24 +24,24 @@ export interface MultimodalProviderDescriptor {
 
 export interface MultimodalSegment {
   readonly kind: 'transcript' | 'section' | 'scene' | 'ocr' | 'summary';
-  readonly title?: string;
-  readonly text?: string;
-  readonly startMs?: number;
-  readonly endMs?: number;
-  readonly confidence?: number;
+  readonly title?: string | undefined;
+  readonly text?: string | undefined;
+  readonly startMs?: number | undefined;
+  readonly endMs?: number | undefined;
+  readonly confidence?: number | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface MultimodalAnalysisRequest {
-  readonly artifactId?: string;
-  readonly artifact?: MultimodalArtifactInput;
-  readonly prompt?: string;
-  readonly imageProviderId?: string;
-  readonly audioProviderId?: string;
-  readonly modelId?: string;
-  readonly language?: string;
-  readonly detail?: MultimodalDetail;
-  readonly metadata?: Record<string, unknown>;
+  readonly artifactId?: string | undefined;
+  readonly artifact?: MultimodalArtifactInput | undefined;
+  readonly prompt?: string | undefined;
+  readonly imageProviderId?: string | undefined;
+  readonly audioProviderId?: string | undefined;
+  readonly modelId?: string | undefined;
+  readonly language?: string | undefined;
+  readonly detail?: MultimodalDetail | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MultimodalAnalysisResult {
@@ -49,8 +49,8 @@ export interface MultimodalAnalysisResult {
   readonly kind: MultimodalKind;
   readonly artifact: ArtifactDescriptor;
   readonly providerIds: readonly string[];
-  readonly summary?: string;
-  readonly text?: string;
+  readonly summary?: string | undefined;
+  readonly text?: string | undefined;
   readonly labels: readonly string[];
   readonly entities: readonly string[];
   readonly segments: readonly MultimodalSegment[];
@@ -67,7 +67,7 @@ export interface MultimodalPacket {
 
 export interface MultimodalWritebackResult {
   readonly analysisArtifact: ArtifactDescriptor;
-  readonly knowledgeSourceId?: string;
+  readonly knowledgeSourceId?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 

@@ -72,7 +72,7 @@ export interface PlannerInputs {
   backgroundEligible: boolean;
 
   /** Free-form task description (used for logging and explain output). */
-  taskDescription?: string;
+  taskDescription?: string | undefined;
 }
 
 /** A ranked strategy candidate produced by the scorer. */
@@ -275,7 +275,7 @@ export class AdaptivePlanner {
       })
       .sort((a, b) => b.score - a.score);
 
-    const best = candidates[0];
+    const best = candidates[0]!;
     const decision: PlannerDecision = {
       selected: best.strategy,
       reasonCode: best.reasonCode,

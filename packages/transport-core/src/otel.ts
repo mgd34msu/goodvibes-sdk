@@ -16,7 +16,7 @@ interface SpanContext {
   traceId: string;
   spanId: string;
   traceFlags: number;
-  traceState?: { serialize(): string } | null;
+  traceState?: { serialize(): string } | null | undefined;
 }
 
 interface Span {

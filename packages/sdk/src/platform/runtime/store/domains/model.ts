@@ -20,7 +20,7 @@ export interface ModelTokenLimits {
   /** Maximum number of tool calls per turn. */
   maxToolCalls: number;
   /** Maximum reasoning/thinking tokens (undefined = not a reasoning model). */
-  maxReasoningTokens?: number;
+  maxReasoningTokens?: number | undefined;
   /** Full context window size in tokens. */
   contextWindow: number;
 }
@@ -37,7 +37,7 @@ export interface FallbackChainEntry {
   /** Human-readable name for display. */
   displayName: string;
   /** Reason this fallback was configured. */
-  reason?: 'rate_limit' | 'unavailable' | 'context_exceeded' | 'manual';
+  reason?: 'rate_limit' | 'unavailable' | 'context_exceeded' | 'manual' | undefined;
 }
 
 /**
@@ -88,7 +88,7 @@ export interface ModelDomainState {
   /** Number of fallover events since session start. */
   falloverCount: number;
   /** ID of the previous model before the last fallback (for display). */
-  previousModelId?: string;
+  previousModelId?: string | undefined;
 }
 
 /**

@@ -19,14 +19,14 @@ export interface GatewayMethodDescriptor {
   readonly access: GatewayMethodAccess;
   readonly transport: readonly GatewayMethodTransport[];
   readonly scopes: readonly string[];
-  readonly http?: GatewayHttpBinding;
-  readonly events?: readonly string[];
-  readonly inputSchema?: Record<string, unknown>;
-  readonly outputSchema?: Record<string, unknown>;
-  readonly pluginId?: string;
-  readonly dangerous?: boolean;
-  readonly invokable?: boolean;
-  readonly metadata?: Record<string, unknown>;
+  readonly http?: GatewayHttpBinding | undefined;
+  readonly events?: readonly string[] | undefined;
+  readonly inputSchema?: Record<string, unknown> | undefined;
+  readonly outputSchema?: Record<string, unknown> | undefined;
+  readonly pluginId?: string | undefined;
+  readonly dangerous?: boolean | undefined;
+  readonly invokable?: boolean | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface GatewayEventDescriptor {
@@ -37,41 +37,41 @@ export interface GatewayEventDescriptor {
   readonly source: GatewayMethodSource;
   readonly transport: readonly GatewayEventTransport[];
   readonly scopes: readonly string[];
-  readonly domains?: readonly RuntimeEventDomain[];
-  readonly wireEvents?: readonly string[];
-  readonly outputSchema?: Record<string, unknown>;
-  readonly pluginId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly domains?: readonly RuntimeEventDomain[] | undefined;
+  readonly wireEvents?: readonly string[] | undefined;
+  readonly outputSchema?: Record<string, unknown> | undefined;
+  readonly pluginId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface GatewayMethodInvocationContext {
-  readonly principalId?: string;
-  readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
-  readonly admin?: boolean;
-  readonly scopes?: readonly string[];
-  readonly clientKind?: string;
-  readonly authToken?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly principalId?: string | undefined;
+  readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer' | undefined;
+  readonly admin?: boolean | undefined;
+  readonly scopes?: readonly string[] | undefined;
+  readonly clientKind?: string | undefined;
+  readonly authToken?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface GatewayMethodInvocation {
-  readonly body?: unknown;
-  readonly query?: Record<string, unknown>;
+  readonly body?: unknown | undefined;
+  readonly query?: Record<string, unknown> | undefined;
   readonly context: GatewayMethodInvocationContext;
 }
 
 export type GatewayMethodHandler = (input: GatewayMethodInvocation) => unknown | Promise<unknown>;
 export interface GatewayMethodListOptions {
-  readonly category?: string;
-  readonly source?: GatewayMethodSource;
-  readonly pluginId?: string;
+  readonly category?: string | undefined;
+  readonly source?: GatewayMethodSource | undefined;
+  readonly pluginId?: string | undefined;
 }
 
 export interface GatewayEventListOptions {
-  readonly category?: string;
-  readonly source?: GatewayMethodSource;
-  readonly pluginId?: string;
-  readonly domain?: RuntimeEventDomain;
+  readonly category?: string | undefined;
+  readonly source?: GatewayMethodSource | undefined;
+  readonly pluginId?: string | undefined;
+  readonly domain?: RuntimeEventDomain | undefined;
 }
 
 export const EMPTY_OBJECT_SCHEMA = { type: 'object', properties: {}, additionalProperties: false } as const;

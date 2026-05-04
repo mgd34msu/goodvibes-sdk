@@ -17,9 +17,9 @@ export interface DistributedApprovalBridge {
     approvalId: string,
     input: {
       readonly actor: string;
-      readonly actorSurface?: string;
-      readonly note?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly actorSurface?: string | undefined;
+      readonly note?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     },
   ): Promise<unknown>;
 }
@@ -29,10 +29,10 @@ export interface DistributedAutomationBridge {
     runId: string,
     input: {
       readonly status: 'completed' | 'failed' | 'cancelled';
-      readonly result?: unknown;
-      readonly error?: string;
-      readonly telemetry?: AutomationRunTelemetry;
-      readonly metadata?: Record<string, unknown>;
+      readonly result?: unknown | undefined;
+      readonly error?: string | undefined;
+      readonly telemetry?: AutomationRunTelemetry | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     },
   ): Promise<unknown>;
 }
@@ -42,10 +42,10 @@ export interface DistributedRuntimePairRequest {
   readonly peerKind: DistributedPeerKind;
   readonly requestedId: string;
   readonly label: string;
-  readonly platform?: string;
-  readonly deviceFamily?: string;
-  readonly version?: string;
-  readonly clientMode?: string;
+  readonly platform?: string | undefined;
+  readonly deviceFamily?: string | undefined;
+  readonly version?: string | undefined;
+  readonly clientMode?: string | undefined;
   readonly capabilities: readonly string[];
   readonly commands: readonly string[];
   readonly requestedBy: 'remote' | 'operator';
@@ -53,12 +53,12 @@ export interface DistributedRuntimePairRequest {
   readonly challengePreview: string;
   readonly createdAt: number;
   readonly updatedAt: number;
-  readonly approvedAt?: number;
-  readonly verifiedAt?: number;
-  readonly rejectedAt?: number;
+  readonly approvedAt?: number | undefined;
+  readonly verifiedAt?: number | undefined;
+  readonly rejectedAt?: number | undefined;
   readonly expiresAt: number;
-  readonly peerId?: string;
-  readonly remoteAddress?: string;
+  readonly peerId?: string | undefined;
+  readonly remoteAddress?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -67,9 +67,9 @@ export interface DistributedPeerTokenRecord {
   readonly label: string;
   readonly scopes: readonly string[];
   readonly issuedAt: number;
-  readonly lastUsedAt?: number;
-  readonly rotatedAt?: number;
-  readonly revokedAt?: number;
+  readonly lastUsedAt?: number | undefined;
+  readonly rotatedAt?: number | undefined;
+  readonly revokedAt?: number | undefined;
   readonly fingerprint: string;
 }
 
@@ -78,21 +78,21 @@ export interface DistributedPeerRecord {
   readonly kind: DistributedPeerKind;
   readonly label: string;
   readonly requestedId: string;
-  readonly platform?: string;
-  readonly deviceFamily?: string;
-  readonly version?: string;
-  readonly clientMode?: string;
+  readonly platform?: string | undefined;
+  readonly deviceFamily?: string | undefined;
+  readonly version?: string | undefined;
+  readonly clientMode?: string | undefined;
   readonly capabilities: readonly string[];
   readonly commands: readonly string[];
-  readonly permissions?: Record<string, boolean>;
+  readonly permissions?: Record<string, boolean> | undefined;
   readonly status: DistributedPeerStatus;
   readonly pairedAt: number;
-  readonly verifiedAt?: number;
-  readonly lastSeenAt?: number;
-  readonly lastConnectedAt?: number;
-  readonly lastDisconnectedAt?: number;
-  readonly lastRemoteAddress?: string;
-  readonly activeTokenId?: string;
+  readonly verifiedAt?: number | undefined;
+  readonly lastSeenAt?: number | undefined;
+  readonly lastConnectedAt?: number | undefined;
+  readonly lastDisconnectedAt?: number | undefined;
+  readonly lastRemoteAddress?: string | undefined;
+  readonly activeTokenId?: string | undefined;
   readonly tokens: readonly DistributedPeerTokenRecord[];
   readonly metadata: Record<string, unknown>;
 }
@@ -105,23 +105,23 @@ export interface DistributedPendingWork {
   readonly command: string;
   readonly priority: DistributedWorkPriority;
   readonly status: DistributedWorkStatus;
-  readonly payload?: unknown;
+  readonly payload?: unknown | undefined;
   readonly createdAt: number;
   readonly updatedAt: number;
   readonly queuedBy: string;
-  readonly claimedAt?: number;
-  readonly claimTokenId?: string;
-  readonly leaseExpiresAt?: number;
-  readonly completedAt?: number;
-  readonly timeoutMs?: number;
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly automationRunId?: string;
-  readonly automationJobId?: string;
-  readonly approvalId?: string;
-  readonly result?: unknown;
-  readonly error?: string;
-  readonly telemetry?: AutomationRunTelemetry;
+  readonly claimedAt?: number | undefined;
+  readonly claimTokenId?: string | undefined;
+  readonly leaseExpiresAt?: number | undefined;
+  readonly completedAt?: number | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly automationRunId?: string | undefined;
+  readonly automationJobId?: string | undefined;
+  readonly approvalId?: string | undefined;
+  readonly result?: unknown | undefined;
+  readonly error?: string | undefined;
+  readonly telemetry?: AutomationRunTelemetry | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -144,11 +144,11 @@ export interface DistributedRuntimeAuditRecord {
     | 'work-cancelled'
     | 'work-expired';
   readonly actor: string;
-  readonly peerId?: string;
-  readonly requestId?: string;
-  readonly workId?: string;
+  readonly peerId?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly workId?: string | undefined;
   readonly createdAt: number;
-  readonly note?: string;
+  readonly note?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -161,7 +161,7 @@ export interface DistributedRuntimeSnapshotStore extends Record<string, unknown>
 
 export interface DistributedRuntimeWaiter {
   readonly resolve: (work: DistributedPendingWork | null) => void;
-  readonly timer?: ReturnType<typeof setTimeout>;
+  readonly timer?: ReturnType<typeof setTimeout> | undefined;
 }
 
 export interface DistributedPeerAuth {
@@ -184,7 +184,7 @@ export interface DistributedNodeHostContract {
     readonly path: string;
     readonly auth: 'none' | 'bearer-peer-token' | 'bearer-operator-token';
     readonly description: string;
-    readonly requiredScope?: string;
+    readonly requiredScope?: string | undefined;
   }[];
   readonly workCompletionStatuses: readonly DistributedWorkStatus[];
   readonly metadata: Record<string, unknown>;

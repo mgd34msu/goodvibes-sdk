@@ -9,7 +9,7 @@ export interface OpsRuntimeContextConfig {
   store: RuntimeStore;
   recoveryFilePath: string;
   lastSessionPointerPath: string;
-  now?: () => number;
+  now?: (() => number) | undefined | undefined;
 }
 
 export interface OpsRuntimeContextState {
@@ -19,7 +19,7 @@ export interface OpsRuntimeContextState {
   lastSessionPointerPath: string;
   now: () => number;
   lastEventAt: number;
-  sessionRecoveryFailedAt?: number;
+  sessionRecoveryFailedAt?: number | undefined;
   sessionRecoveryFailedCount: number;
   detach: () => void;
 }

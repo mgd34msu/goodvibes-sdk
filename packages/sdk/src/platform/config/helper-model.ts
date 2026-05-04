@@ -42,10 +42,10 @@ export interface ResolvedHelper {
 
 /** Options for helper model invocation. */
 export interface HelperChatOptions {
-  maxTokens?: number;
-  systemPrompt?: string;
+  maxTokens?: number | undefined;
+  systemPrompt?: string | undefined;
   /** If true, return empty string instead of falling back to main model. */
-  helperOnly?: boolean;
+  helperOnly?: boolean | undefined;
 }
 
 /** Token usage tracking for helper model calls. */
@@ -58,8 +58,8 @@ export interface HelperUsage {
 export interface HelperModelDeps {
   readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
   readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'> & {
-    readonly get?: ProviderRegistry['get'];
-    readonly require?: ProviderRegistry['require'];
+    readonly get?: ProviderRegistry['get'] | undefined;
+    readonly require?: ProviderRegistry['require'] | undefined;
   };
 }
 
@@ -101,7 +101,7 @@ export class HelperRouter {
       if (helperConfig) {
         const providers = helperConfig['providers'] as Record<string, { provider?: string; model?: string }> | undefined;
         if (providers && currentProviderName && providers[currentProviderName]) {
-          const perProvider = providers[currentProviderName];
+          const perProvider = providers[currentProviderName]!;
           if (perProvider.provider && perProvider.model) {
             try {
               const provider = this.requireProvider(perProvider.provider);

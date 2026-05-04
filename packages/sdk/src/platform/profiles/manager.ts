@@ -9,9 +9,9 @@ import { summarizeError } from '../utils/error-display.js';
  * Excludes permissions and API keys — only display/behavior/provider settings.
  */
 export interface ProfileData {
-  display?: Partial<GoodVibesConfig['display']>;
-  provider?: Pick<GoodVibesConfig['provider'], 'model' | 'reasoningEffort'>;
-  behavior?: Partial<GoodVibesConfig['behavior']>;
+  display?: Partial<GoodVibesConfig['display']> | undefined;
+  provider?: Pick<GoodVibesConfig['provider'], 'model' | 'reasoningEffort'> | undefined;
+  behavior?: Partial<GoodVibesConfig['behavior']> | undefined;
 }
 
 /**

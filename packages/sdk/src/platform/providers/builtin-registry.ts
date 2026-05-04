@@ -36,7 +36,7 @@ export const CATALOG_PROVIDER_NAME_ALIASES: Record<string, string> = {
 
 function firstEnvValue(envVars: readonly string[]): string | undefined {
   for (const envVar of envVars) {
-    const value = process.env[envVar];
+    const value = process.env[envVar]!;
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim();
     }
@@ -55,7 +55,7 @@ export function createBuiltinCompatProvider(
   definition: BuiltinCompatDefinition,
   apiKey: string,
   options: {
-    readonly cacheHitTracker?: import('./cache-strategy.js').CacheHitTracker;
+    readonly cacheHitTracker?: import('./cache-strategy.js').CacheHitTracker | undefined;
   },
 ): LLMProvider {
   if (definition.kind === 'anthropic-compat') {
@@ -114,12 +114,12 @@ export function registerBuiltinProviders(
   apiKey: (name: string) => string,
   options: {
     readonly resolveProvider: (providerName: string) => LLMProvider;
-    readonly cacheHitTracker?: import('./cache-strategy.js').CacheHitTracker;
+    readonly cacheHitTracker?: import('./cache-strategy.js').CacheHitTracker | undefined;
     readonly getCatalogModels: () => readonly CanonicalModel[];
     readonly getBenchmarks: (modelId: string) => BenchmarkEntry | undefined;
     readonly githubCopilotTokenCachePath: string;
     readonly subscriptionManager: Pick<SubscriptionManager, 'get' | 'getPending' | 'saveSubscription' | 'resolveAccessToken'>;
-    readonly runtimeBus?: RuntimeEventBus | null;
+    readonly runtimeBus?: RuntimeEventBus | null | undefined;
   },
 ): void {
   registry.register(

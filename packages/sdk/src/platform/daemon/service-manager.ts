@@ -24,19 +24,19 @@ export interface ManagedServiceStatus {
   readonly installed: boolean;
   readonly autostart: boolean;
   readonly running: boolean;
-  readonly pid?: number;
-  readonly logPath?: string;
+  readonly pid?: number | undefined;
+  readonly logPath?: string | undefined;
   readonly commandPreview: string;
-  readonly contents?: string;
+  readonly contents?: string | undefined;
   readonly suggestedCommands: readonly string[];
-  readonly lastAction?: 'install' | 'uninstall' | 'start' | 'stop' | 'restart' | 'status';
-  readonly actionError?: string;
+  readonly lastAction?: 'install' | 'uninstall' | 'start' | 'stop' | 'restart' | 'status' | undefined;
+  readonly actionError?: string | undefined;
 }
 
 export interface ManagedServiceActionResult {
   readonly status: number | null;
-  readonly stdout?: string;
-  readonly stderr?: string;
+  readonly stdout?: string | undefined;
+  readonly stderr?: string | undefined;
 }
 
 interface ManagedServicePaths {
@@ -45,13 +45,13 @@ interface ManagedServicePaths {
 }
 
 export interface ManagedServiceManagerOptions extends ManagedServicePaths {
-  readonly definitionOverride?: ManagedServiceDefinition;
-  readonly actionRunner?: (command: string, args: readonly string[]) => ManagedServiceActionResult;
-  readonly surfaceRoot?: string;
-  readonly binaryBaseName?: string;
-  readonly defaultServiceName?: string;
-  readonly defaultServiceDescription?: string;
-  readonly featureFlags?: FeatureFlagReader;
+  readonly definitionOverride?: ManagedServiceDefinition | undefined;
+  readonly actionRunner?: ((command: string, args: readonly string[]) => ManagedServiceActionResult) | undefined | undefined;
+  readonly surfaceRoot?: string | undefined;
+  readonly binaryBaseName?: string | undefined;
+  readonly defaultServiceName?: string | undefined;
+  readonly defaultServiceDescription?: string | undefined;
+  readonly featureFlags?: FeatureFlagReader | undefined;
 }
 
 function detectPlatform(platform: string): ManagedServicePlatform {
@@ -235,12 +235,12 @@ export class PlatformServiceManager {
   private readonly configManager: ConfigManager;
   private readonly workingDirectory: string;
   private readonly homeDirectory: string;
-  private readonly definitionOverride?: ManagedServiceDefinition;
-  private readonly actionRunner?: (command: string, args: readonly string[]) => ManagedServiceActionResult;
-  private readonly surfaceRoot?: string;
-  private readonly binaryBaseName?: string;
-  private readonly defaultServiceName?: string;
-  private readonly defaultServiceDescription?: string;
+  private readonly definitionOverride?: ManagedServiceDefinition | undefined;
+  private readonly actionRunner?: ((command: string, args: readonly string[]) => ManagedServiceActionResult) | undefined | undefined;
+  private readonly surfaceRoot?: string | undefined;
+  private readonly binaryBaseName?: string | undefined;
+  private readonly defaultServiceName?: string | undefined;
+  private readonly defaultServiceDescription?: string | undefined;
   private readonly featureFlags: FeatureFlagReader;
 
   constructor(configManager: ConfigManager, options: ManagedServiceManagerOptions) {

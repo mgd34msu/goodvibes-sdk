@@ -59,19 +59,19 @@ export type TelemetrySeverity = 'debug' | 'info' | 'warn' | 'error';
 export type TelemetryViewMode = 'safe' | 'raw';
 
 export interface TelemetryFilter {
-  readonly limit?: number;
-  readonly since?: number;
-  readonly until?: number;
-  readonly domains?: readonly RuntimeEventDomain[];
-  readonly eventTypes?: readonly string[];
-  readonly severity?: TelemetrySeverity;
-  readonly traceId?: string;
-  readonly sessionId?: string;
-  readonly turnId?: string;
-  readonly agentId?: string;
-  readonly taskId?: string;
-  readonly cursor?: string;
-  readonly view?: TelemetryViewMode;
+  readonly limit?: number | undefined;
+  readonly since?: number | undefined;
+  readonly until?: number | undefined;
+  readonly domains?: readonly RuntimeEventDomain[] | undefined;
+  readonly eventTypes?: readonly string[] | undefined;
+  readonly severity?: TelemetrySeverity | undefined;
+  readonly traceId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly turnId?: string | undefined;
+  readonly agentId?: string | undefined;
+  readonly taskId?: string | undefined;
+  readonly cursor?: string | undefined;
+  readonly view?: TelemetryViewMode | undefined;
 }
 
 export interface TelemetryRecord {
@@ -82,14 +82,14 @@ export interface TelemetryRecord {
   readonly severity: TelemetrySeverity;
   readonly traceId: string;
   readonly sessionId: string;
-  readonly turnId?: string;
-  readonly agentId?: string;
-  readonly taskId?: string;
+  readonly turnId?: string | undefined;
+  readonly agentId?: string | undefined;
+  readonly taskId?: string | undefined;
   readonly source: string;
   readonly message: string;
   readonly payload: unknown;
   readonly attributes: Record<string, unknown>;
-  readonly error?: NormalizedError;
+  readonly error?: NormalizedError | undefined;
 }
 
 export interface TelemetryCapabilities {
@@ -123,11 +123,11 @@ export interface TelemetryAggregates {
 export interface TelemetryRuntimeSnapshot {
   readonly sessionId: string;
   readonly sessionStatus: string;
-  readonly traceContext?: TelemetryDomainState['traceContext'];
+  readonly traceContext?: TelemetryDomainState['traceContext'] | undefined;
   readonly sessionCorrelationId: string;
-  readonly currentTurnCorrelationId?: string;
+  readonly currentTurnCorrelationId?: string | undefined;
   readonly dbAvailable: boolean;
-  readonly dbPath?: string;
+  readonly dbPath?: string | undefined;
   readonly tasks: {
     readonly total: number;
     readonly queued: number;
@@ -167,8 +167,8 @@ export interface TelemetryPageInfo {
   readonly limit: number;
   readonly returned: number;
   readonly hasMore: boolean;
-  readonly cursor?: string;
-  readonly nextCursor?: string;
+  readonly cursor?: string | undefined;
+  readonly nextCursor?: string | undefined;
 }
 
 export interface TelemetryListResponse<T> {
@@ -184,7 +184,7 @@ interface ActiveSyntheticSpan {
   readonly kind: SpanKind;
   readonly traceId: string;
   readonly spanId: string;
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
   readonly startTimeMs: number;
   readonly attributes: SpanAttributes;
 }
@@ -192,9 +192,9 @@ interface ActiveSyntheticSpan {
 interface TelemetryApiServiceOptions {
   readonly runtimeBus: RuntimeEventBus;
   readonly runtimeStore: RuntimeStore;
-  readonly eventLimit?: number;
-  readonly errorLimit?: number;
-  readonly spanLimit?: number;
+  readonly eventLimit?: number | undefined;
+  readonly errorLimit?: number | undefined;
+  readonly spanLimit?: number | undefined;
 }
 
 export class TelemetryApiService {

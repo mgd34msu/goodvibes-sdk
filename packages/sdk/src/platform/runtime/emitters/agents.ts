@@ -11,11 +11,11 @@ export function emitAgentSpawning(
   ctx: EmitterContext,
   data: {
     agentId: string;
-    taskId?: string;
+    taskId?: string | undefined;
     task: string;
-    parentAgentId?: string;
-    orchestrationGraphId?: string;
-    parentNodeId?: string;
+    parentAgentId?: string | undefined;
+    orchestrationGraphId?: string | undefined;
+    parentNodeId?: string | undefined;
   }
 ): void {
   bus.emit('agents', createEventEnvelope('AGENT_SPAWNING', { type: 'AGENT_SPAWNING', ...data }, ctx));

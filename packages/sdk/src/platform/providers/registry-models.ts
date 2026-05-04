@@ -6,7 +6,7 @@ export function getProviderLookupCandidates(
   aliases: Readonly<Record<string, string>>,
 ): string[] {
   const candidates = new Set<string>([providerName]);
-  const directAlias = aliases[providerName];
+  const directAlias = aliases[providerName]!;
   if (directAlias) candidates.add(directAlias);
   for (const [catalogName, registeredName] of Object.entries(aliases)) {
     if (registeredName === providerName) candidates.add(catalogName);

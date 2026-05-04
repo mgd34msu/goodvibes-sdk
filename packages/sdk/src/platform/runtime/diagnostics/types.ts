@@ -19,23 +19,23 @@ export const DEFAULT_BUFFER_LIMIT = 500;
  */
 export interface DiagnosticFilter {
   /** Restrict to entries whose domain matches one of these values. */
-  readonly domains?: readonly string[];
+  readonly domains?: readonly string[] | undefined;
   /** Restrict to entries at or above this severity level. */
-  readonly level?: DiagnosticLevel;
+  readonly level?: DiagnosticLevel | undefined;
   /** Restrict to entries at or after this epoch ms timestamp (inclusive). */
-  readonly since?: number;
+  readonly since?: number | undefined;
   /** Restrict to entries at or before this epoch ms timestamp (inclusive). */
-  readonly until?: number;
+  readonly until?: number | undefined;
   /** Restrict to entries whose traceId matches. */
-  readonly traceId?: string;
+  readonly traceId?: string | undefined;
   /** Restrict to entries whose sessionId matches. */
-  readonly sessionId?: string;
+  readonly sessionId?: string | undefined;
   /** Restrict to entries whose turnId matches. */
-  readonly turnId?: string;
+  readonly turnId?: string | undefined;
   /** Restrict to entries whose taskId matches. */
-  readonly taskId?: string;
+  readonly taskId?: string | undefined;
   /** Maximum number of entries to return (most recent first). */
-  readonly limit?: number;
+  readonly limit?: number | undefined;
 }
 
 /** Severity level for diagnostic entries. */
@@ -80,15 +80,15 @@ export interface ToolCallEntry {
   /** Epoch ms when the call was first observed (TOOL_RECEIVED). */
   readonly receivedAt: number;
   /** Epoch ms when the call completed (succeeded/failed/cancelled). */
-  readonly completedAt?: number;
+  readonly completedAt?: number | undefined;
   /** Duration in ms (populated on terminal phases). */
-  readonly durationMs?: number;
+  readonly durationMs?: number | undefined;
   /** Error message (populated when phase === 'failed'). */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Cancellation reason (populated when phase === 'cancelled'). */
-  readonly cancelReason?: string;
+  readonly cancelReason?: string | undefined;
   /** Permission result (populated when permission check completes). */
-  readonly permission?: ToolCallPermission;
+  readonly permission?: ToolCallPermission | undefined;
   /** Trace identifier from the originating envelope. */
   readonly traceId: string;
   /** Session identifier from the originating envelope. */
@@ -115,7 +115,7 @@ export interface AgentEntry {
   /** Unique agent identifier. */
   readonly agentId: string;
   /** Associated task identifier (if any). */
-  readonly taskId?: string;
+  readonly taskId?: string | undefined;
   /** Brief task description (captured at AGENT_SPAWNING). */
   readonly task: string;
   /** Current agent state. */
@@ -123,15 +123,15 @@ export interface AgentEntry {
   /** Epoch ms when the agent was first observed (AGENT_SPAWNING). */
   readonly spawnedAt: number;
   /** Epoch ms when the agent reached a terminal state. */
-  readonly completedAt?: number;
+  readonly completedAt?: number | undefined;
   /** Duration in ms (populated on terminal states). */
-  readonly durationMs?: number;
+  readonly durationMs?: number | undefined;
   /** Error message (populated when state === 'failed'). */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Tool call that is currently blocking this agent (AGENT_AWAITING_TOOL). */
-  readonly blockedOnCallId?: string;
+  readonly blockedOnCallId?: string | undefined;
   /** Tool name the agent is blocked on. */
-  readonly blockedOnTool?: string;
+  readonly blockedOnTool?: string | undefined;
   /** Trace identifier from the originating envelope. */
   readonly traceId: string;
   /** Session identifier from the originating envelope. */
@@ -147,7 +147,7 @@ export interface TaskEntry {
   /** Unique task identifier. */
   readonly taskId: string;
   /** Owning agent identifier (if any). */
-  readonly agentId?: string;
+  readonly agentId?: string | undefined;
   /** Human-readable task description. */
   readonly description: string;
   /** Task priority at creation time. */
@@ -157,17 +157,17 @@ export interface TaskEntry {
   /** Epoch ms when the task was first observed (TASK_CREATED). */
   readonly createdAt: number;
   /** Epoch ms when the task reached a terminal state. */
-  readonly completedAt?: number;
+  readonly completedAt?: number | undefined;
   /** Duration in ms (populated on terminal states). */
-  readonly durationMs?: number;
+  readonly durationMs?: number | undefined;
   /** Progress value 0–100 (populated on TASK_PROGRESS). */
-  readonly progress?: number;
+  readonly progress?: number | undefined;
   /** Latest progress message. */
-  readonly progressMessage?: string;
+  readonly progressMessage?: string | undefined;
   /** Reason the task is blocked (populated on TASK_BLOCKED). */
-  readonly blockReason?: string;
+  readonly blockReason?: string | undefined;
   /** Error message (populated when state === 'failed'). */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Trace identifier from the originating envelope. */
   readonly traceId: string;
   /** Session identifier from the originating envelope. */
@@ -194,11 +194,11 @@ export interface EventEntry {
   /** Session identifier. */
   readonly sessionId: string;
   /** Turn identifier (if scoped to a turn). */
-  readonly turnId?: string;
+  readonly turnId?: string | undefined;
   /** Agent identifier (if scoped to an agent). */
-  readonly agentId?: string;
+  readonly agentId?: string | undefined;
   /** Task identifier (if scoped to a task). */
-  readonly taskId?: string;
+  readonly taskId?: string | undefined;
   /** Source module or component that emitted the event. */
   readonly source: string;
   /** Condensed summary of the payload (key fields only, not full payload). */
@@ -276,7 +276,7 @@ export interface DomainHealthSummary {
   /** Reduced capabilities when degraded. */
   readonly degradedCapabilities: readonly string[];
   /** Failure reason if applicable. */
-  readonly failureReason?: string;
+  readonly failureReason?: string | undefined;
   /** Number of recovery attempts made. */
   readonly recoveryAttempts: number;
 }
@@ -362,7 +362,7 @@ export interface ToolContractViolation {
   /** Human-readable explanation of what is wrong. */
   readonly message: string;
   /** Optional hint for how to fix the violation. */
-  readonly hint?: string;
+  readonly hint?: string | undefined;
 }
 
 /**
@@ -401,11 +401,11 @@ export interface TransportNegotiationEntry {
    * Negotiated protocol version label (e.g. "1.2.0").
    * Populated on success; undefined on failure.
    */
-  readonly negotiatedVersion?: string;
+  readonly negotiatedVersion?: string | undefined;
   /** Whether the local side downgraded to match the peer. */
   readonly downgraded: boolean;
   /** Reason for downgrade (undefined when no downgrade). */
-  readonly downgradeReason?: string;
+  readonly downgradeReason?: string | undefined;
   /** The version label this side offered. */
   readonly offeredVersion: string;
   /** The version label the remote peer advertised. */
@@ -423,8 +423,8 @@ export interface TransportNegotiationEntry {
     | 'peer_version_too_old'
     | 'peer_version_unsupported';
   /** Human-readable unsupported explanation. */
-  readonly unsupportedReason?: string;
-  readonly incompatibilityReason?: string;
+  readonly unsupportedReason?: string | undefined;
+  readonly incompatibilityReason?: string | undefined;
   /** Epoch ms when the negotiation completed. */
   readonly negotiatedAt: number;
 }

@@ -216,68 +216,68 @@ export const EXEC_TOOL_SCHEMA = {
 export type ExecVerbosity = 'count_only' | 'minimal' | 'standard' | 'verbose';
 
 export interface ExecExpect {
-  exit_code?: number;
-  stdout_contains?: string;
-  stderr_contains?: string;
+  exit_code?: number | undefined;
+  stdout_contains?: string | undefined;
+  stderr_contains?: string | undefined;
 }
 
 export interface ExecRetry {
-  max?: number;
-  delay_ms?: number;
+  max?: number | undefined;
+  delay_ms?: number | undefined;
   /** Max jitter cap for exponential backoff. Default: 30000. */
-  max_delay_ms?: number;
-  backoff?: 'fixed' | 'exponential';
+  max_delay_ms?: number | undefined;
+  backoff?: 'fixed' | 'exponential' | undefined;
   /** Error categories to retry on. Default: ['network', 'lock', 'busy']. */
-  on?: ReadonlyArray<'network' | 'lock' | 'busy' | 'oom'>;
+  on?: ReadonlyArray<'network' | 'lock' | 'busy' | 'oom'> | undefined;
 }
 
 export interface ExecUntil {
   pattern: string;
-  timeout_ms?: number;
-  kill_after?: boolean;
+  timeout_ms?: number | undefined;
+  kill_after?: boolean | undefined;
 }
 
 export interface ExecFileOp {
   op: 'copy' | 'move' | 'delete';
   source: string;
-  destination?: string;
-  recursive?: boolean;
+  destination?: string | undefined;
+  recursive?: boolean | undefined;
   /** Overwrite destination if it exists (copy/move only). Default: false. */
-  overwrite?: boolean;
+  overwrite?: boolean | undefined;
   /** Preview what would be deleted without deleting (delete only). Default: false. */
-  dry_run?: boolean;
+  dry_run?: boolean | undefined;
   /** Rewrite TS/JS import paths after move (move only). Default: false. */
-  update_imports?: boolean;
+  update_imports?: boolean | undefined;
 }
 
 export interface ExecCommandInput {
-  cmd?: string;
-  cmd_base64?: string;
-  cwd?: string;
-  timeout_ms?: number;
-  env?: Record<string, string>;
-  expect?: ExecExpect;
-  background?: boolean;
-  retry?: ExecRetry;
-  until?: ExecUntil;
+  cmd?: string | undefined;
+  cmd_base64?: string | undefined;
+  cwd?: string | undefined;
+  timeout_ms?: number | undefined;
+  env?: Record<string, string> | undefined;
+  expect?: ExecExpect | undefined;
+  background?: boolean | undefined;
+  retry?: ExecRetry | undefined;
+  until?: ExecUntil | undefined;
   /** Stream stdout to a pollable progress file. Auto-enabled when timeout_ms > 30000. */
-  progress?: boolean;
+  progress?: boolean | undefined;
 }
 
 export interface ExecInput {
   commands: ExecCommandInput[];
-  parallel?: boolean;
-  working_dir?: string;
-  timeout_ms?: number;
-  verbosity?: ExecVerbosity;
-  file_ops?: ExecFileOp[];
+  parallel?: boolean | undefined;
+  working_dir?: string | undefined;
+  timeout_ms?: number | undefined;
+  verbosity?: ExecVerbosity | undefined;
+  file_ops?: ExecFileOp[] | undefined;
   /**
    * Stop sequential execution on first failed command.
    * Unexecuted commands appear as {skipped: true} entries. Default: false.
    */
-  fail_fast?: boolean;
+  fail_fast?: boolean | undefined;
   /** Alias for fail_fast. */
-  stop_on_error?: boolean;
+  stop_on_error?: boolean | undefined;
 }
 
 // ─── Result interfaces ────────────────────────────────────────────────────────
@@ -289,25 +289,25 @@ export interface ExecCommandResult {
   stderr: string;
   success: boolean;
   /** Set when expectations are violated. */
-  expectation_error?: string;
+  expectation_error?: string | undefined;
   /** Set when command exceeded timeout. */
-  timed_out?: boolean;
+  timed_out?: boolean | undefined;
   /** Set when command ran in background. */
-  process_id?: string;
-  pid?: number;
+  process_id?: string | undefined;
+  pid?: number | undefined;
   /** Timing info (verbose only). */
-  duration_ms?: number;
-  cwd?: string;
-  env?: Record<string, string>;
+  duration_ms?: number | undefined;
+  cwd?: string | undefined;
+  env?: Record<string, string> | undefined;
   /** Truncation note. */
-  stdout_truncated?: boolean;
-  stderr_truncated?: boolean;
+  stdout_truncated?: boolean | undefined;
+  stderr_truncated?: boolean | undefined;
   /** Number of retry attempts used. */
-  retries?: number;
+  retries?: number | undefined;
   /** Set when this command was not executed due to fail_fast/stop_on_error. */
-  skipped?: boolean;
+  skipped?: boolean | undefined;
   /** Path to the pollable progress file when progress tracking is enabled. */
-  progress_file?: string;
+  progress_file?: string | undefined;
 }
 
 // BackgroundProcess is defined in shared/process-manager and re-exported here for consumers of this schema module.

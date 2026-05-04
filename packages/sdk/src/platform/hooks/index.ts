@@ -41,8 +41,8 @@ import { HookActivityTracker } from './activity.js';
 import { HookDispatcher } from './dispatcher.js';
 
 export function createHookDispatcher(config: {
-  readonly agentManager?: Pick<AgentManager, 'spawn' | 'getStatus' | 'cancel'>;
-  readonly activityTracker?: HookActivityTracker;
+  readonly agentManager?: Pick<AgentManager, 'spawn' | 'getStatus' | 'cancel'> | undefined;
+  readonly activityTracker?: HookActivityTracker | undefined;
 } = {}): HookDispatcher {
   return new HookDispatcher(
     { agentManager: config.agentManager },

@@ -97,7 +97,7 @@ async function upsertIntrinsicFeatureGap(
   if (existingRepaired) return false;
 
   const title = `What are the complete features and specifications for ${subjectTitle(subject)}?`;
-  const primarySource = sources[0];
+  const primarySource = sources[0]!;
   return store.batch(async () => {
     const gap = await store.upsertNode({
       id,

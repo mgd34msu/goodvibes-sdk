@@ -10,8 +10,8 @@ const RISKY_PATTERN_CHECKS: readonly { readonly pattern: RegExp; readonly reason
 
 export interface SafeRegExpOptions {
   readonly operation: string;
-  readonly maxPatternChars?: number;
-  readonly maxInputChars?: number;
+  readonly maxPatternChars?: number | undefined;
+  readonly maxInputChars?: number | undefined;
 }
 
 export function compileSafeRegExp(source: string, flags: string, options: SafeRegExpOptions): RegExp {

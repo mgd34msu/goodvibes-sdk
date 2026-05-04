@@ -120,23 +120,23 @@ export type KnowledgeConsolidationStatus = 'open' | 'accepted' | 'rejected' | 's
 
 export interface KnowledgeSourceRecord {
   readonly id: string;
-  readonly sourceId?: string;
+  readonly sourceId?: string | undefined;
   readonly connectorId: string;
   readonly sourceType: KnowledgeSourceType;
-  readonly title?: string;
-  readonly url?: string;
-  readonly sourceUri?: string;
-  readonly canonicalUri?: string;
-  readonly summary?: string;
-  readonly description?: string;
+  readonly title?: string | undefined;
+  readonly url?: string | undefined;
+  readonly sourceUri?: string | undefined;
+  readonly canonicalUri?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly description?: string | undefined;
   readonly tags: readonly string[];
-  readonly folderPath?: string;
+  readonly folderPath?: string | undefined;
   readonly status: KnowledgeSourceStatus;
-  readonly artifactId?: string;
-  readonly contentHash?: string;
-  readonly lastCrawledAt?: number;
-  readonly crawlError?: string;
-  readonly sessionId?: string;
+  readonly artifactId?: string | undefined;
+  readonly contentHash?: string | undefined;
+  readonly lastCrawledAt?: number | undefined;
+  readonly crawlError?: string | undefined;
+  readonly sessionId?: string | undefined;
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
   readonly updatedAt: number;
@@ -147,17 +147,17 @@ export interface KnowledgeNodeRecord {
   readonly kind: KnowledgeNodeKind;
   readonly slug: string;
   readonly title: string;
-  readonly summary?: string;
+  readonly summary?: string | undefined;
   readonly aliases: readonly string[];
   readonly status: KnowledgeNodeStatus;
   readonly confidence: number;
-  readonly sourceId?: string;
+  readonly sourceId?: string | undefined;
   // Optional answer-projection fields used when semantic facts are returned with
   // their graph subjects. Stored node records keep these values in metadata.
-  readonly subject?: string;
-  readonly subjectIds?: readonly string[];
-  readonly targetHints?: readonly Record<string, unknown>[];
-  readonly linkedObjectIds?: readonly string[];
+  readonly subject?: string | undefined;
+  readonly subjectIds?: readonly string[] | undefined;
+  readonly targetHints?: readonly Record<string, unknown>[] | undefined;
+  readonly linkedObjectIds?: readonly string[] | undefined;
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
   readonly updatedAt: number;
@@ -182,8 +182,8 @@ export interface KnowledgeIssueRecord {
   readonly code: string;
   readonly message: string;
   readonly status: 'open' | 'resolved';
-  readonly sourceId?: string;
-  readonly nodeId?: string;
+  readonly sourceId?: string | undefined;
+  readonly nodeId?: string | undefined;
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
   readonly updatedAt: number;
@@ -192,12 +192,12 @@ export interface KnowledgeIssueRecord {
 export interface KnowledgeExtractionRecord {
   readonly id: string;
   readonly sourceId: string;
-  readonly artifactId?: string;
+  readonly artifactId?: string | undefined;
   readonly extractorId: string;
   readonly format: KnowledgeExtractionFormat;
-  readonly title?: string;
-  readonly summary?: string;
-  readonly excerpt?: string;
+  readonly title?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly excerpt?: string | undefined;
   readonly sections: readonly string[];
   readonly links: readonly string[];
   readonly estimatedTokens: number;
@@ -222,9 +222,9 @@ export interface KnowledgeJobRunRecord {
   readonly status: KnowledgeJobStatus;
   readonly mode: KnowledgeJobMode;
   readonly requestedAt: number;
-  readonly startedAt?: number;
-  readonly completedAt?: number;
-  readonly error?: string;
+  readonly startedAt?: number | undefined;
+  readonly completedAt?: number | undefined;
+  readonly error?: string | undefined;
   readonly result: Record<string, unknown>;
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
@@ -235,43 +235,43 @@ export interface KnowledgeRefinementTraceEntry {
   readonly at: number;
   readonly state: KnowledgeRefinementTaskState;
   readonly message: string;
-  readonly data?: Record<string, unknown>;
+  readonly data?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeRefinementSourceAssessment {
   readonly url: string;
-  readonly title?: string;
-  readonly domain?: string;
-  readonly rank?: number;
-  readonly query?: string;
+  readonly title?: string | undefined;
+  readonly domain?: string | undefined;
+  readonly rank?: number | undefined;
+  readonly query?: string | undefined;
   readonly accepted: boolean;
   readonly confidence: number;
   readonly reasons: readonly string[];
-  readonly trustReason?: string;
-  readonly rejectionReason?: string;
+  readonly trustReason?: string | undefined;
+  readonly rejectionReason?: string | undefined;
 }
 
 export interface KnowledgeRefinementTaskRecord {
   readonly id: string;
   readonly spaceId: string;
-  readonly subjectKind?: KnowledgeUsageTargetKind;
-  readonly subjectId?: string;
-  readonly subjectTitle?: string;
-  readonly subjectType?: string;
-  readonly gapId?: string;
-  readonly issueId?: string;
+  readonly subjectKind?: KnowledgeUsageTargetKind | undefined;
+  readonly subjectId?: string | undefined;
+  readonly subjectTitle?: string | undefined;
+  readonly subjectType?: string | undefined;
+  readonly gapId?: string | undefined;
+  readonly issueId?: string | undefined;
   readonly state: KnowledgeRefinementTaskState;
   readonly priority: KnowledgeRefinementTaskPriority;
   readonly trigger: KnowledgeRefinementTaskTrigger;
   readonly budget: Record<string, number>;
   readonly attemptCount: number;
-  readonly blockedReason?: string;
-  readonly nextRepairAttemptAt?: number;
-  readonly acceptedSourceIds?: readonly string[];
-  readonly ingestedSourceIds?: readonly string[];
-  readonly rejectedSourceUrls?: readonly string[];
-  readonly promotedFactCount?: number;
-  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[];
+  readonly blockedReason?: string | undefined;
+  readonly nextRepairAttemptAt?: number | undefined;
+  readonly acceptedSourceIds?: readonly string[] | undefined;
+  readonly ingestedSourceIds?: readonly string[] | undefined;
+  readonly rejectedSourceUrls?: readonly string[] | undefined;
+  readonly promotedFactCount?: number | undefined;
+  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[] | undefined;
   readonly trace: readonly KnowledgeRefinementTraceEntry[];
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
@@ -279,11 +279,11 @@ export interface KnowledgeRefinementTaskRecord {
 }
 
 export interface KnowledgeRefinementTaskFilter {
-  readonly spaceId?: string;
-  readonly state?: string;
-  readonly subjectKind?: string;
-  readonly subjectId?: string;
-  readonly gapId?: string;
+  readonly spaceId?: string | undefined;
+  readonly state?: string | undefined;
+  readonly subjectKind?: string | undefined;
+  readonly subjectId?: string | undefined;
+  readonly gapId?: string | undefined;
 }
 
 export interface KnowledgeUsageRecord {
@@ -291,9 +291,9 @@ export interface KnowledgeUsageRecord {
   readonly targetKind: KnowledgeUsageTargetKind;
   readonly targetId: string;
   readonly usageKind: KnowledgeUsageKind;
-  readonly task?: string;
-  readonly sessionId?: string;
-  readonly score?: number;
+  readonly task?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly score?: number | undefined;
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
 }
@@ -305,13 +305,13 @@ export interface KnowledgeConsolidationCandidateRecord {
   readonly subjectKind: KnowledgeUsageTargetKind;
   readonly subjectId: string;
   readonly title: string;
-  readonly summary?: string;
+  readonly summary?: string | undefined;
   readonly score: number;
   readonly evidence: readonly string[];
-  readonly suggestedMemoryClass?: string;
-  readonly suggestedScope?: string;
-  readonly decidedAt?: number;
-  readonly decidedBy?: string;
+  readonly suggestedMemoryClass?: string | undefined;
+  readonly suggestedScope?: string | undefined;
+  readonly decidedAt?: number | undefined;
+  readonly decidedBy?: string | undefined;
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
   readonly updatedAt: number;
@@ -335,44 +335,44 @@ export interface KnowledgeScheduleRecord {
   readonly label: string;
   readonly enabled: boolean;
   readonly schedule: AutomationScheduleDefinition;
-  readonly lastRunAt?: number;
-  readonly nextRunAt?: number;
+  readonly lastRunAt?: number | undefined;
+  readonly nextRunAt?: number | undefined;
   readonly metadata: Record<string, unknown>;
   readonly createdAt: number;
   readonly updatedAt: number;
 }
 
 export interface KnowledgeSourceUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly connectorId: string;
   readonly sourceType: KnowledgeSourceType;
-  readonly title?: string;
-  readonly sourceUri?: string;
-  readonly canonicalUri?: string;
-  readonly summary?: string;
-  readonly description?: string;
-  readonly tags?: readonly string[];
-  readonly folderPath?: string;
+  readonly title?: string | undefined;
+  readonly sourceUri?: string | undefined;
+  readonly canonicalUri?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly description?: string | undefined;
+  readonly tags?: readonly string[] | undefined;
+  readonly folderPath?: string | undefined;
   readonly status: KnowledgeSourceStatus;
-  readonly artifactId?: string;
-  readonly contentHash?: string;
-  readonly lastCrawledAt?: number;
-  readonly crawlError?: string;
-  readonly sessionId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly artifactId?: string | undefined;
+  readonly contentHash?: string | undefined;
+  readonly lastCrawledAt?: number | undefined;
+  readonly crawlError?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeNodeUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly kind: KnowledgeNodeKind;
   readonly slug: string;
   readonly title: string;
-  readonly summary?: string;
-  readonly aliases?: readonly string[];
-  readonly status?: KnowledgeNodeStatus;
-  readonly confidence?: number;
-  readonly sourceId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly summary?: string | undefined;
+  readonly aliases?: readonly string[] | undefined;
+  readonly status?: KnowledgeNodeStatus | undefined;
+  readonly confidence?: number | undefined;
+  readonly sourceId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeEdgeUpsertInput {
@@ -381,123 +381,123 @@ export interface KnowledgeEdgeUpsertInput {
   readonly toKind: KnowledgeReferenceKind;
   readonly toId: string;
   readonly relation: string;
-  readonly weight?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly weight?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeIssueUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly severity: KnowledgeIssueSeverity;
   readonly code: string;
   readonly message: string;
-  readonly status?: 'open' | 'resolved';
-  readonly sourceId?: string;
-  readonly nodeId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly status?: 'open' | 'resolved' | undefined;
+  readonly sourceId?: string | undefined;
+  readonly nodeId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeExtractionUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly sourceId: string;
-  readonly artifactId?: string;
+  readonly artifactId?: string | undefined;
   readonly extractorId: string;
   readonly format: KnowledgeExtractionFormat;
-  readonly title?: string;
-  readonly summary?: string;
-  readonly excerpt?: string;
-  readonly sections?: readonly string[];
-  readonly links?: readonly string[];
-  readonly estimatedTokens?: number;
-  readonly structure?: Record<string, unknown>;
-  readonly metadata?: Record<string, unknown>;
+  readonly title?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly excerpt?: string | undefined;
+  readonly sections?: readonly string[] | undefined;
+  readonly links?: readonly string[] | undefined;
+  readonly estimatedTokens?: number | undefined;
+  readonly structure?: Record<string, unknown> | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeJobRunUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly jobId: string;
   readonly status: KnowledgeJobStatus;
   readonly mode: KnowledgeJobMode;
-  readonly requestedAt?: number;
-  readonly startedAt?: number;
-  readonly completedAt?: number;
-  readonly error?: string;
-  readonly result?: Record<string, unknown>;
-  readonly metadata?: Record<string, unknown>;
+  readonly requestedAt?: number | undefined;
+  readonly startedAt?: number | undefined;
+  readonly completedAt?: number | undefined;
+  readonly error?: string | undefined;
+  readonly result?: Record<string, unknown> | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeRefinementTaskUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly spaceId: string;
-  readonly subjectKind?: KnowledgeUsageTargetKind;
-  readonly subjectId?: string;
-  readonly subjectTitle?: string;
-  readonly subjectType?: string;
-  readonly gapId?: string;
-  readonly issueId?: string;
+  readonly subjectKind?: KnowledgeUsageTargetKind | undefined;
+  readonly subjectId?: string | undefined;
+  readonly subjectTitle?: string | undefined;
+  readonly subjectType?: string | undefined;
+  readonly gapId?: string | undefined;
+  readonly issueId?: string | undefined;
   readonly state: KnowledgeRefinementTaskState;
-  readonly priority?: KnowledgeRefinementTaskPriority;
+  readonly priority?: KnowledgeRefinementTaskPriority | undefined;
   readonly trigger: KnowledgeRefinementTaskTrigger;
-  readonly budget?: Record<string, number>;
-  readonly attemptCount?: number;
-  readonly blockedReason?: string;
-  readonly nextRepairAttemptAt?: number;
-  readonly acceptedSourceIds?: readonly string[];
-  readonly ingestedSourceIds?: readonly string[];
-  readonly rejectedSourceUrls?: readonly string[];
-  readonly promotedFactCount?: number;
-  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[];
-  readonly trace?: readonly KnowledgeRefinementTraceEntry[];
-  readonly appendTrace?: readonly KnowledgeRefinementTraceEntry[];
-  readonly metadata?: Record<string, unknown>;
+  readonly budget?: Record<string, number> | undefined;
+  readonly attemptCount?: number | undefined;
+  readonly blockedReason?: string | undefined;
+  readonly nextRepairAttemptAt?: number | undefined;
+  readonly acceptedSourceIds?: readonly string[] | undefined;
+  readonly ingestedSourceIds?: readonly string[] | undefined;
+  readonly rejectedSourceUrls?: readonly string[] | undefined;
+  readonly promotedFactCount?: number | undefined;
+  readonly sourceAssessments?: readonly KnowledgeRefinementSourceAssessment[] | undefined;
+  readonly trace?: readonly KnowledgeRefinementTraceEntry[] | undefined;
+  readonly appendTrace?: readonly KnowledgeRefinementTraceEntry[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeUsageUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly targetKind: KnowledgeUsageTargetKind;
   readonly targetId: string;
   readonly usageKind: KnowledgeUsageKind;
-  readonly task?: string;
-  readonly sessionId?: string;
-  readonly score?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly task?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly score?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeConsolidationCandidateUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly candidateType: KnowledgeConsolidationCandidateType;
-  readonly status?: KnowledgeConsolidationStatus;
+  readonly status?: KnowledgeConsolidationStatus | undefined;
   readonly subjectKind: KnowledgeUsageTargetKind;
   readonly subjectId: string;
   readonly title: string;
-  readonly summary?: string;
+  readonly summary?: string | undefined;
   readonly score: number;
-  readonly evidence?: readonly string[];
-  readonly suggestedMemoryClass?: string;
-  readonly suggestedScope?: string;
-  readonly decidedAt?: number;
-  readonly decidedBy?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly evidence?: readonly string[] | undefined;
+  readonly suggestedMemoryClass?: string | undefined;
+  readonly suggestedScope?: string | undefined;
+  readonly decidedAt?: number | undefined;
+  readonly decidedBy?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeConsolidationReportUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly kind: Extract<KnowledgeJobKind, 'light-consolidation' | 'deep-consolidation'>;
   readonly title: string;
   readonly summary: string;
-  readonly highlights?: readonly string[];
-  readonly metrics?: Record<string, number>;
-  readonly metadata?: Record<string, unknown>;
+  readonly highlights?: readonly string[] | undefined;
+  readonly metrics?: Record<string, number> | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeScheduleUpsertInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly jobId: string;
   readonly label: string;
-  readonly enabled?: boolean;
+  readonly enabled?: boolean | undefined;
   readonly schedule: AutomationScheduleDefinition;
-  readonly lastRunAt?: number;
-  readonly nextRunAt?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly lastRunAt?: number | undefined;
+  readonly nextRunAt?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeStatus {
@@ -521,16 +521,16 @@ export interface KnowledgeSearchResult {
   readonly id: string;
   readonly score: number;
   readonly reason: string;
-  readonly source?: KnowledgeSourceRecord;
-  readonly node?: KnowledgeNodeRecord;
+  readonly source?: KnowledgeSourceRecord | undefined;
+  readonly node?: KnowledgeNodeRecord | undefined;
 }
 
 export interface KnowledgePacketItem {
   readonly kind: 'source' | 'node';
   readonly id: string;
   readonly title: string;
-  readonly summary?: string;
-  readonly uri?: string;
+  readonly summary?: string | undefined;
+  readonly uri?: string | undefined;
   readonly reason: string;
   readonly score: number;
   readonly estimatedTokens: number;
@@ -551,9 +551,9 @@ export interface KnowledgePacket {
 }
 
 export interface KnowledgeItemView {
-  readonly source?: KnowledgeSourceRecord;
-  readonly node?: KnowledgeNodeRecord;
-  readonly issue?: KnowledgeIssueRecord;
+  readonly source?: KnowledgeSourceRecord | undefined;
+  readonly node?: KnowledgeNodeRecord | undefined;
+  readonly issue?: KnowledgeIssueRecord | undefined;
   readonly relatedEdges: readonly KnowledgeEdgeRecord[];
   readonly linkedSources: readonly KnowledgeSourceRecord[];
   readonly linkedNodes: readonly KnowledgeNodeRecord[];
@@ -561,34 +561,34 @@ export interface KnowledgeItemView {
 
 export interface KnowledgeBookmarkSeed {
   readonly url: string;
-  readonly title?: string;
-  readonly folderPath?: string;
-  readonly tags?: readonly string[];
-  readonly metadata?: Record<string, unknown>;
+  readonly title?: string | undefined;
+  readonly folderPath?: string | undefined;
+  readonly tags?: readonly string[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeConnectorParseResult {
   readonly seeds: readonly KnowledgeBookmarkSeed[];
-  readonly connectorId?: string;
-  readonly sourceType?: KnowledgeSourceType;
+  readonly connectorId?: string | undefined;
+  readonly sourceType?: KnowledgeSourceType | undefined;
 }
 
 export interface KnowledgeConnectorSetupField {
   readonly key: string;
   readonly label: string;
   readonly kind: 'text' | 'path' | 'uri' | 'secret' | 'token' | 'choice';
-  readonly optional?: boolean;
-  readonly source?: 'inline' | 'env' | 'goodvibes' | 'bitwarden' | 'vaultwarden' | 'bws' | 'manual';
-  readonly description?: string;
+  readonly optional?: boolean | undefined;
+  readonly source?: 'inline' | 'env' | 'goodvibes' | 'bitwarden' | 'vaultwarden' | 'bws' | 'manual' | undefined;
+  readonly description?: string | undefined;
 }
 
 export interface KnowledgeConnectorSetupContract {
   readonly version: string;
   readonly summary: string;
-  readonly transportHints?: readonly string[];
-  readonly steps?: readonly string[];
-  readonly fields?: readonly KnowledgeConnectorSetupField[];
-  readonly metadata?: Record<string, unknown>;
+  readonly transportHints?: readonly string[] | undefined;
+  readonly steps?: readonly string[] | undefined;
+  readonly fields?: readonly KnowledgeConnectorSetupField[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeConnectorDoctorCheck {
@@ -596,7 +596,7 @@ export interface KnowledgeConnectorDoctorCheck {
   readonly label: string;
   readonly status: 'pass' | 'warn' | 'fail';
   readonly detail: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeConnectorDoctorReport {
@@ -610,22 +610,22 @@ export interface KnowledgeConnectorDoctorReport {
 
 export interface KnowledgeConnector<Input = unknown> {
   readonly id: string;
-  readonly displayName?: string;
-  readonly version?: string;
+  readonly displayName?: string | undefined;
+  readonly version?: string | undefined;
   readonly description: string;
   readonly sourceType: KnowledgeSourceType;
-  readonly inputSchema?: Record<string, unknown>;
-  readonly examples?: readonly unknown[];
-  readonly capabilities?: readonly string[];
-  readonly setup?: KnowledgeConnectorSetupContract;
-  readonly metadata?: Record<string, unknown>;
+  readonly inputSchema?: Record<string, unknown> | undefined;
+  readonly examples?: readonly unknown[] | undefined;
+  readonly capabilities?: readonly string[] | undefined;
+  readonly setup?: KnowledgeConnectorSetupContract | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
   resolve(input: Input): KnowledgeConnectorParseResult | Promise<KnowledgeConnectorParseResult>;
   doctor?(): KnowledgeConnectorDoctorReport | Promise<KnowledgeConnectorDoctorReport>;
 }
 
 export interface KnowledgeIngestResult {
   readonly source: KnowledgeSourceRecord;
-  readonly artifactId?: string;
+  readonly artifactId?: string | undefined;
   readonly issues: readonly KnowledgeIssueRecord[];
 }
 
@@ -643,7 +643,7 @@ export interface KnowledgeProjectionTarget {
   readonly kind: KnowledgeProjectionTargetKind;
   readonly title: string;
   readonly description: string;
-  readonly itemId?: string;
+  readonly itemId?: string | undefined;
   readonly defaultPath: string;
   readonly defaultFilename: string;
   readonly metadata: Record<string, unknown>;
@@ -673,42 +673,42 @@ export interface KnowledgeMaterializedProjection {
     readonly id: string;
     readonly kind: string;
     readonly mimeType: string;
-    readonly filename?: string;
+    readonly filename?: string | undefined;
     readonly sizeBytes: number;
     readonly sha256: string;
     readonly createdAt: number;
-    readonly expiresAt?: number;
-    readonly sourceUri?: string;
+    readonly expiresAt?: number | undefined;
+    readonly sourceUri?: string | undefined;
     readonly metadata: Record<string, unknown>;
   };
-  readonly source?: KnowledgeSourceRecord;
-  readonly linked?: KnowledgeEdgeRecord;
-  readonly artifactCreated?: boolean;
+  readonly source?: KnowledgeSourceRecord | undefined;
+  readonly linked?: KnowledgeEdgeRecord | undefined;
+  readonly artifactCreated?: boolean | undefined;
 }
 
 export type KnowledgeMapRecordKind = 'source' | 'node' | 'issue';
 
 export interface KnowledgeMapFilterInput {
-  readonly query?: string;
-  readonly recordKinds?: readonly KnowledgeMapRecordKind[];
-  readonly ids?: readonly string[];
-  readonly linkedToIds?: readonly string[];
-  readonly nodeKinds?: readonly string[];
-  readonly sourceTypes?: readonly string[];
-  readonly sourceStatuses?: readonly string[];
-  readonly nodeStatuses?: readonly string[];
-  readonly issueCodes?: readonly string[];
-  readonly issueStatuses?: readonly string[];
-  readonly issueSeverities?: readonly string[];
-  readonly edgeRelations?: readonly string[];
-  readonly tags?: readonly string[];
-  readonly minConfidence?: number;
+  readonly query?: string | undefined;
+  readonly recordKinds?: readonly KnowledgeMapRecordKind[] | undefined;
+  readonly ids?: readonly string[] | undefined;
+  readonly linkedToIds?: readonly string[] | undefined;
+  readonly nodeKinds?: readonly string[] | undefined;
+  readonly sourceTypes?: readonly string[] | undefined;
+  readonly sourceStatuses?: readonly string[] | undefined;
+  readonly nodeStatuses?: readonly string[] | undefined;
+  readonly issueCodes?: readonly string[] | undefined;
+  readonly issueStatuses?: readonly string[] | undefined;
+  readonly issueSeverities?: readonly string[] | undefined;
+  readonly edgeRelations?: readonly string[] | undefined;
+  readonly tags?: readonly string[] | undefined;
+  readonly minConfidence?: number | undefined;
 }
 
 export interface KnowledgeMapFacetValue {
   readonly value: string;
   readonly count: number;
-  readonly label?: string;
+  readonly label?: string | undefined;
 }
 
 export interface KnowledgeMapFacets {
@@ -722,7 +722,7 @@ export interface KnowledgeMapFacets {
   readonly issueSeverities: readonly KnowledgeMapFacetValue[];
   readonly edgeRelations: readonly KnowledgeMapFacetValue[];
   readonly tags: readonly KnowledgeMapFacetValue[];
-  readonly homeAssistant?: Record<string, readonly KnowledgeMapFacetValue[]>;
+  readonly homeAssistant?: Record<string, readonly KnowledgeMapFacetValue[]> | undefined;
 }
 
 export interface KnowledgeMapNode {
@@ -730,7 +730,7 @@ export interface KnowledgeMapNode {
   readonly recordKind: KnowledgeMapRecordKind;
   readonly kind: string;
   readonly title: string;
-  readonly summary?: string;
+  readonly summary?: string | undefined;
   readonly x: number;
   readonly y: number;
   readonly radius: number;
@@ -741,12 +741,12 @@ export interface KnowledgeMapEdge {
   readonly id: string;
   readonly fromId: string;
   readonly toId: string;
-  readonly source?: string;
-  readonly target?: string;
-  readonly fromTitle?: string;
-  readonly toTitle?: string;
-  readonly sourceTitle?: string;
-  readonly targetTitle?: string;
+  readonly source?: string | undefined;
+  readonly target?: string | undefined;
+  readonly fromTitle?: string | undefined;
+  readonly toTitle?: string | undefined;
+  readonly sourceTitle?: string | undefined;
+  readonly targetTitle?: string | undefined;
   readonly relation: string;
   readonly weight: number;
   readonly metadata: Record<string, unknown>;
@@ -754,16 +754,16 @@ export interface KnowledgeMapEdge {
 
 export interface KnowledgeMapResult {
   readonly ok: true;
-  readonly spaceId?: string;
+  readonly spaceId?: string | undefined;
   readonly title: string;
   readonly generatedAt: number;
   readonly width: number;
   readonly height: number;
   readonly nodeCount: number;
   readonly edgeCount: number;
-  readonly totalNodeCount?: number;
-  readonly totalEdgeCount?: number;
-  readonly facets?: KnowledgeMapFacets;
+  readonly totalNodeCount?: number | undefined;
+  readonly totalEdgeCount?: number | undefined;
+  readonly facets?: KnowledgeMapFacets | undefined;
   readonly nodes: readonly KnowledgeMapNode[];
   readonly edges: readonly KnowledgeMapEdge[];
   readonly svg: string;

@@ -33,7 +33,7 @@ export interface PolicyBundlePayload {
   /** The ordered list of policy rules to register with the evaluator. */
   rules: PolicyRule[];
   /** Optional human-readable bundle description. */
-  description?: string;
+  description?: string | undefined;
 }
 
 /**
@@ -50,9 +50,9 @@ export interface BundleProvenance {
   /** Where the bundle originated from. */
   provenanceSource: ProvenanceSource;
   /** ISO 8601 timestamp from the bundle, if present. */
-  issuedAt?: string;
+  issuedAt?: string | undefined;
   /** Human-readable issuer label, if present in the bundle. */
-  issuer?: string;
+  issuer?: string | undefined;
 }
 
 /**
@@ -62,11 +62,11 @@ export interface PolicyLoadResult {
   /** Whether the bundle was successfully loaded and validated. */
   ok: boolean;
   /** The extracted policy rules (only populated when `ok` is true). */
-  rules?: PolicyRule[];
+  rules?: PolicyRule[] | undefined;
   /** Provenance record for the bundle. */
   provenance: BundleProvenance;
   /** Human-readable explanation of why loading failed (when `ok` is false). */
-  error?: string;
+  error?: string | undefined;
 }
 
 // ── Error class ───────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ export interface PolicyLoaderOptions {
    * Required when `managed` is true; optional otherwise. When absent,
    * signature verification is skipped and status is set to `'skipped'`.
    */
-  signingKey?: Buffer | string;
+  signingKey?: Buffer | string | undefined;
 
   /**
    * When true, the loader operates in managed mode:
@@ -113,13 +113,13 @@ export interface PolicyLoaderOptions {
    *
    * When false (default), unsigned bundles are permitted with status `'unsigned'`.
    */
-  managed?: boolean;
+  managed?: boolean | undefined;
 
   /**
    * Describes where the bundle was loaded from.
    * Defaults to `'inline'` when not provided.
    */
-  provenanceSource?: ProvenanceSource;
+  provenanceSource?: ProvenanceSource | undefined;
 
   /**
    * When true, `loadPolicyBundle()` throws a `PolicySignatureError` on
@@ -127,13 +127,13 @@ export interface PolicyLoaderOptions {
    *
    * Defaults to false.
    */
-  throwOnRejection?: boolean;
+  throwOnRejection?: boolean | undefined;
 
   /**
    * Feature flags gate signature validation when supplied by SDK runtime services.
    * Hosts without runtime feature flags can provide explicit loader options.
    */
-  featureFlags?: FeatureFlagReader;
+  featureFlags?: FeatureFlagReader | undefined;
 }
 
 // ── Core loader ───────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ import type { AutomationSourceRecord } from './sources.js';
 
 export interface AutomationJob extends AutomationEntityBase {
   readonly name: string;
-  readonly description?: string;
+  readonly description?: string | undefined;
   readonly status: AutomationJobStatus;
   readonly enabled: boolean;
   readonly schedule: AutomationScheduleDefinition;
@@ -19,13 +19,13 @@ export interface AutomationJob extends AutomationEntityBase {
   readonly delivery: AutomationDeliveryPolicy;
   readonly failure: AutomationFailurePolicy;
   readonly source: AutomationSourceRecord;
-  readonly nextRunAt?: number;
-  readonly lastRunAt?: number;
-  readonly lastRunId?: string;
+  readonly nextRunAt?: number | undefined;
+  readonly lastRunAt?: number | undefined;
+  readonly lastRunId?: string | undefined;
   readonly runCount: number;
   readonly successCount: number;
   readonly failureCount: number;
-  readonly pausedReason?: string;
+  readonly pausedReason?: string | undefined;
   readonly deleteAfterRun: boolean;
-  readonly archivedAt?: number;
+  readonly archivedAt?: number | undefined;
 }

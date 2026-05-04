@@ -77,7 +77,7 @@ export interface StrategyInput {
   /** Which strategy is being applied (for self-identification in results). */
   strategy: CompactionStrategy;
   /** Optional additional metadata from the trigger. */
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> | undefined;
 }
 
 /** Output produced by every compaction strategy. */
@@ -201,7 +201,7 @@ export interface RepairAction {
   /** Severity classification. */
   severity: RepairSeverity;
   /** Optional metadata about what was changed. */
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> | undefined;
 }
 
 /** Result of the session resume repair pipeline. */
@@ -217,5 +217,5 @@ export interface ResumeRepairResult {
   /** Whether the session is safe to resume after repair. */
   safeToResume: boolean;
   /** Human-readable reason if not safe to resume. */
-  failReason?: string;
+  failReason?: string | undefined;
 }

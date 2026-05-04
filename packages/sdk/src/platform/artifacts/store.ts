@@ -24,17 +24,17 @@ import {
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 export interface ArtifactStoreConfig {
-  readonly rootDir?: string;
+  readonly rootDir?: string | undefined;
   readonly configManager?: {
-    getControlPlaneConfigDir?: () => string;
-    get?: (key: ConfigKey) => unknown;
+    getControlPlaneConfigDir?: (() => string) | undefined | undefined;
+    get?: ((key: ConfigKey) => unknown) | undefined | undefined;
   };
-  readonly maxBytes?: number;
-  readonly defaultRetentionMs?: number;
-  readonly maxRetentionMs?: number;
-  readonly trustedHosts?: readonly string[];
-  readonly blockedHosts?: readonly string[];
-  readonly allowPrivateHostFetches?: boolean;
+  readonly maxBytes?: number | undefined;
+  readonly defaultRetentionMs?: number | undefined;
+  readonly maxRetentionMs?: number | undefined;
+  readonly trustedHosts?: readonly string[] | undefined;
+  readonly blockedHosts?: readonly string[] | undefined;
+  readonly allowPrivateHostFetches?: boolean | undefined;
 }
 
 const DEFAULT_ARTIFACT_MAX_BYTES = 512 * 1024 * 1024;
@@ -242,12 +242,12 @@ async function finishWriter(writer: ReturnType<typeof createWriteStream>): Promi
 }
 
 interface ResolvedArtifactInput {
-  readonly buffer?: Buffer;
-  readonly stream?: ArtifactStreamCreateInput['stream'];
-  readonly sizeBytes?: number;
+  readonly buffer?: Buffer | undefined;
+  readonly stream?: ArtifactStreamCreateInput['stream'] | undefined;
+  readonly sizeBytes?: number | undefined;
   readonly mimeType: string;
   readonly filename: string;
-  readonly sourceUri?: string;
+  readonly sourceUri?: string | undefined;
 }
 
 export class ArtifactStore {
@@ -402,7 +402,7 @@ export class ArtifactStore {
   private async writeStreamContent(input: {
     readonly contentPath: string;
     readonly stream: ArtifactStreamCreateInput['stream'];
-    readonly expectedSizeBytes?: number;
+    readonly expectedSizeBytes?: number | undefined;
   }): Promise<{ sizeBytes: number; sha256: string }> {
     if (typeof input.expectedSizeBytes === 'number' && input.expectedSizeBytes > this.maxBytes) {
       throw new Error(`Artifact exceeds the ${this.maxBytes}-byte limit.`);
@@ -437,8 +437,8 @@ export class ArtifactStore {
   async toAttachment(
     reference: ArtifactReference,
     options: {
-      readonly contentUrl?: string;
-      readonly includeBase64IfSmallerThan?: number;
+      readonly contentUrl?: string | undefined;
+      readonly includeBase64IfSmallerThan?: number | undefined;
     } = {},
   ): Promise<ArtifactAttachment> {
     const record = this.records.get(reference.artifactId);

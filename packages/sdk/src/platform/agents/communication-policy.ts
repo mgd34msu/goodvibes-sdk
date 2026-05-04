@@ -14,9 +14,9 @@ export type AgentCommunicationRole =
 export interface AgentCommunicationMetadata {
   agentId: string;
   role: AgentCommunicationRole;
-  parentAgentId?: string;
-  cohort?: string;
-  wrfcId?: string;
+  parentAgentId?: string | undefined;
+  cohort?: string | undefined;
+  wrfcId?: string | undefined;
 }
 
 export function communicationRoleForTemplate(template?: string): AgentCommunicationRole {
@@ -36,7 +36,7 @@ export function communicationRoleForTemplate(template?: string): AgentCommunicat
 
 export interface CommunicationDecision {
   allowed: boolean;
-  reason?: string;
+  reason?: string | undefined;
 }
 
 function isParentChild(from: AgentCommunicationMetadata, to: AgentCommunicationMetadata): boolean {

@@ -93,7 +93,7 @@ export function emitCompanionMessageReceived(
     body: string;
     source: string;
     timestamp: number;
-    metadata?: Readonly<Record<string, unknown>>;
+    metadata?: Readonly<Record<string, unknown>> | undefined;
   }
 ): void {
   bus.emit('session', sessionEvent('COMPANION_MESSAGE_RECEIVED', data, ctx));

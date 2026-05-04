@@ -27,7 +27,7 @@ export interface PermissionSpanContext {
    * Optional parent span ID for nesting under a tool span.
    * When provided, this permission span becomes a child of the tool span.
    */
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
 }
 
 /** Phase transitions recordable on a permission decision span. */
@@ -46,9 +46,9 @@ export interface PermissionSpanEndContext {
   /** Decision source (e.g. 'policy', 'mode', 'session_override', 'safety'). */
   readonly source: string;
   /** Whether the input was deemed safe. */
-  readonly safe?: boolean;
+  readonly safe?: boolean | undefined;
   /** Safety warnings if any were raised. */
-  readonly warnings?: string[];
+  readonly warnings?: string[] | undefined;
 }
 
 /**

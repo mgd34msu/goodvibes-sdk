@@ -28,18 +28,18 @@ export async function enqueueDistributedWork(
   state: DistributedRuntimeManagerState,
   input: {
     readonly peerId: string;
-    readonly type?: DistributedWorkType;
+    readonly type?: DistributedWorkType | undefined;
     readonly command: string;
-    readonly payload?: unknown;
-    readonly priority?: DistributedWorkPriority;
-    readonly actor?: string;
-    readonly timeoutMs?: number;
-    readonly sessionId?: string;
-    readonly routeId?: string;
-    readonly automationRunId?: string;
-    readonly automationJobId?: string;
-    readonly approvalId?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly payload?: unknown | undefined;
+    readonly priority?: DistributedWorkPriority | undefined;
+    readonly actor?: string | undefined;
+    readonly timeoutMs?: number | undefined;
+    readonly sessionId?: string | undefined;
+    readonly routeId?: string | undefined;
+    readonly automationRunId?: string | undefined;
+    readonly automationJobId?: string | undefined;
+    readonly approvalId?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   },
 ): Promise<DistributedPendingWork> {
   await startDistributedRuntime(state);
@@ -86,17 +86,17 @@ export async function invokeDistributedPeer(
   input: {
     readonly peerId: string;
     readonly command: string;
-    readonly payload?: unknown;
-    readonly priority?: DistributedWorkPriority;
-    readonly actor?: string;
-    readonly waitMs?: number;
-    readonly timeoutMs?: number;
-    readonly sessionId?: string;
-    readonly routeId?: string;
-    readonly automationRunId?: string;
-    readonly automationJobId?: string;
-    readonly approvalId?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly payload?: unknown | undefined;
+    readonly priority?: DistributedWorkPriority | undefined;
+    readonly actor?: string | undefined;
+    readonly waitMs?: number | undefined;
+    readonly timeoutMs?: number | undefined;
+    readonly sessionId?: string | undefined;
+    readonly routeId?: string | undefined;
+    readonly automationRunId?: string | undefined;
+    readonly automationJobId?: string | undefined;
+    readonly approvalId?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   },
 ): Promise<{ work: DistributedPendingWork; completed: boolean }> {
   const work = await enqueueDistributedWork(state, {
@@ -127,8 +127,8 @@ export async function claimDistributedWork(
   state: DistributedRuntimeManagerState,
   auth: { readonly peer: DistributedPeerRecord; readonly token: { readonly id: string } },
   input: {
-    readonly maxItems?: number;
-    readonly leaseMs?: number;
+    readonly maxItems?: number | undefined;
+    readonly leaseMs?: number | undefined;
   } = {},
 ): Promise<DistributedPendingWork[]> {
   await startDistributedRuntime(state);
@@ -173,11 +173,11 @@ export async function completeDistributedWork(
   auth: { readonly peer: DistributedPeerRecord; readonly token: { readonly id: string } },
   workId: string,
   input: {
-    readonly status?: 'completed' | 'failed' | 'cancelled';
-    readonly result?: unknown;
-    readonly error?: string;
-    readonly telemetry?: AutomationRunTelemetry;
-    readonly metadata?: Record<string, unknown>;
+    readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
+    readonly result?: unknown | undefined;
+    readonly error?: string | undefined;
+    readonly telemetry?: AutomationRunTelemetry | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   } = {},
 ): Promise<DistributedPendingWork | null> {
   await startDistributedRuntime(state);
@@ -237,8 +237,8 @@ export async function cancelDistributedWork(
   state: DistributedRuntimeManagerState,
   workId: string,
   input: {
-    readonly actor?: string;
-    readonly reason?: string;
+    readonly actor?: string | undefined;
+    readonly reason?: string | undefined;
   } = {},
 ): Promise<DistributedPendingWork | null> {
   await startDistributedRuntime(state);

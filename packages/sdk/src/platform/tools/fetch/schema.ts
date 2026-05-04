@@ -194,42 +194,42 @@ export type FetchVerbosity = 'count_only' | 'minimal' | 'standard' | 'verbose';
 export interface FetchAuthInput {
   type: 'bearer' | 'basic' | 'api-key';
   /** Bearer token (used with type 'bearer'). */
-  token?: string;
+  token?: string | undefined;
   /** Username for basic auth (used with type 'basic'). */
-  username?: string;
+  username?: string | undefined;
   /** Password for basic auth (used with type 'basic'). */
-  password?: string;
+  password?: string | undefined;
   /** Header name for API key auth (used with type 'api-key'). Defaults to X-API-Key. */
-  header?: string;
+  header?: string | undefined;
   /** API key value (used with type 'api-key'). */
-  key?: string;
+  key?: string | undefined;
 }
 
 /** Input shape for a single URL entry. */
 export interface FetchUrlInput {
   url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | undefined;
   /** Query parameters appended as a query string to the URL. */
-  params?: Record<string, string>;
-  headers?: Record<string, string>;
-  body?: string;
+  params?: Record<string, string> | undefined;
+  headers?: Record<string, string> | undefined;
+  body?: string | undefined;
   /** Base64-encoded request body. Decoded before sending. Takes precedence over body. */
-  body_base64?: string;
-  body_type?: 'json' | 'form' | 'raw' | 'multipart';
+  body_base64?: string | undefined;
+  body_type?: 'json' | 'form' | 'raw' | 'multipart' | undefined;
   /** Key-value pairs used when body_type is 'form' or 'multipart'. */
-  body_data?: Record<string, string>;
-  extract?: FetchExtractMode;
+  body_data?: Record<string, string> | undefined;
+  extract?: FetchExtractMode | undefined;
   /** CSS selectors for structured extraction mode. */
-  selectors?: string[];
-  timeout_ms?: number;
+  selectors?: string[] | undefined;
+  timeout_ms?: number | undefined;
   /** Maximum response body size in bytes. Overrides global max_content_length. */
-  max_content_length?: number;
+  max_content_length?: number | undefined;
   /** When a service is specified and a 401 is returned, refresh auth and retry once. */
-  retry_on_auth?: boolean;
+  retry_on_auth?: boolean | undefined;
   /** Named service for automatic credential lookup from the service registry. */
-  service?: string;
+  service?: string | undefined;
   /** Inline auth configuration. Applied directly without registry lookup. */
-  auth?: FetchAuthInput;
+  auth?: FetchAuthInput | undefined;
 }
 
 /**
@@ -245,22 +245,22 @@ export type FetchSanitizeMode = SanitizeMode;
 /** Full input shape for the fetch tool. */
 export interface FetchInput {
   urls: FetchUrlInput[];
-  extract?: FetchExtractMode;
-  parallel?: boolean;
-  verbosity?: FetchVerbosity;
+  extract?: FetchExtractMode | undefined;
+  parallel?: boolean | undefined;
+  verbosity?: FetchVerbosity | undefined;
   /** Cache GET responses by URL+params for this many seconds. 0 = disabled (default). */
-  cache_ttl_seconds?: number;
+  cache_ttl_seconds?: number | undefined;
   /** Minimum delay in ms between sequential requests. 0 = disabled (default). */
-  rate_limit_ms?: number;
+  rate_limit_ms?: number | undefined;
   /** Global maximum response body size in bytes. */
-  max_content_length?: number;
+  max_content_length?: number | undefined;
   /**
    * Response sanitization mode applied to all URL responses.
    * Defaults to `'safe-text'` when omitted (rollback-safe default for fetch sanitization).
    */
-  sanitize_mode?: FetchSanitizeMode;
+  sanitize_mode?: FetchSanitizeMode | undefined;
   /** Hostnames or glob patterns explicitly trusted. Trusted hosts may use sanitize_mode: none. */
-  trusted_hosts?: string[];
+  trusted_hosts?: string[] | undefined;
   /** Hostnames or glob patterns explicitly blocked. Denied pre-request regardless of other config. */
-  blocked_hosts?: string[];
+  blocked_hosts?: string[] | undefined;
 }

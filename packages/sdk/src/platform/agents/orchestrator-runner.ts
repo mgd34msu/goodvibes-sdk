@@ -45,7 +45,7 @@ type EmitterContext = import('../runtime/emitters/index.js').EmitterContext;
 
 export interface AgentOrchestratorRunContext {
   readonly workingDirectory: string;
-  readonly surfaceRoot?: string;
+  readonly surfaceRoot?: string | undefined;
   readonly runtimeBus: RuntimeEventBus | null;
   readonly featureFlagManager: FeatureFlagManager | null;
   readonly emitterContext: (agentId: string) => EmitterContext;
@@ -59,15 +59,15 @@ export interface AgentOrchestratorRunContext {
   readonly emitAgentCompletedEvent: (recordId: string, durationMs: number, output: string, toolCallsMade: number) => void;
   readonly emitOrchestrationCompleted: (record: AgentRecord, output: string) => void;
   readonly emitStreamDelta: (recordId: string, content: string, accumulated: string) => void;
-  readonly processManager?: ProcessManager;
+  readonly processManager?: ProcessManager | undefined;
   readonly messageBus: Pick<AgentMessageBus, 'getMessages'>;
-  readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'>;
-  readonly memoryRegistry?: Pick<import('../state/index.js').MemoryRegistry, 'getAll' | 'searchSemantic'>;
-  readonly archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'>;
+  readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'> | undefined;
+  readonly memoryRegistry?: Pick<import('../state/index.js').MemoryRegistry, 'getAll' | 'searchSemantic'> | undefined;
+  readonly archetypeLoader?: { loadArchetype(template: string): { systemPrompt?: string | undefined } | null | undefined } | undefined;
   readonly getFullRegistry: () => ToolRegistry;
   readonly buildScopedRegistry: (allowedNames: string[], fullRegistry: ToolRegistry) => ToolRegistry;
   readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel'>;
-  readonly providerOptimizer?: Pick<ProviderOptimizer, 'recordFallbackTransition'>;
+  readonly providerOptimizer?: Pick<ProviderOptimizer, 'recordFallbackTransition'> | undefined;
   readonly resolveProviderForRecord: (
     providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels'>,
     record: AgentRecord,

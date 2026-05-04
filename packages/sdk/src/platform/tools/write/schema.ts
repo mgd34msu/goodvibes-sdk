@@ -101,20 +101,20 @@ export type WriteTransactionMode = 'atomic' | 'partial' | 'none';
 
 export interface WriteFileInput {
   path: string;
-  content?: string;
-  content_base64?: string;
-  encoding?: string;
-  mode?: WriteMode;
+  content?: string | undefined;
+  content_base64?: string | undefined;
+  encoding?: string | undefined;
+  mode?: WriteMode | undefined;
 }
 
 export interface WriteInput {
   files: WriteFileInput[];
-  verbosity?: WriteVerbosity;
-  dry_run?: boolean;
+  verbosity?: WriteVerbosity | undefined;
+  dry_run?: boolean | undefined;
   validate?: {
-    after?: WriteValidatorName[];
+    after?: WriteValidatorName[] | undefined;
   };
   transaction?: {
-    mode?: WriteTransactionMode;
+    mode?: WriteTransactionMode | undefined;
   };
 }

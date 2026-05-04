@@ -8,18 +8,18 @@ import { summarizeError } from '../../utils/error-display.js';
 export type OutboundTrustMode = 'bundled' | 'bundled+custom' | 'custom';
 
 type FetchTlsOptions = Bun.TLSOptions & {
-  checkServerIdentity?: NonNullable<import('node:tls').ConnectionOptions['checkServerIdentity']>;
+  checkServerIdentity?: NonNullable<import('node:tls').ConnectionOptions['checkServerIdentity']> | undefined;
 };
 
 type FetchInitWithTls = RequestInit & {
-  tls?: FetchTlsOptions;
+  tls?: FetchTlsOptions | undefined;
 };
 
 export interface OutboundTlsSnapshot {
   readonly mode: OutboundTrustMode;
   readonly allowInsecureLocalhost: boolean;
-  readonly customCaFile?: string;
-  readonly customCaDir?: string;
+  readonly customCaFile?: string | undefined;
+  readonly customCaDir?: string | undefined;
   readonly customCaEntryCount: number;
   readonly effectiveCaStrategy: 'bun-default' | 'bundled+custom' | 'custom';
   readonly errors: readonly string[];
@@ -27,15 +27,15 @@ export interface OutboundTlsSnapshot {
 
 interface ResolvedOutboundTlsContext {
   readonly snapshot: OutboundTlsSnapshot;
-  readonly caEntries?: readonly string[];
+  readonly caEntries?: readonly string[] | undefined;
 }
 
 const NETWORK_FETCH_WRAPPER = Symbol.for('goodvibes.network.fetch-wrapper');
 const NETWORK_FETCH_MANAGER = Symbol.for('goodvibes.network.fetch-manager');
 
 type WrappedNetworkFetch = typeof globalThis.fetch & {
-  [NETWORK_FETCH_WRAPPER]?: true;
-  [NETWORK_FETCH_MANAGER]?: GlobalNetworkTransportInstaller;
+  [NETWORK_FETCH_WRAPPER]?: true | undefined;
+  [NETWORK_FETCH_MANAGER]?: GlobalNetworkTransportInstaller | undefined;
 };
 
 export interface OutboundTlsConfigReader {
@@ -68,8 +68,8 @@ function readCustomCaDir(configManager: OutboundTlsConfigReader): string | null 
 function loadCustomCaEntries(configManager: OutboundTlsConfigReader): {
   readonly entries: readonly string[];
   readonly errors: readonly string[];
-  readonly customCaFile?: string;
-  readonly customCaDir?: string;
+  readonly customCaFile?: string | undefined;
+  readonly customCaDir?: string | undefined;
 } {
   const errors: string[] = [];
   const entries: string[] = [];
@@ -104,7 +104,7 @@ function loadCustomCaEntries(configManager: OutboundTlsConfigReader): {
 
 function getBundledCaEntries(): readonly string[] {
   const getCaCertificates = (tls as typeof tls & {
-    getCACertificates?: (type?: 'default' | 'bundled' | 'system' | 'extra') => string[];
+    getCACertificates?: ((type?: 'default' | 'bundled' | 'system' | 'extra') => string[]) | undefined | undefined;
   }).getCACertificates;
   return getCaCertificates ? getCaCertificates('bundled') : rootCertificates;
 }

@@ -87,7 +87,7 @@ export type SecurityEvent =
   | {
       type: 'COMPANION_TOKEN_REVOKED';
       clientIp: string;
-      reason?: string;
+      reason?: string | undefined;
     };
 
 /** All security event type literals as a union. */

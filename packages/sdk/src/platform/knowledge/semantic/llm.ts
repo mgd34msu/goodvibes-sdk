@@ -5,8 +5,8 @@ import type { KnowledgeSemanticLlm } from './types.js';
 import { extractJsonObject } from './utils.js';
 
 export interface ProviderBackedKnowledgeSemanticLlmOptions {
-  readonly timeoutMs?: number;
-  readonly maxConcurrent?: number;
+  readonly timeoutMs?: number | undefined;
+  readonly maxConcurrent?: number | undefined;
 }
 
 export function createProviderBackedKnowledgeSemanticLlm(
@@ -32,10 +32,10 @@ async function completeWithCurrentModel(
   input: {
     readonly systemPrompt: string;
     readonly prompt: string;
-    readonly maxTokens?: number;
+    readonly maxTokens?: number | undefined;
     readonly purpose: string;
-    readonly signal?: AbortSignal;
-    readonly timeoutMs?: number;
+    readonly signal?: AbortSignal | undefined;
+    readonly timeoutMs?: number | undefined;
   },
 ): Promise<string | null> {
   const timeoutMs = Math.max(1_000, input.timeoutMs ?? 20_000);

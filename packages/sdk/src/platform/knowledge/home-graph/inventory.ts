@@ -11,7 +11,7 @@ import type { HomeGraphSpaceInput } from './types.js';
 
 export async function listHomeGraphSources(input: HomeGraphSpaceInput & {
   readonly store: KnowledgeStore;
-  readonly limit?: number;
+  readonly limit?: number | undefined;
 }): Promise<{ readonly ok: true; readonly spaceId: string; readonly sources: readonly KnowledgeSourceRecord[] }> {
   await input.store.init();
   const { spaceId } = resolveReadableHomeGraphSpace(input.store, input);
@@ -20,7 +20,7 @@ export async function listHomeGraphSources(input: HomeGraphSpaceInput & {
 
 export async function browseHomeGraph(input: HomeGraphSpaceInput & {
   readonly store: KnowledgeStore;
-  readonly limit?: number;
+  readonly limit?: number | undefined;
 }): Promise<{
   readonly ok: true;
   readonly spaceId: string;

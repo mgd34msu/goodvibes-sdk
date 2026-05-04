@@ -178,7 +178,7 @@ export class HealthPanel {
       const meta = SLO_BUDGET_META.get(metricKey);
       const p95Ms = metric?.value ?? 0;
       const targetMs = meta?.targetMs ?? 0;
-      const sampleCount = counts[metricKey] ?? 0;
+      const sampleCount = counts[metricKey]! ?? 0;
 
       let status: SloGateStatus;
       if (sampleCount === 0) {

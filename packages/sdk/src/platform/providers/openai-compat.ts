@@ -49,11 +49,11 @@ interface ChatRequestFingerprint {
 }
 
 interface OpenAICompatErrorDiagnostic {
-  readonly status?: number;
-  readonly code?: string;
-  readonly type?: string;
-  readonly requestId?: string;
-  readonly detail?: string;
+  readonly status?: number | undefined;
+  readonly code?: string | undefined;
+  readonly type?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly detail?: string | undefined;
   readonly rawMessage: string;
 }
 
@@ -120,7 +120,7 @@ function truncateDetail(detail: string, max = 280): string {
 }
 
 function extractStringField(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key];
+  const value = record[key]!;
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }
 
@@ -230,32 +230,32 @@ export interface OpenAICompatOptions {
   apiKey: string;
   defaultModel: string;
   models: string[];
-  embeddingModel?: string;
-  capabilities?: Partial<ProviderCapability>;
+  embeddingModel?: string | undefined;
+  capabilities?: Partial<ProviderCapability> | undefined;
   /** Optional extra HTTP headers sent with every request to this provider. */
-  defaultHeaders?: Record<string, string>;
+  defaultHeaders?: Record<string, string> | undefined;
   /** How to send reasoning params. Default: 'none' (don't send). */
-  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'none';
+  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'none' | undefined;
   /** Optional env vars or secret keys that can satisfy API-key auth for this provider. */
-  authEnvVars?: readonly string[];
+  authEnvVars?: readonly string[] | undefined;
   /** Optional service names that expose service-owned OAuth for this provider. */
-  serviceNames?: readonly string[];
+  serviceNames?: readonly string[] | undefined;
   /** Optional subscription-provider identity when this provider can use a stored OAuth session. */
-  subscriptionProviderId?: string;
+  subscriptionProviderId?: string | undefined;
   /** Optional provider-owned model suppression list for runtime clients. */
-  suppressedModels?: readonly string[];
+  suppressedModels?: readonly string[] | undefined;
   /** Optional provider aliases exposed to runtime metadata consumers. */
-  aliases?: readonly string[];
+  aliases?: readonly string[] | undefined;
   /** Optional explicit stream protocol label for diagnostics. */
-  streamProtocol?: string;
+  streamProtocol?: string | undefined;
   /** Optional anonymous/local access posture. */
-  allowAnonymous?: boolean;
-  anonymousConfigured?: boolean;
-  anonymousDetail?: string;
+  allowAnonymous?: boolean | undefined;
+  anonymousConfigured?: boolean | undefined;
+  anonymousDetail?: string | undefined;
   /** Override runtime auth posture when apiKey is an internal transport placeholder. */
-  authConfigured?: boolean;
+  authConfigured?: boolean | undefined;
   /** Shared cache-hit tracker owned by the runtime service graph. */
-  cacheHitTracker?: Pick<CacheHitTracker, 'recordTurn'>;
+  cacheHitTracker?: Pick<CacheHitTracker, 'recordTurn'> | undefined;
 }
 
 /**
@@ -266,7 +266,7 @@ export interface OpenAICompatOptions {
 export class OpenAICompatProvider implements LLMProvider {
   readonly name: string;
   readonly models: string[];
-  readonly capabilities?: Partial<ProviderCapability>;
+  readonly capabilities?: Partial<ProviderCapability> | undefined;
 
   private client: OpenAI;
   private defaultModel: string;
@@ -276,13 +276,13 @@ export class OpenAICompatProvider implements LLMProvider {
   private cacheCapability: ProviderCacheCapability;
   private readonly authEnvVars: readonly string[];
   private readonly serviceNames: readonly string[];
-  private readonly subscriptionProviderId?: string;
+  private readonly subscriptionProviderId?: string | undefined;
   private readonly suppressedModels: readonly string[];
   private readonly aliases: readonly string[];
-  private readonly streamProtocol?: string;
+  private readonly streamProtocol?: string | undefined;
   private readonly allowAnonymous: boolean;
   private readonly anonymousConfigured: boolean;
-  private readonly anonymousDetail?: string;
+  private readonly anonymousDetail?: string | undefined;
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'>;
   private readonly baseURL: string;
   private readonly endpointHost: string;
@@ -396,12 +396,18 @@ export class OpenAICompatProvider implements LLMProvider {
             stream: true,
             stream_options: { include_usage: true },
             ...extraBody,
-          },
-          {
-            signal,
-            ...(Object.keys(requestHeaders).length > 0 ? { headers: requestHeaders } : {}),
-          },
-        );
+          } as Parameters<typeof this.client.chat.completions.create>[0],
+          (
+            signal !== undefined || Object.keys(requestHeaders).length > 0
+              ? {
+                  ...(signal !== undefined ? { signal } : {}),
+                  ...(Object.keys(requestHeaders).length > 0 ? { headers: requestHeaders } : {}),
+                }
+              : undefined
+          ) as Parameters<typeof this.client.chat.completions.create>[1],
+        ) as unknown as AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & {
+          controller: AbortController;
+        };
         streamOpened = true;
         logger.debug('OpenAICompatProvider.chat stream opened', {
           provider: this.name,
@@ -416,10 +422,10 @@ export class OpenAICompatProvider implements LLMProvider {
         for await (const chunk of stream) {
           const raw = chunk as typeof chunk & {
             usage?: { prompt_tokens?: number; completion_tokens?: number };
-            reasoning_summary?: string;
+            reasoning_summary?: string | undefined;
           };
 
-          const delta = raw.choices[0]?.delta;
+          const delta = raw.choices[0]!?.delta;
           const textDelta = extractOpenAIStreamTextDelta(raw, { allowReasoning: allowReasoningStream });
           for (const contentDelta of textDelta.content) {
             responseText += contentDelta;
@@ -451,7 +457,7 @@ export class OpenAICompatProvider implements LLMProvider {
             }
           }
 
-          const finishReason = raw.choices[0]?.finish_reason;
+          const finishReason = raw.choices[0]!?.finish_reason;
           if (finishReason) {
             rawStopReason = finishReason;
             stopReason = mapOpenAIStopReason(finishReason);
@@ -459,9 +465,9 @@ export class OpenAICompatProvider implements LLMProvider {
 
           if (raw.usage) {
             const rawUsage = raw.usage as {
-              prompt_tokens?: number;
-              completion_tokens?: number;
-              prompt_tokens_details?: { cached_tokens?: number };
+              prompt_tokens?: number | undefined;
+              completion_tokens?: number | undefined;
+              prompt_tokens_details?: { cached_tokens?: number } | undefined;
             };
             inputTokens = rawUsage.prompt_tokens ?? 0;
             outputTokens = rawUsage.completion_tokens ?? 0;
@@ -564,7 +570,7 @@ export class OpenAICompatProvider implements LLMProvider {
         phase: 'request',
       });
     }
-    const embedding = response.data[0]?.embedding ?? [];
+    const embedding = response.data[0]!?.embedding ?? [];
     return {
       vector: Float32Array.from(embedding),
       dimensions: embedding.length,

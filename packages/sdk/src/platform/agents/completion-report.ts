@@ -13,7 +13,7 @@ export interface BaseCompletionReport {
   version: 1;
   archetype: string;
   summary: string;
-  wrfcId?: string;
+  wrfcId?: string | undefined;
 }
 
 /**
@@ -48,7 +48,7 @@ export interface EngineerReport extends BaseCompletionReport {
   issues: string[];
   uncertainties: string[];
   /** Constraints enumerated from the task prompt (or inherited from parent chain). Defaults to [] when absent. */
-  constraints?: Constraint[];
+  constraints?: Constraint[] | undefined;
 }
 
 /** Reviewer agent completion report. */
@@ -65,12 +65,12 @@ export interface ReviewerReport extends BaseCompletionReport {
   issues: Array<{
     severity: 'critical' | 'major' | 'minor' | 'suggestion';
     description: string;
-    file?: string;
-    line?: number;
+    file?: string | undefined;
+    line?: number | undefined;
     pointValue: number;
   }>;
   /** Per-constraint satisfaction findings from the reviewer. Defaults to [] when absent. */
-  constraintFindings?: ConstraintFinding[];
+  constraintFindings?: ConstraintFinding[] | undefined;
 }
 
 /** Tester agent completion report. */
@@ -119,7 +119,7 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
   const jsonBlockMatch = rawOutput.match(/```json\s*\n(\{[\s\S]*?\})\s*\n```/);
   if (jsonBlockMatch) {
     try {
-      const parsed = JSON.parse(jsonBlockMatch[1]);
+      const parsed = JSON.parse(jsonBlockMatch[1]!);
       if (parsed.version === 1 && parsed.archetype) return applyConstraintDefaults(parsed) as unknown as CompletionReport;
     } catch (error) {
       logger.debug('Completion report fenced JSON parse failed', { error: summarizeError(error) });

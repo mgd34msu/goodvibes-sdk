@@ -43,16 +43,16 @@ type RemoteMetadata = Record<string, unknown>;
 
 type RemotePairRequestBody = {
   readonly peerKind: 'device' | 'node';
-  readonly requestedId?: string;
+  readonly requestedId?: string | undefined;
   readonly label: string;
-  readonly platform?: string;
-  readonly deviceFamily?: string;
-  readonly version?: string;
-  readonly clientMode?: string;
+  readonly platform?: string | undefined;
+  readonly deviceFamily?: string | undefined;
+  readonly version?: string | undefined;
+  readonly clientMode?: string | undefined;
   readonly capabilities: readonly string[];
   readonly commands: readonly string[];
   readonly metadata: RemoteMetadata;
-  readonly ttlMs?: number;
+  readonly ttlMs?: number | undefined;
 };
 
 type RemotePairVerifyBody = {
@@ -62,50 +62,50 @@ type RemotePairVerifyBody = {
 };
 
 type RemotePeerHeartbeatBody = {
-  readonly capabilities?: readonly string[];
-  readonly commands?: readonly string[];
-  readonly version?: string;
-  readonly clientMode?: string;
+  readonly capabilities?: readonly string[] | undefined;
+  readonly commands?: readonly string[] | undefined;
+  readonly version?: string | undefined;
+  readonly clientMode?: string | undefined;
   readonly metadata: RemoteMetadata;
 };
 
 type RemoteWorkPullBody = {
-  readonly maxItems?: number;
-  readonly leaseMs?: number;
+  readonly maxItems?: number | undefined;
+  readonly leaseMs?: number | undefined;
 };
 
 type RemoteWorkCompleteBody = {
-  readonly status?: 'completed' | 'failed' | 'cancelled';
+  readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
   readonly result: unknown;
-  readonly error?: string;
+  readonly error?: string | undefined;
   readonly metadata: RemoteMetadata;
 };
 
 type RemoteOperatorNoteBody = {
-  readonly note?: string;
-  readonly reason?: string;
-  readonly label?: string;
-  readonly tokenId?: string;
-  readonly requeueClaimedWork?: boolean;
-  readonly scopes?: readonly string[];
+  readonly note?: string | undefined;
+  readonly reason?: string | undefined;
+  readonly label?: string | undefined;
+  readonly tokenId?: string | undefined;
+  readonly requeueClaimedWork?: boolean | undefined;
+  readonly scopes?: readonly string[] | undefined;
 };
 
 type RemoteInvokeBody = {
   readonly command: string;
   readonly payload: unknown;
   readonly priority: 'high' | 'default' | 'normal';
-  readonly waitMs?: number;
-  readonly timeoutMs?: number;
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly automationRunId?: string;
-  readonly automationJobId?: string;
-  readonly approvalId?: string;
+  readonly waitMs?: number | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly automationRunId?: string | undefined;
+  readonly automationJobId?: string | undefined;
+  readonly approvalId?: string | undefined;
   readonly metadata: RemoteMetadata;
 };
 
 interface DaemonRemoteRouteContext {
-  readonly authToken?: string | null;
+  readonly authToken?: string | null | undefined;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
   readonly requireAdmin: (req: Request) => Response | null;
   readonly requireRemotePeer: (req: Request, scope?: string) => Promise<RemotePeerAuth | Response>;

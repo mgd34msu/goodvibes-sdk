@@ -210,19 +210,19 @@ export function applySourceMetadata(
   readonly id: string;
   readonly connectorId: string;
   readonly sourceType: KnowledgeSourceRecord['sourceType'];
-  readonly title?: string;
-  readonly sourceUri?: string;
-  readonly canonicalUri?: string;
-  readonly summary?: string;
-  readonly description?: string;
+  readonly title?: string | undefined;
+  readonly sourceUri?: string | undefined;
+  readonly canonicalUri?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly description?: string | undefined;
   readonly tags: readonly string[];
-  readonly folderPath?: string;
+  readonly folderPath?: string | undefined;
   readonly status: KnowledgeSourceRecord['status'];
-  readonly artifactId?: string;
-  readonly contentHash?: string;
-  readonly lastCrawledAt?: number;
-  readonly crawlError?: string;
-  readonly sessionId?: string;
+  readonly artifactId?: string | undefined;
+  readonly contentHash?: string | undefined;
+  readonly lastCrawledAt?: number | undefined;
+  readonly crawlError?: string | undefined;
+  readonly sessionId?: string | undefined;
   readonly metadata: Record<string, unknown>;
 } {
   return {

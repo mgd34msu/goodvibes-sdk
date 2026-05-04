@@ -57,10 +57,10 @@ export interface WorkflowInstance {
   currentState: string;
   task: string;
   startedAt: number;
-  completedAt?: number;
+  completedAt?: number | undefined;
   transitions: number;
   context: Record<string, unknown>;
-  cancelled?: boolean;
+  cancelled?: boolean | undefined;
 }
 
 const WORKFLOW_EVICT_AFTER_MS = 60 * 60 * 1000; // 1 hour
@@ -70,7 +70,7 @@ export class WorkflowManager {
   private workflows = new Map<string, WorkflowInstance>();
 
   start(definition: string, task: string): WorkflowInstance {
-    const def = WORKFLOW_DEFINITIONS[definition];
+    const def = WORKFLOW_DEFINITIONS[definition]!;
     if (!def) {
       throw new Error(`Unknown workflow definition: ${definition}`);
     }
@@ -79,7 +79,7 @@ export class WorkflowManager {
     const instance: WorkflowInstance = {
       id,
       definition,
-      currentState: def.states[0],
+      currentState: def.states[0]!,
       task,
       startedAt: Date.now(),
       transitions: 0,
@@ -94,7 +94,7 @@ export class WorkflowManager {
     return this.workflows.get(id) ?? null;
   }
 
-  transition(id: string, targetState: string): { success: boolean; error?: string } {
+  transition(id: string, targetState: string): { success: boolean; error?: string | undefined } {
     const instance = this.workflows.get(id);
     if (!instance) {
       return { success: false, error: `Workflow not found: ${id}` };
@@ -156,7 +156,7 @@ export class WorkflowManager {
 export interface TriggerDefinition {
   id: string;
   event: string;
-  condition?: string;
+  condition?: string | undefined;
   action: string;
   enabled: boolean;
 }
@@ -164,7 +164,7 @@ export interface TriggerDefinition {
 export class TriggerManager {
   private triggers = new Map<string, TriggerDefinition>();
 
-  add(def: { event: string; condition?: string; action: string }): TriggerDefinition {
+  add(def: { event: string; condition?: string | undefined; action: string }): TriggerDefinition {
     const id = `trg-${crypto.randomUUID().slice(0, 8)}`;
     const trigger: TriggerDefinition = {
       id,
@@ -208,8 +208,8 @@ export interface ScheduleEntry {
   name: string;
   interval: string;
   command: string;
-  lastRun?: number;
-  nextRun?: number;
+  lastRun?: number | undefined;
+  nextRun?: number | undefined;
   enabled: boolean;
 }
 
@@ -220,7 +220,7 @@ export interface ScheduleEntry {
 export function parseInterval(interval: string): number | null {
   const match = interval.trim().match(/^(\d+(?:\.\d+)?)(s|m|h|d)$/);
   if (!match) return null;
-  const value = parseFloat(match[1]);
+  const value = parseFloat(match[1]!);
   switch (match[2]) {
     case 's': return value * 1_000;
     case 'm': return value * 60_000;
@@ -368,21 +368,21 @@ export class ScheduleManager {
 
 export interface WorkflowInput {
   mode: 'start' | 'status' | 'transition' | 'cancel' | 'list' | 'triggers' | 'schedule';
-  definition?: string;
-  task?: string;
-  workflowId?: string;
-  targetState?: string;
-  triggerAction?: 'list' | 'add' | 'remove' | 'enable' | 'disable';
-  triggerId?: string;
+  definition?: string | undefined;
+  task?: string | undefined;
+  workflowId?: string | undefined;
+  targetState?: string | undefined;
+  triggerAction?: 'list' | 'add' | 'remove' | 'enable' | 'disable' | undefined;
+  triggerId?: string | undefined;
   triggerDefinition?: {
     event: string;
-    condition?: string;
+    condition?: string | undefined;
     action: string;
   };
-  scheduleAction?: 'list' | 'add' | 'remove';
-  scheduleName?: string;
-  scheduleInterval?: string;
-  scheduleCommand?: string;
+  scheduleAction?: 'list' | 'add' | 'remove' | undefined;
+  scheduleName?: string | undefined;
+  scheduleInterval?: string | undefined;
+  scheduleCommand?: string | undefined;
 }
 
 export interface WorkflowServices {
@@ -407,7 +407,7 @@ export function createWorkflowTool(services: WorkflowServices): Tool {
   return {
     definition: workflowSchema,
 
-    async execute(args: Record<string, unknown>): Promise<{ success: boolean; output?: string; error?: string }> {
+    async execute(args: Record<string, unknown>): Promise<{ success: boolean; output?: string; error?: string | undefined }> {
       try {
         if (!args.mode || typeof args.mode !== 'string') {
           return { success: false, error: 'Missing required "mode" field' };

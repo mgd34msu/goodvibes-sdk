@@ -54,7 +54,7 @@ function isNonZeroHex(hex: string): boolean {
 
 class SpanImpl implements Span {
   readonly spanContext: SpanContext;
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
   private _ended = false;
   private _attributes: SpanAttributes = {};
   private _events: SpanEvent[] = [];
@@ -70,8 +70,8 @@ class SpanImpl implements Span {
     name: string;
     kind: SpanKind;
     traceId: string;
-    parentSpanId?: string;
-    startTimeMs?: number;
+    parentSpanId?: string | undefined;
+    startTimeMs?: number | undefined;
     scope: string;
     onEnd: (span: ReadableSpan) => void;
   }) {
@@ -185,15 +185,15 @@ export class RuntimeTracer {
     name: string,
     opts?: {
       /** Existing trace ID to join. If omitted, a new trace is started. */
-      traceId?: string;
+      traceId?: string | undefined;
       /** Parent span ID. Makes this span a child of the parent. */
-      parentSpanId?: string;
+      parentSpanId?: string | undefined;
       /** Span kind (defaults to INTERNAL). */
-      kind?: SpanKind;
+      kind?: SpanKind | undefined;
       /** Override start time in epoch ms (defaults to Date.now()). */
-      startTimeMs?: number;
+      startTimeMs?: number | undefined;
       /** Initial attributes. */
-      attributes?: SpanAttributes;
+      attributes?: SpanAttributes | undefined;
     }
   ): Span {
     if (!this.config.enabled) {

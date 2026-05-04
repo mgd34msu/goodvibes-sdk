@@ -10,19 +10,19 @@ type TelemetrySeverity = 'debug' | 'info' | 'warn' | 'error';
 type TelemetryViewMode = 'safe' | 'raw';
 
 interface TelemetryFilter {
-  readonly limit?: number;
-  readonly since?: number;
-  readonly until?: number;
-  readonly domains?: readonly RuntimeEventDomain[];
-  readonly eventTypes?: readonly string[];
-  readonly severity?: TelemetrySeverity;
-  readonly traceId?: string;
-  readonly sessionId?: string;
-  readonly turnId?: string;
-  readonly agentId?: string;
-  readonly taskId?: string;
-  readonly cursor?: string;
-  readonly view?: TelemetryViewMode;
+  readonly limit?: number | undefined;
+  readonly since?: number | undefined;
+  readonly until?: number | undefined;
+  readonly domains?: readonly RuntimeEventDomain[] | undefined;
+  readonly eventTypes?: readonly string[] | undefined;
+  readonly severity?: TelemetrySeverity | undefined;
+  readonly traceId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly turnId?: string | undefined;
+  readonly agentId?: string | undefined;
+  readonly taskId?: string | undefined;
+  readonly cursor?: string | undefined;
+  readonly view?: TelemetryViewMode | undefined;
 }
 
 interface TelemetryApiLike {
@@ -158,7 +158,7 @@ async function parseOtlpBody(
   req: Request,
   kind: OtlpIngestKind,
 ): Promise<JsonRecord | Response> {
-  const contentType = (req.headers.get('content-type') ?? '').toLowerCase().split(';')[0].trim();
+  const contentType = (req.headers.get('content-type') ?? '').toLowerCase().split(';')[0]!.trim();
 
   const acceptsJson = contentType === OTLP_JSON_CONTENT_TYPE;
   const acceptsProtobuf = OTLP_PROTOBUF_CONTENT_TYPES.has(contentType);

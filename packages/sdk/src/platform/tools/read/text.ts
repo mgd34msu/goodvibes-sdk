@@ -40,7 +40,7 @@ const TS_KIND_MAP: Record<string, string> = {
 export function extractOutlineRegex(lines: string[], includeLineNumbers: boolean): string {
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     if (SIGNATURE_PATTERNS.some((p) => p.test(line))) {
       const lineNo = i + 1;
       let sig = line.trimEnd();
@@ -57,12 +57,12 @@ export function extractOutlineRegex(lines: string[], includeLineNumbers: boolean
 export function extractSymbolsRegex(lines: string[], includeLineNumbers: boolean): string {
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const m = line.match(EXPORT_DECLARATION_RE);
     if (m) {
-      const kw = m[1];
-      const name = m[2];
-      const kind = KIND_MAP[kw] ?? 'export';
+      const kw = m[1]!;
+      const name = m[2]!;
+      const kind = KIND_MAP[kw]! ?? 'export';
       const lineNo = i + 1;
       const entry = `${kind} ${name}`;
       result.push(includeLineNumbers ? `${String(lineNo).padStart(5)} | ${entry}` : entry);

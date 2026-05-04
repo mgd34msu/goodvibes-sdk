@@ -204,7 +204,7 @@ export function validateEvent(event: unknown): import('./contracts/shared.js').C
   if (!isObject(event)) return { valid: false, violations: ['event must be an object'] };
   const type = event['type'];
   if (!isString(type)) return { valid: false, violations: ['event.type must be a string'] };
-  const validator = EVENT_VALIDATORS[type];
+  const validator = EVENT_VALIDATORS[type]!;
   if (!validator) return { valid: false, violations: [`unknown event type: '${type}'`] };
   return validator(event);
 }

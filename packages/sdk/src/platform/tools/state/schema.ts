@@ -160,49 +160,49 @@ export interface StateInput {
   mode: StateMode;
 
   // mode: get
-  keys?: string[];
+  keys?: string[] | undefined;
 
   // mode: set
-  values?: Record<string, unknown>;
+  values?: Record<string, unknown> | undefined;
 
   // mode: list
-  prefix?: string;
-  view?: 'summary' | 'full';
+  prefix?: string | undefined;
+  view?: 'summary' | 'full' | undefined;
 
   // mode: clear
-  clearKeys?: string[];
+  clearKeys?: string[] | undefined;
 
   // mode: memory
-  memoryAction?: MemoryAction;
-  memoryKey?: string;
-  memoryValue?: string;
+  memoryAction?: MemoryAction | undefined;
+  memoryKey?: string | undefined;
+  memoryValue?: string | undefined;
 
   // mode: hooks
-  hookAction?: HookAction;
-  hookName?: string;
+  hookAction?: HookAction | undefined;
+  hookName?: string | undefined;
   hookDefinition?: {
     eventPattern: string;
-    name?: string;
+    name?: string | undefined;
     type: 'command' | 'http' | 'ts';
     match: string;
-    command?: string;
-    url?: string;
-    path?: string;
-    description?: string;
+    command?: string | undefined;
+    url?: string | undefined;
+    path?: string | undefined;
+    description?: string | undefined;
     [key: string]: unknown;
   };
 
   // mode: mode
-  modeAction?: ModeAction;
-  modeName?: string;
+  modeAction?: ModeAction | undefined;
+  modeName?: string | undefined;
 
   // mode: analytics
-  analyticsAction?: AnalyticsAction;
-  analyticsTool?: string;
-  analyticsArgs?: Record<string, unknown>;
-  analyticsResult?: Record<string, unknown>;
-  analyticsDuration?: number;
-  analyticsTokens?: number;
-  analyticsFilter?: Record<string, unknown>;
-  analyticsFormat?: 'json' | 'csv';
+  analyticsAction?: AnalyticsAction | undefined;
+  analyticsTool?: string | undefined;
+  analyticsArgs?: Record<string, unknown> | undefined;
+  analyticsResult?: Record<string, unknown> | undefined;
+  analyticsDuration?: number | undefined;
+  analyticsTokens?: number | undefined;
+  analyticsFilter?: Record<string, unknown> | undefined;
+  analyticsFormat?: 'json' | 'csv' | undefined;
 }

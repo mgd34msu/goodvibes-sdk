@@ -26,7 +26,7 @@ import type {
 export interface HomeGraphReindexContext {
   readonly store: KnowledgeStore;
   readonly artifactStore: ArtifactStore;
-  readonly semanticService?: KnowledgeSemanticService;
+  readonly semanticService?: KnowledgeSemanticService | undefined;
   readonly extract: (
     source: KnowledgeSourceRecord,
     artifact: ArtifactDescriptor,
@@ -139,8 +139,8 @@ export async function reindexHomeGraphSources(input: {
   readonly extractionBySourceId: ReadonlyMap<string, KnowledgeExtractionRecord>;
   readonly artifactStore: ArtifactStore;
   readonly extract: (source: KnowledgeSourceRecord, artifact: ArtifactDescriptor) => Promise<KnowledgeExtractionRecord | undefined>;
-  readonly limit?: number;
-  readonly maxRunMs?: number;
+  readonly limit?: number | undefined;
+  readonly maxRunMs?: number | undefined;
 }): Promise<HomeGraphReindexResult> {
   const sources: KnowledgeSourceRecord[] = [];
   const failures: Array<{ readonly sourceId: string; readonly error: string }> = [];

@@ -222,8 +222,8 @@ export function getImageMediaType(ext: string): string | null {
 // ---------------------------------------------------------------------------
 
 export interface ImageMetadata {
-  width?: number;
-  height?: number;
+  width?: number | undefined;
+  height?: number | undefined;
   format: string;
   fileSize: number;
 }
@@ -301,8 +301,8 @@ export function getImageMetadata(buffer: Buffer, ext: string): ImageMetadata {
  * Avoids requiring @types/sharp or the sharp package to be installed.
  */
 interface SharpInstance {
-  metadata(): Promise<{ width?: number; height?: number; format?: string }>;
-  resize(options: { width?: number; height?: number }): SharpInstance;
+  metadata(): Promise<{ width?: number | undefined; height?: number | undefined; format?: string }>;
+  resize(options: { width?: number | undefined; height?: number | undefined }): SharpInstance;
   png(): SharpInstance;
   jpeg(): SharpInstance;
   toBuffer(options: { resolveWithObject: true }): Promise<{ data: Buffer; info: { width: number; height: number } }>;
@@ -342,8 +342,8 @@ export async function tryLoadSharp(): Promise<SharpFactory | null> {
 export interface ResizeResult {
   buffer: Buffer;
   resized: boolean;
-  width?: number;
-  height?: number;
+  width?: number | undefined;
+  height?: number | undefined;
 }
 
 /**

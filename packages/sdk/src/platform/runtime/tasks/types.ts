@@ -22,17 +22,17 @@ export interface TaskCreateParams {
   /** Subsystem or agent ID that owns this task. */
   owner: string;
   /** Optional detailed description. */
-  description?: string;
+  description?: string | undefined;
   /** Parent task ID if this is a subtask. */
-  parentTaskId?: string;
+  parentTaskId?: string | undefined;
   /** Whether this task can be cancelled by the user. Defaults to `true`. */
-  cancellable?: boolean;
+  cancellable?: boolean | undefined;
   /** Retry policy (undefined = no retries). */
-  retryPolicy?: TaskRetryPolicy;
+  retryPolicy?: TaskRetryPolicy | undefined;
   /** Correlation ID for distributed tracing. */
-  correlationId?: string;
+  correlationId?: string | undefined;
   /** Turn ID this task was spawned within. */
-  turnId?: string;
+  turnId?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,13 +48,13 @@ export interface TaskCreateParams {
  */
 export interface TaskUpdateParams {
   /** Updated human-readable title. */
-  title?: string;
+  title?: string | undefined;
   /** Updated description. */
-  description?: string;
+  description?: string | undefined;
   /** Updated exit code (exec tasks). */
-  exitCode?: number;
+  exitCode?: number | undefined;
   /** Updated result payload. */
-  result?: unknown;
+  result?: unknown | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ export interface TaskUpdateParams {
  */
 export interface TaskCancelParams {
   /** Human-readable reason for cancellation. */
-  reason?: string;
+  reason?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +80,7 @@ export interface TaskFailParams {
   /** Error message describing the failure. */
   error: string;
   /** Exit code if applicable (exec tasks). */
-  exitCode?: number;
+  exitCode?: number | undefined;
 }
 
 // ---------------------------------------------------------------------------

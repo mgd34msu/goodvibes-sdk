@@ -32,11 +32,11 @@ export interface ProviderCallStats {
   /** Maximum observed latency in ms. */
   maxLatencyMs: number;
   /** Time of last successful call (epoch ms). */
-  lastSuccessAt?: number;
+  lastSuccessAt?: number | undefined;
   /** Time of last error (epoch ms). */
-  lastErrorAt?: number;
+  lastErrorAt?: number | undefined;
   /** Most recent error message. */
-  lastErrorMessage?: string;
+  lastErrorMessage?: string | undefined;
 }
 
 /** Cache hit metrics for a provider. */
@@ -64,11 +64,11 @@ export interface ProviderHealthRecord {
   /** Call statistics. */
   stats: ProviderCallStats;
   /** Cache metrics (only relevant for providers that support prompt caching). */
-  cacheMetrics?: ProviderCacheMetrics;
+  cacheMetrics?: ProviderCacheMetrics | undefined;
   /** Epoch ms of the last health check. */
-  lastCheckedAt?: number;
+  lastCheckedAt?: number | undefined;
   /** Rate limit reset time (epoch ms), if currently rate-limited. */
-  rateLimitResetAt?: number;
+  rateLimitResetAt?: number | undefined;
 }
 
 /**

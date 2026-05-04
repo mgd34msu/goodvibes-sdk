@@ -68,10 +68,10 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   }
 
   attachRuntime(input: {
-    readonly sessionBridge?: DistributedSessionBridge | null;
-    readonly approvalBridge?: DistributedApprovalBridge | null;
-    readonly automationBridge?: DistributedAutomationBridge | null;
-    readonly eventPublisher?: ((event: string, payload: unknown) => void) | null;
+    readonly sessionBridge?: DistributedSessionBridge | null | undefined;
+    readonly approvalBridge?: DistributedApprovalBridge | null | undefined;
+    readonly automationBridge?: DistributedAutomationBridge | null | undefined;
+    readonly eventPublisher?: ((event: string, payload: unknown) => void) | null | undefined | undefined;
   }): void {
     attachDistributedRuntime(this, input);
   }
@@ -106,18 +106,18 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
 
   async requestPairing(input: {
     readonly peerKind: DistributedPeerKind;
-    readonly requestedId?: string;
+    readonly requestedId?: string | undefined;
     readonly label: string;
-    readonly platform?: string;
-    readonly deviceFamily?: string;
-    readonly version?: string;
-    readonly clientMode?: string;
-    readonly capabilities?: readonly string[];
-    readonly commands?: readonly string[];
-    readonly metadata?: Record<string, unknown>;
-    readonly requestedBy?: 'remote' | 'operator';
-    readonly remoteAddress?: string;
-    readonly ttlMs?: number;
+    readonly platform?: string | undefined;
+    readonly deviceFamily?: string | undefined;
+    readonly version?: string | undefined;
+    readonly clientMode?: string | undefined;
+    readonly capabilities?: readonly string[] | undefined;
+    readonly commands?: readonly string[] | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
+    readonly requestedBy?: 'remote' | 'operator' | undefined;
+    readonly remoteAddress?: string | undefined;
+    readonly ttlMs?: number | undefined;
   }): Promise<{ request: DistributedRuntimePairRequest; challenge: string }> {
     return requestDistributedPairing(this, input);
   }
@@ -125,10 +125,10 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async approvePairRequest(
     requestId: string,
     input: {
-      readonly actor?: string;
-      readonly note?: string;
-      readonly label?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly actor?: string | undefined;
+      readonly note?: string | undefined;
+      readonly label?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     } = {},
   ): Promise<{ request: DistributedRuntimePairRequest; peer: DistributedPeerRecord } | null> {
     return approveDistributedPairRequest(this, requestId, input);
@@ -137,8 +137,8 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async rejectPairRequest(
     requestId: string,
     input: {
-      readonly actor?: string;
-      readonly note?: string;
+      readonly actor?: string | undefined;
+      readonly note?: string | undefined;
     } = {},
   ): Promise<DistributedRuntimePairRequest | null> {
     return rejectDistributedPairRequest(this, requestId, input);
@@ -148,8 +148,8 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
     requestId: string,
     challenge: string,
     input: {
-      readonly remoteAddress?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly remoteAddress?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     } = {},
   ): Promise<{ peer: DistributedPeerRecord; token: DistributedPeerTokenRecord & { value: string } } | null> {
     return verifyDistributedPairRequest(this, requestId, challenge, input);
@@ -158,9 +158,9 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async rotatePeerToken(
     peerId: string,
     input: {
-      readonly actor?: string;
-      readonly label?: string;
-      readonly scopes?: readonly string[];
+      readonly actor?: string | undefined;
+      readonly label?: string | undefined;
+      readonly scopes?: readonly string[] | undefined;
     } = {},
   ): Promise<{ peer: DistributedPeerRecord; token: DistributedPeerTokenRecord & { value: string } } | null> {
     return rotateDistributedPeerToken(this, peerId, input);
@@ -169,9 +169,9 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async revokePeerToken(
     peerId: string,
     input: {
-      readonly actor?: string;
-      readonly tokenId?: string;
-      readonly note?: string;
+      readonly actor?: string | undefined;
+      readonly tokenId?: string | undefined;
+      readonly note?: string | undefined;
     } = {},
   ): Promise<DistributedPeerRecord | null> {
     return revokeDistributedPeerToken(this, peerId, input);
@@ -180,9 +180,9 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async disconnectPeer(
     peerId: string,
     input: {
-      readonly actor?: string;
-      readonly note?: string;
-      readonly requeueClaimedWork?: boolean;
+      readonly actor?: string | undefined;
+      readonly note?: string | undefined;
+      readonly requeueClaimedWork?: boolean | undefined;
     } = {},
   ): Promise<DistributedPeerRecord | null> {
     return disconnectDistributedPeer(this, peerId, input);
@@ -190,18 +190,18 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
 
   async enqueueWork(input: {
     readonly peerId: string;
-    readonly type?: DistributedWorkType;
+    readonly type?: DistributedWorkType | undefined;
     readonly command: string;
-    readonly payload?: unknown;
-    readonly priority?: DistributedWorkPriority;
-    readonly actor?: string;
-    readonly timeoutMs?: number;
-    readonly sessionId?: string;
-    readonly routeId?: string;
-    readonly automationRunId?: string;
-    readonly automationJobId?: string;
-    readonly approvalId?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly payload?: unknown | undefined;
+    readonly priority?: DistributedWorkPriority | undefined;
+    readonly actor?: string | undefined;
+    readonly timeoutMs?: number | undefined;
+    readonly sessionId?: string | undefined;
+    readonly routeId?: string | undefined;
+    readonly automationRunId?: string | undefined;
+    readonly automationJobId?: string | undefined;
+    readonly approvalId?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<DistributedPendingWork> {
     return enqueueDistributedWork(this, input);
   }
@@ -209,17 +209,17 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async invokePeer(input: {
     readonly peerId: string;
     readonly command: string;
-    readonly payload?: unknown;
-    readonly priority?: DistributedWorkPriority;
-    readonly actor?: string;
-    readonly waitMs?: number;
-    readonly timeoutMs?: number;
-    readonly sessionId?: string;
-    readonly routeId?: string;
-    readonly automationRunId?: string;
-    readonly automationJobId?: string;
-    readonly approvalId?: string;
-    readonly metadata?: Record<string, unknown>;
+    readonly payload?: unknown | undefined;
+    readonly priority?: DistributedWorkPriority | undefined;
+    readonly actor?: string | undefined;
+    readonly waitMs?: number | undefined;
+    readonly timeoutMs?: number | undefined;
+    readonly sessionId?: string | undefined;
+    readonly routeId?: string | undefined;
+    readonly automationRunId?: string | undefined;
+    readonly automationJobId?: string | undefined;
+    readonly approvalId?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<{ work: DistributedPendingWork; completed: boolean }> {
     return invokeDistributedPeer(this, input);
   }
@@ -231,12 +231,12 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async heartbeatPeer(
     auth: DistributedPeerAuth,
     input: {
-      readonly remoteAddress?: string;
-      readonly capabilities?: readonly string[];
-      readonly commands?: readonly string[];
-      readonly version?: string;
-      readonly clientMode?: string;
-      readonly metadata?: Record<string, unknown>;
+      readonly remoteAddress?: string | undefined;
+      readonly capabilities?: readonly string[] | undefined;
+      readonly commands?: readonly string[] | undefined;
+      readonly version?: string | undefined;
+      readonly clientMode?: string | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     } = {},
   ): Promise<DistributedPeerRecord> {
     return heartbeatDistributedPeer(this, auth, input);
@@ -245,8 +245,8 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async claimWork(
     auth: DistributedPeerAuth,
     input: {
-      readonly maxItems?: number;
-      readonly leaseMs?: number;
+      readonly maxItems?: number | undefined;
+      readonly leaseMs?: number | undefined;
     } = {},
   ): Promise<DistributedPendingWork[]> {
     return claimDistributedWork(this, auth, input);
@@ -256,11 +256,11 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
     auth: DistributedPeerAuth,
     workId: string,
     input: {
-      readonly status?: 'completed' | 'failed' | 'cancelled';
-      readonly result?: unknown;
-      readonly error?: string;
-      readonly telemetry?: DistributedPendingWork['telemetry'];
-      readonly metadata?: Record<string, unknown>;
+      readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
+      readonly result?: unknown | undefined;
+      readonly error?: string | undefined;
+      readonly telemetry?: DistributedPendingWork['telemetry'] | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     } = {},
   ): Promise<DistributedPendingWork | null> {
     return completeDistributedWork(this, auth, workId, input);
@@ -269,8 +269,8 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   async cancelWork(
     workId: string,
     input: {
-      readonly actor?: string;
-      readonly reason?: string;
+      readonly actor?: string | undefined;
+      readonly reason?: string | undefined;
     } = {},
   ): Promise<DistributedPendingWork | null> {
     return cancelDistributedWork(this, workId, input);

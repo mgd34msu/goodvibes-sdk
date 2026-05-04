@@ -64,9 +64,9 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/v1/telemetry/otlp/v1/metrics' && method === 'POST') return handlers.postTelemetryOtlpMetrics(req);
   if (pathname === '/api/control-plane/methods' && method === 'GET') return handlers.getGatewayMethods(url);
   const gatewayMethodInvokeMatch = pathname.match(/^\/api\/control-plane\/methods\/([^/]+)\/invoke$/);
-  if (gatewayMethodInvokeMatch && method === 'POST') return handlers.invokeGatewayMethod(decodeURIComponent(gatewayMethodInvokeMatch[1]), req);
+  if (gatewayMethodInvokeMatch && method === 'POST') return handlers.invokeGatewayMethod(decodeURIComponent(gatewayMethodInvokeMatch[1]!), req);
   const gatewayMethodMatch = pathname.match(/^\/api\/control-plane\/methods\/([^/]+)$/);
-  if (gatewayMethodMatch && method === 'GET') return handlers.getGatewayMethod(decodeURIComponent(gatewayMethodMatch[1]));
+  if (gatewayMethodMatch && method === 'GET') return handlers.getGatewayMethod(decodeURIComponent(gatewayMethodMatch[1]!));
   if (pathname === '/api/control-plane/events/catalog' && method === 'GET') return handlers.getGatewayEvents(url);
   if (pathname === '/api/control-plane/events' && method === 'GET') return handlers.createControlPlaneEventStream(req);
   if (pathname === '/api/routes' && method === 'GET') return handlers.getRoutesSnapshot();
@@ -79,103 +79,103 @@ export async function dispatchOperatorRoutes(
   const channelAccountDefaultActionMatch = pathname.match(/^\/api\/channels\/accounts\/([^/]+)\/actions\/([^/]+)$/);
   if (channelAccountDefaultActionMatch && method === 'POST') {
     return handlers.postChannelAccountAction(
-      decodeURIComponent(channelAccountDefaultActionMatch[1]),
+      decodeURIComponent(channelAccountDefaultActionMatch[1]!),
       null,
-      decodeURIComponent(channelAccountDefaultActionMatch[2]),
+      decodeURIComponent(channelAccountDefaultActionMatch[2]!),
       req,
     );
   }
   const channelAccountActionMatch = pathname.match(/^\/api\/channels\/accounts\/([^/]+)\/([^/]+)\/actions\/([^/]+)$/);
   if (channelAccountActionMatch && method === 'POST') {
     return handlers.postChannelAccountAction(
-      decodeURIComponent(channelAccountActionMatch[1]),
-      decodeURIComponent(channelAccountActionMatch[2]),
-      decodeURIComponent(channelAccountActionMatch[3]),
+      decodeURIComponent(channelAccountActionMatch[1]!),
+      decodeURIComponent(channelAccountActionMatch[2]!),
+      decodeURIComponent(channelAccountActionMatch[3]!),
       req,
     );
   }
   const channelSetupMatch = pathname.match(/^\/api\/channels\/setup\/([^/]+)$/);
   if (channelSetupMatch && method === 'GET') {
-    return handlers.getChannelSetupSchema(decodeURIComponent(channelSetupMatch[1]), url);
+    return handlers.getChannelSetupSchema(decodeURIComponent(channelSetupMatch[1]!), url);
   }
   const channelDoctorMatch = pathname.match(/^\/api\/channels\/doctor\/([^/]+)$/);
   if (channelDoctorMatch && method === 'GET') {
-    return handlers.getChannelDoctor(decodeURIComponent(channelDoctorMatch[1]), url);
+    return handlers.getChannelDoctor(decodeURIComponent(channelDoctorMatch[1]!), url);
   }
   const channelRepairActionsMatch = pathname.match(/^\/api\/channels\/repair-actions\/([^/]+)$/);
   if (channelRepairActionsMatch && method === 'GET') {
-    return handlers.getChannelRepairActions(decodeURIComponent(channelRepairActionsMatch[1]), url);
+    return handlers.getChannelRepairActions(decodeURIComponent(channelRepairActionsMatch[1]!), url);
   }
   const channelLifecycleMatch = pathname.match(/^\/api\/channels\/lifecycle\/([^/]+)$/);
   if (channelLifecycleMatch && method === 'GET') {
-    return handlers.getChannelLifecycle(decodeURIComponent(channelLifecycleMatch[1]), url);
+    return handlers.getChannelLifecycle(decodeURIComponent(channelLifecycleMatch[1]!), url);
   }
   const channelResolveTargetMatch = pathname.match(/^\/api\/channels\/targets\/([^/]+)\/resolve$/);
   if (channelResolveTargetMatch && method === 'POST') {
-    return handlers.postChannelResolveTarget(decodeURIComponent(channelResolveTargetMatch[1]), req);
+    return handlers.postChannelResolveTarget(decodeURIComponent(channelResolveTargetMatch[1]!), req);
   }
   const channelAuthorizeMatch = pathname.match(/^\/api\/channels\/authorize\/([^/]+)$/);
   if (channelAuthorizeMatch && method === 'POST') {
-    return handlers.postChannelAuthorize(decodeURIComponent(channelAuthorizeMatch[1]), req);
+    return handlers.postChannelAuthorize(decodeURIComponent(channelAuthorizeMatch[1]!), req);
   }
   const channelAllowlistResolveMatch = pathname.match(/^\/api\/channels\/allowlist\/([^/]+)\/resolve$/);
   if (channelAllowlistResolveMatch && method === 'POST') {
-    return handlers.postChannelAllowlistResolve(decodeURIComponent(channelAllowlistResolveMatch[1]), req);
+    return handlers.postChannelAllowlistResolve(decodeURIComponent(channelAllowlistResolveMatch[1]!), req);
   }
   const channelAllowlistEditMatch = pathname.match(/^\/api\/channels\/allowlist\/([^/]+)\/edit$/);
   if (channelAllowlistEditMatch && method === 'POST') {
-    return handlers.postChannelAllowlistEdit(decodeURIComponent(channelAllowlistEditMatch[1]), req);
+    return handlers.postChannelAllowlistEdit(decodeURIComponent(channelAllowlistEditMatch[1]!), req);
   }
   const channelAccountMatch = pathname.match(/^\/api\/channels\/accounts\/([^/]+)\/([^/]+)$/);
   if (channelAccountMatch && method === 'GET') {
-    return handlers.getChannelAccount(decodeURIComponent(channelAccountMatch[1]), decodeURIComponent(channelAccountMatch[2]));
+    return handlers.getChannelAccount(decodeURIComponent(channelAccountMatch[1]!), decodeURIComponent(channelAccountMatch[2]!));
   }
   const channelActionPostMatch = pathname.match(/^\/api\/channels\/actions\/([^/]+)\/([^/]+)$/);
   if (channelActionPostMatch && method === 'POST') {
-    return handlers.postChannelAction(decodeURIComponent(channelActionPostMatch[1]), decodeURIComponent(channelActionPostMatch[2]), req);
+    return handlers.postChannelAction(decodeURIComponent(channelActionPostMatch[1]!), decodeURIComponent(channelActionPostMatch[2]!), req);
   }
   const channelSurfaceAccountsMatch = pathname.match(/^\/api\/channels\/accounts\/([^/]+)$/);
   if (channelSurfaceAccountsMatch && method === 'GET') {
-    return handlers.getChannelSurfaceAccounts(decodeURIComponent(channelSurfaceAccountsMatch[1]));
+    return handlers.getChannelSurfaceAccounts(decodeURIComponent(channelSurfaceAccountsMatch[1]!));
   }
   const channelSurfaceCapabilitiesMatch = pathname.match(/^\/api\/channels\/capabilities\/([^/]+)$/);
   if (channelSurfaceCapabilitiesMatch && method === 'GET') {
-    return handlers.getChannelSurfaceCapabilities(decodeURIComponent(channelSurfaceCapabilitiesMatch[1]));
+    return handlers.getChannelSurfaceCapabilities(decodeURIComponent(channelSurfaceCapabilitiesMatch[1]!));
   }
   const channelSurfaceToolsMatch = pathname.match(/^\/api\/channels\/tools\/([^/]+)$/);
   if (channelSurfaceToolsMatch && method === 'GET') {
-    return handlers.getChannelSurfaceTools(decodeURIComponent(channelSurfaceToolsMatch[1]));
+    return handlers.getChannelSurfaceTools(decodeURIComponent(channelSurfaceToolsMatch[1]!));
   }
   const channelSurfaceAgentToolsMatch = pathname.match(/^\/api\/channels\/agent-tools\/([^/]+)$/);
   if (channelSurfaceAgentToolsMatch && method === 'GET') {
-    return handlers.getChannelSurfaceAgentTools(decodeURIComponent(channelSurfaceAgentToolsMatch[1]));
+    return handlers.getChannelSurfaceAgentTools(decodeURIComponent(channelSurfaceAgentToolsMatch[1]!));
   }
   const channelToolPostMatch = pathname.match(/^\/api\/channels\/tools\/([^/]+)\/([^/]+)$/);
   if (channelToolPostMatch && method === 'POST') {
-    return handlers.postChannelTool(decodeURIComponent(channelToolPostMatch[1]), decodeURIComponent(channelToolPostMatch[2]), req);
+    return handlers.postChannelTool(decodeURIComponent(channelToolPostMatch[1]!), decodeURIComponent(channelToolPostMatch[2]!), req);
   }
   const channelSurfaceActionsMatch = pathname.match(/^\/api\/channels\/actions\/([^/]+)$/);
   if (channelSurfaceActionsMatch && method === 'GET') {
-    return handlers.getChannelSurfaceActions(decodeURIComponent(channelSurfaceActionsMatch[1]));
+    return handlers.getChannelSurfaceActions(decodeURIComponent(channelSurfaceActionsMatch[1]!));
   }
   if (pathname === '/api/channels/policies' && method === 'GET') return handlers.getChannelPolicies();
   const channelPolicyMatch = pathname.match(/^\/api\/channels\/policies\/([^/]+)$/);
-  if (channelPolicyMatch && method === 'POST') return handlers.postChannelPolicy(channelPolicyMatch[1], req);
-  if (channelPolicyMatch && method === 'PATCH') return handlers.patchChannelPolicy(channelPolicyMatch[1], req);
+  if (channelPolicyMatch && method === 'POST') return handlers.postChannelPolicy(channelPolicyMatch[1]!, req);
+  if (channelPolicyMatch && method === 'PATCH') return handlers.patchChannelPolicy(channelPolicyMatch[1]!, req);
   if (pathname === '/api/channels/policies/audit' && method === 'GET') {
     const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), 100);
     return handlers.getChannelPolicyAudit(limit);
   }
   if (pathname === '/api/channels/status' && method === 'GET') return handlers.getChannelStatus();
   const channelDirectoryMatch = pathname.match(/^\/api\/channels\/directory\/([^/]+)$/);
-  if (channelDirectoryMatch && method === 'GET') return handlers.getChannelDirectory(channelDirectoryMatch[1], url);
+  if (channelDirectoryMatch && method === 'GET') return handlers.getChannelDirectory(channelDirectoryMatch[1]!, url);
   if (pathname === '/api/watchers' && method === 'GET') return handlers.getWatchers();
   if (pathname === '/api/watchers' && method === 'POST') return handlers.postWatcher(req);
   const watcherUpdateMatch = pathname.match(/^\/api\/watchers\/([^/]+)$/);
-  if (watcherUpdateMatch && method === 'PATCH') return handlers.patchWatcher(watcherUpdateMatch[1], req);
-  if (watcherUpdateMatch && method === 'DELETE') return handlers.deleteWatcher(watcherUpdateMatch[1], req);
+  if (watcherUpdateMatch && method === 'PATCH') return handlers.patchWatcher(watcherUpdateMatch[1]!, req);
+  if (watcherUpdateMatch && method === 'DELETE') return handlers.deleteWatcher(watcherUpdateMatch[1]!, req);
   const watcherActionMatch = pathname.match(/^\/api\/watchers\/([^/]+)\/(start|stop|run)$/);
-  if (watcherActionMatch && method === 'POST') return handlers.watcherAction(watcherActionMatch[1], watcherActionMatch[2] as 'start' | 'stop' | 'run', req);
+  if (watcherActionMatch && method === 'POST') return handlers.watcherAction(watcherActionMatch[1]!, watcherActionMatch[2]! as 'start' | 'stop' | 'run', req);
 
   if (pathname === '/api/service/status' && method === 'GET') return handlers.getServiceStatus();
   if (pathname === '/api/service/install' && method === 'POST') return handlers.installService(req);
@@ -187,13 +187,13 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/routes/bindings' && method === 'GET') return handlers.getRouteBindings(req);
   if (pathname === '/api/routes/bindings' && method === 'POST') return handlers.postRouteBinding(req);
   const routeBindingMatch = pathname.match(/^\/api\/routes\/bindings\/([^/]+)$/);
-  if (routeBindingMatch && method === 'PATCH') return handlers.patchRouteBinding(routeBindingMatch[1], req);
-  if (routeBindingMatch && method === 'DELETE') return handlers.deleteRouteBinding(routeBindingMatch[1], req);
+  if (routeBindingMatch && method === 'PATCH') return handlers.patchRouteBinding(routeBindingMatch[1]!, req);
+  if (routeBindingMatch && method === 'DELETE') return handlers.deleteRouteBinding(routeBindingMatch[1]!, req);
 
   if (pathname === '/api/approvals' && method === 'GET') return handlers.getApprovals();
   const approvalActionMatch = pathname.match(/^\/api\/approvals\/([^/]+)\/(claim|approve|deny|cancel)$/);
   if (approvalActionMatch && method === 'POST') {
-    return handlers.approvalAction(approvalActionMatch[1], approvalActionMatch[2] as 'claim' | 'approve' | 'deny' | 'cancel', req);
+    return handlers.approvalAction(approvalActionMatch[1]!, approvalActionMatch[2]! as 'claim' | 'approve' | 'deny' | 'cancel', req);
   }
 
   if (pathname === '/api/remote/node-host/contract' && method === 'GET') {
@@ -203,9 +203,9 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/accounts' && method === 'GET') return handlers.getAccounts();
   if (pathname === '/api/providers' && method === 'GET') return handlers.getProviders();
   const providerUsageMatch = pathname.match(/^\/api\/providers\/([^/]+)\/usage$/);
-  if (providerUsageMatch && method === 'GET') return handlers.getProviderUsage(decodeURIComponent(providerUsageMatch[1]));
+  if (providerUsageMatch && method === 'GET') return handlers.getProviderUsage(decodeURIComponent(providerUsageMatch[1]!));
   const providerMatch = pathname.match(/^\/api\/providers\/([^/]+)$/);
-  if (providerMatch && method === 'GET') return handlers.getProvider(decodeURIComponent(providerMatch[1]));
+  if (providerMatch && method === 'GET') return handlers.getProvider(decodeURIComponent(providerMatch[1]!));
   if (pathname === '/api/settings' && method === 'GET') return handlers.getSettings();
   if (pathname === '/api/security-settings' && method === 'GET') return handlers.getSecuritySettings();
   if (pathname === '/api/continuity' && method === 'GET') return handlers.getContinuity();
@@ -252,36 +252,36 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/knowledge/projections/render' && method === 'POST') return handlers.postKnowledgeRenderProjection(req);
   if (pathname === '/api/knowledge/projections/materialize' && method === 'POST') return handlers.postKnowledgeMaterializeProjection(req);
   const knowledgeConnectorDoctorMatch = pathname.match(/^\/api\/knowledge\/connectors\/([^/]+)\/doctor$/);
-  if (knowledgeConnectorDoctorMatch && method === 'GET') return handlers.getKnowledgeConnectorDoctor(decodeURIComponent(knowledgeConnectorDoctorMatch[1]));
+  if (knowledgeConnectorDoctorMatch && method === 'GET') return handlers.getKnowledgeConnectorDoctor(decodeURIComponent(knowledgeConnectorDoctorMatch[1]!));
   const knowledgeConnectorMatch = pathname.match(/^\/api\/knowledge\/connectors\/([^/]+)$/);
-  if (knowledgeConnectorMatch && method === 'GET') return handlers.getKnowledgeConnector(decodeURIComponent(knowledgeConnectorMatch[1]));
+  if (knowledgeConnectorMatch && method === 'GET') return handlers.getKnowledgeConnector(decodeURIComponent(knowledgeConnectorMatch[1]!));
   const knowledgeExtractionMatch = pathname.match(/^\/api\/knowledge\/extractions\/([^/]+)$/);
-  if (knowledgeExtractionMatch && method === 'GET') return handlers.getKnowledgeExtraction(decodeURIComponent(knowledgeExtractionMatch[1]));
+  if (knowledgeExtractionMatch && method === 'GET') return handlers.getKnowledgeExtraction(decodeURIComponent(knowledgeExtractionMatch[1]!));
   const knowledgeIssueReviewMatch = pathname.match(/^\/api\/knowledge\/issues\/([^/]+)\/review$/);
-  if (knowledgeIssueReviewMatch && method === 'POST') return handlers.postKnowledgeReviewIssue(decodeURIComponent(knowledgeIssueReviewMatch[1]), req);
+  if (knowledgeIssueReviewMatch && method === 'POST') return handlers.postKnowledgeReviewIssue(decodeURIComponent(knowledgeIssueReviewMatch[1]!), req);
   const knowledgeCandidateDecideMatch = pathname.match(/^\/api\/knowledge\/candidates\/([^/]+)\/decide$/);
-  if (knowledgeCandidateDecideMatch && method === 'POST') return handlers.postKnowledgeDecideCandidate(decodeURIComponent(knowledgeCandidateDecideMatch[1]), req);
+  if (knowledgeCandidateDecideMatch && method === 'POST') return handlers.postKnowledgeDecideCandidate(decodeURIComponent(knowledgeCandidateDecideMatch[1]!), req);
   const knowledgeCandidateMatch = pathname.match(/^\/api\/knowledge\/candidates\/([^/]+)$/);
-  if (knowledgeCandidateMatch && method === 'GET') return handlers.getKnowledgeCandidate(decodeURIComponent(knowledgeCandidateMatch[1]));
+  if (knowledgeCandidateMatch && method === 'GET') return handlers.getKnowledgeCandidate(decodeURIComponent(knowledgeCandidateMatch[1]!));
   const knowledgeReportMatch = pathname.match(/^\/api\/knowledge\/reports\/([^/]+)$/);
-  if (knowledgeReportMatch && method === 'GET') return handlers.getKnowledgeReport(decodeURIComponent(knowledgeReportMatch[1]));
+  if (knowledgeReportMatch && method === 'GET') return handlers.getKnowledgeReport(decodeURIComponent(knowledgeReportMatch[1]!));
   const knowledgeSourceExtractionMatch = pathname.match(/^\/api\/knowledge\/sources\/([^/]+)\/extraction$/);
-  if (knowledgeSourceExtractionMatch && method === 'GET') return handlers.getKnowledgeSourceExtraction(decodeURIComponent(knowledgeSourceExtractionMatch[1]));
+  if (knowledgeSourceExtractionMatch && method === 'GET') return handlers.getKnowledgeSourceExtraction(decodeURIComponent(knowledgeSourceExtractionMatch[1]!));
   const knowledgeJobRunMatch = pathname.match(/^\/api\/knowledge\/jobs\/([^/]+)\/run$/);
-  if (knowledgeJobRunMatch && method === 'POST') return handlers.postKnowledgeRunJob(decodeURIComponent(knowledgeJobRunMatch[1]), req);
+  if (knowledgeJobRunMatch && method === 'POST') return handlers.postKnowledgeRunJob(decodeURIComponent(knowledgeJobRunMatch[1]!), req);
   const knowledgeJobMatch = pathname.match(/^\/api\/knowledge\/jobs\/([^/]+)$/);
-  if (knowledgeJobMatch && method === 'GET') return handlers.getKnowledgeJob(decodeURIComponent(knowledgeJobMatch[1]));
+  if (knowledgeJobMatch && method === 'GET') return handlers.getKnowledgeJob(decodeURIComponent(knowledgeJobMatch[1]!));
   const knowledgeRefinementTaskCancelMatch = pathname.match(/^\/api\/knowledge\/refinement\/tasks\/([^/]+)\/cancel$/);
-  if (knowledgeRefinementTaskCancelMatch && method === 'POST') return handlers.postKnowledgeCancelRefinementTask(decodeURIComponent(knowledgeRefinementTaskCancelMatch[1]), req);
+  if (knowledgeRefinementTaskCancelMatch && method === 'POST') return handlers.postKnowledgeCancelRefinementTask(decodeURIComponent(knowledgeRefinementTaskCancelMatch[1]!), req);
   const knowledgeRefinementTaskMatch = pathname.match(/^\/api\/knowledge\/refinement\/tasks\/([^/]+)$/);
-  if (knowledgeRefinementTaskMatch && method === 'GET') return handlers.getKnowledgeRefinementTask(decodeURIComponent(knowledgeRefinementTaskMatch[1]));
+  if (knowledgeRefinementTaskMatch && method === 'GET') return handlers.getKnowledgeRefinementTask(decodeURIComponent(knowledgeRefinementTaskMatch[1]!));
   const knowledgeScheduleEnabledMatch = pathname.match(/^\/api\/knowledge\/schedules\/([^/]+)\/enabled$/);
-  if (knowledgeScheduleEnabledMatch && method === 'POST') return handlers.postKnowledgeSetScheduleEnabled(decodeURIComponent(knowledgeScheduleEnabledMatch[1]), req);
+  if (knowledgeScheduleEnabledMatch && method === 'POST') return handlers.postKnowledgeSetScheduleEnabled(decodeURIComponent(knowledgeScheduleEnabledMatch[1]!), req);
   const knowledgeScheduleMatch = pathname.match(/^\/api\/knowledge\/schedules\/([^/]+)$/);
-  if (knowledgeScheduleMatch && method === 'GET') return handlers.getKnowledgeSchedule(decodeURIComponent(knowledgeScheduleMatch[1]));
-  if (knowledgeScheduleMatch && method === 'DELETE') return handlers.deleteKnowledgeSchedule(decodeURIComponent(knowledgeScheduleMatch[1]), req);
+  if (knowledgeScheduleMatch && method === 'GET') return handlers.getKnowledgeSchedule(decodeURIComponent(knowledgeScheduleMatch[1]!));
+  if (knowledgeScheduleMatch && method === 'DELETE') return handlers.deleteKnowledgeSchedule(decodeURIComponent(knowledgeScheduleMatch[1]!), req);
   const knowledgeItemMatch = pathname.match(/^\/api\/knowledge\/items\/([^/]+)$/);
-  if (knowledgeItemMatch && method === 'GET') return handlers.getKnowledgeItem(decodeURIComponent(knowledgeItemMatch[1]));
+  if (knowledgeItemMatch && method === 'GET') return handlers.getKnowledgeItem(decodeURIComponent(knowledgeItemMatch[1]!));
 
   if (pathname === '/api/voice' && method === 'GET') return handlers.getVoiceStatus();
   if (pathname === '/api/voice/providers' && method === 'GET') return handlers.getVoiceProviders();
@@ -297,9 +297,9 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/artifacts' && method === 'GET') return handlers.getArtifacts();
   if (pathname === '/api/artifacts' && method === 'POST') return handlers.postArtifact(req);
   const artifactContentMatch = pathname.match(/^\/api\/artifacts\/([^/]+)\/content$/);
-  if (artifactContentMatch && method === 'GET') return handlers.getArtifactContent(decodeURIComponent(artifactContentMatch[1]), req);
+  if (artifactContentMatch && method === 'GET') return handlers.getArtifactContent(decodeURIComponent(artifactContentMatch[1]!), req);
   const artifactMatch = pathname.match(/^\/api\/artifacts\/([^/]+)$/);
-  if (artifactMatch && method === 'GET') return handlers.getArtifact(decodeURIComponent(artifactMatch[1]));
+  if (artifactMatch && method === 'GET') return handlers.getArtifact(decodeURIComponent(artifactMatch[1]!));
 
   if (pathname === '/api/media/providers' && method === 'GET') return handlers.getMediaProviders();
   if (pathname === '/api/media/analyze' && method === 'POST') return handlers.postMediaAnalyze(req);
@@ -315,11 +315,11 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/local-auth' && method === 'GET') return handlers.getLocalAuth(req);
   if (pathname === '/api/local-auth/users' && method === 'POST') return handlers.postLocalAuthUser(req);
   const userMatch = pathname.match(/^\/api\/local-auth\/users\/([^/]+)$/);
-  if (userMatch && method === 'DELETE') return handlers.deleteLocalAuthUser(decodeURIComponent(userMatch[1]), req);
+  if (userMatch && method === 'DELETE') return handlers.deleteLocalAuthUser(decodeURIComponent(userMatch[1]!), req);
   const passwordMatch = pathname.match(/^\/api\/local-auth\/users\/([^/]+)\/password$/);
-  if (passwordMatch && method === 'POST') return handlers.postLocalAuthPassword(decodeURIComponent(passwordMatch[1]), req);
+  if (passwordMatch && method === 'POST') return handlers.postLocalAuthPassword(decodeURIComponent(passwordMatch[1]!), req);
   const sessionMatch = pathname.match(/^\/api\/local-auth\/sessions\/([^/]+)$/);
-  if (sessionMatch && method === 'DELETE') return handlers.deleteLocalAuthSession(decodeURIComponent(sessionMatch[1]), req);
+  if (sessionMatch && method === 'DELETE') return handlers.deleteLocalAuthSession(decodeURIComponent(sessionMatch[1]!), req);
   if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile(req);
 
   if (pathname === '/api/runtime/scheduler' && method === 'GET') return handlers.getSchedulerCapacity(req);

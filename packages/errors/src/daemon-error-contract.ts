@@ -46,17 +46,17 @@ export type DaemonErrorSource =
 
 export interface StructuredDaemonErrorBody {
   readonly error: string;
-  readonly hint?: string;
-  readonly code?: string;
-  readonly category?: DaemonErrorCategory;
-  readonly source?: DaemonErrorSource;
-  readonly recoverable?: boolean;
-  readonly status?: number;
-  readonly provider?: string;
-  readonly operation?: string;
-  readonly phase?: string;
-  readonly requestId?: string;
-  readonly providerCode?: string;
-  readonly providerType?: string;
-  readonly retryAfterMs?: number;
+  readonly hint?: string | undefined;
+  readonly code?: string | undefined;
+  readonly category?: DaemonErrorCategory | undefined;
+  readonly source?: DaemonErrorSource | undefined;
+  readonly recoverable?: boolean | undefined;
+  readonly status?: number | undefined;
+  readonly provider?: string | undefined;
+  readonly operation?: string | undefined;
+  readonly phase?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly providerCode?: string | undefined;
+  readonly providerType?: string | undefined;
+  readonly retryAfterMs?: number | undefined;
 }

@@ -14,10 +14,10 @@ export type ModelTier = 'free' | 'standard' | 'premium' | 'subscription';
 
 /** Per-model token limits for output, tool results, tool calls, and reasoning. */
 export interface TokenLimits {
-  maxOutputTokens?: number;
-  maxToolResultTokens?: number;
-  maxToolCalls?: number;
-  maxReasoningTokens?: number;
+  maxOutputTokens?: number | undefined;
+  maxToolResultTokens?: number | undefined;
+  maxToolCalls?: number | undefined;
+  maxReasoningTokens?: number | undefined;
 }
 
 /** Provenance of a resolved context window value. */
@@ -38,18 +38,18 @@ export interface ModelDefinition {
     multimodal: boolean;
   };
   contextWindow: number;
-  contextWindowProvenance?: ContextWindowProvenance;
+  contextWindowProvenance?: ContextWindowProvenance | undefined;
   selectable: boolean;
-  reasoningEffort?: string[];
-  tier?: ModelTier;
-  tokenLimits?: TokenLimits;
+  reasoningEffort?: string[] | undefined;
+  tier?: ModelTier | undefined;
+  tokenLimits?: TokenLimits | undefined;
 }
 
 export interface RuntimeProviderRegistration {
   readonly provider: LLMProvider;
-  readonly models?: readonly ModelDefinition[];
-  readonly suppressCatalogModels?: readonly string[];
-  readonly replace?: boolean;
+  readonly models?: readonly ModelDefinition[] | undefined;
+  readonly suppressCatalogModels?: readonly string[] | undefined;
+  readonly replace?: boolean | undefined;
 }
 
 export interface ProviderRegistryOptions {
@@ -61,7 +61,7 @@ export interface ProviderRegistryOptions {
   readonly cacheHitTracker: CacheHitTracker;
   readonly favoritesStore: Pick<FavoritesStore, 'load'>;
   readonly benchmarkStore: Pick<BenchmarkStore, 'getBenchmarks' | 'getTopBenchmarkModelIds'>;
-  readonly modelLimitsService?: ModelLimitsService;
-  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
-  readonly runtimeBus?: RuntimeEventBus | null;
+  readonly modelLimitsService?: ModelLimitsService | undefined;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+  readonly runtimeBus?: RuntimeEventBus | null | undefined;
 }

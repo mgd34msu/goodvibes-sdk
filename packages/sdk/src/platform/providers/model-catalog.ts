@@ -8,7 +8,7 @@ export interface CatalogProvider {
   name: string;
   envVars: string[];
   baseUrl: string;
-  requiresKey?: boolean;
+  requiresKey?: boolean | undefined;
 }
 
 export interface CatalogModelPricing {
@@ -19,15 +19,15 @@ export interface CatalogModelPricing {
 export interface CatalogModel {
   id: string;
   name: string;
-  family?: string;
+  family?: string | undefined;
   provider: string;
   providerId: string;
   providerEnvVars: string[];
   pricing: CatalogModelPricing;
   tier: 'free' | 'paid' | 'subscription';
-  contextWindow?: number;
-  maxOutputTokens?: number;
-  reasoning?: boolean;
+  contextWindow?: number | undefined;
+  maxOutputTokens?: number | undefined;
+  reasoning?: boolean | undefined;
 }
 
 export interface PricingCatalog {
@@ -82,7 +82,7 @@ export function normalizeModelId(modelId: string): string {
 export function hasKeyForProvider(provider: CatalogProvider): boolean {
   if (provider.requiresKey === false || provider.envVars.length === 0) return true;
   return provider.envVars.some((envVar) => {
-    const value = process.env[envVar];
+    const value = process.env[envVar]!;
     return typeof value === 'string' && value.length > 0;
   });
 }

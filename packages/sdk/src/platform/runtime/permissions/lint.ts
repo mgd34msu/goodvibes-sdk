@@ -4,7 +4,7 @@ export type PolicyLintSeverity = 'info' | 'warn' | 'error';
 
 export interface PolicyLintFinding {
   severity: PolicyLintSeverity;
-  ruleId?: string;
+  ruleId?: string | undefined;
   message: string;
 }
 

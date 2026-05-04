@@ -3,13 +3,13 @@ import type { ProviderAuthRouteDescriptor, ProviderRuntimeMetadataDeps } from '.
 
 export interface StandardProviderAuthOptions {
   readonly providerId: string;
-  readonly apiKeyEnvVars?: readonly string[];
-  readonly secretKeys?: readonly string[];
-  readonly serviceNames?: readonly string[];
-  readonly subscriptionProviderId?: string;
-  readonly allowAnonymous?: boolean;
-  readonly anonymousConfigured?: boolean;
-  readonly anonymousDetail?: string;
+  readonly apiKeyEnvVars?: readonly string[] | undefined;
+  readonly secretKeys?: readonly string[] | undefined;
+  readonly serviceNames?: readonly string[] | undefined;
+  readonly subscriptionProviderId?: string | undefined;
+  readonly allowAnonymous?: boolean | undefined;
+  readonly anonymousConfigured?: boolean | undefined;
+  readonly anonymousDetail?: string | undefined;
 }
 
 function determineFreshness(expiresAt?: number): 'healthy' | 'expiring' | 'expired' {
@@ -29,7 +29,7 @@ export async function buildStandardProviderAuthRoutes(
   const hasSecretRef = matchingSecretRecords.some((record) => Boolean(record.refSource));
   const hasStoredDirectSecret = matchingSecretRecords.some((record) => !record.refSource);
   const hasEnv = (options.apiKeyEnvVars ?? []).some((envVar) => {
-    const value = process.env[envVar];
+    const value = process.env[envVar]!;
     return typeof value === 'string' && value.length > 0;
   });
   const builtinSubscriptions = new Set(listBuiltinSubscriptionProviders().map((entry) => entry.provider));

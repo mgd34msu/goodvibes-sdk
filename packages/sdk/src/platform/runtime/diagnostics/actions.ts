@@ -71,17 +71,17 @@ export interface JumpToToolCallPayload {
 
 export interface RetryTaskPayload {
   readonly taskId: string;
-  readonly note?: string;
+  readonly note?: string | undefined;
 }
 
 export interface CancelTaskPayload {
   readonly taskId: string;
-  readonly note?: string;
+  readonly note?: string | undefined;
 }
 
 export interface CancelAgentPayload {
   readonly agentId: string;
-  readonly note?: string;
+  readonly note?: string | undefined;
 }
 
 export type DiagnosticActionPayload =
@@ -220,7 +220,7 @@ export interface ActionResult {
    * Whether the failure was due to a permission check (as opposed to a
    * runtime error in the handler).
    */
-  readonly permissionDenied?: boolean;
+  readonly permissionDenied?: boolean | undefined;
 }
 
 // ── Dispatch context ──────────────────────────────────────────────────────────
@@ -257,27 +257,27 @@ export interface DiagnosticActionDispatcherConfig {
    * Replay engine for 'load-replay' actions.
    * When absent, load-replay actions return an error result.
    */
-  readonly replayEngine?: DeterministicReplayEngine;
+  readonly replayEngine?: DeterministicReplayEngine | undefined;
   /**
    * Permission simulator for 'run-policy-simulation' actions.
    * When absent, policy simulation actions return an error result.
    */
-  readonly simulator?: PermissionSimulator;
+  readonly simulator?: PermissionSimulator | undefined;
   /**
    * Ops control plane for 'retry-task', 'cancel-task', 'cancel-agent'.
    * When absent, those actions return an error result.
    */
-  readonly controlPlane?: OpsControlPlane;
+  readonly controlPlane?: OpsControlPlane | undefined;
   /**
    * Navigation callback for 'jump-to-*' actions.
    * When absent, jump actions return a success result with a warning note.
    */
-  readonly navigateTo?: NavigateToEntryCallback;
+  readonly navigateTo?: NavigateToEntryCallback | undefined;
   /**
    * Permission checker invoked before dispatching each action.
    * Defaults to: read=allow, operator=allow, admin=deny.
    */
-  readonly checkPermission?: PermissionChecker;
+  readonly checkPermission?: PermissionChecker | undefined;
 }
 
 // ── Default permission checker ────────────────────────────────────────────────
@@ -726,7 +726,7 @@ export function diagnosticFromAgentFailure(opts: {
 export function diagnosticFromToolContractViolation(opts: {
   toolName: string;
   message: string;
-  callId?: string;
+  callId?: string | undefined;
   sessionId: string;
   traceId: string;
   ts: number;

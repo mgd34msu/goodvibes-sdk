@@ -44,19 +44,19 @@ export interface ProviderCapability {
  */
 export interface RequestProfile {
   /** Whether the request requires streaming output. */
-  requiresStreaming?: boolean;
+  requiresStreaming?: boolean | undefined;
   /** Whether the request submits tool definitions. */
-  requiresToolCalling?: boolean;
+  requiresToolCalling?: boolean | undefined;
   /** Whether the request expects parallel tool execution. */
-  requiresParallelTools?: boolean;
+  requiresParallelTools?: boolean | undefined;
   /** Whether the request expects a JSON-mode / structured output response. */
-  requiresJsonMode?: boolean;
+  requiresJsonMode?: boolean | undefined;
   /** Whether the request tunes reasoning effort (budget, effort label). */
-  requiresReasoningControls?: boolean;
+  requiresReasoningControls?: boolean | undefined;
   /** Minimum context window size the request needs (in tokens). */
-  minContextTokens?: number;
+  minContextTokens?: number | undefined;
   /** Minimum output capacity the request needs (in tokens). */
-  minOutputTokens?: number;
+  minOutputTokens?: number | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -502,7 +502,7 @@ export class ProviderCapabilityRegistry {
     modelId: string,
     provider?: Pick<LLMProvider, 'capabilities'>,
   ): ProviderCapability {
-    const providerDefaults = PROVIDER_DEFAULTS[providerId] ?? {};
+    const providerDefaults = PROVIDER_DEFAULTS[providerId]! ?? {};
     const selfDeclared: Partial<ProviderCapability> = provider?.capabilities ?? {};
     const modelOverride: Partial<ProviderCapability> = MODEL_OVERRIDES[modelId] ?? {};
 

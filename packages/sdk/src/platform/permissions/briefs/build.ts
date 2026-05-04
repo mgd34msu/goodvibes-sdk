@@ -43,7 +43,7 @@ function titleForRisk(decisionModeLabel: string): string {
     'config-mutation': 'Configuration Mutation Approval',
     'mcp-escalation': 'MCP Trust Escalation Approval',
   };
-  const mapped = TITLES[decisionModeLabel];
+  const mapped = TITLES[decisionModeLabel]!;
   if (mapped) return mapped;
   const headline = decisionModeLabel.replace(/-/g, ' ');
   return headline.replace(/\b\w/g, (char) => char.toUpperCase()) + ' Approval';

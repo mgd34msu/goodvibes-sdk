@@ -27,7 +27,7 @@ export interface ValidatorResult {
  * Run a single validator via Bun.spawn. Times out after 30 seconds.
  */
 export async function runValidator(name: ValidatorName, cwd: string): Promise<ValidatorResult> {
-  const cmd = VALIDATOR_COMMANDS[name];
+  const cmd = VALIDATOR_COMMANDS[name]!;
   const TIMEOUT_MS = 30_000;
 
   const proc = Bun.spawn(cmd, {

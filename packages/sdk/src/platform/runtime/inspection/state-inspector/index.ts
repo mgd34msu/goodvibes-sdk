@@ -61,7 +61,7 @@ import type { StateInspectorConfig } from './types.js';
  */
 export interface CreateStateInspectorOptions extends StateInspectorConfig {
   /** Domain adapters to register at construction time. */
-  readonly domains?: InspectableDomain[];
+  readonly domains?: InspectableDomain[] | undefined;
 }
 
 /**

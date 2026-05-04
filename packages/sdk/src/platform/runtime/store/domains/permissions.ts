@@ -71,11 +71,11 @@ export interface PermissionDecision {
   /** Whether the decision was persisted to session approvals. */
   persisted: boolean;
   /** Semantic classification surfaced with the decision. */
-  classification?: string;
+  classification?: string | undefined;
   /** Risk level surfaced with the decision. */
-  riskLevel?: PermissionRiskLevel;
+  riskLevel?: PermissionRiskLevel | undefined;
   /** Human-readable summary for operators and the prompt UI. */
-  summary?: string;
+  summary?: string | undefined;
   /** Epoch ms when the decision was emitted. */
   decidedAt: number;
 }
@@ -98,7 +98,7 @@ export interface PermissionDomainState {
   /** Whether the user is currently being prompted for a permission decision. */
   awaitingDecision: boolean;
   /** Current state of the decision state machine (while a decision is in flight). */
-  decisionMachineState?: PermissionDecisionMachineState;
+  decisionMachineState?: PermissionDecisionMachineState | undefined;
 
   // ── Session approvals ──────────────────────────────────────────────────────
   /**
@@ -113,7 +113,7 @@ export interface PermissionDomainState {
 
   // ── Last decision ──────────────────────────────────────────────────────────
   /** The most recent permission decision record. */
-  lastDecision?: PermissionDecision;
+  lastDecision?: PermissionDecision | undefined;
 
   // ── Statistics ─────────────────────────────────────────────────────────────
   /** Total permission checks performed this session. */

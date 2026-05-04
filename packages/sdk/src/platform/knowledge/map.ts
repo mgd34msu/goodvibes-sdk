@@ -16,35 +16,35 @@ import type {
 } from './types.js';
 
 export interface KnowledgeMapRenderState {
-  readonly title?: string;
+  readonly title?: string | undefined;
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly nodes: readonly KnowledgeNodeRecord[];
   readonly edges: readonly KnowledgeEdgeRecord[];
-  readonly issues?: readonly KnowledgeIssueRecord[];
+  readonly issues?: readonly KnowledgeIssueRecord[] | undefined;
 }
 
 export interface KnowledgeMapRenderOptions {
-  readonly limit?: number;
-  readonly includeSources?: boolean;
-  readonly includeIssues?: boolean;
-  readonly includeGenerated?: boolean;
-  readonly title?: string;
-  readonly spaceId?: string;
-  readonly filters?: KnowledgeMapFilterInput;
-  readonly query?: string;
-  readonly recordKinds?: readonly ('source' | 'node' | 'issue')[];
-  readonly ids?: readonly string[];
-  readonly linkedToIds?: readonly string[];
-  readonly nodeKinds?: readonly string[];
-  readonly sourceTypes?: readonly string[];
-  readonly sourceStatuses?: readonly string[];
-  readonly nodeStatuses?: readonly string[];
-  readonly issueCodes?: readonly string[];
-  readonly issueStatuses?: readonly string[];
-  readonly issueSeverities?: readonly string[];
-  readonly edgeRelations?: readonly string[];
-  readonly tags?: readonly string[];
-  readonly minConfidence?: number;
+  readonly limit?: number | undefined;
+  readonly includeSources?: boolean | undefined;
+  readonly includeIssues?: boolean | undefined;
+  readonly includeGenerated?: boolean | undefined;
+  readonly title?: string | undefined;
+  readonly spaceId?: string | undefined;
+  readonly filters?: KnowledgeMapFilterInput | undefined;
+  readonly query?: string | undefined;
+  readonly recordKinds?: readonly ('source' | 'node' | 'issue')[] | undefined;
+  readonly ids?: readonly string[] | undefined;
+  readonly linkedToIds?: readonly string[] | undefined;
+  readonly nodeKinds?: readonly string[] | undefined;
+  readonly sourceTypes?: readonly string[] | undefined;
+  readonly sourceStatuses?: readonly string[] | undefined;
+  readonly nodeStatuses?: readonly string[] | undefined;
+  readonly issueCodes?: readonly string[] | undefined;
+  readonly issueStatuses?: readonly string[] | undefined;
+  readonly issueSeverities?: readonly string[] | undefined;
+  readonly edgeRelations?: readonly string[] | undefined;
+  readonly tags?: readonly string[] | undefined;
+  readonly minConfidence?: number | undefined;
 }
 
 export function renderKnowledgeMap(
@@ -284,7 +284,7 @@ function colorForKind(kind: string, recordKind: KnowledgeMapNode['recordKind']):
   return { fill: '#d7d0c2', stroke: '#70695e' };
 }
 
-function compareRecordTitle(left: { readonly title?: string; readonly id: string }, right: { readonly title?: string; readonly id: string }): number {
+function compareRecordTitle(left: { readonly title?: string | undefined; readonly id: string }, right: { readonly title?: string | undefined; readonly id: string }): number {
   return (left.title ?? left.id).localeCompare(right.title ?? right.id) || left.id.localeCompare(right.id);
 }
 

@@ -18,34 +18,34 @@ import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 import { isFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 
 export interface UpsertRouteBindingInput {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly kind: AutomationRouteBinding['kind'];
   readonly surfaceKind: AutomationRouteBinding['surfaceKind'];
   readonly surfaceId: string;
   readonly externalId: string;
-  readonly sessionPolicy?: AutomationRouteBinding['sessionPolicy'];
-  readonly threadPolicy?: AutomationRouteBinding['threadPolicy'];
-  readonly deliveryGuarantee?: AutomationRouteBinding['deliveryGuarantee'];
-  readonly threadId?: string;
-  readonly channelId?: string;
-  readonly sessionId?: string;
-  readonly jobId?: string;
-  readonly runId?: string;
-  readonly title?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly sessionPolicy?: AutomationRouteBinding['sessionPolicy'] | undefined;
+  readonly threadPolicy?: AutomationRouteBinding['threadPolicy'] | undefined;
+  readonly deliveryGuarantee?: AutomationRouteBinding['deliveryGuarantee'] | undefined;
+  readonly threadId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly jobId?: string | undefined;
+  readonly runId?: string | undefined;
+  readonly title?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface PatchRouteBindingInput {
-  readonly sessionPolicy?: AutomationRouteBinding['sessionPolicy'];
-  readonly threadPolicy?: AutomationRouteBinding['threadPolicy'];
-  readonly deliveryGuarantee?: AutomationRouteBinding['deliveryGuarantee'];
-  readonly threadId?: string;
-  readonly channelId?: string;
-  readonly sessionId?: string | null;
-  readonly jobId?: string | null;
-  readonly runId?: string | null;
-  readonly title?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly sessionPolicy?: AutomationRouteBinding['sessionPolicy'] | undefined;
+  readonly threadPolicy?: AutomationRouteBinding['threadPolicy'] | undefined;
+  readonly deliveryGuarantee?: AutomationRouteBinding['deliveryGuarantee'] | undefined;
+  readonly threadId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly sessionId?: string | null | undefined;
+  readonly jobId?: string | null | undefined;
+  readonly runId?: string | null | undefined;
+  readonly title?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 type RouteBindingFeatureFlags = Pick<FeatureFlagManager, 'isEnabled'>;
@@ -102,10 +102,10 @@ export class RouteBindingManager {
   private loaded = false;
 
   constructor(config: {
-    readonly store?: AutomationRouteStore;
-    readonly runtimeStore?: RuntimeStore;
-    readonly runtimeBus?: RuntimeEventBus;
-    readonly featureFlags?: RouteBindingFeatureFlags | null;
+    readonly store?: AutomationRouteStore | undefined;
+    readonly runtimeStore?: RuntimeStore | undefined;
+    readonly runtimeBus?: RuntimeEventBus | undefined;
+    readonly featureFlags?: RouteBindingFeatureFlags | null | undefined;
   } = {}) {
     this.store = config.store ?? new AutomationRouteStore();
     if (config.runtimeStore) this.runtimeDispatch = createDomainDispatch(config.runtimeStore);
@@ -123,8 +123,8 @@ export class RouteBindingManager {
   }
 
   attachRuntime(config: {
-    readonly runtimeStore?: RuntimeStore | null;
-    readonly runtimeBus?: RuntimeEventBus | null;
+    readonly runtimeStore?: RuntimeStore | null | undefined;
+    readonly runtimeBus?: RuntimeEventBus | null | undefined;
   }): void {
     if (config.runtimeStore) {
       this.runtimeDispatch = createDomainDispatch(config.runtimeStore);

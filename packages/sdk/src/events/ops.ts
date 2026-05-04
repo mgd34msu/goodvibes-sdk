@@ -45,35 +45,35 @@ export type OpsEvent =
       type: 'OPS_TASK_CANCELLED';
       taskId: string;
       reason: OpsInterventionReason;
-      note?: string;
+      note?: string | undefined;
     }
   /** Operator paused a running task (transitions to blocked). */
   | {
       type: 'OPS_TASK_PAUSED';
       taskId: string;
       reason: OpsInterventionReason;
-      note?: string;
+      note?: string | undefined;
     }
   /** Operator resumed a blocked task. */
   | {
       type: 'OPS_TASK_RESUMED';
       taskId: string;
       reason: OpsInterventionReason;
-      note?: string;
+      note?: string | undefined;
     }
   /** Operator retried a failed or cancelled task. */
   | {
       type: 'OPS_TASK_RETRIED';
       taskId: string;
       reason: OpsInterventionReason;
-      note?: string;
+      note?: string | undefined;
     }
   /** Operator cancelled a running agent. */
   | {
       type: 'OPS_AGENT_CANCELLED';
       agentId: string;
       reason: OpsInterventionReason;
-      note?: string;
+      note?: string | undefined;
     }
   /** Audit trail entry for any ops intervention. */
   | {
@@ -82,9 +82,9 @@ export type OpsEvent =
       targetId: string;
       targetKind: 'task' | 'agent';
       reason: OpsInterventionReason;
-      note?: string;
+      note?: string | undefined;
       outcome: 'success' | 'rejected' | 'error';
-      errorMessage?: string;
+      errorMessage?: string | undefined;
     }
   /** A subscriber threw an error during event dispatch; emitted after dedup threshold. */
   | {

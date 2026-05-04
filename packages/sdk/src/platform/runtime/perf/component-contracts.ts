@@ -170,7 +170,7 @@ export function buildContract(
   category: string,
   overrides?: Partial<Omit<ComponentResourceContract, 'componentId'>>,
 ): ComponentResourceContract {
-  const base = CATEGORY_CONTRACTS[category] ?? CATEGORY_CONTRACTS['default']!;
+  const base = CATEGORY_CONTRACTS[category]! ?? CATEGORY_CONTRACTS['default']!;
   return {
     componentId,
     ...base,

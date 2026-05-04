@@ -81,7 +81,7 @@ export function emitOrchestrationNodeCancelled(
 export function emitOrchestrationRecursionGuardTriggered(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { graphId: string; nodeId?: string; depth: number; activeAgents: number; reason: string },
+  data: { graphId: string; nodeId?: string | undefined; depth: number; activeAgents: number; reason: string },
 ): void {
   bus.emit('orchestration', createEventEnvelope('ORCHESTRATION_RECURSION_GUARD_TRIGGERED', { type: 'ORCHESTRATION_RECURSION_GUARD_TRIGGERED', ...data }, ctx));
 }

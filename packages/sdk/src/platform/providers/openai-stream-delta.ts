@@ -89,7 +89,7 @@ export interface OpenAIStreamTextDelta {
 }
 
 export interface OpenAIStreamTextDeltaOptions {
-  allowReasoning?: boolean;
+  allowReasoning?: boolean | undefined;
 }
 
 /**
@@ -103,9 +103,9 @@ export function extractOpenAIStreamTextDelta(
   const allowReasoning = options.allowReasoning ?? true;
   const raw = rawChunk as {
     choices?: Array<{
-      delta?: Record<string, unknown>;
+      delta?: Record<string, unknown> | undefined;
     }>;
-    reasoning_summary?: string;
+    reasoning_summary?: string | undefined;
   };
 
   const delta = raw.choices?.[0]?.delta ?? {};

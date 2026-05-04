@@ -3,9 +3,9 @@ import type { KnowledgeEdgeRecord, KnowledgeNodeRecord, KnowledgeSourceRecord } 
 export interface KnowledgeObjectProfilePolicy {
   readonly id: string;
   readonly subjectKinds: readonly KnowledgeNodeRecord['kind'][];
-  readonly intrinsicFactKinds?: readonly string[];
-  readonly suppressedGapKinds?: readonly string[];
-  readonly searchHints?: readonly string[];
+  readonly intrinsicFactKinds?: readonly string[] | undefined;
+  readonly suppressedGapKinds?: readonly string[] | undefined;
+  readonly searchHints?: readonly string[] | undefined;
 }
 
 export interface KnowledgePageTemplate {
@@ -46,8 +46,8 @@ export interface KnowledgeFacetProviderInput {
 
 export interface KnowledgeExtensionDefinition {
   readonly id: string;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
-  readonly pageTemplates?: readonly KnowledgePageTemplate[];
-  readonly relationshipResolvers?: readonly KnowledgeRelationshipResolver[];
-  readonly facetProviders?: readonly KnowledgeFacetProvider[];
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
+  readonly pageTemplates?: readonly KnowledgePageTemplate[] | undefined;
+  readonly relationshipResolvers?: readonly KnowledgeRelationshipResolver[] | undefined;
+  readonly facetProviders?: readonly KnowledgeFacetProvider[] | undefined;
 }

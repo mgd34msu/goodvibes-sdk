@@ -4,7 +4,7 @@ import { clampText, normalizeWhitespace, readString } from './utils.js';
 
 export interface AnswerFallbackEvidence {
   readonly title: string;
-  readonly excerpt?: string;
+  readonly excerpt?: string | undefined;
 }
 
 export interface FallbackAnswer {
@@ -17,7 +17,7 @@ export interface AnswerFallbackPolicy {
     readonly query: string;
     readonly sourceTitles: readonly string[];
   }) => FallbackAnswer;
-  readonly renderNoMatch?: (query: string) => FallbackAnswer;
+  readonly renderNoMatch?: ((query: string) => FallbackAnswer) | undefined | undefined;
 }
 
 const DEFAULT_ANSWER_FALLBACK_POLICY: Required<AnswerFallbackPolicy> = {
@@ -62,7 +62,7 @@ export function renderFallbackAnswer(
   if (sourceTitles.length > 0) {
     return renderInsufficientFacts({ query, sourceTitles });
   }
-  return renderNoMatch(query);
+  return renderNoMatch!(query);
 }
 
 function renderFactPhrase(fact: KnowledgeNodeRecord): string {

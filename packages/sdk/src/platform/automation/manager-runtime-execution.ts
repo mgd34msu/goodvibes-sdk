@@ -18,19 +18,19 @@ export interface AutomationManagerExecutionContext {
   readonly configManager: ConfigManager;
   readonly routeBindings: RouteBindingManager;
   readonly sessionBroker: SharedSessionBroker;
-  readonly defaultSurfaceKind?: AutomationSessionTarget['surfaceKind'];
-  readonly defaultSurfaceId?: string;
+  readonly defaultSurfaceKind?: AutomationSessionTarget['surfaceKind'] | undefined;
+  readonly defaultSurfaceId?: string | undefined;
   readonly spawnTask: (input: {
     readonly prompt: string;
-    readonly modelId?: string;
-    readonly modelProvider?: string;
-    readonly fallbackModels?: readonly string[];
-    readonly routing?: AutomationRun['execution']['routing'];
-    readonly executionIntent?: AutomationRun['execution']['executionIntent'];
-    readonly template?: string;
-    readonly reasoningEffort?: AutomationRun['execution']['reasoningEffort'];
-    readonly toolAllowlist?: readonly string[];
-    readonly context?: string;
+    readonly modelId?: string | undefined;
+    readonly modelProvider?: string | undefined;
+    readonly fallbackModels?: readonly string[] | undefined;
+    readonly routing?: AutomationRun['execution']['routing'] | undefined;
+    readonly executionIntent?: AutomationRun['execution']['executionIntent'] | undefined;
+    readonly template?: string | undefined;
+    readonly reasoningEffort?: AutomationRun['execution']['reasoningEffort'] | undefined;
+    readonly toolAllowlist?: readonly string[] | undefined;
+    readonly context?: string | undefined;
   }) => string;
   readonly saveJobs: () => Promise<void>;
   readonly saveRuns: () => Promise<void>;
@@ -54,12 +54,12 @@ export interface AutomationManagerExecutionContext {
 interface ResolvedAutomationExecution {
   readonly task: string;
   readonly continuationMode: AutomationRunContinuationMode;
-  readonly session?: SharedSessionRecord;
-  readonly route?: AutomationRouteBinding;
-  readonly agentId?: string;
+  readonly session?: SharedSessionRecord | undefined;
+  readonly route?: AutomationRouteBinding | undefined;
+  readonly agentId?: string | undefined;
   readonly target: AutomationSessionTarget;
   readonly executionIntent: AutomationRun['executionIntent'];
-  readonly updatedJob?: AutomationJob;
+  readonly updatedJob?: AutomationJob | undefined;
 }
 
 function requireHostSurfaceKind(
@@ -434,10 +434,10 @@ export async function resolveSharedSessionExecution(
   prompt: string,
   trigger: AutomationRunTrigger,
   input: {
-    readonly sessionId?: string;
-    readonly routeId?: string;
+    readonly sessionId?: string | undefined;
+    readonly routeId?: string | undefined;
     readonly target: AutomationSessionTarget;
-    readonly updatedJob?: AutomationJob;
+    readonly updatedJob?: AutomationJob | undefined;
   },
 ): Promise<ResolvedAutomationExecution> {
   const route = input.routeId

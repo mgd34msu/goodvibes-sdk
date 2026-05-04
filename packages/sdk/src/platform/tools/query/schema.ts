@@ -22,11 +22,11 @@ export const QUERY_TOOL_SCHEMA: ToolDefinition = {
 
 export interface QueryToolInput {
   readonly mode: 'ask' | 'list' | 'show' | 'answer' | 'close';
-  readonly view?: 'summary' | 'full';
-  readonly queryId?: string;
-  readonly prompt?: string;
-  readonly askedBy?: string;
-  readonly target?: string;
-  readonly answer?: string;
-  readonly resolution?: string;
+  readonly view?: 'summary' | 'full' | undefined;
+  readonly queryId?: string | undefined;
+  readonly prompt?: string | undefined;
+  readonly askedBy?: string | undefined;
+  readonly target?: string | undefined;
+  readonly answer?: string | undefined;
+  readonly resolution?: string | undefined;
 }

@@ -25,11 +25,11 @@ export type CommunicationEvent =
       scope: CommunicationScope;
       kind: CommunicationKind;
       content: string;
-      fromRole?: string;
-      toRole?: string;
-      cohort?: string;
-      wrfcId?: string;
-      parentAgentId?: string;
+      fromRole?: string | undefined;
+      toRole?: string | undefined;
+      cohort?: string | undefined;
+      wrfcId?: string | undefined;
+      parentAgentId?: string | undefined;
     }
   | {
       type: 'COMMUNICATION_DELIVERED';
@@ -47,11 +47,11 @@ export type CommunicationEvent =
       scope: CommunicationScope;
       kind: CommunicationKind;
       reason: string;
-      fromRole?: string;
-      toRole?: string;
-      cohort?: string;
-      wrfcId?: string;
-      parentAgentId?: string;
+      fromRole?: string | undefined;
+      toRole?: string | undefined;
+      cohort?: string | undefined;
+      wrfcId?: string | undefined;
+      parentAgentId?: string | undefined;
     };
 
 export type CommunicationEventType = CommunicationEvent['type'];

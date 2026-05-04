@@ -34,13 +34,13 @@ export interface AutoRefreshOptions {
    * Enable or disable silent token refresh. Default: `true`.
    * When `false`, 401 responses propagate immediately without retry.
    */
-  readonly autoRefresh?: boolean;
+  readonly autoRefresh?: boolean | undefined;
 
   /**
    * Milliseconds before token expiry to trigger a silent refresh.
    * Default: 60_000 (1 minute).
    */
-  readonly refreshLeewayMs?: number;
+  readonly refreshLeewayMs?: number | undefined;
 
   /**
    * Consumer-provided callback invoked to obtain a new token when the current
@@ -71,7 +71,7 @@ export interface AutoRefreshOptions {
    *   },
    * });
    */
-  readonly refresh?: () => Promise<{ token: string; expiresAt?: number }>;
+  readonly refresh?: (() => Promise<{ token: string; expiresAt?: number }>) | undefined;
 }
 
 export interface AutoRefreshCoordinatorOptions {
@@ -87,8 +87,8 @@ export interface AutoRefreshCoordinatorOptions {
    * no network call is made. Reactive 401 retry still re-reads the token
    * store in case an external party updated it.
    */
-  readonly refresh?: () => Promise<{ token: string; expiresAt?: number }>;
-  readonly observer?: SDKObserver;
+  readonly refresh?: (() => Promise<{ token: string; expiresAt?: number | undefined }>) | undefined;
+  readonly observer?: SDKObserver | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ export class AutoRefreshCoordinator {
   readonly #tokenStore: GoodVibesTokenStore;
   readonly #autoRefresh: boolean;
   readonly #refreshLeewayMs: number;
-  readonly #refresh: (() => Promise<{ token: string; expiresAt?: number }>) | undefined;
+  readonly #refresh: (() => Promise<{ token: string; expiresAt?: number | undefined }>) | undefined;
   readonly #observer: SDKObserver | undefined;
 
   /** Promise shared across all waiters during an active refresh. */
@@ -169,7 +169,7 @@ export class AutoRefreshCoordinator {
       try {
         const { token, expiresAt } = await this.#refresh();
         const store = this.#tokenStore as GoodVibesTokenStore & {
-          setTokenEntry?: (token: string | null, expiresAt?: number) => Promise<void>;
+          setTokenEntry?: ((token: string | null, expiresAt?: number) => Promise<void>) | undefined | undefined;
         };
         if (typeof store.setTokenEntry === 'function') {
           await store.setTokenEntry(token, expiresAt);
@@ -329,10 +329,10 @@ export class AutoRefreshCoordinator {
 function is401Error(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
   const e = error as {
-    status?: unknown;
-    transport?: { status?: unknown };
-    response?: { status?: unknown };
-    cause?: { response?: { status?: unknown } };
+    status?: unknown | undefined;
+    transport?: { status?: unknown } | undefined;
+    response?: { status?: unknown } | undefined;
+    cause?: { response?: { status?: unknown } } | undefined;
   };
   const status =
     e.status ??

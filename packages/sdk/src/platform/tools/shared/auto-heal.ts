@@ -25,7 +25,7 @@ import { summarizeError } from '../../utils/error-display.js';
 export interface HealResult {
   healed: boolean;
   content: string;
-  method?: 'formatter' | 'linter' | 'llm';
+  method?: 'formatter' | 'linter' | 'llm' | undefined;
 }
 
 /**

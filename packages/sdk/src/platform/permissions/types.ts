@@ -34,12 +34,12 @@ export interface PermissionRequestAnalysis {
   readonly riskLevel: PermissionRiskLevel;
   readonly summary: string;
   readonly reasons: readonly string[];
-  readonly target?: string;
-  readonly targetKind?: PermissionAnalysisTargetKind;
-  readonly surface?: PermissionAnalysisSurface;
-  readonly blastRadius?: PermissionBlastRadius;
-  readonly sideEffects?: readonly string[];
-  readonly host?: string;
+  readonly target?: string | undefined;
+  readonly targetKind?: PermissionAnalysisTargetKind | undefined;
+  readonly surface?: PermissionAnalysisSurface | undefined;
+  readonly blastRadius?: PermissionBlastRadius | undefined;
+  readonly sideEffects?: readonly string[] | undefined;
+  readonly host?: string | undefined;
 }
 
 export interface PermissionCheckResult {

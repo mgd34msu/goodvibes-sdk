@@ -158,11 +158,11 @@ export function listKnowledgeRefinementTasks(
   view: KnowledgeStoreReadView,
   limit = 100,
   input: {
-    readonly spaceId?: string;
-    readonly state?: string;
-    readonly subjectKind?: string;
-    readonly subjectId?: string;
-    readonly gapId?: string;
+    readonly spaceId?: string | undefined;
+    readonly state?: string | undefined;
+    readonly subjectKind?: string | undefined;
+    readonly subjectId?: string | undefined;
+    readonly gapId?: string | undefined;
   } = {},
 ): KnowledgeRefinementTaskRecord[] {
   return [...view.refinementTasks.values()]
@@ -181,9 +181,9 @@ export function listKnowledgeUsageRecords(
   view: KnowledgeStoreReadView,
   limit = 100,
   input: {
-    readonly targetKind?: KnowledgeUsageRecord['targetKind'];
-    readonly targetId?: string;
-    readonly usageKind?: KnowledgeUsageRecord['usageKind'];
+    readonly targetKind?: KnowledgeUsageRecord['targetKind'] | undefined;
+    readonly targetId?: string | undefined;
+    readonly usageKind?: KnowledgeUsageRecord['usageKind'] | undefined;
   } = {},
 ): KnowledgeUsageRecord[] {
   return [...view.usageRecords.values()]
@@ -200,9 +200,9 @@ export function listKnowledgeConsolidationCandidates(
   view: KnowledgeStoreReadView,
   limit = 100,
   input: {
-    readonly status?: KnowledgeConsolidationCandidateRecord['status'];
-    readonly subjectKind?: KnowledgeConsolidationCandidateRecord['subjectKind'];
-    readonly subjectId?: string;
+    readonly status?: KnowledgeConsolidationCandidateRecord['status'] | undefined;
+    readonly subjectKind?: KnowledgeConsolidationCandidateRecord['subjectKind'] | undefined;
+    readonly subjectId?: string | undefined;
   } = {},
 ): KnowledgeConsolidationCandidateRecord[] {
   return [...view.consolidationCandidates.values()]

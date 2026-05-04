@@ -29,10 +29,10 @@ export async function decideKnowledgeConsolidationCandidate(
   id: string,
   decision: 'accept' | 'reject' | 'supersede',
   input: {
-    readonly decidedBy?: string;
-    readonly memoryClass?: string;
-    readonly scope?: string;
-    readonly detail?: string;
+    readonly decidedBy?: string | undefined;
+    readonly memoryClass?: string | undefined;
+    readonly scope?: string | undefined;
+    readonly detail?: string | undefined;
   } = {},
 ): Promise<KnowledgeConsolidationCandidateRecord> {
   await context.store.init();
@@ -184,7 +184,7 @@ export async function refreshKnowledgeConsolidationCandidates(
 export async function runKnowledgeConsolidation(
   context: KnowledgeConsolidationContext,
   kind: Extract<KnowledgeConsolidationReportRecord['kind'], 'light-consolidation' | 'deep-consolidation'>,
-  input: { readonly limit?: number; readonly autoPromote: boolean },
+  input: { readonly limit?: number | undefined; readonly autoPromote: boolean },
 ): Promise<KnowledgeConsolidationReportRecord> {
   const limit = Math.max(1, input.limit ?? 24);
   const candidates = await refreshKnowledgeConsolidationCandidates(context, limit);

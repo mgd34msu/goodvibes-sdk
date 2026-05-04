@@ -32,29 +32,29 @@ export interface TransportContext {
   body: unknown;
   /** Per-request options forwarded from the caller. */
   options: {
-    readonly signal?: AbortSignal;
-    readonly retry?: unknown;
+    readonly signal?: AbortSignal | undefined;
+    readonly retry?: unknown | undefined;
     [key: string]: unknown;
   };
   /** AbortSignal for the request. Propagated from caller options. */
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   /** The HTTP response object — set after `next()` resolves successfully. */
-  response?: Response;
+  response?: Response | undefined;
   /** Round-trip duration in milliseconds — set after `next()` resolves. */
-  durationMs?: number;
+  durationMs?: number | undefined;
   /** Error thrown by the fetch or a downstream middleware — set on failure. */
-  error?: unknown;
+  error?: unknown | undefined;
   /**
    * Set to `true` when the error originated from within the middleware chain
    * (as opposed to from the real fetch). Used by the transport to wrap
    * middleware errors as `SDKError{kind:'unknown'}`.
    */
-  middlewareError?: boolean;
+  middlewareError?: boolean | undefined;
   /**
    * Name (or index) of the middleware that was active when the error occurred.
    * Set alongside `middlewareError` for error identity in cause objects.
    */
-  activeMiddlewareName?: string;
+  activeMiddlewareName?: string | undefined;
 }
 
 /**
@@ -118,7 +118,7 @@ export function composeMiddleware(
       index = i;
 
       if (i < middleware.length) {
-        const mw = middleware[i];
+        const mw = middleware[i]!;
         const mwName = mw.name || String(i);
         ctx.activeMiddlewareName = mwName;
         try {

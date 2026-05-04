@@ -3,8 +3,8 @@
 import { join } from 'node:path';
 
 export interface AutomationStorePathConfig {
-  readonly controlPlaneDir?: string;
-  readonly getControlPlaneConfigDir?: () => string;
+  readonly controlPlaneDir?: string | undefined;
+  readonly getControlPlaneConfigDir?: (() => string) | undefined | undefined;
 }
 
 function resolveAutomationStoreRootDir(config: AutomationStorePathConfig): string {

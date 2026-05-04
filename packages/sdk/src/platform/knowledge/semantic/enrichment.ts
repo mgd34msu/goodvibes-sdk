@@ -35,22 +35,22 @@ import { deriveRepairProfileFacts } from './repair-profile.js';
 
 export interface KnowledgeSemanticEnrichmentContext {
   readonly store: KnowledgeStore;
-  readonly llm?: KnowledgeSemanticLlm | null;
+  readonly llm?: KnowledgeSemanticLlm | null | undefined;
 }
 
 export interface EnrichKnowledgeSourceOptions {
-  readonly force?: boolean;
-  readonly knowledgeSpaceId?: string;
+  readonly force?: boolean | undefined;
+  readonly knowledgeSpaceId?: string | undefined;
 }
 
 export interface PersistedSemanticExtraction {
   readonly source: KnowledgeSourceRecord;
   readonly skipped: boolean;
-  readonly reason?: string;
-  readonly extractor?: 'llm' | 'deterministic';
+  readonly reason?: string | undefined;
+  readonly extractor?: 'llm' | 'deterministic' | undefined;
   readonly facts: readonly KnowledgeNodeRecord[];
   readonly entities: readonly KnowledgeNodeRecord[];
-  readonly wikiPage?: KnowledgeNodeRecord;
+  readonly wikiPage?: KnowledgeNodeRecord | undefined;
   readonly gaps: readonly KnowledgeNodeRecord[];
 }
 
@@ -281,7 +281,7 @@ async function persistSemanticExtraction(
   extraction: KnowledgeExtractionRecord | null,
   semantic: KnowledgeSemanticExtraction,
   options: {
-    readonly knowledgeSpaceId?: string;
+    readonly knowledgeSpaceId?: string | undefined;
     readonly textHash: string;
   },
 ): Promise<PersistedSemanticExtraction> {

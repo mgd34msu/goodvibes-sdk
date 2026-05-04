@@ -13,10 +13,10 @@ const VERTEX_MODELS = [
 ];
 
 interface AnthropicVertexClientOptions extends ClientOptions {
-  readonly projectId?: string | null;
-  readonly region?: string | null;
-  readonly googleAuth?: GoogleAuth<AuthClient>;
-  readonly authClient?: AuthClient;
+  readonly projectId?: string | null | undefined;
+  readonly region?: string | null | undefined;
+  readonly googleAuth?: GoogleAuth<AuthClient> | undefined;
+  readonly authClient?: AuthClient | undefined;
 }
 
 type VertexRequestOptions = Parameters<BaseAnthropic['buildRequest']>[0];

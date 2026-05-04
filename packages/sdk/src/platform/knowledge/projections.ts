@@ -30,7 +30,7 @@ import type {
 } from './types.js';
 
 export interface KnowledgeProjectionServiceOptions {
-  readonly connectors?: () => readonly KnowledgeConnector[];
+  readonly connectors?: (() => readonly KnowledgeConnector[]) | undefined | undefined;
 }
 
 export class KnowledgeProjectionService {
@@ -64,8 +64,8 @@ export class KnowledgeProjectionService {
   async render(
     input: {
       readonly kind: KnowledgeProjectionTargetKind;
-      readonly id?: string;
-      readonly limit?: number;
+      readonly id?: string | undefined;
+      readonly limit?: number | undefined;
     },
   ): Promise<KnowledgeProjectionBundle> {
     await this.store.init();
@@ -98,9 +98,9 @@ export class KnowledgeProjectionService {
   async materialize(
     input: {
       readonly kind: KnowledgeProjectionTargetKind;
-      readonly id?: string;
-      readonly limit?: number;
-      readonly filename?: string;
+      readonly id?: string | undefined;
+      readonly limit?: number | undefined;
+      readonly filename?: string | undefined;
     },
   ): Promise<KnowledgeMaterializedProjection> {
     const bundle = await this.render(input);
@@ -336,7 +336,7 @@ export class KnowledgeProjectionService {
       ...sources.map((source) => {
         const extraction = this.store.getExtractionBySourceId(source.id);
         const health = source.status === 'indexed' ? 'healthy' : source.status;
-        return `- ${this.linkToTarget(this.createSourceTarget(source), source.title ?? source.canonicalUri ?? source.id)} | ${source.sourceType} | ${health}${extraction ? ` | ${extraction.format}` : ''}`;
+        return `- ${this.linkToTarget(this.createSourceTarget(source!), source.title ?? source.canonicalUri ?? source.id)} | ${source.sourceType} | ${health}${extraction ? ` | ${extraction.format}` : ''}`;
       }),
     ];
     return {
@@ -682,7 +682,7 @@ export class KnowledgeProjectionService {
       node.summary,
       [
         '## Included Sources',
-        buildBulletList(sortByTitle(dedupe(sources, (source) => source.id)).map((source) => this.linkToTarget(this.createSourceTarget(source)))),
+        buildBulletList(sortByTitle(dedupe(sources, (source) => source.id)).map((source) => this.linkToTarget(this.createSourceTarget(source!)))),
       ].join('\n'),
       [
         '## Related Nodes',

@@ -24,11 +24,11 @@ export type AgentExecutor = {
 };
 
 export interface AgentManagerDependencies {
-  readonly archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'>;
-  readonly messageBus?: Pick<AgentMessageBus, 'registerAgent'>;
-  readonly wrfcController?: Pick<WrfcController, 'createChain'> | null;
-  readonly executor?: AgentExecutor | null;
-  readonly configManager?: Pick<ConfigManager, 'get'>;
+  readonly archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'> | undefined;
+  readonly messageBus?: Pick<AgentMessageBus, 'registerAgent'> | undefined;
+  readonly wrfcController?: Pick<WrfcController, 'createChain'> | null | undefined;
+  readonly executor?: AgentExecutor | null | undefined;
+  readonly configManager?: Pick<ConfigManager, 'get'> | undefined;
 }
 
 export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools: string[] }> = {
@@ -58,49 +58,49 @@ export interface AgentRecord {
   id: string;
   task: string;
   template: string;
-  model?: string;
-  provider?: string;
-  fallbackModels?: string[];
-  routing?: AgentInput['routing'];
-  executionIntent?: ExecutionIntent;
-  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high';
-  context?: string;
+  model?: string | undefined;
+  provider?: string | undefined;
+  fallbackModels?: string[] | undefined;
+  routing?: AgentInput['routing'] | undefined;
+  executionIntent?: ExecutionIntent | undefined;
+  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  context?: string | undefined;
   tools: string[];
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   startedAt: number;
-  completedAt?: number;
-  progress?: string;
+  completedAt?: number | undefined;
+  progress?: string | undefined;
   toolCallCount: number;
   usage?: {
     inputTokens: number;
     outputTokens: number;
     cacheReadTokens: number;
     cacheWriteTokens: number;
-    reasoningTokens?: number;
+    reasoningTokens?: number | undefined;
     llmCallCount: number;
     turnCount: number;
-    reasoningSummaryCount?: number;
+    reasoningSummaryCount?: number | undefined;
   };
-  error?: string;
-  fullOutput?: string;
-  streamingContent?: string;
-  wrfcId?: string;
-  dangerously_disable_wrfc?: boolean;
-  cohort?: string;
-  orchestrationGraphId?: string;
-  orchestrationNodeId?: string;
+  error?: string | undefined;
+  fullOutput?: string | undefined;
+  streamingContent?: string | undefined;
+  wrfcId?: string | undefined;
+  dangerously_disable_wrfc?: boolean | undefined;
+  cohort?: string | undefined;
+  orchestrationGraphId?: string | undefined;
+  orchestrationNodeId?: string | undefined;
   orchestrationDepth: number;
-  parentAgentId?: string;
-  parentNodeId?: string;
-  capabilityCeilingTools?: string[];
-  successCriteria?: string[];
-  requiredEvidence?: string[];
-  writeScope?: string[];
+  parentAgentId?: string | undefined;
+  parentNodeId?: string | undefined;
+  capabilityCeilingTools?: string[] | undefined;
+  successCriteria?: string[] | undefined;
+  requiredEvidence?: string[] | undefined;
+  writeScope?: string[] | undefined;
   executionProtocol: 'direct' | 'gather-plan-apply';
   reviewMode: 'none' | 'wrfc';
   communicationLane: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
   /** Appended verbatim to the system prompt when the agent runs. Used by WRFC to inject constraint addenda. */
-  systemPromptAddendum?: string;
+  systemPromptAddendum?: string | undefined;
   knowledgeInjections?: Array<{
     id: string;
     cls: string;
@@ -138,7 +138,7 @@ export class AgentManager {
     defaultTools: string[],
   ): {
     tools: string[];
-    capabilityCeilingTools?: string[];
+    capabilityCeilingTools?: string[] | undefined;
   } {
     const requestedTools = input.tools
       ? (input.restrictTools ? [...input.tools] : [...new Set([...defaultTools, ...input.tools])])
@@ -176,7 +176,7 @@ export class AgentManager {
     const template = input.template ?? 'general';
 
     const archetype = this.archetypeLoader.loadArchetype(template);
-    const templateDef = AGENT_TEMPLATES[template] ?? AGENT_TEMPLATES.general;
+    const templateDef = AGENT_TEMPLATES[template]! ?? AGENT_TEMPLATES.general;
     const defaultTools = archetype ? archetype.tools : templateDef.defaultTools;
     if (input.restrictTools && (!input.tools || input.tools.length === 0)) {
       logger.warn('spawn: restrictTools=true has no effect without a tools array — falling back to template defaults', { template });

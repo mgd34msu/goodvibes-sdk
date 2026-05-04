@@ -21,17 +21,17 @@ export interface LlmSpanContext {
   /** Parent span ID (the turn span's spanId). */
   readonly parentSpanId: string;
   /** Whether this is a streaming call. */
-  readonly streaming?: boolean;
+  readonly streaming?: boolean | undefined;
   /** Number of messages in the request context. */
-  readonly messageCount?: number;
+  readonly messageCount?: number | undefined;
 }
 
 /** Token usage recorded when ending an LLM span. */
 export interface LlmTokenUsage {
   readonly inputTokens: number;
   readonly outputTokens: number;
-  readonly cacheReadTokens?: number;
-  readonly cacheWriteTokens?: number;
+  readonly cacheReadTokens?: number | undefined;
+  readonly cacheWriteTokens?: number | undefined;
 }
 
 /** Result context supplied when ending an LLM span. */
@@ -39,13 +39,13 @@ export interface LlmSpanEndContext {
   /** Whether the call succeeded. */
   readonly success: boolean;
   /** Stop reason from the provider (e.g. 'end_turn', 'tool_use', 'max_tokens'). */
-  readonly stopReason?: string;
+  readonly stopReason?: string | undefined;
   /** Token usage if available. */
-  readonly tokens?: LlmTokenUsage;
+  readonly tokens?: LlmTokenUsage | undefined;
   /** Error message if success is false. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** HTTP status code if available (for remote provider calls). */
-  readonly httpStatus?: number;
+  readonly httpStatus?: number | undefined;
 }
 
 /**

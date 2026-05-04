@@ -251,7 +251,7 @@ export class ProviderOptimizer {
     if (!selected || !selectedExplanation) {
       // No capable provider found — return first candidate's explanation as the decision
       // so callers get a fully-populated rejection explanation
-      const fallbackExpl = allCandidates[0] ?? this._emptyExplanation();
+      const fallbackExpl = allCandidates[0]! ?? this._emptyExplanation();
       return {
         providerId: fallbackExpl.providerId,
         modelId: fallbackExpl.modelId,

@@ -317,14 +317,14 @@ function buildTree(files: Map<string, number>): TreeDir {
     const parts = path.split('/');
     let node = root;
     for (let i = 0; i < parts.length - 1; i++) {
-      const dirKey = parts[i] + '/';
+      const dirKey = parts[i]! + '/';
       if (!(dirKey in node)) {
         node[dirKey] = {};
       }
       node = node[dirKey] as TreeDir;
     }
     const fileName = parts[parts.length - 1];
-    node[fileName] = tokens;
+    if (fileName !== undefined) { node[fileName] = tokens; }
   }
   return root;
 }

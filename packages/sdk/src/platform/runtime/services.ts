@@ -95,12 +95,12 @@ export interface RuntimeServicesOptions {
   readonly runtimeStore: RuntimeStore;
   readonly configManager: ConfigManager;
   readonly surfaceRoot: string;
-  readonly featureFlags?: FeatureFlagManager;
-  readonly getConversationTitle?: () => string | undefined;
+  readonly featureFlags?: FeatureFlagManager | undefined;
+  readonly getConversationTitle?: (() => string | undefined) | undefined | undefined;
   readonly workingDir: string;
   readonly homeDirectory: string;
-  readonly panelManager?: PanelManagerLike;
-  readonly keybindingsManager?: KeybindingsManagerLike;
+  readonly panelManager?: PanelManagerLike | undefined;
+  readonly keybindingsManager?: KeybindingsManagerLike | undefined;
 }
 
 export interface RuntimeServices {

@@ -201,7 +201,7 @@ export class AcpTaskAdapter {
   private _transitionTask(
     taskId: string,
     status: 'running' | 'completed' | 'failed' | 'cancelled',
-    opts: { isTerminal?: boolean; error?: string },
+    opts: { isTerminal?: boolean; error?: string | undefined },
   ): void {
     this._dispatch.transitionRuntimeTask(
       taskId,

@@ -18,7 +18,7 @@ export interface ConsoleExporterConfig {
    * - `standard` — adds attributes (default).
    * - `verbose` — adds events and full attribute values.
    */
-  readonly verbosity?: ConsoleVerbosity;
+  readonly verbosity?: ConsoleVerbosity | undefined;
 }
 
 /**

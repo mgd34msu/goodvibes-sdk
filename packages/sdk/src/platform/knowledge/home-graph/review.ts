@@ -11,11 +11,11 @@ import type { HomeGraphReviewInput } from './types.js';
 export interface HomeGraphReviewResult {
   readonly ok: true;
   readonly spaceId: string;
-  readonly issue?: KnowledgeIssueRecord;
-  readonly node?: KnowledgeNodeRecord;
-  readonly source?: KnowledgeSourceRecord;
-  readonly suppression?: Record<string, unknown>;
-  readonly appliedFacts?: Record<string, unknown>;
+  readonly issue?: KnowledgeIssueRecord | undefined;
+  readonly node?: KnowledgeNodeRecord | undefined;
+  readonly source?: KnowledgeSourceRecord | undefined;
+  readonly suppression?: Record<string, unknown> | undefined;
+  readonly appliedFacts?: Record<string, unknown> | undefined;
 }
 
 export async function reviewHomeGraphFact(

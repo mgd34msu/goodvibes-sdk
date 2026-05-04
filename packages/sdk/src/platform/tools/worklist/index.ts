@@ -9,7 +9,7 @@ interface WorklistItem {
   readonly id: string;
   readonly text: string;
   readonly status: 'open' | 'done';
-  readonly owner?: string;
+  readonly owner?: string | undefined;
   readonly priority: 'low' | 'medium' | 'high';
 }
 
@@ -27,7 +27,7 @@ interface WorklistFile {
 }
 
 type WorklistExecutionInput = WorklistToolInput & {
-  readonly storageRoot?: string;
+  readonly storageRoot?: string | undefined;
 };
 
 function summarizeWorklist(record: WorklistRecord) {

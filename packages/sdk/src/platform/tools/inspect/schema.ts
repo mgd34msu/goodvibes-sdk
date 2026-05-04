@@ -110,20 +110,20 @@ export type ApiFramework = 'auto' | 'nextjs' | 'express' | 'fastify' | 'hono';
 export type OutputFormat = 'summary' | 'detailed' | 'json';
 
 export interface InspectOutput {
-  format?: OutputFormat;
-  max_tokens?: number;
+  format?: OutputFormat | undefined;
+  max_tokens?: number | undefined;
 }
 
 export interface InspectInput {
   mode: InspectMode;
-  projectRoot?: string;
-  file?: string;
-  framework?: ApiFramework;
-  schemaPath?: string;
-  specPath?: string;
-  moduleName?: string;
-  dryRun?: boolean;
-  output?: InspectOutput;
+  projectRoot?: string | undefined;
+  file?: string | undefined;
+  framework?: ApiFramework | undefined;
+  schemaPath?: string | undefined;
+  specPath?: string | undefined;
+  moduleName?: string | undefined;
+  dryRun?: boolean | undefined;
+  output?: InspectOutput | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -132,14 +132,14 @@ export interface InspectInput {
 
 export interface ProjectInfo {
   type: 'nodejs' | 'rust' | 'python' | 'go' | 'make' | 'unknown';
-  name?: string;
-  version?: string;
+  name?: string | undefined;
+  version?: string | undefined;
   packageManager: 'npm' | 'bun' | 'yarn' | 'pnpm' | 'none';
   scripts: Record<string, string>;
   dependencies: number;
   devDependencies: number;
   hasTypeScript: boolean;
-  testFramework?: string;
+  testFramework?: string | undefined;
   isMonorepo: boolean;
   entryPoints: string[];
 }
@@ -222,7 +222,7 @@ export interface OpenApiParameter {
 
 export interface OpenApiOperation {
   operationId: string;
-  parameters?: OpenApiParameter[];
+  parameters?: OpenApiParameter[] | undefined;
   responses: Record<string, { description: string }>;
 }
 

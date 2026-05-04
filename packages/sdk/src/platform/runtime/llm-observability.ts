@@ -74,7 +74,7 @@ export interface InstrumentedLlmResult<T> {
  * get per-provider/model observability. Callers that also hold a RuntimeEventBus
  * should additionally call emitLlmRequestStarted(bus, ctx, data) from emitters/turn.
  */
-function recordLlmRequestStartedMetric(opts: { provider?: string; model?: string }): void {
+function recordLlmRequestStartedMetric(opts: { provider?: string | undefined; model?: string | undefined }): void {
   const labels: Record<string, string> = {};
   if (opts.provider) labels.provider = opts.provider;
   if (opts.model) labels.model = opts.model;
@@ -84,19 +84,19 @@ function recordLlmRequestStartedMetric(opts: { provider?: string; model?: string
 export async function instrumentedLlmCall<T>(
   fn: () => Promise<T>,
   opts?: {
-    maxRetries?: number;
-    retryDelayMs?: number;
+    maxRetries?: number | undefined;
+    retryDelayMs?: number | undefined;
     /** Provider name for metric labels (e.g. 'anthropic'). */
-    provider?: string;
+    provider?: string | undefined;
     /** Model name for metric labels (e.g. 'claude-opus-4-5'). */
-    model?: string;
+    model?: string | undefined;
     /** Extract token usage from a successful result to record histogram instruments. */
     extractTokens?: (result: T) => { inputTokens?: number; outputTokens?: number } | undefined;
     /**
      * M-2: Optional callback invoked on entry before the first attempt.
      * Callers that have bus/ctx access can wire emitLlmRequestStarted here.
      */
-    onStarted?: () => void;
+    onStarted?: (() => void) | undefined | undefined;
   }
 ): Promise<InstrumentedLlmResult<T>> {
   const maxRetries = opts?.maxRetries ?? 0;

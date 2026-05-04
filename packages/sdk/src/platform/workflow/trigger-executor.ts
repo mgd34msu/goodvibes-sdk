@@ -25,8 +25,8 @@ export interface TriggerFireResult {
   event: string;
   action: string;
   executed: boolean;
-  error?: string;
-  pid?: number;
+  error?: string | undefined;
+  pid?: number | undefined;
 }
 
 /**
@@ -104,11 +104,11 @@ function tokenise(condition: string): string[] {
   let i = 0;
   while (i < condition.length) {
     // Skip whitespace
-    if (/\s/.test(condition[i])) { i++; continue; }
+    if (/\s/.test(condition[i]!)) { i++; continue; }
 
     // String literals
     if (condition[i] === '"' || condition[i] === "'") {
-      const quote = condition[i];
+      const quote = condition[i]!;
       let j = i + 1;
       while (j < condition.length && condition[j] !== quote) {
         if (condition[j] === '\\') j++; // skip escape
@@ -129,22 +129,22 @@ function tokenise(condition: string): string[] {
     }
 
     // Single-char operators / parens
-    if ('!><()'.includes(condition[i])) {
-      tokens.push(condition[i]); i++; continue;
+    if ('!><()'.includes(condition[i]!)) {
+      tokens.push(condition[i]!); i++; continue;
     }
 
     // Numbers
-    if (/[0-9]/.test(condition[i]) || (condition[i] === '-' && /[0-9]/.test(condition[i + 1] ?? ''))) {
+    if (/[0-9]/.test(condition[i]!) || (condition[i] === '-' && /[0-9]/.test(condition[i + 1] ?? ''))) {
       let j = i;
       if (condition[j] === '-') j++;
-      while (j < condition.length && /[0-9.]/.test(condition[j])) j++;
+      while (j < condition.length && /[0-9.]/.test(condition[j]!)) j++;
       tokens.push(condition.slice(i, j)); i = j; continue;
     }
 
     // Identifiers (including dotted paths and keywords)
-    if (/[a-zA-Z_$]/.test(condition[i])) {
+    if (/[a-zA-Z_$]/.test(condition[i]!)) {
       let j = i;
-      while (j < condition.length && /[a-zA-Z0-9_.$]/.test(condition[j])) j++;
+      while (j < condition.length && /[a-zA-Z0-9_.$]/.test(condition[j]!)) j++;
       tokens.push(condition.slice(i, j)); i = j; continue;
     }
 
@@ -201,7 +201,7 @@ class ConditionParser {
   }
 
   private peek(): string | undefined { return this.tokens[this.pos]; }
-  private consume(): string { return this.tokens[this.pos++]; }
+  private consume(): string { return this.tokens[this.pos++]!; }
   private match(t: string): boolean { if (this.peek() === t) { this.pos++; return true; } return false; }
 
   private parseOr(): ConditionValue {

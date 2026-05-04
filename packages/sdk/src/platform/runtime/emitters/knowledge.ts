@@ -19,7 +19,7 @@ function knowledgeEvent<T extends KnowledgeEvent['type']>(
 export function emitKnowledgeIngestStarted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { sourceId: string; connectorId: string; sourceType: string; uri?: string },
+  data: { sourceId: string; connectorId: string; sourceType: string; uri?: string | undefined },
 ): void {
   bus.emit('knowledge', knowledgeEvent('KNOWLEDGE_INGEST_STARTED', data, ctx));
 }
@@ -27,7 +27,7 @@ export function emitKnowledgeIngestStarted(
 export function emitKnowledgeIngestCompleted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { sourceId: string; status: string; artifactId?: string; title?: string },
+  data: { sourceId: string; status: string; artifactId?: string | undefined; title?: string | undefined },
 ): void {
   bus.emit('knowledge', knowledgeEvent('KNOWLEDGE_INGEST_COMPLETED', data, ctx));
 }

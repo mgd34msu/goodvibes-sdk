@@ -73,7 +73,7 @@ export function renderDevicePassportPage(input: {
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly issues: readonly KnowledgeIssueRecord[];
   readonly missingFields: readonly string[];
-  readonly semanticFacts?: readonly KnowledgeNodeRecord[];
+  readonly semanticFacts?: readonly KnowledgeNodeRecord[] | undefined;
 }): string {
   return [
     `# ${input.device.title}`,
@@ -102,10 +102,10 @@ export function renderDevicePassportPage(input: {
 }
 
 export function renderPacketPage(state: HomeGraphRenderState, options: {
-  readonly packetKind?: string;
-  readonly sharingProfile?: string;
-  readonly includeFields?: readonly string[];
-  readonly excludeFields?: readonly string[];
+  readonly packetKind?: string | undefined;
+  readonly sharingProfile?: string | undefined;
+  readonly includeFields?: readonly string[] | undefined;
+  readonly excludeFields?: readonly string[] | undefined;
 } = {}): string {
   const profile = options.sharingProfile ?? 'default';
   const title = options.packetKind ? titleCase(options.packetKind) : state.title;
@@ -219,7 +219,7 @@ function normalizeHomeGraphMapFilters(input: HomeGraphMapHaFilterInput | undefin
 }
 
 function hasHomeGraphFilters(filters: Required<HomeGraphMapHaFilterInput>): boolean {
-  return Object.values(filters).some((value) => value.length > 0);
+  return Object.values(filters).some((value) => value!.length > 0);
 }
 
 function matchesHomeGraphNode(
@@ -229,19 +229,19 @@ function matchesHomeGraphNode(
   nodes: readonly KnowledgeNodeRecord[],
 ): boolean {
   const ha = readHomeAssistantRecord(node);
-  return matchesFilter(filters.objectKinds, String(ha.objectKind ?? node.kind), node.kind)
-    && matchesFilter(filters.entityIds, readString(ha.entityId), readString(ha.objectId))
-    && matchesFilter(filters.deviceIds, readString(ha.deviceId), node.kind === 'ha_device' ? readString(ha.objectId) : undefined)
-    && matchesAreaFilter(filters.areaIds, node, edges, nodes)
-    && matchesFilter(filters.integrationIds, readString(ha.integrationId), node.kind === 'ha_integration' ? readString(ha.objectId) : undefined)
-    && matchesFilter(filters.integrationDomains, readIntegrationDomain(node))
-    && matchesFilter(filters.domains, readEntityDomain(node))
-    && matchesFilter(filters.deviceClasses, readDeviceClass(node))
-    && matchesAny(filters.labels, normalizeStringArray(node.metadata.labels));
+  return matchesFilter(filters.objectKinds!, String(ha.objectKind ?? node.kind), node.kind)
+    && matchesFilter(filters.entityIds!, readString(ha.entityId), readString(ha.objectId))
+    && matchesFilter(filters.deviceIds!, readString(ha.deviceId), node.kind === 'ha_device' ? readString(ha.objectId) : undefined)
+    && matchesAreaFilter(filters.areaIds!, node, edges, nodes)
+    && matchesFilter(filters.integrationIds!, readString(ha.integrationId), node.kind === 'ha_integration' ? readString(ha.objectId) : undefined)
+    && matchesFilter(filters.integrationDomains!, readIntegrationDomain(node))
+    && matchesFilter(filters.domains!, readEntityDomain(node))
+    && matchesFilter(filters.deviceClasses!, readDeviceClass(node))
+    && matchesAny(filters.labels!, normalizeStringArray(node.metadata.labels));
 }
 
 function matchesHomeGraphSource(source: KnowledgeSourceRecord, filters: Required<HomeGraphMapHaFilterInput>): boolean {
-  return matchesAny(filters.labels, [...source.tags, ...normalizeStringArray(source.metadata.labels)]);
+  return matchesAny(filters.labels!, [...source.tags, ...normalizeStringArray(source.metadata.labels)]);
 }
 
 function matchesAreaFilter(
@@ -360,7 +360,7 @@ function renderDeviceOverview(
 }
 
 function readMetadataString(node: KnowledgeNodeRecord, key: string): string | undefined {
-  const value = node.metadata[key];
+  const value = node.metadata[key]!;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 

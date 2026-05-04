@@ -21,7 +21,7 @@ export interface AutomaticCacheCapability {
 export interface ImplicitCacheCapability {
   type: 'implicit';
   keepAliveParam?: string;     // e.g. 'keep_alive' for Ollama
-  defaultKeepAliveSeconds?: number;
+  defaultKeepAliveSeconds?: number | undefined;
 }
 
 export interface NoCacheCapability {

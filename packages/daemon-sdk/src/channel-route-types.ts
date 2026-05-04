@@ -9,39 +9,39 @@ export interface ChannelAgentToolDefinitionLike {
 
 export interface ChannelTargetResolutionInput {
   readonly input: string;
-  readonly accountId?: string;
-  readonly preferredKind?: ChannelConversationKind;
-  readonly threadId?: string;
-  readonly sessionId?: string;
-  readonly createIfMissing?: boolean;
-  readonly live?: boolean;
-  readonly metadata?: Record<string, unknown>;
+  readonly accountId?: string | undefined;
+  readonly preferredKind?: ChannelConversationKind | undefined;
+  readonly threadId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly createIfMissing?: boolean | undefined;
+  readonly live?: boolean | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelAuthorizeActionInput {
   readonly actionId: string;
-  readonly actorId?: string;
-  readonly accountId?: string;
-  readonly target?: unknown;
-  readonly metadata?: Record<string, unknown>;
+  readonly actorId?: string | undefined;
+  readonly accountId?: string | undefined;
+  readonly target?: unknown | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelAllowlistInput {
-  readonly add?: readonly string[];
-  readonly remove?: readonly string[];
-  readonly groupId?: string;
-  readonly channelId?: string;
-  readonly workspaceId?: string;
-  readonly kind?: 'user' | 'channel' | 'group';
-  readonly metadata?: Record<string, unknown>;
+  readonly add?: readonly string[] | undefined;
+  readonly remove?: readonly string[] | undefined;
+  readonly groupId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly kind?: 'user' | 'channel' | 'group' | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ChannelDirectoryQuery {
   readonly query: string;
-  readonly scope?: ChannelDirectoryScope;
-  readonly groupId?: string;
-  readonly limit?: number;
-  readonly live?: boolean;
+  readonly scope?: ChannelDirectoryScope | undefined;
+  readonly groupId?: string | undefined;
+  readonly limit?: number | undefined;
+  readonly live?: boolean | undefined;
 }
 
 export interface ChannelPluginServiceLike {

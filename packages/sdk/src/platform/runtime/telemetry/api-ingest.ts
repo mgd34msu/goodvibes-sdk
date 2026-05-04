@@ -88,7 +88,7 @@ export function ingestExternalTelemetryMetrics(input: IngestTelemetryBaseInput):
       for (const metric of metrics) {
         const metricRecord = objectRecord(metric);
         for (const signalKey of ['sum', 'gauge', 'histogram', 'exponentialHistogram', 'summary']) {
-          const signal = metricRecord[signalKey];
+          const signal = metricRecord[signalKey]!;
           if (typeof signal !== 'object' || signal === null) continue;
           const dataPoints = (signal as Record<string, unknown>)['dataPoints'];
           if (Array.isArray(dataPoints)) datapointsFound += dataPoints.length;

@@ -15,8 +15,8 @@ function defaultSnapshot(): AutomationJobsSnapshot {
 }
 
 export interface AutomationJobStoreConfig {
-  readonly path?: string;
-  readonly configManager?: AutomationStorePathConfig;
+  readonly path?: string | undefined;
+  readonly configManager?: AutomationStorePathConfig | undefined;
 }
 
 export class AutomationJobStore {

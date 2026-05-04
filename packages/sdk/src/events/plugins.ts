@@ -20,7 +20,7 @@ export type PluginEvent =
   /** Plugin encountered a non-fatal error. */
   | { type: 'PLUGIN_ERROR'; pluginId: string; error: string; fatal: boolean }
   /** Plugin is being unloaded and cleaned up. */
-  | { type: 'PLUGIN_UNLOADING'; pluginId: string; reason?: string }
+  | { type: 'PLUGIN_UNLOADING'; pluginId: string; reason?: string | undefined }
   /** Plugin has been disabled (will not reload on restart). */
   | { type: 'PLUGIN_DISABLED'; pluginId: string; reason: string };
 

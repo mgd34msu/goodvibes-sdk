@@ -45,28 +45,28 @@ export interface PhaseResult {
   /** Wall-clock duration of this phase in milliseconds. */
   durationMs: number;
   /** Human-readable error message if the phase failed. */
-  error?: string;
+  error?: string | undefined;
   /**
    * If true, the executor will skip all remaining phases and return
    * the current result immediately (e.g. permission denied).
    */
-  abort?: boolean;
+  abort?: boolean | undefined;
   /**
    * When a budget phase aborts the pipeline, this carries the typed reason
    * so the executor can emit a diagnostic event with the correct discriminant.
    */
-  budgetExceedReason?: BudgetExceedReason;
+  budgetExceedReason?: BudgetExceedReason | undefined;
   /**
    * Additional numeric metadata about the budget breach (e.g. limit and actual values).
    * Surfaced in the BUDGET_EXCEEDED_* event payload for diagnostics.
    */
-  budgetMeta?: Record<string, number>;
+  budgetMeta?: Record<string, number> | undefined;
   /**
    * When the map-output phase spilled overflow content, this carries the
    * backend type used (`file`, `ledger`, or `diagnostics`).
    * Surfaced in phase metadata for operator diagnostics.
    */
-  spillBackend?: import('../../tools/shared/overflow.js').SpillBackendType;
+  spillBackend?: import('../../tools/shared/overflow.js').SpillBackendType | undefined;
 }
 
 /**
@@ -85,21 +85,21 @@ export interface ToolExecutionRecord {
   /** Monotonic timestamp (ms) from performance.now() when execution began. Used for elapsed-time budget checks. */
   startedAt: number;
   /** Wall-clock timestamp (ms) from Date.now() when execution began. Used for display/logging. */
-  wallStartedAt?: number;
+  wallStartedAt?: number | undefined;
   /** Unix timestamp (ms) when execution completed (success, failure, or cancel). */
-  completedAt?: number;
+  completedAt?: number | undefined;
   /** Final tool result (set on success). */
-  result?: ToolResult;
+  result?: ToolResult | undefined;
   /** Whether this execution was cancelled. */
   cancelled: boolean;
   /** Human-readable cancellation reason if cancelled. */
-  cancelledReason?: string;
+  cancelledReason?: string | undefined;
   /**
    * Args updated by the prehook phase.
    * Subsequent phases (permission, execute, map-output) use these instead of
    * the original call.arguments when present.
    */
-  _updatedArgs?: Record<string, unknown>;
+  _updatedArgs?: Record<string, unknown> | undefined;
 }
 
 /**
@@ -110,7 +110,7 @@ export interface ExecutorConfig {
    * Per-phase timeout overrides in milliseconds.
    * Phases without an entry use the phase's own default.
    */
-  phaseTimeouts?: Partial<Record<ToolExecutionPhase, number>>;
+  phaseTimeouts?: Partial<Record<ToolExecutionPhase, number>> | undefined;
   /** Whether to fire pre/post hooks via HookDispatcher. */
   enableHooks: boolean;
   /** Whether to check permissions via PermissionManager before execution. */
@@ -122,12 +122,12 @@ export interface ExecutorConfig {
    * entry and exit. When disabled, budget fields on ToolRuntimeContext are
    * ignored. Controlled by the `runtime-tools-budget-enforcement` feature flag.
    */
-  enableBudgetEnforcement?: boolean;
+  enableBudgetEnforcement?: boolean | undefined;
   /**
    * Optional feature-flag manager used by createPhasedExecutor() to derive
    * runtime-backed defaults. Explicit ExecutorConfig booleans still win.
    */
-  featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+  featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
   /**
    * Optional idempotency store.
    *
@@ -139,5 +139,5 @@ export interface ExecutorConfig {
    *
    * Omit to disable idempotency checking (default behaviour).
    */
-  idempotencyStore?: import('../idempotency/index.js').IdempotencyStore;
+  idempotencyStore?: import('../idempotency/index.js').IdempotencyStore | undefined;
 }

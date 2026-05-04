@@ -92,7 +92,7 @@ export interface CompactionContext {
   lineageEntries: string[];
 
   /** Original task description for lineage. Set on first compaction. */
-  originalTask?: string;
+  originalTask?: string | undefined;
 
   /** Number of compactions performed so far (including this one). */
   compactionCount: number;
@@ -107,7 +107,7 @@ export interface CompactionContext {
   extractionModelId: string;
 
   /** Optional provider name for extraction model disambiguation. */
-  extractionProvider?: string;
+  extractionProvider?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,9 +124,9 @@ export interface CompactionEvent {
   modelId: string;
   trigger: 'auto' | 'manual';
   /** Sections included in this compaction (IDs). */
-  sectionsIncluded?: string[];
+  sectionsIncluded?: string[] | undefined;
   /** Whether post-compaction validation passed. */
-  validationPassed?: boolean;
+  validationPassed?: boolean | undefined;
 }
 
 /** Result of a compaction operation. */

@@ -42,16 +42,16 @@ import {
 import { mapLmStudioStopReason } from './stop-reason-maps.js';
 
 export interface LMStudioProviderOptions extends OpenAICompatOptions {
-  nativeFetch?: NativeFetch;
-  responsesClient?: LMStudioResponsesClient;
-  fallbackProvider?: LLMProvider;
-  capabilities?: Partial<ProviderCapability>;
+  nativeFetch?: NativeFetch | undefined;
+  responsesClient?: LMStudioResponsesClient | undefined;
+  fallbackProvider?: LLMProvider | undefined;
+  capabilities?: Partial<ProviderCapability> | undefined;
 }
 
 export class LMStudioProvider implements LLMProvider {
   readonly name: string;
   readonly models: string[];
-  readonly capabilities?: Partial<ProviderCapability>;
+  readonly capabilities?: Partial<ProviderCapability> | undefined;
 
   private readonly defaultModel: string;
   private readonly nativeChatUrl: string;
@@ -226,8 +226,8 @@ export class LMStudioProvider implements LLMProvider {
           'content-type': 'application/json',
         },
         body: JSON.stringify(body),
-        signal: params.signal,
-      });
+        ...(params.signal !== undefined ? { signal: params.signal } : {}),
+      } as RequestInit);
     } catch (err: unknown) {
       throw normalizeProviderError(err, this.name, 'chat', 'request');
     }
@@ -348,7 +348,7 @@ export class LMStudioProvider implements LLMProvider {
 
     let stream: LMStudioResponsesStream;
     try {
-      stream = await this.responsesClient.create(body, { signal: params.signal });
+      stream = await this.responsesClient.create(body, { ...(params.signal !== undefined ? { signal: params.signal } : {}) });
     } catch (err: unknown) {
       throw normalizeProviderError(err, this.name, 'chat', 'request');
     }

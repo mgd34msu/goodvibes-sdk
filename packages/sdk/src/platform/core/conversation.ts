@@ -18,19 +18,19 @@ import { applyDiffContent, parseDiffForApply } from './conversation-diff.js';
 export type TokenUsage = {
   inputTokens: number;
   outputTokens: number;
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
+  cacheReadTokens?: number | undefined;
+  cacheWriteTokens?: number | undefined;
 };
 
 type AssistantMessage = {
   role: 'assistant';
   content: string;
-  toolCalls?: ToolCall[];
-  reasoningContent?: string;
-  reasoningSummary?: string;
-  usage?: TokenUsage;
-  model?: string;
-  provider?: string;
+  toolCalls?: ToolCall[] | undefined;
+  reasoningContent?: string | undefined;
+  reasoningSummary?: string | undefined;
+  usage?: TokenUsage | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
 };
 
 export type ConversationMessageSnapshot =
@@ -45,9 +45,9 @@ export type ConversationTitleSource = 'system' | 'user';
 export interface BlockMeta {
   type: 'tool' | 'code' | 'diff' | 'thinking';
   rawContent: string;
-  filePath?: string;
-  diffOriginal?: string;
-  diffUpdated?: string;
+  filePath?: string | undefined;
+  diffOriginal?: string | undefined;
+  diffUpdated?: string | undefined;
 }
 
 export class ConversationManager {
@@ -70,7 +70,7 @@ export class ConversationManager {
 
   private findToolName(callId: string): string | undefined {
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      const message = this.messages[i];
+      const message = this.messages[i]!;
       if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
       const match = message.toolCalls.find((call) => call.id === callId);
       if (match?.name) return match.name;
@@ -144,12 +144,12 @@ export class ConversationManager {
   public addAssistantMessage(
     content: string,
     opts?: {
-      toolCalls?: ToolCall[];
-      reasoningContent?: string;
-      reasoningSummary?: string;
-      usage?: TokenUsage;
-      model?: string;
-      provider?: string;
+      toolCalls?: ToolCall[] | undefined;
+      reasoningContent?: string | undefined;
+      reasoningSummary?: string | undefined;
+      usage?: TokenUsage | undefined;
+      model?: string | undefined;
+      provider?: string | undefined;
     },
   ): void {
     this.messages.push({
@@ -173,7 +173,7 @@ export class ConversationManager {
   public undo(): boolean {
     let lastUserIdx = -1;
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      if (this.messages[i].role === 'user') {
+      if (this.messages[i]!.role === 'user') {
         lastUserIdx = i;
         break;
       }
@@ -220,8 +220,8 @@ export class ConversationManager {
 
   public getLastUserMessage(): string | null {
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      if (this.messages[i].role === 'user') {
-        const content = this.messages[i].content;
+      if (this.messages[i]!.role === 'user') {
+        const content = this.messages[i]!.content;
         return typeof content === 'string' ? content : null;
       }
     }
@@ -241,7 +241,7 @@ export class ConversationManager {
 
   public markLastUserMessageCancelled(): void {
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      if (this.messages[i].role === 'user') {
+      if (this.messages[i]!.role === 'user') {
         (this.messages[i] as { cancelled?: boolean }).cancelled = true;
         this._messagesRevision++;
         return;
@@ -387,10 +387,10 @@ export class ConversationManager {
 
   public fromJSON(data: {
     messages: Message[];
-    branches?: Record<string, Message[]>;
-    currentBranch?: string;
-    title?: string;
-    titleSource?: ConversationTitleSource;
+    branches?: Record<string, Message[]> | undefined;
+    currentBranch?: string | undefined;
+    title?: string | undefined;
+    titleSource?: ConversationTitleSource | undefined;
   }): void {
     this.messages = data.messages ?? [];
     this._title = typeof data.title === 'string' ? data.title : '';

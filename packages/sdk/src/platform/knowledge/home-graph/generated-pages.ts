@@ -210,9 +210,9 @@ function deadlineReached(deadlineAt: number | undefined): boolean {
 export async function refreshHomeGraphDevicePassport(
   context: HomeGraphPageContext & {
     readonly input: HomeGraphProjectionInput;
-    readonly state?: HomeGraphStateSnapshot;
-    readonly sourceLookup?: DevicePassportSourceLookup;
-    readonly extractionsBySourceId?: ExtractionBySourceId;
+    readonly state?: HomeGraphStateSnapshot | undefined;
+    readonly sourceLookup?: DevicePassportSourceLookup | undefined;
+    readonly extractionsBySourceId?: ExtractionBySourceId | undefined;
   },
 ): Promise<HomeGraphDevicePassportResult & { readonly artifactCreated: boolean }> {
   const { store, artifactStore, spaceId, installationId, input } = context;
@@ -408,13 +408,13 @@ async function materializeGeneratedMarkdown(input: HomeGraphPageContext & {
   readonly title: string;
   readonly summary: string;
   readonly tags: readonly string[];
-  readonly metadata?: Record<string, unknown>;
-  readonly targetNodeId?: string;
-  readonly relation?: string;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly targetNodeId?: string | undefined;
+  readonly relation?: string | undefined;
 }): Promise<{
   readonly artifact: HomeGraphProjectionResult['artifact'];
   readonly source: KnowledgeSourceRecord;
-  readonly linked?: KnowledgeEdgeRecord;
+  readonly linked?: KnowledgeEdgeRecord | undefined;
   readonly artifactCreated: boolean;
 }> {
   const contentHash = semanticHash(input.markdown);
@@ -663,7 +663,7 @@ async function upsertDevicePageProfileFacts(input: {
   readonly installationId: string;
   readonly device: KnowledgeNodeRecord;
   readonly sources: readonly KnowledgeSourceRecord[];
-  readonly extractionsBySourceId?: ExtractionBySourceId;
+  readonly extractionsBySourceId?: ExtractionBySourceId | undefined;
 }): Promise<KnowledgeNodeRecord[]> {
   return input.store.batch(async () => {
     const facts: KnowledgeNodeRecord[] = [];

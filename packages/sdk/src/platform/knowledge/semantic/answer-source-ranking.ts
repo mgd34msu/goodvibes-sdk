@@ -4,7 +4,7 @@ import { readRecord, readString } from './utils.js';
 
 export interface AnswerSourceRankingEvidence {
   readonly score: number;
-  readonly source?: KnowledgeSourceRecord;
+  readonly source?: KnowledgeSourceRecord | undefined;
 }
 
 export function rankAnswerSources(

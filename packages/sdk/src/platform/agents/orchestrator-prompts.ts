@@ -8,13 +8,17 @@ import { logger } from '../utils/logger.js';
 
 type PromptContextDeps = {
   readonly workingDirectory: string;
-  readonly knowledgeService?: {
-    buildPromptPacketSync(task: string, writeScope?: readonly string[]): string | null;
-  };
-  readonly memoryRegistry?: Pick<MemoryRegistry, 'getAll' | 'searchSemantic'>;
-  readonly archetypeLoader?: {
-    loadArchetype(template: string): { systemPrompt?: string } | null | undefined;
-  };
+  readonly knowledgeService?:
+    | {
+        buildPromptPacketSync(task: string, writeScope?: readonly string[]): string | null;
+      }
+    | undefined;
+  readonly memoryRegistry?: Pick<MemoryRegistry, 'getAll' | 'searchSemantic'> | undefined;
+  readonly archetypeLoader?:
+    | {
+        loadArchetype(template: string): { systemPrompt?: string | undefined } | null | undefined;
+      }
+    | undefined;
 };
 
 function buildProjectContext(workingDirectory: string): string | null {
@@ -242,7 +246,7 @@ The report format depends on your role:
       general: '## Role: General\nGeneral-purpose agent. Complete the assigned task using the tools available.',
     };
     const roleDesc = roleDescriptions[record.template] ?? roleDescriptions.general;
-    parts.push(roleDesc);
+    parts.push(roleDesc!);
   }
 
   // --- Layer 3: Project context ---

@@ -57,7 +57,7 @@ export interface BudgetViolation {
   /** Number of consecutive samples that have violated this budget. */
   consecutiveViolations: number;
   /** Warning message when the metric was not found in the snapshot. */
-  warning?: string;
+  warning?: string | undefined;
 }
 
 /**

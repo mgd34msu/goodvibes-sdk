@@ -16,7 +16,7 @@ export interface CompanionConnectionInfo {
   readonly version: string;
   readonly surface: string;
   /** Bootstrap password for companion authentication (omitted if not applicable). */
-  readonly password?: string;
+  readonly password?: string | undefined;
 }
 
 export interface CompanionTokenRecord {
@@ -27,12 +27,12 @@ export interface CompanionTokenRecord {
 
 export interface CompanionTokenOptions {
   readonly daemonHomeDir: string;
-  readonly regenerate?: boolean;
+  readonly regenerate?: boolean | undefined;
 }
 
 export interface PruneStaleOperatorTokensOptions {
   readonly daemonHomeDir: string;
-  readonly candidatePaths?: readonly string[];
+  readonly candidatePaths?: readonly string[] | undefined;
 }
 
 export interface PruneStaleOperatorTokensResult {
@@ -183,10 +183,10 @@ export function pruneStaleOperatorTokens(
 export function buildCompanionConnectionInfo(options: {
   daemonUrl: string;
   token: string;
-  username?: string;
-  password?: string;
-  version?: string;
-  surface?: string;
+  username?: string | undefined;
+  password?: string | undefined;
+  version?: string | undefined;
+  surface?: string | undefined;
 }): CompanionConnectionInfo {
   return {
     url: options.daemonUrl,

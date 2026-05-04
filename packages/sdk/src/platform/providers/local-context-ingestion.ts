@@ -45,12 +45,12 @@ export interface ResolvedContextWindow {
    * When provenance is `provider_api`, the raw value from the API.
    * May differ from `tokens` when a configured_cap is applied.
    */
-  apiReportedTokens?: number;
+  apiReportedTokens?: number | undefined;
   /**
    * When provenance is `provider_api`, the safe cap that was applied
    * (equal to `tokens` when no cap was enforced).
    */
-  safeCap?: number;
+  safeCap?: number | undefined;
 }
 
 // ---------------------------------------------------------------------------

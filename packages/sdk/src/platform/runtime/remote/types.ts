@@ -164,7 +164,7 @@ export interface FailureMessage extends TransportMessageBase {
   /** Whether the failure is recoverable (triggers reconnect vs terminal failure). */
   readonly recoverable: boolean;
   /** Structured error context. */
-  readonly context?: Record<string, unknown>;
+  readonly context?: Record<string, unknown> | undefined;
 }
 
 // Remote session.
@@ -187,9 +187,9 @@ export interface RemoteTask {
   /** Epoch ms when the remote task was last updated. */
   readonly updatedAt: number;
   /** Progress value 0–100 (undefined if not reported). */
-  readonly progress?: number;
+  readonly progress?: number | undefined;
   /** Error message if status === 'failed'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 /**
@@ -201,11 +201,11 @@ export interface RemoteHealth {
   /** Epoch ms of last health update. */
   readonly updatedAt: number;
   /** Round-trip latency in ms (undefined if not measured). */
-  readonly latencyMs?: number;
+  readonly latencyMs?: number | undefined;
   /** Remote server version string. */
-  readonly serverVersion?: string;
+  readonly serverVersion?: string | undefined;
   /** Human-readable degradation reason. */
-  readonly degradedReason?: string;
+  readonly degradedReason?: string | undefined;
 }
 
 /**
@@ -221,15 +221,15 @@ export interface RemoteSession {
   /** Current transport state. */
   readonly transportState: DaemonTransportState;
   /** Current handshake token (undefined until first handshake). */
-  readonly handshakeToken?: HandshakeToken;
+  readonly handshakeToken?: HandshakeToken | undefined;
   /** Replay configuration. */
   readonly replayConfig: ReplayConfig;
   /** Number of reconnect attempts since last successful connect. */
   readonly reconnectAttempts: number;
   /** Epoch ms of last successful connection. */
-  readonly lastConnectedAt?: number;
+  readonly lastConnectedAt?: number | undefined;
   /** Last error message. */
-  readonly lastError?: string;
+  readonly lastError?: string | undefined;
   /** Remote tasks synced into the local store. */
   readonly remoteTasks: ReadonlyMap<string, RemoteTask>;
   /** Latest remote health snapshot. */
@@ -259,34 +259,34 @@ export interface RemoteRunnerCapabilityCeiling {
 export interface RemoteRunnerContract {
   readonly id: string;
   readonly runnerId: string;
-  readonly poolId?: string;
-  readonly taskId?: string;
+  readonly poolId?: string | undefined;
+  readonly taskId?: string | undefined;
   readonly label: string;
   readonly sourceTransport: 'acp' | 'daemon';
   readonly trustClass: 'self-hosted-acp' | 'local-daemon';
   readonly template: string;
-  readonly parentAgentId?: string;
-  readonly orchestrationGraphId?: string;
-  readonly orchestrationNodeId?: string;
+  readonly parentAgentId?: string | undefined;
+  readonly orchestrationGraphId?: string | undefined;
+  readonly orchestrationNodeId?: string | undefined;
   readonly capabilityCeiling: RemoteRunnerCapabilityCeiling;
   readonly createdAt: number;
   readonly lastUpdatedAt: number;
   readonly transport: {
     readonly state: DaemonTransportState;
-    readonly connectedAt?: number;
+    readonly connectedAt?: number | undefined;
     readonly messageCount: number;
     readonly errorCount: number;
-    readonly lastError?: string;
+    readonly lastError?: string | undefined;
   };
 }
 
 export interface RemoteRunnerPool {
   readonly id: string;
   readonly label: string;
-  readonly description?: string;
+  readonly description?: string | undefined;
   readonly trustClass: RemoteRunnerContract['trustClass'] | 'mixed';
-  readonly preferredTemplate?: string;
-  readonly maxRunners?: number;
+  readonly preferredTemplate?: string | undefined;
+  readonly maxRunners?: number | undefined;
   readonly runnerIds: readonly string[];
   readonly createdAt: number;
   readonly lastUpdatedAt: number;
@@ -297,8 +297,8 @@ export interface RemoteRunnerEvidenceSummary {
   readonly messageCount: number;
   readonly errorCount: number;
   readonly transportState: DaemonTransportState;
-  readonly connectedAt?: number;
-  readonly lastError?: string;
+  readonly connectedAt?: number | undefined;
+  readonly lastError?: string | undefined;
   readonly hasKnowledgeInjections: boolean;
 }
 
@@ -311,11 +311,11 @@ export interface RemoteExecutionArtifact {
     readonly task: string;
     readonly status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
     readonly startedAt: number;
-    readonly completedAt?: number;
+    readonly completedAt?: number | undefined;
     readonly summary: string;
-    readonly fullOutput?: string;
-    readonly error?: string;
-    readonly progress?: string;
+    readonly fullOutput?: string | undefined;
+    readonly error?: string | undefined;
+    readonly progress?: string | undefined;
   };
   readonly evidence: RemoteRunnerEvidenceSummary;
   readonly knowledgeInjections: readonly {
@@ -385,7 +385,7 @@ export interface NegotiatedProtocol {
   /** Whether a downgrade from the local maximum occurred. */
   readonly downgraded: boolean;
   /** Reason for the downgrade (undefined when no downgrade). */
-  readonly downgradeReason?: DowngradeReason;
+  readonly downgradeReason?: DowngradeReason | undefined;
   /** Version the local side offered (before negotiation). */
   readonly offeredVersion: ProtocolVersion;
   /** Version the remote peer advertised. */
@@ -441,7 +441,7 @@ export interface ProtocolSupportEntry {
   /** Maximum peer minor version accepted (same major required). */
   readonly maxSupportedMinor: number;
   /** Human-readable notes on what changed at each boundary. */
-  readonly notes?: string;
+  readonly notes?: string | undefined;
 }
 
 /**
@@ -464,11 +464,11 @@ export interface RemoteSubstrateConfig {
   /** Initial durable identity (caller supplies stable IDs). */
   readonly identity: DurableIdentity;
   /** Replay settings. */
-  readonly replayConfig?: Partial<ReplayConfig>;
+  readonly replayConfig?: Partial<ReplayConfig> | undefined;
   /** Reconnect policy override. */
-  readonly reconnectPolicy?: Partial<RetryPolicy>;
+  readonly reconnectPolicy?: Partial<RetryPolicy> | undefined;
   /** Authentication credentials or token factory. */
-  readonly authProvider?: AuthProvider;
+  readonly authProvider?: AuthProvider | undefined;
 }
 
 /** Provides authentication tokens for transport handshakes. */

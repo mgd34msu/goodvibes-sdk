@@ -32,12 +32,12 @@ export async function finalizeKnowledgeIngestedSource(
   input: {
     readonly sourceId: string;
     readonly artifactId: string;
-    readonly inputTitle?: string;
+    readonly inputTitle?: string | undefined;
     readonly sourceType: KnowledgeSourceType;
     readonly connectorId: string;
     readonly tags: readonly string[];
-    readonly folderPath?: string;
-    readonly sessionId?: string;
+    readonly folderPath?: string | undefined;
+    readonly sessionId?: string | undefined;
     readonly metadata: Record<string, unknown>;
   },
 ): Promise<{ source: KnowledgeSourceRecord; artifactId: string; extraction: KnowledgeExtractionRecord }> {

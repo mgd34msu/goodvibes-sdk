@@ -5,7 +5,7 @@ import { createWebSocketConnector } from './shared.js';
 import { createRemoteUiRuntimeEvents } from './ui-runtime-events.js';
 
 export interface RealtimeTransportOptions extends HttpTransportOptions {
-  readonly webSocketImpl?: typeof WebSocket;
+  readonly webSocketImpl?: typeof WebSocket | undefined;
 }
 
 export interface RealtimeTransportSnapshot extends Omit<HttpTransportSnapshot, 'kind'> {

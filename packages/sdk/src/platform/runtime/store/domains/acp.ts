@@ -17,7 +17,7 @@ export interface AcpConnection {
   /** ACP transport state for this specific connection. */
   transportState: AcpTransportState;
   /** Epoch ms when the connection was established. */
-  connectedAt?: number;
+  connectedAt?: number | undefined;
   /** Whether the subagent has completed and the connection is being torn down. */
   completing: boolean;
   /** Number of messages exchanged on this connection. */
@@ -25,9 +25,9 @@ export interface AcpConnection {
   /** Number of protocol errors on this connection. */
   errorCount: number;
   /** Last protocol error message. */
-  lastError?: string;
+  lastError?: string | undefined;
   /** Task associated with this ACP connection. */
-  taskId?: string;
+  taskId?: string | undefined;
 }
 
 /**

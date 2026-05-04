@@ -11,11 +11,11 @@ import type { SessionMemoryStore } from './session-memory.js';
 import type { FavoritesStore } from '../providers/favorites.js';
 
 export type OrchestratorCoreServices = {
-  configManager?: Pick<ConfigManager, 'get' | 'getCategory' | 'getWorkingDirectory'>;
-  providerRegistry?: ProviderRegistry;
-  cacheHitTracker?: Pick<CacheHitTracker, 'getMetrics'>;
-  sessionLineageTracker?: SessionLineageTracker;
-  idempotencyStore?: IdempotencyStore;
+  configManager?: Pick<ConfigManager, 'get' | 'getCategory' | 'getWorkingDirectory'> | undefined;
+  providerRegistry?: ProviderRegistry | undefined;
+  cacheHitTracker?: Pick<CacheHitTracker, 'getMetrics'> | undefined;
+  sessionLineageTracker?: SessionLineageTracker | undefined;
+  idempotencyStore?: IdempotencyStore | undefined;
   planManager?: Pick<
     ExecutionPlanManager,
     | 'getActive'
@@ -33,8 +33,8 @@ export type OrchestratorCoreServices = {
     AdaptivePlanner,
     'select' | 'getMode' | 'setMode' | 'explain' | 'override' | 'clearOverride' | 'getOverride' | 'getLatest'
   >;
-  sessionMemoryStore?: Pick<SessionMemoryStore, 'list'>;
-  favoritesStore?: Pick<FavoritesStore, 'recordUsage'>;
+  sessionMemoryStore?: Pick<SessionMemoryStore, 'list'> | undefined;
+  favoritesStore?: Pick<FavoritesStore, 'recordUsage'> | undefined;
 };
 
 export function normalizeUsage(

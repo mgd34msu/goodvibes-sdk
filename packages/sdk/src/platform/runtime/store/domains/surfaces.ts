@@ -13,9 +13,9 @@ export interface SurfaceRecord {
   readonly enabled: boolean;
   readonly state: SurfaceConnectionState;
   readonly configuredAt: number;
-  readonly lastSeenAt?: number;
-  readonly defaultRouteId?: string;
-  readonly accountId?: string;
+  readonly lastSeenAt?: number | undefined;
+  readonly defaultRouteId?: string | undefined;
+  readonly accountId?: string | undefined;
   readonly capabilities: readonly string[];
   readonly metadata: Record<string, unknown>;
 }

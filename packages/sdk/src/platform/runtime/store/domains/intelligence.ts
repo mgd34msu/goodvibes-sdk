@@ -21,9 +21,9 @@ export interface LspDiagnostic {
   /** Diagnostic message. */
   message: string;
   /** Diagnostic source (e.g. 'typescript'). */
-  source?: string;
+  source?: string | undefined;
   /** Diagnostic code. */
-  code?: string;
+  code?: string | undefined;
 }
 
 /** Symbol information from workspace symbol search. */
@@ -45,11 +45,11 @@ export interface IntelligenceHoverState {
   /** Whether hover info is currently displayed. */
   active: boolean;
   /** File path of the hover target. */
-  filePath?: string;
+  filePath?: string | undefined;
   /** Hover content (Markdown). */
-  content?: string;
+  content?: string | undefined;
   /** Epoch ms when the hover was last updated. */
-  updatedAt?: number;
+  updatedAt?: number | undefined;
 }
 
 /**

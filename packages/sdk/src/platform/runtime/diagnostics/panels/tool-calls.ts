@@ -29,11 +29,11 @@ interface MutableToolCallRecord {
   args: Record<string, unknown>;
   phase: ToolCallPhase;
   receivedAt: number;
-  completedAt?: number;
-  durationMs?: number;
-  error?: string;
-  cancelReason?: string;
-  permissionApproved?: boolean;
+  completedAt?: number | undefined;
+  durationMs?: number | undefined;
+  error?: string | undefined;
+  cancelReason?: string | undefined;
+  permissionApproved?: boolean | undefined;
   traceId: string;
   sessionId: string;
 }

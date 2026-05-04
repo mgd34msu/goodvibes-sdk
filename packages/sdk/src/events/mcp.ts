@@ -24,14 +24,14 @@ export type McpEvent =
   /** Attempting to re-establish a dropped MCP connection. */
   | { type: 'MCP_RECONNECTING'; serverId: string; attempt: number; maxAttempts: number }
   /** Connection to MCP server has been dropped or closed. */
-  | { type: 'MCP_DISCONNECTED'; serverId: string; reason?: string; willRetry: boolean }
+  | { type: 'MCP_DISCONNECTED'; serverId: string; reason?: string | undefined; willRetry: boolean }
   /**
    * MCP schema has been quarantined.
    *
    * Tool execution on this server is blocked until the schema is refreshed or
    * an operator explicitly approves a temporary override.
    */
-  | { type: 'MCP_SCHEMA_QUARANTINED'; serverId: string; reason: QuarantineReason; detail?: string }
+  | { type: 'MCP_SCHEMA_QUARANTINED'; serverId: string; reason: QuarantineReason; detail?: string | undefined }
   /**
    * An operator has acknowledged a quarantined schema and approved a temporary
    * execution override. Freshness transitions to `stale`; a refresh is still

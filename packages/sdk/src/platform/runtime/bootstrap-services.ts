@@ -30,14 +30,14 @@ interface ServiceFactories {
     userAuth: RuntimeServices['localUserAuthManager'],
     configManager: RuntimeServices['configManager'],
   ) => HttpListenerService;
-  startupTimeoutMs?: number;
-  probeDaemonPortInUse?: (host: string, port: number) => Promise<boolean>;
+  startupTimeoutMs?: number | undefined;
+  probeDaemonPortInUse?: ((host: string, port: number) => Promise<boolean>) | undefined | undefined;
   probeDaemonIdentity?: (
     host: string,
     port: number,
     token?: string,
   ) => Promise<DaemonIdentityProbeResult>;
-  probeHttpListenerPortInUse?: (host: string, port: number) => Promise<boolean>;
+  probeHttpListenerPortInUse?: ((host: string, port: number) => Promise<boolean>) | undefined | undefined;
   /**
    * Shared bearer token the daemon should accept on inbound HTTP requests.
    * When set, `daemon.enable()` registers this token and requests carrying
@@ -45,13 +45,13 @@ interface ServiceFactories {
    * Surfaces that generate companion-app pairing tokens should pass the token
    * here so the embedded daemon accepts scanned QR credentials.
    */
-  sharedDaemonToken?: string;
+  sharedDaemonToken?: string | undefined;
   /**
    * Shared bearer token for the HTTP listener (webhook-style surfaces).
    * Independent from `sharedDaemonToken`; different surfaces may issue
    * different tokens, or both may share the same bearer.
    */
-  sharedHttpListenerToken?: string;
+  sharedHttpListenerToken?: string | undefined;
 }
 
 export type HostServiceMode = 'disabled' | 'embedded' | 'external' | 'blocked' | 'unavailable';
@@ -61,17 +61,17 @@ export interface HostServiceStatus {
   readonly host: string;
   readonly port: number;
   readonly baseUrl: string;
-  readonly reason?: string;
-  readonly status?: string;
-  readonly version?: string;
-  readonly authenticated?: boolean;
+  readonly reason?: string | undefined;
+  readonly status?: string | undefined;
+  readonly version?: string | undefined;
+  readonly authenticated?: boolean | undefined;
 }
 
 interface DaemonIdentityProbeResult {
   readonly kind: 'goodvibes' | 'unauthorized' | 'unknown';
-  readonly status?: string;
-  readonly version?: string;
-  readonly reason?: string;
+  readonly status?: string | undefined;
+  readonly version?: string | undefined;
+  readonly reason?: string | undefined;
 }
 
 export interface HostServicesHandle {

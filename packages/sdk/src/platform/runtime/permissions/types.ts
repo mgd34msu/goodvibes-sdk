@@ -119,7 +119,7 @@ export interface EvaluationStep {
   /** Whether this step produced a match (true = this step resolved the decision). */
   matched: boolean;
   /** Optional additional context (rule id, pattern, path matched, etc.). */
-  detail?: string;
+  detail?: string | undefined;
 }
 
 // ── Permission Decision ────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ export interface PermissionDecision {
   /** Arguments passed to the tool. */
   args: Record<string, unknown>;
   /** Semantic classification of this tool call (set by the evaluator). */
-  classification?: CommandClassification;
+  classification?: CommandClassification | undefined;
   /** Unix epoch milliseconds when the decision was produced. */
   timestamp: number;
   /** Full ordered trace of evaluation steps that led to this decision. */
@@ -158,17 +158,17 @@ export interface PermissionDecision {
    * Opaque identifier of the policy bundle that provided the rules used
    * for this evaluation. Undefined when no bundle was loaded.
    */
-  policyBundleId?: string;
+  policyBundleId?: string | undefined;
   /**
    * Signature validation status of the bundle at load time.
    * Undefined when no bundle was loaded or when the feature flag is disabled.
    */
-  signatureStatus?: import('./policy-signer.js').SignatureStatus;
+  signatureStatus?: import('./policy-signer.js').SignatureStatus | undefined;
   /**
    * Where the policy bundle originated from.
    * Undefined when no bundle was loaded.
    */
-  provenanceSource?: import('./policy-signer.js').ProvenanceSource;
+  provenanceSource?: import('./policy-signer.js').ProvenanceSource | undefined;
 }
 
 // ── Simulation Types ──────────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ export interface SimulationResult {
   /** Whether the two decisions diverged in any way. */
   diverged: boolean;
   /** How the decisions diverged; only set when `diverged` is `true`. */
-  divergenceType?: DivergenceType;
+  divergenceType?: DivergenceType | undefined;
 }
 
 /**
@@ -287,20 +287,20 @@ export interface PermissionSimulatorConfig {
    * Maximum number of divergence records to retain in memory.
    * Oldest records are evicted when the limit is reached. Defaults to 500.
    */
-  maxDivergenceRecords?: number;
+  maxDivergenceRecords?: number | undefined;
   /**
    * Maximum divergence rate (0–1) allowed before enforcement mode is blocked.
    * Only relevant when `mode` is `'enforce'`.
    * Defaults to 0.05 (5%).
    */
-  divergenceThreshold?: number;
+  divergenceThreshold?: number | undefined;
   /**
    * Optional callback invoked when a divergence is detected in `warn-on-divergence` mode.
    *
    * Receives the full `DivergenceRecord` for the diverging evaluation.
    * If omitted, warnings are written to `process.stderr` as a fallback.
    */
-  onWarning?: (record: DivergenceRecord) => void;
+  onWarning?: ((record: DivergenceRecord) => void) | undefined | undefined;
 }
 
 // ── Policy Rules ───────────────────────────────────────────────────────────────
@@ -316,7 +316,7 @@ interface BaseRule {
   /** Unique rule identifier (used in trace output and logs). */
   id: string;
   /** Human-readable description of what this rule does. */
-  description?: string;
+  description?: string | undefined;
   /** Who authored this rule. */
   origin: RuleOrigin;
   /** Whether the rule grants (allow) or blocks (deny) matching calls. */
@@ -336,7 +336,7 @@ export interface PrefixRule extends BaseRule {
    * Prefix pattern(s) matched against the first string argument of the call.
    * If omitted, the rule matches any call to the specified tool(s).
    */
-  commandPrefixes?: string[];
+  commandPrefixes?: string[] | undefined;
 }
 
 /**
@@ -390,7 +390,7 @@ export interface NetworkScopeRule extends BaseRule {
    * Optional port restriction. If set, only the specified ports are matched.
    * Use `0` to match any port.
    */
-  ports?: number[];
+  ports?: number[] | undefined;
 }
 
 /**
@@ -405,7 +405,7 @@ export interface ModeConstraintRule extends BaseRule {
   /** Tool name(s) or classifications this rule applies to. */
   toolPattern: string | string[];
   /** Optional: restrict by command classification instead of tool name. */
-  classifications?: CommandClassification[];
+  classifications?: CommandClassification[] | undefined;
 }
 
 /** Discriminated union of all policy rule types. */
@@ -421,19 +421,19 @@ export type PolicyRule =
 /** Configuration object passed to `createPermissionEvaluator()`. */
 export interface PermissionsConfig {
   /** Active permission mode. Defaults to `'default'`. */
-  mode?: PermissionMode;
+  mode?: PermissionMode | undefined;
   /** Explicit project root used to resolve relative path-scope rules and tool args. */
-  projectRoot?: string;
+  projectRoot?: string | undefined;
   /**
    * Ordered list of policy rules applied in Layer 4.
    * User rules are evaluated before managed rules within this layer.
    */
-  rules?: PolicyRule[];
+  rules?: PolicyRule[] | undefined;
   /**
    * Default decision when no rule or safety check fires.
    * Defaults to `'allow'` for read tools, `'deny'` for everything else.
    */
-  defaultEffect?: 'allow' | 'deny';
+  defaultEffect?: 'allow' | 'deny' | undefined;
   /** Whether to emit structured audit log entries for every decision. Defaults to true. */
-  auditLog?: boolean;
+  auditLog?: boolean | undefined;
 }

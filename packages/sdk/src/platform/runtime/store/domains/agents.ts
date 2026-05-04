@@ -55,21 +55,21 @@ export interface RuntimeAgent {
 
   // ── Hierarchy ────────────────────────────────────────────────────────────
   /** ID of the parent agent that spawned this one (undefined = root). */
-  parentAgentId?: string;
+  parentAgentId?: string | undefined;
   /** IDs of agents spawned by this agent. */
   childAgentIds: string[];
 
   // ── WRFC integration ─────────────────────────────────────────────────────
   /** WRFC chain reference if this agent is part of a WRFC workflow. */
-  wrfcRef?: AgentWrfcRef;
+  wrfcRef?: AgentWrfcRef | undefined;
 
   // ── Task linkage ─────────────────────────────────────────────────────────
   /** Task ID this agent is executing (from tasks domain). */
-  taskId?: string;
+  taskId?: string | undefined;
 
   // ── Session ──────────────────────────────────────────────────────────────
   /** Path to the agent's session file. */
-  sessionFile?: string;
+  sessionFile?: string | undefined;
   /** Number of turns completed by this agent. */
   turnCount: number;
   /** Number of tool calls made by this agent. */
@@ -79,23 +79,23 @@ export interface RuntimeAgent {
   /** Latest accumulated output from the agent (for live display). */
   latestOutput: string;
   /** Latest progress string emitted by the agent. */
-  latestProgress?: string;
+  latestProgress?: string | undefined;
 
   // ── Timing ───────────────────────────────────────────────────────────────
   /** Epoch ms when the agent was spawned. */
   spawnedAt: number;
   /** Epoch ms when the agent completed/failed/cancelled. */
-  endedAt?: number;
+  endedAt?: number | undefined;
 
   // ── Result ───────────────────────────────────────────────────────────────
   /** Final result payload from the agent (populated on completion). */
-  result?: unknown;
+  result?: unknown | undefined;
   /** Error message if status === 'failed'. */
-  error?: string;
+  error?: string | undefined;
 
   // ── Correlation ──────────────────────────────────────────────────────────
   /** Correlation ID for tracing across agent boundaries. */
-  correlationId?: string;
+  correlationId?: string | undefined;
 }
 
 /**

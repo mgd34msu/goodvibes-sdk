@@ -14,10 +14,10 @@ export type PermissionEvent =
       tool: string;
       args: Record<string, unknown>;
       category: string;
-      classification?: string;
-      riskLevel?: string;
-      summary?: string;
-      reasons?: readonly string[];
+      classification?: string | undefined;
+      riskLevel?: string | undefined;
+      summary?: string | undefined;
+      reasons?: readonly string[] | undefined;
     }
   /** Permission rules have been collected from all sources. */
   | { type: 'RULES_COLLECTED'; callId: string; tool: string; ruleCount: number }
@@ -38,12 +38,12 @@ export type PermissionEvent =
       tool: string;
       approved: boolean;
       source: string;
-      sourceLayer?: string;
-      persisted?: boolean;
-      reasonCode?: string;
-      classification?: string;
-      riskLevel?: string;
-      summary?: string;
+      sourceLayer?: string | undefined;
+      persisted?: boolean | undefined;
+      reasonCode?: string | undefined;
+      classification?: string | undefined;
+      riskLevel?: string | undefined;
+      summary?: string | undefined;
     };
 
 /** All permission event type literals as a union. */
