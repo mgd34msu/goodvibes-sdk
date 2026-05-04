@@ -378,7 +378,7 @@ The `RuntimeStore` is a Redux-style store (using a custom reducer + dispatch pat
 
 ### RuntimeEventBus
 
-The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport — it is synchronous and in-process only.
+The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport — it is synchronous and in-process only. Note: the RuntimeEventBus is not the same as the 21 runtime event domains documented in [Runtime events reference](./reference-runtime-events.md); those are the SSE/WebSocket-facing event streams exposed to SDK consumers, while the bus is daemon-internal only.
 
 ---
 

@@ -20,9 +20,9 @@ Linux CI runner.
 - Do not publish unless validation passes.
 - Do not push or publish when the operator has explicitly said to hold.
 
-The SDK targets Bun for the full surface and browser/Hermes/Workers for the
+The SDK targets Bun **1.3.10** for the full surface and browser/Hermes/Workers for the
 companion surface. Node.js is not a supported runtime target; see
-[Runtime surfaces](./surfaces.md).
+[Runtime surfaces](./surfaces.md). (See also `CONTRIBUTING.md` for the pinned runtime requirement.)
 
 ## Local Validation
 

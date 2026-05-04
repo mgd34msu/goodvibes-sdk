@@ -157,6 +157,8 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ## WRFC synthetic critical issues
 
+See [WRFC Constraint Propagation](./wrfc-constraint-propagation.md) for the full constraint lifecycle context.
+
 WRFC chains can produce **synthetic critical issues** when the fixer violates constraint continuity (returning a `constraints[]` array with missing or extra IDs compared to the initial engineer enumeration). These are not `GoodVibesSdkError` instances — they are injected directly into the next review cycle's task payload as `[CRITICAL]` block entries and consumed once.
 
 Synthetic critical issues surface under the reviewer's `issues[]` array with `severity: 'critical'` and a description like:

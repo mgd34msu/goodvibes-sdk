@@ -26,7 +26,7 @@ Alternate registry:
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
-> **Warning:** `YOUR_GITHUB_TOKEN` is a placeholder. Never commit a real token to source control.
+> **Warning:** `YOUR_GITHUB_TOKEN` is a placeholder. Never commit a real token to source control. Store tokens in `~/.npmrc` (user scope) outside the project directory, or use GitHub Actions `secrets.*` bindings. See [GitHub docs: Authenticating to a registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry#authenticating-to-github-packages) for the recommended setup.
 
 ## What The SDK Provides
 

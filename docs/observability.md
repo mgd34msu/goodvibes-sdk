@@ -117,6 +117,8 @@ Available runtime domains:
 | `watchers` | File/resource watcher state |
 | `workflows` | WRFC workflow lifecycle: chain created/passed/failed, state transitions, review completed, fix attempted, constraints enumerated |
 
+For the complete list of event types and their payload shapes, see [Runtime events reference](./reference-runtime-events.md).
+
 ### Subscribing via SSE
 
 ```ts
@@ -619,8 +621,8 @@ export interface SDKObserver {
 Pass an observer in `GoodVibesSdkOptions` when constructing the SDK:
 
 ```ts
-import { createGoodVibesSdk, createConsoleObserver } from '@pellux/goodvibes-sdk';
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
+import { createGoodVibesSdk, createConsoleObserver } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',

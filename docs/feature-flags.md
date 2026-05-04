@@ -5,8 +5,8 @@ default state, runtime checks, and kill-switch mechanics. Host applications such
 the TUI own the deployment profile: which flags to enable, disable, or kill for a
 given surface.
 
-The registry lives in
-`packages/sdk/src/platform/runtime/feature-flags/flags.ts`.
+The registry is accessible via `@pellux/goodvibes-sdk/platform/runtime`.
+For internal source layout see [architecture-platform.md](./architecture-platform.md).
 
 ## Ownership Model
 
@@ -96,6 +96,8 @@ constructor's explicit options and does not apply config-backed host policy.
 | `web-surface` | disabled | yes | ready | Web control surface records and plugins require this flag unless the embedded web alias is enabled. |
 | `watcher-framework` | disabled | yes | ready | WatcherRegistry list/read APIs return empty while disabled; registration/start/stop/run/remove fail closed. |
 | `service-management` | disabled | yes | ready | PlatformServiceManager status reports disabled state; install/start/stop/restart/uninstall fail closed. |
+
+The `prompt` value for `permissions.tools.<name>` triggers a user-approval prompt before each call to that tool. See [Tool safety](./tool-safety.md) and [Security](./security.md#permission-system) for how permission decisions are evaluated.
 
 ## Recommended Host Profiles
 
