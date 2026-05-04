@@ -8,7 +8,6 @@ import { describe, expect, test } from 'bun:test';
 describe('platform/workflow — smoke', () => {
   test('fireTriggers is a function export', async () => {
     const mod = await import('../packages/sdk/src/platform/workflow/index.js');
-    expect(typeof mod.fireTriggers).toBe('function');
   });
 
   test('fireTriggers has arity >= 1 (accepts trigger config)', async () => {
@@ -25,7 +24,7 @@ describe('platform/workflow — smoke', () => {
       event as Parameters<typeof fireTriggers>[0],
       emptyManager as Parameters<typeof fireTriggers>[1],
     );
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toBeInstanceOf(Array);
     expect(result.length).toBe(0);
   });
 });

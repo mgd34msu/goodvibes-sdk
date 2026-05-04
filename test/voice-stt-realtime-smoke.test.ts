@@ -29,7 +29,7 @@ describe('platform/voice — behavior smoke', () => {
     const registry = new VoiceProviderRegistry();
     registry.register(MOCK_PROVIDER);
     const all = registry.list();
-    expect(Array.isArray(all)).toBe(true);
+    expect(all).toBeInstanceOf(Array);
     const ids = all.map((p) => p.id);
     expect(ids).toContain(MOCK_PROVIDER.id);
   });

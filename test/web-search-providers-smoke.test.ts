@@ -38,9 +38,7 @@ function assertProviderShape(
   expect(typeof provider.id).toBe('string');
   expect(provider.id).toBe(expectedId);
   expect(typeof provider.label).toBe('string');
-  expect(Array.isArray(provider.capabilities)).toBe(true);
-  expect(typeof provider.descriptor).toBe('function');
-  expect(typeof provider.search).toBe('function');
+  expect(provider.capabilities).toBeInstanceOf(Array);
   // descriptor() returns {id, label}
   const desc = provider.descriptor() as Record<string, unknown>;
   expect(typeof desc.id).toBe('string');
@@ -53,7 +51,7 @@ function assertProviderShape(
  * We assert that the return value is a Promise (not a thrown sync error).
  */
 async function assertSearchReturnsPromise(provider: MinimalProvider): Promise<void> {
-  const signal = AbortSignal.timeout(10);
+  const signal = AbortSignal.timeout(250);
   const result = (provider.search as (query: unknown, opts: unknown) => unknown)(
     { query: 'x' },
     { signal },

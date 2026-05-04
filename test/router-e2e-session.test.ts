@@ -113,7 +113,7 @@ describe('router-e2e session — POST /api/sessions (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as { sessions: unknown[] };
-    expect(Array.isArray(body.sessions)).toBe(true);
+    expect(body.sessions).toBeInstanceOf(Array);
   });
 });
 
@@ -125,7 +125,7 @@ describe('router-e2e session — messages (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as { messages: unknown[] };
-    expect(Array.isArray(body.messages)).toBe(true);
+    expect(body.messages).toBeInstanceOf(Array);
   });
 
   test('POST /api/sessions/:id/messages submits message and returns messageId', async () => {

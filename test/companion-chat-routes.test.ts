@@ -162,7 +162,7 @@ describe('companion-chat-routes: create session', () => {
     const body = await getRes!.json();
     expect(body.session.id).toBe(sessionId);
     expect(body.session.kind).toBe('companion-chat');
-    expect(Array.isArray(body.messages)).toBe(true);
+    expect(body.messages).toBeInstanceOf(Array);
     expect(body.messages).toHaveLength(0);
   });
 

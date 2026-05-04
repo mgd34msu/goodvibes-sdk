@@ -343,7 +343,6 @@ describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
     adapter.attachRuntimeBus(bus);
     // Second call returns a no-op unsubscribe and must not double-subscribe.
     const unsub2 = adapter.attachRuntimeBus(bus);
-    expect(typeof unsub2).toBe('function');
 
     const taskId = adapter.wrapAgent('ag-idem2', 'Task', { sessionId: 'sess-x' });
     adapter.handleAgentStateChange('ag-idem2', 'running');
@@ -522,7 +521,6 @@ describe('m3: SharedSessionBroker.attachRuntimeBus is idempotent', () => {
     broker.attachRuntimeBus(bus, () => null);
 
     const unsub = broker.attachRuntimeBus(bus, () => null);
-    expect(typeof unsub).toBe('function');
   });
 });
 

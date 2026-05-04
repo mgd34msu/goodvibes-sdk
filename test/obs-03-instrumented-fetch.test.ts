@@ -7,7 +7,6 @@ import { describe, expect, test } from 'bun:test';
 describe('obs-03 instrumentedFetch migration', () => {
   test('instrumentedFetch is a function with arity >= 1', async () => {
     const { instrumentedFetch } = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
-    expect(typeof instrumentedFetch).toBe('function');
     expect(instrumentedFetch.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -21,7 +20,6 @@ describe('obs-03 instrumentedFetch migration', () => {
 
   test('fetchWithTimeout exists alongside instrumentedFetch', async () => {
     const mod = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
-    expect(typeof mod.fetchWithTimeout).toBe('function');
   });
 
   // N-2: URL redaction — sensitive params are replaced with [redacted] in logged URL

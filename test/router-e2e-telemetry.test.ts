@@ -128,7 +128,7 @@ describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
     expect(body).toHaveProperty('items');
-    expect(Array.isArray(body.items)).toBe(true);
+    expect(body.items).toBeInstanceOf(Array);
   });
 
   test('GET /api/v1/telemetry/events bounds since, until, and limit filters', async () => {

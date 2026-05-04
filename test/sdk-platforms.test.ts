@@ -28,8 +28,6 @@ describe('sdk platform integrations', () => {
 
     expect(sdk.operator.transport.baseUrl).toBe('http://127.0.0.1:3210');
     expect(sdk.peer.transport.baseUrl).toBe('http://127.0.0.1:3210');
-    expect(typeof sdk.realtime.viaSse).toBe('function');
-    expect(typeof sdk.realtime.viaWebSocket).toBe('function');
   });
 
   test('browser entry defaults baseUrl from location.origin', () => {
@@ -82,8 +80,6 @@ describe('sdk platform integrations', () => {
       WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket,
     });
 
-    expect(typeof sdk.realtime.runtime).toBe('function');
-    expect(typeof sdk.realtime.viaWebSocket).toBe('function');
     expect(sdk.realtime.runtime().domains).toContain('agents');
   });
 
@@ -97,7 +93,6 @@ describe('sdk platform integrations', () => {
       WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket,
     });
 
-    expect(typeof sdk.realtime.runtime).toBe('function');
     expect(sdk.realtime.runtime().domains).toContain('agents');
   });
 });

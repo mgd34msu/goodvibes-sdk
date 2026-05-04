@@ -24,7 +24,6 @@ describe('obs-06 summarizePromptContent helper', () => {
     const { summarizePromptContent } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
     const content = 'Tell me about the weather in Paris.';
     const result = summarizePromptContent(content, false);
-    expect(typeof result).toBe('object');
     const summary = result as { length: number; sha256: string; first100chars: string };
     expect(summary.length).toBe(content.length);
     expect(summary.sha256).toMatch(/^[a-f0-9]{64}$/);

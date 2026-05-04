@@ -39,7 +39,7 @@ describe('platform/runtime/store/domains — behavior smoke', () => {
     const state = createInitialAgentsState();
     assertBaseShape(state, 'agents');
     expect(state.agents).toBeInstanceOf(Map);
-    expect(Array.isArray(state.activeAgentIds)).toBe(true);
+    expect(state.activeAgentIds).toBeInstanceOf(Array);
     expect(state.activeAgentIds.length).toBe(0);
     expect(state.peakConcurrency).toBe(0);
   });

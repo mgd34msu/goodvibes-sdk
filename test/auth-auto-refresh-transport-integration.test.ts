@@ -101,7 +101,6 @@ describe('transport integration: reactive 401 retry via middleware', () => {
     // Fresh token was persisted to the store.
     expect(await store.getToken()).toBe('fresh-token');
     // Result is the snapshot payload.
-    expect(typeof result).toBe('object');
     expect(result).not.toBeNull();
   });
 });

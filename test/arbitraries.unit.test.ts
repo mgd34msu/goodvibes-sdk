@@ -18,7 +18,7 @@ import {
   KNOWN_EVENT_TYPES,
   REQUIRED_FIELDS_BY_TYPE,
   FIXTURE_EVENTS,
-} from './arbitraries.js';
+} from './integration/_shared/arbitraries.js';
 
 // ---------------------------------------------------------------------------
 // 1. Required-field coverage: every FIXTURE_EVENTS entry satisfies its schema

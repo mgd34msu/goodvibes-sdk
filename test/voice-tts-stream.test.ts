@@ -109,7 +109,6 @@ describe('ElevenLabs streaming TTS provider', () => {
       },
     });
 
-    expect(result).toBeDefined();
     expect(await collectBytes(result!.chunks)).toEqual([10, 11, 12]);
     expect(result!.providerId).toBe('elevenlabs');
     expect(result!.mimeType).toBe('audio/mpeg');

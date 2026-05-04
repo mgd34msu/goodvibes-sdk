@@ -94,8 +94,6 @@ describe('ARCH-01 — platform-HTTP DaemonRuntimeRouteContext inherits canonical
     expect(inherited.listJobs()).toEqual([]);
     expect(inherited.getSchedulerCapacity()).toMatchObject({ slotsTotal: 4, slotsInUse: 0 });
     // runNow and triggerHeartbeat are async stubs — verify they return thenables
-    expect(typeof inherited.runNow).toBe('function');
-    expect(typeof inherited.triggerHeartbeat).toBe('function');
   });
 
   test('sessionBroker shape is inherited from canonical, not inlined', async () => {

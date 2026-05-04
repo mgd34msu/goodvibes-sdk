@@ -58,7 +58,7 @@ describe('router-e2e control — GET /status (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(Array.isArray(body.events)).toBe(true);
+    expect(body.events).toBeInstanceOf(Array);
     expect(capturedLimit).toBe(25);
   });
 

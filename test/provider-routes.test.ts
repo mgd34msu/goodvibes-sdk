@@ -408,7 +408,7 @@ describe('PATCH /api/providers/current', () => {
     expect(res!.status).toBe(409);
     const body = await res!.json() as Record<string, unknown>;
     expect(body.code).toBe('PROVIDER_NOT_CONFIGURED');
-    expect(Array.isArray(body.missingEnvVars)).toBe(true);
+    expect(body.missingEnvVars).toBeInstanceOf(Array);
     // Venice env vars from BUILTIN_PROVIDER_ENV_KEYS
     const missingEnvVars = body.missingEnvVars as string[];
     expect(missingEnvVars).toContain('VENICE_API_KEY');
@@ -498,7 +498,7 @@ describe('PATCH /api/providers/current — discovered anonymous provider', () =>
     const body = await res!.json() as Record<string, unknown>;
     expect(body.code).toBe('PROVIDER_NOT_CONFIGURED');
     // Fix 3: missingEnvVars must be an empty array, NOT a placeholder string
-    expect(Array.isArray(body.missingEnvVars)).toBe(true);
+    expect(body.missingEnvVars).toBeInstanceOf(Array);
     expect((body.missingEnvVars as string[]).length).toBe(0);
     // Fix 3: error message must NOT contain the placeholder pattern
     const errorMsg = body.error as string;

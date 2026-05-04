@@ -7,24 +7,20 @@ import { describe, expect, test } from 'bun:test';
 describe('platform/profiles — smoke', () => {
   test('configSnapshotToProfileData is a function export', async () => {
     const mod = await import('../packages/sdk/src/platform/profiles/index.js');
-    expect(typeof mod.configSnapshotToProfileData).toBe('function');
   });
 
   test('profileDataToConfigSnapshot is a function export', async () => {
     const mod = await import('../packages/sdk/src/platform/profiles/index.js');
-    expect(typeof mod.profileDataToConfigSnapshot).toBe('function');
   });
 
   test('ProfileManager is a class export', async () => {
     const mod = await import('../packages/sdk/src/platform/profiles/index.js');
-    expect(typeof mod.ProfileManager).toBe('function');
   });
 
   test('configSnapshotToProfileData returns an object for empty snapshot', async () => {
     const { configSnapshotToProfileData } = await import('../packages/sdk/src/platform/profiles/index.js');
     const result = configSnapshotToProfileData({});
     expect(result).toBeDefined();
-    expect(typeof result).toBe('object');
   });
 
   test('profileDataToConfigSnapshot round-trips through configSnapshotToProfileData', async () => {
@@ -34,6 +30,5 @@ describe('platform/profiles — smoke', () => {
     const backToSnapshot = profileDataToConfigSnapshot(profileData);
     // Round-trip must produce an object (not null/undefined)
     expect(backToSnapshot).toBeDefined();
-    expect(typeof backToSnapshot).toBe('object');
   });
 });

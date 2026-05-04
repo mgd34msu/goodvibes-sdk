@@ -186,7 +186,7 @@ describe('F7 E2E — DaemonHttpRouter: OTLP logs ingest → observable on GET /e
       expect(getRes!.status).toBe(200);
       const getBody = await getRes!.json() as Record<string, unknown>;
       const items = (getBody['items'] ?? getBody['events']) as unknown[];
-      expect(Array.isArray(items)).toBe(true);
+      expect(items).toBeInstanceOf(Array);
       // At least one record with source 'otlp-ingest' and type 'OTLP_LOG_INGEST'
       const ingested = (items as Array<Record<string, unknown>>).filter(
         (r) => r['source'] === 'otlp-ingest' && r['type'] === 'OTLP_LOG_INGEST',

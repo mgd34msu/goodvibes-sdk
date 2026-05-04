@@ -202,7 +202,7 @@ describe('parseJsonRecord', () => {
     expect(result).not.toBeInstanceOf(Response);
     // Arrays satisfy `typeof x === 'object' && x !== null` — the implementation
     // returns them as-is without coercion to {}. This documents that behaviour.
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toBeInstanceOf(Array);
   });
 
   test('returns empty object for JSON string (non-object)', () => {

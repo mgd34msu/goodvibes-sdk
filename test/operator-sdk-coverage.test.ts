@@ -41,7 +41,7 @@ describe('createOperatorRemoteClient — listOperations / getOperation', () => {
     const contract = getOperatorContract();
     const client = createOperatorRemoteClient(transport, contract);
     const methods = client.listOperations();
-    expect(Array.isArray(methods)).toBe(true);
+    expect(methods).toBeInstanceOf(Array);
     expect(methods).toHaveLength(contract.operator.methods.length);
     expect(methods.some((m) => m.id === 'accounts.snapshot')).toBe(true);
   });

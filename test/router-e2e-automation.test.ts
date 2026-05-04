@@ -85,7 +85,7 @@ describe('router-e2e automation — GET /api/automation/jobs (happy path)', () =
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as { jobs: unknown[] };
-    expect(Array.isArray(body.jobs)).toBe(true);
+    expect(body.jobs).toBeInstanceOf(Array);
     expect(body.jobs.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -112,7 +112,7 @@ describe('router-e2e automation — runs (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as { runs: unknown[] };
-    expect(Array.isArray(body.runs)).toBe(true);
+    expect(body.runs).toBeInstanceOf(Array);
   });
 
   test('GET /api/automation/runs/:id retrieves specific run', async () => {

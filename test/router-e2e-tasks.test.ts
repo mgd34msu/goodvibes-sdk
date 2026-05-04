@@ -49,7 +49,7 @@ describe('router-e2e tasks — POST /task (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as { tasks: unknown[] };
-    expect(Array.isArray(body.tasks)).toBe(true);
+    expect(body.tasks).toBeInstanceOf(Array);
     expect(body.tasks).toHaveLength(1);
   });
 

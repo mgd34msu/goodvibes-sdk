@@ -13,15 +13,14 @@ describe('platform/runtime/inspection/state-inspector — behavior smoke', () =>
     const inspector = createStateInspector({ domains: [] });
     const snapshot = inspector.getSnapshot();
     expect(snapshot).toBeDefined();
-    expect(typeof snapshot).toBe('object');
-    expect(Array.isArray(snapshot.domains)).toBe(true);
+    expect(snapshot.domains).toBeInstanceOf(Array);
     expect(typeof snapshot.capturedAt).toBe('number');
   });
 
   test('registeredDomainNames returns an empty array when no domains registered', () => {
     const inspector = createStateInspector({ domains: [] });
     const names = inspector.registeredDomainNames();
-    expect(Array.isArray(names)).toBe(true);
+    expect(names).toBeInstanceOf(Array);
     expect(names.length).toBe(0);
   });
 
@@ -35,7 +34,6 @@ describe('platform/runtime/inspection/state-inspector — behavior smoke', () =>
     const inspector = createStateInspector({ domains: [] });
     const sub = inspector.subscribe(() => {});
     expect(typeof sub.id).toBe('string');
-    expect(typeof sub.unsubscribe).toBe('function');
     // Exercise unsubscribe without error
     sub.unsubscribe();
     // subscriptionCount is a getter property, not a method
