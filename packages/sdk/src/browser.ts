@@ -5,6 +5,18 @@ import {
   type GoodVibesSdk,
 } from './client.js';
 
+/**
+ * Options for {@link createBrowserGoodVibesSdk}.
+ *
+ * Extends {@link GoodVibesSdkOptions} with browser-friendly defaults:
+ * - `baseUrl` is optional and defaults to `location.origin`.
+ * - `fetch` and `WebSocketImpl` default to the browser globals.
+ *
+ * This is the canonical options type for the browser entrypoint
+ * (`@pellux/goodvibes-sdk/browser`). The web entrypoint
+ * (`@pellux/goodvibes-sdk/web`) exposes the same shape as
+ * `WebGoodVibesSdkOptions` — a named alias retained for ergonomic imports.
+ */
 export interface BrowserGoodVibesSdkOptions
   extends Omit<GoodVibesSdkOptions, 'baseUrl' | 'fetch' | 'WebSocketImpl'> {
   readonly baseUrl?: string | undefined;
