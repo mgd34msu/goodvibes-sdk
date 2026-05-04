@@ -10,6 +10,13 @@ export type {
 } from './daemon-error-contract.js';
 export { DaemonErrorCategory } from './daemon-error-contract.js';
 
+/**
+ * MIN-5: `'contract'` is an SDK-internal category used when the daemon returns
+ * a response that violates the expected contract schema. It is NOT part of the
+ * daemon wire schema (`DaemonErrorCategory`) and MUST NOT be marshalled over
+ * the wire — doing so will cause the daemon to schema-reject the error envelope.
+ * Treat `'contract'` as a local SDK sentinel only.
+ */
 export type ErrorCategory = DaemonErrorCategory | 'contract';
 
 export type ErrorSource = DaemonErrorSource | 'contract';
