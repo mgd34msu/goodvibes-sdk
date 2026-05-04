@@ -44,6 +44,7 @@
     "distributed-runtime",
     "client"
   ],
+  "_comment_deps": "peer-sdk intentionally omits a direct zod dependency: all schema validation is delegated to @pellux/goodvibes-contracts (which depends on zod). If peer-sdk source ever imports zod directly, add zod as an explicit dep to avoid relying on the transitive resolution path.",
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
     "@pellux/goodvibes-errors": "workspace:*",

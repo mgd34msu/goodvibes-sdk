@@ -8,8 +8,7 @@
  * The `ui/` subdirectory contains model-picker and provider-health data
  * providers — several of which ARE re-exported here. This file is the
  * curated public surface that the `./platform/runtime/ui` export map path
- * resolves to. The source was previously named `ui-surface.ts` and renamed
- * to `ui.ts` (MAJ-04 fix) so the source filename matches the export path.
+ * resolves to.
  *
  * See `docs/public-surface.md` for the canonical surface table.
  */

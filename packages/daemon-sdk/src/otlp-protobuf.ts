@@ -163,6 +163,19 @@ function readNumeric(reader: ProtoReader, wireType: WireType): number | undefine
   return undefined;
 }
 
+/**
+ * CRIT-04: Return uint64 fields as string (via BigInt) to preserve nanosecond
+ * precision. Year-2026 timestamps (~1.78e18 ns) exceed Number.MAX_SAFE_INTEGER
+ * (~9e15), so Number conversion silently loses the low ~7 digits.
+ * OTLP JSON spec §3.4 encodes int64 fields as strings — this matches the spec.
+ */
+function readNumericBigIntAsString(reader: ProtoReader, wireType: WireType): string | undefined {
+  if (wireType === 0) return String(reader.readVarint());
+  if (wireType === 1) return String(reader.readFixed64());
+  reader.skip(wireType);
+  return undefined;
+}
+
 function readFloating(reader: ProtoReader, wireType: WireType): number | undefined {
   if (wireType === 1) return reader.readDouble();
   if (wireType === 5) return reader.readFloat();
@@ -226,8 +239,8 @@ function decodeAnyValue(bytes: Uint8Array): Record<string, unknown> {
         break;
       }
       case 3: {
-        const value = readNumeric(reader, wireType);
-        if (value !== undefined) out['intValue'] = String(Math.trunc(value));
+        const value = readNumericBigIntAsString(reader, wireType);
+        if (value !== undefined) out['intValue'] = value;
         break;
       }
       case 4: {
@@ -447,12 +460,12 @@ function decodeSpan(bytes: Uint8Array): Record<string, unknown> {
         break;
       }
       case 7: {
-        const value = readNumeric(reader, wireType);
+        const value = readNumericBigIntAsString(reader, wireType);
         if (value !== undefined) out['startTimeUnixNano'] = value;
         break;
       }
       case 8: {
-        const value = readNumeric(reader, wireType);
+        const value = readNumericBigIntAsString(reader, wireType);
         if (value !== undefined) out['endTimeUnixNano'] = value;
         break;
       }
@@ -503,7 +516,7 @@ function decodeSpanEvent(bytes: Uint8Array): Record<string, unknown> {
     const { fieldNumber, wireType } = reader.readField();
     switch (fieldNumber) {
       case 1: {
-        const value = readNumeric(reader, wireType);
+        const value = readNumericBigIntAsString(reader, wireType);
         if (value !== undefined) out['timeUnixNano'] = value;
         break;
       }
@@ -665,7 +678,7 @@ function decodeLogRecord(bytes: Uint8Array): Record<string, unknown> {
     switch (fieldNumber) {
       case 1:
       case 11: {
-        const value = readNumeric(reader, wireType);
+        const value = readNumericBigIntAsString(reader, wireType);
         if (value !== undefined) out[fieldNumber === 1 ? 'timeUnixNano' : 'observedTimeUnixNano'] = value;
         break;
       }
@@ -873,7 +886,7 @@ function decodeNumberDataPoint(bytes: Uint8Array): Record<string, unknown> {
     switch (fieldNumber) {
       case 2:
       case 3: {
-        const value = readNumeric(reader, wireType);
+        const value = readNumericBigIntAsString(reader, wireType);
         if (value !== undefined) out[fieldNumber === 2 ? 'startTimeUnixNano' : 'timeUnixNano'] = value;
         break;
       }
@@ -883,8 +896,8 @@ function decodeNumberDataPoint(bytes: Uint8Array): Record<string, unknown> {
         break;
       }
       case 6: {
-        const value = readNumeric(reader, wireType);
-        if (value !== undefined) out['asInt'] = String(Math.trunc(value));
+        const value = readNumericBigIntAsString(reader, wireType);
+        if (value !== undefined) out['asInt'] = value;
         break;
       }
       case 7:
@@ -908,9 +921,13 @@ function decodeGenericDataPoint(bytes: Uint8Array): Record<string, unknown> {
   while (!reader.eof()) {
     const { fieldNumber, wireType } = reader.readField();
     if (fieldNumber === 2 || fieldNumber === 3 || fieldNumber === 4 || fieldNumber === 5 || fieldNumber === 10 || fieldNumber === 11 || fieldNumber === 12) {
+      // CRIT-04: fields 2/3 are *UnixNano (uint64), use string form to preserve precision.
+      const isNano = fieldNumber === 2 || fieldNumber === 3;
       const value = fieldNumber === 5 || fieldNumber === 11 || fieldNumber === 12
         ? readFloating(reader, wireType)
-        : readNumeric(reader, wireType);
+        : isNano
+          ? readNumericBigIntAsString(reader, wireType)
+          : readNumeric(reader, wireType);
       if (value !== undefined) {
         out[
           fieldNumber === 2 ? 'startTimeUnixNano'

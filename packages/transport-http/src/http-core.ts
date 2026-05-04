@@ -25,14 +25,11 @@ import {
 export type { HttpRetryPolicy, PerMethodRetryPolicy } from './retry.js';
 export type { TransportContext, TransportMiddleware } from '@pellux/goodvibes-transport-core';
 
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { readonly [key: string]: JsonValue }
-  | readonly JsonValue[];
+// JsonValue canonical declaration lives in @pellux/goodvibes-contracts.
+// This re-export keeps the transport-http public API stable without introducing a second identity.
+export type { JsonValue } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
 
+import type { JsonValue } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
 export type JsonObject = { readonly [key: string]: JsonValue };
 
 /**
@@ -275,20 +272,21 @@ export function createFetch(fetchImpl?: typeof fetch, fallbackFetch?: typeof fet
   return resolved.bind(globalThis);
 }
 
+const MAX_RETRY_AFTER_MS = 10 * 60 * 1000; // 10 minutes
+
 function parseRetryAfterMs(headers: Headers): number | undefined {
   const retryAfter = headers.get('retry-after');
   if (!retryAfter) return undefined;
-  // Numeric seconds
+  // Numeric seconds — MAJ-02: cap to prevent hostile/buggy huge values.
   const seconds = Number(retryAfter);
-  // MIN-13: map 0 → undefined so callers treat it as "no hint", not "retry immediately".
   if (!Number.isNaN(seconds) && seconds > 0) {
-    return Math.ceil(seconds * 1000);
+    return Math.min(Math.ceil(seconds * 1000), MAX_RETRY_AFTER_MS);
   }
   // HTTP-date
   const date = new Date(retryAfter);
   if (!Number.isNaN(date.getTime())) {
     const ms = date.getTime() - Date.now();
-    return ms > 0 ? ms : 0;
+    return ms > 0 ? Math.min(ms, MAX_RETRY_AFTER_MS) : 0;
   }
   return undefined;
 }

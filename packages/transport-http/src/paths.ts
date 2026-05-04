@@ -27,6 +27,10 @@ export interface TransportPaths {
   readonly peerRequestsUrl: string;
   readonly peerListUrl: string;
   readonly remoteWorkUrl: string;
+  /**
+   * Alias for `controlPlaneUrl`. Provided for convenience.
+   */
+  readonly controlUrl: string;
 }
 
 export function normalizeBaseUrl(baseUrl: string): string {
@@ -101,5 +105,6 @@ export function createTransportPaths(baseUrl: string): TransportPaths {
     peerRequestsUrl: buildUrl(normalized, '/api/remote/pair/requests'),
     peerListUrl: buildUrl(normalized, '/api/remote/peers'),
     remoteWorkUrl: buildUrl(normalized, '/api/remote/work'),
+    controlUrl: buildUrl(normalized, '/api/control-plane'),
   };
 }

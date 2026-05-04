@@ -42,9 +42,11 @@ export function createDaemonMediaRouteHandlers(
 ): DaemonMediaRouteHandlers {
   return {
     getVoiceStatus: async () => Response.json(await context.voiceService.getStatus(Boolean(context.configManager.get('ui.voiceEnabled')))),
-    getVoiceProviders: async () => Response.json({
-      providers: await context.voiceService.getStatus(Boolean(context.configManager.get('ui.voiceEnabled'))).then((status) => status.providers),
-    }),
+    getVoiceProviders: async () => {
+      // MAJ-09: reuse the same status snapshot instead of issuing a second provider-status probe.
+      const status = await context.voiceService.getStatus(Boolean(context.configManager.get('ui.voiceEnabled')));
+      return Response.json({ providers: status.providers });
+    },
     getVoiceVoices: async (url) => Response.json({ voices: await context.voiceService.listVoices(url.searchParams.get('providerId') ?? undefined) }),
     postVoiceTts: async (request) => handleVoiceTts(context, request),
     postVoiceTtsStream: async (request) => handleVoiceTtsStream(context, request),
@@ -193,7 +195,9 @@ const mediaBodySchemas = createRouteBodySchemaRegistry({
 async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
-  const { providerId, input } = readVoiceSynthesisRequest(body);
+  // MAJ-10: pass context so defaults from tts.provider/tts.voice config are applied
+  // consistently with handleVoiceTtsStream.
+  const { providerId, input } = readVoiceSynthesisRequest(body, context);
   if (!input.text.trim()) return jsonErrorResponse({ error: 'Missing text' }, { status: 400 });
   try {
     const result = await context.voiceService.synthesize(

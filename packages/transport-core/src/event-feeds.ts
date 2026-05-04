@@ -1,9 +1,8 @@
 import type { EventEnvelope } from './event-envelope.js';
 
-/** @internal Structural constraint for event type narrowing; not part of the public surface. */
-type RuntimeEventLike = { readonly type: string };
-/** @internal Alias for backward compat within this module. */
-type EventLike = RuntimeEventLike;
+// EventLike: private structural constraint. Matches AnyRuntimeEvent from contracts.
+// Internal-only: not exported. Kept local to avoid a contracts dep on transport-core.
+type EventLike = { readonly type: string };
 
 type EventForType<
   TEvent extends EventLike,

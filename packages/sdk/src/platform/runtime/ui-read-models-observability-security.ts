@@ -105,7 +105,7 @@ export function createSecurityObservabilityReadModels(
           },
           deniedPermissions: runtimeStore.getState().permissions.denialCount,
           incidents: options.forensicsRegistry?.getAll() ?? [],
-          latestIncident: options.forensicsRegistry?.latest(),
+          latestIncident: options.forensicsRegistry?.latest() ?? null,
           mcpServers,
           recentMcpDecisions,
           attackPathReview,

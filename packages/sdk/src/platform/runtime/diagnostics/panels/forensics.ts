@@ -37,7 +37,7 @@ export class ForensicsDataPanel {
   /**
    * Return the most recent report.
    */
-  public latest(): FailureReport | undefined {
+  public latest(): FailureReport | null {
     return this._registry.latest();
   }
 

@@ -76,49 +76,14 @@ export type RuntimeEventPayload<T extends AnyRuntimeEvent['type']> = Extract<
   { type: T }
 >;
 
-/**
- * Domain labels for use with domain-scoped subscriptions.
- *
- * This is the source-of-truth vocabulary for runtime transport/event surfaces.
- */
-export const RUNTIME_EVENT_DOMAINS = [
-  'session',
-  'turn',
-  'providers',
-  'tools',
-  'tasks',
-  'agents',
-  'workflows',
-  'orchestration',
-  'communication',
-  'planner',
-  'permissions',
-  'plugins',
-  'mcp',
-  'transport',
-  'compaction',
-  'ui',
-  'ops',
-  'forensics',
-  'security',
-  'automation',
-  'routes',
-  'control-plane',
-  'deliveries',
-  'watchers',
-  'surfaces',
-  'knowledge',
-  'workspace',
-] as const;
-
-/**
- * Domain label type for use with domain-scoped subscriptions.
- */
-export type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
-
-export function isRuntimeEventDomain(value: string): value is RuntimeEventDomain {
-  return (RUNTIME_EVENT_DOMAINS as readonly string[]).includes(value);
-}
+// RUNTIME_EVENT_DOMAINS, RuntimeEventDomain, and isRuntimeEventDomain re-exported
+// from @pellux/goodvibes-contracts (the canonical source-of-truth). This eliminates
+// the RUNTIME_EVENT_DOMAINS_2 duplicate identity in the api-extractor report.
+export {
+  RUNTIME_EVENT_DOMAINS,
+  isRuntimeEventDomain,
+} from '@pellux/goodvibes-contracts';
+export type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 
 /** Map from domain label to its event union type. */
 export type DomainEventMap = {

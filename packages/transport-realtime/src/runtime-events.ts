@@ -2,6 +2,7 @@ import {
   RUNTIME_EVENT_DOMAINS,
   TypedSerializedEventEnvelopeSchema,
   type RuntimeEventDomain,
+  type RuntimeEventRecord,
 } from '@pellux/goodvibes-contracts';
 import { ConfigurationError, GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import {
@@ -28,8 +29,8 @@ import {
   type SerializedEventEnvelope,
 } from './domain-events.js';
 
-/** @internal Structural constraint matching any runtime event; avoids duplicate `_2` api-extractor renaming. */
-type RuntimeEventRecord = { readonly type: string };
+// RuntimeEventRecord is imported from @pellux/goodvibes-contracts (canonical structural constraint).
+// This eliminates the RuntimeEventRecord_2 api-extractor rename collision.
 
 export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = RuntimeEventRecord> =
   SerializedEventEnvelope<TEvent>;
@@ -443,7 +444,17 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         : socket;
       try {
         const authToken = (await getAuthToken()) ?? null;
-        if (!authToken || !openedSocket || stopped || socket !== openedSocket) return;
+        // MAJ-05: surface a diagnostic error when the token resolver returns null
+        // instead of silently entering a reconnect loop.
+        if (authToken === null || authToken === undefined) {
+          options.onError?.(new ConfigurationError(
+            'WebSocket auth token resolver returned null. Check transport options.authToken / options.getAuthToken.',
+            { code: 'SDK_AUTH_TOKEN_MISSING', source: 'config' },
+          ));
+          closeSocket();
+          return;
+        }
+        if (!openedSocket || stopped || socket !== openedSocket) return;
         // Notify observer of outbound WS connection.
         invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
         // Send auth frame first, then drain any messages buffered during resolution.

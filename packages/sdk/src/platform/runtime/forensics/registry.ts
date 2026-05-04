@@ -69,10 +69,10 @@ export class ForensicsRegistry {
   }
 
   /**
-   * Return the most recently generated report, or undefined if none exist.
+   * Return the most recently generated report, or null if none exist.
    */
-  public latest(): FailureReport | undefined {
-    return this._reports.at(-1);
+  public latest(): FailureReport | null {
+    return this._reports.at(-1) ?? null;
   }
 
   /**

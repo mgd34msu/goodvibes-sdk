@@ -212,7 +212,7 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/node/runtime-boundary` | Client-safe runtime boundary detection (no Bun globals) | beta |
 | `platform/pairing` | Companion token, QR, pairing index | beta |
 | `platform/providers` | LLM provider registry, catalog, capabilities | beta |
-| `platform/runtime` | Full runtime surface (events, store, lifecycle, tasks, sandbox, etc.) | beta |
+| `platform/runtime` | Full runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, ui as namespaces. Lower-level subsystems (events, store, lifecycle, tasks, sandbox) are reachable through dedicated subpaths or through ./platform/runtime/state and ./platform/runtime/store. | beta |
 | `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
 | `platform/runtime/state` | Runtime state primitives | beta |
 | `platform/runtime/store` | Runtime store and selectors | beta |
