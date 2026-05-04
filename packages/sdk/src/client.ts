@@ -228,7 +228,7 @@ export interface GoodVibesRealtimeOptions {
  * @example
  * import { createGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
  *
- * const sdk = createGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
+ * const sdk = createGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3421' });
  * const session = await sdk.operator.sessions.create({ title: 'demo' });
  * const sessionId = session.session.id;
  *
