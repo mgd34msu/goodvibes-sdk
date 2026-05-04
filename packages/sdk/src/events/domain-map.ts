@@ -19,7 +19,7 @@ import type { PluginEvent } from './plugins.js';
 import type { McpEvent } from './mcp.js';
 import type { TransportEvent } from './transport.js';
 import type { CompactionEvent } from './compaction.js';
-import type { UIEvent } from './ui.js';
+import type { GoodVibesUIEvent as UIEvent } from './ui.js';
 import type { OpsEvent } from './ops.js';
 import type { ForensicsEvent } from './forensics.js';
 import type { SecurityEvent } from './security.js';
@@ -152,4 +152,7 @@ export type DomainEventMap = {
 };
 
 /** Transport-layer runtime event record type. */
-export type RuntimeEventRecord = AnyRuntimeEvent;
+// Re-export from contracts so transport-layer packages use the same identity.
+// Consumers who need the full runtime event union should import AnyRuntimeEvent directly;
+// RuntimeEventRecord is now the structural constraint { readonly type: string }.
+export type { RuntimeEventRecord } from '@pellux/goodvibes-contracts';

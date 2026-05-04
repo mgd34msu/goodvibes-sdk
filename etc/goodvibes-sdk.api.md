@@ -167,7 +167,7 @@ export type AgentEvent =
 export type AgentEventType = AgentEvent['type'];
 
 // @public
-export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | UIEvent_2 | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent;
+export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | GoodVibesUIEvent | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent;
 
 // @public
 export function applyPerMethodPolicy(base: ResolvedHttpRetryPolicy, methodId: string): ResolvedHttpRetryPolicy;
@@ -2107,7 +2107,7 @@ export type DomainEventMap = {
     mcp: McpEvent;
     transport: TransportEvent;
     compaction: CompactionEvent;
-    ui: UIEvent_2;
+    ui: GoodVibesUIEvent;
     ops: OpsEvent;
     forensics: ForensicsEvent;
     security: SecurityEvent;
@@ -16548,7 +16548,9 @@ export type RuntimeEventPayload<T extends AnyRuntimeEvent['type']> = Extract<Any
 }>;
 
 // @public
-export type RuntimeEventRecord = AnyRuntimeEvent;
+export type RuntimeEventRecord = {
+    readonly type: string;
+};
 
 // @public
 export const RuntimeEventRecordSchema: z.ZodObject<{
@@ -17102,6 +17104,7 @@ export interface TransportContext {
         readonly retry?: unknown | undefined;
         [key: string]: unknown;
     };
+    parsedBody?: unknown | undefined;
     response?: Response | undefined;
     signal?: AbortSignal | undefined;
     url: string;
@@ -17433,13 +17436,6 @@ export const TypedSerializedEventEnvelopeSchema: z.ZodObject<{
 // @public (undocumented)
 export type TypedSerializedEventEnvelopeShape = z.infer<typeof TypedSerializedEventEnvelopeSchema>;
 
-// @public @deprecated (undocumented)
-type UIEvent_2 = GoodVibesUIEvent;
-export { UIEvent_2 as UIEvent }
-
-// @public @deprecated (undocumented)
-export type UIEventType = GoodVibesUIEventType;
-
 // @public (undocumented)
 export interface UserAuthManagerLike {
     // (undocumented)
@@ -17741,14 +17737,14 @@ export type WrfcState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'aw
 // packages/contracts/src/generated/foundation-client-types.ts:444:562 - (ae-forgotten-export) The symbol "JsonValue_2" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/knowledge-route-types.ts:54:76 - (ae-forgotten-export) The symbol "KnowledgeUsageKind" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/knowledge-route-types.ts:58:15 - (ae-forgotten-export) The symbol "KnowledgeCandidateStatus" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:73:7 - (ae-forgotten-export) The symbol "AutomationSurfaceKind_2" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:82:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:87:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:168:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:172:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:173:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:199:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:215:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:77:7 - (ae-forgotten-export) The symbol "AutomationSurfaceKind_2" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:86:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:91:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:172:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:176:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:177:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:203:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:219:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
 // packages/operator-sdk/src/client-core.ts:77:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
 // packages/peer-sdk/src/client-core.ts:64:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
 // packages/sdk/src/events/mcp.ts:15:82 - (ae-forgotten-export) The symbol "McpServerRole" needs to be exported by the entry point index.d.ts

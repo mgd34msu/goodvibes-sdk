@@ -1,4 +1,4 @@
-import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
+import { simpleGit, type SimpleGit } from 'simple-git';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
 import type { HookEvent } from '../hooks/types.js';
 import { logger } from '../utils/logger.js';
@@ -73,7 +73,7 @@ export class GitService {
   // Status & info (read-only — no hooks)
   // ---------------------------------------------------------------------------
 
-  async status(): Promise<StatusResult> {
+  async status(): Promise<Awaited<ReturnType<SimpleGit['status']>>> {
     return this.git.status();
   }
 
@@ -90,7 +90,7 @@ export class GitService {
     maxCount = 20,
   ): Promise<Array<{ hash: string; date: string; message: string; author: string }>> {
     const result = await this.git.log({ maxCount });
-    return result.all.map((entry) => ({
+    return result.all.map((entry: Awaited<ReturnType<SimpleGit['log']>>['all'][number]) => ({
       hash: entry.hash,
       date: entry.date,
       message: entry.message,
@@ -202,10 +202,6 @@ export class GitService {
       if (options?.amend) flags.push('--amend');
       if (options?.noVerify) flags.push('--no-verify');
 
-      // @ts-expect-error simple-git's TypeScript types only expose a 2-arg overload for
-      // commit(message, files); the 3-arg form (message, files, options) is supported at
-      // runtime but not reflected in the type definitions. Passing undefined for files
-      // (to skip staging) and flags as the third arg is the documented workaround.
       const result = await this.git.commit(message, undefined, flags);
       const output = { hash: result.commit, summary: JSON.stringify(result.summary) };
       await this.firePost('commit', { message, ...output });
@@ -366,11 +362,11 @@ export class GitService {
   async worktreeList(): Promise<Array<{ path: string; branch: string; head: string }>> {
     const raw = await this.git.raw(['worktree', 'list', '--porcelain']);
     const entries = raw.trim().split('\n\n').filter(Boolean);
-    return entries.map((block) => {
+    return entries.map((block: string) => {
       const lines = block.split('\n');
-      const worktreePath = lines.find((l) => l.startsWith('worktree '))?.slice(9) ?? '';
-      const head = lines.find((l) => l.startsWith('HEAD '))?.slice(5) ?? '';
-      const branchLine = lines.find((l) => l.startsWith('branch '));
+      const worktreePath = lines.find((l: string) => l.startsWith('worktree '))?.slice(9) ?? '';
+      const head = lines.find((l: string) => l.startsWith('HEAD '))?.slice(5) ?? '';
+      const branchLine = lines.find((l: string) => l.startsWith('branch '));
       const branch = branchLine ? branchLine.slice(7).replace(/^refs\/heads\//, '') : '(detached)';
       return { path: worktreePath, branch, head };
     });

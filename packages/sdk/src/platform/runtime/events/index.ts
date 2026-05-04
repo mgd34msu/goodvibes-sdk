@@ -31,7 +31,7 @@ export type { PluginEvent, PluginEventType } from '../../../events/plugins.js';
 export type { McpEvent, McpEventType } from '../../../events/mcp.js';
 export type { TransportEvent, TransportEventType } from '../../../events/transport.js';
 export type { CompactionEvent, CompactionEventType } from '../../../events/compaction.js';
-export type { GoodVibesUIEvent, GoodVibesUIEventType, UIEvent, UIEventType } from '../../../events/ui.js';
+export type { GoodVibesUIEvent, GoodVibesUIEventType } from '../../../events/ui.js';
 export type { OpsEvent, OpsEventType } from '../../../events/ops.js';
 export type { OpsInterventionReason } from '../../../events/ops.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from '../../../events/domain-map.js';

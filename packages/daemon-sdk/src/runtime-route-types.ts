@@ -16,6 +16,10 @@ export interface ConversationMessageEnvelope {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
 }
 
+// AutomationSurfaceKind: widened to string here because daemon-sdk cannot import the
+// full union from the SDK platform layer (would create a circular dependency).
+// Consumers who need the narrowed union should import from @pellux/goodvibes-sdk/daemon.
+/** @internal */
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
   readonly modelId?: string | undefined;

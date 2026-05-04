@@ -29,11 +29,5 @@ export type GoodVibesUIEvent =
 /** All GoodVibes UI event type literals as a union. */
 export type GoodVibesUIEventType = GoodVibesUIEvent['type'];
 
-/**
- * @deprecated Use `GoodVibesUIEvent` instead. This alias exists to avoid collision
- * with the DOM global `UIEvent`.
- */
-export type UIEvent = GoodVibesUIEvent;
-
-/** @deprecated Use `GoodVibesUIEventType` instead. */
-export type UIEventType = GoodVibesUIEventType;
+// UIEvent and UIEventType deprecated aliases removed — caused api-extractor _2 collision
+// with the DOM global UIEvent. Use GoodVibesUIEvent / GoodVibesUIEventType instead.
