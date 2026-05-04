@@ -25,6 +25,7 @@ import type { TransportContext, TransportMiddleware } from '@pellux/goodvibes-tr
 import type { HttpJsonTransport } from '@pellux/goodvibes-transport-http/http-core';
 import type { GoodVibesTokenStore } from './types.js';
 import type { AutoRefreshCoordinator } from './auto-refresh.js';
+import { is401Error } from './auto-refresh.js';
 
 /** Internal flag key — never conflicts with public HttpJsonRequestOptions fields. */
 const ATTEMPTED_FLAG = '__gv_ar_attempted';
@@ -146,6 +147,15 @@ export function createAutoRefreshMiddleware(
 
     // Put the retry result back onto ctx.response so the transport's outer
     // requestJson can resolve it via `await ctx.response.json()`.
+    //
+    // status: 200 — transport.requestJson throws on non-2xx, so a non-throwing
+    //   return means the retry succeeded. The transport layer only inspects the
+    //   JSON body; the status is not forwarded to callers by HttpJsonTransport.
+    //
+    // headers: Content-Type only — the transport reads `ctx.response.json()` and
+    //   does not forward response headers to callers. If header forwarding is
+    //   needed in the future, use the lower-level fetch path here instead.
+    //
     // Also clear ctx.error: the innerFetch path sets it when it throws (before
     // re-throwing), so it reflects the original 401. Since we handled the 401
     // successfully, we must clear it so the transport's `if (ctx.error) throw`
@@ -162,19 +172,4 @@ export function createAutoRefreshMiddleware(
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Detect a 401 response across the various error shapes the SDK produces. */
-function is401Error(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return false;
-  const e = error as {
-    status?: unknown | undefined;
-    transport?: { status?: unknown } | undefined;
-    response?: { status?: unknown } | undefined;
-    cause?: { response?: { status?: unknown } } | undefined;
-  };
-  const status =
-    e.status ??
-    e.transport?.status ??
-    e.response?.status ??
-    e.cause?.response?.status;
-  return status === 401;
-}
+// is401Error is shared — import from auto-refresh.ts to avoid divergence.

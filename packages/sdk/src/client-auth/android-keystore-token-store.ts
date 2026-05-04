@@ -26,7 +26,11 @@
  *
  * Wave 6 three-part error messages: [what happened] · [why] · [what to do]
  */
-import { logger } from '../platform/utils/logger.js';
+// Inline minimal debug logging to keep client-auth/ free of platform/ dependencies.
+function debugLog(msg: string, ctx?: Record<string, unknown>): void {
+  if (ctx !== undefined) { console.debug(`[goodvibes] ${msg}`, ctx); }
+  else { console.debug(`[goodvibes] ${msg}`); }
+}
 
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { GoodVibesTokenStore } from './types.js';
@@ -239,7 +243,7 @@ export function createAndroidKeystoreTokenStore(
     try {
       return JSON.parse(result.password) as StoredPayload;
     } catch (err) {
-      logger.debug('AndroidKeystoreTokenStore: failed to parse stored payload (clearing corrupt entry)', { error: String(err) });
+      debugLog('AndroidKeystoreTokenStore: failed to parse stored payload (clearing corrupt entry)', { error: String(err) });
       return null;
     }
   }

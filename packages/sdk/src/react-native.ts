@@ -59,11 +59,14 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
  * const events = sdk.realtime.viaWebSocket();
  * events.agents.on('AGENT_SPAWNING', ({ agentId }) => console.log(agentId));
  */
-export { forSession } from './transport-realtime.js';
+export { forSession } from './_companion-realtime.js';
 
 export function createReactNativeGoodVibesSdk(
   options: ReactNativeGoodVibesSdkOptions,
 ): ReactNativeGoodVibesSdk {
+  // Normalize baseUrl once — trimmed and validated — so both HTTP and WebSocket
+  // connectors use the same value regardless of how the caller passed it.
+  const baseUrl = options.baseUrl.trim();
   const base = createGoodVibesSdk({
     ...options,
     // Default retry: 3 attempts with exponential back-off capped at 2 s.
@@ -93,7 +96,7 @@ export function createReactNativeGoodVibesSdk(
       runtime(): RemoteRuntimeEvents<RuntimeEventRecord> {
         return createRemoteRuntimeEvents(
           createWebSocketConnector(
-            options.baseUrl,
+            baseUrl,
             getAuthToken,
             requireReactNativeWebSocket(options.WebSocketImpl),
             {
@@ -109,7 +112,7 @@ export function createReactNativeGoodVibesSdk(
       viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<RuntimeEventRecord> {
         return createRemoteRuntimeEvents(
           createWebSocketConnector(
-            options.baseUrl,
+            baseUrl,
             getAuthToken,
             requireReactNativeWebSocket(webSocketImpl ?? options.WebSocketImpl),
             {

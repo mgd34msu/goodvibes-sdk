@@ -14,11 +14,13 @@ export {
   isObject,
 } from './contracts/shared.js';
 
-import {
-  isObject,
-  isString,
-} from './contracts/shared.js';
+import { isObject, isString } from './contracts/shared.js';
 
+// The named imports below are used both as public exports (via the `export { ... }`
+// re-export blocks above) and as local references in the EVENT_VALIDATORS registry.
+// Combining import + re-export into a single `export { ... } from '...'` block
+// would require a second local import for registry use, which is equally redundant.
+// Using `import` once and re-exporting the same names is the idiomatic TS pattern.
 export {
   validateTurnStarted,
   validateTurnStreaming,
@@ -92,14 +94,7 @@ import {
   validateToolSucceeded,
   validateToolFailed,
 } from './contracts/turn-tool.js';
-import {
-  validateAgentSpawning,
-  validateAgentCompleted,
-  validateAgentFailed,
-  validateMcpConnected,
-  validateMcpDisconnected,
-  validateMcpReconnecting,
-} from './contracts/agent-mcp.js';
+import { validateAgentSpawning, validateAgentCompleted, validateAgentFailed, validateMcpConnected, validateMcpDisconnected, validateMcpReconnecting } from './contracts/agent-mcp.js';
 import {
   validatePluginLoaded,
   validatePluginFailed,
@@ -144,11 +139,11 @@ import {
 } from './contracts/automation-route.js';
 
 const EVENT_VALIDATORS: Record<string, (v: unknown) => import('./contracts/shared.js').ContractResult> = {
-  TURN_STARTED: validateTurnStarted,
-  TURN_STREAMING: validateTurnStreaming,
+  TURN_SUBMITTED: validateTurnStarted,
+  STREAM_DELTA: validateTurnStreaming,
   TURN_COMPLETED: validateTurnCompleted,
-  TURN_FAILED: validateTurnFailed,
-  TURN_CANCELLED: validateTurnCancelled,
+  TURN_ERROR: validateTurnFailed,
+  TURN_CANCEL: validateTurnCancelled,
   TOOL_RECEIVED: validateToolReceived,
   TOOL_SUCCEEDED: validateToolSucceeded,
   TOOL_FAILED: validateToolFailed,
@@ -204,7 +199,7 @@ export function validateEvent(event: unknown): import('./contracts/shared.js').C
   if (!isObject(event)) return { valid: false, violations: ['event must be an object'] };
   const type = event['type'];
   if (!isString(type)) return { valid: false, violations: ['event.type must be a string'] };
-  const validator = EVENT_VALIDATORS[type]!;
+  const validator = EVENT_VALIDATORS[type];
   if (!validator) return { valid: false, violations: [`unknown event type: '${type}'`] };
   return validator(event);
 }

@@ -23,7 +23,7 @@ import {
   createWebSocketConnector,
   type RemoteRuntimeEvents,
 } from '@pellux/goodvibes-transport-realtime';
-import type { AnyRuntimeEvent } from './events/index.js';
+import type { AnyRuntimeEvent, RuntimeEventRecord } from './events/index.js';
 import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
@@ -52,8 +52,10 @@ import type { SDKObserver } from './observer/index.js';
  * ```
  *
  * @see AnyRuntimeEvent for the full discriminated union type.
+ *
+ * @public
  */
-export type RuntimeEventRecord = AnyRuntimeEvent;
+export type { RuntimeEventRecord } from './events/index.js';
 
 /**
  * Options for constructing a GoodVibes SDK instance.
@@ -164,7 +166,12 @@ export interface GoodVibesSdkOptions {
   readonly observer?: SDKObserver | undefined;
 
   /**
-   * Initial middleware chain applied to every HTTP request/response cycle.
+   * Initial middleware chain applied to every HTTP request/response cycle on
+   * BOTH the operator and peer transports. Middleware added here is pushed into
+   * each transport's chain independently — it runs twice per SDK call (once for
+   * operator, once for peer) if both are used. To target a single transport,
+   * append directly via `sdk.operator.transport.use(mw)` or
+   * `sdk.peer.transport.use(mw)` after construction.
    *
    * Middleware functions receive a mutable `TransportContext` and a `next()`
    * callback. They run in the order provided (outer-first, onion model).
@@ -372,7 +379,8 @@ export function createGoodVibesSdk(
   const getAuthToken = tokenStore
     ? () => tokenStore.getToken()
     : options.getAuthToken;
-  // Single normalized resolver used by realtime connectors.
+  // Single normalized resolver used by realtime connectors. Invoked per-connect
+  // (not once at construction) so the latest token is always used.
   const tokenResolver = normalizeAuthToken(getAuthToken ?? options.authToken ?? undefined);
   const fetchImpl = () => requireFetchImplementation(options.fetch);
 

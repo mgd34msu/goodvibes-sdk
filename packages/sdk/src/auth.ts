@@ -19,14 +19,11 @@ import type {
   GoodVibesTokenStore,
 } from './client-auth/types.js';
 
-/**
- * @remarks
- * Re-export focused responsibility classes for consumers who prefer narrower,
- * single-concern APIs over the combined GoodVibesAuthClient facade.
- * OAuthClient is intentionally omitted from this client-side surface because it
- * depends on Node runtime facilities. Daemon OAuth flows belong on the server
- * side; clients receive acquired tokens via TokenStore.
- */
+// Re-export focused responsibility classes for consumers who prefer narrower,
+// single-concern APIs over the combined GoodVibesAuthClient facade.
+// OAuthClient is intentionally omitted from this client-side surface because it
+// depends on Node runtime facilities. Daemon OAuth flows belong on the server
+// side; clients receive acquired tokens via TokenStore.
 export { PermissionResolver, SessionManager, TokenStore } from './client-auth/index.js';
 export type { OAuthStartState, OAuthTokenPayload } from './client-auth/oauth-types.js';
 export type {
@@ -118,7 +115,8 @@ export function createMemoryTokenStore(initialToken: string | null = null, initi
       return token;
     },
     async setToken(nextToken: string | null): Promise<void> {
-      token = nextToken;
+      // Normalize: treat whitespace-only tokens as null.
+      token = nextToken && nextToken.trim() ? nextToken.trim() : null;
       // When setToken is called directly (not via setTokenEntry), clear expiry
       // to avoid stale expiry data attached to a manually-set token.
       expiresAt = undefined;
@@ -162,12 +160,13 @@ export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}):
       return value && value.trim() ? value : null;
     },
     async setToken(token: string | null): Promise<void> {
-      if (!token) {
+      const normalized = token && token.trim() ? token.trim() : null;
+      if (!normalized) {
         storage.removeItem(key);
         storage.removeItem(expiresAtKey);
         return;
       }
-      storage.setItem(key, token);
+      storage.setItem(key, normalized);
       // Clear expiry when set via setToken (no expiry info provided).
       storage.removeItem(expiresAtKey);
     },
@@ -179,8 +178,10 @@ export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}):
       const value = storage.getItem(key);
       const token = value && value.trim() ? value : null;
       const expiresAtStr = storage.getItem(expiresAtKey);
-      const expiresAt = expiresAtStr ? parseInt(expiresAtStr, 10) : undefined;
-      const finalExpiresAt = Number.isFinite(expiresAt) ? expiresAt : undefined;
+      const expiresAtRaw = expiresAtStr ? Number(expiresAtStr) : NaN;
+      const finalExpiresAt = Number.isFinite(expiresAtRaw) && expiresAtRaw > 0
+        ? expiresAtRaw
+        : undefined;
       return finalExpiresAt !== undefined ? { token, expiresAt: finalExpiresAt } : { token };
     },
     async setTokenEntry(token: string | null, expiresAt?: number): Promise<void> {
@@ -259,9 +260,11 @@ export function createGoodVibesAuthClient(
   // Construct the split-class instances that own each concern.
   // The facade delegates to these rather than duplicating logic.
   const ts: TokenStore | null = tokenStore ? new TokenStore(tokenStore) : null;
-  const sm: SessionManager = new SessionManager(operator, ts);
+  const sm: SessionManager = new SessionManager(operator, ts, observer);
 
   // Use the provided coordinator if available; otherwise build one.
+  // `existingCoordinator !== undefined` handles the null case: null means
+  // "caller explicitly decided no coordinator"; undefined means "not provided, build one".
   const coordinator: AutoRefreshCoordinator | null = existingCoordinator !== undefined
     ? existingCoordinator
     : (() => {
@@ -325,10 +328,20 @@ export function createGoodVibesAuthClient(
       return await readToken(null, getAuthToken);
     },
     async setToken(token: string | null): Promise<void> {
+      const priorToken = await ts?.getToken();
       await assertWritableTokenStore(ts).setToken(token);
+      // Notify observer of the token state transition.
+      invokeObserver(() =>
+        observer?.onAuthTransition?.({
+          from: priorToken ? 'token' : 'anonymous',
+          to: token ? 'token' : 'anonymous',
+          reason: token ? 'refresh' : 'logout',
+        }),
+      );
     },
     async clearToken(): Promise<void> {
       const currentToken = await ts?.getToken();
+      if (!currentToken) return; // Debounce no-op transitions (from:anonymous to:anonymous).
       await assertWritableTokenStore(ts).clearToken();
       // Notify observer of the logout transition. Observer errors are
       // swallowed so they never disrupt SDK logic.

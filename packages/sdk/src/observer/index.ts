@@ -17,7 +17,8 @@
  * });
  */
 
-const SPAN_STATUS_ERROR = 2 as const; // OpenTelemetry SpanStatusCode.ERROR
+/** OpenTelemetry SpanStatusCode.ERROR. Use in custom observer implementations with `span.setStatus({ code: SPAN_STATUS_ERROR })`. */
+export const SPAN_STATUS_ERROR = 2 as const;
 
 import type { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { AnyRuntimeEvent } from '../events/domain-map.js';

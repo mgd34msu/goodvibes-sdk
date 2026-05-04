@@ -160,6 +160,10 @@ async function proxyDaemonBatch(
   options: GoodVibesCloudflareWorkerOptions,
   daemonPath: string,
 ): Promise<Response> {
+  // The caller's Authorization header is intentionally dropped here: it carries
+  // the worker-to-worker auth token (GOODVIBES_WORKER_TOKEN), NOT the daemon
+  // operator token. proxyDaemonJson always attaches the correct operator token
+  // from GOODVIBES_OPERATOR_TOKEN / options.authToken before forwarding.
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     const contentType = request.headers.get('content-type') ?? '';
     if (contentType && !contentType.toLowerCase().includes('application/json')) {
@@ -205,6 +209,16 @@ function toDaemonBatchPath(pathname: string): string | null {
   return null;
 }
 
+/** Constant-time string comparison to prevent timing attacks on the worker auth token. */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 function requireWorkerAuth(
   request: Request,
   env: GoodVibesCloudflareWorkerEnv,
@@ -221,7 +235,7 @@ function requireWorkerAuth(
     }, 503);
   }
   const auth = request.headers.get('authorization') ?? '';
-  if (auth === `Bearer ${expected}`) return null;
+  if (constantTimeEqual(auth, `Bearer ${expected}`)) return null;
   return json({ error: 'Worker authorization required', code: 'WORKER_AUTH_REQUIRED' }, 401);
 }
 
@@ -240,15 +254,16 @@ async function optionalJson(request: Request): Promise<unknown | Response> {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    // Silently fall back to empty object: malformed JSON from an external
-    // caller should not crash the worker. The handler will see {} and return
-    // a well-formed error response.
-    return {};
+    return json({ error: 'Request body contains invalid JSON', code: 'INVALID_JSON' }, 400);
   }
 }
 
 async function readTextBodyWithinLimit(
   request: Request,
+  // Default cap: 1 MB. Override via GoodVibesCloudflareWorkerOptions.maxRequestBodyBytes.
+  // Cloudflare Workers enforce a separate hard limit on request body size that
+  // is independent of this value; this cap is applied before the body is decoded
+  // to prevent excessive memory use.
   maxBytes = 1_000_000,
 ): Promise<string | Response> {
   const contentLength = Number.parseInt(request.headers.get('content-length') ?? '0', 10);
@@ -282,6 +297,10 @@ async function readTextBodyWithinLimit(
   }
 }
 
+// CORS is intentionally absent from this helper: the worker is designed for
+// server-to-server calls (from your backend to the daemon proxy). If you need
+// browser CORS support, add an `Access-Control-Allow-Origin` header via
+// middleware or a Cloudflare Transform Rule at your infrastructure layer.
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
