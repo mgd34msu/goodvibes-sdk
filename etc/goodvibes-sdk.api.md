@@ -4,7 +4,6 @@
 
 ```ts
 
-import { JsonValue } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
 import { z } from 'zod/v4';
 import type { ZodType } from 'zod/v4';
 
@@ -399,7 +398,7 @@ export type AutomationSessionPolicy = string;
 
 // Warning: (ae-internal-missing-underscore) The name "AutomationSurfaceKind" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @internal
+// @internal (undocumented)
 export type AutomationSurfaceKind = string;
 
 // @public (undocumented)
@@ -1098,8 +1097,6 @@ export function createPeerSdk(options: PeerSdkOptions): PeerSdk;
 // @public
 export function createReactNativeGoodVibesSdk(options: ReactNativeGoodVibesSdkOptions): ReactNativeGoodVibesSdk;
 
-// Warning: (ae-forgotten-export) The symbol "EventLike" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function createRemoteDomainEvents<TDomain extends string, TEvent extends EventLike = EventLike>(domains: readonly TDomain[], connect: DomainEventConnector<TDomain, TEvent>, options?: RemoteDomainEventsOptions<TDomain>): DomainEvents<TDomain, TEvent>;
 
@@ -1112,13 +1109,11 @@ export function createRouteBodySchema<T>(routeId: string, parse: (body: JsonReco
 // @public (undocumented)
 export function createRouteBodySchemaRegistry<const TSchemaMap extends Record<string, RouteBodySchema<unknown>>>(schemas: TSchemaMap): TSchemaMap;
 
-// Warning: (ae-forgotten-export) The symbol "EventLike_2" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export function createRuntimeEventFeed<TEvent extends EventLike_2>(subscribe: EnvelopeSubscriber<TEvent>): RuntimeEventFeed<TEvent>;
+export function createRuntimeEventFeed<TEvent extends EventLike>(subscribe: EnvelopeSubscriber<TEvent>): RuntimeEventFeed<TEvent>;
 
 // @public (undocumented)
-export function createRuntimeEventFeeds<TDomain extends string, TEvent extends EventLike_2>(domains: readonly TDomain[], createFeed: (domain: TDomain) => RuntimeEventFeed<TEvent>): RuntimeEventFeeds<TDomain, TEvent>;
+export function createRuntimeEventFeeds<TDomain extends string, TEvent extends EventLike>(domains: readonly TDomain[], createFeed: (domain: TDomain) => RuntimeEventFeed<TEvent>): RuntimeEventFeeds<TDomain, TEvent>;
 
 // @public (undocumented)
 export function createTransportPaths(baseUrl: string): TransportPaths;
@@ -1682,7 +1677,7 @@ export interface DaemonRuntimeRouteContext {
         submitMessage(input: {
             sessionId?: string | undefined;
             routeId?: string | undefined;
-            surfaceKind: AutomationSurfaceKind_2;
+            surfaceKind: string;
             surfaceId: string;
             externalId?: string | undefined;
             threadId?: string | undefined;
@@ -1710,7 +1705,7 @@ export interface DaemonRuntimeRouteContext {
         steerMessage(input: {
             sessionId?: string | undefined;
             routeId?: string | undefined;
-            surfaceKind: AutomationSurfaceKind_2;
+            surfaceKind: string;
             surfaceId: string;
             externalId?: string | undefined;
             threadId?: string | undefined;
@@ -1740,7 +1735,7 @@ export interface DaemonRuntimeRouteContext {
         followUpMessage(input: {
             sessionId?: string | undefined;
             routeId?: string | undefined;
-            surfaceKind: AutomationSurfaceKind_2;
+            surfaceKind: string;
             surfaceId: string;
             externalId?: string | undefined;
             threadId?: string | undefined;
@@ -1773,7 +1768,7 @@ export interface DaemonRuntimeRouteContext {
             metadata?: Record<string, unknown> | undefined;
             routeBinding?: AutomationRouteBinding | undefined;
             participant?: {
-                surfaceKind: AutomationSurfaceKind_2;
+                surfaceKind: string;
                 surfaceId: string;
                 externalId?: string | undefined;
                 userId?: string | undefined;
@@ -2132,7 +2127,7 @@ export interface ElevatedPrivateHostFetchConfig extends PrivateHostFetchConfig {
 // Warning: (ae-forgotten-export) The symbol "EventForType" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export type EnvelopeSubscriber<TEvent extends EventLike_2> = <TType extends TEvent['type']>(type: TType, listener: (envelope: EventEnvelope<TType, EventForType<TEvent, TType>>) => void) => () => void;
+export type EnvelopeSubscriber<TEvent extends EventLike> = <TType extends TEvent['type']>(type: TType, listener: (envelope: EventEnvelope<TType, EventForType<TEvent, TType>>) => void) => () => void;
 
 // @public
 export type ErrorCategory = DaemonErrorCategory | 'contract';
@@ -2191,6 +2186,11 @@ export interface EventEnvelopeShape {
     // (undocumented)
     readonly traceId: string;
 }
+
+// @public
+export type EventLike = {
+    readonly type: string;
+};
 
 // @public
 export type ExecutionStrategy = 'auto' | 'single' | 'cohort' | 'background' | 'remote';
@@ -2834,7 +2834,12 @@ export interface JsonSchemaValidationFailure {
     readonly received: string;
 }
 
-export { JsonValue }
+// Warning: (ae-forgotten-export) The symbol "JsonPrimitive" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export type JsonValue = JsonPrimitive | {
+    readonly [key: string]: JsonValue;
+} | readonly JsonValue[];
 
 // @public
 export type KnowledgeEvent = {
@@ -3523,121 +3528,121 @@ export interface OperatorEventPayloadMap {
             label?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
         }))[];
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "runtime.agents": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.automation": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.communication": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.compaction": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.control-plane": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.deliveries": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.forensics": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.knowledge": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.mcp": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.ops": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.orchestration": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.permissions": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.planner": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.plugins": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.providers": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.routes": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.security": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.session": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.surfaces": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.tasks": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.tools": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.transport": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.turn": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.ui": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.watchers": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
     // (undocumented)
     "runtime.workflows": ({} & {
-        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
     });
 }
 
@@ -3737,8 +3742,8 @@ export interface OperatorMethodInputMap {
         retentionMs?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -3841,8 +3846,8 @@ export interface OperatorMethodInputMap {
         deleteAfterRun?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -3950,8 +3955,8 @@ export interface OperatorMethodInputMap {
         deleteAfterRun?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -3987,8 +3992,8 @@ export interface OperatorMethodInputMap {
         accountId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -3998,8 +4003,8 @@ export interface OperatorMethodInputMap {
         accountId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4020,8 +4025,8 @@ export interface OperatorMethodInputMap {
         accountId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4048,8 +4053,8 @@ export interface OperatorMethodInputMap {
         kind?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4064,8 +4069,8 @@ export interface OperatorMethodInputMap {
         kind?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4078,8 +4083,8 @@ export interface OperatorMethodInputMap {
         target?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4143,14 +4148,14 @@ export interface OperatorMethodInputMap {
             allowedCommands?: readonly string[];
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4178,8 +4183,8 @@ export interface OperatorMethodInputMap {
         live?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4189,8 +4194,8 @@ export interface OperatorMethodInputMap {
         accountId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4265,8 +4270,8 @@ export interface OperatorMethodInputMap {
         reason?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4307,8 +4312,8 @@ export interface OperatorMethodInputMap {
         operationName?: string;
         variables?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4328,8 +4333,8 @@ export interface OperatorMethodInputMap {
         allowPrivateHosts?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4341,8 +4346,8 @@ export interface OperatorMethodInputMap {
         allowPrivateHosts?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4358,8 +4363,8 @@ export interface OperatorMethodInputMap {
         connectorId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4377,8 +4382,8 @@ export interface OperatorMethodInputMap {
         allowPrivateHosts?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4390,8 +4395,8 @@ export interface OperatorMethodInputMap {
         allowPrivateHosts?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4505,8 +4510,8 @@ export interface OperatorMethodInputMap {
         };
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4523,8 +4528,8 @@ export interface OperatorMethodInputMap {
         includeNodes?: boolean;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4585,8 +4590,8 @@ export interface OperatorMethodInputMap {
             sha256?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         artifactId?: string;
@@ -4594,8 +4599,8 @@ export interface OperatorMethodInputMap {
         modelId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4608,13 +4613,13 @@ export interface OperatorMethodInputMap {
         modelId?: string;
         options?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4635,21 +4640,21 @@ export interface OperatorMethodInputMap {
             sha256?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         operation: string;
         outputMimeType?: string;
         options?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4678,8 +4683,8 @@ export interface OperatorMethodInputMap {
             filename?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         prompt?: string;
@@ -4697,15 +4702,15 @@ export interface OperatorMethodInputMap {
             folderPath?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         sessionId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4729,8 +4734,8 @@ export interface OperatorMethodInputMap {
                 fetchMode?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -4749,14 +4754,14 @@ export interface OperatorMethodInputMap {
                 confidence?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         detail?: "compact" | "detailed" | "standard";
@@ -4787,8 +4792,8 @@ export interface OperatorMethodInputMap {
                 fetchMode?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -4807,14 +4812,14 @@ export interface OperatorMethodInputMap {
                 confidence?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         sessionId?: string;
@@ -4823,8 +4828,8 @@ export interface OperatorMethodInputMap {
         folderPath?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4857,8 +4862,8 @@ export interface OperatorMethodInputMap {
         label?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4872,8 +4877,8 @@ export interface OperatorMethodInputMap {
         label?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4891,8 +4896,8 @@ export interface OperatorMethodInputMap {
         peerId: string;
         command: string;
         payload?: ({} & {
-            readonly [key: string]: JsonValue_2;
-        }) | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue;
+        }) | boolean | null | number | readonly JsonValue[] | string;
         priority?: "default" | "high" | "normal";
         waitMs?: number;
         timeoutMs?: number;
@@ -4903,8 +4908,8 @@ export interface OperatorMethodInputMap {
         approvalId?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4958,8 +4963,8 @@ export interface OperatorMethodInputMap {
         title?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -4984,8 +4989,8 @@ export interface OperatorMethodInputMap {
         title?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -5270,8 +5275,8 @@ export interface OperatorMethodInputMap {
         title?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -5446,8 +5451,8 @@ export interface OperatorMethodInputMap {
         instructions?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -5466,8 +5471,8 @@ export interface OperatorMethodInputMap {
             durationMs?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         language?: string;
@@ -5475,8 +5480,8 @@ export interface OperatorMethodInputMap {
         prompt?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -5491,8 +5496,8 @@ export interface OperatorMethodInputMap {
         speed?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -5511,8 +5516,8 @@ export interface OperatorMethodInputMap {
         intervalMs?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         url?: string;
         method?: string;
@@ -5543,8 +5548,8 @@ export interface OperatorMethodInputMap {
         intervalMs?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         url?: string;
         method?: string;
@@ -5649,8 +5654,8 @@ export interface OperatorMethodOutputMap {
                 tool: string;
                 args: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
@@ -5679,8 +5684,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             audit: readonly ({
                 id: string;
@@ -5705,8 +5710,8 @@ export interface OperatorMethodOutputMap {
                 tool: string;
                 args: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
@@ -5735,8 +5740,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             audit: readonly ({
                 id: string;
@@ -5761,8 +5766,8 @@ export interface OperatorMethodOutputMap {
                 tool: string;
                 args: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
@@ -5791,8 +5796,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             audit: readonly ({
                 id: string;
@@ -5817,8 +5822,8 @@ export interface OperatorMethodOutputMap {
                 tool: string;
                 args: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
@@ -5847,8 +5852,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             audit: readonly ({
                 id: string;
@@ -5893,8 +5898,8 @@ export interface OperatorMethodOutputMap {
                 tool: string;
                 args: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
@@ -5923,8 +5928,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             audit: readonly ({
                 id: string;
@@ -5959,8 +5964,8 @@ export interface OperatorMethodOutputMap {
             fetchMode?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -5982,8 +5987,8 @@ export interface OperatorMethodOutputMap {
             fetchMode?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -6005,8 +6010,8 @@ export interface OperatorMethodOutputMap {
             fetchMode?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -6046,8 +6051,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -6109,8 +6114,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -6145,8 +6150,8 @@ export interface OperatorMethodOutputMap {
                 updatedAt: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -6197,14 +6202,14 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: unknown;
             });
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             cancelledReason?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -6340,8 +6345,8 @@ export interface OperatorMethodOutputMap {
                 surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             };
             lightContext?: boolean;
@@ -6394,8 +6399,8 @@ export interface OperatorMethodOutputMap {
             lastSeenAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -6411,8 +6416,8 @@ export interface OperatorMethodOutputMap {
         archivedAt?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -6508,8 +6513,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -6562,8 +6567,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -6579,8 +6584,8 @@ export interface OperatorMethodOutputMap {
             archivedAt?: number;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -6655,8 +6660,8 @@ export interface OperatorMethodOutputMap {
                 surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             };
             lightContext?: boolean;
@@ -6709,8 +6714,8 @@ export interface OperatorMethodOutputMap {
             lastSeenAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -6726,8 +6731,8 @@ export interface OperatorMethodOutputMap {
         archivedAt?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -6777,8 +6782,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -6840,8 +6845,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -6876,8 +6881,8 @@ export interface OperatorMethodOutputMap {
                 updatedAt: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -6928,14 +6933,14 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: unknown;
             });
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             cancelledReason?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -6963,8 +6968,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -7026,8 +7031,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -7062,8 +7067,8 @@ export interface OperatorMethodOutputMap {
                 updatedAt: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -7114,14 +7119,14 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: unknown;
             });
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             cancelledReason?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -7168,8 +7173,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -7231,8 +7236,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -7267,8 +7272,8 @@ export interface OperatorMethodOutputMap {
                 updatedAt: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -7319,14 +7324,14 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: unknown;
             });
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             cancelledReason?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -7354,8 +7359,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -7417,8 +7422,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -7453,8 +7458,8 @@ export interface OperatorMethodOutputMap {
                 updatedAt: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -7505,14 +7510,14 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: unknown;
             });
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             cancelledReason?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -7555,8 +7560,8 @@ export interface OperatorMethodOutputMap {
                 })[];
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             };
             message?: string;
@@ -7569,8 +7574,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -7611,8 +7616,8 @@ export interface OperatorMethodOutputMap {
                 })[];
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             };
             message?: string;
@@ -7625,8 +7630,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -7656,8 +7661,8 @@ export interface OperatorMethodOutputMap {
         })[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -7687,8 +7692,8 @@ export interface OperatorMethodOutputMap {
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -7719,8 +7724,8 @@ export interface OperatorMethodOutputMap {
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -7730,8 +7735,8 @@ export interface OperatorMethodOutputMap {
         surface: string;
         result: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -7744,13 +7749,13 @@ export interface OperatorMethodOutputMap {
             dangerous: boolean;
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -7764,13 +7769,13 @@ export interface OperatorMethodOutputMap {
             dangerous: boolean;
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -7781,8 +7786,8 @@ export interface OperatorMethodOutputMap {
             description: string;
             parameters: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             sideEffects?: readonly string[];
             concurrency?: string;
@@ -7797,8 +7802,8 @@ export interface OperatorMethodOutputMap {
             description: string;
             parameters: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             sideEffects?: readonly string[];
             concurrency?: string;
@@ -7839,15 +7844,15 @@ export interface OperatorMethodOutputMap {
                 allowedCommands?: readonly string[];
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         resolution: {
@@ -7859,21 +7864,21 @@ export interface OperatorMethodOutputMap {
                 label: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             unresolved: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -7886,15 +7891,15 @@ export interface OperatorMethodOutputMap {
             label: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         unresolved: readonly string[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -7928,15 +7933,15 @@ export interface OperatorMethodOutputMap {
                 })[];
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             };
             actionAvailable?: boolean;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -7951,8 +7956,8 @@ export interface OperatorMethodOutputMap {
             detail: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -7967,8 +7972,8 @@ export interface OperatorMethodOutputMap {
             detail: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -7994,8 +7999,8 @@ export interface OperatorMethodOutputMap {
             searchText?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8014,8 +8019,8 @@ export interface OperatorMethodOutputMap {
             repairActionId?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         repairActions: readonly ({
@@ -8025,19 +8030,19 @@ export interface OperatorMethodOutputMap {
             dangerous: boolean;
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -8055,14 +8060,14 @@ export interface OperatorMethodOutputMap {
             detail: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -8082,8 +8087,8 @@ export interface OperatorMethodOutputMap {
             text?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8119,15 +8124,15 @@ export interface OperatorMethodOutputMap {
                 allowedCommands?: readonly string[];
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8162,15 +8167,15 @@ export interface OperatorMethodOutputMap {
             allowedCommands?: readonly string[];
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         updatedAt: number;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -8182,13 +8187,13 @@ export interface OperatorMethodOutputMap {
             dangerous: boolean;
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8209,16 +8214,16 @@ export interface OperatorMethodOutputMap {
             configKey?: string;
             secretTargetId?: string;
             defaultValue?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             options?: readonly ({
                 value: string;
                 label: string;
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         secretTargets: readonly ({
@@ -8234,15 +8239,15 @@ export interface OperatorMethodOutputMap {
             detail?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         externalSteps: readonly string[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -8256,8 +8261,8 @@ export interface OperatorMethodOutputMap {
             accountId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8284,8 +8289,8 @@ export interface OperatorMethodOutputMap {
             source: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -8295,8 +8300,8 @@ export interface OperatorMethodOutputMap {
         surface: string;
         result: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -8309,13 +8314,13 @@ export interface OperatorMethodOutputMap {
             actionIds: readonly string[];
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8329,13 +8334,13 @@ export interface OperatorMethodOutputMap {
             actionIds: readonly string[];
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8343,53 +8348,53 @@ export interface OperatorMethodOutputMap {
     "config.get": ({
         danger?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         controlPlane?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         web?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         network?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         service?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         providers?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         ui?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         channels?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         watchers?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         memory?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -8399,8 +8404,8 @@ export interface OperatorMethodOutputMap {
         success: boolean;
         key: string;
         value?: ({} & {
-            readonly [key: string]: JsonValue_2;
-        }) | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue;
+        }) | boolean | null | number | readonly JsonValue[] | string;
     } & {
         readonly [key: string]: unknown;
     });
@@ -8561,16 +8566,16 @@ export interface OperatorMethodOutputMap {
                     };
                     events?: readonly string[];
                     inputSchema?: ({} & {
-                        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
                     });
                     outputSchema?: ({} & {
-                        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
                     });
                     pluginId?: string;
                     dangerous?: boolean;
                     invokable?: boolean;
                     metadata?: ({} & {
-                        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
                     });
                 })[];
                 events: readonly ({
@@ -8584,11 +8589,11 @@ export interface OperatorMethodOutputMap {
                     domains?: readonly string[];
                     wireEvents?: readonly string[];
                     outputSchema?: ({} & {
-                        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
                     });
                     pluginId?: string;
                     metadata?: ({} & {
-                        readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
                     });
                 })[];
                 schemaCoverage: {
@@ -8623,11 +8628,11 @@ export interface OperatorMethodOutputMap {
             domains?: readonly string[];
             wireEvents?: readonly string[];
             outputSchema?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
             pluginId?: string;
             metadata?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8667,16 +8672,16 @@ export interface OperatorMethodOutputMap {
                 label?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
             }))[];
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8697,16 +8702,16 @@ export interface OperatorMethodOutputMap {
             };
             events?: readonly string[];
             inputSchema?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
             outputSchema?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
             pluginId?: string;
             dangerous?: boolean;
             invokable?: boolean;
             metadata?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -8727,16 +8732,16 @@ export interface OperatorMethodOutputMap {
             };
             events?: readonly string[];
             inputSchema?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
             outputSchema?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
             pluginId?: string;
             dangerous?: boolean;
             invokable?: boolean;
             metadata?: ({} & {
-                readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -8795,16 +8800,16 @@ export interface OperatorMethodOutputMap {
                 label?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
             }))[];
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         recentEvents: readonly ({
@@ -8812,8 +8817,8 @@ export interface OperatorMethodOutputMap {
             event: string;
             createdAt: number;
             payload: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         })[];
     };
     // (undocumented)
@@ -8975,8 +8980,8 @@ export interface OperatorMethodOutputMap {
             decidedBy?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9002,8 +9007,8 @@ export interface OperatorMethodOutputMap {
             decidedBy?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9029,8 +9034,8 @@ export interface OperatorMethodOutputMap {
             decidedBy?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9051,8 +9056,8 @@ export interface OperatorMethodOutputMap {
                 detail: string;
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -9060,8 +9065,8 @@ export interface OperatorMethodOutputMap {
             hints: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -9077,12 +9082,12 @@ export interface OperatorMethodOutputMap {
             sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             examples?: readonly (({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | JsonValue_2 | boolean | null | number | string)[];
+                readonly [key: string]: JsonValue;
+            }) | JsonValue | boolean | null | number | string)[];
             capabilities?: readonly string[];
             setup?: ({
                 version: string;
@@ -9101,16 +9106,16 @@ export interface OperatorMethodOutputMap {
                 }))[];
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
             });
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -9126,12 +9131,12 @@ export interface OperatorMethodOutputMap {
             sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             examples?: readonly (({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | JsonValue_2 | boolean | null | number | string)[];
+                readonly [key: string]: JsonValue;
+            }) | JsonValue | boolean | null | number | string)[];
             capabilities?: readonly string[];
             setup?: ({
                 version: string;
@@ -9150,16 +9155,16 @@ export interface OperatorMethodOutputMap {
                 }))[];
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
             });
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -9181,13 +9186,13 @@ export interface OperatorMethodOutputMap {
             estimatedTokens: number;
             structure: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9211,13 +9216,13 @@ export interface OperatorMethodOutputMap {
             estimatedTokens: number;
             structure: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9229,16 +9234,16 @@ export interface OperatorMethodOutputMap {
     "knowledge.graphql.execute": ({
         data?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
         errors?: readonly (({} & {
-            readonly [key: string]: JsonValue_2;
-        }) | JsonValue_2 | boolean | null | number | string)[];
+            readonly [key: string]: JsonValue;
+        }) | JsonValue | boolean | null | number | string)[];
         extensions?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -9270,8 +9275,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9289,8 +9294,8 @@ export interface OperatorMethodOutputMap {
             nodeId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9323,8 +9328,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9356,8 +9361,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9399,8 +9404,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9430,8 +9435,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9449,8 +9454,8 @@ export interface OperatorMethodOutputMap {
             nodeId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9483,8 +9488,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9505,8 +9510,8 @@ export interface OperatorMethodOutputMap {
             nodeId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9535,8 +9540,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9555,8 +9560,8 @@ export interface OperatorMethodOutputMap {
             sourceId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9573,8 +9578,8 @@ export interface OperatorMethodOutputMap {
             nodeId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9591,8 +9596,8 @@ export interface OperatorMethodOutputMap {
             weight: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9618,8 +9623,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9638,8 +9643,8 @@ export interface OperatorMethodOutputMap {
             sourceId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9685,8 +9690,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9704,8 +9709,8 @@ export interface OperatorMethodOutputMap {
             defaultMode: "background" | "inline";
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -9745,8 +9750,8 @@ export interface OperatorMethodOutputMap {
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9764,8 +9769,8 @@ export interface OperatorMethodOutputMap {
             defaultMode: "background" | "inline";
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -9781,8 +9786,8 @@ export interface OperatorMethodOutputMap {
             nodeId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9804,8 +9809,8 @@ export interface OperatorMethodOutputMap {
             sourceId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -9835,8 +9840,8 @@ export interface OperatorMethodOutputMap {
             evidence: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -9856,8 +9861,8 @@ export interface OperatorMethodOutputMap {
                 defaultFilename: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -9872,14 +9877,14 @@ export interface OperatorMethodOutputMap {
                 itemIds: readonly string[];
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         artifact: ({
@@ -9896,8 +9901,8 @@ export interface OperatorMethodOutputMap {
             fetchMode?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -9916,8 +9921,8 @@ export interface OperatorMethodOutputMap {
             defaultFilename: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -9932,14 +9937,14 @@ export interface OperatorMethodOutputMap {
             itemIds: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -9954,8 +9959,8 @@ export interface OperatorMethodOutputMap {
             defaultFilename: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -9987,8 +9992,8 @@ export interface OperatorMethodOutputMap {
             nodeId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10009,8 +10014,8 @@ export interface OperatorMethodOutputMap {
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10031,8 +10036,8 @@ export interface OperatorMethodOutputMap {
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10068,8 +10073,8 @@ export interface OperatorMethodOutputMap {
             nextRunAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10101,8 +10106,8 @@ export interface OperatorMethodOutputMap {
             nextRunAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10134,8 +10139,8 @@ export interface OperatorMethodOutputMap {
             nextRunAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10167,8 +10172,8 @@ export interface OperatorMethodOutputMap {
             nextRunAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10202,8 +10207,8 @@ export interface OperatorMethodOutputMap {
                 sessionId?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 createdAt: number;
                 updatedAt: number;
@@ -10222,8 +10227,8 @@ export interface OperatorMethodOutputMap {
                 sourceId?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 createdAt: number;
                 updatedAt: number;
@@ -10250,13 +10255,13 @@ export interface OperatorMethodOutputMap {
             estimatedTokens: number;
             structure: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10285,8 +10290,8 @@ export interface OperatorMethodOutputMap {
             sessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
             updatedAt: number;
@@ -10321,8 +10326,8 @@ export interface OperatorMethodOutputMap {
             score?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             createdAt: number;
         } & {
@@ -10377,8 +10382,8 @@ export interface OperatorMethodOutputMap {
         text?: string;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -10397,14 +10402,14 @@ export interface OperatorMethodOutputMap {
             fetchMode?: "allow-private-hosts" | "not-applicable" | "public-only" | "unknown";
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -10431,14 +10436,14 @@ export interface OperatorMethodOutputMap {
             fetchMode?: "allow-private-hosts" | "not-applicable" | "public-only" | "unknown";
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -10468,8 +10473,8 @@ export interface OperatorMethodOutputMap {
                 detail?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -10507,8 +10512,8 @@ export interface OperatorMethodOutputMap {
                 detail?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -10570,8 +10575,8 @@ export interface OperatorMethodOutputMap {
                 fetchMode?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -10590,14 +10595,14 @@ export interface OperatorMethodOutputMap {
                 confidence?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         packet?: {
@@ -10622,8 +10627,8 @@ export interface OperatorMethodOutputMap {
                 fetchMode?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -10631,8 +10636,8 @@ export interface OperatorMethodOutputMap {
             knowledgeSourceId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -10656,8 +10661,8 @@ export interface OperatorMethodOutputMap {
             configured: boolean;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -10673,8 +10678,8 @@ export interface OperatorMethodOutputMap {
             configured: boolean;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         note: string;
@@ -10696,8 +10701,8 @@ export interface OperatorMethodOutputMap {
                 fetchMode?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -10705,8 +10710,8 @@ export interface OperatorMethodOutputMap {
             knowledgeSourceId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -10966,13 +10971,13 @@ export interface OperatorMethodOutputMap {
                 requiredScope?: string;
                 inputSchema?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
                 outputSchema?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -10980,8 +10985,8 @@ export interface OperatorMethodOutputMap {
             workCompletionStatuses: readonly ("cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued")[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -11011,8 +11016,8 @@ export interface OperatorMethodOutputMap {
             remoteAddress?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11053,8 +11058,8 @@ export interface OperatorMethodOutputMap {
             }))[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11086,8 +11091,8 @@ export interface OperatorMethodOutputMap {
             remoteAddress?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11119,8 +11124,8 @@ export interface OperatorMethodOutputMap {
             remoteAddress?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11164,8 +11169,8 @@ export interface OperatorMethodOutputMap {
             }))[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11182,8 +11187,8 @@ export interface OperatorMethodOutputMap {
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
             payload?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             createdAt: number;
             updatedAt: number;
             queuedBy: string;
@@ -11198,8 +11203,8 @@ export interface OperatorMethodOutputMap {
             automationJobId?: string;
             approvalId?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             telemetry?: ({
                 usage: {
@@ -11221,8 +11226,8 @@ export interface OperatorMethodOutputMap {
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11267,8 +11272,8 @@ export interface OperatorMethodOutputMap {
             }))[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11312,8 +11317,8 @@ export interface OperatorMethodOutputMap {
             }))[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11357,8 +11362,8 @@ export interface OperatorMethodOutputMap {
             }))[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11478,8 +11483,8 @@ export interface OperatorMethodOutputMap {
                 remoteAddress?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -11520,8 +11525,8 @@ export interface OperatorMethodOutputMap {
                 }))[];
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -11535,8 +11540,8 @@ export interface OperatorMethodOutputMap {
                 priority: "default" | "high" | "normal";
                 status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
                 payload?: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
                 createdAt: number;
                 updatedAt: number;
                 queuedBy: string;
@@ -11551,8 +11556,8 @@ export interface OperatorMethodOutputMap {
                 automationJobId?: string;
                 approvalId?: string;
                 result?: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
                 error?: string;
                 telemetry?: ({
                     usage: {
@@ -11574,8 +11579,8 @@ export interface OperatorMethodOutputMap {
                 });
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -11591,8 +11596,8 @@ export interface OperatorMethodOutputMap {
                 note?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -11610,8 +11615,8 @@ export interface OperatorMethodOutputMap {
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
             payload?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             createdAt: number;
             updatedAt: number;
             queuedBy: string;
@@ -11626,8 +11631,8 @@ export interface OperatorMethodOutputMap {
             automationJobId?: string;
             approvalId?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             telemetry?: ({
                 usage: {
@@ -11649,8 +11654,8 @@ export interface OperatorMethodOutputMap {
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11667,8 +11672,8 @@ export interface OperatorMethodOutputMap {
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
             payload?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             createdAt: number;
             updatedAt: number;
             queuedBy: string;
@@ -11683,8 +11688,8 @@ export interface OperatorMethodOutputMap {
             automationJobId?: string;
             approvalId?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             telemetry?: ({
                 usage: {
@@ -11706,8 +11711,8 @@ export interface OperatorMethodOutputMap {
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11744,8 +11749,8 @@ export interface OperatorMethodOutputMap {
         updatedAt: number;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -11779,8 +11784,8 @@ export interface OperatorMethodOutputMap {
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11807,8 +11812,8 @@ export interface OperatorMethodOutputMap {
         updatedAt: number;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -11838,8 +11843,8 @@ export interface OperatorMethodOutputMap {
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11914,8 +11919,8 @@ export interface OperatorMethodOutputMap {
                 surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             };
             lightContext?: boolean;
@@ -11968,8 +11973,8 @@ export interface OperatorMethodOutputMap {
             lastSeenAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -11985,8 +11990,8 @@ export interface OperatorMethodOutputMap {
         archivedAt?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -12082,8 +12087,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -12136,8 +12141,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -12153,8 +12158,8 @@ export interface OperatorMethodOutputMap {
             archivedAt?: number;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -12179,8 +12184,8 @@ export interface OperatorMethodOutputMap {
                 lastSeenAt?: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -12242,8 +12247,8 @@ export interface OperatorMethodOutputMap {
                     surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                 };
                 lightContext?: boolean;
@@ -12278,8 +12283,8 @@ export interface OperatorMethodOutputMap {
                 updatedAt: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -12330,14 +12335,14 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: unknown;
             });
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             cancelledReason?: string;
             metadata?: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -12779,8 +12784,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     } & {
@@ -12814,8 +12819,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     };
@@ -12847,8 +12852,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         message: {
@@ -12865,8 +12870,8 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         input: {
@@ -12889,8 +12894,8 @@ export interface OperatorMethodOutputMap {
             activeAgentId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             routing?: {
                 providerId?: string;
@@ -12945,8 +12950,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         messages: readonly ({
@@ -12963,8 +12968,8 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -12990,8 +12995,8 @@ export interface OperatorMethodOutputMap {
             activeAgentId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             routing?: {
                 providerId?: string;
@@ -13044,8 +13049,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         inputs: readonly ({
@@ -13068,8 +13073,8 @@ export interface OperatorMethodOutputMap {
             activeAgentId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             routing?: {
                 providerId?: string;
@@ -13140,8 +13145,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -13175,8 +13180,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         message: {
@@ -13193,8 +13198,8 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         input: {
@@ -13217,8 +13222,8 @@ export interface OperatorMethodOutputMap {
             activeAgentId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             routing?: {
                 providerId?: string;
@@ -13273,8 +13278,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         messages: readonly ({
@@ -13291,8 +13296,8 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -13324,8 +13329,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
     } & {
@@ -13359,8 +13364,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         message: {
@@ -13377,8 +13382,8 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         input: {
@@ -13401,8 +13406,8 @@ export interface OperatorMethodOutputMap {
             activeAgentId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             routing?: {
                 providerId?: string;
@@ -13441,11 +13446,11 @@ export interface OperatorMethodOutputMap {
         conflicts: readonly ({
             key: string;
             localValue: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             incomingValue: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             source: "synced";
             path: string;
             updatedAt: number;
@@ -13465,11 +13470,11 @@ export interface OperatorMethodOutputMap {
             changes: readonly ({
                 key: string;
                 previousValue: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
                 nextValue: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
                 changed: boolean;
                 locked: boolean;
                 source: string;
@@ -13484,8 +13489,8 @@ export interface OperatorMethodOutputMap {
             restoredKeys: readonly string[];
             previousValues: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     } | {
@@ -13507,8 +13512,8 @@ export interface OperatorMethodOutputMap {
             capabilities: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -13540,8 +13545,8 @@ export interface OperatorMethodOutputMap {
             exitCode?: number;
             error?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             correlationId?: string;
             turnId?: string;
         };
@@ -13589,8 +13594,8 @@ export interface OperatorMethodOutputMap {
             exitCode?: number;
             error?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             correlationId?: string;
             turnId?: string;
         };
@@ -13647,8 +13652,8 @@ export interface OperatorMethodOutputMap {
             exitCode?: number;
             error?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             correlationId?: string;
             turnId?: string;
         };
@@ -13687,12 +13692,12 @@ export interface OperatorMethodOutputMap {
             source: string;
             message: string;
             payload: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             attributes: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             error?: {
                 name: string;
@@ -13740,12 +13745,12 @@ export interface OperatorMethodOutputMap {
             source: string;
             message: string;
             payload: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             attributes: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             error?: {
                 name: string;
@@ -13839,19 +13844,19 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "telemetry.otlp.logs": {
         resourceLogs: readonly (({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         }))[];
     };
     // (undocumented)
     "telemetry.otlp.metrics": {
         resourceMetrics: readonly (({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         }))[];
     };
     // (undocumented)
     "telemetry.otlp.traces": {
         resourceSpans: readonly (({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         }))[];
     };
     // (undocumented)
@@ -13955,12 +13960,12 @@ export interface OperatorMethodOutputMap {
                     source: string;
                     message: string;
                     payload: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                     attributes: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                     error?: {
                         name: string;
@@ -14007,12 +14012,12 @@ export interface OperatorMethodOutputMap {
                     source: string;
                     message: string;
                     payload: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                     attributes: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                     error?: {
                         name: string;
@@ -14059,16 +14064,16 @@ export interface OperatorMethodOutputMap {
                     durationMs: number;
                     attributes: ({} & {
                         readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue_2;
-                        }) | boolean | null | number | readonly JsonValue_2[] | string;
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
                     });
                     events: readonly ({
                         name: string;
                         timestamp: number;
                         attributes?: ({} & {
                             readonly [key: string]: ({} & {
-                                readonly [key: string]: JsonValue_2;
-                            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                                readonly [key: string]: JsonValue;
+                            }) | boolean | null | number | readonly JsonValue[] | string;
                         });
                     })[];
                     status: {
@@ -14130,16 +14135,16 @@ export interface OperatorMethodOutputMap {
             durationMs: number;
             attributes: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             events: readonly ({
                 name: string;
                 timestamp: number;
                 attributes?: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
             status: {
@@ -14176,8 +14181,8 @@ export interface OperatorMethodOutputMap {
         });
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -14193,8 +14198,8 @@ export interface OperatorMethodOutputMap {
             detail?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
         note: string;
@@ -14212,8 +14217,8 @@ export interface OperatorMethodOutputMap {
         })[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -14228,14 +14233,14 @@ export interface OperatorMethodOutputMap {
             durationMs?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -14247,8 +14252,8 @@ export interface OperatorMethodOutputMap {
             gender?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
     };
@@ -14267,8 +14272,8 @@ export interface OperatorMethodOutputMap {
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -14282,8 +14287,8 @@ export interface OperatorMethodOutputMap {
         lastError?: string;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -14311,8 +14316,8 @@ export interface OperatorMethodOutputMap {
                 updatedAt: number;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -14326,8 +14331,8 @@ export interface OperatorMethodOutputMap {
             lastError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -14348,8 +14353,8 @@ export interface OperatorMethodOutputMap {
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -14363,8 +14368,8 @@ export interface OperatorMethodOutputMap {
         lastError?: string;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -14384,8 +14389,8 @@ export interface OperatorMethodOutputMap {
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -14399,8 +14404,8 @@ export interface OperatorMethodOutputMap {
         lastError?: string;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -14420,8 +14425,8 @@ export interface OperatorMethodOutputMap {
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -14435,8 +14440,8 @@ export interface OperatorMethodOutputMap {
         lastError?: string;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -14456,8 +14461,8 @@ export interface OperatorMethodOutputMap {
             updatedAt: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -14471,8 +14476,8 @@ export interface OperatorMethodOutputMap {
         lastError?: string;
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -14505,8 +14510,8 @@ export interface OperatorMethodOutputMap {
             providerId: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
             evidence?: readonly ({
                 url: string;
@@ -14518,8 +14523,8 @@ export interface OperatorMethodOutputMap {
                 truncated?: boolean;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             })[];
         })[];
@@ -14537,14 +14542,14 @@ export interface OperatorMethodOutputMap {
             })[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
         metadata: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
@@ -15113,8 +15118,8 @@ export interface PeerEndpointInputMap {
         ttlMs?: number;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -15125,8 +15130,8 @@ export interface PeerEndpointInputMap {
         challenge: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -15139,8 +15144,8 @@ export interface PeerEndpointInputMap {
         clientMode?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -15150,13 +15155,13 @@ export interface PeerEndpointInputMap {
         workId: string;
         status?: "cancelled" | "completed" | "failed";
         result?: ({} & {
-            readonly [key: string]: JsonValue_2;
-        }) | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue;
+        }) | boolean | null | number | readonly JsonValue[] | string;
         error?: string;
         metadata?: ({} & {
             readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
         });
     } & {
         readonly [key: string]: unknown;
@@ -15276,8 +15281,8 @@ export interface PeerEndpointOutputMap {
                 remoteAddress?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -15318,8 +15323,8 @@ export interface PeerEndpointOutputMap {
                 }))[];
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -15333,8 +15338,8 @@ export interface PeerEndpointOutputMap {
                 priority: "default" | "high" | "normal";
                 status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
                 payload?: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
                 createdAt: number;
                 updatedAt: number;
                 queuedBy: string;
@@ -15349,8 +15354,8 @@ export interface PeerEndpointOutputMap {
                 automationJobId?: string;
                 approvalId?: string;
                 result?: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
                 error?: string;
                 telemetry?: ({
                     usage: {
@@ -15372,8 +15377,8 @@ export interface PeerEndpointOutputMap {
                 });
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -15389,8 +15394,8 @@ export interface PeerEndpointOutputMap {
                 note?: string;
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue_2;
-                    }) | boolean | null | number | readonly JsonValue_2[] | string;
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
                 });
             } & {
                 readonly [key: string]: unknown;
@@ -15423,8 +15428,8 @@ export interface PeerEndpointOutputMap {
             remoteAddress?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -15469,8 +15474,8 @@ export interface PeerEndpointOutputMap {
             }))[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -15527,8 +15532,8 @@ export interface PeerEndpointOutputMap {
             }))[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -15545,8 +15550,8 @@ export interface PeerEndpointOutputMap {
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
             payload?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             createdAt: number;
             updatedAt: number;
             queuedBy: string;
@@ -15561,8 +15566,8 @@ export interface PeerEndpointOutputMap {
             automationJobId?: string;
             approvalId?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             telemetry?: ({
                 usage: {
@@ -15584,8 +15589,8 @@ export interface PeerEndpointOutputMap {
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -15602,8 +15607,8 @@ export interface PeerEndpointOutputMap {
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
             payload?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             createdAt: number;
             updatedAt: number;
             queuedBy: string;
@@ -15618,8 +15623,8 @@ export interface PeerEndpointOutputMap {
             automationJobId?: string;
             approvalId?: string;
             result?: ({} & {
-                readonly [key: string]: JsonValue_2;
-            }) | boolean | null | number | readonly JsonValue_2[] | string;
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
             error?: string;
             telemetry?: ({
                 usage: {
@@ -15641,8 +15646,8 @@ export interface PeerEndpointOutputMap {
             });
             metadata: ({} & {
                 readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue_2;
-                }) | boolean | null | number | readonly JsonValue_2[] | string;
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
             });
         } & {
             readonly [key: string]: unknown;
@@ -16346,157 +16351,157 @@ export interface RuntimeDomainEventPayloadMap {
     // (undocumented)
     "control-plane": {
         "control-plane": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "agents": {
         "agents": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "automation": {
         "automation": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "communication": {
         "communication": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "compaction": {
         "compaction": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "deliveries": {
         "deliveries": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "forensics": {
         "forensics": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "knowledge": {
         "knowledge": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "mcp": {
         "mcp": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "ops": {
         "ops": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "orchestration": {
         "orchestration": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "permissions": {
         "permissions": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "planner": {
         "planner": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "plugins": {
         "plugins": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "providers": {
         "providers": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "routes": {
         "routes": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "security": {
         "security": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "session": {
         "session": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "surfaces": {
         "surfaces": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "tasks": {
         "tasks": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "tools": {
         "tools": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "transport": {
         "transport": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "turn": {
         "turn": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "ui": {
         "ui": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "watchers": {
         "watchers": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
     // (undocumented)
     "workflows": {
         "workflows": ({} & {
-            readonly [key: string]: JsonValue_2 | boolean | null | number | readonly JsonValue_2[] | string;
+            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
         });
     };
 }
@@ -16525,7 +16530,7 @@ export { RuntimeEventDomain as DaemonRuntimeEventDomain }
 export { RuntimeEventDomain }
 
 // @public (undocumented)
-export interface RuntimeEventFeed<TEvent extends EventLike_2 = EventLike_2> {
+export interface RuntimeEventFeed<TEvent extends EventLike = EventLike> {
     // (undocumented)
     on<TType extends TEvent['type']>(type: TType, listener: (payload: EventForType<TEvent, TType>) => void): () => void;
     // (undocumented)
@@ -16533,7 +16538,7 @@ export interface RuntimeEventFeed<TEvent extends EventLike_2 = EventLike_2> {
 }
 
 // @public (undocumented)
-export type RuntimeEventFeeds<TDomain extends string, TEvent extends EventLike_2 = EventLike_2> = {
+export type RuntimeEventFeeds<TDomain extends string, TEvent extends EventLike = EventLike> = {
     readonly domains: readonly TDomain[];
     domain(domain: TDomain): RuntimeEventFeed<TEvent>;
 } & {
@@ -16684,13 +16689,13 @@ export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = Runtim
 // @public (undocumented)
 interface ServerSentEventHandlers {
     // (undocumented)
-    readonly onClose?: (() => void) | undefined | undefined;
+    readonly onClose?: (() => void) | undefined;
     // (undocumented)
-    readonly onError?: ((error: unknown) => void) | undefined | undefined;
+    readonly onError?: ((error: unknown) => void) | undefined;
     // (undocumented)
-    readonly onEvent?: ((eventName: string, payload: unknown) => void) | undefined | undefined;
+    readonly onEvent?: ((eventName: string, payload: unknown) => void) | undefined;
     // (undocumented)
-    readonly onReady?: ((payload: unknown) => void) | undefined | undefined;
+    readonly onReady?: ((payload: unknown) => void) | undefined;
     // (undocumented)
     readonly onReconnect?: (input: {
         readonly attempt: number;
@@ -17733,10 +17738,8 @@ export type WrfcState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'aw
 
 // Warnings were encountered during analysis:
 //
-// packages/contracts/src/generated/foundation-client-types.ts:444:562 - (ae-forgotten-export) The symbol "JsonValue_2" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/knowledge-route-types.ts:54:76 - (ae-forgotten-export) The symbol "KnowledgeUsageKind" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/knowledge-route-types.ts:58:15 - (ae-forgotten-export) The symbol "KnowledgeCandidateStatus" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:77:7 - (ae-forgotten-export) The symbol "AutomationSurfaceKind_2" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/runtime-route-types.ts:86:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/runtime-route-types.ts:91:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/runtime-route-types.ts:172:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts

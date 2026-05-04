@@ -111,8 +111,11 @@
       // ae-forgotten-export: public declarations whose dependency types have no public
       // re-export path. Suppressed here to keep the api report clean; each forgotten
       // type should receive @internal in source or a facade re-export in the relevant
-      // platform barrel. TODO: remove this suppression once all daemon route-handler
-      // and transport-shape types have been explicitly tagged or re-exported.
+      // platform barrel.
+      // TODO(retire): remove suppression once all daemon route-handler and transport-shape
+      // types are explicitly @internal-tagged or re-exported through public facades.
+      // Remaining count tracks as a quality metric: 64 at 10707d6 → target 0.
+      // Retire one batch per release, confirm CI stays green before removing suppression.
       "ae-forgotten-export": {
         "logLevel": "none"
       }

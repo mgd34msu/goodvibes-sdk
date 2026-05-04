@@ -1,4 +1,6 @@
 import type { JsonRecord } from './route-helpers.js';
+import type { AutomationSurfaceKind } from './runtime-route-types.js';
+export type { AutomationSurfaceKind };
 
 export type DaemonApiClientKind =
   | 'web'
@@ -18,8 +20,6 @@ export type DaemonApiClientKind =
   | 'daemon';
 
 export type AutomationRouteBindingKind = string;
-/** @internal Structural alias for cross-package compatibility; canonical type lives in platform/automation/types.ts. */
-export type AutomationSurfaceKind = string;
 export type AutomationSessionPolicy = string;
 export type AutomationThreadPolicy = string;
 export type AutomationDeliveryGuarantee = string;
