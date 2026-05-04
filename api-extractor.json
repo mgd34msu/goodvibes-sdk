@@ -57,7 +57,7 @@
         "addToApiReportFile": false
       },
       "ae-missing-release-tag": {
-        "logLevel": "none"
+        "logLevel": "warning"
       },
       "ae-unresolved-inheritdoc-reference": {
         "logLevel": "none"

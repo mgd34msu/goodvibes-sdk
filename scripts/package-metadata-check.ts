@@ -6,6 +6,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
 const rootPackage = JSON.parse(readFileSync(resolve(SDK_ROOT, 'package.json'), 'utf8'));
 
+// NOTE: This list is intentionally duplicated from release-shared.ts to keep
+// package-metadata-check.ts dependency-free (no import from sibling scripts).
+// If packages are added/removed, update both files.
 const packageDirs = [
   'packages/contracts',
   'packages/errors',

@@ -98,7 +98,11 @@ export function isPublicPackageDir(dir: string): boolean {
 }
 
 function shouldCopyPath(path: string): boolean {
-  return !path.split('/').includes('node_modules');
+  const parts = path.split('/');
+  return (
+    !parts.some((p) => p === 'node_modules' || p === '.git' || p === 'coverage') &&
+    !path.endsWith('.tsbuildinfo')
+  );
 }
 
 function stageSdkSecurityMitigationAssets(stageDir: string): void {
@@ -279,6 +283,10 @@ export function cleanupAuthEnv(authEnv: AuthEnv): void {
   }
 }
 
+// Security note: `command` and `args` are hardcoded caller-controlled literals ('npm', 'tar', 'node').
+// `process.env` is inherited unfiltered. If process.env contains an attacker-controlled NODE_OPTIONS,
+// NODE_PATH, npm_config_*, or PATH, the child process will inherit it. This is acceptable for
+// developer-facing release tooling (not a public API), but callers must not pass untrusted env.
 export function run(command: string, args: readonly string[], cwd: string, options: RunOptions = {}): string {
   const childEnv = options.auth
     ? (options.authEnv ?? createAuthEnv(options.env, {

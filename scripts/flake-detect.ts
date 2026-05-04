@@ -10,7 +10,8 @@
  *   bun scripts/flake-detect.ts
  *
  * Configuration (environment variables):
- *   FLAKE_RUNS   — number of test runs (default: 5)
+ *   FLAKE_RUNS        — number of test runs (default: 5)
+ *   FLAKE_TIMEOUT_MS  — per-run timeout in ms (default: 600000 = 10 min)
  *
  * Note: CI runs this as a separate gate with FLAKE_RUNS=3. Local default is 5.
  * This detects non-determinism only; use `bun test --coverage` to find
@@ -31,7 +32,11 @@ const REPO_ROOT = resolve(__dirname, '..');
 const N = (() => {
   const env = process.env['FLAKE_RUNS'];
   if (env !== undefined) {
-    const n = parseInt(env, 10);
+    if (!/^\d+$/.test(env.trim())) {
+      console.error(`[flake-detect] ERROR: FLAKE_RUNS must be a positive integer, got: ${env}`);
+      process.exit(1);
+    }
+    const n = Number.parseInt(env, 10);
     if (!Number.isInteger(n) || n < 1) {
       console.error(`[flake-detect] ERROR: FLAKE_RUNS must be a positive integer, got: ${env}`);
       process.exit(1);
@@ -59,9 +64,20 @@ function runTests(runIndex: number): RunResult {
   const result = spawnSync('bun', ['run', 'test'], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
-    // Give each run a generous timeout (10 min) so slow CI machines don't
-    // false-positive as flakes.
-    timeout: 10 * 60 * 1000,
+    // Give each run a generous timeout so slow CI machines don't false-positive
+    // as flakes. Configurable via FLAKE_TIMEOUT_MS (default: 10 min).
+    timeout: (() => {
+      const envMs = process.env['FLAKE_TIMEOUT_MS'];
+      if (envMs !== undefined) {
+        const ms = parseInt(envMs, 10);
+        if (!Number.isInteger(ms) || ms < 1000) {
+          console.error(`[flake-detect] ERROR: FLAKE_TIMEOUT_MS must be >= 1000, got: ${envMs}`);
+          process.exit(1);
+        }
+        return ms;
+      }
+      return 10 * 60 * 1000;
+    })(),
     maxBuffer: 50 * 1024 * 1024,
   });
   const durationMs = Date.now() - start;

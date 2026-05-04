@@ -4,6 +4,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # 5 open PRs: enough to batch patch groups without flooding the review queue.
+    # Increase if you want minor/major updates to flow through faster.
     open-pull-requests-limit: 5
     groups:
       production-patches:
@@ -27,9 +29,11 @@ updates:
       github-actions-patches:
         update-types:
           - "version-update:semver-patch"
-      github-actions:
+      github-actions-minor:
         update-types:
           - "version-update:semver-minor"
+      github-actions-major:
+        update-types:
           - "version-update:semver-major"
     labels:
       - "dependencies"

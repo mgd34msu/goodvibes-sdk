@@ -8,9 +8,16 @@
       // ESNext.Disposable adds Symbol.dispose / Symbol.asyncDispose type definitions.
       // Although target is ES2024, the Disposables proposal shipped in ES2025 —
       // this lib entry provides the type stubs without changing emit target.
+      // SOURCE: https://github.com/tc39/proposal-explicit-resource-management
+      // Tested with TypeScript 6.0.3 (typescript devDependency pin).
       "ESNext.Disposable"
     ],
     "strict": true,
+    // Stricter-adjacent flags not covered by `strict`. These surface real bugs
+    // (noUncheckedIndexedAccess) and enforce explicit override intent.
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
     "declaration": true,
     "declarationMap": true,
     "composite": true,
