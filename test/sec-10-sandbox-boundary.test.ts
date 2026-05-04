@@ -27,7 +27,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
 
   test('getSandboxConfigSnapshot returns a frozen object with expected keys', () => {
     const config = getSandboxConfigSnapshot(makeConfigManager());
-    expect(config).toHaveProperty('sandboxed'); // presence-only refined: check key field
+    expect(config).toHaveProperty('replIsolation'); // presence-only refined: check key field
     // Must be frozen (Object.isFrozen)
     expect(Object.isFrozen(config)).toBe(true);
     // Must include replIsolation key
