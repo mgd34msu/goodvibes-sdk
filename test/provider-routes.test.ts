@@ -169,11 +169,11 @@ describe('GET /api/providers', () => {
     expect(body.providers).toBeInstanceOf(Array);
     const providers = body.providers as Array<Record<string, unknown>>;
 
-    const inceptionProv = providers.find((p) => p['id'] === 'inception';
+    const inceptionProv = providers.find((p) => p['id'] === 'inception');
     expect(inceptionProv?.['id']).toBe('inception');
     expect(inceptionProv!['configured']).toBe(true);
 
-    const veniceProv = providers.find((p) => p['id'] === 'venice';
+    const veniceProv = providers.find((p) => p['id'] === 'venice');
     expect(veniceProv?.['id']).toBe('venice');
     expect(veniceProv!['configured']).toBe(false);
 
@@ -687,7 +687,7 @@ describe('DaemonHttpRouter: secretsManager wiring (regression guard)', () => {
     expect(res).not.toBeNull();
     const body = await res!.json() as Record<string, unknown>;
     const providers = body.providers as Array<Record<string, unknown>>;
-    const openaiProv = providers.find((p) => p['id'] === 'openai';
+    const openaiProv = providers.find((p) => p['id'] === 'openai');
     expect(openaiProv?.['id']).toBe('openai');
     // Without the secretsManager wiring, this would be false and configuredVia undefined
     expect(openaiProv!['configured']).toBe(true);
