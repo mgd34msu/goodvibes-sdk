@@ -1,5 +1,11 @@
-import { logger } from '../platform/utils/logger.js';
-import { summarizeError } from '../platform/utils/error-display.js';
+// Inline minimal debug logging to keep client-auth/ free of platform/ dependencies.
+function debugLog(msg: string, ctx?: Record<string, unknown>): void {
+  if (ctx !== undefined) {
+    console.debug(`[goodvibes] ${msg}`, ctx);
+  } else {
+    console.debug(`[goodvibes] ${msg}`);
+  }
+}
 
 /**
  * AutoRefreshCoordinator — Silent token refresh with in-flight request queuing.
@@ -169,7 +175,7 @@ export class AutoRefreshCoordinator {
       try {
         const { token, expiresAt } = await this.#refresh();
         const store = this.#tokenStore as GoodVibesTokenStore & {
-          setTokenEntry?: ((token: string | null, expiresAt?: number) => Promise<void>) | undefined | undefined;
+          setTokenEntry?: ((token: string | null, expiresAt?: number) => Promise<void>) | undefined;
         };
         if (typeof store.setTokenEntry === 'function') {
           await store.setTokenEntry(token, expiresAt);
@@ -185,7 +191,7 @@ export class AutoRefreshCoordinator {
         );
       } catch (err) {
         // Refresh failed — fall back to anonymous.
-        logger.debug('AutoRefreshCoordinator: token refresh failed, clearing to anonymous', { error: summarizeError(err) });
+        debugLog('AutoRefreshCoordinator: token refresh failed, clearing to anonymous', { error: String(err) });
         await this.#tokenStore.clearToken();
         invokeObserver(() =>
           this.#observer?.onAuthTransition?.({
@@ -326,7 +332,7 @@ export class AutoRefreshCoordinator {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function is401Error(error: unknown): boolean {
+export function is401Error(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
   const e = error as {
     status?: unknown | undefined;
