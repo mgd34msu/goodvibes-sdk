@@ -4,13 +4,14 @@ This is the **companion surface** for web UI applications (browser runtime). See
 
 Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
 
-Use `@pellux/goodvibes-sdk/web` for web UI applications. It exposes the
+Use `@pellux/goodvibes-sdk/browser` for web UI applications. It exposes the
 companion-safe browser runtime surface with web UI defaults.
+(`@pellux/goodvibes-sdk/web` is an equivalent alias — both resolve to the same surface.)
 
 ```ts
-import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
+import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 
-const sdk = createWebGoodVibesSdk({
+const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
 });
 ```
@@ -27,9 +28,7 @@ For a browser-based web UI:
 
 ## When to use the browser entrypoint directly
 
-`@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web` are equivalent surfaces. Use:
-- `@pellux/goodvibes-sdk/web` when your mental model is "web UI"
-- `@pellux/goodvibes-sdk/browser` when you want the generic browser label
+`@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web` are equivalent surfaces. `./browser` is the canonical browser entrypoint for new projects; `./web` is a valid alternative for service-worker scenarios or when the web-UI mental model is preferred.
 
 See [public-surface.md](./public-surface.md) for the full entry-point reference.
 
@@ -78,7 +77,7 @@ try {
 ```ts
 import { createConsoleObserver } from '@pellux/goodvibes-sdk';
 
-const sdk = createWebGoodVibesSdk({
+const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
   observer: createConsoleObserver(),
 });
