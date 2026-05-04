@@ -140,8 +140,8 @@
     "rationale": "platform runtime re-export entry; measured 142 B gzip; max(ceil(142*1.2)=171, 142+50=192)=192"
   },
   "./platform/runtime/observability": {
-    "gzip_bytes": 516,
-    "rationale": "public runtime seam; measured 430 B gzip; max(ceil(430*1.2)=516, 430+50=480)=516"
+    "gzip_bytes": 692,
+    "rationale": "public runtime seam; measured 576 B gzip; max(ceil(576*1.2)=692, 576+50=626)=692"
   },
   "./platform/runtime/state": {
     "gzip_bytes": 423,
@@ -152,8 +152,8 @@
     "rationale": "public runtime seam; measured 1142 B gzip; max(ceil(1142*1.2)=1371, 1142+50=1192)=1371"
   },
   "./platform/runtime/ui": {
-    "gzip_bytes": 521,
-    "rationale": "public runtime seam; measured 434 B gzip; max(ceil(434*1.2)=521, 434+50=484)=521"
+    "gzip_bytes": 916,
+    "rationale": "public runtime seam; measured 763 B gzip; max(ceil(763*1.2)=916, 763+50=813)=916"
   },
   "./platform/tools": {
     "gzip_bytes": 2766,
