@@ -1,14 +1,179 @@
-export * from './diagnostics/index.js';
-export * from './eval/index.js';
-export * from './forensics/index.js';
-export * from './idempotency/index.js';
-export * from './perf/index.js';
+// ── Diagnostics ──────────────────────────────────────────────────────────────
+export type {
+  DiagnosticFilter,
+  DiagnosticLevel,
+  ComponentConfig,
+  ToolCallEntry,
+  ToolCallPhase,
+  ToolCallPermission,
+  AgentEntry,
+  AgentDiagnosticState,
+  TaskEntry,
+  EventEntry,
+  DomainStateEntry,
+  RuntimeStateSnapshot,
+  DomainHealthSummary,
+  HealthDashboardData,
+  ComponentResourceEntry,
+  ComponentResourceSnapshot,
+} from './diagnostics/index.js';
+export {
+  DEFAULT_BUFFER_LIMIT,
+  DEFAULT_COMPONENT_CONFIG,
+  applyFilter,
+  appendBounded,
+} from './diagnostics/index.js';
+export type {
+  DiagnosticActionType,
+  DiagnosticActionPermission,
+  DiagnosticActionPayload,
+  DiagnosticAction,
+  HighSeverityDiagnostic,
+  ActionResult,
+  NavigateToEntryCallback,
+  PermissionChecker,
+  DiagnosticActionDispatcherConfig,
+  LoadReplayPayload,
+  RunPolicySimulationPayload,
+  JumpToTaskPayload,
+  JumpToAgentPayload,
+  JumpToToolCallPayload,
+  RetryTaskPayload,
+  CancelTaskPayload,
+  CancelAgentPayload,
+} from './diagnostics/index.js';
+export {
+  DiagnosticActionDispatcher,
+  buildLoadReplayAction,
+  buildRunPolicySimulationAction,
+  buildJumpToTaskAction,
+  buildJumpToAgentAction,
+  buildJumpToToolCallAction,
+  buildRetryTaskAction,
+  buildCancelTaskAction,
+  buildCancelAgentAction,
+  diagnosticFromTaskFailure,
+  diagnosticFromAgentFailure,
+  diagnosticFromToolContractViolation,
+  diagnosticFromForensicsRun,
+} from './diagnostics/index.js';
+export {
+  ToolCallsPanel,
+  AgentsPanel,
+  TasksPanel,
+  EventsPanel,
+  StateInspectorPanel,
+  HealthPanel,
+  ForensicsDataPanel,
+  DivergencePanel,
+  ReplayPanel,
+  SecurityPanel,
+  ToolContractsPanel,
+  TransportPanel,
+} from './diagnostics/index.js';
+export type {
+  SecurityPanelSnapshot,
+  TransportPanelSnapshot,
+} from './diagnostics/index.js';
+export { DiagnosticsProvider, createDiagnosticsProvider } from './diagnostics/index.js';
+export type { DiagnosticsProviderConfig, DiagnosticPanelName } from './diagnostics/index.js';
+
+// ── Eval ─────────────────────────────────────────────────────────────────────
+export type {
+  EvalScenario,
+  EvalRawResult,
+  EvalResult,
+  EvalSuiteResult,
+  EvalScorecard,
+  EvalBaseline,
+  EvalGateResult,
+  EvalDimension,
+  DimensionScore,
+  RegressionEntry,
+  BaselineSuiteSummary,
+  EvalRunnerOptions,
+} from './eval/index.js';
+export {
+  EvalRunner,
+  scoreScenario,
+  formatScorecard,
+  DIMENSION_FLOOR,
+  BUILTIN_SUITES,
+  ALL_SCENARIOS,
+  captureBaseline,
+  serialiseBaseline,
+  deserialiseBaseline,
+  writeBaseline,
+  loadBaseline,
+  formatBaselineComparison,
+  formatSuiteResult,
+  formatGateResult,
+} from './eval/index.js';
+
+// ── Forensics ─────────────────────────────────────────────────────────────────
+export type {
+  FailureReport,
+  FailureClass,
+  PhaseTimingEntry,
+  CausalChainEntry,
+  ForensicsJumpLink,
+  ForensicsBundle,
+  ForensicsReplayEvidence,
+  ForensicsEvidenceSummary,
+  ReplaySnapshotInput,
+} from './forensics/index.js';
+export {
+  classifyFailure,
+  summariseFailure,
+  ForensicsRegistry,
+  DEFAULT_REGISTRY_LIMIT,
+  ForensicsCollector,
+} from './forensics/index.js';
+
+// ── Idempotency ───────────────────────────────────────────────────────────────
+export type {
+  IdempotencyKeyContext,
+  IdempotencyRecord,
+  IdempotencyStoreConfig,
+  IdempotencyStatus,
+} from './idempotency/index.js';
+export { IdempotencyStore } from './idempotency/index.js';
+
+// ── Perf ─────────────────────────────────────────────────────────────────────
+export type {
+  PerfBudget,
+  PerfMetric,
+  BudgetViolation,
+  PerfReport,
+  PerfUnit,
+  PerfSnapshot,
+  ComponentResourceContract,
+  ComponentHealthState,
+  ComponentThrottleStatus,
+  ComponentHealthStatus,
+  PanelResourceContract,
+  PanelHealthState,
+  PanelThrottleStatus,
+  PanelHealthStatus,
+} from './perf/index.js';
+export {
+  DEFAULT_BUDGETS,
+  PerfMonitor,
+  formatReport,
+  exitCode,
+  SloCollector,
+  SLO_METRICS,
+  CATEGORY_CONTRACTS,
+  buildContract,
+  createInitialComponentHealthState,
+  createInitialPanelHealthState,
+  ComponentHealthMonitor,
+} from './perf/index.js';
 // PanelHealthMonitor is an alias for ComponentHealthMonitor, preserved for backwards-compat.
 // The 'Component' prefix was renamed to 'Panel' at the public surface to better reflect its
 // role as a runtime panel health tracker. Both names resolve to the same implementation.
 export { ComponentHealthMonitor as PanelHealthMonitor } from './perf/index.js';
-export { createDiagnosticsProvider, DiagnosticsProvider } from './diagnostics/index.js';
-export type { DiagnosticsProviderConfig, DiagnosticPanelName } from './diagnostics/provider.js';
+// DiagnosticsProviderConfig and DiagnosticPanelName are included via the diagnostics block above.
 export {
   RuntimeHealthAggregator,
 } from './health/aggregator.js';
@@ -45,7 +210,6 @@ export type {
   DomainSnapshot,
   HotspotReport,
   HotspotSamplerConfig,
-  InspectableDomain,
   SelectorHotspot,
   StateInspectorConfig,
   StateSnapshot,

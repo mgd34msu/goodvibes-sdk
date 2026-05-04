@@ -4,11 +4,17 @@ import {
 } from './browser.js';
 import type { GoodVibesSdk } from './client.js';
 
-// WebGoodVibesSdkOptions is intentionally identical to BrowserGoodVibesSdkOptions.
-// A type alias avoids the empty-interface lint warning while preserving a
-// distinct public name in the web entrypoint.
-// @alias BrowserGoodVibesSdkOptions — use this type when importing from `@pellux/goodvibes-sdk/web`;
-// use BrowserGoodVibesSdkOptions when importing from `@pellux/goodvibes-sdk/browser`.
+/**
+ * Options for {@link createWebGoodVibesSdk}.
+ *
+ * This type is an alias for {@link BrowserGoodVibesSdkOptions} and carries the
+ * same shape. It exists so that code importing from `@pellux/goodvibes-sdk/web`
+ * has a semantically accurate name without requiring an empty-interface declaration.
+ *
+ * Use `WebGoodVibesSdkOptions` when importing from `@pellux/goodvibes-sdk/web`;
+ * use {@link BrowserGoodVibesSdkOptions} when importing from
+ * `@pellux/goodvibes-sdk/browser`.
+ */
 export type WebGoodVibesSdkOptions = BrowserGoodVibesSdkOptions;
 
 export { forSession } from './_companion-realtime.js';
