@@ -211,64 +211,10 @@ export class DaemonHttpRouter {
     return correlationCtx.run(
       { requestId: req.headers.get('x-request-id') ?? crypto.randomUUID() },
       async () => {
-        const url = new URL(req.url);
-
-        // m2/m3: 24+ inline if (url.pathname === ...) chain below. Consider extracting
-        // a route table or trie-based dispatcher to reduce this file's 37 KB footprint.
-        if (url.pathname === '/login' && req.method === 'POST') {
-          return this.handleLogin(req);
-        }
-
-        if (url.pathname === '/api/remote/pair/request' && req.method === 'POST') {
-          return handleRemotePairRequest({
-            parseJsonBody: (request) => this.parseJsonBody(request),
-            distributedRuntime: this.context.distributedRuntime,
-          }, req);
-        }
-        if (url.pathname === '/api/remote/pair/verify' && req.method === 'POST') {
-          return handleRemotePairVerify({
-            parseJsonBody: (request) => this.parseJsonBody(request),
-            distributedRuntime: this.context.distributedRuntime,
-          }, req);
-        }
-        if (url.pathname === '/api/remote/heartbeat' && req.method === 'POST') {
-          return handleRemotePeerHeartbeat({
-            parseJsonBody: (request) => this.parseJsonBody(request),
-            requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
-            distributedRuntime: this.context.distributedRuntime,
-          }, req);
-        }
-        if (url.pathname === '/api/remote/work/pull' && req.method === 'POST') {
-          return handleRemotePeerWorkPull({
-            parseJsonBody: (request) => this.parseJsonBody(request),
-            requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
-            distributedRuntime: this.context.distributedRuntime,
-          }, req);
-        }
-        const remoteWorkCompleteMatch = url.pathname.match(/^\/api\/remote\/work\/([^/]+)\/complete$/);
-        if (remoteWorkCompleteMatch && req.method === 'POST') {
-          return handleRemotePeerWorkComplete({
-            parseJsonBody: (request) => this.parseJsonBody(request),
-            requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
-            distributedRuntime: this.context.distributedRuntime,
-          }, remoteWorkCompleteMatch[1], req);
-        }
-
-        if (url.pathname === '/webhook/github' && req.method === 'POST') {
-          return this.handleGitHubWebhook(req);
-        }
-        if (url.pathname.startsWith('/webhook/')) {
-          const pluginResponse = await this.context.channelPlugins.handleInbound(url.pathname, req);
-          if (pluginResponse) return pluginResponse;
-        }
-
-        if (url.pathname === '/api/control-plane/web' && req.method === 'GET') {
-          return this.context.controlPlaneGateway.renderWebUi();
-        }
-        if (url.pathname === '/api/control-plane/auth' && req.method === 'GET') {
-          const apiResponse = await this.dispatchApiRoutes(req);
-          if (apiResponse) return apiResponse;
-        }
+        // Pre-auth routes: no auth check applied (login, remote-peer handshake,
+        // webhooks, and control-plane web UI).
+        const preAuth = await this.dispatchPreAuthRoutes(req);
+        if (preAuth) return preAuth;
 
         if (!this.context.checkAuth(req)) {
           return jsonErrorResponse(
@@ -283,6 +229,7 @@ export class DaemonHttpRouter {
 
         const apiResponse = await this.dispatchApiRoutes(req);
         if (apiResponse) return apiResponse;
+        const url = new URL(req.url);
         return jsonErrorResponse(
           new AppError(`Route not found: ${url.pathname}`, 'NOT_FOUND', false, {
             category: 'not_found',
@@ -293,6 +240,72 @@ export class DaemonHttpRouter {
         );
       },
     );
+  }
+
+  /**
+   * Dispatches routes that are exempt from the auth gate: login, remote-peer
+   * handshake, webhooks, and the control-plane web UI. Extracted from
+   * handleRequest to eliminate the 8-entry inline if-chain (m2/m3).
+   */
+  private async dispatchPreAuthRoutes(req: Request): Promise<Response | null> {
+    const url = new URL(req.url);
+
+    if (url.pathname === '/login' && req.method === 'POST') {
+      return this.handleLogin(req);
+    }
+
+    if (url.pathname === '/api/remote/pair/request' && req.method === 'POST') {
+      return handleRemotePairRequest({
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        distributedRuntime: this.context.distributedRuntime,
+      }, req);
+    }
+    if (url.pathname === '/api/remote/pair/verify' && req.method === 'POST') {
+      return handleRemotePairVerify({
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        distributedRuntime: this.context.distributedRuntime,
+      }, req);
+    }
+    if (url.pathname === '/api/remote/heartbeat' && req.method === 'POST') {
+      return handleRemotePeerHeartbeat({
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
+        distributedRuntime: this.context.distributedRuntime,
+      }, req);
+    }
+    if (url.pathname === '/api/remote/work/pull' && req.method === 'POST') {
+      return handleRemotePeerWorkPull({
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
+        distributedRuntime: this.context.distributedRuntime,
+      }, req);
+    }
+    const remoteWorkCompleteMatch = url.pathname.match(/^\/api\/remote\/work\/([^/]+)\/complete$/);
+    if (remoteWorkCompleteMatch && req.method === 'POST') {
+      return handleRemotePeerWorkComplete({
+        parseJsonBody: (request) => this.parseJsonBody(request),
+        requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
+        distributedRuntime: this.context.distributedRuntime,
+      }, remoteWorkCompleteMatch[1], req);
+    }
+
+    if (url.pathname === '/webhook/github' && req.method === 'POST') {
+      return this.handleGitHubWebhook(req);
+    }
+    if (url.pathname.startsWith('/webhook/')) {
+      const pluginResponse = await this.context.channelPlugins.handleInbound(url.pathname, req);
+      if (pluginResponse) return pluginResponse;
+    }
+
+    if (url.pathname === '/api/control-plane/web' && req.method === 'GET') {
+      return this.context.controlPlaneGateway.renderWebUi();
+    }
+    if (url.pathname === '/api/control-plane/auth' && req.method === 'GET') {
+      const apiResponse = await this.dispatchApiRoutes(req);
+      if (apiResponse) return apiResponse;
+    }
+
+    return null;
   }
 
   async dispatchApiRoutes(req: Request): Promise<Response | null> {

@@ -139,6 +139,103 @@ describe('ElevenLabs streaming TTS provider', () => {
   });
 });
 
+describe('VoiceService.synthesizeStream — cancellation', () => {
+  test('aborting via AbortController stops iteration and emits no further chunks', async () => {
+    const controller = new AbortController();
+    let cleanupCalled = false;
+
+    const registry = new VoiceProviderRegistry();
+    registry.register({
+      id: 'cancellable',
+      label: 'Cancellable',
+      capabilities: ['tts-stream'],
+      async synthesizeStream(request): Promise<VoiceSynthesisStreamResult> {
+        // Async generator that yields chunks while signal is not aborted,
+        // then performs cleanup when the generator is closed/cancelled.
+        async function* makeChunks(): AsyncGenerator<VoiceAudioChunk> {
+          try {
+            let seq = 0;
+            while (!request.signal?.aborted) {
+              seq += 1;
+              yield { data: new Uint8Array([seq]), sequence: seq };
+              // Small pause so the consumer has a chance to abort between yields
+              await new Promise<void>((resolve) => setTimeout(resolve, 10));
+            }
+          } finally {
+            cleanupCalled = true;
+          }
+        }
+        return {
+          providerId: 'cancellable',
+          mimeType: 'audio/mpeg',
+          format: 'mp3',
+          chunks: makeChunks(),
+          metadata: {},
+        };
+      },
+    });
+
+    const service = new VoiceService(registry);
+    const result = await service.synthesizeStream(undefined, {
+      text: 'cancel me',
+      signal: controller.signal,
+    });
+
+    const collected: number[] = [];
+    for await (const chunk of result.chunks) {
+      collected.push(...chunk.data);
+      // Abort after receiving the first chunk
+      if (collected.length >= 1) {
+        controller.abort();
+        break;
+      }
+    }
+
+    // Only the first chunk should have been collected before abort
+    expect(collected.length).toBeGreaterThanOrEqual(1);
+    // Generator's finally block must have run after break/abort
+    expect(cleanupCalled).toBe(true);
+  });
+
+  test('aborting a pre-aborted signal prevents any chunks from being emitted', async () => {
+    const controller = new AbortController();
+    controller.abort(); // abort before synthesis begins
+
+    const registry = new VoiceProviderRegistry();
+    registry.register({
+      id: 'eager-checker',
+      label: 'EagerChecker',
+      capabilities: ['tts-stream'],
+      async synthesizeStream(request): Promise<VoiceSynthesisStreamResult> {
+        async function* makeChunks(): AsyncGenerator<VoiceAudioChunk> {
+          if (request.signal?.aborted) return; // early exit on pre-aborted signal
+          yield { data: new Uint8Array([1]), sequence: 1 };
+        }
+        return {
+          providerId: 'eager-checker',
+          mimeType: 'audio/mpeg',
+          format: 'mp3',
+          chunks: makeChunks(),
+          metadata: {},
+        };
+      },
+    });
+
+    const service = new VoiceService(registry);
+    const result = await service.synthesizeStream(undefined, {
+      text: 'should emit nothing',
+      signal: controller.signal,
+    });
+
+    const collected: number[] = [];
+    for await (const chunk of result.chunks) {
+      collected.push(...chunk.data);
+    }
+
+    expect(collected).toHaveLength(0);
+  });
+});
+
 describe('daemon streaming TTS route', () => {
   test('uses configured TTS provider and voice when a request omits them', async () => {
     let capturedProviderId: string | undefined;

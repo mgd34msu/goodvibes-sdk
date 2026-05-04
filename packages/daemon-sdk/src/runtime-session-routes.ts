@@ -297,50 +297,10 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
     });
   }
 
-  // kind='message' — companion main-chat send. Persist + publish COMPANION_MESSAGE_RECEIVED
-  // on the runtime bus; TUI's bootstrap-core subscriber delegates to
-  // orchestrator.handleUserInput() which fires a real LLM turn (same entry as TUI input
-  // box). Turn events stream to both TUI and companion over SSE automatically.
-  // m1: Intentionally duplicates some session-resolution logic from submitMessage() to
-  // short-circuit BEFORE sessionBroker.submitMessage() and avoid the buildContinuationTask
-  // WRFC engineer-chain spawn path (by design).
+  // kind='message' — companion main-chat send. Delegates to dedicated handler to avoid
+  // inline duplication of session-resolution with submitMessage().
   if (kind === 'message') {
-    const session = context.sessionBroker.getSession(sessionId);
-    if (!session) {
-      return jsonErrorResponse({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
-    }
-    if (session.status === 'closed') {
-      return jsonErrorResponse({ error: 'Session is closed', code: 'SESSION_CLOSED' }, { status: 409 });
-    }
-    const messageId = `companion-${randomUUID()}`;
-    const timestamp = Date.now();
-    // Persist the companion message to the session log so GET /api/sessions/:id/messages
-    // returns it and the TUI can render it.
-    await context.sessionBroker.appendCompanionMessage(sessionId, {
-      messageId,
-      body: message,
-      source: 'companion-followup',
-      timestamp,
-    });
-    // Also notify the TUI's in-process subscriber via the conversation follow-up event.
-    context.publishConversationFollowup(sessionId, {
-      messageId,
-      body: message,
-      source: 'companion-followup',
-      timestamp,
-    });
-    // Return immediately. appendCompanionMessage persists the message and
-    // publishConversationFollowup emits COMPANION_MESSAGE_RECEIVED on the runtime bus.
-    // The TUI's bootstrap-core.ts COMPANION_MESSAGE_RECEIVED subscriber delegates to
-    // orchestrator.handleUserInput(), which adds the user message to the conversation
-    // view and fires a real LLM turn whose events stream to both TUI and companion SSE.
-    // The { routedTo: 'conversation' } shape signals the companion app that the message
-    // was received and persisted (isConversationRouteResult check).
-    return context.recordApiResponse(req, `/api/sessions/${sessionId}/messages`, Response.json({
-      messageId,
-      routedTo: 'conversation',
-      sessionId,
-    }, { status: 202 }));
+    return handleCompanionMessageKind(context, sessionId, req, message);
   }
 
   const submission = await context.sessionBroker.submitMessage(buildSharedSessionMessageInput(sessionId, body, message));
@@ -348,6 +308,57 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
   return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/messages`, 'DaemonServer.handlePostSharedSessionMessage', {
     context: `shared-session:${submission.session.id}`,
   });
+}
+
+/**
+ * Handles kind='message' companion main-chat messages.
+ *
+ * Extracted from handlePostSharedSessionMessage to eliminate inline duplication of
+ * session-resolution logic (m1). Short-circuits BEFORE sessionBroker.submitMessage() to
+ * avoid the buildContinuationTask WRFC engineer-chain spawn path — this is by design.
+ */
+async function handleCompanionMessageKind(
+  context: DaemonRuntimeRouteContext,
+  sessionId: string,
+  req: Request,
+  message: string,
+): Promise<Response> {
+  const session = context.sessionBroker.getSession(sessionId);
+  if (!session) {
+    return jsonErrorResponse({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
+  }
+  if (session.status === 'closed') {
+    return jsonErrorResponse({ error: 'Session is closed', code: 'SESSION_CLOSED' }, { status: 409 });
+  }
+  const messageId = `companion-${randomUUID()}`;
+  const timestamp = Date.now();
+  // Persist the companion message to the session log so GET /api/sessions/:id/messages
+  // returns it and the TUI can render it.
+  await context.sessionBroker.appendCompanionMessage(sessionId, {
+    messageId,
+    body: message,
+    source: 'companion-followup',
+    timestamp,
+  });
+  // Notify the TUI's in-process subscriber via the conversation follow-up event.
+  // appendCompanionMessage persists the message and publishConversationFollowup emits
+  // COMPANION_MESSAGE_RECEIVED on the runtime bus. The TUI's bootstrap-core.ts
+  // COMPANION_MESSAGE_RECEIVED subscriber delegates to orchestrator.handleUserInput(),
+  // which adds the user message to the conversation view and fires a real LLM turn
+  // whose events stream to both TUI and companion SSE.
+  context.publishConversationFollowup(sessionId, {
+    messageId,
+    body: message,
+    source: 'companion-followup',
+    timestamp,
+  });
+  // The { routedTo: 'conversation' } shape signals the companion app that the message
+  // was received and persisted (isConversationRouteResult check).
+  return context.recordApiResponse(req, `/api/sessions/${sessionId}/messages`, Response.json({
+    messageId,
+    routedTo: 'conversation',
+    sessionId,
+  }, { status: 202 }));
 }
 
 /**
