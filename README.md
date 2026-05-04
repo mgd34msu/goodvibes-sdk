@@ -94,10 +94,10 @@ console.log(snapshot);
 Browser clients:
 
 ```ts
-import { createWebGoodVibesSdk } from '@pellux/goodvibes-sdk/web';
+import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 import { createBrowserTokenStore } from '@pellux/goodvibes-sdk/auth';
 
-const sdk = createWebGoodVibesSdk({
+const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
   tokenStore: createBrowserTokenStore(),
 });

@@ -16,31 +16,34 @@ try {
 } catch (err) {
   if (err instanceof GoodVibesSdkError) {
     switch (err.kind) {
-    case 'auth':
-      // Redirect to login or surface auth UI
-      break;
-    case 'rate-limit':
-      // Wait retryAfterMs then retry
-      await delay(err.retryAfterMs ?? 1000);
-      break;
-    case 'network':
-    case 'service':
-      if (err.recoverable) {
-        // Retry with backoff
-      }
-      break;
-    case 'config':
-      // Fix SDK initialization options — do not retry
-      break;
-    case 'contract':
-    case 'protocol':
-    case 'internal':
-    case 'tool':
-    case 'validation':
-    case 'not-found':
-    case 'unknown':
-      // Log and surface to the user
-      break;
+      case 'auth':
+        // Redirect to login or surface auth UI
+        break;
+      case 'rate-limit':
+        // Wait retryAfterMs then retry
+        await delay(err.retryAfterMs ?? 1000);
+        break;
+      case 'network':
+      case 'service':
+        if (err.recoverable) {
+          // Retry with backoff
+        }
+        break;
+      case 'config':
+        // Fix SDK initialization options — do not retry
+        break;
+      case 'contract':
+      case 'protocol':
+      case 'internal':
+      case 'tool':
+      case 'validation':
+      case 'not-found':
+      case 'unknown':
+        // Log and surface to the user
+        break;
+    }
+  } else {
+    throw err;
   }
 }
 ```

@@ -419,7 +419,8 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     const flushOutboundQueue = (ws: WebSocket) => {
       // MAJ-2: re-check socket open before each send so queued messages are not
       // lost when the socket closes between the auth frame and the drain loop.
-      // Messages that cannot be sent are left in the queue for the next reconnect cycle.
+      // Messages that cannot be sent are pushed back (via unshift) so they can be
+      // delivered on the next reconnect cycle.
       while (outboundQueue.length > 0) {
         if (!isSocketOpen(ws, WebSocketImpl)) {
           // Socket closed mid-drain; leave the remaining items for the next reconnect.
