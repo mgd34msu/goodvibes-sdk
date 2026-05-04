@@ -97,7 +97,7 @@ Integration tests live under `test/integration/` and are listed separately.
 | T87 | `test/obs-07-otlp-logger.test.ts` |
 | T88 | `test/obs-08-workspace-swap-failed.test.ts` |
 | T89 | `test/obs-09-config-audit.test.ts` |
-| T90 | `test/platform-adapter-contract.test.ts` |
+| T90 | `test/platform-adapter-contract.test.ts` — 31 tests |
 
 _Note: This list covers the first 90 root-level test files (sorted). Run `bun scripts/test.ts` to discover the full set dynamically._
 
