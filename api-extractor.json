@@ -49,7 +49,12 @@
       "default": {
         "logLevel": "warning"
       },
-      "TS1259": { "logLevel": "none" }
+      "TS1259": { "logLevel": "none" },
+      "TS2305": { "logLevel": "none" },
+      "TS2307": { "logLevel": "none" },
+      "TS2344": { "logLevel": "none" },
+      "TS2694": { "logLevel": "none" },
+      "TS2707": { "logLevel": "none" }
     },
     "extractorMessageReporting": {
       "default": {

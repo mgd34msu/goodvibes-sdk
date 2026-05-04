@@ -91,11 +91,11 @@ export type AgentEvent =
     {
     type: 'AGENT_SPAWNING';
     agentId: string;
-    taskId?: string;
+    taskId?: string | undefined;
     task: string;
-    parentAgentId?: string;
-    orchestrationGraphId?: string;
-    parentNodeId?: string;
+    parentAgentId?: string | undefined;
+    orchestrationGraphId?: string | undefined;
+    parentNodeId?: string | undefined;
 }
 /** Agent is actively running and processing. */
 | {
@@ -184,7 +184,7 @@ export interface ApprovalBrokerLike {
         readonly remember: boolean;
         readonly actor: string;
         readonly actorSurface: string;
-        readonly note?: string;
+        readonly note?: string | undefined;
     }): Promise<unknown | null>;
 }
 
@@ -198,15 +198,15 @@ export interface ArtifactStoreUploadLike {
     // (undocumented)
     createFromStream?(input: {
         readonly stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array | Buffer | string> | Iterable<Uint8Array | Buffer | string>;
-        readonly kind?: string;
-        readonly mimeType?: string;
-        readonly filename?: string;
-        readonly sourceUri?: string;
-        readonly sizeBytes?: number;
-        readonly retentionMs?: number;
-        readonly acquisitionMode?: string;
-        readonly fetchMode?: string;
-        readonly metadata?: Record<string, unknown>;
+        readonly kind?: string | undefined;
+        readonly mimeType?: string | undefined;
+        readonly filename?: string | undefined;
+        readonly sourceUri?: string | undefined;
+        readonly sizeBytes?: number | undefined;
+        readonly retentionMs?: number | undefined;
+        readonly acquisitionMode?: string | undefined;
+        readonly fetchMode?: string | undefined;
+        readonly metadata?: Record<string, unknown> | undefined;
     }): Promise<unknown>;
     // (undocumented)
     getMaxBytes?(): number;
@@ -377,15 +377,24 @@ export type AutomationSurfaceKind = string;
 export type AutomationThreadPolicy = string;
 
 // @public (undocumented)
+export class AutoRefreshCoordinator {
+    // Warning: (ae-forgotten-export) The symbol "AutoRefreshCoordinatorOptions" needs to be exported by the entry point index.d.ts
+    constructor(options: AutoRefreshCoordinatorOptions);
+    ensureFreshToken(): Promise<void>;
+    refreshAndRetryOnce<T>(fn: () => Promise<T>): Promise<T>;
+    withRetryOn401<T>(fn: () => Promise<T>): Promise<T>;
+}
+
+// @public (undocumented)
 export interface BackoffPolicy {
     // (undocumented)
-    readonly backoffFactor?: number;
+    readonly backoffFactor?: number | undefined;
     // (undocumented)
-    readonly baseDelayMs?: number;
+    readonly baseDelayMs?: number | undefined;
     // (undocumented)
-    readonly maxAttempts?: number;
+    readonly maxAttempts?: number | undefined;
     // (undocumented)
-    readonly maxDelayMs?: number;
+    readonly maxDelayMs?: number | undefined;
 }
 
 // @public (undocumented)
@@ -393,27 +402,27 @@ export interface BoundedIntegerOptions {
     // (undocumented)
     readonly fallback: number;
     // (undocumented)
-    readonly max?: number;
+    readonly max?: number | undefined;
     // (undocumented)
-    readonly min?: number;
+    readonly min?: number | undefined;
 }
 
 // @public (undocumented)
 export interface BrowserGoodVibesSdkOptions extends Omit<GoodVibesSdkOptions, 'baseUrl' | 'fetch' | 'WebSocketImpl'> {
     // (undocumented)
-    readonly baseUrl?: string;
+    readonly baseUrl?: string | undefined;
     // (undocumented)
-    readonly fetch?: typeof fetch;
+    readonly fetch?: typeof fetch | undefined;
     // (undocumented)
-    readonly WebSocketImpl?: typeof WebSocket;
+    readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 // @public (undocumented)
 export interface BrowserTokenStoreOptions {
     // (undocumented)
-    readonly key?: string;
+    readonly key?: string | undefined;
     // (undocumented)
-    readonly storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+    readonly storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | undefined;
 }
 
 // Warning: (ae-forgotten-export) The symbol "JsonErrorResponseOptions" needs to be exported by the entry point index.d.ts
@@ -450,15 +459,15 @@ export type ChannelConversationKind = 'direct' | 'group' | 'channel' | 'thread' 
 // @public (undocumented)
 export interface ChannelDirectoryQuery {
     // (undocumented)
-    readonly groupId?: string;
+    readonly groupId?: string | undefined;
     // (undocumented)
-    readonly limit?: number;
+    readonly limit?: number | undefined;
     // (undocumented)
-    readonly live?: boolean;
+    readonly live?: boolean | undefined;
     // (undocumented)
     readonly query: string;
     // (undocumented)
-    readonly scope?: ChannelDirectoryScope;
+    readonly scope?: ChannelDirectoryScope | undefined;
 }
 
 // @public (undocumented)
@@ -556,11 +565,11 @@ export type CommunicationEvent = {
     scope: CommunicationScope;
     kind: CommunicationKind;
     content: string;
-    fromRole?: string;
-    toRole?: string;
-    cohort?: string;
-    wrfcId?: string;
-    parentAgentId?: string;
+    fromRole?: string | undefined;
+    toRole?: string | undefined;
+    cohort?: string | undefined;
+    wrfcId?: string | undefined;
+    parentAgentId?: string | undefined;
 } | {
     type: 'COMMUNICATION_DELIVERED';
     messageId: string;
@@ -576,11 +585,11 @@ export type CommunicationEvent = {
     scope: CommunicationScope;
     kind: CommunicationKind;
     reason: string;
-    fromRole?: string;
-    toRole?: string;
-    cohort?: string;
-    wrfcId?: string;
-    parentAgentId?: string;
+    fromRole?: string | undefined;
+    toRole?: string | undefined;
+    cohort?: string | undefined;
+    wrfcId?: string | undefined;
+    parentAgentId?: string | undefined;
 };
 
 // @public (undocumented)
@@ -712,7 +721,7 @@ export const ConfiguredViaSchema: z.ZodEnum<{
 
 // @public (undocumented)
 export interface ConsoleObserverOptions {
-    readonly level?: 'debug' | 'info';
+    readonly level?: 'debug' | 'info' | undefined;
 }
 
 // @public
@@ -727,7 +736,6 @@ export interface Constraint {
 
 // @public
 export class ContractError extends GoodVibesSdkError {
-    // (undocumented)
     static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
@@ -743,10 +751,10 @@ export interface ContractHttpDefinition {
 // @public (undocumented)
 export interface ContractInvokeOptions {
     // (undocumented)
-    readonly headers?: HeadersInit;
-    readonly responseSchema?: ZodType;
+    readonly headers?: HeadersInit | undefined;
+    readonly responseSchema?: ZodType | undefined;
     // (undocumented)
-    readonly signal?: AbortSignal;
+    readonly signal?: AbortSignal | undefined;
 }
 
 // @public
@@ -769,7 +777,7 @@ export interface ContractRouteDefinition {
 export interface ContractRouteLike {
     // (undocumented)
     readonly id: string;
-    readonly idempotent?: boolean;
+    readonly idempotent?: boolean | undefined;
 }
 
 // @public (undocumented)
@@ -950,17 +958,16 @@ export function createEventEnvelope<TType extends string, TPayload>(type: TType,
 // @public (undocumented)
 export function createEventSourceConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, fetchImpl: typeof fetch, options?: RuntimeEventConnectorOptions): DomainEventConnector<DaemonRuntimeEventDomain, TEvent>;
 
-// @public (undocumented)
+// @public
 export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactNativeGoodVibesSdk;
 
 // @public (undocumented)
 export function createFetch(fetchImpl?: typeof fetch, fallbackFetch?: typeof fetch): typeof fetch;
 
 // Warning: (ae-forgotten-export) The symbol "AutoRefreshOptions" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "AutoRefreshCoordinator" needs to be exported by the entry point index.d.ts
 //
 // @public
-export function createGoodVibesAuthClient(operator: OperatorSdk, tokenStore: GoodVibesTokenStore | null, getAuthToken?: AuthTokenResolver, observer?: SDKObserver, autoRefreshOptions?: AutoRefreshOptions,
+export function createGoodVibesAuthClient(operator: OperatorSdk, tokenStore: GoodVibesTokenStore | null, getAuthToken?: AuthTokenResolver, observer?: SDKObserver | undefined, autoRefreshOptions?: AutoRefreshOptions,
 existingCoordinator?: AutoRefreshCoordinator | null): GoodVibesAuthClient;
 
 // @public (undocumented)
@@ -1034,7 +1041,7 @@ export function createTransportPaths(baseUrl: string): TransportPaths;
 // @public (undocumented)
 export function createUuidV4(): string;
 
-// @public (undocumented)
+// @public
 export function createWebGoodVibesSdk(options?: WebGoodVibesSdkOptions): GoodVibesSdk;
 
 // @public (undocumented)
@@ -1596,18 +1603,18 @@ export interface DaemonRuntimeRouteContext {
     readonly sessionBroker: {
         start(): Promise<void>;
         submitMessage(input: {
-            sessionId?: string;
-            routeId?: string;
+            sessionId?: string | undefined;
+            routeId?: string | undefined;
             surfaceKind: AutomationSurfaceKind_2;
             surfaceId: string;
-            externalId?: string;
-            threadId?: string;
-            userId?: string;
-            displayName?: string;
-            title?: string;
+            externalId?: string | undefined;
+            threadId?: string | undefined;
+            userId?: string | undefined;
+            displayName?: string | undefined;
+            title?: string | undefined;
             body: string;
-            metadata?: Record<string, unknown>;
-            routing?: SharedSessionRoutingIntent;
+            metadata?: Record<string, unknown> | undefined;
+            routing?: SharedSessionRoutingIntent | undefined;
         }): Promise<{
             mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
             input: {
@@ -1618,25 +1625,25 @@ export interface DaemonRuntimeRouteContext {
                 id: string;
                 status: string;
             };
-            routeBinding?: AutomationRouteBinding;
-            task?: string;
-            activeAgentId?: string | null;
-            userMessage?: unknown;
+            routeBinding?: AutomationRouteBinding | undefined;
+            task?: string | undefined;
+            activeAgentId?: string | null | undefined;
+            userMessage?: unknown | undefined;
         }>;
         steerMessage(input: {
-            sessionId?: string;
-            routeId?: string;
+            sessionId?: string | undefined;
+            routeId?: string | undefined;
             surfaceKind: AutomationSurfaceKind_2;
             surfaceId: string;
-            externalId?: string;
-            threadId?: string;
-            userId?: string;
-            displayName?: string;
-            title?: string;
+            externalId?: string | undefined;
+            threadId?: string | undefined;
+            userId?: string | undefined;
+            displayName?: string | undefined;
+            title?: string | undefined;
             body: string;
-            metadata?: Record<string, unknown>;
-            routing?: SharedSessionRoutingIntent;
-            allowSpawnFallback?: boolean;
+            metadata?: Record<string, unknown> | undefined;
+            routing?: SharedSessionRoutingIntent | undefined;
+            allowSpawnFallback?: boolean | undefined;
         }): Promise<{
             mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
             input: {
@@ -1648,24 +1655,24 @@ export interface DaemonRuntimeRouteContext {
                 id: string;
                 status: string;
             };
-            routeBinding?: AutomationRouteBinding;
-            task?: string;
-            activeAgentId?: string | null;
-            userMessage?: unknown;
+            routeBinding?: AutomationRouteBinding | undefined;
+            task?: string | undefined;
+            activeAgentId?: string | null | undefined;
+            userMessage?: unknown | undefined;
         }>;
         followUpMessage(input: {
-            sessionId?: string;
-            routeId?: string;
+            sessionId?: string | undefined;
+            routeId?: string | undefined;
             surfaceKind: AutomationSurfaceKind_2;
             surfaceId: string;
-            externalId?: string;
-            threadId?: string;
-            userId?: string;
-            displayName?: string;
-            title?: string;
+            externalId?: string | undefined;
+            threadId?: string | undefined;
+            userId?: string | undefined;
+            displayName?: string | undefined;
+            title?: string | undefined;
             body: string;
-            metadata?: Record<string, unknown>;
-            routing?: SharedSessionRoutingIntent;
+            metadata?: Record<string, unknown> | undefined;
+            routing?: SharedSessionRoutingIntent | undefined;
         }): Promise<{
             mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
             input: {
@@ -1677,26 +1684,26 @@ export interface DaemonRuntimeRouteContext {
                 id: string;
                 status: string;
             };
-            routeBinding?: AutomationRouteBinding;
-            task?: string;
-            activeAgentId?: string | null;
-            userMessage?: unknown;
+            routeBinding?: AutomationRouteBinding | undefined;
+            task?: string | undefined;
+            activeAgentId?: string | null | undefined;
+            userMessage?: unknown | undefined;
         }>;
         bindAgent(sessionId: string, agentId: string): Promise<unknown>;
         createSession(input: {
-            id?: string;
-            title?: string;
-            metadata?: Record<string, unknown>;
-            routeBinding?: AutomationRouteBinding;
+            id?: string | undefined;
+            title?: string | undefined;
+            metadata?: Record<string, unknown> | undefined;
+            routeBinding?: AutomationRouteBinding | undefined;
             participant?: {
                 surfaceKind: AutomationSurfaceKind_2;
                 surfaceId: string;
-                externalId?: string;
-                userId?: string;
-                displayName?: string;
-                routeId?: string;
+                externalId?: string | undefined;
+                userId?: string | undefined;
+                displayName?: string | undefined;
+                routeId?: string | undefined;
                 lastSeenAt: number;
-            };
+            } | undefined;
         }): Promise<{
             id: string;
         }>;
@@ -1738,15 +1745,15 @@ export interface DaemonRuntimeRouteContext {
     readonly trySpawnAgent: (input: {
         mode: 'spawn';
         task: string;
-        model?: string;
-        tools?: string[] | readonly string[];
-        provider?: string;
-        context?: string;
-        executionIntent?: ExecutionIntent;
-        executionProtocol?: 'direct' | 'gather-plan-apply';
-        reviewMode?: 'none' | 'wrfc';
-        communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
-        dangerously_disable_wrfc?: boolean;
+        model?: string | undefined;
+        tools?: string[] | readonly string[] | undefined;
+        provider?: string | undefined;
+        context?: string | undefined;
+        executionIntent?: ExecutionIntent | undefined;
+        executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
+        reviewMode?: 'none' | 'wrfc' | undefined;
+        communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
+        dangerously_disable_wrfc?: boolean | undefined;
     }, logLabel: string, sessionId?: string) => AgentRecordLike | Response;
 }
 
@@ -2053,21 +2060,21 @@ export type ErrorSource = DaemonErrorSource | 'contract';
 // @public (undocumented)
 export interface EventEnvelope<TType extends string, TPayload> {
     // (undocumented)
-    readonly agentId?: string;
+    readonly agentId?: string | undefined;
     // (undocumented)
     readonly payload: TPayload;
     // (undocumented)
-    readonly sessionId?: string;
+    readonly sessionId?: string | undefined;
     // (undocumented)
-    readonly source?: string;
+    readonly source?: string | undefined;
     // (undocumented)
-    readonly taskId?: string;
+    readonly taskId?: string | undefined;
     // (undocumented)
-    readonly traceId?: string;
+    readonly traceId?: string | undefined;
     // (undocumented)
     readonly ts: number;
     // (undocumented)
-    readonly turnId?: string;
+    readonly turnId?: string | undefined;
     // (undocumented)
     readonly type: TType;
 }
@@ -2075,17 +2082,17 @@ export interface EventEnvelope<TType extends string, TPayload> {
 // @public (undocumented)
 export interface EventEnvelopeContext {
     // (undocumented)
-    readonly agentId?: string;
+    readonly agentId?: string | undefined;
     // (undocumented)
     readonly sessionId: string;
     // (undocumented)
     readonly source: string;
     // (undocumented)
-    readonly taskId?: string;
+    readonly taskId?: string | undefined;
     // (undocumented)
-    readonly traceId?: string;
+    readonly traceId?: string | undefined;
     // (undocumented)
-    readonly turnId?: string;
+    readonly turnId?: string | undefined;
 }
 
 // @public (undocumented)
@@ -2106,8 +2113,7 @@ export interface EventEnvelopeShape {
 export type ExecutionStrategy = 'auto' | 'single' | 'cohort' | 'background' | 'remote';
 
 // @public (undocumented)
-export interface ExpoGoodVibesSdkOptions extends ReactNativeGoodVibesSdkOptions {
-}
+export type ExpoGoodVibesSdkOptions = ReactNativeGoodVibesSdkOptions;
 
 // @public (undocumented)
 export type FetchExtractMode = string;
@@ -2122,7 +2128,7 @@ export interface FieldSpec {
     // (undocumented)
     readonly kind: FieldKind;
     // (undocumented)
-    readonly values?: readonly string[];
+    readonly values?: readonly string[] | undefined;
 }
 
 // @public (undocumented)
@@ -2135,16 +2141,16 @@ export type ForensicsEvent =
     type: 'FORENSICS_REPORT_CREATED';
     reportId: string;
     classification: string;
-    errorMessage?: string;
-    taskId?: string;
-    turnId?: string;
+    errorMessage?: string | undefined;
+    taskId?: string | undefined;
+    turnId?: string | undefined;
 }
 /** A report was exported (to stdout or file). */
 | {
     type: 'FORENSICS_REPORT_EXPORTED';
     reportId: string;
     destination: 'stdout' | 'file';
-    path?: string;
+    path?: string | undefined;
 };
 
 // @public
@@ -2193,12 +2199,9 @@ export interface GoodVibesAuthClient {
     getToken(): Promise<string | null>;
     // (undocumented)
     login(input: GoodVibesLoginInput, options?: GoodVibesAuthLoginOptions): Promise<GoodVibesLoginOutput>;
-    // Warning: (ae-forgotten-export) The symbol "PermissionResolver" needs to be exported by the entry point index.d.ts
     permissionResolver(snapshot: GoodVibesCurrentAuth): PermissionResolver;
-    // Warning: (ae-forgotten-export) The symbol "SessionManager" needs to be exported by the entry point index.d.ts
     readonly sessionManager: SessionManager;
     setToken(token: string | null): Promise<void>;
-    // Warning: (ae-forgotten-export) The symbol "TokenStore" needs to be exported by the entry point index.d.ts
     readonly tokenStore: TokenStore | null;
     // (undocumented)
     readonly writable: boolean;
@@ -2207,7 +2210,7 @@ export interface GoodVibesAuthClient {
 // @public (undocumented)
 export interface GoodVibesAuthLoginOptions {
     // (undocumented)
-    readonly persistToken?: boolean;
+    readonly persistToken?: boolean | undefined;
 }
 
 // @public (undocumented)
@@ -2241,12 +2244,12 @@ export interface GoodVibesCloudflareQueueMessage<Body = unknown> {
 // @public (undocumented)
 export type GoodVibesCloudflareQueuePayload = {
     readonly type: 'batch.tick';
-    readonly force?: boolean;
-    readonly enqueuedAt?: number;
+    readonly force?: boolean | undefined;
+    readonly enqueuedAt?: number | undefined;
 } | {
     readonly type: 'batch.job.create';
     readonly body: Record<string, unknown>;
-    readonly enqueuedAt?: number;
+    readonly enqueuedAt?: number | undefined;
 };
 
 // @public (undocumented)
@@ -2262,30 +2265,30 @@ export interface GoodVibesCloudflareWorker {
 // @public (undocumented)
 export interface GoodVibesCloudflareWorkerEnv {
     // (undocumented)
-    GOODVIBES_BATCH_QUEUE?: GoodVibesCloudflareQueue<GoodVibesCloudflareQueuePayload>;
+    GOODVIBES_BATCH_QUEUE?: GoodVibesCloudflareQueue<GoodVibesCloudflareQueuePayload> | undefined;
     // (undocumented)
-    GOODVIBES_DAEMON_URL?: string;
+    GOODVIBES_DAEMON_URL?: string | undefined;
     // (undocumented)
-    GOODVIBES_OPERATOR_TOKEN?: string;
+    GOODVIBES_OPERATOR_TOKEN?: string | undefined;
     // (undocumented)
-    GOODVIBES_QUEUE_JOB_PAYLOADS?: string;
+    GOODVIBES_QUEUE_JOB_PAYLOADS?: string | undefined;
     // (undocumented)
-    GOODVIBES_WORKER_TOKEN?: string;
+    GOODVIBES_WORKER_TOKEN?: string | undefined;
 }
 
 // @public (undocumented)
 export interface GoodVibesCloudflareWorkerOptions {
-    readonly allowUnauthenticated?: boolean;
+    readonly allowUnauthenticated?: boolean | undefined;
     // (undocumented)
-    readonly authToken?: string;
+    readonly authToken?: string | undefined;
     // (undocumented)
-    readonly daemonUrl?: string;
+    readonly daemonUrl?: string | undefined;
     // (undocumented)
-    readonly maxRequestBodyBytes?: number;
+    readonly maxRequestBodyBytes?: number | undefined;
     // (undocumented)
-    readonly queueJobPayloads?: boolean;
+    readonly queueJobPayloads?: boolean | undefined;
     // (undocumented)
-    readonly workerAuthToken?: string;
+    readonly workerAuthToken?: string | undefined;
 }
 
 // @public (undocumented)
@@ -2308,11 +2311,11 @@ export interface GoodVibesRealtime {
 // @public
 export interface GoodVibesRealtimeOptions {
     // (undocumented)
-    readonly onError?: (error: unknown) => void;
+    readonly onError?: ((error: unknown) => void) | undefined | undefined;
     // (undocumented)
-    readonly sseReconnect?: StreamReconnectPolicy;
+    readonly sseReconnect?: StreamReconnectPolicy | undefined;
     // (undocumented)
-    readonly webSocketReconnect?: StreamReconnectPolicy;
+    readonly webSocketReconnect?: StreamReconnectPolicy | undefined;
 }
 
 // @public
@@ -2330,98 +2333,98 @@ export class GoodVibesSdkError extends Error {
     static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
     // (undocumented)
-    readonly body?: unknown;
+    readonly body?: unknown | undefined;
     // (undocumented)
     readonly category: ErrorCategory;
     // (undocumented)
-    readonly cause?: unknown;
+    readonly cause?: unknown | undefined;
     // (undocumented)
-    readonly code?: string;
+    readonly code?: string | undefined;
     // (undocumented)
-    readonly hint?: string;
+    readonly hint?: string | undefined;
     // (undocumented)
     readonly kind: SDKErrorKind;
     // (undocumented)
-    readonly method?: string;
+    readonly method?: string | undefined;
     // (undocumented)
-    readonly operation?: string;
+    readonly operation?: string | undefined;
     // (undocumented)
-    readonly phase?: string;
+    readonly phase?: string | undefined;
     // (undocumented)
-    readonly provider?: string;
+    readonly provider?: string | undefined;
     // (undocumented)
-    readonly providerCode?: string;
+    readonly providerCode?: string | undefined;
     // (undocumented)
-    readonly providerType?: string;
+    readonly providerType?: string | undefined;
     // (undocumented)
     readonly recoverable: boolean;
     // (undocumented)
-    readonly requestId?: string;
+    readonly requestId?: string | undefined;
     // (undocumented)
-    readonly retryAfterMs?: number;
+    readonly retryAfterMs?: number | undefined;
     // (undocumented)
     readonly source: ErrorSource;
     // (undocumented)
-    readonly status?: number;
+    readonly status?: number | undefined;
     // (undocumented)
     toJSON(): Record<string, unknown>;
     // (undocumented)
-    readonly url?: string;
+    readonly url?: string | undefined;
 }
 
 // @public (undocumented)
 export interface GoodVibesSdkErrorOptions {
     // (undocumented)
-    readonly body?: unknown;
+    readonly body?: unknown | undefined;
     // (undocumented)
-    readonly category?: ErrorCategory;
+    readonly category?: ErrorCategory | undefined;
     // (undocumented)
-    readonly cause?: unknown;
+    readonly cause?: unknown | undefined;
     // (undocumented)
-    readonly code?: string;
+    readonly code?: string | undefined;
     // (undocumented)
-    readonly hint?: string;
+    readonly hint?: string | undefined;
     // (undocumented)
-    readonly method?: string;
+    readonly method?: string | undefined;
     // (undocumented)
-    readonly operation?: string;
+    readonly operation?: string | undefined;
     // (undocumented)
-    readonly phase?: string;
+    readonly phase?: string | undefined;
     // (undocumented)
-    readonly provider?: string;
+    readonly provider?: string | undefined;
     // (undocumented)
-    readonly providerCode?: string;
+    readonly providerCode?: string | undefined;
     // (undocumented)
-    readonly providerType?: string;
+    readonly providerType?: string | undefined;
     // (undocumented)
-    readonly recoverable?: boolean;
+    readonly recoverable?: boolean | undefined;
     // (undocumented)
-    readonly requestId?: string;
+    readonly requestId?: string | undefined;
     // (undocumented)
-    readonly retryAfterMs?: number;
+    readonly retryAfterMs?: number | undefined;
     // (undocumented)
-    readonly source?: ErrorSource;
+    readonly source?: ErrorSource | undefined;
     // (undocumented)
-    readonly status?: number;
+    readonly status?: number | undefined;
     // (undocumented)
-    readonly url?: string;
+    readonly url?: string | undefined;
 }
 
 // @public
 export interface GoodVibesSdkOptions {
-    readonly authToken?: string | null;
-    readonly autoRefresh?: AutoRefreshOptions;
+    readonly authToken?: string | null | undefined;
+    readonly autoRefresh?: AutoRefreshOptions | undefined;
     readonly baseUrl: string;
-    readonly fetch?: typeof fetch;
-    readonly getAuthToken?: AuthTokenResolver;
-    readonly getHeaders?: HeaderResolver;
-    readonly headers?: HeadersInit;
-    readonly middleware?: TransportMiddleware[];
-    readonly observer?: SDKObserver;
-    readonly realtime?: GoodVibesRealtimeOptions;
-    readonly retry?: HttpRetryPolicy;
-    readonly tokenStore?: GoodVibesTokenStore;
-    readonly WebSocketImpl?: typeof WebSocket;
+    readonly fetch?: typeof fetch | undefined;
+    readonly getAuthToken?: AuthTokenResolver | undefined;
+    readonly getHeaders?: HeaderResolver | undefined;
+    readonly headers?: HeadersInit | undefined;
+    readonly middleware?: TransportMiddleware[] | undefined;
+    readonly observer?: SDKObserver | undefined;
+    readonly realtime?: GoodVibesRealtimeOptions | undefined;
+    readonly retry?: HttpRetryPolicy | undefined;
+    readonly tokenStore?: GoodVibesTokenStore | undefined;
+    readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 // @public (undocumented)
@@ -2462,33 +2465,32 @@ export type HeaderResolver = () => MaybePromise<HeadersInit | undefined>;
 // @public (undocumented)
 export interface HttpJsonRequestOptions {
     // (undocumented)
-    readonly body?: unknown;
+    readonly body?: unknown | undefined;
     // (undocumented)
-    readonly headers?: HeadersInit;
-    readonly idempotent?: boolean;
+    readonly headers?: HeadersInit | undefined;
+    readonly idempotent?: boolean | undefined;
     // (undocumented)
-    readonly method?: string;
-    readonly methodId?: string;
+    readonly method?: string | undefined;
+    readonly methodId?: string | undefined;
     // (undocumented)
-    readonly retry?: false | HttpRetryPolicy;
+    readonly retry?: false | HttpRetryPolicy | undefined;
     // (undocumented)
-    readonly signal?: AbortSignal;
+    readonly signal?: AbortSignal | undefined;
 }
 
 // @public (undocumented)
 export interface HttpRetryPolicy extends BackoffPolicy {
-    readonly perMethodPolicy?: Readonly<Record<string, PerMethodRetryPolicy>>;
+    readonly perMethodPolicy?: Readonly<Record<string, PerMethodRetryPolicy>> | undefined;
     // (undocumented)
-    readonly retryOnMethods?: readonly string[];
+    readonly retryOnMethods?: readonly string[] | undefined;
     // (undocumented)
-    readonly retryOnNetworkError?: boolean;
+    readonly retryOnNetworkError?: boolean | undefined;
     // (undocumented)
-    readonly retryOnStatuses?: readonly number[];
+    readonly retryOnStatuses?: readonly number[] | undefined;
 }
 
 // @public
 export class HttpStatusError extends GoodVibesSdkError {
-    // (undocumented)
     static [Symbol.hasInstance](value: unknown): boolean;
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
@@ -2635,13 +2637,13 @@ export type KnowledgeEvent = {
     sourceId: string;
     connectorId: string;
     sourceType: string;
-    uri?: string;
+    uri?: string | undefined;
 } | {
     type: 'KNOWLEDGE_INGEST_COMPLETED';
     sourceId: string;
     status: string;
-    artifactId?: string;
-    title?: string;
+    artifactId?: string | undefined;
+    title?: string | undefined;
 } | {
     type: 'KNOWLEDGE_INGEST_FAILED';
     sourceId: string;
@@ -2708,7 +2710,7 @@ export type KnowledgeEventType = KnowledgeEvent['type'];
 // @public (undocumented)
 export interface KnowledgeGraphqlAccessLike {
     // (undocumented)
-    readonly adminRequired?: boolean;
+    readonly adminRequired?: boolean | undefined;
     // (undocumented)
     readonly requiredScopes: readonly string[];
 }
@@ -2716,9 +2718,9 @@ export interface KnowledgeGraphqlAccessLike {
 // @public (undocumented)
 export interface KnowledgeGraphqlResultLike {
     // (undocumented)
-    readonly data?: unknown;
+    readonly data?: unknown | undefined;
     // (undocumented)
-    readonly errors?: readonly unknown[];
+    readonly errors?: readonly unknown[] | undefined;
 }
 
 // @public (undocumented)
@@ -2726,8 +2728,8 @@ export interface KnowledgeGraphqlServiceLike {
     // (undocumented)
     execute(input: {
         readonly query: string;
-        readonly operationName?: string;
-        readonly variables?: Record<string, unknown>;
+        readonly operationName?: string | undefined;
+        readonly variables?: Record<string, unknown> | undefined;
         readonly admin: boolean;
         readonly scopes: readonly string[];
     }): Promise<KnowledgeGraphqlResultLike>;
@@ -2829,9 +2831,9 @@ export interface KnowledgeServiceLike {
     // (undocumented)
     materializeProjection(input: {
         kind: KnowledgeProjectionTargetKind;
-        id?: string;
-        limit?: number;
-        filename?: string;
+        id?: string | undefined;
+        limit?: number | undefined;
+        filename?: string | undefined;
     }): Promise<unknown>;
     // (undocumented)
     reindex(): Promise<unknown>;
@@ -2849,12 +2851,12 @@ export interface KnowledgeServiceLike {
     runRefinement(input: Record<string, unknown>): Promise<unknown>;
     // (undocumented)
     saveSchedule(input: {
-        readonly id?: string;
+        readonly id?: string | undefined;
         readonly jobId: string;
         readonly schedule: AutomationScheduleDefinition;
-        readonly label?: string;
-        readonly enabled?: boolean;
-        readonly metadata?: Record<string, unknown>;
+        readonly label?: string | undefined;
+        readonly enabled?: boolean | undefined;
+        readonly metadata?: Record<string, unknown> | undefined;
     }): Promise<unknown>;
     // (undocumented)
     search(query: string, limit: number): readonly unknown[];
@@ -2992,7 +2994,7 @@ export type McpEvent =
 | {
     type: 'MCP_DISCONNECTED';
     serverId: string;
-    reason?: string;
+    reason?: string | undefined;
     willRetry: boolean;
 }
 /**
@@ -3005,7 +3007,7 @@ export type McpEvent =
     type: 'MCP_SCHEMA_QUARANTINED';
     serverId: string;
     reason: QuarantineReason;
-    detail?: string;
+    detail?: string | undefined;
 }
 /**
 * An operator has acknowledged a quarantined schema and approved a temporary
@@ -3157,7 +3159,7 @@ export interface OperatorContractManifest {
         readonly current: {
             readonly method: string;
             readonly path: string;
-            readonly aliasPaths?: readonly string[];
+            readonly aliasPaths?: readonly string[] | undefined;
             readonly responseSchema: JsonSchema;
         };
         readonly sessionCookie: {
@@ -3206,11 +3208,11 @@ export interface OperatorContractManifest {
             readonly path: string;
             readonly clientFrames: readonly {
                 readonly type: string;
-                readonly fields?: readonly string[];
+                readonly fields?: readonly string[] | undefined;
             }[];
             readonly serverFrames: readonly {
                 readonly type: string;
-                readonly fields?: readonly string[];
+                readonly fields?: readonly string[] | undefined;
             }[];
         };
     };
@@ -3225,17 +3227,17 @@ export interface OperatorEventContract {
     // (undocumented)
     readonly description: string;
     // (undocumented)
-    readonly domains?: readonly DaemonRuntimeEventDomain[];
+    readonly domains?: readonly DaemonRuntimeEventDomain[] | undefined;
     // (undocumented)
     readonly id: string;
     // (undocumented)
-    readonly metadata?: Record<string, unknown>;
+    readonly metadata?: Record<string, unknown> | undefined;
     // (undocumented)
-    readonly outputSchema?: JsonSchema;
+    readonly outputSchema?: JsonSchema | undefined;
     // (undocumented)
-    readonly payloadSchema?: JsonSchema;
+    readonly payloadSchema?: JsonSchema | undefined;
     // (undocumented)
-    readonly pluginId?: string;
+    readonly pluginId?: string | undefined;
     // (undocumented)
     readonly scopes: readonly string[];
     // Warning: (ae-forgotten-export) The symbol "GatewayMethodSource" needs to be exported by the entry point index.d.ts
@@ -3249,7 +3251,7 @@ export interface OperatorEventContract {
     // (undocumented)
     readonly transport: readonly GatewayEventTransport[];
     // (undocumented)
-    readonly wireEvents?: readonly string[];
+    readonly wireEvents?: readonly string[] | undefined;
 }
 
 // @public (undocumented)
@@ -3439,25 +3441,25 @@ export interface OperatorMethodContract {
     // (undocumented)
     readonly category: string;
     // (undocumented)
-    readonly dangerous?: boolean;
+    readonly dangerous?: boolean | undefined;
     // (undocumented)
     readonly description: string;
     // (undocumented)
-    readonly events?: readonly string[];
+    readonly events?: readonly string[] | undefined;
     // (undocumented)
-    readonly http?: ContractHttpDefinition;
+    readonly http?: ContractHttpDefinition | undefined;
     // (undocumented)
     readonly id: string;
-    readonly idempotent?: boolean;
+    readonly idempotent?: boolean | undefined;
     // (undocumented)
-    readonly inputSchema?: JsonSchema;
+    readonly inputSchema?: JsonSchema | undefined;
     // (undocumented)
-    readonly invokable?: boolean;
-    readonly metadata?: Record<string, unknown>;
+    readonly invokable?: boolean | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
     // (undocumented)
-    readonly outputSchema?: JsonSchema;
+    readonly outputSchema?: JsonSchema | undefined;
     // (undocumented)
-    readonly pluginId?: string;
+    readonly pluginId?: string | undefined;
     // (undocumented)
     readonly scopes: readonly string[];
     // (undocumented)
@@ -14495,7 +14497,7 @@ export type OperatorSdk = Omit<OperatorRemoteClient, 'getOperation'> & {
 
 // @public (undocumented)
 export interface OperatorSdkOptions extends HttpTransportOptions {
-    readonly validateResponses?: boolean;
+    readonly validateResponses?: boolean | undefined;
 }
 
 // @public (undocumented)
@@ -14540,35 +14542,35 @@ export type OpsEvent =
     type: 'OPS_TASK_CANCELLED';
     taskId: string;
     reason: OpsInterventionReason;
-    note?: string;
+    note?: string | undefined;
 }
 /** Operator paused a running task (transitions to blocked). */
 | {
     type: 'OPS_TASK_PAUSED';
     taskId: string;
     reason: OpsInterventionReason;
-    note?: string;
+    note?: string | undefined;
 }
 /** Operator resumed a blocked task. */
 | {
     type: 'OPS_TASK_RESUMED';
     taskId: string;
     reason: OpsInterventionReason;
-    note?: string;
+    note?: string | undefined;
 }
 /** Operator retried a failed or cancelled task. */
 | {
     type: 'OPS_TASK_RETRIED';
     taskId: string;
     reason: OpsInterventionReason;
-    note?: string;
+    note?: string | undefined;
 }
 /** Operator cancelled a running agent. */
 | {
     type: 'OPS_AGENT_CANCELLED';
     agentId: string;
     reason: OpsInterventionReason;
-    note?: string;
+    note?: string | undefined;
 }
 /** Audit trail entry for any ops intervention. */
 | {
@@ -14577,9 +14579,9 @@ export type OpsEvent =
     targetId: string;
     targetKind: 'task' | 'agent';
     reason: OpsInterventionReason;
-    note?: string;
+    note?: string | undefined;
     outcome: 'success' | 'rejected' | 'error';
-    errorMessage?: string;
+    errorMessage?: string | undefined;
 }
 /** A subscriber threw an error during event dispatch; emitted after dedup threshold. */
 | {
@@ -14648,7 +14650,7 @@ export type OrchestrationEvent = {
 } | {
     type: 'ORCHESTRATION_RECURSION_GUARD_TRIGGERED';
     graphId: string;
-    nodeId?: string;
+    nodeId?: string | undefined;
     depth: number;
     activeAgents: number;
     reason: string;
@@ -14660,23 +14662,23 @@ export type OrchestrationEventType = OrchestrationEvent['type'];
 // @public
 export interface OrchestrationTaskContract {
     // (undocumented)
-    allowedTools?: string[];
+    allowedTools?: string[] | undefined;
     // (undocumented)
-    capabilityCeiling?: string[];
+    capabilityCeiling?: string[] | undefined;
     // (undocumented)
-    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
+    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
     // (undocumented)
-    executionProtocol?: 'direct' | 'gather-plan-apply';
+    executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
     // (undocumented)
-    inheritsParentConstraints?: boolean;
+    inheritsParentConstraints?: boolean | undefined;
     // (undocumented)
-    requiredEvidence?: string[];
+    requiredEvidence?: string[] | undefined;
     // (undocumented)
-    reviewMode?: 'none' | 'wrfc';
+    reviewMode?: 'none' | 'wrfc' | undefined;
     // (undocumented)
-    successCriteria?: string[];
+    successCriteria?: string[] | undefined;
     // (undocumented)
-    writeScope?: string[];
+    writeScope?: string[] | undefined;
 }
 
 // @public (undocumented)
@@ -14730,13 +14732,13 @@ export interface OtelTracer {
 // @public
 export interface PartialToolCall {
     // (undocumented)
-    readonly arguments?: string;
+    readonly arguments?: string | undefined;
     // (undocumented)
-    readonly id?: string;
+    readonly id?: string | undefined;
     // (undocumented)
     readonly index: number;
     // (undocumented)
-    readonly name?: string;
+    readonly name?: string | undefined;
 }
 
 // @public (undocumented)
@@ -14854,17 +14856,17 @@ export interface PeerEndpointContract {
     readonly description: string;
     // (undocumented)
     readonly id: string;
-    readonly idempotent?: boolean;
+    readonly idempotent?: boolean | undefined;
     // (undocumented)
-    readonly inputSchema?: JsonSchema;
+    readonly inputSchema?: JsonSchema | undefined;
     // (undocumented)
     readonly method: 'GET' | 'POST';
     // (undocumented)
-    readonly outputSchema?: JsonSchema;
+    readonly outputSchema?: JsonSchema | undefined;
     // (undocumented)
     readonly path: string;
     // (undocumented)
-    readonly requiredScope?: string;
+    readonly requiredScope?: string | undefined;
 }
 
 // @public (undocumented)
@@ -15493,13 +15495,13 @@ export type PeerTypedEndpointId = keyof PeerEndpointInputMap & string;
 // @public (undocumented)
 export interface PerMethodRetryPolicy {
     // (undocumented)
-    readonly backoffFactor?: number;
+    readonly backoffFactor?: number | undefined;
     // (undocumented)
-    readonly baseDelayMs?: number;
+    readonly baseDelayMs?: number | undefined;
     // (undocumented)
-    readonly maxAttempts?: number;
+    readonly maxAttempts?: number | undefined;
     // (undocumented)
-    readonly maxDelayMs?: number;
+    readonly maxDelayMs?: number | undefined;
 }
 
 // @public
@@ -15511,10 +15513,10 @@ export type PermissionEvent =
     tool: string;
     args: Record<string, unknown>;
     category: string;
-    classification?: string;
-    riskLevel?: string;
-    summary?: string;
-    reasons?: readonly string[];
+    classification?: string | undefined;
+    riskLevel?: string | undefined;
+    summary?: string | undefined;
+    reasons?: readonly string[] | undefined;
 }
 /** Permission rules have been collected from all sources. */
 | {
@@ -15566,16 +15568,33 @@ export type PermissionEvent =
     tool: string;
     approved: boolean;
     source: string;
-    sourceLayer?: string;
-    persisted?: boolean;
-    reasonCode?: string;
-    classification?: string;
-    riskLevel?: string;
-    summary?: string;
+    sourceLayer?: string | undefined;
+    persisted?: boolean | undefined;
+    reasonCode?: string | undefined;
+    classification?: string | undefined;
+    riskLevel?: string | undefined;
+    summary?: string | undefined;
 };
 
 // @public
 export type PermissionEventType = PermissionEvent['type'];
+
+// @public (undocumented)
+export class PermissionResolver {
+    // Warning: (ae-forgotten-export) The symbol "ControlPlaneAuthSnapshot" needs to be exported by the entry point index.d.ts
+    constructor(snapshot: ControlPlaneAuthSnapshot);
+    get authenticated(): boolean;
+    hasAllRoles(roles: readonly string[]): boolean;
+    hasAllScopes(scopes: readonly string[]): boolean;
+    hasAnyRole(roles: readonly string[]): boolean;
+    hasAnyScope(scopes: readonly string[]): boolean;
+    hasRole(role: string): boolean;
+    hasScope(scope: string): boolean;
+    get isAdmin(): boolean;
+    get principalId(): string | null;
+    get principalKind(): ControlPlaneAuthSnapshot['principalKind'];
+    get snapshot(): ControlPlaneAuthSnapshot;
+}
 
 // @public (undocumented)
 export interface PlannerDecision {
@@ -15588,7 +15607,7 @@ export interface PlannerDecision {
         readonly isMultiStep: boolean;
         readonly remoteAvailable: boolean;
         readonly backgroundEligible: boolean;
-        readonly taskDescription?: string;
+        readonly taskDescription?: string | undefined;
     };
     // (undocumented)
     readonly overrideActive: boolean;
@@ -15606,7 +15625,7 @@ export type PlannerEvent = ({
 } & PlannerDecision) | {
     type: 'PLAN_STRATEGY_OVERRIDDEN';
     strategy: ExecutionStrategy | null;
-    clearedBy?: string;
+    clearedBy?: string | undefined;
 };
 
 // @public (undocumented)
@@ -15673,7 +15692,7 @@ export type PluginEvent =
 | {
     type: 'PLUGIN_UNLOADING';
     pluginId: string;
-    reason?: string;
+    reason?: string | undefined;
 }
 /** Plugin has been disabled (will not reload on restart). */
 | {
@@ -15797,17 +15816,17 @@ export interface ProviderRuntimeSnapshotServiceLike {
 // @public (undocumented)
 export interface RawServerSentEventOptions {
     // (undocumented)
-    readonly authToken?: string | null;
+    readonly authToken?: string | null | undefined;
     // (undocumented)
-    readonly getAuthToken?: AuthTokenResolver;
+    readonly getAuthToken?: AuthTokenResolver | undefined;
     // (undocumented)
-    readonly headers?: HeadersInit;
+    readonly headers?: HeadersInit | undefined;
     // (undocumented)
-    readonly lastEventId?: string | null;
+    readonly lastEventId?: string | null | undefined;
     // (undocumented)
-    readonly reconnect?: StreamReconnectPolicy;
+    readonly reconnect?: StreamReconnectPolicy | undefined;
     // (undocumented)
-    readonly signal?: AbortSignal;
+    readonly signal?: AbortSignal | undefined;
 }
 
 // @public (undocumented)
@@ -15826,7 +15845,7 @@ export type ReactNativeGoodVibesSdk = Omit<GoodVibesSdk, 'realtime'> & {
 // @public (undocumented)
 export interface ReactNativeGoodVibesSdkOptions extends GoodVibesSdkOptions {
     // (undocumented)
-    readonly WebSocketImpl?: typeof WebSocket;
+    readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 // @public (undocumented)
@@ -15862,7 +15881,7 @@ export function registeredEventTypes(): readonly string[];
 // @public (undocumented)
 export interface RemoteDomainEventsOptions<TDomain extends string = string> {
     // (undocumented)
-    readonly onConnectionError?: (error: Error, domain: TDomain) => void;
+    readonly onConnectionError?: ((error: Error, domain: TDomain) => void) | undefined | undefined;
 }
 
 // @public (undocumented)
@@ -15871,9 +15890,9 @@ export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEve
 // @public (undocumented)
 export interface RemoteRuntimeEventsOptions {
     // (undocumented)
-    readonly observer?: TransportObserver;
+    readonly observer?: TransportObserver | undefined;
     // (undocumented)
-    readonly onError?: (error: Error, domain: DaemonRuntimeEventDomain) => void;
+    readonly onError?: ((error: Error, domain: DaemonRuntimeEventDomain) => void) | undefined | undefined;
 }
 
 // @public
@@ -15910,7 +15929,7 @@ export interface ResolvedBackoffPolicy {
 // @public (undocumented)
 export interface ResolvedContractRequest {
     // (undocumented)
-    readonly body?: Record<string, unknown>;
+    readonly body?: Record<string, unknown> | undefined;
     // (undocumented)
     readonly method: string;
     // (undocumented)
@@ -16203,16 +16222,16 @@ export type RuntimeDomainEventType<TDomain extends RuntimeEventTypedDomain> = ke
 // @public (undocumented)
 export interface RuntimeEventConnectorOptions {
     // (undocumented)
-    readonly observer?: TransportObserver;
-    readonly onEmitter?: (emitLocal: (data: string) => void) => void;
+    readonly observer?: TransportObserver | undefined;
+    readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined | undefined;
     // (undocumented)
-    readonly onError?: (error: unknown) => void;
+    readonly onError?: ((error: unknown) => void) | undefined | undefined;
     // (undocumented)
-    readonly onOpen?: () => void;
+    readonly onOpen?: (() => void) | undefined | undefined;
     // (undocumented)
-    readonly onReconnect?: (attempt: number, delayMs: number) => void;
+    readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined | undefined;
     // (undocumented)
-    readonly reconnect?: StreamReconnectPolicy;
+    readonly reconnect?: StreamReconnectPolicy | undefined;
 }
 
 // @public
@@ -16335,7 +16354,7 @@ export type SecurityEvent =
 | {
     type: 'COMPANION_TOKEN_REVOKED';
     clientIp: string;
-    reason?: string;
+    reason?: string | undefined;
 };
 
 // @public
@@ -16346,13 +16365,13 @@ export interface SerializedEventEnvelope<TEvent extends EventLike = EventLike> {
     // (undocumented)
     readonly payload: TEvent;
     // (undocumented)
-    readonly sessionId?: string;
+    readonly sessionId?: string | undefined;
     // (undocumented)
-    readonly source?: string;
+    readonly source?: string | undefined;
     // (undocumented)
-    readonly traceId?: string;
+    readonly traceId?: string | undefined;
     // (undocumented)
-    readonly ts?: number;
+    readonly ts?: number | undefined;
     // (undocumented)
     readonly type: string;
 }
@@ -16376,13 +16395,13 @@ export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord_2 = Runt
 // @public (undocumented)
 interface ServerSentEventHandlers {
     // (undocumented)
-    readonly onClose?: () => void;
+    readonly onClose?: (() => void) | undefined | undefined;
     // (undocumented)
-    readonly onError?: (error: unknown) => void;
+    readonly onError?: ((error: unknown) => void) | undefined | undefined;
     // (undocumented)
-    readonly onEvent?: (eventName: string, payload: unknown) => void;
+    readonly onEvent?: ((eventName: string, payload: unknown) => void) | undefined | undefined;
     // (undocumented)
-    readonly onReady?: (payload: unknown) => void;
+    readonly onReady?: ((payload: unknown) => void) | undefined | undefined;
     // (undocumented)
     readonly onReconnect?: (input: {
         readonly attempt: number;
@@ -16453,11 +16472,20 @@ export type SessionEvent =
     body: string;
     source: string;
     timestamp: number;
-    metadata?: Readonly<Record<string, unknown>>;
+    metadata?: Readonly<Record<string, unknown>> | undefined;
 };
 
 // @public
 export type SessionEventType = SessionEvent['type'];
+
+// @public (undocumented)
+export class SessionManager {
+    constructor(operator: OperatorSdk, tokenStore: TokenStore | null);
+    current(): Promise<GoodVibesCurrentAuth>;
+    login(input: GoodVibesLoginInput, options?: GoodVibesAuthLoginOptions): Promise<GoodVibesLoginOutput>;
+    get tokenStore(): TokenStore | null;
+    get writable(): boolean;
+}
 
 // @public (undocumented)
 export function sleepWithSignal(delayMs: number, signal?: AbortSignal): Promise<void>;
@@ -16478,39 +16506,39 @@ export interface StrategyCandidate {
 // @public (undocumented)
 export interface StreamReconnectPolicy extends BackoffPolicy {
     // (undocumented)
-    readonly enabled?: boolean;
+    readonly enabled?: boolean | undefined;
 }
 
 // @public (undocumented)
 export interface StructuredDaemonErrorBody {
     // (undocumented)
-    readonly category?: DaemonErrorCategory;
+    readonly category?: DaemonErrorCategory | undefined;
     // (undocumented)
-    readonly code?: string;
+    readonly code?: string | undefined;
     // (undocumented)
     readonly error: string;
     // (undocumented)
-    readonly hint?: string;
+    readonly hint?: string | undefined;
     // (undocumented)
-    readonly operation?: string;
+    readonly operation?: string | undefined;
     // (undocumented)
-    readonly phase?: string;
+    readonly phase?: string | undefined;
     // (undocumented)
-    readonly provider?: string;
+    readonly provider?: string | undefined;
     // (undocumented)
-    readonly providerCode?: string;
+    readonly providerCode?: string | undefined;
     // (undocumented)
-    readonly providerType?: string;
+    readonly providerType?: string | undefined;
     // (undocumented)
-    readonly recoverable?: boolean;
+    readonly recoverable?: boolean | undefined;
     // (undocumented)
-    readonly requestId?: string;
+    readonly requestId?: string | undefined;
     // (undocumented)
-    readonly retryAfterMs?: number;
+    readonly retryAfterMs?: number | undefined;
     // (undocumented)
-    readonly source?: DaemonErrorSource;
+    readonly source?: DaemonErrorSource | undefined;
     // (undocumented)
-    readonly status?: number;
+    readonly status?: number | undefined;
 }
 
 // @public (undocumented)
@@ -16609,12 +16637,27 @@ export type TaskEvent =
 | {
     type: 'TASK_CANCELLED';
     taskId: string;
-    agentId?: string;
-    reason?: string;
+    agentId?: string | undefined;
+    reason?: string | undefined;
 };
 
 // @public
 export type TaskEventType = TaskEvent['type'];
+
+// @public (undocumented)
+export class TokenStore {
+    constructor(store: GoodVibesTokenStore);
+    clearToken(): Promise<void>;
+    getToken(): Promise<string | null>;
+    getTokenEntry(): Promise<{
+        token: string | null;
+        expiresAt?: number;
+    }>;
+    hasToken(): Promise<boolean>;
+    setToken(token: string | null): Promise<void>;
+    setTokenEntry(token: string | null, expiresAt?: number): Promise<void>;
+    get store(): GoodVibesTokenStore;
+}
 
 // @public (undocumented)
 export type ToolEvent =
@@ -16698,7 +16741,7 @@ export type ToolEvent =
     toolNames: string[];
     reason: string;
     timestamp: number;
-    isMalformed?: boolean;
+    isMalformed?: boolean | undefined;
 }
 /** Tool call was cancelled before completion. */
 | {
@@ -16706,7 +16749,7 @@ export type ToolEvent =
     callId: string;
     turnId: string;
     tool: string;
-    reason?: string;
+    reason?: string | undefined;
 }
 /**
 * A runtime budget was exceeded and the phase pipeline was terminated.
@@ -16747,28 +16790,28 @@ export type ToolEventType = ToolEvent['type'];
 // @public
 export interface TransportActivityInfo {
     readonly direction: 'send' | 'recv';
-    readonly durationMs?: number;
-    readonly kind?: 'http' | 'sse' | 'ws';
-    readonly status?: number;
+    readonly durationMs?: number | undefined;
+    readonly kind?: 'http' | 'sse' | 'ws' | undefined;
+    readonly status?: number | undefined;
     readonly url: string;
 }
 
 // @public
 export interface TransportContext {
-    activeMiddlewareName?: string;
+    activeMiddlewareName?: string | undefined;
     body: unknown;
-    durationMs?: number;
-    error?: unknown;
+    durationMs?: number | undefined;
+    error?: unknown | undefined;
     headers: Record<string, string>;
     method: string;
-    middlewareError?: boolean;
+    middlewareError?: boolean | undefined;
     options: {
-        readonly signal?: AbortSignal;
-        readonly retry?: unknown;
+        readonly signal?: AbortSignal | undefined;
+        readonly retry?: unknown | undefined;
         [key: string]: unknown;
     };
-    response?: Response;
-    signal?: AbortSignal;
+    response?: Response | undefined;
+    signal?: AbortSignal | undefined;
     url: string;
 }
 
@@ -16865,11 +16908,11 @@ export interface TransportJsonError {
     // (undocumented)
     readonly body: unknown;
     // (undocumented)
-    readonly cause?: unknown;
+    readonly cause?: unknown | undefined;
     // (undocumented)
     readonly method: string;
     // (undocumented)
-    readonly retryAfterMs?: number;
+    readonly retryAfterMs?: number | undefined;
     // (undocumented)
     readonly status: number;
     // (undocumented)
@@ -17017,13 +17060,13 @@ export type TurnEvent =
     toolCallCount: number;
     inputTokens: number;
     outputTokens: number;
-    cacheReadTokens?: number;
-    cacheWriteTokens?: number;
-    durationMs?: number;
-    retries?: number;
-    costUsdCents?: number;
-    finishReason?: string;
-    providerRequestId?: string;
+    cacheReadTokens?: number | undefined;
+    cacheWriteTokens?: number | undefined;
+    durationMs?: number | undefined;
+    retries?: number | undefined;
+    costUsdCents?: number | undefined;
+    finishReason?: string | undefined;
+    providerRequestId?: string | undefined;
 }
 /** A batch of tool calls is ready for execution. */
 | {
@@ -17069,15 +17112,15 @@ export type TurnEventType = TurnEvent['type'];
 // @public (undocumented)
 export interface TurnInputOrigin {
     // (undocumented)
-    readonly messageId?: string;
+    readonly messageId?: string | undefined;
     // (undocumented)
-    readonly metadata?: Readonly<Record<string, unknown>>;
+    readonly metadata?: Readonly<Record<string, unknown>> | undefined;
     // (undocumented)
-    readonly source?: string;
+    readonly source?: string | undefined;
     // (undocumented)
-    readonly surface?: string;
+    readonly surface?: string | undefined;
     // (undocumented)
-    readonly topic?: string;
+    readonly topic?: string | undefined;
 }
 
 // @public (undocumented)
@@ -17250,7 +17293,7 @@ export interface WatcherRegistryLike {
         readonly source: WatcherSourceRecord;
         readonly intervalMs: number;
         readonly metadata: Record<string, unknown>;
-        readonly run?: () => string;
+        readonly run?: (() => string) | undefined | undefined;
     }): WatcherRecord;
     // (undocumented)
     removeWatcher(watcherId: string): boolean;
@@ -17266,8 +17309,7 @@ export interface WatcherRegistryLike {
 export type WatcherSourceKind = (typeof WATCHER_SOURCE_KINDS)[number];
 
 // @public (undocumented)
-export interface WebGoodVibesSdkOptions extends BrowserGoodVibesSdkOptions {
-}
+export type WebGoodVibesSdkOptions = BrowserGoodVibesSdkOptions;
 
 // @public (undocumented)
 export type WebSearchSafeSearch = string;
@@ -17318,15 +17360,15 @@ export type WorkflowEvent = {
     chainId: string;
     score: number;
     passed: boolean;
-    constraintsSatisfied?: number;
-    constraintsTotal?: number;
-    unsatisfiedConstraintIds?: string[];
+    constraintsSatisfied?: number | undefined;
+    constraintsTotal?: number | undefined;
+    unsatisfiedConstraintIds?: string[] | undefined;
 } | {
     type: 'WORKFLOW_FIX_ATTEMPTED';
     chainId: string;
     attempt: number;
     maxAttempts: number;
-    targetConstraintIds?: string[];
+    targetConstraintIds?: string[] | undefined;
 } | {
     type: 'WORKFLOW_GATE_RESULT';
     chainId: string;
@@ -17342,7 +17384,7 @@ export type WorkflowEvent = {
 } | {
     type: 'WORKFLOW_AUTO_COMMITTED';
     chainId: string;
-    commitHash?: string;
+    commitHash?: string | undefined;
 } | {
     type: 'WORKFLOW_CASCADE_ABORTED';
     chainId: string;
